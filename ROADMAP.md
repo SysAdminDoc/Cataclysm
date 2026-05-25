@@ -31,17 +31,21 @@ Phased delivery plan. Each phase ends with a working, demoable artifact.
 - [x] Settings modal: Cesium ion token + theme; first-run disclaimer; in-app citations modal with peer-reviewed links
 - [x] CI/CD pipeline (3 OS matrix); release workflow with workflow_dispatch and signed-installer-ready artifact upload; Dependabot; cargo-audit
 
-## Phase 2 — Linear Long-Wave Propagation (v0.2.0)
+## Phase 2 — Linear Long-Wave Propagation ✅ (v0.2.0 — 2026-05-25)
 
 **DoD:** Hit `Simulate`, see a propagating wavefront ring expand across the globe over simulated minutes, with amplitude decreasing as `r^(-5/6)` (Ward–Asphaug) or `r^(-1/2)` (point-source) depending on source type.
 
-- [ ] Regular lat-lon grid in Rust (`ndarray` or `nalgebra`) with `1/cos(φ)` spherical metric
-- [ ] Linear long-wave dispersion `c = √(gh)` using local bathymetry `h`
-- [ ] FTCS or leapfrog time-stepping, CFL-stable Δt
-- [ ] `rayon` parallelism for grid updates
-- [ ] Wavefront extracted as polylines, streamed to frontend as GeoJSON every N timesteps
-- [ ] Cesium animation timeline driving playback (1×, 10×, 100×, 1000× real-time)
-- [ ] Coastal arrival-time isochrones overlay
+- [x] Regular lat-lon grid in Rust with row-parallel leapfrog (`rayon::par_chunks_mut`)
+- [x] Linear long-wave dispersion `c = √(gh)` using local bathymetry `h`
+- [x] Leapfrog time-stepping with CFL-safe Δt (`recommended_dt_s(cfl)`)
+- [x] `rayon` parallelism for both continuity + momentum updates
+- [x] Snapshot fields serialised as base64 PNG + bbox; frontend renders via Cesium `SingleTileImageryProvider`
+- [x] Per-snapshot scrubber in the right-rail SwePlayback component
+- [x] Coastal-runup overlay (F6) computes Synolakis 1987 runup at 60 named coastal points
+- [x] DART buoy historical overlay (F8) compares model vs. observed water-surface elevation
+- [x] Side-by-side comparison mode (F7) runs two scenarios with synchronized timeline
+- [x] Multi-globe-style selector — OSM (default no-token), Esri Imagery, Natural Earth, Cesium World Imagery + Bathymetry
+- [x] App is fully usable without any Cesium ion token
 
 ## Phase 3 — Coastal Runup + All Presets (v0.3.0)
 

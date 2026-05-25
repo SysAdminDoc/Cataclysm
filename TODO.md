@@ -46,52 +46,31 @@ Single source of truth for what's left to do, consolidated from `ROADMAP.md` + `
 - [x] **(P2, S)** D3: `.github/ISSUE_TEMPLATE/*.yml` + PR template
 - [x] **(P2, S)** D4: `SECURITY.md`
 
-## Phase 0.2 — Real propagation (target v0.2.0)
+## Phase 0.2 — Real propagation ✅ shipped 2026-05-25 as v0.2.0
 
-Public surface landed in v0.1.0 release scope; bodies + validation deferred to v0.2.0.
-
-- [~] **(P0, L)** F2: `wgpu` compute SWE solver on regular lat-lon grid
-  - [x] `physics::solver::SwGrid` + `TimeStepper` + `GridSnapshot` types
-  - [x] `SWE_LEAPFROG_WGSL` kernel source — staggered C-grid leapfrog, Manning friction, zero-flux boundaries
-  - [x] `inject_gaussian` IC helper
-  - [ ] Add `wgpu = "23"` + `bytemuck` to Cargo.toml
-  - [ ] Compile WGSL into ShaderModule, wire ping-pong buffer pair
-  - [ ] `simulate_grid(scenario, t_end, dt, n_snapshots) → Vec<GridSnapshot>` Tauri command + PNG-base64 amplitude texture serialization
-  - [ ] Validate against Stoker dam-break analytical (±5%)
-  - [ ] Validate against Range et al. 2022 Chicxulub 220 km amplitude (±OOM)
-  - [ ] Frontend renders snapshots as Cesium SingleTileImageryProvider layer
-- [x] **(P0, M)** F6: Synolakis runup overlay — landed in v0.1.0 prep
-  - [x] `src/data/coastal_points.json` — 60 named points covering all 11 presets' regions
-  - [x] `runup_at_points` Tauri command (Haversine + far-field decay + Synolakis runup)
-  - [x] `CoastalRunupOverlay` component + 3D bar rendering in `Globe.tsx`
-  - [ ] Once F2 solver is live, swap the analytical far-field decay for grid sampling
-  - [ ] Validate: Tōhoku Miyako point runup ∈ [20, 80] m
-- [~] **(P1, M)** F5: Okada 1985 dislocation
-  - [x] `physics::okada::OkadaFault` + `OkadaDisplacementField` types
-  - [x] Gaussian-bump placeholder for `vertical_displacement_field`
-  - [ ] Replace placeholder with Okada eqns. (25)-(30) elliptic-integral form
-  - [ ] Tanioka–Satake 1996 horizontal-bathymetry-coupling correction
-  - [ ] Validate against USGS okada_wrapper Python for Tōhoku central subfault (~7 m peak)
-  - [ ] Replace Geist–Dmowska M_w empirical in `earthquake::peak_seafloor_uplift_m`
-- [ ] **(P1, L)** F4: Bundle offline bathymetry (SRTM15+ V2.6 or GEBCO 2024 + Natural Earth coastlines)
-  - First-run wizard: "Download offline bathymetry (190 MB)? Yes / Skip / Only when needed"
-  - Store in `app_data_dir/data/` (gitignored, downloaded on demand)
-  - New `physics::data::bathymetry::sample(lat, lon) → f64` reading memory-mapped NetCDF
-  - Settings: "Bathymetry source" toggle (Cesium ion / Local GEBCO)
-  - Verify: airplane mode → click Chicxulub → globe + wave still works
-  - Wire bathymetry into `SwGrid::new()` so the solver sees real depths
+- [x] **(P0, L)** F2: CPU SWE solver — leapfrog with `rayon` `par_chunks_mut`, Manning friction, zero-flux boundaries, PNG-base64 snapshot encoding, Cesium imagery-layer rendering. WGSL kernel source retained for v0.3.0 wgpu port.
+- [x] **(P0, M)** F6: Synolakis runup overlay — 60-point coastal database + `runup_at_points` Tauri batch + 3D bars on globe colour-ramped by magnitude.
+- [x] **(P1, M)** F5: Okada 1985 leading-order Chinnery form (strike-slip + dip-slip + tensile vertical components). Full I-term correction deferred to v0.3.0.
+- [x] **(P1, L)** F4: Coarse offline bathymetry — 7-basin classification + 5° shelf taper. Real GEBCO 2024 download wizard deferred to v0.3.0.
+- [x] **F7**: Side-by-side comparison mode (split globes, two preset selectors, shared timeline).
+- [x] **F8**: DART buoy historical overlay — 6 buoys across 3 modern events with sparkline charts + globe pins.
+- [x] **Multi-globe-style selector**: OSM (default no-token), Esri Imagery, Natural Earth II, Cesium World Imagery + Bathymetry. App now usable on first launch without any token.
+- [x] **Token persistence fix**: localStorage mirror + explicit `store:*` capabilities.
 
 ## Phase 0.3+ items — see RESEARCH_FEATURE_PLAN.md
 
-- [ ] **(P2, M)** F7: Side-by-side comparison mode (synchronized timelines)
-- [ ] **(P2, L)** F9: Hunga Tonga atmospheric Lamb-wave source (depends on F2 solver)
-- [ ] **(P2, M)** F8: DART buoy historical overlay for 4 modern presets
-- [ ] **(P2, L)** F13: Inundation polygons (depends on F2 + F4)
+- [ ] **(P0, L)** wgpu port of CPU SWE solver — 50-100× perf
+- [ ] **(P0, M)** Full Okada 1985 I-term half-space correction (replaces leading-order form)
+- [ ] **(P1, M)** Tanioka–Satake 1996 horizontal-bathymetry-coupling correction
+- [ ] **(P1, L)** Real GEBCO 2024 bathymetry download wizard (replaces coarse offline approximation)
+- [ ] **(P2, L)** F9: Hunga Tonga atmospheric Lamb-wave source
+- [ ] **(P2, L)** F13: Inundation polygons (depends on F2 + real bathymetry)
 - [~] **(P2, M-L)** F10: Scenario export
   - [x] PNG screenshot of globe view (canvas.toDataURL + download)
   - [ ] Side-panel composite (html2canvas merge with globe via OffscreenCanvas)
   - [ ] MP4 timeline recording (mp4-muxer + canvas frame capture loop)
   - [ ] CZML deep-link import — `tsunamisimulator://load?...` protocol handler
+- [ ] Validate v0.2.0 SWE solver against Stoker dam-break analytical (±5%) + Range 2022 Chicxulub far-field (±OOM)
 - [ ] **(P1, M)** Code signing (macOS Gatekeeper, Windows Authenticode)
 - [ ] **(P1, M)** `tauri-plugin-updater` (Ed25519-signed manifest)
 - [ ] **(P3, L)** F14: Population casualty overlay (opt-in, heavy disclaimer)

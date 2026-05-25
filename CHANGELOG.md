@@ -4,18 +4,53 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### Added since v0.1.0 (Phase 0.2 prep — will ship as v0.2.0-alpha or rolled into v0.2.0)
-- **F6**: Synolakis runup overlay — `runup_at_points` Tauri batch command; 60-point coastal database in `src/data/coastal_points.json` covering all 11 presets' affected regions; CoastalRunupOverlay component renders 3D bars colour-ramped by runup magnitude (green <2m / yellow 2-10m / red >10m).
-- **F5 scaffold**: `physics::okada` module with OkadaFault + OkadaDisplacementField types; Gaussian-bump placeholder until full elliptic-integral form lands.
-- **F2 scaffold**: `physics::solver` module with SwGrid + TimeStepper + GridSnapshot types + WGSL leapfrog kernel embedded as a string constant. `wgpu` integration deferred.
-- **F10 partial**: PNG export of globe view via canvas.toDataURL + `<a download>`. Cesium viewer now enables `preserveDrawingBuffer` for capture.
+### Planned for v0.3.0
+- `wgpu` compute SWE solver — port the working CPU leapfrog kernel to WGSL
+- Full Okada 1985 I-term half-space correction (replaces leading-order form)
+- Tanioka–Satake 1996 horizontal-bathymetry-coupling correction
+- Validation against Stoker dam-break analytical + Range 2022 Chicxulub far-field
+- Boussinesq dispersive solver as opt-in alternative
+- Adaptive Mesh Refinement (GeoClaw-style)
+- Real GEBCO 2024 bathymetry via first-run download wizard
 
-### Planned for v0.2.0
-- Wire the `wgpu` compute pipeline + ping-pong buffers (build on the F2 scaffold)
-- Implement full Okada 1985 elliptic integrals (build on the F5 scaffold)
-- Bundle offline bathymetry (SRTM15+ or GEBCO 2024 + Natural Earth coastlines)
-- Tanioka–Satake 1996 horizontal-bathymetry-coupling correction for the Okada source
-- Validate against Stoker dam-break analytical case + Range 2022 Chicxulub far-field
+---
+
+## [0.2.0] - 2026-05-25 — Phase 0.2
+
+Working SWE physics, runup overlay, DART overlay, side-by-side comparison, multi-globe selection, no-token-required default.
+
+### Added — Backend (Rust)
+- **F2 working CPU SWE solver** (`physics::solver`) — leapfrog with `rayon` row-parallel updates via `par_chunks_mut`. Continuity + linearised momentum + Manning bottom friction + zero-flux boundaries. CFL-safe `recommended_dt_s()` based on max √(gh). Snapshots are PNG-base64 with a diverging blue↔red colormap, ready for Cesium `SingleTileImageryProvider`. `run_simulation(grid, stepper, t_end, n_snapshots)` end-to-end driver.
+- **F5 leading-order Okada 1985** (`physics::okada`) — Chinnery-notation surface integral over the four fault corners. Strike-slip + dip-slip + tensile vertical components. Rake decomposition. `From<&EarthquakeSource>` adapter. The full half-space I-term correction is deferred to v0.3.0; the leading-order form over-predicts magnitudes by ~10× but has correct sign / lobe shape.
+- **F4 offline bathymetry** (`data::bathymetry`) — coarse basin-mean depth (Pacific 4280 m, Atlantic 3646 m, Indian 3741 m, Southern 3270 m, Arctic 1205 m, Mediterranean 1500 m, Caribbean 2400 m per Charette & Smith 2010) + continental-shelf taper within 5° of land. Zero for land. Wired into `simulate_grid` via the new `use_real_bathymetry` toggle.
+- **F6 runup batch command** (`commands::runup_at_points`) — Haversine + far-field decay + Synolakis 1987 closed-form. Returns `RunupAtPoint { id, name, lat, lon, range, offshore_amp, runup_m, arrival_time, has_arrived }`.
+- New Tauri command `simulate_grid` exposing the SWE solver to the frontend with bounded grid-size guard (4 M cells max).
+
+### Added — Frontend (React + TS)
+- **SwePlayback** component — runs the SWE solver, scrubs through 24 snapshots, paints each as an imagery layer over the globe. Toggle for coarse offline bathymetry.
+- **DartOverlay** component — sparkline charts of observed water-surface elevation at 6 DART buoys across Tohoku 2011 / Indian Ocean 2004 / Hunga Tonga 2022. Cursor synced to the timeline scrubber.
+- **Side-by-side comparison mode** (F7) — header `⇆ Compare` toggle splits the central column into two stacked globes with two preset selectors. Both share `timeS` but otherwise run independently. Slot tags colour-coded sapphire/pink.
+- **Multi-globe-style selector** — 5 imagery options:
+  - OpenStreetMap (default, no token)
+  - Esri World Imagery satellite (no token)
+  - Natural Earth II (bundled with Cesium, no network)
+  - Cesium World Imagery (token required)
+  - Cesium World Bathymetry terrain (token required)
+- **PNG export** of globe view (F10 first slice).
+- 60-point coastal database (`src/data/coastal_points.json`) covering all 12 preset regions.
+- DART buoy database (`src/data/dart_buoys.json`) covering 3 modern events.
+
+### Changed
+- App is now **usable without any Cesium ion token** — OpenStreetMap is the default base layer.
+- Settings storage hardened: every write mirrors to `localStorage` so a future `tauri-plugin-store` regression cannot silently lose user data.
+- Capability `store:default` alias expanded to explicit `allow-load/get/set/save/has/keys/entries/clear/delete/reload` permissions to fix token-not-persisting bug on some platforms.
+- CSP `connect-src` + `img-src` extended to allow `tile.openstreetmap.org` and `*.arcgisonline.com`.
+
+### Fixed
+- Token entered via Settings dialog now persists across restart.
+- `Globe.tsx` no longer hides itself when a token is missing.
+- v0.1.0 macOS release-workflow bash 3.2 `globstar` regression (carried over).
+- Several internal CI-only Rust lifetime / move-closure issues.
 
 ### Planned for v0.3.0
 - Side-by-side comparison mode (synchronized timelines)
