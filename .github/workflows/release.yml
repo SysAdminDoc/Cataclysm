@@ -82,10 +82,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          shopt -s nullglob globstar
-          for f in src-tauri/target/**/release/bundle/**/*.{msi,exe,dmg,deb,AppImage,rpm,zip,tar.gz}; do
-            cp "$f" artifacts/
-          done
+          # macOS GitHub Actions ships bash 3.2 (no globstar/**), so use find.
+          find src-tauri/target -path "*release/bundle*" \( \
+              -name "*.msi" -o -name "*.exe" -o -name "*.dmg" \
+              -o -name "*.deb" -o -name "*.AppImage" -o -name "*.rpm" \
+              -o -name "*.zip" -o -name "*.tar.gz" \
+            \) -exec cp {} artifacts/ \;
           ls -la artifacts/ || true
 
       - uses: actions/upload-artifact@v4
