@@ -24,6 +24,7 @@ export type RunupAtPointResult = {
   runup_m: number;
   arrival_time_s: number;
   has_arrived: boolean;
+  inundation_extent_m: number;
 };
 
 export const api = {

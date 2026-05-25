@@ -61,6 +61,7 @@ export function Globe({
   const sourceEntityRef = useRef<Cesium.Entity | null>(null);
   const wavefrontEntitiesRef = useRef<Cesium.Entity[]>([]);
   const runupEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
+  const inundationEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
   const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
@@ -108,6 +109,7 @@ export function Globe({
       wavefrontEntitiesRef.current = [];
       runupEntitiesRef.current = new Map();
       dartEntitiesRef.current = new Map();
+      inundationEntitiesRef.current = new Map();
       sweLayerRef.current = null;
     };
   }, []);
@@ -519,6 +521,66 @@ export function Globe({
       if (!seen.has(id)) {
         viewer.entities.remove(entity);
         map.delete(id);
+      }
+    }
+
+    // I-V02 — inundation discs alongside the runup bars. A semi-transparent
+    // circular polygon at each runup point with radius = inundation_extent_m
+    // and colour matching the bar's runup severity. Land-side first-order
+    // geometric approximation; refined to real flood polygons in v0.4.0
+    // once GEBCO bathymetry + wet/dry cell handling land in production.
+    const inMap = inundationEntitiesRef.current;
+    const inSeen = new Set<string>();
+    for (const r of runupResults ?? []) {
+      inSeen.add(r.id);
+      if (
+        !r.has_arrived ||
+        !Number.isFinite(r.inundation_extent_m) ||
+        r.inundation_extent_m < 100
+      ) {
+        const existing = inMap.get(r.id);
+        if (existing) {
+          viewer.entities.remove(existing);
+          inMap.delete(r.id);
+        }
+        continue;
+      }
+      const colour =
+        r.runup_m < 2
+          ? Cesium.Color.fromCssColorString("#a6e3a1")
+          : r.runup_m < 10
+            ? Cesium.Color.fromCssColorString("#f9e2af")
+            : Cesium.Color.fromCssColorString("#f38ba8");
+      const radius = Math.min(Math.max(r.inundation_extent_m, 200), 50_000);
+      let entity = inMap.get(r.id);
+      if (!entity) {
+        entity = viewer.entities.add({
+          name: `${r.name} inundation`,
+          position: Cesium.Cartesian3.fromDegrees(r.lon, r.lat, 0),
+          ellipse: {
+            semiMajorAxis: radius,
+            semiMinorAxis: radius,
+            material: colour.withAlpha(0.25),
+            outline: true,
+            outlineColor: colour.withAlpha(0.7),
+            height: 0,
+          },
+        });
+        inMap.set(r.id, entity);
+      } else if (entity.ellipse) {
+        entity.position = new Cesium.ConstantPositionProperty(
+          Cesium.Cartesian3.fromDegrees(r.lon, r.lat, 0),
+        );
+        entity.ellipse.semiMajorAxis = new Cesium.ConstantProperty(radius);
+        entity.ellipse.semiMinorAxis = new Cesium.ConstantProperty(radius);
+        entity.ellipse.material = new Cesium.ColorMaterialProperty(colour.withAlpha(0.25));
+        entity.ellipse.outlineColor = new Cesium.ConstantProperty(colour.withAlpha(0.7));
+      }
+    }
+    for (const [id, entity] of inMap) {
+      if (!inSeen.has(id)) {
+        viewer.entities.remove(entity);
+        inMap.delete(id);
       }
     }
   }, [runupResults]);

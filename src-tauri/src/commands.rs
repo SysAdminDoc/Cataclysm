@@ -238,6 +238,12 @@ pub struct RunupAtPoint {
     pub runup_m: f64,
     pub arrival_time_s: f64,
     pub has_arrived: bool,
+    /// Inland inundation extent estimate, meters: `runup_m / tan(slope)`.
+    /// First-order geometric — assumes a uniform local beach slope and
+    /// ignores topographic obstacles. Used by the frontend to render an
+    /// inundation polygon (a flat disc) around each named coastal point
+    /// at amplitude-appropriate scale (I-V02).
+    pub inundation_extent_m: f64,
 }
 
 /// For each coastal point, compute the offshore amplitude (far-field decay
@@ -271,6 +277,15 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
             let runup_m = synolakis_runup_m(amp, p.offshore_depth_m, p.beach_slope_deg);
             let c = (G_EARTH * req.mean_depth_m.max(1.0)).sqrt();
             let arrival_time_s = range_m / c;
+            // Inland inundation extent: runup_m / tan(beach_slope). For
+            // a 0° "reference" point (deep-water gauge) tan(0) → 0 and
+            // we'd divide-by-zero; cap at 0 to indicate "no land here".
+            let slope_rad = p.beach_slope_deg.to_radians();
+            let inundation_extent_m = if slope_rad > 0.0 {
+                (runup_m / slope_rad.tan()).max(0.0).min(50_000.0)
+            } else {
+                0.0
+            };
             RunupAtPoint {
                 id: p.id,
                 name: p.name,
@@ -281,6 +296,7 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
                 runup_m,
                 arrival_time_s,
                 has_arrived: req.time_s >= arrival_time_s,
+                inundation_extent_m,
             }
         })
         .collect();
