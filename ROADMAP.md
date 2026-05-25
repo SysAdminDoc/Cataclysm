@@ -99,7 +99,7 @@ Single source of truth for delivery. Phased plan; each phase ends with a working
 
 **DoD**: 10× the grid resolution at 60 FPS playback. NSWE shows wave steepening and breaking near coasts.
 
-- [ ] **F-V05 P1** — `wgpu` compute pipeline for SWE solver (D3D12/Vulkan/Metal/WebGPU). WGSL kernel already in `physics/solver/kernels.rs`. Behind `--features gpu`.
+- [~] **F-V05 P1** — `wgpu` compute pipeline for SWE solver. Scaffold + feature flag + adapter probe + module skeleton shipped (v0.3.0); buffer-binding + dispatch loop deferred to v0.4.0. Build with `--features gpu` to compile.
 - [ ] Nonlinear shallow-water equations with Manning bottom friction `n=0.025`
 - [ ] Wet/dry cell handling for inundation
 - [ ] Inundation polygons as GeoJSON overlays on Cesium
