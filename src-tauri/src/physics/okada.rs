@@ -335,11 +335,17 @@ mod tests {
         assert!(min_uz < 0.0, "expected subsidence somewhere on grid");
     }
 
-    /// Pure strike-slip (rake 0°) should produce near-zero vertical uplift
-    /// at the fault centre by symmetry. The full Okada I-term form
-    /// preserves this; the leading-order pass did not.
+    /// Pure strike-slip on a **vertical** fault (rake = 0, dip = 90°)
+    /// should produce zero vertical uplift at the fault centre by exact
+    /// symmetry: the strike-slip vertical component vanishes when both
+    /// the slip and fault plane are horizontal-symmetric about the
+    /// rupture trace. The full Okada I-term form preserves this (the
+    /// leading-order v0.2.x form did not). For non-vertical SS faults
+    /// there's an angular asymmetry from the dip — that case is
+    /// covered by the Tohoku test which already lands in the [1, 30] m
+    /// band per Fujii-Satake.
     #[test]
-    fn strike_slip_zero_central_uplift() {
+    fn vertical_strike_slip_zero_central_uplift() {
         let f = OkadaFault {
             center_lat: 0.0,
             center_lon: 0.0,
@@ -347,11 +353,11 @@ mod tests {
             length_m: 100_000.0,
             width_m: 20_000.0,
             strike_deg: 0.0,
-            dip_deg: 80.0,
+            dip_deg: 90.0,
             rake_deg: 0.0,
             slip_m: 5.0,
         };
         let peak = f.peak_uplift_m();
-        assert!(peak.abs() < 1.0, "central uplift {} should be near zero", peak);
+        assert!(peak.abs() < 0.5, "central uplift {} should be near zero", peak);
     }
 }
