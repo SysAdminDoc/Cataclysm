@@ -1,0 +1,39 @@
+{
+  "name": "tsunami-simulator",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Scientifically grounded 3D-globe desktop simulator for tsunami generation, propagation, and inundation from asteroid impacts, nuclear detonations, earthquakes, and landslides.",
+  "license": "MIT",
+  "author": "SysAdminDoc",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SysAdminDoc/TsunamiSimulator"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "cesium": "^1.124.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/cesium": "^1.70.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vite-plugin-static-copy": "^2.2.0"
+  }
+}

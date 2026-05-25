@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "TsunamiSimulator",
+  "version": "0.0.1",
+  "identifier": "com.sysadmindoc.tsunamisimulator",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "TsunamiSimulator",
+        "width": 1600,
+        "height": 1000,
+        "minWidth": 1200,
+        "minHeight": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "theme": "Dark"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' tauri:; script-src 'self' 'unsafe-eval' 'unsafe-inline' tauri:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.cesium.com https://*.ion.cesium.com https://*.openstreetmap.org; connect-src 'self' tauri: ipc: https://*.cesium.com https://*.ion.cesium.com https://*.openstreetmap.org; worker-src 'self' blob:; child-src 'self' blob:; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Education",
+    "shortDescription": "Tsunami simulator for asteroid impacts, nuclear detonations, earthquakes, and landslides",
+    "longDescription": "A scientifically grounded 3D-globe desktop application for simulating tsunami generation, propagation, and coastal inundation. Uses Ward & Asphaug analytical formulas for asteroid impacts, Glasstone-Dolan + Le Méhauté for nuclear sources, Fritz-Hager for landslides, and Synolakis for coastal runup. Historical presets include Chicxulub, Tōhoku 2011, Indian Ocean 2004, and Lituya Bay 1958."
+  }
+}

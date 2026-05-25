@@ -1,0 +1,105 @@
+import type { InitialDisplacement } from "../types/scenario";
+
+type Props = {
+  initial: InitialDisplacement | null;
+  timeS: number;
+  onTimeChange: (s: number) => void;
+};
+
+function formatEnergy(j: number): { value: string; unit: string } {
+  const mt = j / 4.184e15;
+  if (mt >= 1) return { value: mt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "Mt TNT" };
+  const kt = j / 4.184e12;
+  if (kt >= 1) return { value: kt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "kt TNT" };
+  return { value: j.toExponential(2), unit: "J" };
+}
+
+function formatLength(m: number): { value: string; unit: string } {
+  if (m >= 1000) return { value: (m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "km" };
+  return { value: m.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "m" };
+}
+
+export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
+  if (!initial) {
+    return (
+      <div className="section">
+        <div className="section__title">Source Readout</div>
+        <p style={{ color: "var(--subtext)", fontSize: 12 }}>
+          Select a preset or build a scenario to see source-energy, cavity geometry, and seismic-equivalent magnitude.
+        </p>
+      </div>
+    );
+  }
+
+  const energy = formatEnergy(initial.source_energy_j);
+  const cavity = formatLength(initial.cavity_radius_m);
+  const amp = formatLength(initial.peak_amplitude_m);
+  const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m) : null;
+  const totalT = 6 * 3600;
+  const progress = Math.min(1, timeS / totalT);
+
+  return (
+    <>
+      <div className="section">
+        <div className="section__title">Source Readout</div>
+        <div className="results">
+          <div className="results__cell">
+            <div className="results__label">Energy</div>
+            <div className="results__value">
+              {energy.value}
+              <span className="results__unit">{energy.unit}</span>
+            </div>
+          </div>
+          <div className="results__cell">
+            <div className="results__label">M_w equivalent</div>
+            <div className="results__value">{initial.seismic_mw_equivalent.toFixed(2)}</div>
+          </div>
+          <div className="results__cell">
+            <div className="results__label">Cavity radius</div>
+            <div className="results__value">
+              {cavity.value}
+              <span className="results__unit">{cavity.unit}</span>
+            </div>
+          </div>
+          <div className="results__cell">
+            <div className="results__label">Peak amplitude</div>
+            <div className="results__value">
+              {amp.value}
+              <span className="results__unit">{amp.unit}</span>
+            </div>
+          </div>
+          {wl && (
+            <div className="results__cell" style={{ gridColumn: "span 2" }}>
+              <div className="results__label">Dominant wavelength</div>
+              <div className="results__value">
+                {wl.value}
+                <span className="results__unit">{wl.unit}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section__title">Timeline (t = 0 → 6 h)</div>
+        <div className="timeline">
+          <input
+            type="range"
+            min={0}
+            max={totalT}
+            step={60}
+            value={timeS}
+            onChange={(e) => onTimeChange(Number(e.target.value))}
+          />
+          <div className="timeline__bar">
+            <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />
+          </div>
+          <div className="timeline__readout">
+            <span>t = {(timeS / 60).toFixed(0)} min</span>
+            <span>{(timeS / 3600).toFixed(2)} h</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

@@ -1,0 +1,206 @@
+//! Registry of historical and hypothetical tsunami events with peer-reviewed
+//! source parameters. Every entry carries its citation in the `reference` field.
+
+use serde::{Deserialize, Serialize};
+
+use crate::physics::{
+    asteroid::AsteroidImpact,
+    earthquake::EarthquakeSource,
+    landslide::LandslideSource,
+    nuclear::NuclearBurst,
+    GeoPoint, InitialDisplacement,
+};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "source")]
+pub enum PresetSource {
+    Asteroid(AsteroidImpact),
+    Earthquake(EarthquakeSource),
+    Landslide(LandslideSource),
+    Nuclear(NuclearBurst),
+}
+
+impl PresetSource {
+    pub fn initial_displacement(&self) -> InitialDisplacement {
+        match self {
+            Self::Asteroid(a) => a.initial_displacement(),
+            Self::Earthquake(e) => e.initial_displacement(),
+            Self::Landslide(l) => l.initial_displacement(),
+            Self::Nuclear(n) => n.initial_displacement(),
+        }
+    }
+
+    /// Decay exponent for the cheap far-field sampler.
+    /// Impact tsunamis: 5/6 (Ward-Asphaug). Everything else: 1/2 (point source).
+    pub fn far_field_decay_alpha(&self) -> f64 {
+        match self {
+            Self::Asteroid(_) => 5.0 / 6.0,
+            _ => 0.5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Preset {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub date: &'static str,
+    pub blurb: &'static str,
+    pub reference: &'static str,
+    pub source: PresetSource,
+}
+
+/// All built-in presets. IDs are stable; the frontend keys off them.
+pub fn all_presets() -> Vec<Preset> {
+    vec![
+        Preset {
+            id: "chicxulub",
+            name: "Chicxulub Impact",
+            date: "66 Ma",
+            blurb: "14-km asteroid into a shallow Yucatan sea. End-Cretaceous extinction event. Initial 4.5-km ejecta-driven wall, 1.5-km ring wave at 220 km, 10+ m on most coasts.",
+            reference: "Range et al. 2022, AGU Advances, doi:10.1029/2021AV000627",
+            source: PresetSource::Asteroid(AsteroidImpact {
+                diameter_m: 14_000.0,
+                density_kg_m3: 3000.0,
+                velocity_m_s: 20_000.0,
+                angle_deg: 60.0,
+                water_depth_m: 1_500.0,
+                location: GeoPoint { lat_deg: 21.4, lon_deg: -89.5, depth_m: 1_500.0 },
+            }),
+        },
+        Preset {
+            id: "eltanin",
+            name: "Eltanin Impact",
+            date: "2.51 Ma",
+            blurb: "~1 km asteroid into the deep South Pacific. Only known Cenozoic deep-ocean impact. Generated a globally significant tsunami inferred from disturbed deep-sea sediments.",
+            reference: "Gersonde et al. 1997, Nature 390:357; Ward & Asphaug 2002 Deep-Sea Res II",
+            source: PresetSource::Asteroid(AsteroidImpact {
+                diameter_m: 1_000.0,
+                density_kg_m3: 3000.0,
+                velocity_m_s: 20_000.0,
+                angle_deg: 45.0,
+                water_depth_m: 4_500.0,
+                location: GeoPoint { lat_deg: -57.7, lon_deg: -90.8, depth_m: 4_500.0 },
+            }),
+        },
+        Preset {
+            id: "tohoku_2011",
+            name: "Tōhoku Earthquake & Tsunami",
+            date: "2011-03-11",
+            blurb: "M_w 9.1 megathrust off Sanriku coast. 40 m maximum runup at Miyako, 19 k+ killed, Fukushima Daiichi.",
+            reference: "Mori et al. 2011, GRL; Fujii & Satake 2013",
+            source: PresetSource::Earthquake(EarthquakeSource {
+                mw: 9.1,
+                depth_m: 30_000.0,
+                strike_deg: 195.0,
+                dip_deg: 12.0,
+                rake_deg: 85.0,
+                slip_m: 30.0,
+                water_depth_m: 1_500.0,
+                location: GeoPoint { lat_deg: 38.297, lon_deg: 142.372, depth_m: 1_500.0 },
+            }),
+        },
+        Preset {
+            id: "indian_ocean_2004",
+            name: "Indian Ocean Earthquake & Tsunami",
+            date: "2004-12-26",
+            blurb: "M_w 9.2 Sumatra-Andaman megathrust. 30 m runup, 230 k+ killed across 14 countries.",
+            reference: "Synolakis et al. 2005, PNAS; Lay et al. 2005 Science",
+            source: PresetSource::Earthquake(EarthquakeSource {
+                mw: 9.2,
+                depth_m: 30_000.0,
+                strike_deg: 329.0,
+                dip_deg: 8.0,
+                rake_deg: 110.0,
+                slip_m: 20.0,
+                water_depth_m: 3_500.0,
+                location: GeoPoint { lat_deg: 3.316, lon_deg: 95.854, depth_m: 3_500.0 },
+            }),
+        },
+        Preset {
+            id: "lituya_bay_1958",
+            name: "Lituya Bay Megatsunami",
+            date: "1958-07-09",
+            blurb: "30 M m³ rockslide into Gilbert Inlet triggered by M 7.8 Fairweather quake. World-record 524 m runup on the opposite shore — confined fjord geometry.",
+            reference: "Fritz, Hager & Minor 2001, Sci. Tsunami Hazards 19:3",
+            source: PresetSource::Landslide(crate::physics::landslide::lituya_bay_1958()),
+        },
+        Preset {
+            id: "storegga",
+            name: "Storegga Submarine Slide",
+            date: "~8150 BP",
+            blurb: "3000 km³ submarine landslide off Norway. 20+ m tsunami struck Scotland, Faroes, and Doggerland. Mesolithic human displacement.",
+            reference: "Bondevik et al. 2005, Marine Geology 215:1; Bryn et al. 2005",
+            source: PresetSource::Landslide(LandslideSource {
+                kind: crate::physics::landslide::LandslideKind::Submarine,
+                volume_m3: 3.0e12,
+                density_kg_m3: 1800.0,
+                drop_height_m: 800.0,
+                slope_deg: 3.0,
+                water_depth_m: 1_000.0,
+                water_body_width_m: 300_000.0,
+                location: GeoPoint { lat_deg: 64.5, lon_deg: 3.5, depth_m: 1_000.0 },
+            }),
+        },
+        Preset {
+            id: "hunga_tonga_2022",
+            name: "Hunga Tonga Volcanic Tsunami",
+            date: "2022-01-15",
+            blurb: "VEI 5–6 submarine caldera collapse. 15 m local tsunami plus globally observed atmospheric Lamb wave – ocean coupling — novel for modern instrumented era.",
+            reference: "Carvajal et al. 2022, GRL; Matoza et al. 2022 Science",
+            source: PresetSource::Landslide(LandslideSource {
+                kind: crate::physics::landslide::LandslideKind::Submarine,
+                volume_m3: 1.9e10,
+                density_kg_m3: 2200.0,
+                drop_height_m: 700.0,
+                slope_deg: 35.0,
+                water_depth_m: 1_500.0,
+                water_body_width_m: 5_000.0,
+                location: GeoPoint { lat_deg: -20.55, lon_deg: -175.39, depth_m: 1_500.0 },
+            }),
+        },
+        Preset {
+            id: "cumbre_vieja_scenario",
+            name: "Cumbre Vieja Flank Collapse (Hypothetical)",
+            date: "—",
+            blurb: "Ward & Day 2001 hypothesized a 500 km³ flank collapse of La Palma could generate 5–25 m waves on the US East Coast. Subsequent work (Løvholt, Pararas-Carayannis) finds the estimate exaggerated. Included so users can see both extremes.",
+            reference: "Ward & Day 2001, GRL 28:3397; Løvholt et al. 2008 J. Geophys. Res. (rebuttal)",
+            source: PresetSource::Landslide(LandslideSource {
+                kind: crate::physics::landslide::LandslideKind::Submarine,
+                volume_m3: 5.0e11,
+                density_kg_m3: 2700.0,
+                drop_height_m: 4_000.0,
+                slope_deg: 20.0,
+                water_depth_m: 2_500.0,
+                water_body_width_m: 30_000.0,
+                location: GeoPoint { lat_deg: 28.57, lon_deg: -17.87, depth_m: 0.0 },
+            }),
+        },
+        Preset {
+            id: "poseidon_realistic",
+            name: "Poseidon Torpedo (Realistic Yield)",
+            date: "—",
+            blurb: "Conservative 2-Mt warhead detonated at optimum depth — Western technical estimate (Hambling 2022). Produces a few-meter wave at 100 km, not the Russian propaganda 500-m mega-tsunami.",
+            reference: "Hambling 2022, Forbes; DNA-TR-96-77 (1996); Spriggs LLNL via Smithsonian 2018",
+            source: PresetSource::Nuclear(crate::physics::nuclear::poseidon_realistic(
+                GeoPoint { lat_deg: 50.0, lon_deg: -10.0, depth_m: 4_000.0 },
+                4_000.0,
+            )),
+        },
+        Preset {
+            id: "poseidon_propaganda",
+            name: "Poseidon Torpedo (Russian Claim — Demonstrably Exaggerated)",
+            date: "—",
+            blurb: "100-Mt warhead at optimum depth — Russian state TV (Kiselyov, May 2022) claim. Even at this yield the physics gives a wave that decays to a few tens of meters within 100 km, not the propaganda 500-m wall. Show the contrast.",
+            reference: "Russian state TV 2022; Hambling 2022 (critique); Glasstone & Dolan 1977",
+            source: PresetSource::Nuclear(crate::physics::nuclear::poseidon_propaganda(
+                GeoPoint { lat_deg: 50.0, lon_deg: -10.0, depth_m: 4_000.0 },
+                4_000.0,
+            )),
+        },
+    ]
+}
+
+pub fn find_preset(id: &str) -> Option<Preset> {
+    all_presets().into_iter().find(|p| p.id == id)
+}
