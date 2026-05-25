@@ -4,6 +4,24 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Hardening (post-0.2.0)
+- IPC commands now enforce explicit bounds: `runup_at_points` returns
+  `Result` with a 2 000-point cap; `simulate_grid` rejects non-finite
+  `source_sigma_m` / `mean_depth_m` / `n_snapshots == 0`; `run_preset`
+  clamps `n_samples` to `[2, 2 000]` and validates `time_s` / `mean_depth_m`.
+- New `presets.rs` test suite verifies preset ID uniqueness, non-empty
+  metadata, controversy-note presence on speculative entries, and finite
+  initial-displacement outputs across every built-in preset.
+- All external citation links use `target="_blank" + rel="noopener
+  noreferrer"` so middle- or right-click cannot navigate the Tauri
+  WebView off the React app.
+- `ResultsPanel` timeline progress clamps to ≥ 0 to defeat negative
+  `scaleX` rendering bugs.
+- Removed dead `forceRender()` no-op from `lib/export.ts` and the unused
+  `zustand` dependency from `package.json`.
+- Fixed `clippy::manual_saturating_arithmetic` on the SWE grid-size
+  pre-allocation gate.
+
 ### Planned for v0.3.0
 - `wgpu` compute SWE solver — port the working CPU leapfrog kernel to WGSL
 - Full Okada 1985 I-term half-space correction (replaces leading-order form)
