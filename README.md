@@ -161,6 +161,11 @@ See [`docs/science/`](./docs/science) for formula derivations and citations.
 
 ---
 
+## Roadmap & research
+
+- [`ROADMAP.md`](./ROADMAP.md) — phased delivery plan (v0.1.0 → v1.0.0).
+- [`RESEARCH_FEATURE_PLAN.md`](./RESEARCH_FEATURE_PLAN.md) — evidence-backed feature plan with competitive research (NUKEMAP, Asteroid Launcher, NOAA MOST, GeoClaw, BROWNI, FUNWAVE-TVD, JAGURS), prioritized roadmap, and recommendations grounded in peer-reviewed physics literature.
+
 ## License
 
 [MIT](./LICENSE). For scientific education and hazard-awareness visualization only. Not for evacuation planning. Use NOAA NTWC/PTWC for real warnings.
