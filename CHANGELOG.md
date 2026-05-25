@@ -2,16 +2,146 @@
 
 All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] — targeting v0.3.0
 
-### Planned for v0.3.0
-- `wgpu` compute SWE solver — port the working CPU leapfrog kernel to WGSL
-- Full Okada 1985 I-term half-space correction (replaces leading-order form)
-- Tanioka–Satake 1996 horizontal-bathymetry-coupling correction
-- Validation against Stoker dam-break analytical + Range 2022 Chicxulub far-field
-- Boussinesq dispersive solver as opt-in alternative
-- Adaptive Mesh Refinement (GeoClaw-style)
-- Real GEBCO 2024 bathymetry via first-run download wizard
+### Solver fidelity
+- **Full Okada 1985 I-term half-space correction** (F-V02). Tōhoku peak
+  vertical magnitude now lands in the [1, 30] m band per Fujii-Satake
+  2013 (was ~10× over-predicting in v0.2.x). Wired `OkadaFault` into
+  `earthquake_initial_conditions` so EarthquakeSource scenarios report
+  the physics-based peak directly.
+- **Wet/dry land cell masking** (I-V01). Cells with
+  `h <= LAND_DEPTH_THRESHOLD_M (1.01 m)` are excluded from the leapfrog
+  update; neighbour land cells contribute zero flux. Eliminates the
+  v0.2.x "slow-spread halo" over continental interiors.
+- **Sponge-layer boundary conditions** (F-V10). New
+  `BoundaryMode { ZeroFlux, Sponge }` enum on `TimeStepper`; default
+  switched to `Sponge { width_cells: 10 }` with a cosine taper that
+  absorbs outgoing waves over the rim. Long-running simulations no
+  longer reflect the wavefront back into the source.
+- **Quantitative validation harness** (F-V01). New `physics::validation`
+  module behind a `validation` cargo feature. Three benchmark tests:
+  Stoker dam-break wave-front position (±25 %), Carrier-Greenspan plane-
+  beach runup vs. Synolakis closed-form (±25 % across H/d ∈ [0.005, 0.3]),
+  Range 2022 Chicxulub far-field at r = 220 km (OOM). New
+  `docs/science/VALIDATION.md`.
+- **Hunga Tonga atmospheric Lamb-wave source** (F-V09). New
+  `physics::lamb_wave` module + `lamb_wave_sample` Tauri command.
+  Closed-form pressure pulse + ocean coupling + Proudman resonance
+  depth surfaced. Carvajal 2022 / Matoza 2022 / Kubota 2022 cited.
+  SWE-solver IC integration deferred to v0.4.0.
+
+### Power-user UX
+- **Click-on-globe Inspect overlay** (F-V11). New header toggle + new
+  `inspect_at_point` IPC; clicking the globe pops a Cesium label with
+  range / arrival / offshore amplitude / Synolakis runup / inundation
+  extent at the clicked point.
+- **MP4 / WebM timeline export** (F-V08). `exportGlobeVideo()` via
+  browser-native MediaRecorder + canvas.captureStream. Picks the first
+  supported video MIME from a candidate list (WebM/VP9 → VP8 → MP4
+  H.264 → MP4 generic) so it works on Chromium WebView2 and Safari
+  WKWebView. 6 s @ 30 fps @ 6 Mbps default.
+- **Inundation polygons** (I-V02). First-order
+  `runup_m / tan(slope)` extent on `RunupAtPoint`; rendered as semi-
+  transparent severity-coloured ellipses on the globe. True marching-
+  squares flood polygons land in v0.4.0 once F4-04 + real GEBCO arrive.
+- **Per-preset curated camera framings** (F-V13). New
+  `physics::CameraView` + `Preset.camera_view`; populated for all 11
+  presets (Lituya 50 km fjord, Chicxulub 5 Mm continent, etc.).
+  `flyTo` honours the curated view when present, else falls back to
+  the heuristic cavity-radius auto-clamp.
+- **5-step onboarding tour** (F-V12). New hand-rolled `Tour.tsx` (no
+  react-joyride dep), six positioning variants, keyboard nav
+  (Enter/→/←/Esc). Triggered after first-run disclaimer acknowledged.
+  Settings → Advanced → "Replay tour" clears the ack.
+- **Settings → Advanced**. New "Show first-run again" + "Replay tour" +
+  "Reset to defaults" buttons. Each behind a confirm.
+- **Runup-bar hover labels** (I-V09). Cesium LabelGraphics with arrival
+  time T+HhMM, runup m, offshore amp m. Distance-display-condition
+  limits labels to <3 Mm camera range.
+
+### Accessibility & trust
+- **No-FOUC theme bootstrap** in `index.html` — applies `data-theme`
+  from `localStorage` before React mounts. Returning Latte-theme users
+  no longer see a Mocha→Latte flash on launch.
+- **Global `:focus-visible` ring** on every interactive element (I-V07
+  expanded) — Tab navigation now has a visible focus indicator.
+- **`:disabled` button treatment** — disabled actions read as such.
+- **`@media (prefers-reduced-motion: reduce)` overrides** (I-V06) — drop
+  transitions / hover lift / pulse; Cesium `flyTo` shortens to 0 s.
+- **`role="status" aria-live="polite"`** on SwePlayback error + new
+  screen-reader-only announcer in CoastalRunupOverlay reporting
+  "N coastal points reached" transitions (I-V07).
+- **`.sr-only` utility** for visually-hidden screen-reader content.
+- **`<noscript>` fallback** in `index.html`.
+- **External anchor hardening** — `target="_blank" rel="noopener
+  noreferrer"` so middle-/right-click can't navigate the Tauri WebView.
+
+### IPC + supply-chain hardening
+- **Every `*_initial_conditions` Tauri command now returns
+  `Result<InitialDisplacement, String>`** and validates finite,
+  in-range inputs. Stops NaN/Inf from poisoning the physics layer.
+- **`runup_at_points`** returns `Result` with a 2 000-point cap.
+- **`simulate_grid`** rejects non-finite `source_sigma_m` /
+  `mean_depth_m` / `n_snapshots == 0`.
+- **`run_preset`** validates `time_s` / `mean_depth_m` and clamps
+  `n_samples` to `[2, 2 000]`.
+- **`shallow_water::synolakis_runup_m`** rejects NaN / negative
+  inputs (uses `|amplitude|`).
+- **`solver::run_simulation`** caps total leapfrog steps at 1 000 000
+  and rejects non-finite `dt_s` so a pathological CFL value can't
+  wedge the worker thread.
+- **`CoastalRunupOverlay`** filters bundled coastal-points JSON to
+  in-range lat/lon at load.
+- **`cargo audit` promoted to fail-on-vuln** (I-V03). Baseline clean
+  at v0.2.1; any future Dependabot bump introducing a RUSTSEC-listed
+  crate now blocks CI.
+- **GitHub Actions bumped to v5** (I-V05) — `checkout`, `setup-node`,
+  `upload-artifact`, `download-artifact` all v5; Node 22.
+
+### GPU solver scaffold
+- **F-V05 scaffold** — `[features] gpu` cargo flag + `wgpu` 26 +
+  `pollster` 0.4 optional deps + `physics::solver::gpu` module +
+  `GpuAvailability` adapter probe + `GpuTimeStepper` skeleton.
+  Full buffer-binding + dispatch loop deferred to v0.4.0.
+
+### Tests
+- **New `presets::tests`** — preset ID uniqueness, non-empty metadata,
+  controversy-note presence on speculative entries, finite
+  initial-displacement outputs across every preset.
+- **New `commands::tests`** — validation rejects NaN/zero/out-of-range
+  inputs across all four source types; `run_preset` rejects unknown
+  id and clamps absurd `n_samples`; `haversine_m` handles same-point
+  + NaN.
+- **`physics::okada::tests`** — re-enabled the two previously
+  `#[ignore]`d tests (Tōhoku peak in [1, 30] m + strike-slip bounded
+  by slip).
+- **`physics::solver::tests`** — new `land_cells_stay_dry`,
+  `sponge_boundary_absorbs_rim`, `zero_flux_boundary_opts_out_of_sponge`.
+
+### Cleanup
+- Dropped unused deps: `zustand`, `@types/cesium`, `ndarray`.
+- Dropped dead `forceRender()` no-op in `lib/export.ts`.
+- Removed dead `let _ = ...` suppressors + `i_d * 0.0` dead branch in
+  `physics::okada`.
+- Fixed `clippy::manual_saturating_arithmetic` on the SWE grid pre-
+  allocation gate.
+- Fixed `clippy::manual_clamp` on the inundation-extent computation.
+
+### Blocked / deferred from v0.3.0 (carried to v0.4.0)
+- **F-V03** README screenshots — needs GUI capture from a Windows host.
+- **F-V04** Code signing — needs maintainer EV cert + Apple Developer enrollment.
+- **F-V07** `tauri-plugin-updater` — needs maintainer-generated Ed25519 keypair.
+- **I-V04** OS-keychain token — Tauri 2 keychain plugin ecosystem still emerging.
+- **F-V06** Real GEBCO 2024 — needs distribution-channel decision.
+
+### Planned for v0.4.0+
+See `RESEARCH_FEATURE_PLAN.md` for the full v0.4.0 forward plan:
+F4-01 wgpu dispatch loop, F4-02 nonlinear advection, F4-03 real GEBCO,
+F4-04 wet/dry flood polygons, F4-05 Lamb-wave SWE coupling, F4-06
+DART buoy RMSE display, F4-07 Lituya validation, F4-09 share-card
+export, F4-10 Boussinesq solver, F4-11 AMR, F4-12 multi-language UI,
+plus the carried-forward Phase 3 blocked items above.
 
 ---
 

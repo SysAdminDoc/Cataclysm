@@ -1,6 +1,13 @@
 # TsunamiSimulator Roadmap
 
-Single source of truth for delivery. Phased plan; each phase ends with a working, demoable artifact. Items checked off here are *verified shipped* (in code, in tests, in CI). For evidence-backed prioritisation rationale, file paths, acceptance criteria, and verification commands per item, see [`RESEARCH_FEATURE_PLAN_v0.3.0.md`](./RESEARCH_FEATURE_PLAN_v0.3.0.md). The earlier [`RESEARCH_FEATURE_PLAN.md`](./RESEARCH_FEATURE_PLAN.md) (v0.0.1 baseline) retains the competitive-landscape research.
+Single source of truth for delivery. Phased plan; each phase ends with
+a working, demoable artifact. Items checked off here are *verified
+shipped* (in code, in tests, in CI). For evidence-backed prioritisation
+rationale, file paths, acceptance criteria, and verification commands
+per item, see [`RESEARCH_FEATURE_PLAN.md`](./RESEARCH_FEATURE_PLAN.md).
+Historical research from earlier phases (v0.0.1 / v0.3.0 baselines) is
+archived under [`docs/history/`](./docs/history/). Shipped state +
+unreleased state is canonical in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 

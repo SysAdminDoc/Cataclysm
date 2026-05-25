@@ -1,1036 +1,722 @@
 # Project Research and Feature Plan
 
-> **Status:** Companion to `ROADMAP.md`. `ROADMAP.md` is the canonical *what/when* phased plan. This document is the *why/evidence/competitive* research backing it, written so a coding agent can implement features without re-doing the research. Last updated 2026-05-24, against repo state at commit `91c360c`.
+> Active research evidence + forward-looking proposals backing
+> [`ROADMAP.md`](./ROADMAP.md) (canonical phased plan). Historical
+> research from earlier phases is archived under
+> [`docs/history/`](./docs/history/) and remains valid for the time
+> windows it documents:
+>
+> - [`docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md) —
+>   scaffold-era competitive research (NUKEMAP / Asteroid Launcher /
+>   NOAA MOST / GeoClaw / FUNWAVE-TVD / JAGURS landscape). Still accurate.
+> - [`docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md) —
+>   v0.3.0 forward plan written 2026-05-25 against `ef90dc8` (v0.2.1).
+>   Defined F-V01..F-V13 + I-V01..I-V10; 15 of 23 shipped on `main`
+>   during the autonomous Phase 0.3.0 batch (now reflected in
+>   `CHANGELOG.md`); 5 remain blocked on maintainer input and are
+>   carried forward into the roadmap here.
+>
+> This document is the **v0.4.0 forward-looking plan**, focused on
+> Phase 4 (GPU + nonlinear), Phase 5 (Boussinesq + AMR), and Phase 6
+> (UX polish + v1.0.0), plus the Phase 0.3 items still blocked on
+> inputs only the maintainer can supply.
+>
+> **Last refreshed:** 2026-05-25, against `28d9242` (`main` HEAD, latest CI run `26408080280` in flight).
+> **Confidence labels:** *Verified* (read in code / run), *Likely* (inferred from strong evidence), *Assumption* (unverified, flagged with verification step), *Needs live validation* (requires a Windows/macOS/Linux runtime to confirm).
 
 ---
 
 ## Executive Summary
 
-`TsunamiSimulator` is a v0.0.1 scaffold of a desktop application (Tauri 2 + React 19 + TypeScript + Vite frontend, Rust backend with CesiumJS globe) that aims to combine **NOAA-grade tsunami physics** with **NukeMap-grade consumer UX** in a single offline-capable installable app. The current shape is exceptionally strong as a foundation: all source-physics formulas (asteroid, nuclear, landslide, earthquake) are encoded with peer-reviewed citations in `src-tauri/src/physics/`, ten historical presets are wired with literature-derived parameters in `src-tauri/src/presets.rs`, and the React UI is themed and laid out for the three-pane production workflow (presets / globe / scenario+results). But the project does **not yet propagate a wave** — `physics::shallow_water::sample_wavefront` is an analytical decay sampler, not a finite-volume solver — and `tauri build` will fail today because `src-tauri/icons/` is empty.
+`TsunamiSimulator` shipped **v0.2.1** to the GitHub Releases page with installers for Win/macOS/Linux on 2026-05-25. Between that release and this document, an autonomous Phase 0.3.0 batch landed **15 of the 23 Phase 3 items** identified in the prior research plan, including: the full Okada 1985 I-term half-space correction (Tōhoku peak now lands in the [1, 30] m band per Fujii-Satake 2013), a quantitative validation harness against Stoker + Carrier-Greenspan + Range 2022 Chicxulub, IPC bounds and NaN guards across the entire physics surface, wet/dry land cells + sponge boundary conditions in the SWE solver, MP4/WebM timeline export, click-on-globe Inspect overlay, Hunga Tonga atmospheric Lamb-wave source, a 5-step onboarding tour, inundation polygons, curated per-preset camera framings, reduced-motion + aria-live accessibility, OS-keychain-token settings reset path, and a wgpu GPU solver scaffold ready for buffer-binding plumbing. The 5 unshipped Phase 3 items are all blocked on inputs only the maintainer can supply (EV cert, Apple Developer enrollment, Ed25519 keypair, GEBCO distribution channel, GUI screenshot host).
 
-Competitive research confirms the positioning gap is real and exploitable: no existing product combines an interactive 3D globe, GPU-class real-time SWE compute, multiple source types (asteroid + nuke + earthquake + landslide + volcanic) in one app, and offline operation. NukeMap (Wellerstein) is web-only and single-source. Asteroid Launcher (Agarwal) has gorgeous animation but no peer-reviewed wave propagation. NOAA MOST / GeoClaw / FUNWAVE-TVD are operational-grade but batch-mode, server-bound, and Fortran/Python-only. The 2022 Hunga Tonga atmospheric Lamb-wave coupling research (Carvajal 2022, Matoza 2022, Kubota 2022) and the GPU-accelerated GeoClaw paper (Qin 2019, 3.6–6.4× speedup) are public-domain advances that this project can incorporate.
+The next direction of value is **Phase 4 (GPU + nonlinear)** and **Phase 6 (release-readiness)** in parallel: finish the wgpu dispatch loop to unlock 10× resolution at interactive frame rates; bake real GEBCO 2024 bathymetry into the SWE solver path; integrate the already-shipped Lamb-wave module into the solver IC so `hunga_tonga_2022`'s `controversy_note` finally goes away; and resolve the five blocked Phase 3 items so users on v0.2.1 get a v0.3.0 in-app update with signed installers.
 
-**Top 10 priorities** (ranked by user value × evidence strength × feasibility):
+**Top 10 opportunities, ranked**
 
-1. **P0 — Ship a runnable Tauri build** (generate icons, fix the bundle config, document the MSVC prerequisite, get CI green).
-2. **P0 — Replace `sample_wavefront` with a real GPU shallow-water solver** via `wgpu` compute shaders on a regular lat-lon grid (BROWNI architecture, wgpu validated for compute in 2024+).
-3. **P0 — Wire the Cesium globe to render initial displacement and time-stepped wavefront** so a preset click → camera fly-to → animated wave is the actual experience, not the printed readout it is today.
-4. **P1 — Cesium token UX**: stop shipping the token in the bundle (`.env` is currently a security/cost footgun for open-source). Settings UI + `app_data_dir` storage at first launch.
-5. **P1 — Bundle GEBCO/SRTM15+ bathymetry for offline mode** — both are public-domain at 15-arc-sec, ~300 MB compressed (BODC + Sandwell), removes Cesium ion dependency for the physics path.
-6. **P1 — Synolakis runup + named coastal-point database overlaid on the globe** as runup bars (NOAA MOST gauge concept, but rendered as 3D extruded polygons; data targets: Range 2022 Chicxulub, Tōhoku Miyako 40 m, Lituya 524 m).
-7. **P1 — Real Okada 1985 dislocation** to replace the Geist–Dmowska M_w empirical placeholder — operational tools all do this; without it the Tōhoku/Sumatra presets are toys.
-8. **P2 — DART buoy historical overlay** for the four modern presets (Tōhoku, Indian Ocean, Hunga Tonga, plus arrival times). NOAA NCEI hosts the time series; turn validation into a UI feature.
-9. **P2 — Hunga Tonga atmospheric Lamb-wave source** — research-frontier physics that no consumer tool has and only JAGURS has operationally; gives the project a unique "we model the new stuff" angle.
-10. **P2 — Side-by-side comparison mode** (synchronized timelines, two scenarios) — directly serves the project's pedagogical case (Poseidon-propaganda vs realistic, Cumbre Vieja Ward-Day vs Løvholt-rebuttal, Chicxulub vs modern Tōhoku scale).
-
----
-
-## Evidence Reviewed
-
-### Local files inspected (full read, this session)
-- Repo root: `LICENSE`, `.gitignore`, `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `CLAUDE.md`, `package.json`, `tsconfig.json`, `tsconfig.node.json`, `vite.config.ts`, `index.html`, `.env.example`
-- Frontend: `src/main.tsx`, `src/App.tsx`, `src/styles.css`, `src/vite-env.d.ts`, `src/types/scenario.ts`, `src/lib/cesium.ts`, `src/lib/tauri.ts`, `src/components/Globe.tsx`, `src/components/PresetSelector.tsx`, `src/components/ScenarioBuilder.tsx`, `src/components/ResultsPanel.tsx`
-- Backend: `src-tauri/Cargo.toml`, `src-tauri/build.rs`, `src-tauri/tauri.conf.json`, `src-tauri/capabilities/default.json`, `src-tauri/icons/README.md`, `src-tauri/src/main.rs`, `src-tauri/src/lib.rs`, `src-tauri/src/commands.rs`, `src-tauri/src/presets.rs`, `src-tauri/src/physics/{mod,constants,asteroid,nuclear,landslide,earthquake,shallow_water}.rs`
-- Docs / data: `docs/science/README.md`, `docs/science/REFERENCES.bib`, `data/bathymetry/README.md`, `src-tauri/icons/README.md`
-- Build verification: `npm install` (136 pkgs, clean), `npx tsc --noEmit` (clean), `npx vite build` (4.35 MB bundle, success), `cargo check` (FAIL — host missing MSVC C++ build tools)
-
-### Git history
-- `91c360c` (HEAD on `main`) — TsunamiSimulator v0.0.1 — scaffold. Single commit on initial repo. Branch protection enabled on `main` (enforce_admins=true). Repo is PUBLIC.
-
-### External sources (researched in depth this session; see also full notes in [/tmp/research.md] from research subagent)
-- **NUKEMAP** — https://nuclearsecrecy.com/nukemap/ + FAQ. Methodology: Glasstone-Dolan 1977, Kingery-Bulmash overpressure, LandScan 2011 population. Closed source, web-only.
-- **MISSILEMAP** — https://nuclearsecrecy.com/missilemap/. Trajectory + CEP visualization. Google Maps API.
-- **Asteroid Launcher (Neal Agarwal)** — https://neal.fun/asteroid-launcher/. Inputs: composition / diameter (1 m–1.6 km) / velocity / angle. Outputs: crater / shockwave / thermal / wind / earthquake / tsunami. Apple Maps. Closed source.
-- **Purdue Impact:Earth!** — https://impact.ese.ic.ac.uk/ImpactEarth/. Collins–Melosh–Marcus 2005 formulas. Numerical-only output.
-- **NOAA MOST / ComMIT** — https://nctr.pmel.noaa.gov/ComMIT/. Operational; linear SWE; Okada source; KMZ export.
-- **GeoClaw** — https://www.clawpack.org/. Open source (BSD), Fortran 90 + Python, AMR, CUDA variant (Qin et al. 2019 https://arxiv.org/abs/1901.06798) — 3.6–6.4× on single GPU vs. 16-core CPU.
-- **COMCOT** — https://www.gns.cri.nz/.../comcot/. Cornell origin, GNS NZ maintained. Multiple source types incl. landslide.
-- **ANUGA** — https://github.com/GeoscienceAustralia/anuga_core. GPL, finite-volume on unstructured triangles, wetting/drying. Python + Cython.
-- **FUNWAVE-TVD** — https://fengyanshi.github.io/build/html/. Boussinesq, USACE-approved, dispersive. Fortran 90.
-- **JAGURS** — Sci Adv https://www.science.org/doi/10.1126/sciadv.adf5493. Operational at JMA. Post-2022 atmospheric Lamb wave coupling.
-- **BROWNI** — Andrés 2021 *Computers & Geosciences* 150:104744, https://www.sciencedirect.com/science/article/abs/pii/S0098300421002600. Browser GPU SWE, ~30 fps at 1000×500 cells.
-- **NHWAVE / SWASH** — 3D non-hydrostatic.
-- **Cesium ion pricing** — https://cesium.com/platform/cesium-ion/pricing/. Free tier 5 GB storage / 15 GB/month bandwidth, **NON-COMMERCIAL**. $149+/month for commercial. Cannot redistribute. Cannot cache for offline.
-- **GEBCO 2024** — https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2024-grid. 15-arcsec NetCDF, ~80 MB compressed, public domain (BODC).
-- **ETOPO 2022** — https://www.ncei.noaa.gov/products/etopo-global-relief-model. NOAA, public domain, ~600 MB.
-- **SRTM15+ V2.6** (Tozer/Sandwell 2019) — https://portal.opentopography.org/. 15-arcsec, CC-BY 4.0.
-- **Natural Earth coastlines** — https://www.naturalearthdata.com/. Public domain, ~10 MB vector.
-- **Blue Marble Next Generation** — https://neo.gsfc.nasa.gov/view.php?datasetId=BlueMarbleNG. NASA, 500 m, public domain.
-- **wgpu (Rust)** — https://github.com/gfx-rs/wgpu. Cross-platform (D3D12 / Vulkan / Metal / WebGPU / OpenGL). MIT/Apache 2.0. Compute stable since 2024.
-- **Burn + CubeCL** (Rust ML/compute) — https://github.com/tracel-ai/burn. CUDA/ROCm/WGSL backends. MIT/Apache 2.0.
-- **WebGPU shallow-water examples** — https://github.com/lisyarus/webgpu-shallow-water, https://github.com/piellardj/water-webgpu.
-- **Range et al. 2022 Chicxulub** — *AGU Advances* 3:e2021AV000627. 4.5 km initial wave, 1.5 km @ 220 km, 30,000× 2004 IOT energy.
-- **Carvajal et al. 2022 Hunga Tonga** — *Science* 377:91. Lamb wave–ocean coupling at 3.6 mHz spectral peak.
-- **Kubota et al. 2022 Tonga Lamb** — *GRL* 49:e2022GL098752.
-- **Kim et al. 2019 Storegga** — *JGR-Oceans* 124:3607. Volume 1700 km³, average velocity 35 m/s.
-- **Ward & Day 2001 / Løvholt 2008 Cumbre Vieja** — original 500 km³ catastrophic claim vs. dispersive-Boussinesq rebuttal (3–8 m Atlantic).
-- **Gersonde et al. 1997 Eltanin** — *Nature* 390:357.
-- **NOAA DART** — https://www.ndbc.noaa.gov/dart/dart.shtml + https://nctr.pmel.noaa.gov/Dart/about-dart.html. Real-time pressure recorders; NetCDF time-series archive at NCEI.
-- **NOAA Science On a Sphere — Chicxulub** — https://sos.noaa.gov/catalog/datasets/tsunami-asteroid-impact-66-million-years-ago/. Pre-computed propagation, spherical projection, play/pause/scrub UX template.
-- **Cesium Stories / CZML** — https://cesium.com/blog/2020/03/04/time-dynamic-stories/. Time-tagged entity playback model.
-
-### Could not verify (this session)
-- **`cargo check`** — VS Build Tools "Desktop development with C++" workload is not installed on this host. The Rust code is syntactically reviewed but not compiler-verified. Verification deferred to a host with MSVC link.exe present, or to GitHub Actions Windows runner (see roadmap R3).
-- **Cesium ion token live behavior** — `.env.example` is empty; haven't run the app end-to-end with a real token to confirm the GEBCO tileset streams correctly or that the CSP allows the `*.cesium.com` host without an `'unsafe-eval'` console warning. Needs live validation.
-- **Tauri `npm run tauri build`** — gated on the MSVC + icon issues; bundle output not produced.
+1. **P0 — Finish the `wgpu` SWE dispatch loop** (F-V05 dispatch). Scaffold + WGSL kernel are ready; binding plumbing + readback unlock ~50× compute headroom.
+2. **P0 — Real GEBCO 2024 bathymetry** (F-V06) — unblock with a deliberate choice on distribution channel and ship the download wizard.
+3. **P0 — Code signing pipeline** (F-V04) — install conversion is the lowest-hanging fruit once a cert is in hand.
+4. **P0 — `tauri-plugin-updater` in-app channel** (F-V07) — closes the "users on broken v0.2.0 never learn about v0.2.1" gap.
+5. **P1 — Nonlinear momentum advection in the solver** — current solver linearises by dropping `(u·∇)u`; near-coast wave steepening / breaking depends on this.
+6. **P1 — Wet/dry inundation polygon (real, not first-order disc)** — extends I-V02 with a true flood polygon from grid cells where `h + η > 0`.
+7. **P1 — README screenshots + animated demo** (F-V03) — first-time-visitor conversion lever, needs Windows GUI host.
+8. **P1 — Lamb-wave coupled into the SWE solver IC** — `lamb_wave_sample` exists; integrating into `simulate_grid` removes the Hunga Tonga `controversy_note`.
+9. **P2 — Validation harness extensions** — Tōhoku DART buoy RMSE, Range Chicxulub coastal map, Lituya runup at Gilbert Inlet.
+10. **P2 — Multi-event scenarios** — Chicxulub debris re-entry secondary impacts, Tōhoku M7+ aftershock tsunamis.
 
 ---
 
-## Current Product Map
+## Evidence Reviewed (this pass)
 
-### Core workflows (today, as scaffolded)
-1. **Preset playback** — user clicks a preset card in the left rail → frontend `useEffect` in `App.tsx:55-69` calls `api.runPreset({...})` → Rust returns `{preset, initial, wavefront}` → `Globe.tsx` draws a source point + cavity disc + concentric wavefront ellipses → `ResultsPanel` shows energy / cavity / amplitude / M_w / wavelength → timeline slider re-fires the IPC call on every drag.
-2. **Custom asteroid scenario** — user fills the `ScenarioBuilder` form → click "Simulate Impact" → `App.tsx:71-104` calls `api.asteroidInitialConditions(input)` → globe re-renders. Earthquake, nuclear, and landslide scenarios are NOT yet exposed in the UI even though the Rust commands exist.
-3. **Browser preview fallback** — `App.tsx:42-46` detects non-Tauri context (via `isTauri()` checking `window.__TAURI_INTERNALS__`) and serves a single mocked Chicxulub preset + inline asteroid math. Allows `npm run dev` previews without the Rust backend.
+### Repo state verified
 
-### Existing surface features
-| Surface | Code location | Triggers |
+- **HEAD**: `28d9242 fix(clippy): manual_clamp → clamp in inundation_extent_m computation` (Verified via `rtk git log`).
+- **Releases on GitHub**: v0.1.0, v0.2.0, v0.2.1 — each with the 6-installer matrix (`.msi`, `.exe`, `.dmg`, `.deb`, `.rpm`, `.AppImage`) plus the `control.tar.gz` + `data.tar.gz` Debian sidecars. *Verified via `gh release view`*.
+- **CI**: run `26408080280` in flight at write-time; Frontend job (TS + Vite) ✓ in 23s; Rust matrix + cargo audit pending.
+
+### New code landed during the autonomous Phase 0.3.0 batch
+
+| Module | Lines | New / changed |
 |---|---|---|
-| Preset selector (10 events) | `src/components/PresetSelector.tsx`, data from `src-tauri/src/presets.rs::all_presets()` | Card click |
-| Scenario builder (asteroid only) | `src/components/ScenarioBuilder.tsx` | Form submit |
-| Results panel | `src/components/ResultsPanel.tsx` | Reactive on `initial` prop |
-| Timeline slider (0–6 h, 60 s step) | `ResultsPanel.tsx:60-78` | Drag → fires `run_preset` re-call |
-| Cesium globe with optional GEBCO bathymetry | `src/components/Globe.tsx`, `src/lib/cesium.ts` | Mount + props update |
-| Catppuccin Mocha theme tokens | `src/styles.css:1-32` | Always |
-| Cesium token gate | `Globe.tsx:128-145` | Falls back to friendly empty state when `VITE_CESIUM_TOKEN` missing |
+| `src-tauri/src/physics/okada.rs` | 365 | Full I4/I5 closed form with `cos δ → 0` limits; wired into `earthquake::initial_displacement`. *Verified.* |
+| `src-tauri/src/physics/lamb_wave.rs` | 160 | New module; `LambWaveSource` + `lamb_wave_sample` IPC + Proudman resonance helper. *Verified.* |
+| `src-tauri/src/physics/validation.rs` | 151 | New module behind `validation` feature; 3 benchmark tests. *Verified.* |
+| `src-tauri/src/physics/solver/mod.rs` | 704 | Wet/dry land masking + `BoundaryMode { ZeroFlux, Sponge }` enum + cosine sponge taper. *Verified.* |
+| `src-tauri/src/physics/solver/gpu.rs` | new | wgpu adapter probe + `GpuTimeStepper` skeleton. *Verified.* |
+| `src-tauri/src/commands.rs` | 795 | New `inspect_at_point` + `lamb_wave_sample` commands; `inundation_extent_m` on `RunupAtPoint`. *Verified.* |
+| `src-tauri/src/presets.rs` | + ~30 | `camera_view: Option<CameraView>` on every Preset entry. *Verified.* |
+| `src/components/Tour.tsx` | 122 | New 5-step onboarding component. *Verified.* |
+| `src/components/Globe.tsx` | 786 | Inspect mode + inundation discs + runup-bar hover labels + reduced-motion-aware flyTo. *Verified.* |
+| `src/lib/export.ts` | + ~80 | `exportGlobeVideo()` via MediaRecorder. *Verified.* |
+| `src/styles.css` | + ~80 | Tour styles + `:focus-visible` + `prefers-reduced-motion` overrides + `.sr-only`. *Verified.* |
+| `src-tauri/Cargo.toml` | + ~12 | `[features] validation` and `gpu`; wgpu 26 + pollster 0.4 optional deps. *Verified.* |
+| `.github/workflows/ci.yml` | + ~5 | `cargo audit` fail-on-vuln; checkout/setup-node/upload-artifact bumped to v5; Node 22. *Verified.* |
 
-### Existing backend (Rust) surface
-| Tauri command | Location | Status |
-|---|---|---|
-| `asteroid_initial_conditions` | `commands.rs:18-21` | Working — Ward-Asphaug + Schmidt-Holsapple |
-| `nuclear_initial_conditions` | `commands.rs:23-26` | Working — Glasstone-Dolan + Le Méhauté |
-| `landslide_initial_conditions` | `commands.rs:28-31` | Working — Heller-Hager (subaerial) + Watts (submarine) |
-| `earthquake_initial_conditions` | `commands.rs:33-36` | Stub — Geist-Dmowska M_w → uplift empirical; Okada planned |
-| `far_field_amplitude` | `commands.rs:54-66` | Working — selects impact `r^(-5/6)` vs nuclear `r^(-1)` decay |
-| `coastal_runup` | `commands.rs:75-78` | Working — Synolakis 1987 closed form |
-| `list_presets` | `commands.rs:80-83` | Working |
-| `run_preset` | `commands.rs:103-124` | Working but only samples the analytical wavefront, not a real solver |
+### External sources reviewed (delta vs v0.3.0 plan)
 
-### Personas (inferred from `README.md` + `ROADMAP.md` + author profile)
-- **Curious public** — wants to "see Chicxulub" or "see what Poseidon really does". NukeMap-style audience.
-- **Educators (high-school earth-science, undergrad geophysics)** — wants to project an animation in class; needs play/pause/scrub + permalink-to-scenario.
-- **Hazard researchers** — wants peer-reviewed defaults + ability to set custom Okada or landslide parameters + import/export NetCDF. Currently underserved beyond preset playback.
-- **Tsunami warning trainees** — secondary audience; wants Tōhoku/Sumatra/Cascadia scenarios with DART comparison.
+- **wgpu 26.0 release notes** — current stable; `Adapter::request_adapter` now returns `Result<Adapter, RequestAdapterError>` (already accounted for in `gpu::probe_adapter`). Vulkan, Metal, D3D12, OpenGL, WebGPU backends.
+- **GEBCO 2024 grid product page** (`https://www.gebco.net/data_and_products/gridded_bathymetry_data/`) — 15 arc-second resolution global compilation; ~6 GB GeoTIFF; CC0 public domain.
+- **SRTM15+V2.6** (Tozer et al. 2019) — alternative 15-arc-sec global bathymetry; also CC0.
+- **NOAA NCEI Tsunami Event Database** — already cited; DART buoy time-series JSON is bundled (`src/data/dart_buoys.json`) for 3 events.
+- **Tauri 2 plugin-updater docs** (`https://v2.tauri.app/plugin/updater/`) — current stable; supports JSON update manifests signed with `tauri-plugin-updater::signer`.
+- **GitHub Actions windows-2025 runner image** (announced Apr 2026, scheduled redirect from `windows-latest` June 15 2026) — pinning planned for I-V05 follow-up.
+- **`cargo-dist`** (`https://opensource.axo.dev/cargo-dist/`) — alternative to the hand-rolled `release.yml`; provides cross-compilation matrix + signed installers + auto-updater manifest generation in one tool.
+- **WGSL spec v1** (`https://www.w3.org/TR/WGSL/`) — confirmed `@compute @workgroup_size(8, 8)` syntax matches the existing scaffold in `solver/kernels.rs`.
 
-### Platforms / distribution
-- Currently builds for **Windows / macOS / Linux** through Tauri 2 (`bundle.targets: "all"` in `tauri.conf.json:33`), but **no binary is produced** — `src-tauri/icons/` is empty so `tauri build` fails immediately; no GitHub Actions release workflow exists; no signing configured.
+### Areas not verified this pass
 
-### Permissions / network / storage
-- **Capabilities** (`src-tauri/capabilities/default.json`): `core:default` + `shell:allow-open` (for opening citation URLs).
-- **CSP** (`tauri.conf.json:28`): Allows `https://*.cesium.com`, `https://*.ion.cesium.com`, `https://*.openstreetmap.org` in `img-src` and `connect-src`. Permits `'unsafe-eval'` and `'unsafe-inline'` in `script-src` (required by Cesium's WebAssembly tile decoder — known upstream limitation).
-- **Network calls**: Cesium ion REST for World Bathymetry tiles + base imagery (only when `VITE_CESIUM_TOKEN` set). No telemetry. No analytics.
-- **Storage**: None today. No settings file, no scenario save, no offline tile cache.
+- **Live Run-simulation flow** end-to-end on a Windows host — the v0.2.1 fix for the SWE blank-globe bug was pushed but the maintainer hasn't confirmed it actually fires on their machine.
+- **wgpu GPU path** behaviour on real hardware — scaffold compiles; full dispatch hasn't been written.
+- **Tauri updater** flow — `tauri-plugin-updater` isn't yet in `Cargo.toml`. *Verification step*: `grep -r "tauri-plugin-updater" src-tauri/` should return empty.
 
 ---
 
-## Feature Inventory
+## Current Product Map (v0.3.0-development snapshot)
 
-### 1. Asteroid impact source (Ward-Asphaug + Schmidt-Holsapple)
-- **User value**: The flagship source; powers Chicxulub, Eltanin, custom scenarios.
-- **Entry point**: Preset card → `run_preset` IPC, OR scenario form → `asteroid_initial_conditions` IPC.
-- **Code**: `src-tauri/src/physics/asteroid.rs:1-227` (formula + `initial_displacement()` + `far_field_amplitude_m()`).
-- **Maturity**: Complete for point-source readout. **Verified** by two unit tests (Chicxulub cavity ∈ [10,120] km radius; 1 km Atlantic far-field ∈ [10,500] m at 6000 km).
-- **Tests/docs**: 2 in-file `#[cfg(test)]` unit tests; full citation block in module docstring; cited in `docs/science/REFERENCES.bib` (ward2000asteroid, schmidt1982estimates, collins2005earth, range2022chicxulub).
-- **Improvement opportunities**:
-  - `initial_amplitude_m()` uses `0.5 * cavity_depth` — Ward-Asphaug fig. 3 shows the rim wave is 0.3–0.5× depending on cavity steepness. The 0.5 is the upper bound; document this in the docstring and allow override.
-  - No coupling to *ejecta*-driven wave (the 4.5 km Range 2022 "initial wall" is ejecta, not rim — we only model the rim).
-  - No oblique-impact asymmetry (sin θ^(1/3) is the only angle correction; real impacts have downrange/uprange wave asymmetry per Wünnemann 2014).
-  - No atmospheric ablation correction for small impactors that burn up.
+### What ships in v0.2.1 today
 
-### 2. Nuclear burst source (Glasstone-Dolan + Le Méhauté + DNA 5% efficiency)
-- **User value**: Drives the Poseidon-realistic/propaganda contrast — a marquee educational feature.
-- **Entry point**: Preset card; **no scenario builder UI yet** for custom nuclear bursts.
-- **Code**: `src-tauri/src/physics/nuclear.rs:1-194`.
-- **Maturity**: Complete for point-source. Verified by two unit tests (Tsar Bomba underwater @ 100 km < 20 m; Poseidon-propaganda @ 100 km < 50 m — both bound the propaganda check).
-- **Tests/docs**: 2 unit tests. Full citation block.
-- **Improvement opportunities**:
-  - No surface-burst-specific wave model (Crossroads-Able vs Crossroads-Baker distinction is set by `BurstMode::Surface` scale factor 0.4, which is hand-tuned).
-  - No fallout overlay (NUKEMAP has wind-advected Gaussian plume — could be added with NOAA HRRR meteorology).
-  - The `_suppress_unused_mt_constant` function at `nuclear.rs:182-185` is dead code from an iteration cleanup; should be removed.
+- 11 presets (Chicxulub, Eltanin, Tōhoku 2011, Indian Ocean 2004, Lituya Bay 1958, Krakatoa 1883, Storegga, Hunga Tonga 2022, Cumbre Vieja, Poseidon-realistic, Poseidon-propaganda) with peer-reviewed parameters.
+- 5 globe styles: OSM default (no token), Esri Imagery, Natural Earth II (offline), Cesium World Imagery (token), Cesium World Bathymetry (token).
+- CPU shallow-water leapfrog solver with `rayon` row-parallel updates; PNG-encoded snapshot sequence; Play/Pause + scrub.
+- Coastal-runup overlay at 60+ named coastal points (Synolakis 1987).
+- DART buoy historical overlay for 3 modern events with sparkline + globe pins.
+- Side-by-side compare mode.
+- Tabbed scenario builder (Asteroid / Nuclear / Earthquake / Landslide) + click-globe location pick.
+- Settings (token / theme / globe style) with reset paths.
+- First-run disclaimer.
+- Citations modal.
+- PNG export.
+- 3-OS installer matrix on GitHub Releases.
 
-### 3. Landslide source (Heller-Hager + Watts)
-- **User value**: Powers Lituya Bay (524 m runup), Storegga, Hunga Tonga (submarine), Cumbre Vieja scenario.
-- **Entry point**: Preset card only; no scenario builder UI yet.
-- **Code**: `src-tauri/src/physics/landslide.rs:1-186`.
-- **Maturity**: Complete with one verified unit test (Lituya initial wave 10–500 m band).
-- **Improvement opportunities**:
-  - Submarine slide formula `0.0574 * water_depth * sin(slope) * V^(1/3) / 100` (line 105) is a hand-derivation hybrid of Watts 2003 + Kim 2019 — should be replaced with a clear citation-traceable form (Watts et al. 2005 eqn. 13 or Grilli 2002 wavemaker).
-  - No retrogressive failure mechanics (Storegga was retrogressive per Kim 2019, but we treat it as monolithic).
-  - No air-cushion effect for Lituya-class subaerial impacts (Fritz 2001 finds it minor but it's a parameter knob).
+### What lives on `main` but is unreleased (will ship in v0.3.0)
 
-### 4. Earthquake source (Geist-Dmowska scaffold; Okada planned)
-- **User value**: Tōhoku, Indian Ocean — the two presets most users will recognize.
-- **Entry point**: Preset only.
-- **Code**: `src-tauri/src/physics/earthquake.rs:1-141`.
-- **Maturity**: **Stub / partial**. Uses `log(η_max) ≈ 0.5·M_w − 3.3` from Geist-Dmowska 1999. Real Okada-1985 fault dislocation is missing. The single unit test only verifies M_w→uplift OoM and long-wave speed at 4000 m → ~200 m/s.
-- **Improvement opportunities**:
-  - **Implement Okada 1985 fully** — closed-form elliptic-integral evaluations of surface displacement from a rectangular dislocation in an elastic half-space. Reference implementation: NOAA `okada92.f` (Fortran), USGS `okada_wrapper` Python, or Rust port from scratch. The struct already has `strike_deg`/`dip_deg`/`rake_deg`/`slip_m`/`fault_length_m`/`fault_width_m` fields ready to receive — but `fault_length` and `fault_width` are MISSING from `EarthquakeSource` (`earthquake.rs:33-46`) — only `slip_m` is stored. Fix the struct, then implement.
-  - Tanioka-Satake 1996 horizontal-displacement correction matters for shallow dips like Tōhoku.
+- Full Okada 1985 I-term half-space correction for the earthquake source.
+- Wet/dry land masking + cosine sponge boundaries in the SWE solver.
+- Quantitative validation harness behind `validation` cargo feature.
+- IPC bounds + NaN guards across the entire physics surface.
+- 5-step onboarding tour.
+- Click-on-globe Inspect overlay with multi-line readout.
+- MP4/WebM timeline export.
+- Hunga Tonga atmospheric Lamb-wave source module + `lamb_wave_sample` IPC.
+- First-order inundation polygons (semi-transparent discs at coastal points).
+- Per-preset curated Cesium camera framings.
+- `:focus-visible` + `prefers-reduced-motion` + aria-live accessibility wins.
+- Settings → Advanced (Reset / Replay tour / Show first-run again).
+- `cargo audit` fail-on-vuln.
+- GitHub Actions bumped to v5 + Node 22.
+- wgpu solver scaffold + `[features] gpu`.
 
-### 5. Shallow-water propagation (linear long-wave sampler — NOT a solver)
-- **User value**: This is the wavefront the user sees animate.
-- **Entry point**: `run_preset` calls `sample_wavefront` at each requested time.
-- **Code**: `src-tauri/src/physics/shallow_water.rs:74-104`.
-- **Maturity**: **Partial / misleading**. `sample_wavefront` is an *analytical decay sampler* — it returns `A_0 · (R_c / r)^α` at log-spaced ranges from the source. It is NOT solving the shallow-water PDE. It does not see bathymetry. It does not handle landfall. The function is correctly documented as "cheap deep-ocean propagation sampler — this is sufficient for v0.0.1 — the v0.2.0 solver will replace this with a real grid-based integration" (`shallow_water.rs:80-82`), but the README/ROADMAP could be clearer that the "animated wavefront" in v0.0.1 is artistic not physical.
-- **Improvement opportunities**: This is the **P0 work** of the whole project. See "Highest-Value New Features" §2.
+### Architecture (Verified)
 
-### 6. Synolakis 1987 coastal runup
-- **User value**: The bridge from offshore amplitude → inland runup height (e.g., the 524 m Lituya number, the 40 m Tōhoku Miyako number).
-- **Entry point**: `coastal_runup` Tauri command. **Not invoked from the UI yet.**
-- **Code**: `shallow_water.rs:51-61`. Formula `R/H₀ = 2.831 √(cot β) (H₀/d)^(5/4)`, clamped at H/d = 0.78 (breaking criterion).
-- **Maturity**: Working closed-form. Single unit test confirms mild-slope amplification 3–10×.
-- **Improvement opportunities**: Build a coastal-point database (~100 named points with lat/lon + beach slope + offshore depth), call `coastal_runup` per point per time step, render as 3D extruded bars on the globe at the coastline.
+```
+┌─ Tauri 2 Window ─────────────────────────────────────────────────────┐
+│ ┌─ React 19 + TS + Vite + CesiumJS ─────────────────────────────┐ ▲ │
+│ │ - App.tsx (header, 3-pane layout, compare/inspect toggles)    │ │ │
+│ │ - components/{Globe,Scenario,Results,SwePlayback,Dart,...}    │ │ │
+│ │ - hooks/{useScenarioSlot,useEscapeKey}                        │ │ │
+│ │ - lib/{cesium,settings,tauri,theme,export,globe-styles}       │ │ │
+│ └───────────────────────────────────────────────────────────────┘ │ │
+│                            ▲ ▼ tauri::invoke (JSON over IPC)        │
+│ ┌─ Rust backend ────────────────────────────────────────────────┐ │ │
+│ │ - commands.rs (15 #[tauri::command] entry points + validators)│ │ │
+│ │ - physics/{asteroid,nuclear,landslide,earthquake,okada}.rs    │ │ │
+│ │ - physics/lamb_wave.rs  (atmospheric coupling, F-V09)         │ │ │
+│ │ - physics/validation.rs (gated by 'validation' feature, F-V01)│ │ │
+│ │ - physics/shallow_water.rs (Synolakis runup, linear long-wave)│ │ │
+│ │ - physics/solver/{mod,kernels,gpu}.rs (CPU leapfrog + GPU)    │ │ │
+│ │ - data/bathymetry.rs (7-basin coarse approximation)           │ │ │
+│ │ - presets.rs (11 events with camera_view + controversy_note)  │ │ │
+│ └───────────────────────────────────────────────────────────────┘ │ │
+└──────────────────────────────────────────────────────────────────────┘
+```
 
-### 7. Preset registry
-- **User value**: The "menu" — the curated content.
-- **Code**: `src-tauri/src/presets.rs:1-152`. 10 events.
-- **Maturity**: Complete for v0.0.1. Each preset cites a peer-reviewed source.
-- **Improvement opportunities**:
-  - **Cumbre Vieja scenario** has no inline disclaimer about it being a *disputed* hypothesis even though the blurb says "Ward & Day 2001 hypothesized" — should be stronger ("Subsequent peer review (Løvholt 2008) finds the 25 m claim exaggerated by 5–10×").
-  - **Poseidon-propaganda** preset name is good but its `id: "poseidon_propaganda"` mixes editorial language into a stable identifier — fine but worth committing to.
-  - **No 1755 Lisbon, no Krakatoa 1883, no Alaska 1964, no Cascadia AD 1700, no Aitape 1998, no Anak Krakatau 2018, no 2018 Sulawesi (submarine landslide), no 2023 Türkiye-Syria (no tsunami but seismic source).** The "10 events" claim in README mentions Krakatoa 1883 in the preset table but the actual code does NOT have a Krakatoa entry — this is a doc/code drift.
+### Tauri commands registered (Verified via `src-tauri/src/lib.rs`)
 
-### 8. CesiumJS globe rendering
-- **Code**: `src/components/Globe.tsx`, `src/lib/cesium.ts`.
-- **Maturity**: Working scaffold but with several known gaps:
-  - **`Globe.tsx:39-50` creates a Viewer with `terrain: undefined`** and asynchronously upgrades to `Cesium.createWorldBathymetryAsync()` if the token is present (`Globe.tsx:51-58`). No loading state while the bathymetry tileset loads.
-  - **`Globe.tsx:120-133` rebuilds wavefront entities on every prop change** — no diff, just `remove` + `add` in a loop. For 32 rings × 1 fps timeline update this is fine; for a real solver streaming snapshots at 30 fps this will thrash the entity collection.
-  - **`Globe.tsx` never destroys `sourceEntityRef.current` on unmount** beyond the implicit `viewer.destroy()` — fine in practice, but the `wavefrontEntitiesRef.current` array is also leaked across React StrictMode double-invocations. Add explicit cleanup on each effect.
-  - **No camera reset / "fit to wave"** as the wavefront grows beyond the initial fly-to range.
-- **Improvement opportunities**: See "UX/Accessibility/Trust" below.
+```
+asteroid_initial_conditions, nuclear_initial_conditions,
+landslide_initial_conditions, earthquake_initial_conditions,
+far_field_amplitude, coastal_runup, runup_at_points,
+list_presets, run_preset, simulate_grid,
+inspect_at_point, lamb_wave_sample
+```
 
-### 9. Catppuccin Mocha theme tokens
-- **Code**: `src/styles.css:1-32`.
-- **Maturity**: Complete. All corner radii ∈ {4, 6, 8, 10, 12} per user's no-pill-backdrops global rule.
-- **Improvement opportunities**: No light-mode theme yet (README claims "Light mode toggle" as a feature in `Features → UX → "Catppuccin Mocha default theme … Light mode toggle"` — but no toggle exists in code). Either add it (token swap is straightforward) or remove the README claim.
-
-### 10. Tauri shell + Rust backend boot
-- **Code**: `src-tauri/src/lib.rs:14-29`, `src-tauri/src/main.rs:1-7`, `src-tauri/Cargo.toml:1-37`.
-- **Maturity**: Working scaffold; release profile configured with LTO + `panic = "abort"` + strip.
-- **Improvement opportunities**:
-  - No `tauri-plugin-store` for settings persistence.
-  - No `tauri-plugin-fs` permission limits — `shell:allow-open` is permissive enough but worth tightening with an allowlist of known citation URLs (cesium.com, agupubs.onlinelibrary.wiley.com, etc.).
-  - No `tauri-plugin-window-state` — window size/position not persisted across launches.
-  - No `tauri-plugin-updater` — out-of-band update channel missing.
-
-### Partial / hidden / stale / undocumented features
-- **Hidden** — Nuclear, landslide, earthquake **scenario builders** don't exist in the UI. Their Tauri commands work; the React side just doesn't surface forms for them.
-- **Stale** — README mentions "Krakatoa 1883" preset (`README.md:103`) but the code only has 10 presets and Krakatoa is not one of them (closest is `hunga_tonga_2022`).
-- **Stale** — README mentions "Light mode toggle when practical" (`README.md:115`) — not implemented.
-- **Stale** — README claims `physics::data::bathymetry::sample(lat, lon)` in Rust (`data/bathymetry/README.md:13`) — no such module exists yet.
-- **Undocumented** — The browser-preview mock-physics shortcut in `App.tsx:71-95` duplicates the Schmidt-Holsapple formula in JavaScript with hand-coded constants — silent drift risk if the Rust formula changes.
+12 total. *Verified.*
 
 ---
 
-## Competitive and Ecosystem Research
+## Feature Inventory (delta vs v0.3.0 plan)
 
-> Full annotated source notes from the research agent (4500+ words, 100+ citations) are preserved separately. The summary below is the *what to copy / what to avoid* synthesis.
+The v0.3.0 plan listed 16+ shipped features. This pass adds the following **shipped-in-the-batch** entries.
 
-### Direct consumer-facing competitors
-
-| Product | Notable capabilities | What to copy | What to avoid |
+| New feature | Code | Maturity | Tests / docs |
 |---|---|---|---|
-| **NUKEMAP** (Wellerstein, 2012-) | LandScan 2011 population + casualty modeling; KMZ export; shareable URLs; rigorous FAQ documenting methodology and uncertainty; transparent citation of declassified data sources | Population/casualty overlay (use WorldPop or GHS-POP, both CC-BY); citation-rich FAQ as a UI surface (we have `docs/science/REFERENCES.bib` — make it user-visible); KMZ/CZML export; "uncertainty bars" in result readouts | Closed source; web-only; tied to Google Maps proprietary tiles |
-| **MISSILEMAP** (Wellerstein) | Trajectory + CEP visualization; great-circle paths | Great-circle "would-reach-coast-by-T" arrival animation pattern | Trajectory modeling is out of scope for tsunami |
-| **Asteroid Launcher** (Agarwal) | Cinematic animated impact; composition selector; population casualty rollup; one-click shareable scenarios | Cinematic animation aesthetic (we have Cesium 3D — go past their 2D); preset "memorable city" targets ("what if 14 km Chicxulub hit New York?"); simple shareable scenario URLs (deep links in Tauri are doable) | Closed source; physics is implied not cited; Apple Maps lock-in |
-| **Purdue Impact:Earth!** (Collins-Melosh-Marcus 2005) | Most rigorous formulas; documents methodology page | Inline formula explanations (every result row should link to its derivation in `docs/science/`); seismic-equivalent Richter magnitude readout (we have it; expose it more) | Numerical-only output (no globe); no animation |
+| Quantitative validation harness | `physics::validation` (gated) | Complete (3 benchmarks) | Local; opt-in CI via `--features validation` |
+| Hunga Tonga Lamb-wave source | `physics::lamb_wave` + `lamb_wave_sample` IPC | Complete (closed-form; not yet in SWE IC) | 3 tests + module docstring with citations |
+| Inspect overlay | `commands::inspect_at_point` + `Globe.tsx` inspect-mode effect | Complete | Manual flow; no unit tests |
+| MP4/WebM timeline export | `lib/export.ts::exportGlobeVideo` | Complete (MediaRecorder + canvas.captureStream) | Manual flow |
+| Inundation polygons (first-order) | `RunupAtPoint::inundation_extent_m` + Globe.tsx ellipse renderer | Complete (disc approximation) | Manual flow |
+| 5-step onboarding tour | `components/Tour.tsx` | Complete | Manual flow |
+| wgpu solver scaffold | `physics::solver::gpu` (gated) | Partial (`probe_adapter` works; dispatch is TODO) | 1 probe test |
+| Per-preset camera framing | `physics::CameraView` + `Preset.camera_view` + `Globe.tsx` flyTo | Complete (all 11 presets curated) | Manual flow |
+| Accessibility wins | `styles.css` + `index.html` + components | Complete | Manual flow (NVDA/VoiceOver needed for full verify) |
+| Settings Advanced reset/replay | `Settings.tsx` + `lib/settings.ts` | Complete | Manual flow |
 
-### Operational simulators (what we are *technically* closest to)
+### Hidden / partial / undocumented (delta)
 
-| Product | What we should learn | What we should NOT do |
-|---|---|---|
-| **NOAA MOST / ComMIT** | Three-phase model (generation / propagation / inundation); nested grids; KMZ export; pre-computed Cascadia / Aleutian / etc. scenarios as a content gallery; DART buoy assimilation | Don't aim for forecast-operational accuracy in v1.0 — that's a 10-year roadmap. Don't ship without a "NOT FOR EVACUATION" banner (we already have it in `App.tsx:113-115`). |
-| **GeoClaw** (LeVeque, Berger, George, Mandli) | **AMR is the right scaling answer for global+coastal in one sim** (v0.5.0 roadmap item). GPU variant (Qin 2019) shows 3.6–6.4× speedup is realistic. NetCDF + VTK output for ParaView interop. | Fortran 90 makes contribution painful — Rust path is the right call. |
-| **COMCOT** | Multi-source: fault / landslide / custom profile / wave maker | Don't replicate the legacy Fortran build pain (PCOMCOT .ctl files). |
-| **ANUGA** | **Unstructured triangular mesh** is geometrically flexible for coastlines + buildings. Particle-tracking for debris/sediment. | We don't need GPL-3 entanglement; ANUGA is a reference, not a fork target. |
-| **FUNWAVE-TVD** (Shi/Kirby) | Fully nonlinear Boussinesq — what we want for v0.5.0 dispersive solver. Wave breaking model. Coupled meteo-tsunami via atmospheric pressure forcing — relevant for Hunga Tonga. | Boussinesq is 10–100× slower than SWE per FUNWAVE docs — make it an *optional* solver toggle, not the default. |
-| **JAGURS** (JMA) | Atmospheric Lamb wave coupling — published post-2022 Tonga. The "spectral match at 3.6 mHz" finding is novel physics. | Not open-source enough to fork from. |
-| **NHWAVE / SWASH** | Full 3D non-hydrostatic — only for sub-km coastal domains. | Not the right tool for transoceanic; ignore. |
-| **BROWNI** (Andrés 2021) | **Architecturally closest to what we want for the GPU solver**: linear SWE on WebGL compute, ~30 fps at global 1000×500 cells, validated against MOST. Open source (Apache 2). | Linear only; no inundation; we want more. |
-
-### Globe rendering / data alternatives
-
-| Option | Verdict for TsunamiSimulator |
-|---|---|
-| **CesiumJS + Cesium ion** (current) | Best 3D globe in browsers/WebViews, but pricing terms (commercial = $149+/mo, no offline cache, no redistribution) make it a long-term cost / freedom risk for an OSS desktop app. Acceptable for v0.0.1 baseline. |
-| **CesiumJS + locally hosted tiles** | Self-host the GEBCO/SRTM15+ raster + Natural Earth coastlines as tiles bundled in the installer (or downloaded on first run). CesiumJS the library is Apache 2.0 — only the *ion data* requires a license. **This is the right offline path.** |
-| **MapLibre GL JS v5 globe view** (Jan 2025+) | Production-ready in 2026. BSD 2-Clause. Lighter than Cesium. Vector tiles native. Globe support newer than Cesium's — viable migration target in v1.0 if Cesium ion economics bite. |
-| **three-globe** + **three.js** | MIT. Good for point/arc overlays but needs custom shader work for bathymetric terrain. Treat as the *visualization layer* on top of a separate raster compositor — overengineering for v1.0. |
-| **NASA WorldWind** | Still maintained as of 2025-26; less momentum than Cesium/MapLibre. Not a priority migration target. |
-
-### Data alternatives (recommended bundling stack)
-- **Bathymetry/topography**: SRTM15+ V2.6 (CC-BY 4.0, ~300 MB, fewer redistribution constraints than GEBCO) **OR** GEBCO 2024 (public domain, ~80 MB compressed). SRTM15+ preferred for explicit OSS licensing.
-- **Coastlines**: Natural Earth 10m (`naturalearthdata.com`, public domain, ~10 MB).
-- **Globe imagery**: Blue Marble Next Generation 2004 monthly (NASA, public domain, ~2 GB full year — ship just 1 month for ~170 MB).
-- **Population (optional)**: WorldPop (CC-BY 4.0) or GHS-POP (CC-BY 4.0). 1 km global ≈ 200 MB.
-- **Buildings (optional)**: OpenStreetMap (ODbL — must cite). Buildings only needed for coastal-inundation context in dense cities.
-
-### GPU compute stack (recommended for v0.3.0+)
-- **wgpu** (gfx-rs) — primary. Cross-platform Vulkan/D3D12/Metal/WebGPU. Compute stable 2024+. MIT/Apache 2.0. Multiple production users (Firefox WebGPU, Servo, Deno).
-- **CubeCL** (in Burn ecosystem) — alternative DSL for compute kernels in Rust. Targets CUDA/ROCm/WGSL. More mature for ML-style kernels; SWE is simpler than ML so wgpu direct is preferred.
-- **Reference implementations to study**: `lisyarus/webgpu-shallow-water` (TypeScript, virtual-pipes model); `piellardj/water-webgpu` (TypeScript, water rendering not SWE physics); Qin et al. 2019 CUDA GeoClaw (Fortran kernels in Bash AMR scaffold).
+- **`physics::okada::OkadaFault::vertical_displacement_field`** is now exercised via the `earthquake::initial_displacement` adapter (used by `peak_uplift_m`). The full grid field is computed but only the centre value is surfaced. *Hidden capability:* the grid is available for a future "show seafloor uplift map" overlay.
+- **wgpu `GpuTimeStepper`** is callable but `step()` is a no-op TODO. *Verified.*
+- **`physics::lamb_wave`** is wired through `lamb_wave_sample` IPC but the SWE solver doesn't consume it as an additional IC. *Hidden — invocation requires the frontend to call directly.*
+- **`physics::validation`** is gated behind a feature flag — not part of default `cargo test`. Documented in `docs/science/VALIDATION.md`.
 
 ---
 
-## Highest-Value New Features
+## Competitive and Ecosystem Research (delta)
 
-> Format: each feature has Title / User Problem / Evidence / Proposed Behavior / Implementation Areas / Data-Model-API-UI Implications / Risks / Verification / Complexity (S/M/L/XL) / Priority (P0/P1/P2/P3).
+The v0.0.1 plan's landscape (NUKEMAP, Asteroid Launcher, Purdue Impact:Earth!, NOAA MOST, GeoClaw, COMCOT, ANUGA, FUNWAVE-TVD, JAGURS) and the v0.3.0 plan's three new entries (Earth NullSchool, NOAA Tsunami Forecast Page, CesiumJS Sandcastle) are still accurate.
 
-### F1 — Cesium globe renders the source event correctly (Phase 1 of `ROADMAP.md`)
-- **User problem**: A v0.0.1 user clicks "Chicxulub" expecting an animation; instead they get a numeric readout and four concentric thin lines. The product promise in `README.md` (NukeMap for tsunamis) is undelivered until this works.
-- **Evidence**: `Globe.tsx:81-119` draws the source cavity and label but the wavefront is just rings (`Globe.tsx:120-133`); ROADMAP.md Phase 1 acceptance criteria are not met.
-- **Proposed behavior**: Preset click → camera flies to lat/lon → cavity rendered as a translucent **3D cylinder** (height = cavity depth, color ramp by amplitude) → results panel populates → arrival-time isochrones render as polylines on the globe per the sampler, until the real solver lands.
-- **Implementation areas**: `src/components/Globe.tsx` (entity rendering improvements), `src/lib/cesium.ts` (camera helpers).
-- **Data model implications**: None — already returned by `run_preset`.
-- **Risks**: Cesium camera flyTo on Earth-scale entities is finicky — at Chicxulub's 50 km cavity, default camera distance is wrong by 2 OOM. Use `HeadingPitchRange` with explicit `range = max(20*cavity_radius, 1.5e6)` (already in `Globe.tsx:117-118`, verify in practice).
-- **Verification**: With a Cesium token in `.env`, run `npm run tauri dev`, click each preset, confirm globe focuses on correct lat/lon, cavity disc visible, scale appropriate.
-- **Complexity**: S (1-2 days)
-- **Priority**: **P0**
+**Three additional adjacent tools worth borrowing from for v0.4.0+ work**:
 
-### F2 — Real GPU shallow-water equation solver via `wgpu` compute
-- **User problem**: Without a real solver, every wavefront on the globe is artistically rendered, not physically computed. The product cannot keep its NOAA-grade claim.
-- **Evidence**: `physics::shallow_water::sample_wavefront` (lines 80-104) is explicitly a "cheap deep-ocean sampler". BROWNI demonstrated WebGL shallow-water at 1000×500 cells ~30 fps. Qin et al. 2019 confirmed 3.6–6.4× speedup over 16-core CPU for AMR + CUDA. wgpu compute is stable since 2024.
-- **Proposed behavior**:
-  1. Add `physics::solver::SwGrid` — owns a `2 × Nx × Ny` ping-pong texture pair (η, u, v) plus depth field h. Initialize from `physics::data::bathymetry::sample()` (new module, see F4).
-  2. Add `physics::solver::TimeStepper` with WGSL kernel that updates η, u, v using leapfrog or Lax-Friedrichs on a regular lat-lon grid with `1/cos(φ)` spherical metric and Manning friction.
-  3. Add `simulate_grid(scenario, t_end, dt, n_snapshots) -> Vec<GridSnapshot>` Tauri command — streams snapshots back.
-  4. Frontend renders each snapshot as a textured ellipsoid layer (Cesium `SingleTileImageryProvider` with a generated PNG, or a custom `Primitive` with shader).
-- **Implementation areas**: New `src-tauri/src/physics/solver/{mod.rs, grid.rs, kernels.wgsl, time_step.rs}`. Update `Cargo.toml` to add `wgpu = "23"` + `bytemuck`. Update `src-tauri/tauri.conf.json` if Vulkan / Metal validation layers need debug allow.
-- **Data model**: `GridSnapshot { time_s: f64, nx: u32, ny: u32, bbox: [f64;4], eta_png_b64: String }` is the IPC-friendly form for v0.2.0. Later: switch to shared-memory IPC (`tauri::ipc::Channel<...>`) for performance.
+| Product / source | Notable capability | Learn from | Avoid |
+|---|---|---|---|
+| **MIT's Project Tsunami Visualization Lab** (`https://mit-tsunamilab.github.io/`) | Education-focused 3-D tsunami visualisations with embedded NOAA NCEI event data, in-browser playback of historical events | The pattern of "scrub the slider to a real historical moment, see the model wave and the observed buoy trace side by side" — already partially present in our DartOverlay; could be extended with v0.4.0 Tohoku DART RMSE display | n/a |
+| **GMT (Generic Mapping Tools)** | Industry-standard for academic geospatial mapping; their `grdmix` + `grdmath` tools produce the relief renders our README screenshots will need | Their hill-shade lighting model produces dramatic seafloor renders that would look good as a desktop wallpaper / share-card export | Don't ship a GMT runtime dependency — it's heavyweight (200 MB+) |
+| **`cargo-dist`** by Axo | Drop-in replacement for hand-rolled GitHub Actions release workflows; handles cross-compilation, code signing (Win Authenticode + macOS notarisation when secrets provided), updater manifest generation, GitHub Releases publishing | We could replace our 130-line `release.yml` with ~15 lines of `dist-workspace.toml` + a single workflow trigger; would also unlock auto-signing once secrets land | Don't migrate blindly — the current workflow has been validated across 3 releases; do a staged migration |
+
+---
+
+## Highest-Value New Features (forward, post-Phase 0.3.0)
+
+### F4-01 — `wgpu` SWE dispatch loop (full GPU path) (P0)
+
+- **Problem solved**: CPU leapfrog tops out at ~200×200 grids for interactive runs; a real GEBCO 15-arc-second simulation over a Chicxulub-class basin (4 Mcells) needs the GPU.
+- **Evidence**: `physics::solver::gpu::GpuTimeStepper::step()` is a TODO no-op. `physics::solver::kernels::SWE_LEAPFROG_WGSL` is a complete kernel. Qin et al. 2019 reports 3.6–6.4× on a single GPU vs. 16-core CPU.
+- **Proposed behaviour**:
+  1. In `GpuTimeStepper::new(grid, dt, manning_n)`, create the `wgpu::Device` + `Queue`, compile `SWE_LEAPFROG_WGSL`, build the bind-group layout, allocate ping-pong storage buffers for `h`, `eta`, `u`, `v`, and uniform buffer for `Params` (matches the WGSL `struct Params`).
+  2. In `step(grid, n_steps)`: upload `h` once (immutable for the run); upload initial `eta`, `u`, `v`; loop `n_steps` dispatches with `(nx + 7) / 8, (ny + 7) / 8` workgroups, swapping ping-pong each step; on completion, read `eta` back via `BufferAsyncMapping`.
+  3. In `commands::simulate_grid`, when `--features gpu` is compiled, probe the adapter at start; on success use `GpuTimeStepper`; otherwise fall back to the CPU `TimeStepper`. Add `use_gpu` boolean to `SimulateGridResponse` so the UI can surface "ran on GPU" vs "ran on CPU".
+- **Implementation areas**:
+  - `src-tauri/src/physics/solver/gpu.rs` — bind-group layout, buffer creation, dispatch loop, readback.
+  - `src-tauri/src/physics/solver/kernels.rs` — add `WgslKernel` builder if needed for parameterising workgroup size.
+  - `src-tauri/src/commands.rs::simulate_grid` — CPU/GPU dispatcher behind `cfg!(feature = "gpu")`.
 - **Risks**:
-  - wgpu adapter probing on headless CI is finicky — use `wgpu::PowerPreference::LowPower` for tests.
-  - GPU memory budget: 2 channels × float32 × 1024² grid = 8 MB; fine. 8192² = 512 MB — needs tiling for global high-res.
-  - Numerical stability: `dt < min(dx, dy) / max(c)` (CFL); enforce in solver.
-- **Verification**:
-  - Unit test against the [analytical Stoker dam-break solution](https://en.wikipedia.org/wiki/Dam-break_equation) — flat-bottom 1-D channel, exact closed form for η.
-  - Validate against Range et al. 2022 Chicxulub at the published gauge points (open ocean amplitude at 220 km should be order 1 km magnitude; matching to ±50% is enough for v0.2.0).
-- **Complexity**: **L** (3–5 weeks for a single dev; the wgpu compute pipeline + Cesium texture binding + correctness vs. an analytical case is the hard part).
-- **Priority**: **P0**
+  - **Adapter availability** on Linux CI runners — already handled: `probe_adapter` returns `NoAdapter` and we fall back to CPU. Defensive.
+  - **WGSL/Vulkan driver bugs** producing different results than CPU — mitigate with a regression test `swe_gpu_matches_cpu_within_1e-4` on a 64×64 grid.
+  - **Float32 vs Float64** — WGSL is f32-only. CPU leapfrog runs f64. Expect ~1e-7 round-off difference, well within the validation tolerance.
+- **Verification plan**:
+  - `cargo build --release --features gpu` succeeds on Linux/macOS/Windows.
+  - `cargo test --release --features gpu -- swe_gpu_matches_cpu` — sub-1e-4 agreement on a Tohoku-class scenario.
+  - Manual: with a discrete GPU available, Tohoku at 50 cells/deg should complete in <2 s (vs ~10 s CPU).
+- **Estimated complexity**: L (multi-day; bind-group setup is mechanical but error-prone).
+- **Priority**: **P0** — unblocks v0.4.0 DoD ("10× resolution at 60 FPS").
 
-### F3 — Cesium ion token UX (don't bundle the token; load from settings)
-- **User problem**: Today the README tells the user to paste their token into `.env`, which becomes a baked-in string in the production JS bundle. For an OSS desktop binary, that means anyone who downloads the installer gets the maintainer's token — and a free-tier token has 15 GB/month bandwidth across ALL users worldwide. First viral moment = exhausted quota = broken app for everyone.
-- **Evidence**: `src/lib/cesium.ts:9` reads `VITE_CESIUM_TOKEN` from `import.meta.env`, which Vite inlines at build time. Cesium ion T&C (`https://cesium.com/legal/`) prohibit redistribution of access tokens.
-- **Proposed behavior**: First-launch UX: empty state in `Globe.tsx` shows "Paste your free Cesium ion token to enable bathymetry" with a link to `https://cesium.com/ion/signup`. Token stored in `tauri-plugin-store` under `app_data_dir / settings.json`. Optional fallback: bundle-mode ships *no* Cesium ion dependency and uses locally-rendered GEBCO tiles + Natural Earth coastlines (see F4).
-- **Implementation areas**: Add `tauri-plugin-store` to `Cargo.toml` + `tauri.conf.json` permissions. Create `src/components/Settings.tsx` with token input + save. Update `src/lib/cesium.ts:configureCesium()` to read from the store before falling back to env. Update README install steps.
-- **Data model**: `Settings { cesium_token: Option<String>, prefer_offline: bool, theme: "mocha" | "latte" }` in store.
-- **Risks**: First-launch dialog feels like onboarding friction. Mitigate by *only* showing the prompt if the user actually clicks a preset that needs bathymetry — let the app explore without it.
-- **Verification**: Build with `npm run tauri build`, install on a fresh user, confirm no token leaks in `Resources/*.js`. Run a scenario and confirm token persisted across restart.
-- **Complexity**: **M** (3–5 days incl. settings UI).
-- **Priority**: **P1**
+### F4-02 — Nonlinear momentum advection in the SWE solver (P1)
 
-### F4 — Offline bathymetry + coastlines mode
-- **User problem**: Cesium ion's free tier is non-commercial; the OSS app cannot lean on a streaming service for distribution. Also, classroom/airgapped/field-use scenarios need to work without internet.
-- **Evidence**: Cesium ion pricing page (`https://cesium.com/platform/cesium-ion/pricing/`); GEBCO 2024 NetCDF 80 MB compressed (`https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2024-grid`); SRTM15+ V2.6 CC-BY 4.0 same size; Natural Earth 10m coastlines 10 MB.
-- **Proposed behavior**:
-  1. First-run wizard: "Download offline bathymetry (190 MB)? Yes / Skip / Only when needed". Stores SRTM15+ NetCDF + Natural Earth shapefiles in `app_data_dir / data/`.
-  2. Rust backend exposes `physics::data::bathymetry::sample(lat, lon) -> f64` reading from a memory-mapped NetCDF.
-  3. Frontend has a "Bathymetry source" setting: `Cesium ion` (online streaming) | `Local GEBCO` (offline raster). Globe layer switches accordingly.
-  4. The SWE solver in F2 *always* uses local bathymetry — even in online mode — because solver needs raw depth, not streamed tiles.
-- **Implementation areas**: New `src-tauri/src/data/{mod.rs, bathymetry.rs, coastlines.rs}`. Add `netcdf = "0.10"` or `gdal` crate to `Cargo.toml`. Create `assets/data/README.md` documenting source + license. Update `tauri.conf.json` to bundle the data files or download-on-demand.
-- **Data model**: NetCDF backed `Bathymetry { grid: ndarray::Array2<i16>, bbox, transform }`.
-- **Risks**: First-run 190 MB download is friction — gate behind explicit user action. Tauri's installer payload size matters for some users; offer "lite" installer (no bundled data) + "complete" installer (with data).
-- **Verification**: Disconnect from network, restart app, click Chicxulub preset — must still render globe + see solver run.
-- **Complexity**: **L** (1–2 weeks).
-- **Priority**: **P1**
+- **Problem solved**: Current solver implements `∂u/∂t + g∇η = − fric`, omitting the nonlinear `(u·∇)u` advection term. Steepening near coast (where the wave amplitude becomes comparable to local depth) requires the nonlinear form to produce physically realistic crests + breaking. The module's own docstring is already aspirational — eq. 1 shows the nonlinear form but the implementation only ships the linear part.
+- **Evidence**:
+  - `src-tauri/src/physics/solver/mod.rs` line 13–14 documents `∂u/∂t + g ∂η/∂x = − g n² |U| u / H^(4/3)` — no advection.
+  - Code search: `grep -n "advection\|u.*du.*dx" src-tauri/src/physics/solver/mod.rs` returns empty. *Verified.*
+- **Proposed behaviour**: Extend `TimeStepper::step_one` to compute the advection term `u·(∂u/∂x) + v·(∂u/∂y)` on the same row-parallel pass. Use upwind differencing for stability (central differencing on `u` and `v` is unstable at the steepening shocks). Gate the extension behind a `LinearSwe` vs `NonlinearSwe` enum (default: nonlinear) so the validation harness can opt into the linear form for the Stoker test.
+- **Implementation areas**:
+  - `src-tauri/src/physics/solver/mod.rs::step_one` momentum loop.
+  - Add a `SolverMode` enum on `TimeStepper` parallel to `BoundaryMode`.
+  - WGSL kernel `solver/kernels.rs` — add advection branch (already wired for friction).
+- **Risks**:
+  - Numerical instability at sharp wavefronts — upwind differencing helps but doesn't fully solve. Caps via `recommended_dt_s(0.4)` should hold.
+  - The validation-harness Stoker test depends on the linear form's exact celerity; add an explicit `with_solver_mode(LinearSwe)` so the test still passes.
+- **Verification plan**:
+  - New test `nonlinear_solver_steepens_at_coast` — inject a Gaussian over a 1-m beach and verify the leading-edge gradient `∂η/∂x` near the shore exceeds the initial-condition gradient by ≥ 1.5×.
+  - Existing tests continue to pass.
+- **Estimated complexity**: M.
+- **Priority**: **P1** — Phase 4 DoD requires "NSWE shows wave steepening and breaking near coasts."
 
-### F5 — Real Okada 1985 dislocation for earthquake source
-- **User problem**: Tōhoku and Indian Ocean — the most-recognized presets — are powered by a `log(η_max) ≈ 0.5·M_w − 3.3` empirical that ignores fault geometry. For M9 Sumatra-Andaman with a 1300-km-long fault, this gives a single point uplift instead of the elongated rupture pattern that drives the directional wave radiation.
-- **Evidence**: `physics::earthquake::peak_seafloor_uplift_m()` (line 64) uses the empirical; `EarthquakeSource` struct (line 33-46) is missing `fault_length_m` and `fault_width_m` fields. MOST, GeoClaw, ANUGA, COMCOT all use Okada 1985 as the canonical source.
-- **Proposed behavior**: Add `fault_length_m` + `fault_width_m` fields to `EarthquakeSource`. Implement Okada 1985 elliptic-integral form (Steketee 1958 / Okada 1985 / Mansinha-Smylie 1971) as `physics::earthquake::okada::vertical_displacement(...)`. Returns a 2-D field on a user-specified grid around the epicenter.
-- **Implementation areas**: `src-tauri/src/physics/earthquake.rs` (rewrite `peak_seafloor_uplift_m` + add 2-D field method). Add `okada1985` reference implementation. Update presets to include fault dimensions (already mostly there for Tōhoku/Sumatra — just need to add the missing struct fields).
-- **Data model**: `EarthquakeSource { ..., fault_length_m: f64, fault_width_m: f64, ... }`. `OkadaDisplacement { center, grid_nx, grid_ny, dx_m, dy_m, eta_field: Vec<f64> }`.
-- **Risks**: Okada formulas have a lot of sign and trigonometry traps. Validate against [USGS okada_wrapper Python](https://github.com/tbenthompson/okada_wrapper) point-by-point on a Tōhoku test case.
-- **Verification**: For Tōhoku 2011 with published Fujii & Satake 2013 finite-fault inversion (40 subfaults), our Okada at the central subfault should give ~7 m vertical uplift on the seafloor.
-- **Complexity**: **M** (1 week, mostly debugging trig).
-- **Priority**: **P1**
+### F4-03 — Real GEBCO 2024 bathymetry via first-run download wizard (P0, was P1)
 
-### F6 — Coastal-point runup database + visualization
-- **User problem**: The `coastal_runup` Tauri command works but is never called from the UI. Users want to see "this wave produces a 12 m runup at Banda Aceh, 23 m at Lhoknga" — that's the visceral output.
-- **Evidence**: `commands.rs:75-78` exposes `coastal_runup`. `physics::shallow_water::synolakis_runup_m` returns sensible amplification factors (3–10× on 2° slopes per the unit test). Range et al. 2022 published validation targets at named locations.
-- **Proposed behavior**:
-  1. Curate a JSON database of ~100 named coastal points with `{name, lat, lon, beach_slope_deg, offshore_depth_m_at_50m_contour}` covering the regions affected by all 10 presets (Banda Aceh, Lhoknga, Miyako, Otsuchi, Hilo HI, Crescent City CA, Anchorage AK, Lisbon, Cádiz, Ponta Delgada, Pearl Harbor, etc.).
-  2. On each wavefront snapshot, sample offshore amplitude at each coastal point's location, call `coastal_runup`, render a colored bar above the point on the Cesium globe (3D `wallGraphics` or `polylineVolumeGraphics`).
-  3. Optional hover popup showing the calculation: "offshore A₀ = 1.2 m, slope = 1.8°, depth = 50 m → runup = 8.4 m".
-- **Implementation areas**: New `src/data/coastal_points.json`. New `src/components/CoastalRunupOverlay.tsx`. New Tauri command `runup_at_points(scenario_id, time_s) -> Vec<{name, runup_m}>` that batches `coastal_runup` calls.
-- **Data model**: JSON shipped as a static asset; loaded once at app start.
-- **Risks**: Manning friction / nearshore complexity ignored at this resolution — disclose in the UI. Coastal points have nontrivial sources for beach slope (use [Athanasiou 2019 GCS beach-slope dataset](https://doi.pangaea.de/10.1594/PANGAEA.892993) or hand-curate).
-- **Verification**: For Tōhoku at the Miyako point (lat 39.64, lon 141.97), runup should be in [20, 80] m band.
-- **Complexity**: **M** (1 week including data curation).
-- **Priority**: **P1**
+- **Problem solved**: Same as the v0.3.0 plan — the coarse 7-basin proxy misses every island, every continental-slope feature, and every trench-channel-controlled propagation path. The wet/dry land masking shipped in v0.3.0 is now waiting on this.
+- **Status escalation rationale**: Three reasons to bump from P1 to P0 for v0.4.0:
+  1. The wet/dry handling shipped in v0.3.0 already paints a "1 m → land cell" assumption. Without real GEBCO, the coastlines are coarse rectangles and the inundation polygons in I-V02 read as too generous.
+  2. The v0.4.0 wgpu solver's resolution headroom is meaningless without higher-resolution bathymetry data to feed it.
+  3. The validation-harness Chicxulub North-Atlantic coastline runup map (the published Range 2022 reference) requires real GEBCO to be implementable.
+- **Implementation** (carry-over from v0.3.0 plan, F-V06):
+  - `src-tauri/src/data/gebco.rs` (new): memory-mapped read of a 30-arc-second zstd-compressed flat Int16 array, bilinear sampling.
+  - `scripts/build-bathymetry.rs` (new): converts the GEBCO 2024 GeoTIFF (downloaded by the maintainer once) into the bundled format.
+  - `src-tauri/src/commands.rs::download_bathymetry` (new Tauri command) — fetches the prebuilt artifact at runtime with progress events.
+  - First-run modal `FirstRunBathymetryPrompt.tsx`.
+- **Decision required**: distribution channel. Two options:
+  - **A. GitHub Release asset** (~440 MB at 30 arc-sec). Free for the project; counts against GitHub bandwidth. *Recommend.*
+  - **B. Cloudflare R2** ($0.015/GB egress). Cleaner separation from release artifacts.
+- **Risks**: 30-arc-sec at ~1 km is still under-resolved for fjord-scale events like Lituya Bay. Document this clearly. Future v0.5.0 could ship a regional 15-arc-sec patch via second download.
+- **Verification plan**: After first launch, Tohoku SWE simulation should visibly reflect/refract on the Japan Trench geometry; the wave-front in the snapshot PNGs follows the 7000 m trench instead of the flat-basin straight line.
+- **Estimated complexity**: XL (download UX + binary asset hosting + memory-mapped sampling + bilinear interp + cache invalidation).
+- **Priority**: **P0** for v0.4.0 (was P1 in v0.3.0).
 
-### F7 — Side-by-side comparison mode
-- **User problem**: The project's educational thesis (e.g., "Poseidon propaganda is propaganda", "Cumbre Vieja is disputed", "Chicxulub is 30 000× worse than Tōhoku") only lands when the user can *see two scenarios at once*. Today they have to memorize numbers between clicks.
-- **Evidence**: `App.tsx` has only one `initial` / `wavefront` state. No comparison UI. Multi-scenario panels are a NUKEMAP feature (set multiple detonations).
-- **Proposed behavior**: Toggle "Compare" mode. Splits the central globe view into two side-by-side Cesium viewers (or one viewer with two colored wavefront layers). Both timelines tied. Results panel shows both readouts in adjacent columns with diff highlighting.
-- **Implementation areas**: Major `App.tsx` refactor — extract `<Scenario>` component owning its own `initial`/`wavefront`/`timeS` state, render twice. CSS adjustments in `styles.css`.
-- **Data model**: Move single-scenario state into a Zustand store (already a dep at `package.json:21`) keyed by `scenarioSlot: "A" | "B"`.
-- **Risks**: Two Cesium viewers = 2× GPU + memory; on weak laptops globe will stutter. Provide a "shared globe with overlays" mode as alternative.
-- **Verification**: Pick `poseidon_propaganda` in slot A and `poseidon_realistic` in slot B; confirm both globes animate in sync and results panels show 100 Mt vs 2 Mt energy.
-- **Complexity**: **M** (1–2 weeks).
-- **Priority**: **P2**
+### F4-04 — Wet/dry inundation polygons (real flood polygons) (P1)
 
-### F8 — DART buoy historical overlay
-- **User problem**: Without ground-truth, users can't tell whether the simulator is right. "It says 8 m at gauge 21413 at 14:46 UTC — was that what actually happened?"
-- **Evidence**: NOAA DART historical archive at `https://www.ndbc.noaa.gov/dart/dart.shtml`. Time-series available in NetCDF for Tōhoku 2011 (DART buoys 21413, 21418, 21419, 51407, 51425, 52403, etc.) and Indian Ocean 2004. Hunga Tonga 2022 had complete DART coverage. NetCDF parseable from Rust via `netcdf` crate.
-- **Proposed behavior**: For each of the 4 modern presets (Tōhoku 2011, Indian Ocean 2004, Hunga Tonga 2022, + one more), ship a small subset of DART observations (~20 MB total across all). Render DART stations as 3D pins on the globe. Click pin → overlay 2-panel chart: observed (red line) vs. simulated (blue line) water-surface elevation at that station. Time scrubber moves a vertical line across both.
-- **Implementation areas**: New `src-tauri/src/data/dart.rs`. New `src/components/DartOverlay.tsx`. New `assets/data/dart/{2011_tohoku,2004_sumatra,2022_tonga}.nc` files.
-- **Data model**: `DartStation { id: u32, lat, lon, observations: Vec<(time_s, eta_m)> }`.
-- **Risks**: Distinguishing what we forecast vs. what was observed must be visually unambiguous — color-code legends, no auto-fitting that misleads. Ground-truth that disagrees with our model is *good* — own it, it builds trust.
-- **Verification**: For Tōhoku at DART 21413 (off Sanriku), our model's amplitude vs. observed should be in [0.5×, 2×] band at first wave peak.
-- **Complexity**: **M** (1–2 weeks).
-- **Priority**: **P2**
+- **Problem solved**: The v0.3.0 inundation discs are first-order — a circular projection of `runup_m / tan(slope)` at each coastal point. The actual flood polygon depends on local topography. With real GEBCO + wet/dry cell handling, we can extract the connected component of cells where `h + η > 0` along the coastline and emit it as a GeoJSON polygon.
+- **Evidence**: `src/components/Globe.tsx` already has an `inundationEntitiesRef: Map<string, Cesium.Entity>` rendering pipeline; reusing it for `GeoJsonDataSource` is a small extension. `RESEARCH_FEATURE_PLAN_v0.3.0.md` I-V02 documents the deferred path.
+- **Proposed behaviour**:
+  1. After a SWE snapshot is computed, run a marching-squares boundary extraction on `h + η > 0`.
+  2. Emit per-snapshot `inundation_polygon_geojson: Option<String>` on `GridSnapshot`.
+  3. Frontend renders via `Cesium.GeoJsonDataSource.load(geojson)`.
+- **Implementation areas**:
+  - `src-tauri/src/physics/solver/mod.rs::snapshot` — call into a new `polygon::extract_inundation` helper.
+  - New `src-tauri/src/physics/solver/polygon.rs` — marching-squares + polygon-simplify (Ramer-Douglas-Peucker).
+  - `src/components/Globe.tsx` — replace the disc renderer (or stack a polygon overlay on top) with GeoJsonDataSource.
+- **Risks**: Marching-squares on a 1000×1000 grid emits a lot of vertices. Simplify aggressively (~ε = 100 m).
+- **Verification plan**: Tohoku Sendai Plain snapshot at t = 30 min shows a ~5-10 km inland polygon matching the published 8 km inundation extent.
+- **Estimated complexity**: M.
+- **Priority**: P1 (depends on F4-03).
 
-### F9 — Hunga Tonga atmospheric Lamb-wave source
-- **User problem**: The Hunga Tonga preset is in the registry, but the model treats it as a submarine landslide. The actual 2022 event was dominated by atmospheric Lamb-wave coupling per Carvajal et al. 2022 (`Science` 377:91-95). No consumer tool models this. Only JAGURS (JMA) does, operationally.
-- **Evidence**: Carvajal 2022, Matoza 2022, Kubota 2022 (all linked above). The relevant addition to SWE is an atmospheric-pressure-gradient forcing term: `∂η/∂t += -(1/ρg) (∂p_atm / ∂t)`, with `p_atm(t, x)` taken as a moving Gaussian pulse at Lamb-wave phase speed ~310 m/s.
-- **Proposed behavior**:
-  - Add `physics::source::AtmosphericPulse { center, amplitude_pa, lamb_speed_m_s, sigma_m, t0_s }`.
-  - Add solver forcing path: `solver::step()` accepts an optional `&dyn PressureForcing` and adds the gradient term each step.
-  - Update the Hunga Tonga preset to combine a submarine landslide source (the volcanic caldera collapse) **plus** an atmospheric pulse.
-- **Implementation areas**: `src-tauri/src/physics/atmospheric.rs` (new). Wire into `physics::solver`.
-- **Risks**: Calibrating the pulse amplitude / σ is research-grade — cite Carvajal 2022 figure 2 for parameter ranges. Make this feature gated behind "Advanced Physics" toggle initially.
-- **Verification**: At Pacific gauges 21–24 hours after eruption (the "second arrival" from the Lamb-wave path going the long way around), our model should produce a non-zero amplitude. The first arrival in our submarine-landslide-only model would have decayed by then.
-- **Complexity**: **L** (2–3 weeks; depends on F2 solver being in place).
-- **Priority**: **P2**
+### F4-05 — Lamb-wave coupled into SWE solver IC (P1)
 
-### F10 — Scenario export (PNG screenshot, MP4 timelapse, CZML deep-link)
-- **User problem**: NUKEMAP and Asteroid Launcher both give users a way to share a scenario. Today this app has no export at all.
-- **Evidence**: NUKEMAP exports KMZ + has shareable URLs. Cesium Stories uses CZML for time-tagged playback. Tauri 2 has `tauri-plugin-fs` + `tauri-plugin-dialog` for save-as.
-- **Proposed behavior**:
-  - **PNG**: Capture current globe + side panels via `html2canvas` or Cesium's `Scene.requestRenderMode + screenshot` API. Save to user-picked path.
-  - **MP4 / WebM**: Render the timeline 0→6h at fixed cadence; capture each frame via Cesium; ffmpeg-via-`tauri-plugin-shell` or `mp4-muxer` Rust crate to encode.
-  - **CZML deep-link**: Serialize scenario state (preset id + time + camera + active overlays) into a base64-URL fragment. `tsunamisimulator://load?...` deep link (Tauri 2 protocol handler).
-- **Implementation areas**: New `src/lib/export.ts`, new Tauri commands `save_screenshot(path, png_bytes)`, `save_recording(path, frames)`, `register_protocol_handler()`. New `src/components/ExportMenu.tsx`.
-- **Risks**: MP4 encoding via ffmpeg shell-out is a dep on the user's system having ffmpeg — bundle `ffmpeg-static`? Or use pure-Rust `mp4` + h264 encoder (slower, simpler).
-- **Verification**: Click "Export PNG" → confirm the saved file matches what's on screen. Click "Export MP4" on Chicxulub timeline 0–60 min → confirm output plays in VLC.
-- **Complexity**: **M-L** (1–2 weeks; MP4 is the hard half).
-- **Priority**: **P2**
+- **Problem solved**: `lamb_wave_sample` exists as a separate IPC but isn't fed into the SWE solver. The Hunga Tonga preset's `controversy_note` still says "Atmospheric Lamb-wave coupling now available via the lamb_wave_sample command but not yet integrated into the SWE solver IC".
+- **Evidence**: `src-tauri/src/physics/lamb_wave.rs::LambWaveSource::surface_depression_m` returns the per-point η contribution. `src-tauri/src/physics/solver/mod.rs::SwGrid::inject_gaussian` is the only IC-injection path today. *Verified.*
+- **Proposed behaviour**: New `SwGrid::inject_lamb_wave_ring(source, time_s_start, time_s_end, sample_dt_s)` that, for each cell, integrates the Lamb-wave-driven η contribution over the time window and adds it to `self.eta_m`. Gate behind a `SimulateGridRequest.include_lamb_wave: bool` flag (default false; on for `hunga_tonga_2022` preset).
+- **Implementation areas**:
+  - `src-tauri/src/physics/solver/mod.rs` — new injection helper.
+  - `src-tauri/src/commands.rs::simulate_grid` — read the new flag.
+  - `src/components/SwePlayback.tsx` — checkbox "Include atmospheric coupling (Hunga Tonga only)".
+  - `src-tauri/src/presets.rs` — update `hunga_tonga_2022` `controversy_note` to remove the deferral language.
+- **Risks**:
+  - The Lamb-wave ring advances at 310 m/s; the SWE solver step at 1–10 s. Need to integrate the Lamb forcing as a *source term* on the continuity equation, not just an IC. (Per Carvajal 2022 the coupling is continuous, not impulsive.) This is more involved than I initially budgeted.
+  - The 310 m/s Lamb speed produces aliasing when the SWE grid resolution is coarse (the ring moves through several cells per timestep). Address by interpolating the η contribution onto adjacent cells.
+- **Verification plan**: With Lamb coupling on, Tonga DART 51425 amplitude at t = 5 h matches Carvajal 2022 Fig. 2 (~10 cm) within 50%.
+- **Estimated complexity**: M.
+- **Priority**: P1.
 
-### F11 — Nuclear / landslide / earthquake scenario builders in the UI
-- **User problem**: The Rust commands exist but only asteroids have a scenario builder. To deliver on the "NukeMap for tsunamis" promise, the user must be able to detonate a custom-yield warhead anywhere.
-- **Evidence**: `src/components/ScenarioBuilder.tsx` only renders asteroid form. `commands.rs` has 4 scenario commands.
-- **Proposed behavior**: Tabbed scenario builder with tabs `Asteroid | Nuclear | Earthquake | Landslide`. Each tab renders its own form with the matching IPC input shape from `src/types/scenario.ts`. Same submit pattern.
-- **Implementation areas**: Rewrite `src/components/ScenarioBuilder.tsx` as a tab component. Add `NuclearForm`, `EarthquakeForm`, `LandslideForm` siblings.
-- **Risks**: Form bloat — keep each tab to ≤6 fields. Use sensible defaults pre-filled.
-- **Verification**: Build a custom 1-Mt underwater nuke at 50.0°N -10.0°E, confirm globe renders the cavity, results panel shows 1 Mt energy + ~M5 seismic-equivalent.
-- **Complexity**: **S-M** (3-5 days).
-- **Priority**: **P1**
+### F4-06 — Tōhoku DART buoy RMSE display (P2)
 
-### F12 — Live globe click → set scenario location
-- **User problem**: Today users type lat/lon manually. Every consumer competitor lets users click a map.
-- **Evidence**: NUKEMAP, Asteroid Launcher, MISSILEMAP all use click-to-set. Cesium has `ScreenSpaceEventHandler` for click → cartographic conversion.
-- **Proposed behavior**: When "Pick Location on Globe" button is clicked in the scenario builder, the globe enters pick mode (cursor change). Next click on globe → cartographic position injected into the form. Press Escape to cancel.
-- **Implementation areas**: `src/components/Globe.tsx` exposes a `onPick: (lat, lon) => void` prop. `src/components/ScenarioBuilder.tsx` shows the pick button and consumes the callback.
-- **Risks**: Picking ocean depth from the GEBCO terrain at click point requires `Cesium.sampleTerrain(...)` async call — keep UX responsive with a loading state.
-- **Verification**: Open Nuclear scenario form, click "Pick Location", click globe in the Atlantic at ~50°N, confirm form fields populate within 1 second.
-- **Complexity**: **S** (2-3 days).
-- **Priority**: **P1**
+- **Problem solved**: `DartOverlay.tsx` shows observed time series as sparklines but doesn't display the model–observed RMSE. The DART buoy data is the gold-standard ground truth for the three modern presets — without RMSE, users see two squiggles but can't quantify agreement.
+- **Evidence**: `src/components/DartOverlay.tsx` already extracts the buoy at a given time via linear interpolation (`sampleEta`). `src-tauri/src/commands.rs::simulate_grid` produces the model snapshots. Joining them requires sampling the SWE η at each buoy's lat/lon over each snapshot.
+- **Proposed behaviour**:
+  1. New `commands::dart_buoy_rmse` command takes the latest snapshot + buoy id, samples the η field at the buoy location via bilinear interp, and returns the time-series RMSE vs observed.
+  2. `DartOverlay.tsx` renders the RMSE alongside each sparkline: "Model RMSE: 0.18 m over 7 200 s".
+- **Implementation areas**:
+  - `src-tauri/src/commands.rs::dart_buoy_rmse` (new).
+  - `src/components/DartOverlay.tsx` — RMSE display.
+- **Risks**: Bilinear sampling needs the grid bounding box to contain the buoy. For Tohoku DART 51407 (Hawaii) the SWE grid box is small and centred on the source — the buoy is outside the box. Need to extend the grid coverage or fall back to "buoy outside grid" message.
+- **Verification plan**: Tohoku 51418 (NE of source) — Mori et al. 2011 reports peak 1.8 m at t = 1200 s; our model should land within ±50%.
+- **Estimated complexity**: M.
+- **Priority**: P2.
 
-### F13 — Inundation polygon overlays (Phase 4 of ROADMAP)
-- **User problem**: A "wave height bar" at a coastal point is informative; an actual flood polygon over a real city is visceral.
-- **Evidence**: GeoClaw, MOST, FUNWAVE all produce inundation rasters. With local bathymetry + the SWE solver, wetting/drying cell tracking is a well-known algorithm (Audusse et al. 2004).
-- **Proposed behavior**: When the SWE solver runs near land cells, track which cells become wet. At the final time, render the union of wet cells as a translucent red GeoJSON polygon overlay on the globe.
-- **Implementation areas**: `physics::solver::wetdry::WetDryTracker`. New Tauri command `inundation_polygon(scenario_id) -> GeoJSON`. Cesium `GeoJsonDataSource` to render.
-- **Risks**: Coastal grid resolution matters — at 500 m (GEBCO native) we're showing block-y "flood-yes/flood-no" zones. Document the limitation. This is why operational tools use 10-m DEM for inundation phase.
-- **Verification**: Tōhoku 2011 inundation polygon for the Sanriku coast should overlap published USGS post-event survey.
-- **Complexity**: **L** (2–3 weeks, depends on F2 + F4).
-- **Priority**: **P2**
+### F4-07 — Lituya Bay validation case (P2)
 
-### F14 — Population casualty overlay (optional / opt-in)
-- **User problem**: Some users (educators, hazard researchers) want "if Chicxulub hit New York today, how many people". This is NUKEMAP's marquee feature.
-- **Evidence**: WorldPop and GHS-POP are CC-BY 4.0 1-km global rasters. Heavy moral / editorial weight — handle carefully.
-- **Proposed behavior**: Optional, gated behind an "Enable casualty estimation" Settings toggle. Sample population raster at each inundation cell. Apply a depth-based casualty function (e.g., Jonkman 2005 dose-response: P(death) = Φ((ln(h) − μ) / σ) with μ=0.34, σ=0.43 for sudden inundation). Display range estimate with a wide confidence band.
-- **Implementation areas**: New `src-tauri/src/data/population.rs`. New scenario result field `estimated_affected: { p10, p50, p90 }`.
-- **Risks**: This is the most editorially-sensitive feature in the project. Defaults off. Heavy disclaimer ("model estimate with ±OOM uncertainty; not predictive of real events"). User must explicitly accept the toggle.
-- **Verification**: Run Chicxulub-at-New-York hypothetical; sanity-check that estimate is within historical OOM (Range 2022 didn't compute casualties for the K-Pg case since humans didn't exist, but modern hits to known cities have published estimates: a 14 km asteroid hitting NYC = "complete destruction of the eastern seaboard" per multiple references).
-- **Complexity**: **L** (1–2 weeks + significant editorial review).
-- **Priority**: **P3** (high value but high risk; ship later when project has more trust).
+- **Problem solved**: Lituya Bay's 524 m runup is the project's marquee landslide preset, but the v0.2.x analytical Heller-Hager gives the initial wave at the impact point — not the bay-geometry-amplified runup on the opposite shore. With the v0.3.0 wet/dry solver + a hand-curated 122 m fjord depth raster, we could reproduce the observed 524 m within order-of-magnitude.
+- **Evidence**: `RESEARCH_FEATURE_PLAN_v0.3.0.md` "Future benchmarks" section. `src-tauri/src/physics/landslide.rs::lituya_bay_1958()` defines the source. `src-tauri/src/physics/solver/mod.rs` now has wet/dry — applicable to Gilbert Inlet's narrow geometry.
+- **Proposed behaviour**: Bundle a hand-curated 100 m × 100 m bathymetry raster for Gilbert Inlet (≈ 5 km × 5 km, 50×50 cells = 7.5 KB). Add a `validation::lituya_bay_runup_matches_observed` test that runs `simulate_grid` over the curated raster and asserts the peak runup on the opposing shore lands in [200, 1000] m.
+- **Implementation areas**:
+  - `src-tauri/src/data/lituya_bay.bathymetry.rs` (new — small const array).
+  - `src-tauri/src/physics/validation.rs` — add the test.
+  - `docs/science/VALIDATION.md` — add the row.
+- **Risks**: Heller-Hager already over-predicts initial amplitude; the validation may pass by accident (over-predict + correct attenuation = right answer). Document the failure mode.
+- **Estimated complexity**: S.
+- **Priority**: P2.
 
----
+### F4-08 — Multi-event scenarios (P3)
 
-## Existing Feature Improvements
+- **Problem solved**: Real catastrophic events rarely come alone. Tōhoku 2011 had 12+ M ≥ 6 aftershocks in the first 24 hours, each generating a small tsunami. Chicxulub plausibly triggered secondary impacts from re-entering ejecta (Wittmann 2009). Current product is one-source-at-a-time.
+- **Evidence**: `ROADMAP.md` "Future / Stretch": "Multi-event scenarios — Chicxulub debris re-entry secondary impacts, Tōhoku aftershock tsunamis".
+- **Proposed behaviour**: Extend the scenario builder with a `secondary_sources: SourceList` field. Each source carries its own `t_offset_s` and is injected into the SWE solver at the corresponding step. Visual: a stacked timeline on the right panel showing "T+0 main shock — T+15min aftershock 1 — T+2hr aftershock 2".
+- **Implementation areas**:
+  - `src-tauri/src/commands.rs` — extend `SimulateGridRequest` with secondary sources.
+  - `src-tauri/src/physics/solver/mod.rs` — multi-IC injection.
+  - `src/components/ScenarioBuilder.tsx` — secondary-source UI.
+- **Risks**: UI complexity — most users won't use it. Hide behind an Advanced toggle.
+- **Estimated complexity**: L.
+- **Priority**: P3.
 
-### I1 — Fix `tauri build` (icons + ensure release pipeline can run)
-- **Current behavior**: `src-tauri/tauri.conf.json:34-40` references `icons/32x32.png`, `icons/128x128.png`, etc. but `src-tauri/icons/` contains only `README.md`. `npm run tauri build` will fail with `image format error` or `file not found`.
-- **Problem**: No installable binary exists. CI cannot validate anything beyond TypeScript.
-- **Recommended change**: (a) Place placeholder 1024×1024 master PNG under `assets/branding/logo.png`. (b) Run `npm run tauri icon assets/branding/logo.png` to generate all icon sizes into `src-tauri/icons/`. (c) Add a CI step that runs `npm run tauri build` (or at minimum, builds the icons directory).
-- **Code locations**: `src-tauri/icons/`, `src-tauri/tauri.conf.json`, future `.github/workflows/release.yml`.
-- **Backward compatibility**: New project, no concerns.
-- **Verification**: `npm run tauri build` produces an MSI / DMG / AppImage in `src-tauri/target/release/bundle/`.
-- **Complexity**: **S** (1 day, given a placeholder logo is acceptable for v0.1.0).
-- **Priority**: **P0**.
+### F4-09 — Share-card export with metadata overlay (P2)
 
-### I2 — Add `.github/workflows/release.yml` (workflow_dispatch + cross-platform build + signed artifacts)
-- **Current behavior**: No CI / CD. Per the user's global `CLAUDE.md` rule "every release workflow shares the same shape", every other repo has a workflow_dispatch release pipeline.
-- **Problem**: No automated verification. No public binaries. Contributors can't get green-build feedback.
-- **Recommended change**: Standard 3-runner matrix (`ubuntu-latest`, `macos-latest`, `windows-latest`). Steps:
-  1. Checkout, Node 20, Rust stable, platform-specific deps (WebKit on Linux).
-  2. `npm install`, `npx tsc --noEmit`, `npx vite build`, `cargo test --manifest-path src-tauri/Cargo.toml`.
-  3. `npm run tauri build`.
-  4. `gh release upload <tag> src-tauri/target/release/bundle/**/*.{msi,dmg,AppImage,deb}`.
-- **Code locations**: New `.github/workflows/release.yml`, `.github/workflows/ci.yml` (PR build).
-- **Backward compatibility**: None.
-- **Verification**: Push a tag `v0.1.0` and watch the workflow attach 3 artifacts to the GH release.
-- **Complexity**: **S-M** (3-5 days incl. dealing with Windows MSVC + macOS code signing later).
-- **Priority**: **P0**.
+- **Problem solved**: The PNG export captures the bare globe canvas. Sharing on social/classroom needs a branded image with scenario metadata (event name, parameters, citation, project URL).
+- **Evidence**: `src/lib/export.ts::captureGlobePng` produces a raw canvas PNG. NUKEMAP, Asteroid Launcher, and Range 2022 supplementary figures all use metadata-overlaid renders.
+- **Proposed behaviour**: New `exportGlobeShareCard(meta)` composites the canvas PNG with a 200-px-tall header strip containing: project logo, preset name, key parameters (M_w, peak amplitude, energy in Mt TNT), citation short-ref, and the project URL. Output: a 1200×800 PNG suitable for Twitter/X / Bluesky / Mastodon.
+- **Implementation areas**:
+  - `src/lib/export.ts::exportGlobeShareCard`.
+  - `assets/branding/logo.svg` already exists — use directly.
+- **Risks**: Canvas composition is straightforward but adds ~100 lines to export.ts.
+- **Estimated complexity**: M.
+- **Priority**: P2.
 
-### I3 — Remove the duplicate browser-preview mock in `App.tsx`
-- **Current behavior**: `App.tsx:14-33` defines a `MOCK_PRESETS` array with a hand-coded Chicxulub entry. `App.tsx:71-95` re-derives Schmidt-Holsapple in JS for the browser preview path.
-- **Problem**: Two sources of truth for the same constants — silent drift when the Rust formula changes.
-- **Recommended change**: For browser preview (`npm run dev` without `tauri dev`), either (a) skip — show "Run via `npm run tauri dev` for full experience" empty state, or (b) compile the Rust physics modules to WebAssembly via `wasm-bindgen` and call them from JS. (a) is the v0.1.0 fix; (b) is a longer bet.
-- **Code locations**: `src/App.tsx`, `src/lib/tauri.ts` (`isTauri()`).
-- **Backward compatibility**: Browser preview becomes less interactive in v0.1.0 — acceptable since this is a desktop app.
-- **Verification**: Run `npm run dev` (no Tauri), confirm "Browser preview — limited functionality" banner appears.
-- **Complexity**: **S** (half day).
-- **Priority**: **P1**.
+### F4-10 — Boussinesq dispersive solver (P3, v0.5.0 target)
 
-### I4 — Fix `EarthquakeSource` missing `fault_length_m` + `fault_width_m`
-- **Current behavior**: Struct at `earthquake.rs:33-46` has `mw`, `depth_m`, `strike_deg`, `dip_deg`, `rake_deg`, `slip_m`, `water_depth_m`, `location` — but **no fault dimensions**. `effective_cavity_radius_m()` computes them from Wells-Coppersmith scaling each call.
-- **Problem**: For real Okada (see F5), the user must be able to specify a length-width on their custom earthquake; currently impossible.
-- **Recommended change**: Add `fault_length_m: f64`, `fault_width_m: f64` to `EarthquakeSource`. Have `tohoku_2011()` and `indian_ocean_2004()` pre-fill with peer-reviewed values (Fujii-Satake 2013 finite-fault). Make `effective_cavity_radius_m()` use the stored value, falling back to Wells-Coppersmith if zero.
-- **Code locations**: `src-tauri/src/physics/earthquake.rs`, `src-tauri/src/presets.rs`, `src/types/scenario.ts` (sync TS types).
-- **Backward compatibility**: This is v0.0.x; no external consumers yet.
-- **Verification**: Run `cargo test`; `tohoku_2011().fault_length_m` should be ~500_000 m, `fault_width_m` ~200_000 m.
-- **Complexity**: **S** (half day).
-- **Priority**: **P1**.
+- **Problem solved**: Linear/nonlinear SWE assumes long-wave dispersion (`ω √(h/g) « 1`). Impact tsunamis from sub-kilometre asteroids have short wavelengths where this fails — Ward & Asphaug 2000 explicitly call this out. FUNWAVE-TVD uses Boussinesq for exactly this case.
+- **Evidence**: `ROADMAP.md` Phase 5 DoD. `src-tauri/src/physics/asteroid.rs` doc says: "frequency dispersion" → r^(-5/6) decay.
+- **Proposed behaviour**: New `physics::boussinesq` module implementing the Madsen-Sørensen 1992 weakly-nonlinear weakly-dispersive Boussinesq form. Behind a `SimulateGridRequest.use_boussinesq: bool` flag; default off (Boussinesq is 3× slower per step).
+- **Implementation areas**:
+  - `src-tauri/src/physics/boussinesq.rs` (new).
+  - `simulate_grid` dispatcher.
+- **Risks**: Stability of implicit Boussinesq schemes is tricky. Consult Shi et al. 2012 FUNWAVE-TVD paper for stability bounds.
+- **Estimated complexity**: XL.
+- **Priority**: P3 (v0.5.0).
 
-### I5 — README presets table claims Krakatoa 1883 — code has no Krakatoa
-- **Current behavior**: `README.md:103` lists Krakatoa 1883 as a preset. `src-tauri/src/presets.rs` has Hunga Tonga 2022 but not Krakatoa.
-- **Problem**: Documentation drift.
-- **Recommended change**: Either add a Krakatoa 1883 preset (caldera collapse, 42 m wave per Choi et al. 2003) — straightforward `LandslideSource` of submarine kind — or remove the line from README. Adding it is preferred since it broadens preset coverage.
-- **Code locations**: `src-tauri/src/presets.rs::all_presets()` (add new entry), `README.md` (no change needed if added; one-line edit if removed).
-- **Backward compatibility**: New preset id is additive.
-- **Verification**: `list_presets` IPC returns 11 entries; click Krakatoa, globe flies to Sunda Strait.
-- **Complexity**: **S** (half day).
-- **Priority**: **P2**.
+### F4-11 — Adaptive Mesh Refinement (AMR) (P3, v0.5.0 target)
 
-### I6 — Remove `_suppress_unused_mt_constant` dead code
-- **Current behavior**: `nuclear.rs:182-185` has `#[allow(dead_code)] fn _suppress_unused_mt_constant() -> f64 { J_PER_MT_TNT }`. `commands.rs:118` has `let _ = matches!(preset.source, PresetSource::Asteroid(_));` — another dead-code suppressor.
-- **Problem**: These are leftovers from iteration. They're harmless but they're noise that future maintainers will wonder about.
-- **Recommended change**: Delete both. `J_PER_MT_TNT` *is* used (via `yield_mt` method, line 56). If clippy complains in the future, gate at module level.
-- **Code locations**: `src-tauri/src/physics/nuclear.rs`, `src-tauri/src/commands.rs`.
-- **Backward compatibility**: None.
-- **Verification**: `cargo build` still passes; no new warnings.
-- **Complexity**: **S** (5 minutes).
-- **Priority**: **P2**.
+- **Problem solved**: A single uniform grid can't simultaneously resolve the open-ocean propagation (need ~5 km cells over a 5 000 km basin) and the coastal runup (need ~50 m cells over a 5 km shore). GeoClaw is the canonical AMR solution.
+- **Evidence**: `ROADMAP.md` Phase 5. Berger et al. 2011 (already cited).
+- **Proposed behaviour**: Implement a simple 2-level AMR — uniform coarse grid + user-pickable fine patches at named coastal points. Far from a full Berger-Oliger refinement; just enough to validate the Range 2022 Chicxulub far-field at coastal locations.
+- **Estimated complexity**: XL.
+- **Priority**: P3.
 
-### I7 — Globe empty state when no preset selected
-- **Current behavior**: On first launch, `Globe.tsx` shows the globe with no markers. Users may not know to click a preset.
-- **Problem**: Onboarding friction.
-- **Recommended change**: Render a faint "Choose a preset on the left, or build a scenario on the right" overlay when `initial === null`. Fade out when first preset is loaded.
-- **Code locations**: `src/components/Globe.tsx`.
-- **Backward compatibility**: Visual change only.
-- **Verification**: Open dev mode, confirm overlay visible until first preset click.
-- **Complexity**: **S** (1 hour).
-- **Priority**: **P1**.
+### F4-12 — Multi-language UI (en/ja, then en/es) (P3)
 
-### I8 — Loading state while Cesium World Bathymetry tile set fetches
-- **Current behavior**: `Globe.tsx:51-58` calls `Cesium.createWorldBathymetryAsync().then(setProvider)`. While this promise is pending, the globe shows flat WGS84 ellipsoid with no indication that bathymetry is loading.
-- **Problem**: User thinks bathymetry didn't work.
-- **Recommended change**: Add a small loading badge in the corner ("Loading GEBCO bathymetry…") while the promise is pending. Replace with a green check once tiles start rendering.
-- **Code locations**: `src/components/Globe.tsx`.
-- **Backward compatibility**: Visual only.
-- **Verification**: Throttle network to slow 3G, observe the badge.
-- **Complexity**: **S** (1 hour).
-- **Priority**: **P2**.
-
-### I9 — Light theme toggle (claimed in README, not implemented)
-- **Current behavior**: README claims "Catppuccin Mocha default theme … Light mode toggle". `styles.css` defines only Mocha tokens.
-- **Problem**: Documentation drift; user expectation unmet.
-- **Recommended change**: Add Catppuccin Latte token block in `styles.css`. Detect `prefers-color-scheme`, override via Settings toggle. Use CSS custom-property swap via `data-theme="latte"` on `<html>`.
-- **Code locations**: `src/styles.css`, new `src/lib/theme.ts`.
-- **Backward compatibility**: Dark stays the default.
-- **Verification**: Toggle in Settings UI, confirm globe still readable (lighter atmosphere setting in Cesium recommended).
-- **Complexity**: **S** (1 day).
-- **Priority**: **P2**.
-
-### I10 — Disclaimer banner is text-only; users dismiss it mentally
-- **Current behavior**: `App.tsx:113-115` shows "Educational only — not for evacuation" in the header. NUKEMAP has a similar warning. Both are easy to ignore.
-- **Problem**: For a hazard-related tool, the trust signal needs to be unmissable on first run (not annoying on every run).
-- **Recommended change**: First-run modal: "TsunamiSimulator is an educational physics-visualization tool. It is NOT for evacuation planning. For real tsunami warnings, use NOAA PTWC / NTWC or your national tsunami warning center. [Got it]". Don't re-show after first acknowledgment (store flag in `app_data_dir`). Header banner stays as a constant low-key reminder.
-- **Code locations**: New `src/components/FirstRunDisclaimer.tsx`. Use `tauri-plugin-store`.
-- **Backward compatibility**: First-run-only.
-- **Verification**: Fresh install → modal appears once.
-- **Complexity**: **S** (1 day).
-- **Priority**: **P1**.
-
-### I11 — Scenario builder lacks Cumbre Vieja-style "include disputed scenarios?" gate
-- **Current behavior**: Cumbre Vieja and Poseidon-propaganda presets are in the registry alongside well-established events.
-- **Problem**: Mixing speculative scenarios with peer-reviewed history is fine as long as the UI flags it.
-- **Recommended change**: Tag each preset with `is_speculative: bool` and `controversy_note: Option<&str>`. Sort speculative below historical in `PresetSelector`. Add a small icon ("⚠ Hypothetical — contested in literature").
-- **Code locations**: `src-tauri/src/presets.rs::Preset` struct, `src/components/PresetSelector.tsx`.
-- **Backward compatibility**: Additive.
-- **Verification**: Cumbre Vieja card shows the controversy icon and tooltip.
-- **Complexity**: **S** (half day).
-- **Priority**: **P2**.
-
-### I12 — `Globe.tsx` rebuilds wavefront entities on every prop change (no diff)
-- **Current behavior**: `Globe.tsx:120-133` removes all `wavefrontEntitiesRef.current` and re-adds. With 32 rings × every slider tick (~5/sec when dragging), this thrashes.
-- **Problem**: Fine for v0.0.1 sampler; will not scale to a real solver emitting 30 fps snapshots.
-- **Recommended change**: Maintain a persistent ring of entities sized to `n_samples`; on snapshot update, mutate their `ellipse.semiMajorAxis` / `outlineColor.alpha` properties in-place. Cesium re-renders cheaply.
-- **Code locations**: `src/components/Globe.tsx`.
-- **Backward compatibility**: Visual identical.
-- **Verification**: Profile React in DevTools while dragging the timeline; commit time should drop.
-- **Complexity**: **S** (half day).
-- **Priority**: **P2** (P1 once F2 solver lands).
-
-### I13 — `sample_wavefront` uses log-spacing; consider linear for animation
-- **Current behavior**: `shallow_water.rs:96-100` log-spaces sample ranges from `r_min` to `wavefront_r`.
-- **Problem**: For a wavefront *visualization*, the leading edge is more interesting than the source region. Log-spacing concentrates samples near source.
-- **Recommended change**: Either (a) linear-space samples with the front at the last index, or (b) put N samples *behind* the front (e.g., 50 m, 100 m, 200 m, ... back from leading edge) so the visualization shows the wave train, not the decay tail.
-- **Code locations**: `src-tauri/src/physics/shallow_water.rs::sample_wavefront`.
-- **Backward compatibility**: Visual change.
-- **Verification**: Rings cluster near the leading edge at animation playback.
-- **Complexity**: **S** (1 hour).
-- **Priority**: **P2** (obviated by F2 anyway).
-
-### I14 — Make citation footer in app surface clickable to open URL
-- **Current behavior**: `App.tsx:124-126` says "Sources cite peer-reviewed papers. See `docs/science/`". The `docs/science/` directory ships only with the binary if Tauri's `resources` config is set — and it isn't.
-- **Problem**: User has no in-app way to see citations.
-- **Recommended change**: Add `src/components/CitationsModal.tsx` that lists every preset's `reference` field clickable to open the paper URL via `tauri-plugin-shell`. Also include `docs/science/REFERENCES.bib` as a downloadable asset.
-- **Code locations**: `src/components/CitationsModal.tsx`, `src/App.tsx` footer.
-- **Backward compatibility**: Additive.
-- **Verification**: Click any reference, browser opens the paper.
-- **Complexity**: **S** (half day).
-- **Priority**: **P2**.
-
-### I15 — Tighten `shell:allow-open` capability to an allowlist
-- **Current behavior**: `src-tauri/capabilities/default.json` allows shell-open for any URL.
-- **Problem**: Slight risk of abuse if scenario imports / deep links inject malicious URLs.
-- **Recommended change**: Use Tauri's allowlist syntax: only allow `https://*.cesium.com`, `https://agupubs.onlinelibrary.wiley.com`, `https://www.science.org`, `https://www.researchgate.net`, `https://github.com/SysAdminDoc/TsunamiSimulator`, `https://nuclearsecrecy.com`, `https://impact.ese.ic.ac.uk`, `https://www.ndbc.noaa.gov`, `https://www.gebco.net`, `https://cesium.com`.
-- **Code locations**: `src-tauri/capabilities/default.json`.
-- **Backward compatibility**: Citation URLs need to be in the list.
-- **Verification**: Click each preset reference — opens. Click a non-allowed URL — refused.
-- **Complexity**: **S** (1 hour).
-- **Priority**: **P2**.
-
-### I16 — `vite.config.ts` has 4 MB chunk size warning; consider Cesium code-splitting
-- **Current behavior**: `vite build` output: `dist/assets/index-D0JxE2P2.js   4,350.92 kB`. Warning: "Some chunks are larger than 4000 kB after minification."
-- **Problem**: Initial app load is slow even from local disk because Tauri loads JS from filesystem then evaluates.
-- **Recommended change**: Add `build.rollupOptions.output.manualChunks` to split Cesium into its own chunk, lazy-load Cesium only when Globe mounts (`React.lazy`).
-- **Code locations**: `vite.config.ts`, `src/App.tsx` (lazy-import Globe).
-- **Backward compatibility**: First-render shows app shell faster.
-- **Verification**: After change, `dist/` has multiple chunks; `cesium-XXXX.js` ~3.5 MB; main app ~500 KB.
-- **Complexity**: **S** (half day).
-- **Priority**: **P2**.
-
-### I17 — Preset blurbs in `presets.rs` use unicode (e.g., "Tōhoku", "—") — verify Windows console doesn't choke
-- **Current behavior**: Per the user's global PowerShell rule "no emoji/unicode", but Rust strings handle UTF-8 cleanly. The Tauri IPC layer uses serde_json which is UTF-8 native. Render in browser is fine.
-- **Problem**: Possibly fine — but worth a check.
-- **Recommended change**: Confirm via `cargo run` + console output that the Tōhoku character renders. If any layer (logging, error messages) hits Windows cp1252 console, fall back to ASCII transliteration there only.
-- **Code locations**: `src-tauri/src/presets.rs`.
-- **Backward compatibility**: Unlikely impact.
-- **Verification**: Open Windows cmd, run debug build, confirm no encoding errors.
-- **Complexity**: **S** (verification only).
-- **Priority**: **P3**.
-
-### I18 — Cargo deps could pin minor versions; add `cargo audit` to CI
-- **Current behavior**: `Cargo.toml` uses `tauri = "2.1"`, `serde = "1.0"`, `ndarray = "0.16"`, `rayon = "1.10"`. Caret semantics.
-- **Problem**: Cargo `cargo audit` not yet wired; security advisories slip through.
-- **Recommended change**: Add CI step `cargo install cargo-audit && cargo audit`. Add `dependabot.yml` for both npm and cargo.
-- **Code locations**: New `.github/workflows/ci.yml`, new `.github/dependabot.yml`.
-- **Backward compatibility**: None.
-- **Verification**: PR with a known-vulnerable transitive shows red.
-- **Complexity**: **S** (1 day).
-- **Priority**: **P1**.
+- **Problem solved**: The Tōhoku and Indian Ocean presets are arguably most useful to Japanese and South Asian audiences in their native language. Translation also surfaces a real engineering benefit: it forces all user-facing strings out of inline JSX into a single resource file.
+- **Evidence**: `ROADMAP.md` Future / Stretch.
+- **Proposed behaviour**: Adopt `react-i18next` (industry standard, ~30 KB gzipped, supports plural rules + interpolation). Extract all strings from `src/components/*.tsx` + `App.tsx` into `src/i18n/{en,ja,es}.json`. Auto-detect from OS locale; user override in Settings.
+- **Estimated complexity**: L.
+- **Priority**: P3.
 
 ---
 
-## Reliability, Security, Privacy, and Data Safety
+## Existing Feature Improvements (forward)
 
-### Bugs / risks found
-- **R1 [Verified]** — `tauri build` will fail today (icons missing). See I1.
-- **R2 [Verified]** — Cesium token bundled into JS at build time. See F3.
-- **R3 [Verified]** — `cargo check` cannot be run on current host (MSVC C++ workload not installed). Documented in `CLAUDE.md` gotcha. Risk: code is syntactically valid but not compiler-verified until CI runs on a Windows GH Actions runner with VS Build Tools. See I2 (CI workflow).
-- **R4 [Likely]** — `Globe.tsx` Cesium viewer reuses across hot-reload may leak GPU memory in development. React StrictMode double-invocation of the mount effect will create-then-destroy two viewers — observable in dev only.
-- **R5 [Assumption]** — The wavefront ring colors use `outlineColor.alpha = 0.3 + 0.5 * t` where `t = a/maxA`. If `maxA = 0` (zero amplitude), divide-by-zero NaN propagates. Add guard.
-- **R6 [Assumption]** — `commands.rs::run_preset` uses `mean_depth_m: 4000` as a hardcoded value passed from frontend (`App.tsx:61`). For Lituya Bay (122 m depth) the long-wave speed is wrong by 6× → arrival-time isochrones will be wrong. Use the preset's `water_depth_m` instead, or query GEBCO at the source point.
+### I4-01 — `cargo-dist` migration for the release pipeline (P1)
+
+- **Current**: Hand-rolled `release.yml` (130 lines) with manual `bundle-staging` find/cp logic, manual `gh release create/upload`, no auto-generated update manifest.
+- **Recommended**: Migrate to `cargo-dist` (`https://opensource.axo.dev/cargo-dist/`). Single `dist-workspace.toml` declares targets; the tool handles cross-compilation, code signing (when secrets are present), updater manifest generation, and GitHub Releases publishing.
+- **Code locations**: `.github/workflows/release.yml`, new `dist-workspace.toml`.
+- **Backward compatibility**: Existing v0.2.1 release artifacts must continue to work. Stage the migration with a v0.4.0-prerelease.
+- **Verification**: A test workflow_dispatch on `v0.4.0-test` produces the same six installers as today.
+- **Estimated complexity**: M.
+- **Priority**: P1.
+
+### I4-02 — Promote `Globe.tsx` from one mega-component into hook-modules (P2)
+
+- **Current**: `src/components/Globe.tsx` is 786 lines with ~10 distinct `useEffect` hooks (viewer mount, style resolution, imagery rebuild, pick mode, inspect mode, source entity, wavefront rings, SWE overlay, runup bars, inundation discs, DART pins, runup labels).
+- **Recommended**: Extract per-entity-type hooks: `useSourceEntity(viewer, initial)`, `useWavefrontRings(viewer, initial, wavefront)`, `useRunupBars(viewer, runupResults)`, `useInundationDiscs(viewer, runupResults)`, `useDartPins(viewer, dartBuoys)`, `useSweOverlay(viewer, sweSnapshot)`, `usePickMode(viewer, pickMode, onPick)`, `useInspectMode(viewer, ...)`. Each hook owns its own `useRef<Map>` for entity bookkeeping.
+- **Why now**: 786 lines is at the borderline of where future contributors hesitate to touch. The v0.4.0 GeoJsonDataSource integration for inundation polygons + Tour-anchoring DOM-attachment work will both add ~50 lines apiece; this is the right moment to refactor before they land.
+- **Backward compatibility**: None — internal refactor.
+- **Verification**: Manual flow on all 11 presets. No new lint errors.
+- **Estimated complexity**: M.
+- **Priority**: P2.
+
+### I4-03 — Specta + tauri-specta for IPC type generation (P2)
+
+- **Current**: `src/types/scenario.ts` is hand-maintained to mirror `src-tauri/src/physics/mod.rs` + `presets.rs` + `commands.rs` structs. Drift is a recurring source of bugs (last session added `camera_view` in two places, then `inundation_extent_m` in two places).
+- **Recommended**: Adopt `specta` + `tauri-specta`. Annotate Rust types with `#[derive(specta::Type)]`. A build script emits `src/types/scenario.generated.ts`. Hand-written file becomes a re-export.
+- **Code locations**: `src-tauri/Cargo.toml`, `src-tauri/src/lib.rs` (export step), `src/types/scenario.ts`.
+- **Backward compatibility**: Generated types should preserve the existing surface. Add a CI step that compares generated output to a snapshot.
+- **Verification**: `cargo build` regenerates the TS file; `npx tsc --noEmit` stays clean.
+- **Estimated complexity**: M.
+- **Priority**: P2.
+
+### I4-04 — `Globe.tsx` flyTo: integer-frame timing on `prefers-reduced-motion` (P3)
+
+- **Current**: With `prefers-reduced-motion` we set `flyTo` duration to 0.0 seconds. Cesium's flyTo at duration=0 still does one frame of interpolation that produces a brief visual jitter.
+- **Recommended**: Use `viewer.scene.camera.setView(...)` (instant, no animation) instead of `viewer.flyTo(..., {duration:0})`.
+- **Code locations**: `src/components/Globe.tsx::flyTo` call site.
+- **Estimated complexity**: S.
+- **Priority**: P3.
+
+### I4-05 — Move all bundled JSON loader code through a `lib/data.ts` boundary (P3)
+
+- **Current**: `src/components/CoastalRunupOverlay.tsx` and `src/components/DartOverlay.tsx` both `import jsonFile from "../data/X.json"` and cast directly to a type. Each does its own integrity-filter inline.
+- **Recommended**: New `src/lib/data.ts` exports `getCoastalPoints(): CoastalPoint[]` and `getDartEvents(): DartDatabase` with centralised validation + caching. Future GeoJSON / GEBCO loaders can extend this module.
+- **Estimated complexity**: S.
+- **Priority**: P3.
+
+### I4-06 — Validation harness: extend to v0.4.0-relevant benchmarks (P1)
+
+- **Current**: 3 benchmarks (Stoker, Carrier-Greenspan, Range Chicxulub OOM).
+- **Recommended additions** (some called out in `docs/science/VALIDATION.md` as "Future benchmarks"):
+  - Lituya Bay simulated runup at Gilbert Inlet inner shore vs the observed 524 m record. Requires F4-07.
+  - Tohoku DART buoy 21413/21418/51407 time-series RMSE vs observed. Requires F4-06.
+  - Range 2022 Chicxulub North-Atlantic coastline runup map. Requires F4-03 (real GEBCO).
+  - Carrier-Greenspan plane-beach inundation length vs wet/dry solver output. Requires F4-03 + F4-04.
+- **Estimated complexity**: M cumulative.
+- **Priority**: P1.
+
+### I4-07 — Population-casualty overlay (opt-in, heavy disclaimer) (P3)
+
+- **Current**: `ROADMAP.md` Future. Not implemented.
+- **Recommended**: Bundle GHS-POP 2023 (CC-BY, ~250 MB at 1 km resolution) as an optional download (same pattern as F4-03). Render as a population-weighted overlay clipped to inundation polygons. Heavy disclaimer modal before showing.
+- **Risk**: Estimating casualties is a publicity attractor for the wrong reasons. The disclaimer needs to be uncompromising: "These are not casualty estimates, they are population counts inside the simulated inundation polygon. Do not use for any operational purpose."
+- **Estimated complexity**: L.
+- **Priority**: P3.
+
+---
+
+## Reliability, Security, Privacy, Data Safety
+
+### What v0.3.0 closed
+
+- IPC bounds + finite-input guards across all `*_initial_conditions` commands.
+- NaN-safe `synolakis_runup_m`.
+- Defensive Cesium Rectangle clamp.
+- Dateline-straddling bbox guard.
+- Sponge-boundary land-cell ordering bug (caught by CI).
+- Okada strike-slip sign-convention test brittleness (caught by CI, relaxed to magnitude bound).
+- Clippy `manual_clamp` regression (caught by CI).
+
+### Still-open risks (post-v0.3.0)
+
+| Risk | Severity | Status |
+|---|---|---|
+| No code signing → SmartScreen / Gatekeeper warnings | Medium | F-V04 still blocked on cert |
+| No in-app update channel → users on broken v0.2.0 never reach v0.2.1 | High | F-V07 still blocked on Ed25519 key generation |
+| Cesium token in flat-file `app_data_dir/settings.json` (not OS keychain) | Medium | I-V04 deferred — `tauri-plugin-keyring` for Tauri 2 still emerging |
+| WGSL kernel reads f32 buffers while CPU runs f64 — divergence risk | Low | Will surface in F4-01 GPU-vs-CPU regression test |
+| Hunga Tonga `controversy_note` still says "not yet integrated" | Trust | F4-05 closes |
+| `cargo audit` baseline is clean but not pinned | Low | Acceptable; advisories surface as `RUSTSEC-XXXX-XXXX` and block CI |
+| No SBOM published with releases | Low | `cargo-dist` (I4-01) handles this for free |
 
 ### Missing guardrails
-- **G1** — No CFL stability check in `sample_wavefront` (not needed for sampler, but **required** when F2 lands).
-- **G2** — No bounds check on user input in `ScenarioBuilder` — user can input `diameter_m: -100` and get NaN-everywhere results.
-- **G3** — No "is this preset id valid" check at the React layer; relies on Rust returning `Err`. Add a client-side check.
-- **G4** — No file path sandboxing — when F4 lands (bathymetry data), the read must be confined to `app_data_dir`. Use `tauri-plugin-fs` scope.
 
-### Permission / network / filesystem concerns
-- **P1** — Outbound network: only Cesium ion REST. Document explicitly in README.
-- **P2** — No telemetry/analytics, by design. Maintain this — disclose explicitly in privacy section of README (currently missing).
-- **P3** — No auto-updates. Users on stale versions miss physics fixes. Add `tauri-plugin-updater` with a public signing key for v1.0.
-
-### Recovery / rollback needs
-- **U1** — If a custom scenario crashes the Rust backend (panic), Tauri logs the panic but the React UI may hang. Wrap the Tauri command handlers in `Result<..., String>` (some already are; standardize) so the frontend can show an error toast.
-- **U2** — If the bathymetry NetCDF (when shipped per F4) is corrupted, app should gracefully fall back to flat-bottom mode rather than refusing to start. Add a fallback layer.
-
-### Logging / diagnostics
-- **L1** — No structured logging. Add `tracing` crate to the Rust backend with `tracing-subscriber` writing to `app_log_dir`. Frontend `console.error` is fine for v0.x.
-- **L2** — No crash report mechanism. For v1.0, integrate Sentry or a simpler "Send last log" button.
+- **No "freeze simulation" recovery**: if `simulate_grid` hangs (it shouldn't post-v0.3.0 `MAX_TOTAL_STEPS` cap, but as a defence-in-depth), there's no UI cancel button. Recommend: a `Promise.race` against a user-cancel signal in `SwePlayback.run`.
+- **No telemetry-free crash report**: if the Tauri WebView crashes, the user just sees a blank window. Tauri 2 has `app.on_window_event(WindowEvent::CloseRequested...)` — wire a crash-dump path to `app_data_dir/crash.log`.
 
 ---
 
 ## UX, Accessibility, and Trust
 
-### Onboarding gaps
-- **U1** — First-launch experience is silent: empty globe + sidebars. Add a 3-step onboarding overlay (1: "Pick a preset", 2: "Watch the wavefront", 3: "Build your own scenario"). Dismissable, not re-shown.
-- **U2** — Cesium token requirement is buried in README. The `Globe.tsx:128-145` fallback is good but should also offer "Continue without bathymetry" so users can at least see the globe outline.
-- **U3** — First-run disclaimer (see I10).
+### What v0.3.0 closed
 
-### Empty / loading / error / disabled states
-- **E1** — Globe before first preset: empty. Add overlay. (I7)
-- **E2** — Globe while bathymetry loads: silent. Add badge. (I8)
-- **E3** — Globe if Cesium throws: silent crash. Add error boundary.
-- **E4** — Results panel before any selection: shows "Select a preset…" prose (`ResultsPanel.tsx:21-29`) — good.
-- **E5** — Scenario builder Simulate button: no disabled state for invalid inputs (negative diameter, etc.).
-- **E6** — Preset cards: hover effect present (`styles.css:201-204`), active state present, no busy indicator while `run_preset` is in flight.
+- Global `:focus-visible` ring.
+- `:disabled` button treatment.
+- `<noscript>` fallback.
+- No-FOUC theme bootstrap in `index.html`.
+- `prefers-reduced-motion` overrides + tunable flyTo duration.
+- aria-live regions on SwePlayback error + CoastalRunupOverlay runup arrivals.
+- Runup-bar hover labels (Cesium LabelGraphics).
+- Settings → Advanced reset paths.
+- 5-step onboarding tour.
+- Per-preset curated camera framings (no more zoom-to-centre-of-Earth on Lituya).
+- Inspect overlay with point-readout.
+- Inundation polygons (first-order).
 
-### Destructive / irreversible actions
-- None today. Future export (F10) should confirm overwrite via `tauri-plugin-dialog`.
+### Still-open UX
 
-### Settings clarity
-- No Settings UI at all today. Required by F3 (Cesium token), I9 (theme toggle), I10 (disclaimer state), F4 (bathymetry source preference), F14 (casualty estimation opt-in).
+| Surface | Gap | Recommended |
+|---|---|---|
+| README on GitHub | No screenshots, no demo video | F-V03 once GUI host is available |
+| Loading state for the SWE solver | "Computing…" button label only; no progress bar | New `SimulateGridResponse.progress_event` via `tauri::Window::emit` |
+| Compare mode | Slot B has no DART overlay or runup overlay | Apply F-V07 model to slot B (deferred — not a real bug) |
+| Globe imagery error | Falls back to OSM silently | Surface a "Cesium ion token invalid — fallback engaged" toast |
+| First-launch token explainer | Settings dialog is excellent but the user has to know to open it | Add an in-app banner on the first-launched session "Optional: paste a Cesium ion token in Settings for satellite imagery" — dismissible |
+| Long-form citations | CitationsModal is good but the controversy_note text only appears in the modal | Surface on the Preset card too (already does — verified) |
+| Keyboard nav | All controls Tab-reachable but no skip-link to globe canvas | Add a `Skip to globe` hidden link at the top |
 
-### Accessibility
-- **A1** — No keyboard navigation between preset cards (per the user's "no keyboard shortcuts" rule, that's intentional, but Tab/Enter/Arrow should still work for screen readers and keyboard users).
-- **A2** — Color encoding on wavefront rings (alpha proportional to amplitude) has no textual readout — screen readers can't perceive a "tall wave" visually. Provide a textual time-series readout below the globe.
-- **A3** — Cesium canvas is unlabeled to assistive tech. Add `<canvas role="img" aria-label="3D globe showing tsunami source">`.
-- **A4** — Color contrast check: Catppuccin Mocha is generally WCAG AA, but the `--subtext` (#a6adc8) on `--mantle` (#181825) gives 6.3:1 — passes for body text. Verify focus rings are visible on dark.
-- **A5** — `<input>` controls in the scenario form have proper `<label>` wrappers — good per `ScenarioBuilder.tsx`.
+### WCAG 2.2 AA-shortfall surfaces
 
-### Microcopy / trust signals
-- **M1** — Header warning "Educational only — not for evacuation" is good. Strengthen: "For tsunami warnings, contact NOAA PTWC (Pacific) / NTWC (Atlantic)". Make NOAA NTWC/PTWC a hyperlink.
-- **M2** — Result readouts give precise numbers ("4.5 km", "1.5 km") but no uncertainty band. Operational tools cite ±OOM uncertainty. Add error bars in v1.0: "4.5 ± 0.5 km" with a tooltip explaining the source of uncertainty.
-- **M3** — Preset blurbs are good. The Poseidon and Cumbre Vieja entries do explicitly flag the controversy — keep that pattern.
-- **M4** — Add a small "About this calculation" link next to each result row, opening the relevant formula in `docs/science/`.
+- **Reduced-motion**: still shows the imagery-loading `@keyframes pulse` (already overridden by the v0.3.0 reduce media query — verified).
+- **Contrast**: Catppuccin palettes have been independently AA-verified. *Assumption* — needs a formal axe-core audit.
+- **Voice-over name labels** on Cesium entities: not exposed to assistive tech (Cesium renders to WebGL, not DOM). This is a fundamental Cesium limitation; mitigation is the DartOverlay sparklines, ResultsPanel readouts, and Inspect overlay text.
 
 ---
 
 ## Architecture and Maintainability
 
-### Module / boundary improvements
-- **A1** — Move physics constants into a single place: today both `physics::constants` *and* hardcoded numbers (e.g., `0.0574` in `landslide.rs:104`) exist. Promote every "magic number" with a paper citation to `constants.rs` with a named constant.
-- **A2** — `commands.rs::run_preset` doesn't separate concerns well — it does preset lookup, initial-displacement computation, decay selection, and wavefront sampling all in one function. Refactor when the real solver lands (F2): split into `physics::scenario::Scenario::initial()` and `physics::solver::run(scenario, params)`.
-- **A3** — `src/types/scenario.ts` is hand-maintained to match Rust types. Future-proof: use `ts-rs` or `specta` (Rust crates) to auto-generate TS from `#[derive(TS)]` annotations.
+### Module-boundary improvements
+
+- **Globe.tsx (786 lines) refactor** — see I4-02.
+- **IPC type generation** — see I4-03.
+- **`lib/data.ts` data-loader boundary** — see I4-05.
+- **Crystallise `BoundaryMode` + `SolverMode` + `BathymetrySource` into a `SolverConfig` struct** — currently three different opt-in points on `TimeStepper`. Group them in one builder.
 
 ### Refactor candidates
-- **R1** — Browser-preview mock physics in `App.tsx:71-95` (I3).
-- **R2** — `Globe.tsx` entity management (I12).
-- **R3** — `sample_wavefront` will be replaced wholesale by F2.
+
+- **`commands.rs` (795 lines)** is approaching the borderline. If F4-01 adds GPU dispatcher and F4-03 adds `download_bathymetry`, this should split into `commands/` directory by domain (sources / propagation / bathymetry).
+- **`presets.rs` (~310 lines)** — 11 hand-written entries. If F4-08 adds secondary sources or more presets, move to TOML and `include_str!`.
 
 ### Test gaps
-- **T1** — Frontend has zero tests. Per user's "no tests unless requested" rule, that's a deliberate gap.
-- **T2** — Backend has 7 unit tests across physics modules. Add property-based tests via `proptest` for physical invariants (energy conservation, monotone decay) once the solver lands.
-- **T3** — No integration test that the full Tauri command chain works. Add at least one `tauri::Builder::default().invoke_handler(...).run(mock_context)` smoke test.
+
+- **Frontend has zero unit tests.** `vitest` is industry standard for Vite projects; ~3 MB installed. Worth adding for `lib/settings.ts`, `lib/export.ts`, `hooks/useScenarioSlot.ts`.
+- **Playwright end-to-end tests** would catch the v0.2.0 blank-globe regression class. *Already in maintainer's tooling* (per `CLAUDE.md` MCP usage). Recommend a smoke-test playwright suite.
 
 ### Documentation gaps
-- **D1** — `docs/science/` has REFERENCES.bib and a README index. No per-formula derivation notes yet (e.g., `docs/science/asteroid.md` showing the cavity-scaling derivation step by step) — promised in the README scaffolding text.
-- **D2** — No CONTRIBUTING.md.
-- **D3** — No PR template / issue templates.
-- **D4** — No SECURITY.md (vulnerability reporting policy).
-- **D5** — No screenshots in README. Project rule says screenshots get re-captured on every UI change — none exist yet because the UI is still mostly empty.
 
-### Release / build / deployment gaps
-- **B1** — No icons → tauri build broken (I1).
-- **B2** — No CI / release pipeline (I2).
-- **B3** — No code signing — required for macOS Gatekeeper, Windows SmartScreen reputation.
-- **B4** — No auto-update channel.
+- **Per-source derivation notes** in `docs/science/` (asteroid.md, nuclear.md, …) referenced in `docs/science/README.md` but not authored. Generate from in-module rustdoc.
+- **Release runbook** `docs/release/RELEASING.md` — would document the "Release vX.Y.Z" recipe + screenshot the workflow_dispatch flow.
 
----
+### Release / build / deploy gaps
 
-## Prioritized Roadmap
-
-> Each item: checkbox, priority, title, why, evidence, files, acceptance, verify. Items group into phases that mirror `ROADMAP.md`'s `v0.1.0 / v0.2.0 / …` cadence.
-
-### Phase 0.1 — Get something runnable (target v0.1.0)
-
-- [ ] **P0 — Generate icon set and verify `npm run tauri build` ships an installer**
-  - Why: Without icons the bundle fails; without a bundle there's no product.
-  - Evidence: `src-tauri/tauri.conf.json:34-40` references icons that don't exist; `src-tauri/icons/` contains only README.
-  - Touches: `assets/branding/logo.png` (new), `src-tauri/icons/*` (generated), README install steps.
-  - Acceptance: `npm run tauri build` produces `src-tauri/target/release/bundle/{msi,dmg,deb,AppImage}` artifacts on each platform.
-  - Verify: On a host with MSVC: `npm run tauri build` exits 0 and the MSI installs cleanly.
-
-- [ ] **P0 — Add `.github/workflows/release.yml` (workflow_dispatch + 3 OS matrix + GH release upload)**
-  - Why: No automated build means no public binaries and no CI verification of Rust code (the local host can't compile it).
-  - Evidence: No `.github/` directory exists.
-  - Touches: `.github/workflows/release.yml`, `.github/workflows/ci.yml`.
-  - Acceptance: Trigger workflow from GH UI, three OS-specific installers attached to release.
-  - Verify: `gh workflow run release.yml -f tag=v0.1.0-alpha`; check artifacts.
-
-- [ ] **P0 — Wire Globe.tsx to render initial source displacement with camera fly-to + cavity disc (Phase 1 of ROADMAP.md)**
-  - Why: The product hasn't shipped a globe-with-tsunami experience yet; this is the v0.1.0 promise.
-  - Evidence: `Globe.tsx:81-119` already draws source point + label; cavity ellipse exists; need to add the cylinder height = cavity depth + flyTo tuning.
-  - Touches: `src/components/Globe.tsx`.
-  - Acceptance: Click any preset → globe flies to lat/lon within 2 s → 3D cavity visible with amplitude-mapped color.
-  - Verify: Manual click-through of all 10 presets.
-
-- [ ] **P0 — Fix `mean_depth_m` hardcoded 4000 in `App.tsx:61`; use preset's stored water depth**
-  - Why: Lituya Bay (122 m depth) gets wrong arrival times.
-  - Evidence: `App.tsx:61` hardcodes 4000.
-  - Touches: `src/App.tsx`, possibly `commands.rs::RunPresetRequest` to derive depth server-side.
-  - Acceptance: `run_preset` for Lituya shows wavefront `c = √(g·122) ≈ 35 m/s`, not 200 m/s.
-  - Verify: Slider Lituya to t=10 min; wavefront radius should be ~21 km, not ~120 km.
-
-- [ ] **P1 — Cesium token UX (Settings UI; first-launch prompt; `app_data_dir` persistence)**
-  - Why: Don't ship the maintainer's token in the binary.
-  - Evidence: `src/lib/cesium.ts:9` reads `import.meta.env`; Cesium ion T&C prohibit redistribution.
-  - Touches: New `src/components/Settings.tsx`, `src/lib/settings.ts`, `src-tauri/Cargo.toml` (+ `tauri-plugin-store`), `src-tauri/capabilities/default.json`.
-  - Acceptance: Bundle the production app, install on a fresh user, no token leaks anywhere in resources.
-  - Verify: `grep -r '[A-Za-z0-9_-]{40,}' src-tauri/target/release/bundle/.../resources/`.
-
-- [ ] **P1 — Add per-preset disclaimer / controversy flag**
-  - Why: Cumbre Vieja and Poseidon-propaganda must be visually distinguished from peer-reviewed history.
-  - Evidence: `src-tauri/src/presets.rs::Preset` lacks `is_speculative` / `controversy_note`.
-  - Touches: `src-tauri/src/presets.rs`, `src/types/scenario.ts`, `src/components/PresetSelector.tsx`.
-  - Acceptance: Cumbre Vieja card shows ⚠ icon; hover tooltip says "Disputed: Ward-Day worst case vs Løvholt rebuttal".
-  - Verify: Visual.
-
-- [ ] **P1 — First-run disclaimer modal**
-  - Why: Hazard-tool trust signal must be unmissable once, not annoying every launch.
-  - Evidence: I10.
-  - Touches: New `src/components/FirstRunDisclaimer.tsx`, settings store.
-  - Acceptance: Fresh install → modal once → "Got it" → never shown again unless user resets settings.
-  - Verify: Manual.
-
-- [ ] **P1 — Tabbed scenario builder (asteroid, nuclear, earthquake, landslide)**
-  - Why: The Rust commands exist; only asteroid has a UI today.
-  - Evidence: F11.
-  - Touches: `src/components/ScenarioBuilder.tsx` (rewrite), add `NuclearForm.tsx`, `EarthquakeForm.tsx`, `LandslideForm.tsx`.
-  - Acceptance: Each tab submits its respective IPC and updates the globe.
-  - Verify: Build a 1-Mt underwater nuke; globe shows ~1 km cavity disc and ~5 m initial amplitude.
-
-- [ ] **P1 — Click-globe-to-set-location for scenario builder**
-  - Why: Every consumer competitor does this.
-  - Evidence: F12.
-  - Touches: `src/components/Globe.tsx` (expose `onPick`), `src/components/ScenarioBuilder.tsx` (button).
-  - Acceptance: Click "Pick on Globe" → click ocean → form populated within 1 s.
-  - Verify: Manual.
-
-- [ ] **P1 — Add `cargo audit` + `dependabot.yml`**
-  - Why: Standard OSS hygiene; security advisories slip through otherwise.
-  - Evidence: I18.
-  - Touches: New `.github/workflows/ci.yml`, `.github/dependabot.yml`.
-  - Acceptance: Weekly PRs from dependabot; security-advisory PRs flagged.
-  - Verify: Wait for first dependabot PR.
-
-### Phase 0.2 — Real propagation (target v0.2.0)
-
-- [ ] **P0 — Implement `wgpu` compute SWE solver on regular lat-lon grid (F2)**
-  - Why: The flagship physics feature; everything downstream depends on it.
-  - Evidence: F2 with full justification.
-  - Touches: New `src-tauri/src/physics/solver/{mod,grid,kernels.wgsl,time_step}.rs`, `Cargo.toml` (+ `wgpu = "23"`, `bytemuck`), `commands.rs` (new `simulate_grid`).
-  - Acceptance: Solver matches analytical Stoker dam-break to ±5% for 1-D constant-depth case. For Chicxulub, far-field amplitude at 220 km within OOM of Range et al. 2022's 1.5 km.
-  - Verify: `cargo test --release` runs the analytical-case test; `npm run tauri dev`, click Chicxulub, watch animation, eyeball validate.
-
-- [ ] **P0 — Synolakis runup overlay (F6: coastal-point database + Tauri batch command + Cesium 3D bars)**
-  - Why: Runup is the visceral output users care about. Synolakis is already implemented in Rust — just needs to be invoked.
-  - Evidence: F6, plus `commands.rs:75-78` already exposes `coastal_runup`.
-  - Touches: New `src/data/coastal_points.json`, new `commands.rs::runup_at_points`, new `src/components/CoastalRunupOverlay.tsx`.
-  - Acceptance: For Tōhoku at the Miyako coastal point, runup readout ∈ [20, 80] m.
-  - Verify: Visual inspection + spot-check numbers against Mori et al. 2011.
-
-- [ ] **P1 — Implement Okada 1985 dislocation (F5; fix I4 EarthquakeSource struct first)**
-  - Why: Tōhoku / Sumatra accuracy depends on real fault geometry.
-  - Evidence: F5, I4.
-  - Touches: `src-tauri/src/physics/earthquake.rs` (rewrite peak_seafloor_uplift_m + add field method).
-  - Acceptance: Tōhoku 2011 central subfault → ~7 m vertical uplift on seafloor.
-  - Verify: Unit test against published Fujii-Satake 2013 finite-fault solution.
-
-- [ ] **P1 — Add Krakatoa 1883 preset (fix doc/code drift I5)**
-  - Why: README claims it; users will look for it.
-  - Evidence: I5.
-  - Touches: `src-tauri/src/presets.rs`.
-  - Acceptance: 11 presets total; Krakatoa flies to Sunda Strait (-6.10, 105.42).
-  - Verify: `list_presets` returns 11 entries.
-
-- [ ] **P1 — Bundle offline bathymetry (F4: SRTM15+ or GEBCO 2024 + Natural Earth coastlines)**
-  - Why: Cesium ion offline policy + classroom/airgapped use.
-  - Evidence: F4 + Cesium ion pricing T&C.
-  - Touches: New `src-tauri/src/data/{bathymetry,coastlines}.rs`, new `assets/data/` (gitignored), download script `scripts/fetch-bathymetry.sh`, `Cargo.toml` (+ `netcdf`), Settings UI option.
-  - Acceptance: With network disabled, app still renders globe + runs solver.
-  - Verify: `airplane mode → click Chicxulub → globe + wave still works`.
-
-### Phase 0.3 — Polish + new physics (target v0.3.0)
-
-- [ ] **P2 — Side-by-side comparison mode (F7)**
-- [ ] **P2 — Hunga Tonga atmospheric Lamb-wave source (F9; depends on F2 solver)**
-- [ ] **P2 — DART buoy historical overlay for 4 modern presets (F8)**
-- [ ] **P2 — Inundation polygons (F13; depends on F2 + F4)**
-- [ ] **P2 — Scenario export: PNG screenshot + CZML deep-link (F10 partial; MP4 deferred)**
-- [ ] **P2 — Citation in-app modal (I14)**
-- [ ] **P2 — Tighten shell:allow-open allowlist (I15)**
-- [ ] **P2 — Cesium code-splitting in vite.config.ts (I16)**
-- [ ] **P2 — Light theme toggle (I9)**
-- [ ] **P2 — Globe empty / loading states (I7, I8)**
-- [ ] **P2 — `Globe.tsx` entity diff/in-place mutation (I12)**
-
-### Phase 0.4 — GPU + Boussinesq (target v0.4.0+)
-
-- [ ] **P2 — Replace CPU SWE leapfrog with full WGSL compute pipeline + ping-pong textures** (extends F2)
-- [ ] **P3 — Boussinesq dispersive solver as opt-in alternative** (FUNWAVE-TVD-style; needed for nearshore Chicxulub validation)
-- [ ] **P3 — Adaptive Mesh Refinement** (GeoClaw-style; coarse far-field + fine coastal in one solve)
-
-### Phase 1.0 — Release readiness
-
-- [ ] **P1 — Code signing (macOS Gatekeeper, Windows Authenticode)**
-- [ ] **P1 — Auto-updater (`tauri-plugin-updater` with Ed25519-signed manifest)**
-- [ ] **P2 — Onboarding overlay (3-step first-time experience)**
-- [ ] **P2 — User manual under `docs/`**
-- [ ] **P2 — Screenshots in README (per project rule)**
-- [ ] **P3 — Population casualty overlay (F14; opt-in, heavy disclaimer)**
-- [ ] **P3 — MP4 timeline recording export (F10 second half)**
+- **Code signing** — F-V04, blocked on cert.
+- **In-app updater** — F-V07, blocked on Ed25519 key.
+- **SBOM** — would land for free with I4-01 `cargo-dist`.
+- **Reproducible builds** — release artifacts aren't bit-reproducible. Low priority but recommended once `cargo-dist` lands.
+- **Symbol uploads** for crash debugging — not yet wired. Crashing today produces an opaque `Aborted (core dumped)` on Linux.
 
 ---
 
-## Quick Wins
+## Prioritized Roadmap (v0.4.0+)
 
-Order-of-doing for a single afternoon:
-1. Delete `_suppress_unused_mt_constant` and the `matches!` dead-code in `commands.rs` (I6, 5 min).
-2. Add `RoadblockDisclaimer` modal with `tauri-plugin-store` flag (I10, 2 hours).
-3. Globe empty-state overlay when `initial === null` (I7, 1 hour).
-4. Loading badge while `createWorldBathymetryAsync` resolves (I8, 1 hour).
-5. Bounds-check scenario form inputs (G2, 30 min).
-6. Wire the citation footer to a clickable list opening URLs (I14 minimum, 1 hour).
-7. Fix `mean_depth_m` hardcoded 4000 (1 hour).
-8. Add `is_speculative` flag to presets and the ⚠ icon (I11, 2 hours).
+### Phase 0.3.0 release-ready (sweep up the 5 blocked items + ship)
 
-That's a half-day of work that materially improves perceived quality.
+- [ ] **P0 — F-V03** — README screenshots + animated demo.
+  - Why: First-time-visitor conversion is the project's lowest-hanging fruit.
+  - Evidence: `ls assets/screenshots/` returns empty.
+  - Touches: `assets/screenshots/`, `README.md`.
+  - Acceptance: 5 PNGs + 1 WebP/MP4 of Chicxulub playback embedded in README, render correctly on GitHub.
+  - Verify: Visit `https://github.com/SysAdminDoc/TsunamiSimulator` after merge.
+  - Block: Needs a Windows GUI host to run the `screenshots.md` recipe at 125 % DPI.
+
+- [ ] **P0 — F-V04** — Code signing.
+  - Why: Win SmartScreen / macOS Gatekeeper warnings on first launch dent install conversion.
+  - Evidence: `release.yml` has no sign step.
+  - Touches: `.github/workflows/release.yml`, `src-tauri/Entitlements.plist` (new).
+  - Acceptance: Next release boots on vanilla Win 11 + macOS 13 without security prompts.
+  - Verify: `signtool verify` (Win) + `spctl --assess --type execute` (macOS).
+  - Block: Needs EV cert + Apple Developer ID.
+
+- [ ] **P1 — F-V07** — `tauri-plugin-updater` Ed25519-signed channel.
+  - Why: Users on v0.2.0 with the blank-globe regression have no signal v0.2.1 exists.
+  - Evidence: `TODO.md` line 76; `tauri-plugin-updater` is upstream stable.
+  - Touches: `src-tauri/Cargo.toml`, `src-tauri/src/lib.rs`, `tauri.conf.json` (`plugins.updater.pubkey`), `.github/workflows/release.yml`, new `src/components/UpdateToast.tsx`.
+  - Acceptance: A v0.4.0 release triggers an in-app toast within 10 s on a v0.3.0 install.
+  - Verify: Manual end-to-end on test build.
+  - Block: Needs `tauri signer generate` + private key as GH secret.
+
+- [ ] **P1 — I-V04** — Cesium token via OS keychain.
+  - Why: Flat-file token storage is the weakest secret-management option; `SECURITY.md` treats this as in-scope.
+  - Evidence: `src/lib/settings.ts::setCesiumToken`.
+  - Touches: `src/lib/settings.ts`, new Rust command bridging `keyring` crate.
+  - Acceptance: `cat $APPDATA/.../settings.json` does NOT contain the token after save.
+  - Block: `tauri-plugin-keyring` for Tauri 2 still maturing — verify upstream availability before starting.
+
+### Phase 4 — GPU + Nonlinear (v0.4.0)
+
+- [ ] **P0 — F4-01** — `wgpu` SWE dispatch loop (full GPU path).
+  - Why: 10× resolution at interactive frame rates unlocks GEBCO-grade scenarios.
+  - Evidence: `physics::solver::gpu::GpuTimeStepper::step` is a TODO no-op; WGSL kernel ready.
+  - Touches: `src-tauri/src/physics/solver/gpu.rs`, `src-tauri/src/commands.rs::simulate_grid`.
+  - Acceptance: `cargo test --release --features gpu -- swe_gpu_matches_cpu` passes; Tohoku at 50 cells/deg completes in <2 s on a dGPU.
+  - Verify: `cargo build --release --features gpu`; manual GPU benchmark.
+
+- [ ] **P0 — F4-03** — Real GEBCO 2024 bathymetry via first-run download wizard.
+  - Why: Coarse 7-basin proxy misses every island; wet/dry handling can't shine without it.
+  - Evidence: `data/bathymetry/README.md`, `src-tauri/src/data/bathymetry.rs::sample` comments.
+  - Touches: `src-tauri/src/data/gebco.rs` (new), `src-tauri/src/commands.rs::download_bathymetry` (new), `src/components/FirstRunBathymetryPrompt.tsx` (new), `scripts/build-bathymetry.rs` (new).
+  - Acceptance: After first-launch download, Tohoku SWE simulation visibly reflects on the Japan Trench geometry.
+  - Verify: `ls $APPDATA/com.sysadmindoc.tsunamisimulator/gebco_2024_30s.zstd`.
+  - Block: Decide distribution channel (GH Release vs Cloudflare R2).
+
+- [ ] **P1 — F4-02** — Nonlinear momentum advection in the SWE solver.
+  - Why: Phase 4 DoD requires wave steepening + breaking near coasts.
+  - Evidence: `src-tauri/src/physics/solver/mod.rs` line 13 (linearised form).
+  - Touches: `src-tauri/src/physics/solver/mod.rs::step_one` momentum loop; new `SolverMode` enum.
+  - Acceptance: `nonlinear_solver_steepens_at_coast` test passes; Stoker validation still passes with `SolverMode::Linear`.
+  - Verify: `cargo test --release`.
+
+- [ ] **P1 — F4-04** — Wet/dry inundation polygons (real flood polygons).
+  - Why: Replaces v0.3.0 first-order discs with true marching-squares flood polygons.
+  - Touches: `src-tauri/src/physics/solver/polygon.rs` (new), `src-tauri/src/physics/solver/mod.rs::snapshot`, `src/components/Globe.tsx`.
+  - Acceptance: Tohoku Sendai Plain at t = 30 min shows a ~5–10 km inland polygon matching observed.
+  - Verify: Manual.
+  - Depends: F4-03 (real GEBCO).
+
+- [ ] **P1 — F4-05** — Lamb-wave coupled into SWE solver IC.
+  - Why: Closes the "controversy_note" gap on `hunga_tonga_2022`.
+  - Touches: `src-tauri/src/physics/solver/mod.rs::SwGrid::inject_lamb_wave_ring` (new), `src-tauri/src/commands.rs::simulate_grid`, `src/components/SwePlayback.tsx`, `presets.rs`.
+  - Acceptance: Tonga DART 51425 at t = 5 h within 50 % of Carvajal 2022 ~10 cm.
+  - Verify: Manual.
+
+- [ ] **P1 — I4-01** — `cargo-dist` migration for the release pipeline.
+  - Why: Replaces hand-rolled `release.yml`; auto-handles signing + updater manifests + SBOM.
+  - Touches: `.github/workflows/release.yml`, new `dist-workspace.toml`.
+  - Acceptance: A test workflow_dispatch on `v0.4.0-test` produces the same six installers as today.
+  - Verify: Compare against `gh release view v0.2.1 --json assets`.
+
+- [ ] **P1 — I4-06** — Validation harness extensions.
+  - Why: Quantitative agreement with published references = research credibility.
+  - Touches: `src-tauri/src/physics/validation.rs`, `docs/science/VALIDATION.md`.
+  - Acceptance: Lituya runup test + Tohoku DART RMSE test land in their bands.
+  - Verify: `cargo test --release --features validation -- validation::`.
+
+- [ ] **P2 — F4-06** — Tohoku DART buoy RMSE display.
+- [ ] **P2 — F4-07** — Lituya Bay validation case.
+- [ ] **P2 — F4-09** — Share-card export with metadata overlay.
+- [ ] **P2 — I4-02** — Globe.tsx refactor to per-entity-type hooks.
+- [ ] **P2 — I4-03** — Specta + tauri-specta for IPC type generation.
+
+### Phase 5 — Boussinesq + AMR (v0.5.0)
+
+- [ ] **P3 — F4-10** — Boussinesq dispersive solver.
+- [ ] **P3 — F4-11** — Adaptive Mesh Refinement.
+
+### Phase 6 — UX polish + v1.0.0
+
+- [ ] **P3 — F4-08** — Multi-event scenarios.
+- [ ] **P3 — F4-12** — Multi-language UI (en/ja/es).
+- [ ] **P3 — I4-07** — Population-casualty overlay (opt-in, heavy disclaimer).
+
+---
+
+## Quick Wins (one-morning or less changes)
+
+- [ ] **I4-04** — Cesium `setView` instead of `flyTo(duration:0)` for reduced-motion users.
+- [ ] **I4-05** — `lib/data.ts` centralised JSON loader.
+- [ ] Pin `windows-latest` → `windows-2025` in `.github/workflows/*.yml` once the June 15 redirect lands (currently no action needed).
+- [ ] Add a `Skip to globe` hidden keyboard link in the App header.
+- [ ] Surface "Cesium ion token invalid → fallback engaged" toast on imagery 401.
+- [ ] First-launch banner "Optional: paste a Cesium ion token in Settings for satellite imagery" (dismissible).
+- [ ] Doc pass on `docs/science/` per-source notes (asteroid.md, nuclear.md, ...).
 
 ---
 
 ## Larger Bets
 
-Items requiring multi-week effort and dedicated design:
+- **F4-01 wgpu dispatch loop** — multi-day, but the scaffold is in place.
+- **F4-03 real GEBCO** — XL. Distribution-channel decision is on the critical path.
+- **F4-10 Boussinesq solver** — XL.
+- **F4-11 AMR** — XL.
 
-- **B1 — Full GPU SWE solver with grid streaming to Cesium** (F2 + F4). 4-6 weeks. The most important bet — gates every downstream physics feature. Risk: wgpu compute pipelines have subtle correctness issues; allocate time for analytical-solution validation.
-
-- **B2 — Offline-only build profile** (no Cesium ion at all; locally rendered raster globe via three-globe or a custom shader). 2-3 weeks. De-risks the long-term licensing dependency. Lets the project ship on classroom networks, airgapped science labs, and government computers.
-
-- **B3 — Atmospheric coupling for Hunga Tonga–class events** (F9). 3-4 weeks after F2 lands. Research-frontier physics — no consumer competitor has it.
-
-- **B4 — Inundation engine** (F13). 3-4 weeks after F2 + F4. Wetting/drying SWE handling + GeoJSON polygon extraction + Cesium rendering. The "real" version of runup beyond the Synolakis closed-form.
-
-- **B5 — Population casualty model** (F14). 2 weeks of code + significant editorial review. High value but high responsibility. Defer until the project has earned trust through the simpler physics features.
+Each warrants a `docs/design/XXX.md` short design doc before implementation begins. The wgpu dispatch design is particularly important — the bind-group layout choices (separate buffers vs interleaved struct-of-arrays) determine the kernel-coding burden for the rest of the project.
 
 ---
 
-## Explicit Non-Goals
+## Explicit Non-Goals (re-affirmed from v0.3.0 plan)
 
-- **Real-time tsunami forecasting / warning integration with NOAA NTWC.** Operational warning is a 10+ year program with regulatory compliance, redundancy, telecommunications integration — out of scope and dangerous to imply. We will explicitly never label this app for warning use.
+- **No telemetry.** Even anonymous usage counts.
+- **No paid SaaS or backend.** Local-first.
+- **No multi-user real-time collaboration.** Scope creep.
+- **No iOS/Android port.** Tauri Mobile is plausible but the UI is laptop/desktop-shaped.
+- **No live tsunami warning integration.** Disclaimer explicitly says "use NTWC/PTWC".
+- **No "operational" branding.** F4-09 share cards must preserve the "Educational only" framing.
+- **No GPL-licensed runtime deps.** Project is MIT.
+- **No proprietary file formats.** Scenario exports remain JSON / CZML.
 
-- **Fortran or C++ port for HPC.** This is a desktop app for laptops, not a cluster code. GeoClaw / FUNWAVE / MOST already serve the HPC niche.
+**New non-goal (this pass):**
 
-- **Inversion of seismic data to source parameters.** Tools like SIFT (NOAA Short-term Inundation Forecast for Tsunamis) do this. We're forward-modeling only.
-
-- **Mobile (iOS / Android) port.** Tauri 2 supports mobile but Cesium ion + WebGL2 + 4 MB JS bundle is too heavy for current mobile WebViews. Re-evaluate in 2027.
-
-- **Stochastic / Monte Carlo hazard assessment.** Ward & Asphaug 2000 do this for asteroid hazard rates; PTHA (Probabilistic Tsunami Hazard Analysis) is a research field of its own. Out of scope.
-
-- **Real-time multiplayer / collaborative scenarios.** Tempting but distracting from the core simulation work.
-
-- **Anything that requires a paid Cesium ion seat by default.** The project must always have an offline / free-token path.
-
-- **Replication of NUKEMAP's full nuclear-effects suite (fireball, fallout, thermal radiation).** That's NUKEMAP's job, and Wellerstein does it better than we ever will. We model the *tsunami* generated by an underwater burst — not the airburst effects on land.
+- **No casualty estimates with population data we can't validate.** F4-15 / I4-07 (population overlay) must be opt-in, heavily disclaimed, and frame the overlay as "population inside the inundation polygon" — NOT as a casualty estimate.
 
 ---
 
 ## Open Questions
 
-> Only the items that materially block prioritization. Anything answerable by inspection or public-source research is *not* listed here.
+These remain the same 4 open questions from the v0.3.0 plan plus 3 new ones surfaced this pass:
 
-1. **What license does the user want for the bundled GEBCO/SRTM15+ data?** Both are public-domain / CC-BY 4.0, so neither blocks shipping. But if the user later wants a "lite" installer without bundled data + a "complete" installer with it, the choice of `data/` partition affects build pipeline. Assumption: SRTM15+ V2.6 (CC-BY 4.0) bundled, GEBCO 2024 available via "Download data" wizard. — *Verify: ask user, or pick SRTM15+ and document.*
-
-2. **Cesium ion or self-hosted tiles for v1.0?** Cesium ion is the path of least resistance and what the v0.0.1 scaffold uses. Self-hosting GEBCO + Natural Earth tiles (e.g., via `tippecanoe` + a small bundled HTTP server) costs ~2 weeks of work and removes the licensing dependency entirely. — *Decision blocks F3 design; can default to "both supported; ion by default, self-host on opt-in" but the work has to land somewhere.*
-
-3. **Should the project accept user-submitted historical presets via PR (Sumatra 1797, Lisbon 1755, etc.) or curate centrally?** Curation maintains quality but caps coverage. — *Assumption: open to PRs, with a schema for citing the source paper required in the PR template (to be added).*
-
-4. **What's the casualty model editorial line?** F14 is potentially the most-misused feature. Range of options: (a) ship it with heavy disclaimers, (b) make it a separate optional plugin, (c) never ship it and link to NUKEMAP for the population-effects use case. — *Decision needed before F14 starts. Default assumption: (b) plugin / opt-in.*
-
-5. **Does the project want to integrate with NOAA SIFT or just compare against DART?** Pure comparison (F8) is low-risk: just plot observed vs. modeled. Integration would mean fetching SIFT pre-computed scenarios from NOAA's API — useful but operationally complex. — *Assumption: stick to DART historical comparison; SIFT integration deferred indefinitely.*
+1. **Code-signing budget**: EV cert (~$300/yr) + Apple Developer enrollment ($99/yr). F-V04 can't land without one.
+2. **GEBCO distribution channel**: GitHub Release vs Cloudflare R2. F4-03 needs this answered.
+3. **Ed25519 key custody**: GH Actions secret only, or offline-only with manual signing? F-V07 acceptance depends on this.
+4. **Lamb-wave physics choice**: Carvajal 2022 / Kubota 2022 / Matoza 2022 differ on coupling magnitude. Should F4-05 expose the choice to users or pick a default? Influences UX.
+5. **New: cargo-dist migration timing.** The hand-rolled `release.yml` has shipped 3 releases successfully. Migrate now (v0.4.0) or hold until v1.0.0?
+6. **New: Validation tolerance vs published Range 2022 Chicxulub.** Currently F-V01 only asserts OOM at 220 km. Should the v0.4.0 wgpu + GEBCO combination tighten this to ±50 % at the North Atlantic coastline as the v0.5.0 DoD anticipates?
+7. **New: Frontend test framework.** Vitest is the obvious choice. Worth adding before F4-01 GPU work or after?
 
 ---
 
-## Appendix — Recommended File Tree After v0.3.0
-
-```
-TsunamiSimulator/
-├── .github/
-│   ├── dependabot.yml
-│   ├── ISSUE_TEMPLATE/
-│   │   ├── bug.yml
-│   │   ├── preset-request.yml
-│   │   └── physics-issue.yml
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── workflows/
-│       ├── ci.yml
-│       └── release.yml
-├── assets/
-│   ├── branding/{logo.png,banner.png}
-│   └── data/{coastal_points.json,dart/*.nc,bluemarble/}
-├── docs/
-│   ├── science/
-│   │   ├── REFERENCES.bib
-│   │   ├── asteroid.md       (Ward-Asphaug derivation)
-│   │   ├── nuclear.md        (Glasstone-Dolan + Le Méhauté derivation)
-│   │   ├── landslide.md      (Heller-Hager + Watts derivation)
-│   │   ├── earthquake.md     (Okada 1985 derivation)
-│   │   ├── shallow_water.md  (SWE + Synolakis + dispersion notes)
-│   │   ├── atmospheric.md    (Lamb-wave coupling notes)
-│   │   └── README.md
-│   └── user-manual/
-│       ├── presets.md
-│       ├── custom-scenario.md
-│       └── interpreting-results.md
-├── src/
-│   ├── components/
-│   │   ├── Globe.tsx
-│   │   ├── PresetSelector.tsx
-│   │   ├── ScenarioBuilder.tsx           (tabbed)
-│   │   ├── ResultsPanel.tsx
-│   │   ├── Settings.tsx                  (new)
-│   │   ├── FirstRunDisclaimer.tsx        (new)
-│   │   ├── CitationsModal.tsx            (new)
-│   │   ├── CoastalRunupOverlay.tsx       (new)
-│   │   ├── DartOverlay.tsx               (new)
-│   │   └── CompareView.tsx               (new)
-│   ├── data/
-│   │   └── coastal_points.json
-│   ├── lib/
-│   │   ├── cesium.ts
-│   │   ├── tauri.ts
-│   │   ├── settings.ts                   (new)
-│   │   ├── export.ts                     (new)
-│   │   └── theme.ts                      (new)
-│   ├── types/
-│   │   ├── scenario.ts                   (auto-gen from ts-rs)
-│   │   └── settings.ts                   (new)
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── styles.css
-└── src-tauri/
-    ├── capabilities/default.json
-    ├── icons/                            (generated)
-    └── src/
-        ├── commands.rs
-        ├── lib.rs
-        ├── main.rs
-        ├── presets.rs
-        ├── data/
-        │   ├── bathymetry.rs             (new)
-        │   ├── coastlines.rs             (new)
-        │   ├── dart.rs                   (new)
-        │   └── population.rs             (new, optional)
-        └── physics/
-            ├── mod.rs
-            ├── constants.rs
-            ├── asteroid.rs
-            ├── nuclear.rs
-            ├── landslide.rs
-            ├── earthquake.rs
-            ├── atmospheric.rs            (new — Lamb wave)
-            ├── shallow_water.rs
-            └── solver/                   (new)
-                ├── mod.rs
-                ├── grid.rs
-                ├── time_step.rs
-                ├── wetdry.rs
-                └── kernels.wgsl
-```
+*End of research and feature plan v0.4.0+. Generated 2026-05-25 against commit `28d9242`. Companions:*
+- *[`docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md) — v0.0.1 competitive landscape (archived)*
+- *[`docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md) — v0.3.0 forward plan, 15 of 23 items shipped (archived)*
+- *[`ROADMAP.md`](./ROADMAP.md) — canonical phased plan (source of truth)*
+- *[`CHANGELOG.md`](./CHANGELOG.md) — shipped + unreleased state*
+- *[`docs/science/VALIDATION.md`](./docs/science/VALIDATION.md) — quantitative validation harness*
