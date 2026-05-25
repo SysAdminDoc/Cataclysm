@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report (private)
+    url: https://github.com/SysAdminDoc/TsunamiSimulator/security/advisories/new
+    about: Use GitHub's private security advisory channel. Do NOT open a public issue for security findings — see SECURITY.md.
+  - name: Discussions / general questions
+    url: https://github.com/SysAdminDoc/TsunamiSimulator/discussions
+    about: For "how does X work" or "should we add Y" conversations.

@@ -1,0 +1,45 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
+      cesium:
+        patterns:
+          - "cesium"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+    labels:
+      - dependencies
+      - npm
+
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns:
+          - "tauri*"
+    labels:
+      - dependencies
+      - rust
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - ci

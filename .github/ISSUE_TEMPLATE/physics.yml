@@ -1,0 +1,59 @@
+name: Physics correctness / improvement
+description: Report a formula error, suggest a better model, or propose a new physics module
+labels: ["physics"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Physics changes must be backed by peer-reviewed sources. State your reference up front.
+
+  - type: input
+    id: module
+    attributes:
+      label: Module / file
+      description: e.g. `src-tauri/src/physics/asteroid.rs::transient_cavity_diameter_m`
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behaviour / formula
+      description: Quote the current code or describe what the model does today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Peer-reviewed reference(s)
+      description: Author year, journal, page, DOI.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation target
+      description: |
+        How would we know the change is correct? e.g. "Should match Range et al. 2022 fig. 4 at the 220-km gauge to ±25%".
+
+  - type: dropdown
+    id: regime
+    attributes:
+      label: Physics regime
+      options:
+        - Linear long-wave / shallow water
+        - Boussinesq / dispersive
+        - Non-hydrostatic
+        - Source generation (Okada, Schmidt-Holsapple, etc.)
+        - Coastal runup (Synolakis, wet/dry)
+        - Atmospheric coupling
+        - Other

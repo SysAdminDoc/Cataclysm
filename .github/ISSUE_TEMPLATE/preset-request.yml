@@ -1,0 +1,78 @@
+name: Preset request
+description: Suggest a historical or hypothetical tsunami scenario to add as a preset
+labels: ["preset", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Presets must cite a peer-reviewed paper or authoritative dataset. Please include the source.
+
+  - type: input
+    id: name
+    attributes:
+      label: Event name
+      placeholder: "1755 Lisbon Earthquake"
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Date (or geologic age)
+      placeholder: "1755-11-01"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source_type
+    attributes:
+      label: Source mechanism
+      options:
+        - Earthquake (fault rupture)
+        - Asteroid / comet impact
+        - Nuclear detonation
+        - Subaerial landslide
+        - Submarine landslide
+        - Volcanic (caldera collapse / pyroclastic flow)
+        - Atmospheric coupling (Lamb wave)
+    validations:
+      required: true
+
+  - type: textarea
+    id: parameters
+    attributes:
+      label: Source parameters
+      description: |
+        For an earthquake, what's the Mw, fault length/width, dip, slip? For an asteroid, what's the diameter / velocity / angle? Give specific numbers from your cited source.
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location (lat, lon)
+      placeholder: "36.0, -10.5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Peer-reviewed citation
+      description: |
+        Author year, journal, title, DOI/URL. Examples: "Baptista et al. 2003, PEPI 137:147"; "Range et al. 2022, AGU Advances, doi:10.1029/2021AV000627".
+    validations:
+      required: true
+
+  - type: input
+    id: peak_runup
+    attributes:
+      label: Reported peak runup or wave height (m)
+      description: For validation purposes.
+
+  - type: checkboxes
+    id: speculative
+    attributes:
+      label: Speculative flag
+      options:
+        - label: This is a hypothetical or contested scenario (will be sorted below historical events and flagged with ⚠)
