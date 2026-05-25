@@ -157,16 +157,20 @@ export function Globe({
       try {
         const imagery = await buildImagery(resolvedStyle);
         if (isStale()) return;
-        // Remove any prior imagery layer we installed + any internal default.
+        // Only remove the previous BASE layer — leave overlay layers
+        // (the SWE snapshot) intact, otherwise a style swap mid-run
+        // wipes the propagating-wave rendering. Cesium's
+        // `baseLayer: false` Viewer option already suppresses the
+        // implicit default base layer, so we don't need a sweep.
         if (imageryLayerRef.current) {
           viewer.imageryLayers.remove(imageryLayerRef.current, true);
           imageryLayerRef.current = null;
         }
-        while (viewer.imageryLayers.length > 0) {
-          viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
-        }
         if (isStale()) return;
-        imageryLayerRef.current = viewer.imageryLayers.addImageryProvider(imagery);
+        const newBase = viewer.imageryLayers.addImageryProvider(imagery);
+        // Keep the base layer at the bottom so overlays (SWE PNG, etc.) sit on top.
+        viewer.imageryLayers.lowerToBottom(newBase);
+        imageryLayerRef.current = newBase;
         const terrain = await buildTerrain(resolvedStyle);
         if (isStale()) return;
         viewer.scene.terrainProvider = terrain ?? new Cesium.EllipsoidTerrainProvider();
@@ -180,7 +184,9 @@ export function Globe({
           if (imageryLayerRef.current) {
             viewer.imageryLayers.remove(imageryLayerRef.current, true);
           }
-          imageryLayerRef.current = viewer.imageryLayers.addImageryProvider(fallback);
+          const fallbackLayer = viewer.imageryLayers.addImageryProvider(fallback);
+          viewer.imageryLayers.lowerToBottom(fallbackLayer);
+          imageryLayerRef.current = fallbackLayer;
           setImageryStatus("ready");
         } catch (innerErr) {
           if (isStale()) return;
@@ -365,23 +371,53 @@ export function Globe({
   }, [initial, wavefront]);
 
   // SWE snapshot → Cesium imagery layer.
+  //
+  // Cesium 1.104+ deprecated the synchronous `new SingleTileImageryProvider(...)`
+  // constructor in favour of an async `fromUrl(...)` factory: with the
+  // synchronous form the provider's `ready` state never flips and Cesium
+  // silently drops the layer, producing the v0.2.0 "blank globe after Run
+  // simulation" bug. We use the async factory and a cancellation guard so
+  // rapid scrubbing doesn't leak half-loaded layers.
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
+
     if (sweLayerRef.current) {
       viewer.imageryLayers.remove(sweLayerRef.current, true);
       sweLayerRef.current = null;
     }
+
     if (!sweSnapshot || !sweSnapshot.eta_png_b64) return;
+
     const [west, south, east, north] = sweSnapshot.bbox;
+    // Cesium.Rectangle requires longitudes in [-180, 180] and lat in [-90, 90].
+    // Clamp defensively so a near-dateline scenario doesn't construct an
+    // invalid rectangle and blank-screen the whole scene.
+    const w = Math.max(-180, Math.min(180, west));
+    const e = Math.max(-180, Math.min(180, east));
+    const s = Math.max(-90, Math.min(90, south));
+    const n = Math.max(-90, Math.min(90, north));
+    if (e <= w || n <= s) return;
+
     const url = `data:image/png;base64,${sweSnapshot.eta_png_b64}`;
-    const provider = new Cesium.SingleTileImageryProvider({
-      url,
-      rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north),
-    });
-    const layer = viewer.imageryLayers.addImageryProvider(provider);
-    layer.alpha = 0.9;
-    sweLayerRef.current = layer;
+    let cancelled = false;
+    Cesium.SingleTileImageryProvider.fromUrl(url, {
+      rectangle: Cesium.Rectangle.fromDegrees(w, s, e, n),
+    })
+      .then((provider) => {
+        if (cancelled || !viewerRef.current) return;
+        const layer = viewer.imageryLayers.addImageryProvider(provider);
+        layer.alpha = 0.9;
+        sweLayerRef.current = layer;
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn("[globe] SWE snapshot failed to load as imagery layer", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [sweSnapshot]);
 
   // Runup bars at named coastal points.
