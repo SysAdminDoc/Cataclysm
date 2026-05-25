@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium, tokenConfigured } from "../lib/cesium";
+import type { RunupAtPointResult } from "../lib/tauri";
 import type { InitialDisplacement, PropagationSnapshot } from "../types/scenario";
 
 type Props = {
   initial: InitialDisplacement | null;
   wavefront: PropagationSnapshot | null;
+  /** Coastal runup samples to render as 3D bars at coastline points. */
+  runupResults?: RunupAtPointResult[];
   /**
    * When set, the globe is in "pick" mode: the next click is consumed,
    * cartographic coords are reported, and the mode toggles off automatically.
@@ -29,11 +32,12 @@ const PICK_CURSOR_STYLE = "crosshair";
  *
  * All physics state comes from props. The Viewer is created once and reused.
  */
-export function Globe({ initial, wavefront, pickMode, onPick, onPickCancel }: Props) {
+export function Globe({ initial, wavefront, runupResults, pickMode, onPick, onPickCancel }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const sourceEntityRef = useRef<Cesium.Entity | null>(null);
   const wavefrontEntitiesRef = useRef<Cesium.Entity[]>([]);
+  const runupEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const [bathymetryStatus, setBathymetryStatus] = useState<"idle" | "loading" | "ready" | "error">(
     () => (tokenConfigured() ? "loading" : "idle"),
@@ -85,6 +89,7 @@ export function Globe({ initial, wavefront, pickMode, onPick, onPickCancel }: Pr
       viewerRef.current = null;
       sourceEntityRef.current = null;
       wavefrontEntitiesRef.current = [];
+      runupEntitiesRef.current = new Map();
     };
   }, []);
 
@@ -240,6 +245,69 @@ export function Globe({ initial, wavefront, pickMode, onPick, onPickCancel }: Pr
       );
     }
   }, [initial, wavefront]);
+
+  // Runup bars at named coastal points.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    const map = runupEntitiesRef.current;
+    const seen = new Set<string>();
+
+    for (const r of runupResults ?? []) {
+      seen.add(r.id);
+      if (!r.has_arrived || !Number.isFinite(r.runup_m) || r.runup_m < 0.1) {
+        // Remove or hide the entity until the wave arrives.
+        const existing = map.get(r.id);
+        if (existing) {
+          viewer.entities.remove(existing);
+          map.delete(r.id);
+        }
+        continue;
+      }
+
+      // Bar height in metres, clamped for visibility.
+      const heightM = Math.min(Math.max(r.runup_m * 500, 5000), 8e5);
+      // Colour ramp: green (< 2 m) → yellow (2–10 m) → red (> 10 m).
+      const color =
+        r.runup_m < 2
+          ? Cesium.Color.fromCssColorString("#a6e3a1")
+          : r.runup_m < 10
+            ? Cesium.Color.fromCssColorString("#f9e2af")
+            : Cesium.Color.fromCssColorString("#f38ba8");
+
+      let entity = map.get(r.id);
+      if (!entity) {
+        entity = viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM / 2),
+          cylinder: {
+            length: heightM,
+            topRadius: 6000,
+            bottomRadius: 9000,
+            material: color.withAlpha(0.85),
+            outline: false,
+          },
+        });
+        map.set(r.id, entity);
+      } else {
+        entity.position = new Cesium.ConstantPositionProperty(
+          Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM / 2),
+        );
+        if (entity.cylinder) {
+          entity.cylinder.length = new Cesium.ConstantProperty(heightM);
+          entity.cylinder.material = new Cesium.ColorMaterialProperty(color.withAlpha(0.85));
+        }
+      }
+    }
+
+    // Remove entities for points that are no longer in the result set.
+    for (const [id, entity] of map) {
+      if (!seen.has(id)) {
+        viewer.entities.remove(entity);
+        map.delete(id);
+      }
+    }
+  }, [runupResults]);
 
   // No token configured → friendly setup empty-state.
   if (!tokenConfigured()) {

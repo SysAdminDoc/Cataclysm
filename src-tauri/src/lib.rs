@@ -21,6 +21,7 @@ pub fn run() {
             earthquake_initial_conditions,
             far_field_amplitude,
             coastal_runup,
+            runup_at_points,
             list_presets,
             run_preset,
         ])

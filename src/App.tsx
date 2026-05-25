@@ -5,7 +5,8 @@ import { ResultsPanel } from "./components/ResultsPanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
-import { api, isTauri } from "./lib/tauri";
+import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
+import { api, isTauri, type RunupAtPointResult } from "./lib/tauri";
 import { applyTheme, loadTheme } from "./lib/theme";
 import type {
   AsteroidImpactInput,
@@ -30,6 +31,7 @@ export default function App() {
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [initial, setInitial] = useState<InitialDisplacement | null>(null);
   const [wavefront, setWavefront] = useState<PropagationSnapshot | null>(null);
+  const [runupResults, setRunupResults] = useState<RunupAtPointResult[]>([]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
   const [showCitations, setShowCitations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -37,6 +39,11 @@ export default function App() {
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [busyPresetId, setBusyPresetId] = useState<string | null>(null);
   const inTauri = useMemo(isTauri, []);
+
+  const activePreset = useMemo(
+    () => presets.find((p) => p.id === activePresetId) ?? null,
+    [presets, activePresetId],
+  );
 
   // Apply persisted theme once at startup.
   useEffect(() => {
@@ -132,6 +139,7 @@ export default function App() {
           <Globe
             initial={initial}
             wavefront={wavefront}
+            runupResults={runupResults}
             pickMode={pickMode}
             onPick={handlePickGlobe}
             onPickCancel={() => setPickMode(false)}
@@ -149,6 +157,12 @@ export default function App() {
         />
       </aside>
 
+      <CoastalRunupOverlay
+        initial={initial}
+        activePreset={activePreset}
+        timeS={timeS}
+        onResults={setRunupResults}
+      />
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <FirstRunDisclaimer />

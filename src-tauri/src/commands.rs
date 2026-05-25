@@ -5,13 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::physics::{
     asteroid::{far_field_amplitude_m as impact_far_field, AsteroidImpact},
+    constants::{G_EARTH, R_EARTH_M},
     earthquake::EarthquakeSource,
     landslide::LandslideSource,
     nuclear::{far_field_amplitude_m as nuclear_far_field, NuclearBurst},
     shallow_water::{
         long_wave_travel_time_s, sample_wavefront, synolakis_runup_m, PropagationSnapshot,
     },
-    InitialDisplacement,
+    GeoPoint, InitialDisplacement,
 };
 use crate::presets::{all_presets, find_preset, Preset};
 
@@ -98,6 +99,88 @@ pub struct RunPresetResponse {
     pub preset: Preset,
     pub initial: InitialDisplacement,
     pub wavefront: PropagationSnapshot,
+}
+
+/// Great-circle distance, meters, between two WGS84 points (Haversine).
+fn haversine_m(a_lat: f64, a_lon: f64, b_lat: f64, b_lon: f64) -> f64 {
+    let phi1 = a_lat.to_radians();
+    let phi2 = b_lat.to_radians();
+    let dphi = (b_lat - a_lat).to_radians();
+    let dlmb = (b_lon - a_lon).to_radians();
+    let s = (dphi * 0.5).sin().powi(2) + phi1.cos() * phi2.cos() * (dlmb * 0.5).sin().powi(2);
+    2.0 * R_EARTH_M * s.sqrt().atan2((1.0 - s).sqrt())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CoastalPoint {
+    pub id: String,
+    pub name: String,
+    pub lat: f64,
+    pub lon: f64,
+    pub beach_slope_deg: f64,
+    pub offshore_depth_m: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RunupAtPointsRequest {
+    /// Source center (typically the preset's initial displacement center).
+    pub source: GeoPoint,
+    /// Peak amplitude at the source, meters.
+    pub initial_amplitude_m: f64,
+    /// Cavity radius at the source, meters (used by both impact + nuclear decay laws).
+    pub cavity_radius_m: f64,
+    /// True for asteroid impacts (Ward-Asphaug `r^(-5/6)` decay), false for other sources (`r^(-1)`).
+    pub is_impact: bool,
+    /// Mean ocean depth assumed for travel-time, meters. Pass 4000 for transoceanic.
+    pub mean_depth_m: f64,
+    /// Time, seconds, at which to sample (only points whose wave has arrived are returned).
+    pub time_s: f64,
+    pub points: Vec<CoastalPoint>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RunupAtPoint {
+    pub id: String,
+    pub name: String,
+    pub lat: f64,
+    pub lon: f64,
+    pub range_m: f64,
+    pub offshore_amplitude_m: f64,
+    pub runup_m: f64,
+    pub arrival_time_s: f64,
+    pub has_arrived: bool,
+}
+
+/// For each coastal point, compute the offshore amplitude (far-field decay
+/// from the source) and the Synolakis runup at the local beach. Used by the
+/// `CoastalRunupOverlay` Cesium component.
+#[tauri::command]
+pub fn runup_at_points(req: RunupAtPointsRequest) -> Vec<RunupAtPoint> {
+    req.points
+        .into_iter()
+        .map(|p| {
+            let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, p.lat, p.lon);
+            let amp = if req.is_impact {
+                impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
+            } else {
+                nuclear_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
+            };
+            let runup_m = synolakis_runup_m(amp, p.offshore_depth_m, p.beach_slope_deg);
+            let c = (G_EARTH * req.mean_depth_m.max(1.0)).sqrt();
+            let arrival_time_s = range_m / c;
+            RunupAtPoint {
+                id: p.id,
+                name: p.name,
+                lat: p.lat,
+                lon: p.lon,
+                range_m,
+                offshore_amplitude_m: amp,
+                runup_m,
+                arrival_time_s,
+                has_arrived: req.time_s >= arrival_time_s,
+            }
+        })
+        .collect()
 }
 
 #[tauri::command]

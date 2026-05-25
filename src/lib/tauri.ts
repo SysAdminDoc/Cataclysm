@@ -3,13 +3,27 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AsteroidImpactInput,
+  CoastalPoint,
   EarthquakeInput,
+  GeoPoint,
   InitialDisplacement,
   LandslideInput,
   NuclearBurstInput,
   Preset,
   RunPresetResponse,
 } from "../types/scenario";
+
+export type RunupAtPointResult = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  range_m: number;
+  offshore_amplitude_m: number;
+  runup_m: number;
+  arrival_time_s: number;
+  has_arrived: boolean;
+};
 
 export const api = {
   asteroidInitialConditions(input: AsteroidImpactInput) {
@@ -40,6 +54,17 @@ export const api = {
     beach_slope_deg: number;
   }) {
     return invoke<number>("coastal_runup", { req });
+  },
+  runupAtPoints(req: {
+    source: GeoPoint;
+    initial_amplitude_m: number;
+    cavity_radius_m: number;
+    is_impact: boolean;
+    mean_depth_m: number;
+    time_s: number;
+    points: CoastalPoint[];
+  }) {
+    return invoke<RunupAtPointResult[]>("runup_at_points", { req });
   },
   listPresets() {
     return invoke<Preset[]>("list_presets");
