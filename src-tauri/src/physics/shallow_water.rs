@@ -84,8 +84,12 @@ pub struct PropagationSnapshot {
 /// supplied time, assuming linear long-wave decay `A(r) ∝ (R_c / r)^α` with
 /// the alpha chosen by source type (0.5 for nuclear / 5/6 for impact).
 ///
-/// This is sufficient for v0.0.1 — the v0.2.0 solver will replace this with a
-/// real grid-based integration.
+/// Samples cluster near the *leading edge* (the visible wavefront), not the
+/// source — the front is what users care about. We linearly sample the last
+/// 25% of the radial range from `front - 0.25·front` to `front`, plus a small
+/// tail of decay samples behind that for context.
+///
+/// This is sufficient for v0.0.x — the v0.2.0 grid solver will replace it.
 pub fn sample_wavefront(
     initial_amplitude_m: f64,
     cavity_radius_m: f64,
@@ -96,14 +100,30 @@ pub fn sample_wavefront(
 ) -> PropagationSnapshot {
     let c = long_wave_speed_m_s(mean_depth_m);
     let wavefront_r = c * time_s;
-    let r_min = cavity_radius_m.max(1.0);
-    let r_max = wavefront_r.max(r_min * 1.1);
+    let r_cavity = cavity_radius_m.max(1.0);
+    let r_front = wavefront_r.max(r_cavity * 1.1);
+    let r_band_start = (r_front * 0.75).max(r_cavity);
 
-    let mut ranges_m = Vec::with_capacity(n_samples);
-    let mut amplitudes_m = Vec::with_capacity(n_samples);
-    for i in 0..n_samples {
-        let frac = i as f64 / (n_samples - 1).max(1) as f64;
-        let r = r_min * (r_max / r_min).powf(frac); // log spacing
+    let n = n_samples.max(2);
+    // Reserve 80% of samples for the front band, 20% for the tail toward source.
+    let n_front = ((n as f64) * 0.8).round() as usize;
+    let n_tail = n.saturating_sub(n_front).max(2);
+
+    let mut ranges_m = Vec::with_capacity(n);
+    let mut amplitudes_m = Vec::with_capacity(n);
+
+    // Tail samples: log-spaced from cavity to band-start.
+    for i in 0..n_tail {
+        let frac = i as f64 / (n_tail - 1).max(1) as f64;
+        let r = r_cavity * (r_band_start / r_cavity).powf(frac);
+        let a = initial_amplitude_m * (cavity_radius_m / r).powf(decay_alpha);
+        ranges_m.push(r);
+        amplitudes_m.push(a);
+    }
+    // Front band samples: linearly spaced (band-start, front].
+    for i in 1..=n_front {
+        let frac = i as f64 / n_front as f64;
+        let r = r_band_start + (r_front - r_band_start) * frac;
         let a = initial_amplitude_m * (cavity_radius_m / r).powf(decay_alpha);
         ranges_m.push(r);
         amplitudes_m.push(a);

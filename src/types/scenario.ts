@@ -53,6 +53,10 @@ export type EarthquakeInput = {
   dip_deg: number;
   rake_deg: number;
   slip_m: number;
+  /** Pass 0 to derive from Wells–Coppersmith 1994 scaling. */
+  fault_length_m?: number;
+  /** Pass 0 to derive from Wells–Coppersmith 1994 scaling. */
+  fault_width_m?: number;
   water_depth_m: number;
   location: GeoPoint;
 };
@@ -69,6 +73,9 @@ export type Preset = {
   date: string;
   blurb: string;
   reference: string;
+  reference_url?: string | null;
+  is_speculative?: boolean;
+  controversy_note?: string | null;
   source: PresetSource;
 };
 

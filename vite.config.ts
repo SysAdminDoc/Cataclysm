@@ -48,5 +48,16 @@ export default defineConfig(async () => ({
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
     chunkSizeWarningLimit: 4000, // Cesium ships a big bundle
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes("node_modules/cesium")) return "cesium";
+          if (id.includes("node_modules/react") || id.includes("node_modules/scheduler")) {
+            return "react-vendor";
+          }
+          return undefined;
+        },
+      },
+    },
   },
 }));

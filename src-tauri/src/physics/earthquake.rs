@@ -38,6 +38,14 @@ pub struct EarthquakeSource {
     pub rake_deg: f64,
     /// Average slip on the fault, meters. For Okada (planned).
     pub slip_m: f64,
+    /// Fault length along strike, meters. Pass 0 to derive from Wells &
+    /// Coppersmith 1994 scaling: `log L = 0.5·M_w − 1.85`.
+    #[serde(default)]
+    pub fault_length_m: f64,
+    /// Fault width down dip, meters. Pass 0 to derive from Wells & Coppersmith
+    /// 1994 scaling: `log W = 0.32·M_w − 1.01`.
+    #[serde(default)]
+    pub fault_width_m: f64,
     /// Water depth at the epicenter, meters.
     pub water_depth_m: f64,
     pub location: GeoPoint,
@@ -66,13 +74,31 @@ impl EarthquakeSource {
         10f64.powf(0.5 * self.mw - 3.3)
     }
 
-    /// Equivalent cavity radius for downstream propagation. For megathrust
-    /// events the fault length scales with magnitude: `log L ≈ 0.5 M_w − 1.85`
-    /// (Wells & Coppersmith 1994). We use half the fault length as a proxy
-    /// for the dominant feature size of the tsunami source.
+    /// Fault length in meters, using the stored value if positive, otherwise
+    /// Wells & Coppersmith 1994 scaling `log L = 0.5·M_w − 1.85` (L in km).
+    pub fn effective_fault_length_m(&self) -> f64 {
+        if self.fault_length_m > 0.0 {
+            self.fault_length_m
+        } else {
+            10f64.powf(0.5 * self.mw - 1.85) * 1000.0
+        }
+    }
+
+    /// Fault width in meters, using the stored value if positive, otherwise
+    /// Wells & Coppersmith 1994 scaling `log W = 0.32·M_w − 1.01` (W in km).
+    pub fn effective_fault_width_m(&self) -> f64 {
+        if self.fault_width_m > 0.0 {
+            self.fault_width_m
+        } else {
+            10f64.powf(0.32 * self.mw - 1.01) * 1000.0
+        }
+    }
+
+    /// Equivalent cavity radius for downstream propagation. Uses half the
+    /// stored or derived fault length as a proxy for the dominant feature
+    /// size of the tsunami source.
     pub fn effective_cavity_radius_m(&self) -> f64 {
-        let length_km = 10f64.powf(0.5 * self.mw - 1.85);
-        0.5 * length_km * 1000.0
+        0.5 * self.effective_fault_length_m()
     }
 
     pub fn initial_displacement(&self) -> InitialDisplacement {
@@ -92,7 +118,9 @@ impl EarthquakeSource {
     }
 }
 
-/// 2011 Tōhoku M_w 9.1 megathrust off the Sanriku coast (Mori et al. 2011).
+/// 2011 Tōhoku M_w 9.1 megathrust off the Sanriku coast (Mori et al. 2011;
+/// fault dimensions from Fujii & Satake 2013 finite-fault inversion: ~500 km
+/// long along strike, ~200 km wide down dip).
 pub fn tohoku_2011() -> EarthquakeSource {
     EarthquakeSource {
         mw: 9.1,
@@ -101,6 +129,8 @@ pub fn tohoku_2011() -> EarthquakeSource {
         dip_deg: 12.0,
         rake_deg: 85.0,
         slip_m: 30.0,
+        fault_length_m: 500_000.0,
+        fault_width_m: 200_000.0,
         water_depth_m: 1_500.0,
         location: GeoPoint {
             lat_deg: 38.297,
@@ -110,7 +140,9 @@ pub fn tohoku_2011() -> EarthquakeSource {
     }
 }
 
-/// 2004 Sumatra-Andaman M_w 9.2 megathrust (Synolakis et al. 2005; Lay et al. 2005).
+/// 2004 Sumatra-Andaman M_w 9.2 megathrust (Synolakis et al. 2005; Lay et al.
+/// 2005; fault dimensions from Lay 2005 + Stein & Okal 2005: ~1300 km long,
+/// ~200 km wide).
 pub fn indian_ocean_2004() -> EarthquakeSource {
     EarthquakeSource {
         mw: 9.2,
@@ -119,6 +151,8 @@ pub fn indian_ocean_2004() -> EarthquakeSource {
         dip_deg: 8.0,
         rake_deg: 110.0,
         slip_m: 20.0,
+        fault_length_m: 1_300_000.0,
+        fault_width_m: 200_000.0,
         water_depth_m: 3_500.0,
         location: GeoPoint {
             lat_deg: 3.316,

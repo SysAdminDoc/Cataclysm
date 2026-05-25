@@ -20,9 +20,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::constants::{
-    G_EARTH, J_PER_KT_TNT, J_PER_MT_TNT, NUCLEAR_WAVE_EFFICIENCY, RHO_SEAWATER,
-};
+use super::constants::{G_EARTH, J_PER_KT_TNT, NUCLEAR_WAVE_EFFICIENCY, RHO_SEAWATER};
 use super::{GeoPoint, InitialDisplacement};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -182,11 +180,6 @@ pub fn poseidon_realistic(location: GeoPoint, water_depth_m: f64) -> NuclearBurs
         water_depth_m,
         location,
     }
-}
-
-#[allow(dead_code)]
-fn _suppress_unused_mt_constant() -> f64 {
-    J_PER_MT_TNT
 }
 
 #[cfg(test)]

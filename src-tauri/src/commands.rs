@@ -13,7 +13,7 @@ use crate::physics::{
     },
     InitialDisplacement,
 };
-use crate::presets::{all_presets, find_preset, Preset, PresetSource};
+use crate::presets::{all_presets, find_preset, Preset};
 
 #[tauri::command]
 pub fn asteroid_initial_conditions(input: AsteroidImpact) -> InitialDisplacement {
@@ -106,16 +106,21 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
         .ok_or_else(|| format!("unknown preset id: {}", req.preset_id))?;
     let initial = preset.source.initial_displacement();
     let alpha = preset.source.far_field_decay_alpha();
+    // Use the source's own water depth as the propagation depth unless the
+    // caller passed an explicit override > 0 (e.g. for transoceanic averaging).
+    let mean_depth_m = if req.mean_depth_m > 0.0 {
+        req.mean_depth_m
+    } else {
+        initial.center.depth_m.max(50.0)
+    };
     let wavefront = sample_wavefront(
         initial.peak_amplitude_m,
         initial.cavity_radius_m,
         alpha,
-        req.mean_depth_m,
+        mean_depth_m,
         req.time_s,
         req.n_samples.max(2),
     );
-    // Suppress dead-code on PresetSource variants reaching here.
-    let _ = matches!(preset.source, PresetSource::Asteroid(_));
     Ok(RunPresetResponse {
         preset,
         initial,

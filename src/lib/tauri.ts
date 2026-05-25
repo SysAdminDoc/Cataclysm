@@ -47,6 +47,7 @@ export const api = {
   runPreset(req: {
     preset_id: string;
     time_s: number;
+    /** Pass 0 to let the backend pick from the preset's source water depth. */
     mean_depth_m: number;
     n_samples: number;
   }) {
@@ -56,7 +57,7 @@ export const api = {
 
 /**
  * Detect whether we are running inside Tauri (vs vite-only browser preview).
- * Used to fall back to mock data on `npm run dev` without `tauri dev`.
+ * Used to short-circuit IPC calls in the browser preview.
  */
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
