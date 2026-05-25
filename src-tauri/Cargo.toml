@@ -22,8 +22,9 @@ tauri-plugin-store = "2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Physics deps
-ndarray = { version = "0.16", features = ["rayon"] }
+# Physics deps. The CPU SWE solver uses raw Vec<f64> + rayon par_chunks_mut;
+# we'll add ndarray back when we need named axes / broadcasting (planned for
+# the v0.3.0 wgpu work where the kernel binding layout maps cleanly to it).
 rayon = "1.10"
 base64 = "0.22"
 png = "0.17"
