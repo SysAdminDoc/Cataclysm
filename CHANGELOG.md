@@ -4,11 +4,18 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added since v0.1.0 (Phase 0.2 prep — will ship as v0.2.0-alpha or rolled into v0.2.0)
+- **F6**: Synolakis runup overlay — `runup_at_points` Tauri batch command; 60-point coastal database in `src/data/coastal_points.json` covering all 11 presets' affected regions; CoastalRunupOverlay component renders 3D bars colour-ramped by runup magnitude (green <2m / yellow 2-10m / red >10m).
+- **F5 scaffold**: `physics::okada` module with OkadaFault + OkadaDisplacementField types; Gaussian-bump placeholder until full elliptic-integral form lands.
+- **F2 scaffold**: `physics::solver` module with SwGrid + TimeStepper + GridSnapshot types + WGSL leapfrog kernel embedded as a string constant. `wgpu` integration deferred.
+- **F10 partial**: PNG export of globe view via canvas.toDataURL + `<a download>`. Cesium viewer now enables `preserveDrawingBuffer` for capture.
+
 ### Planned for v0.2.0
-- `wgpu` compute SWE solver on regular lat-lon grid (replaces analytical wavefront sampler)
-- Synolakis runup overlay + coastal-point database + Tauri batch command
-- Implement Okada 1985 dislocation (replaces Geist–Dmowska M_w empirical)
+- Wire the `wgpu` compute pipeline + ping-pong buffers (build on the F2 scaffold)
+- Implement full Okada 1985 elliptic integrals (build on the F5 scaffold)
 - Bundle offline bathymetry (SRTM15+ or GEBCO 2024 + Natural Earth coastlines)
+- Tanioka–Satake 1996 horizontal-bathymetry-coupling correction for the Okada source
+- Validate against Stoker dam-break analytical case + Range 2022 Chicxulub far-field
 
 ### Planned for v0.3.0
 - Side-by-side comparison mode (synchronized timelines)

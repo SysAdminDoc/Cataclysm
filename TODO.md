@@ -48,31 +48,38 @@ Single source of truth for what's left to do, consolidated from `ROADMAP.md` + `
 
 ## Phase 0.2 — Real propagation (target v0.2.0)
 
-The Phase 0.2 work that requires sustained focus and a working `cargo` build. Pick up here in the next session.
+Public surface landed in v0.1.0 release scope; bodies + validation deferred to v0.2.0.
 
-- [ ] **(P0, L)** F2: `wgpu` compute SWE solver on regular lat-lon grid
-  - Replace `physics::shallow_water::sample_wavefront` analytical sampler with a real PDE solver
-  - WGSL compute kernel (leapfrog or Lax–Friedrichs) on a regular lat-lon grid with `1/cos φ` spherical metric
-  - Validate against the Stoker dam-break analytical solution (±5%)
-  - Validate against Range et al. 2022 Chicxulub far-field amplitude at 220 km (±OOM acceptable for v0.2.0)
-  - New `simulate_grid(scenario, t_end, dt, n_snapshots)` Tauri command streaming `GridSnapshot { time_s, nx, ny, bbox, eta_png_b64 }`
-  - Frontend renders snapshots as Cesium `SingleTileImageryProvider` layer
-- [ ] **(P0, M)** F6: Synolakis runup overlay + coastal-point database + Tauri batch command
-  - Curate `src/data/coastal_points.json` (~100 named points: Banda Aceh, Lhoknga, Miyako, Otsuchi, Hilo, Crescent City, Anchorage, Lisbon, Cádiz, Ponta Delgada, Pearl Harbor, etc.)
-  - Each point: `{name, lat, lon, beach_slope_deg, offshore_depth_m_at_50m_contour}`
-  - New `runup_at_points(scenario_id, time_s) → Vec<{name, runup_m}>` Tauri command (batches `coastal_runup`)
-  - New `src/components/CoastalRunupOverlay.tsx` rendering 3D extruded polygons at coastline
-  - Validate: Tōhoku Miyako point runup ∈ [20, 80] m
-- [ ] **(P1, M)** F5: Implement full Okada 1985 dislocation
-  - New `physics::earthquake::okada::vertical_displacement(...)` returning a 2-D field on a user-grid
-  - Validate against [USGS okada_wrapper Python](https://github.com/tbenthompson/okada_wrapper) point-by-point on Tōhoku test case (~7 m peak uplift)
-  - Replace Geist–Dmowska M_w empirical with the new field-based path
+- [~] **(P0, L)** F2: `wgpu` compute SWE solver on regular lat-lon grid
+  - [x] `physics::solver::SwGrid` + `TimeStepper` + `GridSnapshot` types
+  - [x] `SWE_LEAPFROG_WGSL` kernel source — staggered C-grid leapfrog, Manning friction, zero-flux boundaries
+  - [x] `inject_gaussian` IC helper
+  - [ ] Add `wgpu = "23"` + `bytemuck` to Cargo.toml
+  - [ ] Compile WGSL into ShaderModule, wire ping-pong buffer pair
+  - [ ] `simulate_grid(scenario, t_end, dt, n_snapshots) → Vec<GridSnapshot>` Tauri command + PNG-base64 amplitude texture serialization
+  - [ ] Validate against Stoker dam-break analytical (±5%)
+  - [ ] Validate against Range et al. 2022 Chicxulub 220 km amplitude (±OOM)
+  - [ ] Frontend renders snapshots as Cesium SingleTileImageryProvider layer
+- [x] **(P0, M)** F6: Synolakis runup overlay — landed in v0.1.0 prep
+  - [x] `src/data/coastal_points.json` — 60 named points covering all 11 presets' regions
+  - [x] `runup_at_points` Tauri command (Haversine + far-field decay + Synolakis runup)
+  - [x] `CoastalRunupOverlay` component + 3D bar rendering in `Globe.tsx`
+  - [ ] Once F2 solver is live, swap the analytical far-field decay for grid sampling
+  - [ ] Validate: Tōhoku Miyako point runup ∈ [20, 80] m
+- [~] **(P1, M)** F5: Okada 1985 dislocation
+  - [x] `physics::okada::OkadaFault` + `OkadaDisplacementField` types
+  - [x] Gaussian-bump placeholder for `vertical_displacement_field`
+  - [ ] Replace placeholder with Okada eqns. (25)-(30) elliptic-integral form
+  - [ ] Tanioka–Satake 1996 horizontal-bathymetry-coupling correction
+  - [ ] Validate against USGS okada_wrapper Python for Tōhoku central subfault (~7 m peak)
+  - [ ] Replace Geist–Dmowska M_w empirical in `earthquake::peak_seafloor_uplift_m`
 - [ ] **(P1, L)** F4: Bundle offline bathymetry (SRTM15+ V2.6 or GEBCO 2024 + Natural Earth coastlines)
   - First-run wizard: "Download offline bathymetry (190 MB)? Yes / Skip / Only when needed"
   - Store in `app_data_dir/data/` (gitignored, downloaded on demand)
   - New `physics::data::bathymetry::sample(lat, lon) → f64` reading memory-mapped NetCDF
   - Settings: "Bathymetry source" toggle (Cesium ion / Local GEBCO)
   - Verify: airplane mode → click Chicxulub → globe + wave still works
+  - Wire bathymetry into `SwGrid::new()` so the solver sees real depths
 
 ## Phase 0.3+ items — see RESEARCH_FEATURE_PLAN.md
 
@@ -80,7 +87,11 @@ The Phase 0.2 work that requires sustained focus and a working `cargo` build. Pi
 - [ ] **(P2, L)** F9: Hunga Tonga atmospheric Lamb-wave source (depends on F2 solver)
 - [ ] **(P2, M)** F8: DART buoy historical overlay for 4 modern presets
 - [ ] **(P2, L)** F13: Inundation polygons (depends on F2 + F4)
-- [ ] **(P2, M-L)** F10: Scenario export (PNG/MP4/CZML deep-link)
+- [~] **(P2, M-L)** F10: Scenario export
+  - [x] PNG screenshot of globe view (canvas.toDataURL + download)
+  - [ ] Side-panel composite (html2canvas merge with globe via OffscreenCanvas)
+  - [ ] MP4 timeline recording (mp4-muxer + canvas frame capture loop)
+  - [ ] CZML deep-link import — `tsunamisimulator://load?...` protocol handler
 - [ ] **(P1, M)** Code signing (macOS Gatekeeper, Windows Authenticode)
 - [ ] **(P1, M)** `tauri-plugin-updater` (Ed25519-signed manifest)
 - [ ] **(P3, L)** F14: Population casualty overlay (opt-in, heavy disclaimer)
