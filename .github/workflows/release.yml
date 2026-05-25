@@ -76,7 +76,70 @@ jobs:
           # maintainer token would violate Cesium ion T&Cs and exhaust the
           # free-tier quota.
           VITE_CESIUM_TOKEN: ""
+          # F-V07 — Tauri auto-updater signing. When TAURI_SIGNING_PRIVATE_KEY +
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD are present, `tauri build`
+          # generates the signed update manifest alongside the installer
+          # so v0.4.0+ users get an in-app update toast for v0.5.0+ tags.
+          # When secrets are absent, the build still succeeds — Tauri
+          # logs a 'no signer configured' warning and skips manifest
+          # generation. Generate with `npx tauri signer generate`.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- ${{ matrix.platform.os == 'macos-latest' && '--target universal-apple-darwin' || '' }}
+
+      # F-V04 — Windows Authenticode signing. Conditional on a base64-
+      # encoded PFX + cert password being available as GH secrets. When
+      # missing this step is a no-op; the installer still ships unsigned
+      # (SmartScreen warning on first launch). Maintainer step: add an
+      # EV/OV code-signing cert from DigiCert / Sectigo / etc., export
+      # as PFX, base64-encode (`base64 -w0 cert.pfx`), paste into a GH
+      # secret WIN_SIGN_CERT_BASE64 + WIN_SIGN_PASSWORD.
+      - name: Sign Windows artifacts
+        if: matrix.platform.os == 'windows-latest' && env.WIN_SIGN_CERT_BASE64 != ''
+        env:
+          WIN_SIGN_CERT_BASE64: ${{ secrets.WIN_SIGN_CERT_BASE64 }}
+          WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD }}
+        shell: pwsh
+        run: |
+          $cert = "$env:RUNNER_TEMP\codesign.pfx"
+          [System.IO.File]::WriteAllBytes($cert, [System.Convert]::FromBase64String($env:WIN_SIGN_CERT_BASE64))
+          $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Select-Object -Last 1).FullName
+          $bundle = "src-tauri\target\release\bundle"
+          Get-ChildItem -Path $bundle -Include *.exe, *.msi -Recurse | ForEach-Object {
+              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $cert /p $env:WIN_SIGN_PASSWORD $_.FullName
+          }
+          Remove-Item $cert -Force
+
+      # F-V04 — macOS notarisation. Conditional on APPLE_* secrets.
+      # Requires an Apple Developer ID Application cert + an app-specific
+      # password. When secrets are absent, the .dmg ships unsigned
+      # (Gatekeeper "App is damaged" warning on first launch).
+      - name: Sign + notarise macOS artifacts
+        if: matrix.platform.os == 'macos-latest' && env.APPLE_CERTIFICATE_BASE64 != ''
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euxo pipefail
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          KEYCHAIN_PATH="$RUNNER_TEMP/codesign.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/codesign.p12"
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          for dmg in src-tauri/target/release/bundle/dmg/*.dmg; do
+            codesign --force --options runtime --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$dmg"
+            xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            xcrun stapler staple "$dmg"
+          done
+          security delete-keychain "$KEYCHAIN_PATH"
 
       - name: Stage artifacts
         shell: bash
@@ -87,6 +150,7 @@ jobs:
               -name "*.msi" -o -name "*.exe" -o -name "*.dmg" \
               -o -name "*.deb" -o -name "*.AppImage" -o -name "*.rpm" \
               -o -name "*.zip" -o -name "*.tar.gz" \
+              -o -name "*.sig" \
             \) -exec cp {} artifacts/ \;
           ls -la artifacts/ || true
 
@@ -123,3 +187,55 @@ jobs:
           else
             gh release create "$tag" release/* --title "$tag" --generate-notes $flags
           fi
+
+      # F-V07 — Build the Tauri updater `latest.json` manifest. Tauri
+      # build with TAURI_SIGNING_PRIVATE_KEY set emits a `.sig` file
+      # next to each installer; we collect them here and produce a
+      # manifest the in-app updater hits at runtime. Conditional on
+      # the signing secret being present — without it, no `.sig` files
+      # exist, the manifest is skipped, and the in-app updater stays
+      # disabled until the maintainer adds the Ed25519 key.
+      - name: Generate updater manifest
+        if: env.TAURI_SIGNING_PRIVATE_KEY != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tag="${{ needs.prepare.outputs.tag }}"
+          version="${tag#v}"
+          repo="${{ github.repository }}"
+          read_sig() { [ -f "$1" ] && cat "$1" || echo ""; }
+          win_msi=$(ls release/*_x64_en-US.msi 2>/dev/null | head -1 || true)
+          mac_dmg=$(ls release/*_universal.dmg 2>/dev/null | head -1 || true)
+          linux_appimage=$(ls release/*_amd64.AppImage 2>/dev/null | head -1 || true)
+          win_sig=$(read_sig "${win_msi}.sig")
+          mac_sig=$(read_sig "${mac_dmg}.sig")
+          linux_sig=$(read_sig "${linux_appimage}.sig")
+          cat > release/latest.json <<JSON
+          {
+            "version": "${version}",
+            "notes": "See https://github.com/${repo}/releases/tag/${tag}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${win_sig}",
+                "url": "https://github.com/${repo}/releases/download/${tag}/$(basename "$win_msi")"
+              },
+              "darwin-x86_64": {
+                "signature": "${mac_sig}",
+                "url": "https://github.com/${repo}/releases/download/${tag}/$(basename "$mac_dmg")"
+              },
+              "darwin-aarch64": {
+                "signature": "${mac_sig}",
+                "url": "https://github.com/${repo}/releases/download/${tag}/$(basename "$mac_dmg")"
+              },
+              "linux-x86_64": {
+                "signature": "${linux_sig}",
+                "url": "https://github.com/${repo}/releases/download/${tag}/$(basename "$linux_appimage")"
+              }
+            }
+          }
+          JSON
+          gh release upload "$tag" release/latest.json --clobber
