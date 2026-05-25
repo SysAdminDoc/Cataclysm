@@ -219,9 +219,75 @@ label {
   background: var(--crust);
 }
 
+.app__globe-stack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__globe-stack[data-split="true"] .app__globe-pane {
+  flex: 1 1 50%;
+  border-bottom: 1px solid var(--surface0);
+}
+
+.app__globe-stack[data-split="true"] .app__globe-pane:last-child {
+  border-bottom: none;
+}
+
+.app__globe-pane {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.app__globe-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--mantle);
+  border: 1px solid var(--sapphire);
+  color: var(--sapphire);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  pointer-events: none;
+}
+
+.app__globe-tag[data-slot="b"] {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
 .app__globe-mount {
   position: absolute;
   inset: 0;
+}
+
+.app__compare-rail {
+  border-top: 1px dashed var(--surface1);
+  padding-top: 12px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app__compare-rail-label {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--pink);
+  font-weight: 700;
+}
+
+.icon-button[data-active="true"] {
+  background: linear-gradient(135deg, var(--blue), var(--sapphire));
+  color: var(--crust);
+  border-color: transparent;
+  font-weight: 600;
 }
 
 .app__globe-empty {
