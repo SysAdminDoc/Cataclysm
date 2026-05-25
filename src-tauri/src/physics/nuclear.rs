@@ -109,11 +109,21 @@ impl NuclearBurst {
     /// A ≈ sqrt( E_w / (π ρ_w g R_c²) )
     /// ```
     ///
-    /// This is the Le Méhauté & Wang 1996 closed-form for a stationary cavity.
+    /// (Le Méhauté & Wang 1996 closed-form for a stationary cavity.)
+    ///
+    /// The energy-balance form goes unbounded with yield because energy
+    /// scales linearly with W but R_c only as W^(1/3.4). At multi-megaton
+    /// yields the geometric upper bound on amplitude becomes the cavity
+    /// radius itself — physically you can't have a rim wave taller than the
+    /// cavity is deep. We clamp at `0.5 · R_c`, consistent with the Wang
+    /// 1996 empirical upper envelope from Crossroads-Baker-class data.
     pub fn initial_amplitude_m(&self) -> f64 {
         let r_c = self.cavity_radius_m();
         let e_w = self.wave_energy_j();
-        (e_w / (std::f64::consts::PI * RHO_SEAWATER * G_EARTH * r_c.powi(2))).sqrt()
+        let energy_balance =
+            (e_w / (std::f64::consts::PI * RHO_SEAWATER * G_EARTH * r_c.powi(2))).sqrt();
+        let geometric_cap = 0.5 * r_c;
+        energy_balance.min(geometric_cap)
     }
 
     /// Equivalent seismic moment magnitude (very approximate). Nuclear tests

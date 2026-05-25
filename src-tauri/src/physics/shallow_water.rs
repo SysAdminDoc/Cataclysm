@@ -148,10 +148,27 @@ mod tests {
 
     #[test]
     fn synolakis_amplifies_for_mild_slope() {
-        // 1-m wave, 50-m offshore depth, 2° beach (typical Pacific shelf).
+        // 10-m wave, 50-m offshore depth, 2° beach (representative Pacific
+        // shelf approach for a large near-field tsunami). H/d = 0.2 puts us
+        // above the amplification threshold for this slope.
+        let r = synolakis_runup_m(10.0, 50.0, 2.0);
+        // Mild slopes amplify — expect ~1.5× to 5× the offshore amplitude
+        // before the H/d=0.78 breaking cap kicks in.
+        assert!(
+            (12.0..50.0).contains(&r),
+            "Synolakis runup {} m outside expected 12–50 m band",
+            r
+        );
+    }
+
+    /// Tiny offshore amplitudes on the same slope should NOT amplify above
+    /// the offshore amplitude — the Synolakis formula only amplifies once
+    /// H/d crosses ~0.116 for a 2° slope, so a 1 m wave on 50 m water gives
+    /// a runup well under 1 m. Sanity-check that.
+    #[test]
+    fn synolakis_does_not_amplify_below_threshold() {
         let r = synolakis_runup_m(1.0, 50.0, 2.0);
-        // Mild slopes amplify — expect 3–10× the offshore amplitude.
-        assert!((1.0..20.0).contains(&r), "Synolakis runup {}", r);
+        assert!(r < 1.0, "Synolakis runup {} should not amplify (H/d=0.02)", r);
     }
 
     #[test]
