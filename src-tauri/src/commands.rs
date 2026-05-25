@@ -305,6 +305,96 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
 }
 
 #[derive(Debug, Deserialize)]
+pub struct DartRmseRequest {
+    /// Receiver buoy location.
+    pub buoy_lat: f64,
+    pub buoy_lon: f64,
+    /// Observation series (paired `[t_s, eta_m]` from
+    /// `src/data/dart_buoys.json`).
+    pub observations: Vec<(f64, f64)>,
+    /// Snapshot sequence from `simulate_grid` — each entry carries
+    /// its t_s, bbox, and a sparse spatial sample at the buoy (the
+    /// caller is expected to extract that via `Cesium`-side bilinear
+    /// interp; here we accept the time-series directly).
+    pub model_samples: Vec<(f64, f64)>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DartRmseResult {
+    /// Time-series RMSE in meters over the overlapping window.
+    pub rmse_m: f64,
+    /// Number of paired samples used in the RMSE.
+    pub n_samples: usize,
+    /// Observation-series peak amplitude.
+    pub observed_peak_m: f64,
+    /// Model-series peak amplitude.
+    pub model_peak_m: f64,
+}
+
+/// F4-06 — compute RMSE between bundled DART observations and a model
+/// time series for a single buoy. The model samples are expected to
+/// be already-interpolated to the buoy location (the frontend extracts
+/// them from the SWE PNG sequence; this command does the arithmetic).
+#[tauri::command]
+pub fn dart_buoy_rmse(req: DartRmseRequest) -> Result<DartRmseResult, String> {
+    if !req.buoy_lat.is_finite() || req.buoy_lat.abs() > 90.0 {
+        return Err("buoy latitude out of range".into());
+    }
+    if !req.buoy_lon.is_finite() || req.buoy_lon.abs() > 180.0 {
+        return Err("buoy longitude out of range".into());
+    }
+    if req.observations.len() > 10_000 || req.model_samples.len() > 10_000 {
+        return Err("observation / model series exceed 10 000 samples".into());
+    }
+    if req.observations.is_empty() || req.model_samples.is_empty() {
+        return Err("observation and model series must both be non-empty".into());
+    }
+    // Pair model + obs at each obs timestamp via linear interpolation
+    // of the model series. Skip points outside the model time range.
+    let mut model_sorted = req.model_samples.clone();
+    model_sorted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    let t_min = model_sorted.first().map(|s| s.0).unwrap_or(0.0);
+    let t_max = model_sorted.last().map(|s| s.0).unwrap_or(0.0);
+
+    let mut sum_sq = 0.0;
+    let mut n = 0usize;
+    let mut obs_peak = 0.0_f64;
+    let mut mod_peak = 0.0_f64;
+    for &(t, obs_eta) in &req.observations {
+        if !t.is_finite() || !obs_eta.is_finite() {
+            continue;
+        }
+        obs_peak = obs_peak.max(obs_eta.abs());
+        if t < t_min || t > t_max {
+            continue;
+        }
+        // Binary search for the bracketing model samples.
+        let i = model_sorted.partition_point(|s| s.0 <= t);
+        let model_eta = if i == 0 {
+            model_sorted[0].1
+        } else if i >= model_sorted.len() {
+            model_sorted[model_sorted.len() - 1].1
+        } else {
+            let (t0, v0) = model_sorted[i - 1];
+            let (t1, v1) = model_sorted[i];
+            let span = (t1 - t0).max(1e-9);
+            v0 + (v1 - v0) * ((t - t0) / span)
+        };
+        mod_peak = mod_peak.max(model_eta.abs());
+        let d = model_eta - obs_eta;
+        sum_sq += d * d;
+        n += 1;
+    }
+    let rmse_m = if n > 0 { (sum_sq / n as f64).sqrt() } else { f64::NAN };
+    Ok(DartRmseResult {
+        rmse_m,
+        n_samples: n,
+        observed_peak_m: obs_peak,
+        model_peak_m: mod_peak,
+    })
+}
+
+#[derive(Debug, Deserialize)]
 pub struct LambWaveSampleRequest {
     /// Source location of the atmospheric pulse (typically the volcanic
     /// preset's center).
@@ -831,5 +921,47 @@ mod tests {
     fn haversine_handles_nan() {
         // Should not panic; returns 0 as documented.
         assert_eq!(haversine_m(f64::NAN, 0.0, 0.0, 0.0), 0.0);
+    }
+
+    /// F4-06 — DART RMSE math. Identical series → RMSE 0. Constant
+    /// offset of K m → RMSE K. Empty series rejected.
+    #[test]
+    fn dart_buoy_rmse_basic_math() {
+        let obs = vec![(0.0, 0.0), (60.0, 0.5), (120.0, 1.0), (180.0, 0.5)];
+        let model_identical = obs.clone();
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 30.0,
+            buoy_lon: 150.0,
+            observations: obs.clone(),
+            model_samples: model_identical,
+        })
+        .expect("identical series must succeed");
+        assert!(res.rmse_m < 1e-9, "identical series RMSE should be 0, got {}", res.rmse_m);
+        assert_eq!(res.n_samples, 4);
+
+        let model_offset = vec![(0.0, 0.5), (60.0, 1.0), (120.0, 1.5), (180.0, 1.0)];
+        let res2 = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 30.0,
+            buoy_lon: 150.0,
+            observations: obs,
+            model_samples: model_offset,
+        })
+        .expect("offset series must succeed");
+        assert!(
+            (res2.rmse_m - 0.5).abs() < 1e-6,
+            "offset-by-0.5 series RMSE should be 0.5, got {}",
+            res2.rmse_m
+        );
+    }
+
+    #[test]
+    fn dart_buoy_rmse_rejects_empty() {
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations: vec![],
+            model_samples: vec![(0.0, 0.0)],
+        });
+        assert!(res.is_err());
     }
 }

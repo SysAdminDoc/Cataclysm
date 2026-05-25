@@ -51,7 +51,7 @@ function Sparkline({ buoy, timeS }: { buoy: DartBuoy; timeS: number }) {
         <line x1={cursorX} x2={cursorX} y1={0} y2={h} stroke="var(--sapphire)" strokeWidth={1.5} />
       )}
       <text x={4} y={12} fontSize="10" fill="var(--subtext)">
-        peak {peak.toFixed(2)} m · t-cursor {cur.toFixed(2)} m
+        peak {peak.toFixed(2)} m · t-cursor {cur.toFixed(2)} m · {obs.length} samples
       </text>
     </svg>
   );

@@ -23,6 +23,13 @@ export type InspectAtPointResult = {
   inundation_extent_m: number;
 };
 
+export type DartRmseResult = {
+  rmse_m: number;
+  n_samples: number;
+  observed_peak_m: number;
+  model_peak_m: number;
+};
+
 export type LambWaveSampleResult = {
   range_m: number;
   arrival_time_s: number;
@@ -97,6 +104,14 @@ export const api = {
     n_samples: number;
   }) {
     return invoke<RunPresetResponse>("run_preset", { req });
+  },
+  dartBuoyRmse(req: {
+    buoy_lat: number;
+    buoy_lon: number;
+    observations: [number, number][];
+    model_samples: [number, number][];
+  }) {
+    return invoke<DartRmseResult>("dart_buoy_rmse", { req });
   },
   lambWaveSample(req: {
     source: GeoPoint;

@@ -29,6 +29,7 @@
 
 use super::asteroid::{far_field_amplitude_m, AsteroidImpact};
 use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
+use super::landslide::lituya_bay_1958;
 use super::shallow_water::synolakis_runup_m;
 use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
 use super::GeoPoint;
@@ -121,6 +122,34 @@ fn synolakis_matches_carrier_greenspan_envelope() {
             err * 100.0
         );
     }
+}
+
+/// Lituya Bay 1958 — Fritz et al. 2001 measured 524 m runup on the
+/// opposite shore of Gilbert Inlet (the world record). Our
+/// `landslide::initial_amplitude_m` produces the wave at the impact
+/// point, not the runup; the actual amplification comes from the
+/// confined fjord geometry which we don't simulate at the full F-V06
+/// GEBCO resolution yet. The closed-form Synolakis runup at the
+/// observed offshore amplitude + slope should still land in the
+/// right magnitude band.
+///
+/// Reference: Fritz, Hager & Minor 2001, *Sci. Tsunami Hazards* 19:3.
+#[test]
+fn lituya_bay_runup_in_published_band() {
+    let s = lituya_bay_1958();
+    let d = s.initial_displacement();
+    // Synolakis runup at the impact-zone amplitude on the opposing-
+    // shore slope (~30° per Fritz 2001 Fig 3) and 122 m fjord depth.
+    let runup = synolakis_runup_m(d.peak_amplitude_m, 122.0, 30.0);
+    // Published runup is 524 m. Synolakis closed-form on the confined-
+    // fjord geometry should land in OOM. We allow [100, 2000] m as
+    // the band — the v0.4.0 wet/dry solver + curated 100 m bathymetry
+    // raster will tighten this once they land.
+    assert!(
+        (100.0..=2000.0).contains(&runup),
+        "Lituya runup {} m outside published [100, 2000] band",
+        runup
+    );
 }
 
 /// Range et al. 2022 *AGU Advances* `doi:10.1029/2021AV000627` reported
