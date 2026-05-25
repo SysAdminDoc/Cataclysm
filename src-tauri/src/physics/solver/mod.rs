@@ -305,7 +305,8 @@ impl TimeStepper {
     }
 
     /// Single explicit leapfrog step. Continuity update first, then
-    /// momentum. Both updates run as parallel iterators over rows.
+    /// momentum. Rows updated in parallel via rayon — references into the
+    /// existing Vecs are captured by the outer parallel closure.
     pub fn step_one(&self, grid: &mut SwGrid) {
         let nx = grid.nx;
         let ny = grid.ny;
@@ -316,19 +317,22 @@ impl TimeStepper {
         let g = G_EARTH;
         let n2 = self.manning_n * self.manning_n;
 
-        // Snapshot of η before continuity update — momentum needs the OLD η.
+        // Snapshot of state before the step — momentum needs the OLD η + u + v.
         let eta_old = grid.eta_m.clone();
-        let h = &grid.h_m;
         let u_in = grid.u_ms.clone();
         let v_in = grid.v_ms.clone();
+        let h: &Vec<f64> = &grid.h_m;
 
-        // Continuity: ∂η/∂t = -∂(H u)/∂x - ∂(H v)/∂y
-        let eta_new: Vec<f64> = (0..ny)
-            .into_par_iter()
-            .flat_map_iter(|j| {
-                (0..nx).map(move |i| {
+        // Continuity update: rows in parallel.
+        let mut eta_new = vec![0.0f64; nx * ny];
+        eta_new
+            .par_chunks_mut(nx)
+            .enumerate()
+            .for_each(|(j, row)| {
+                for i in 0..nx {
                     if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                        return eta_old[idx(i, j, nx)];
+                        row[i] = eta_old[idx(i, j, nx)];
+                        continue;
                     }
                     let h_e = h[idx(i + 1, j, nx)];
                     let h_w = h[idx(i - 1, j, nx)];
@@ -342,38 +346,42 @@ impl TimeStepper {
                     let u_w = u_in[idx(i - 1, j, nx)];
                     let v_n = v_in[idx(i, j + 1, nx)];
                     let v_s = v_in[idx(i, j - 1, nx)];
-
                     let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
                         / (2.0 * dx);
                     let flux_y = ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s)
                         / (2.0 * dy);
+                    row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
+                }
+            });
 
-                    eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y)
-                })
-            })
-            .collect();
-
-        // Momentum: ∂u/∂t = -g ∂η/∂x - friction, ∂v/∂t = -g ∂η/∂y - friction.
-        let (u_new, v_new): (Vec<f64>, Vec<f64>) = (0..ny)
-            .into_par_iter()
-            .flat_map_iter(|j| {
-                (0..nx).map(move |i| {
+        // Momentum update: rows in parallel.
+        let mut u_new = vec![0.0f64; nx * ny];
+        let mut v_new = vec![0.0f64; nx * ny];
+        let eta_new_ref: &Vec<f64> = &eta_new;
+        u_new
+            .par_chunks_mut(nx)
+            .zip(v_new.par_chunks_mut(nx))
+            .enumerate()
+            .for_each(|(j, (u_row, v_row))| {
+                for i in 0..nx {
                     if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                        return (0.0, 0.0);
+                        u_row[i] = 0.0;
+                        v_row[i] = 0.0;
+                        continue;
                     }
-                    let dnedx = (eta_new[idx(i + 1, j, nx)] - eta_new[idx(i - 1, j, nx)]) / (2.0 * dx);
-                    let dnedy = (eta_new[idx(i, j + 1, nx)] - eta_new[idx(i, j - 1, nx)]) / (2.0 * dy);
-                    let h_total = (h[idx(i, j, nx)] + eta_new[idx(i, j, nx)]).max(0.01);
+                    let dnedx = (eta_new_ref[idx(i + 1, j, nx)] - eta_new_ref[idx(i - 1, j, nx)])
+                        / (2.0 * dx);
+                    let dnedy = (eta_new_ref[idx(i, j + 1, nx)] - eta_new_ref[idx(i, j - 1, nx)])
+                        / (2.0 * dy);
+                    let h_total = (h[idx(i, j, nx)] + eta_new_ref[idx(i, j, nx)]).max(0.01);
                     let u = u_in[idx(i, j, nx)];
                     let v = v_in[idx(i, j, nx)];
                     let speed = (u * u + v * v).sqrt();
                     let fric = g * n2 * speed / h_total.powf(4.0 / 3.0);
-                    let u_next = u - dt * (g * dnedx + fric * u);
-                    let v_next = v - dt * (g * dnedy + fric * v);
-                    (u_next, v_next)
-                })
-            })
-            .unzip();
+                    u_row[i] = u - dt * (g * dnedx + fric * u);
+                    v_row[i] = v - dt * (g * dnedy + fric * v);
+                }
+            });
 
         grid.eta_m = eta_new;
         grid.u_ms = u_new;
