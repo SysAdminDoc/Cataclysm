@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "version": 1,
+    "description": "Coastal points for tsunami runup sampling. Each point has a name, lat/lon (WGS84), beach_slope_deg (slope at the shoreline in degrees), and offshore_depth_m at roughly the 50 m isobath. Used by `coastal_runup` Tauri command per Synolakis 1987 closed form.",
+    "sources": [
+      "Athanasiou 2019 — global coastal slopes dataset (PANGAEA 10.1594/PANGAEA.892993) for beach_slope_deg where available",
+      "GEBCO 2024 — for offshore_depth_m sampling at the 50 m isobath",
+      "Mori et al. 2011 — 2011 Tohoku post-event survey for Pacific runup point selection",
+      "Synolakis et al. 2005 — 2004 Indian Ocean post-event survey for Indian Ocean point selection",
+      "USGS / NOAA NCEI tsunami event database — historical reference"
+    ],
+    "regions": ["Pacific NE", "Pacific NW", "Pacific SW", "Atlantic N", "Atlantic S", "Indian", "Mediterranean", "Caribbean", "Arctic"]
+  },
+  "points": [
+    { "id": "miyako_jp", "name": "Miyako, Japan", "region": "Pacific NW", "lat": 39.641, "lon": 141.965, "beach_slope_deg": 2.1, "offshore_depth_m": 50, "notable": "Tohoku 2011 — 40 m peak runup" },
+    { "id": "otsuchi_jp", "name": "Otsuchi, Japan", "region": "Pacific NW", "lat": 39.36, "lon": 141.91, "beach_slope_deg": 1.8, "offshore_depth_m": 50, "notable": "Tohoku 2011 — 23 m runup" },
+    { "id": "sendai_jp", "name": "Sendai Plain, Japan", "region": "Pacific NW", "lat": 38.27, "lon": 140.97, "beach_slope_deg": 0.4, "offshore_depth_m": 50, "notable": "Tohoku 2011 — 8 km inland inundation" },
+    { "id": "fukushima_jp", "name": "Fukushima Daiichi, Japan", "region": "Pacific NW", "lat": 37.421, "lon": 141.033, "beach_slope_deg": 1.2, "offshore_depth_m": 50, "notable": "Tohoku 2011 — 14 m runup at plant" },
+    { "id": "kamaishi_jp", "name": "Kamaishi, Japan", "region": "Pacific NW", "lat": 39.275, "lon": 141.886, "beach_slope_deg": 2.5, "offshore_depth_m": 50, "notable": "Tohoku 2011 — 11 m wall overtopped" },
+    { "id": "hokkaido_jp", "name": "Hokkaido east coast, Japan", "region": "Pacific NW", "lat": 42.95, "lon": 144.4, "beach_slope_deg": 1.5, "offshore_depth_m": 50 },
+
+    { "id": "banda_aceh_id", "name": "Banda Aceh, Indonesia", "region": "Indian", "lat": 5.55, "lon": 95.32, "beach_slope_deg": 0.5, "offshore_depth_m": 50, "notable": "2004 Indian Ocean — 24 m runup, 167k+ killed" },
+    { "id": "lhoknga_id", "name": "Lhoknga, Indonesia", "region": "Indian", "lat": 5.47, "lon": 95.24, "beach_slope_deg": 1.1, "offshore_depth_m": 50, "notable": "2004 IO — 31 m runup" },
+    { "id": "phuket_th", "name": "Phuket, Thailand", "region": "Indian", "lat": 7.88, "lon": 98.39, "beach_slope_deg": 1.0, "offshore_depth_m": 50, "notable": "2004 IO — 10 m runup" },
+    { "id": "khao_lak_th", "name": "Khao Lak, Thailand", "region": "Indian", "lat": 8.65, "lon": 98.25, "beach_slope_deg": 0.7, "offshore_depth_m": 50, "notable": "2004 IO — 19 m runup" },
+    { "id": "kalutara_lk", "name": "Kalutara, Sri Lanka", "region": "Indian", "lat": 6.58, "lon": 79.96, "beach_slope_deg": 0.6, "offshore_depth_m": 50, "notable": "2004 IO — 12 m runup" },
+    { "id": "kanyakumari_in", "name": "Kanyakumari, India", "region": "Indian", "lat": 8.08, "lon": 77.55, "beach_slope_deg": 1.0, "offshore_depth_m": 50, "notable": "2004 IO — 5 m runup" },
+    { "id": "vailankanni_in", "name": "Vailankanni, India", "region": "Indian", "lat": 10.68, "lon": 79.85, "beach_slope_deg": 0.4, "offshore_depth_m": 50, "notable": "2004 IO — 7 m runup" },
+    { "id": "male_mv", "name": "Malé, Maldives", "region": "Indian", "lat": 4.18, "lon": 73.51, "beach_slope_deg": 0.3, "offshore_depth_m": 50, "notable": "2004 IO — 4 m runup, capital flooded" },
+
+    { "id": "hilo_us", "name": "Hilo, Hawaii", "region": "Pacific NE", "lat": 19.72, "lon": -155.08, "beach_slope_deg": 0.8, "offshore_depth_m": 50, "notable": "1946 Aleutian — 8 m; 1960 Chile — 11 m" },
+    { "id": "honolulu_us", "name": "Honolulu, Hawaii", "region": "Pacific NE", "lat": 21.30, "lon": -157.85, "beach_slope_deg": 1.2, "offshore_depth_m": 50 },
+    { "id": "crescent_city_us", "name": "Crescent City, CA", "region": "Pacific NE", "lat": 41.76, "lon": -124.20, "beach_slope_deg": 0.9, "offshore_depth_m": 50, "notable": "1964 Alaska — 6 m; 2011 Tohoku — 2.4 m" },
+    { "id": "san_francisco_us", "name": "San Francisco, CA", "region": "Pacific NE", "lat": 37.81, "lon": -122.48, "beach_slope_deg": 1.5, "offshore_depth_m": 50 },
+    { "id": "los_angeles_us", "name": "Long Beach, CA", "region": "Pacific NE", "lat": 33.74, "lon": -118.18, "beach_slope_deg": 1.0, "offshore_depth_m": 50 },
+    { "id": "santa_barbara_us", "name": "Santa Barbara, CA", "region": "Pacific NE", "lat": 34.40, "lon": -119.69, "beach_slope_deg": 1.2, "offshore_depth_m": 50 },
+    { "id": "seaside_us", "name": "Seaside, OR", "region": "Pacific NE", "lat": 45.99, "lon": -123.93, "beach_slope_deg": 0.6, "offshore_depth_m": 50, "notable": "Cascadia 1700 paleo deposits" },
+    { "id": "ocean_shores_us", "name": "Ocean Shores, WA", "region": "Pacific NE", "lat": 46.97, "lon": -124.16, "beach_slope_deg": 0.5, "offshore_depth_m": 50 },
+    { "id": "anchorage_us", "name": "Anchorage, AK", "region": "Pacific NE", "lat": 61.22, "lon": -149.90, "beach_slope_deg": 1.4, "offshore_depth_m": 50, "notable": "1964 Alaska M9.2" },
+    { "id": "valdez_us", "name": "Valdez, AK", "region": "Pacific NE", "lat": 61.13, "lon": -146.36, "beach_slope_deg": 2.0, "offshore_depth_m": 50, "notable": "1964 Alaska — 67 m submarine slide wave" },
+    { "id": "lituya_bay_us", "name": "Lituya Bay, AK (entrance)", "region": "Pacific NE", "lat": 58.60, "lon": -137.60, "beach_slope_deg": 8.0, "offshore_depth_m": 30, "notable": "1958 — 524 m record runup inside bay" },
+    { "id": "kodiak_us", "name": "Kodiak, AK", "region": "Pacific NE", "lat": 57.79, "lon": -152.40, "beach_slope_deg": 1.8, "offshore_depth_m": 50, "notable": "1964 Alaska — 9 m" },
+
+    { "id": "valparaiso_cl", "name": "Valparaíso, Chile", "region": "Pacific SE", "lat": -33.04, "lon": -71.62, "beach_slope_deg": 1.4, "offshore_depth_m": 50, "notable": "2010 Maule M8.8 — 3 m" },
+    { "id": "concepcion_cl", "name": "Talcahuano, Chile", "region": "Pacific SE", "lat": -36.72, "lon": -73.12, "beach_slope_deg": 0.6, "offshore_depth_m": 50, "notable": "2010 Maule — 11 m" },
+    { "id": "iquique_cl", "name": "Iquique, Chile", "region": "Pacific SE", "lat": -20.21, "lon": -70.15, "beach_slope_deg": 1.2, "offshore_depth_m": 50, "notable": "1877 Iquique M8.7" },
+    { "id": "lima_pe", "name": "Callao, Peru", "region": "Pacific SE", "lat": -12.07, "lon": -77.15, "beach_slope_deg": 0.8, "offshore_depth_m": 50, "notable": "1746 M8.6 — 24 m runup" },
+
+    { "id": "auckland_nz", "name": "Auckland, New Zealand", "region": "Pacific SW", "lat": -36.85, "lon": 174.80, "beach_slope_deg": 0.9, "offshore_depth_m": 50 },
+    { "id": "wellington_nz", "name": "Wellington, NZ", "region": "Pacific SW", "lat": -41.29, "lon": 174.78, "beach_slope_deg": 1.3, "offshore_depth_m": 50, "notable": "Hikurangi subduction zone hazard" },
+    { "id": "gisborne_nz", "name": "Gisborne, NZ", "region": "Pacific SW", "lat": -38.66, "lon": 178.02, "beach_slope_deg": 1.0, "offshore_depth_m": 50 },
+    { "id": "sydney_au", "name": "Sydney, Australia", "region": "Pacific SW", "lat": -33.86, "lon": 151.21, "beach_slope_deg": 1.6, "offshore_depth_m": 50 },
+
+    { "id": "lisbon_pt", "name": "Lisbon, Portugal", "region": "Atlantic N", "lat": 38.71, "lon": -9.14, "beach_slope_deg": 1.3, "offshore_depth_m": 50, "notable": "1755 Lisbon M~8.5–9 — 15 m" },
+    { "id": "cadiz_es", "name": "Cádiz, Spain", "region": "Atlantic N", "lat": 36.53, "lon": -6.30, "beach_slope_deg": 0.7, "offshore_depth_m": 50, "notable": "1755 Lisbon — 10 m" },
+    { "id": "ponta_delgada_pt", "name": "Ponta Delgada, Azores", "region": "Atlantic N", "lat": 37.74, "lon": -25.67, "beach_slope_deg": 4.0, "offshore_depth_m": 50, "notable": "1755 Lisbon — 4 m" },
+    { "id": "funchal_pt", "name": "Funchal, Madeira", "region": "Atlantic N", "lat": 32.65, "lon": -16.91, "beach_slope_deg": 5.0, "offshore_depth_m": 50, "notable": "Cumbre Vieja scenario candidate" },
+    { "id": "santa_cruz_es", "name": "Santa Cruz de Tenerife", "region": "Atlantic N", "lat": 28.46, "lon": -16.25, "beach_slope_deg": 4.0, "offshore_depth_m": 50, "notable": "Cumbre Vieja scenario candidate" },
+    { "id": "miami_us", "name": "Miami, FL", "region": "Atlantic N", "lat": 25.79, "lon": -80.13, "beach_slope_deg": 0.4, "offshore_depth_m": 50, "notable": "Cumbre Vieja Ward-Day 2001 scenario terminus" },
+    { "id": "new_york_us", "name": "New York Harbor", "region": "Atlantic N", "lat": 40.70, "lon": -74.02, "beach_slope_deg": 0.5, "offshore_depth_m": 50 },
+    { "id": "boston_us", "name": "Boston, MA", "region": "Atlantic N", "lat": 42.36, "lon": -71.05, "beach_slope_deg": 0.7, "offshore_depth_m": 50 },
+    { "id": "halifax_ca", "name": "Halifax, Nova Scotia", "region": "Atlantic N", "lat": 44.65, "lon": -63.58, "beach_slope_deg": 1.4, "offshore_depth_m": 50, "notable": "1929 Grand Banks slide tsunami" },
+    { "id": "stjohns_ca", "name": "St. John's, Newfoundland", "region": "Atlantic N", "lat": 47.56, "lon": -52.71, "beach_slope_deg": 2.0, "offshore_depth_m": 50, "notable": "1929 Grand Banks — 7 m" },
+
+    { "id": "san_juan_pr", "name": "San Juan, Puerto Rico", "region": "Caribbean", "lat": 18.48, "lon": -66.10, "beach_slope_deg": 1.2, "offshore_depth_m": 50, "notable": "1918 PR M7.5 — 6 m" },
+    { "id": "port_au_prince_ht", "name": "Port-au-Prince, Haiti", "region": "Caribbean", "lat": 18.54, "lon": -72.34, "beach_slope_deg": 1.0, "offshore_depth_m": 50, "notable": "2010 — local tsunami at Petite-Anse" },
+    { "id": "kingston_jm", "name": "Kingston, Jamaica", "region": "Caribbean", "lat": 17.97, "lon": -76.79, "beach_slope_deg": 0.9, "offshore_depth_m": 50, "notable": "1692 Port Royal" },
+
+    { "id": "anak_krakatau_id", "name": "Anak Krakatau coast, Indonesia", "region": "Indian", "lat": -6.10, "lon": 105.42, "beach_slope_deg": 6.0, "offshore_depth_m": 50, "notable": "1883 Krakatoa — 36 m; 2018 — 13 m" },
+    { "id": "java_anyer_id", "name": "Anyer, Java", "region": "Indian", "lat": -6.05, "lon": 105.93, "beach_slope_deg": 0.7, "offshore_depth_m": 50, "notable": "1883 Krakatoa — 24 m" },
+    { "id": "sumatra_telukbetung_id", "name": "Bandar Lampung (Teluk Betung), Sumatra", "region": "Indian", "lat": -5.43, "lon": 105.27, "beach_slope_deg": 0.5, "offshore_depth_m": 50, "notable": "1883 Krakatoa — 22 m" },
+
+    { "id": "tonga_nukualofa", "name": "Nuku'alofa, Tonga", "region": "Pacific SW", "lat": -21.14, "lon": -175.20, "beach_slope_deg": 1.2, "offshore_depth_m": 50, "notable": "2022 Hunga Tonga — 1.5 m local" },
+
+    { "id": "lerwick_uk", "name": "Lerwick, Shetland", "region": "Atlantic N", "lat": 60.16, "lon": -1.15, "beach_slope_deg": 2.8, "offshore_depth_m": 50, "notable": "Storegga ~8150 BP — >20 m deposits" },
+    { "id": "aberdeen_uk", "name": "Aberdeen, Scotland", "region": "Atlantic N", "lat": 57.15, "lon": -2.10, "beach_slope_deg": 1.5, "offshore_depth_m": 50, "notable": "Storegga — 3–6 m" },
+    { "id": "torshavn_fo", "name": "Tórshavn, Faroe Is.", "region": "Atlantic N", "lat": 62.01, "lon": -6.77, "beach_slope_deg": 5.0, "offshore_depth_m": 50, "notable": "Storegga deposits" },
+    { "id": "bergen_no", "name": "Bergen, Norway", "region": "Atlantic N", "lat": 60.39, "lon": 5.32, "beach_slope_deg": 3.0, "offshore_depth_m": 50, "notable": "Storegga 10–12 m near source" },
+
+    { "id": "gulf_yucatan", "name": "Yucatán shelf — Mérida coast", "region": "Atlantic S", "lat": 21.27, "lon": -89.62, "beach_slope_deg": 0.2, "offshore_depth_m": 50, "notable": "Chicxulub impact site proximity" },
+    { "id": "houston_us", "name": "Galveston Bay, TX", "region": "Atlantic S", "lat": 29.30, "lon": -94.78, "beach_slope_deg": 0.1, "offshore_depth_m": 50, "notable": "Chicxulub-class hypothetical inundation" },
+    { "id": "tampa_us", "name": "Tampa Bay, FL", "region": "Atlantic S", "lat": 27.95, "lon": -82.46, "beach_slope_deg": 0.3, "offshore_depth_m": 50 },
+    { "id": "new_orleans_us", "name": "New Orleans / Plaquemines, LA", "region": "Atlantic S", "lat": 29.30, "lon": -89.65, "beach_slope_deg": 0.1, "offshore_depth_m": 50 },
+
+    { "id": "ushuaia_ar", "name": "Ushuaia, Argentina", "region": "Pacific SE", "lat": -54.81, "lon": -68.30, "beach_slope_deg": 2.5, "offshore_depth_m": 50, "notable": "Eltanin proximity" },
+    { "id": "puerto_montt_cl", "name": "Puerto Montt, Chile", "region": "Pacific SE", "lat": -41.47, "lon": -72.93, "beach_slope_deg": 1.8, "offshore_depth_m": 50, "notable": "1960 Valdivia M9.5" },
+
+    { "id": "athens_gr", "name": "Piraeus, Greece", "region": "Mediterranean", "lat": 37.95, "lon": 23.65, "beach_slope_deg": 1.2, "offshore_depth_m": 50, "notable": "365 Crete tsunami" },
+    { "id": "heraklion_gr", "name": "Heraklion, Crete", "region": "Mediterranean", "lat": 35.34, "lon": 25.13, "beach_slope_deg": 1.5, "offshore_depth_m": 50, "notable": "365 AD M8 — 9 m" },
+    { "id": "naples_it", "name": "Naples, Italy", "region": "Mediterranean", "lat": 40.84, "lon": 14.25, "beach_slope_deg": 1.2, "offshore_depth_m": 50, "notable": "Vesuvius / Stromboli hazard" },
+    { "id": "messina_it", "name": "Messina, Sicily", "region": "Mediterranean", "lat": 38.19, "lon": 15.55, "beach_slope_deg": 1.4, "offshore_depth_m": 50, "notable": "1908 M7.1 — 12 m" },
+    { "id": "alexandria_eg", "name": "Alexandria, Egypt", "region": "Mediterranean", "lat": 31.21, "lon": 29.92, "beach_slope_deg": 0.4, "offshore_depth_m": 50, "notable": "365 Crete tsunami" },
+
+    { "id": "manila_ph", "name": "Manila, Philippines", "region": "Pacific NW", "lat": 14.59, "lon": 120.97, "beach_slope_deg": 0.6, "offshore_depth_m": 50, "notable": "Manila Trench subduction hazard" },
+    { "id": "davao_ph", "name": "Davao, Philippines", "region": "Pacific NW", "lat": 7.07, "lon": 125.61, "beach_slope_deg": 0.8, "offshore_depth_m": 50, "notable": "1976 Moro Gulf M7.9 — 9 m" },
+    { "id": "taipei_tw", "name": "Keelung, Taiwan", "region": "Pacific NW", "lat": 25.13, "lon": 121.74, "beach_slope_deg": 1.8, "offshore_depth_m": 50 },
+
+    { "id": "vladivostok_ru", "name": "Vladivostok, Russia", "region": "Pacific NW", "lat": 43.12, "lon": 131.89, "beach_slope_deg": 2.0, "offshore_depth_m": 50 },
+    { "id": "petropavlovsk_ru", "name": "Petropavlovsk, Kamchatka", "region": "Pacific NW", "lat": 53.02, "lon": 158.65, "beach_slope_deg": 2.5, "offshore_depth_m": 50, "notable": "1952 M9.0 — 18 m" },
+
+    { "id": "nice_fr", "name": "Nice, France", "region": "Mediterranean", "lat": 43.70, "lon": 7.26, "beach_slope_deg": 3.5, "offshore_depth_m": 50, "notable": "1979 airport slide — 3 m local" },
+    { "id": "barcelona_es", "name": "Barcelona, Spain", "region": "Mediterranean", "lat": 41.40, "lon": 2.20, "beach_slope_deg": 1.4, "offshore_depth_m": 50 },
+
+    { "id": "cape_town_za", "name": "Cape Town, South Africa", "region": "Atlantic S", "lat": -33.92, "lon": 18.42, "beach_slope_deg": 2.0, "offshore_depth_m": 50, "notable": "1755 Lisbon — 1 m, 2004 IO — 1.6 m" },
+    { "id": "dakar_sn", "name": "Dakar, Senegal", "region": "Atlantic N", "lat": 14.72, "lon": -17.47, "beach_slope_deg": 1.6, "offshore_depth_m": 50, "notable": "Cumbre Vieja scenario candidate" },
+
+    { "id": "diego_garcia", "name": "Diego Garcia (BIOT)", "region": "Indian", "lat": -7.32, "lon": 72.42, "beach_slope_deg": 1.0, "offshore_depth_m": 50, "notable": "2004 IO — 1.3 m" },
+    { "id": "perth_au", "name": "Perth, Australia", "region": "Indian", "lat": -31.95, "lon": 115.86, "beach_slope_deg": 1.0, "offshore_depth_m": 50, "notable": "2004 IO — 0.6 m" },
+
+    { "id": "reykjavik_is", "name": "Reykjavík, Iceland", "region": "Atlantic N", "lat": 64.13, "lon": -21.95, "beach_slope_deg": 2.0, "offshore_depth_m": 50, "notable": "Storegga — limited deposits inferred" },
+    { "id": "nuuk_gl", "name": "Nuuk, Greenland", "region": "Arctic", "lat": 64.18, "lon": -51.74, "beach_slope_deg": 4.0, "offshore_depth_m": 50, "notable": "Karrat Fjord 2017 landslide — 90 m local" },
+
+    { "id": "iquique_offshore", "name": "Iquique deep-water gauge", "region": "Pacific SE", "lat": -20.21, "lon": -70.50, "beach_slope_deg": 0.0, "offshore_depth_m": 2500, "notable": "Reference deep-water sample point" },
+    { "id": "tohoku_dart_21413", "name": "DART 21413 (off Honshu)", "region": "Pacific NW", "lat": 30.51, "lon": 152.12, "beach_slope_deg": 0.0, "offshore_depth_m": 5800, "notable": "Tohoku 2011 reference DART buoy" },
+    { "id": "tonga_dart_51425", "name": "DART 51425 (S of Samoa)", "region": "Pacific SW", "lat": -9.52, "lon": -176.25, "beach_slope_deg": 0.0, "offshore_depth_m": 5400, "notable": "2022 Hunga Tonga reference DART" }
+  ]
+}

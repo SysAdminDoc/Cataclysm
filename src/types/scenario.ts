@@ -90,3 +90,25 @@ export type RunPresetResponse = {
   initial: InitialDisplacement;
   wavefront: PropagationSnapshot;
 };
+
+/** A named coastal point used for Synolakis runup sampling. */
+export type CoastalPoint = {
+  id: string;
+  name: string;
+  region: string;
+  lat: number;
+  lon: number;
+  beach_slope_deg: number;
+  offshore_depth_m: number;
+  notable?: string;
+};
+
+export type CoastalPointDatabase = {
+  _meta: {
+    version: number;
+    description: string;
+    sources: string[];
+    regions: string[];
+  };
+  points: CoastalPoint[];
+};

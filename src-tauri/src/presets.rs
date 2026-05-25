@@ -1,7 +1,7 @@
 //! Registry of historical and hypothetical tsunami events with peer-reviewed
 //! source parameters. Every entry carries its citation in the `reference` field.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::physics::{
     asteroid::AsteroidImpact,
@@ -11,7 +11,7 @@ use crate::physics::{
     GeoPoint, InitialDisplacement,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", content = "source")]
 pub enum PresetSource {
     Asteroid(AsteroidImpact),
@@ -40,7 +40,7 @@ impl PresetSource {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Preset {
     pub id: &'static str,
     pub name: &'static str,

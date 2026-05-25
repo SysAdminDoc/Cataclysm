@@ -20,10 +20,13 @@ use std::f64::consts::PI;
 use serde::{Deserialize, Serialize};
 
 use super::constants::{
-    G_EARTH, IMPACT_FAR_FIELD_EXPONENT, J_PER_MT_TNT, RHO_ASTEROID_STONY, RHO_SEAWATER,
-    SCHMIDT_HOLSAPPLE_BETA, SCHMIDT_HOLSAPPLE_CT,
+    G_EARTH, IMPACT_FAR_FIELD_EXPONENT, J_PER_MT_TNT, RHO_SEAWATER, SCHMIDT_HOLSAPPLE_BETA,
+    SCHMIDT_HOLSAPPLE_CT,
 };
 use super::{GeoPoint, InitialDisplacement};
+
+#[cfg(test)]
+use super::constants::RHO_ASTEROID_STONY;
 
 /// Input parameters for an asteroid / comet ocean impact.
 #[derive(Debug, Clone, Serialize, Deserialize)]

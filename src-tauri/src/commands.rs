@@ -45,7 +45,7 @@ pub struct FarFieldRequest {
     pub is_impact: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct FarFieldResponse {
     pub amplitude_m: f64,
     pub travel_time_s: f64,
@@ -93,7 +93,7 @@ pub struct RunPresetRequest {
     pub n_samples: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct RunPresetResponse {
     pub preset: Preset,
     pub initial: InitialDisplacement,
