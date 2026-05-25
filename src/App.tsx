@@ -5,6 +5,8 @@ import { ResultsPanel } from "./components/ResultsPanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
+import { Tour } from "./components/Tour";
+import { settings } from "./lib/settings";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
@@ -26,6 +28,7 @@ export default function App() {
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
   const inTauri = useMemo(isTauri, []);
 
   const slotA = useScenarioSlot(timeS);
@@ -34,6 +37,33 @@ export default function App() {
   // Apply persisted theme once at startup.
   useEffect(() => {
     loadTheme().then(applyTheme).catch(() => applyTheme("mocha"));
+  }, []);
+
+  // First-run tour: trigger after the disclaimer is acknowledged (or
+  // already-acknowledged) the first time the user reaches the app.
+  // Settings → 'Show tour again' clears the flag so this fires again.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([settings.getDisclaimerAcknowledged(), settings.getTourCompleted()])
+      .then(([disclaimer, tour]) => {
+        if (cancelled) return;
+        if (disclaimer && !tour) setTourOpen(true);
+      })
+      .catch(() => {});
+    const onSaved = () => {
+      // Re-evaluate after Settings save (in case the user reset the tour).
+      Promise.all([settings.getDisclaimerAcknowledged(), settings.getTourCompleted()])
+        .then(([disclaimer, tour]) => {
+          if (cancelled) return;
+          if (disclaimer && !tour) setTourOpen(true);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("tsunamisim:settings-saved", onSaved);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("tsunamisim:settings-saved", onSaved);
+    };
   }, []);
 
   useEffect(() => {
@@ -223,6 +253,13 @@ export default function App() {
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <FirstRunDisclaimer />
+      <Tour
+        open={tourOpen}
+        onClose={() => {
+          setTourOpen(false);
+          settings.markTourCompleted().catch(() => {});
+        }}
+      />
     </div>
   );
 }

@@ -176,6 +176,19 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 onClick={async () => {
+                  await settings.clearTourCompleted();
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                  }
+                  setSavedAt("Tour will replay shortly.");
+                  onClose();
+                }}
+              >
+                Replay tour
+              </button>
+              <button
+                className="scenario-tab"
+                onClick={async () => {
                   if (
                     !window.confirm(
                       "Reset every setting (token, theme, globe style, first-run ack) to defaults? This can't be undone.",

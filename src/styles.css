@@ -116,6 +116,85 @@ a:focus-visible,
   border-color: var(--sapphire);
 }
 
+/* Onboarding tour (F-V12) — lightweight in-house implementation. */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(17, 17, 27, 0.45);
+  pointer-events: auto;
+}
+
+.tour-card {
+  position: absolute;
+  max-width: 420px;
+  background: var(--mantle);
+  border: 1px solid var(--sapphire);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.tour-card--center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tour-card--top-left {
+  top: 80px;
+  left: 32px;
+}
+
+.tour-card--top-center {
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tour-card--top-right {
+  top: 80px;
+  right: 32px;
+}
+
+.tour-card--bottom-left {
+  bottom: 32px;
+  left: 32px;
+}
+
+.tour-card--bottom-right {
+  bottom: 32px;
+  right: 32px;
+}
+
+.tour-card__step {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--sapphire);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.tour-card__title {
+  font-size: 16px;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.tour-card__body {
+  font-size: 13px;
+  color: var(--subtext);
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.tour-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 /* Screen-reader-only utility. Used by aria-live announcer regions whose
    content should reach assistive tech but not be visible on screen.
    Standard "visually-hidden" pattern (Tailwind / Bootstrap equivalent). */

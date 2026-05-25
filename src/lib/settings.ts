@@ -14,6 +14,7 @@ export type Settings = {
   theme: Theme;
   globe_style: GlobeStyleId;
   disclaimer_acknowledged_at: string | null;
+  tour_completed_at: string | null;
 };
 
 const DEFAULTS: Settings = {
@@ -21,6 +22,7 @@ const DEFAULTS: Settings = {
   theme: "mocha",
   globe_style: "osm",
   disclaimer_acknowledged_at: null,
+  tour_completed_at: null,
 };
 
 const STORE_FILE = "settings.json";
@@ -137,12 +139,37 @@ export const settings = {
   async acknowledgeDisclaimer(): Promise<void> {
     return write("disclaimer_acknowledged_at", new Date().toISOString());
   },
+  async getTourCompleted(): Promise<string | null> {
+    return read("tour_completed_at");
+  },
+  async markTourCompleted(): Promise<void> {
+    return write("tour_completed_at", new Date().toISOString());
+  },
+  async clearTourCompleted(): Promise<void> {
+    if (typeof localStorage !== "undefined") {
+      try {
+        localStorage.removeItem(LS_PREFIX + "tour_completed_at");
+      } catch {
+        /* ignore */
+      }
+    }
+    const store = await getStore();
+    if (store && typeof store.delete === "function") {
+      try {
+        await store.delete("tour_completed_at");
+        await store.save();
+      } catch {
+        /* best-effort */
+      }
+    }
+  },
   async loadAll(): Promise<Settings> {
     return {
       cesium_token: await read("cesium_token"),
       theme: await read("theme"),
       globe_style: await read("globe_style"),
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
+      tour_completed_at: await read("tour_completed_at"),
     };
   },
   /** Clear every persisted key. Both the Tauri store and the localStorage
@@ -153,6 +180,7 @@ export const settings = {
       "theme",
       "globe_style",
       "disclaimer_acknowledged_at",
+      "tour_completed_at",
     ];
     if (typeof localStorage !== "undefined") {
       for (const k of keys) {
