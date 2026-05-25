@@ -60,6 +60,9 @@ pub struct OkadaDisplacementField {
 
 /// Poisson's ratio. Used by Okada through the lame-parameter ratio
 /// `α = (λ + μ) / (λ + 2μ)`. For ν = 0.25 (standard crustal value) α = 2/3.
+/// Currently unused — the leading-order pass omits the I-term half-space
+/// correction. Wired back in when the full I1..I5 form lands in v0.3.0.
+#[allow(dead_code)]
 const ALPHA: f64 = 2.0 / 3.0;
 
 impl OkadaFault {
