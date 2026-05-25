@@ -304,6 +304,75 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
 }
 
 #[derive(Debug, Deserialize)]
+pub struct InspectAtPointRequest {
+    pub source: GeoPoint,
+    pub initial_amplitude_m: f64,
+    pub cavity_radius_m: f64,
+    pub is_impact: bool,
+    pub mean_depth_m: f64,
+    pub time_s: f64,
+    pub click_lat: f64,
+    pub click_lon: f64,
+    /// Local beach slope at the click point, deg. The frontend supplies a
+    /// reasonable default (~1°) when the user hasn't picked a coastal preset.
+    pub beach_slope_deg: f64,
+    /// Local offshore depth (50 m isobath equivalent) at the click point, m.
+    pub offshore_depth_m: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InspectAtPointResult {
+    pub range_m: f64,
+    pub offshore_amplitude_m: f64,
+    pub runup_m: f64,
+    pub arrival_time_s: f64,
+    pub has_arrived: bool,
+    pub inundation_extent_m: f64,
+}
+
+/// Single-point readout for the F-V11 Inspect overlay. Mirrors the math
+/// of `runup_at_points` but for one arbitrary lat/lon picked by the
+/// user from the globe.
+#[tauri::command]
+pub fn inspect_at_point(req: InspectAtPointRequest) -> Result<InspectAtPointResult, String> {
+    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
+        return Err("source latitude out of range".into());
+    }
+    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
+        return Err("source longitude out of range".into());
+    }
+    if !req.click_lat.is_finite() || req.click_lat.abs() > 90.0 {
+        return Err("click latitude out of range".into());
+    }
+    if !req.click_lon.is_finite() || req.click_lon.abs() > 360.0 {
+        return Err("click longitude out of range".into());
+    }
+    let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, req.click_lat, req.click_lon);
+    let amp = if req.is_impact {
+        impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
+    } else {
+        nuclear_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
+    };
+    let runup_m = synolakis_runup_m(amp, req.offshore_depth_m, req.beach_slope_deg);
+    let c = (G_EARTH * req.mean_depth_m.max(1.0)).sqrt();
+    let arrival_time_s = range_m / c;
+    let slope_rad = req.beach_slope_deg.to_radians();
+    let inundation_extent_m = if slope_rad > 0.0 {
+        (runup_m / slope_rad.tan()).max(0.0).min(50_000.0)
+    } else {
+        0.0
+    };
+    Ok(InspectAtPointResult {
+        range_m,
+        offshore_amplitude_m: amp,
+        runup_m,
+        arrival_time_s,
+        has_arrived: req.time_s >= arrival_time_s,
+        inundation_extent_m,
+    })
+}
+
+#[derive(Debug, Deserialize)]
 pub struct SimulateGridRequest {
     /// Source centre (deg).
     pub source: GeoPoint,

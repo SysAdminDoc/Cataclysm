@@ -10,7 +10,7 @@ import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri } from "./lib/tauri";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng } from "./lib/export";
+import { exportGlobePng, exportGlobeVideo } from "./lib/export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
@@ -22,8 +22,10 @@ export default function App() {
   const [showCitations, setShowCitations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [pickMode, setPickMode] = useState(false);
+  const [inspectMode, setInspectMode] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
+  const [recording, setRecording] = useState(false);
   const inTauri = useMemo(isTauri, []);
 
   const slotA = useScenarioSlot(timeS);
@@ -63,6 +65,18 @@ export default function App() {
         <div className="app__header-actions">
           <button
             className="icon-button"
+            data-active={inspectMode ? "true" : "false"}
+            onClick={() => {
+              setInspectMode((v) => !v);
+              if (!inspectMode) setPickMode(false);
+            }}
+            title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
+            disabled={!slotA.initial}
+          >
+            🔍 Inspect
+          </button>
+          <button
+            className="icon-button"
             data-active={compareMode ? "true" : "false"}
             onClick={() => setCompareMode((v) => !v)}
             title="Toggle side-by-side comparison mode"
@@ -79,6 +93,28 @@ export default function App() {
             disabled={!slotA.initial}
           >
             📸 Export PNG
+          </button>
+          <button
+            className="icon-button"
+            onClick={async () => {
+              if (recording) return;
+              setRecording(true);
+              try {
+                const result = await exportGlobeVideo(
+                  { preset: activePresetA, initial: slotA.initial, timeS },
+                  { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
+                );
+                if (!result.ok) {
+                  console.warn("Video export failed:", result.reason);
+                }
+              } finally {
+                setRecording(false);
+              }
+            }}
+            title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
+            disabled={!slotA.initial || recording}
+          >
+            {recording ? "● Recording…" : "🎬 Export Video"}
           </button>
           <button className="icon-button" onClick={() => setShowCitations(true)} title="View citations">
             Citations
@@ -126,6 +162,10 @@ export default function App() {
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
                 onPickCancel={() => setPickMode(false)}
+                inspectMode={inspectMode}
+                inspectIsImpact={activePresetA?.source.kind === "Asteroid"}
+                inspectTimeS={timeS}
+                onInspectCancel={() => setInspectMode(false)}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>

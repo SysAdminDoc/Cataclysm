@@ -73,7 +73,7 @@ Single source of truth for delivery. Phased plan; each phase ends with a working
 - [x] **F-V01 P0** — Validation harness: Stoker dam-break + Carrier-Greenspan plane-beach runup + Range 2022 Chicxulub. `[features] validation` Cargo flag.
 - [x] **F-V02 P0** — Full Okada 1985 I-term half-space correction; re-enable two `#[ignore]`d Tohoku/Sumatra validation tests; wire `OkadaFault` into `earthquake_initial_conditions`.
 - [x] **F-V10 P2** — Radiation / sponge-layer boundary conditions (replace zero-flux walls).
-- [ ] **I-V02 P1** — Inundation polygons (depends on wet/dry handling + real bathymetry).
+- [x] **I-V02 P1** — Inundation polygons (first-order discs from `runup_m / tan(slope)`; full flood polygons deferred to v0.4.0).
 
 ### Power-user UX (M)
 

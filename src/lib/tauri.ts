@@ -14,6 +14,15 @@ import type {
   SimulateGridResponse,
 } from "../types/scenario";
 
+export type InspectAtPointResult = {
+  range_m: number;
+  offshore_amplitude_m: number;
+  runup_m: number;
+  arrival_time_s: number;
+  has_arrived: boolean;
+  inundation_extent_m: number;
+};
+
 export type RunupAtPointResult = {
   id: string;
   name: string;
@@ -79,6 +88,20 @@ export const api = {
     n_samples: number;
   }) {
     return invoke<RunPresetResponse>("run_preset", { req });
+  },
+  inspectAtPoint(req: {
+    source: GeoPoint;
+    initial_amplitude_m: number;
+    cavity_radius_m: number;
+    is_impact: boolean;
+    mean_depth_m: number;
+    time_s: number;
+    click_lat: number;
+    click_lon: number;
+    beach_slope_deg: number;
+    offshore_depth_m: number;
+  }) {
+    return invoke<InspectAtPointResult>("inspect_at_point", { req });
   },
   simulateGrid(req: {
     source: GeoPoint;

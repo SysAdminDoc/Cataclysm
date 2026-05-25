@@ -3,7 +3,7 @@ import * as Cesium from "cesium";
 import { configureCesium } from "../lib/cesium";
 import { buildImagery, buildTerrain, DEFAULT_STYLE, type GlobeStyleId } from "../lib/globe-styles";
 import { settings } from "../lib/settings";
-import type { RunupAtPointResult } from "../lib/tauri";
+import { api, type RunupAtPointResult } from "../lib/tauri";
 import type {
   DartBuoy,
   GridSnapshot,
@@ -29,6 +29,12 @@ type Props = {
   pickMode?: boolean;
   onPick?: (lat: number, lon: number) => void;
   onPickCancel?: () => void;
+  /** F-V11 — Inspect mode: clicking the globe pops a tooltip showing
+   *  range / amplitude / arrival / runup at that point. */
+  inspectMode?: boolean;
+  inspectIsImpact?: boolean;
+  inspectTimeS?: number;
+  onInspectCancel?: () => void;
 };
 
 const PICK_CURSOR_STYLE = "crosshair";
@@ -55,6 +61,10 @@ export function Globe({
   pickMode,
   onPick,
   onPickCancel,
+  inspectMode,
+  inspectIsImpact,
+  inspectTimeS,
+  onInspectCancel,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -67,6 +77,8 @@ export function Globe({
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryRequestIdRef = useRef(0);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
+  const inspectHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
+  const inspectEntityRef = useRef<Cesium.Entity | null>(null);
   const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
 
@@ -103,6 +115,9 @@ export function Globe({
     return () => {
       pickHandlerRef.current?.destroy();
       pickHandlerRef.current = null;
+      inspectHandlerRef.current?.destroy();
+      inspectHandlerRef.current = null;
+      inspectEntityRef.current = null;
       viewer.destroy();
       viewerRef.current = null;
       sourceEntityRef.current = null;
@@ -237,6 +252,109 @@ export function Globe({
       viewer.canvas.style.cursor = "";
     };
   }, [pickMode, onPick, onPickCancel]);
+
+  // F-V11 — Inspect mode: a left-click queries the backend for the
+  // per-point readout and pops a Cesium label at the click position.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    // Clean up entity + handler when mode flips off.
+    if (!inspectMode) {
+      inspectHandlerRef.current?.destroy();
+      inspectHandlerRef.current = null;
+      if (inspectEntityRef.current) {
+        viewer.entities.remove(inspectEntityRef.current);
+        inspectEntityRef.current = null;
+      }
+      return;
+    }
+
+    if (!initial) return;
+    viewer.canvas.style.cursor = "help";
+
+    const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+    handler.setInputAction((evt: { position: Cesium.Cartesian2 }) => {
+      const cartesian = viewer.scene.camera.pickEllipsoid(
+        evt.position,
+        viewer.scene.globe.ellipsoid,
+      );
+      if (!cartesian) return;
+      const carto = Cesium.Cartographic.fromCartesian(cartesian);
+      const lat = Cesium.Math.toDegrees(carto.latitude);
+      const lon = Cesium.Math.toDegrees(carto.longitude);
+
+      api
+        .inspectAtPoint({
+          source: initial.center,
+          initial_amplitude_m: initial.peak_amplitude_m,
+          cavity_radius_m: initial.cavity_radius_m,
+          is_impact: inspectIsImpact === true,
+          mean_depth_m: 4000,
+          time_s: inspectTimeS ?? 0,
+          click_lat: lat,
+          click_lon: lon,
+          beach_slope_deg: 1.0,
+          offshore_depth_m: 50.0,
+        })
+        .then((res) => {
+          if (!viewerRef.current) return;
+          const arrivalMin = res.arrival_time_s / 60;
+          const arrivalLabel =
+            arrivalMin < 60
+              ? `T+${arrivalMin.toFixed(0)}m`
+              : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
+          const status = res.has_arrived ? "ARRIVED" : "in transit";
+          const text = [
+            `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`,
+            `Range  ${(res.range_m / 1000).toFixed(0)} km   ·   ${status}`,
+            `Arrival ${arrivalLabel}`,
+            `Offshore ${res.offshore_amplitude_m.toFixed(2)} m   ·   Runup ${res.runup_m.toFixed(1)} m`,
+            `Inundation ~${(res.inundation_extent_m / 1000).toFixed(2)} km`,
+          ].join("\n");
+
+          if (inspectEntityRef.current) {
+            viewer.entities.remove(inspectEntityRef.current);
+            inspectEntityRef.current = null;
+          }
+          inspectEntityRef.current = viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+            point: {
+              pixelSize: 10,
+              color: Cesium.Color.fromCssColorString("#89dceb"),
+              outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+              outlineWidth: 2,
+            },
+            label: {
+              text,
+              font: "11px Inter, sans-serif",
+              fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
+              outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+              outlineWidth: 2,
+              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              pixelOffset: new Cesium.Cartesian2(0, -16),
+              showBackground: true,
+              backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.92),
+              backgroundPadding: new Cesium.Cartesian2(10, 8),
+            },
+          });
+        })
+        .catch((err) => console.warn("[globe] inspect_at_point failed", err));
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onInspectCancel?.();
+    };
+    window.addEventListener("keydown", onKey);
+    inspectHandlerRef.current = handler;
+
+    return () => {
+      handler.destroy();
+      window.removeEventListener("keydown", onKey);
+      viewer.canvas.style.cursor = "";
+    };
+  }, [inspectMode, initial, inspectIsImpact, inspectTimeS, onInspectCancel]);
 
   // React to a new initial displacement
   useEffect(() => {
@@ -639,6 +757,12 @@ export function Globe({
           Click anywhere on the globe to set scenario location. Press
           <kbd> Esc </kbd>
           to cancel.
+        </div>
+      )}
+      {inspectMode && (
+        <div className="app__globe-pickbanner">
+          Click anywhere on the globe to read amplitude / arrival / runup.
+          Press <kbd> Esc </kbd> to exit.
         </div>
       )}
       {imageryStatus === "loading" && (
