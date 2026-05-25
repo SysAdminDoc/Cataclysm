@@ -31,6 +31,12 @@ png = "0.17"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+# Enables the quantitative validation-harness test suite under
+# physics::validation. Off by default — these tests are long-running
+# (1D Stoker dam-break / Carrier-Greenspan plane-beach runup /
+# Range 2022 Chicxulub far-field) and over-spec the per-PR CI loop.
+# Run with `cargo test --release --features validation -- validation::`.
+validation = []
 
 [profile.release]
 opt-level = 3

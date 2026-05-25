@@ -22,6 +22,8 @@ pub mod earthquake;
 pub mod okada;
 pub mod shallow_water;
 pub mod solver;
+#[cfg(feature = "validation")]
+pub mod validation;
 
 use serde::{Deserialize, Serialize};
 

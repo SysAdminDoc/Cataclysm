@@ -69,10 +69,10 @@ Single source of truth for delivery. Phased plan; each phase ends with a working
 
 ### Solver fidelity (M-L)
 
-- [ ] **I-V01 P1** — Wet/dry land cell handling in SWE solver (no more "halo" on continental land).
+- [x] **I-V01 P1** — Wet/dry land cell handling in SWE solver (no more "halo" on continental land).
 - [ ] **F-V01 P0** — Validation harness: Stoker dam-break + Carrier-Greenspan plane-beach runup + Range 2022 Chicxulub. `[features] validation` Cargo flag.
 - [ ] **F-V02 P0** — Full Okada 1985 I-term half-space correction; re-enable two `#[ignore]`d Tohoku/Sumatra validation tests; wire `OkadaFault` into `earthquake_initial_conditions`.
-- [ ] **F-V10 P2** — Radiation / sponge-layer boundary conditions (replace zero-flux walls).
+- [x] **F-V10 P2** — Radiation / sponge-layer boundary conditions (replace zero-flux walls).
 - [ ] **I-V02 P1** — Inundation polygons (depends on wet/dry handling + real bathymetry).
 
 ### Power-user UX (M)
