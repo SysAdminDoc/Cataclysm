@@ -30,7 +30,7 @@
 use super::asteroid::{far_field_amplitude_m, AsteroidImpact};
 use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
 use super::shallow_water::synolakis_runup_m;
-use super::solver::{BoundaryMode, SwGrid, TimeStepper};
+use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
 use super::GeoPoint;
 
 /// Stoker 1957 dam-break analytical wave-front position over a uniform
@@ -55,7 +55,12 @@ fn stoker_wavefront_speed_matches_sqrt_gh() {
     // 5 minutes — wave should travel c0 * 300 ≈ 60 km.
     let t_end_s = 300.0;
     let dt = g.recommended_dt_s(0.4);
-    let stepper = TimeStepper::new(dt).with_boundary(BoundaryMode::ZeroFlux);
+    // Stoker's analytical celerity is for the LINEAR shallow-water
+    // equations; use SolverMode::Linear so the comparison isn't biased
+    // by the v0.4.0 nonlinear advection term.
+    let stepper = TimeStepper::new(dt)
+        .with_boundary(BoundaryMode::ZeroFlux)
+        .with_mode(SolverMode::Linear);
     stepper.step(&mut g, ((t_end_s / dt).round() as usize).max(2));
 
     // Find the leading-edge along the +x axis: outermost cell whose
