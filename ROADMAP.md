@@ -4,6 +4,10 @@ Phased delivery plan. Each phase ends with a working, demoable artifact.
 
 ---
 
+> Detailed evidence-backed plan + competitive research lives in
+> [`RESEARCH_FEATURE_PLAN.md`](./RESEARCH_FEATURE_PLAN.md). Per-item granular
+> checklist lives in [`TODO.md`](./TODO.md).
+
 ## Phase 0 — Scaffold ✅ (v0.0.1 — 2026-05-24)
 
 - [x] Repo skeleton, LICENSE, README, CHANGELOG, ROADMAP
@@ -13,17 +17,19 @@ Phased delivery plan. Each phase ends with a working, demoable artifact.
 - [x] Catppuccin Mocha theme tokens
 - [x] Cesium ion token plumbing via `.env`
 
-## Phase 1 — Globe + Initial Conditions (v0.1.0)
+## Phase 1 — Globe + Initial Conditions ✅ (v0.1.0 — 2026-05-25)
 
 **DoD:** User clicks a preset, sees the globe fly to the impact site, watches the initial cavity / fault displacement render as a colored disc, and reads the calculated peak wave amplitude.
 
-- [ ] CesiumJS globe mounted in React, GEBCO World Bathymetry terrain provider loaded
-- [ ] Camera fly-to on preset / scenario coordinates
-- [ ] Initial water-surface displacement rendered as a Cesium entity (cylinder/disc with height = cavity depth, color ramp by amplitude)
-- [ ] `physics::asteroid::cavity_geometry()` invoked from frontend via `tauri::invoke`, results piped into the scene
-- [ ] Scenario builder form: lat/lon picker (click globe), impactor diameter, density, velocity, angle, target=water/land
-- [ ] Preset dropdown showing all 10 events with one-line description
-- [ ] Results panel: cavity radius, cavity depth, energy (J + Mt TNT), seismic-equivalent magnitude, peak amplitude at 100 km / 1000 km
+- [x] CesiumJS globe mounted in React, Cesium World Bathymetry (GEBCO) terrain provider loaded asynchronously
+- [x] Camera fly-to on preset / scenario coordinates (range clamped 0.5 Mm – 8 Mm)
+- [x] Initial water-surface displacement rendered as a 3D Cesium cylinder (height = cavity_depth via Ward–Asphaug parabola), translucent with amplitude-mapped color
+- [x] All four `physics::*::initial_conditions()` invoked from frontend via `tauri::invoke`, results piped into the scene
+- [x] Scenario builder: tabbed Asteroid / Nuclear / Earthquake / Landslide forms; click-globe-to-pick location
+- [x] Preset selector showing all 11 events (Krakatoa 1883 added) with one-line description; speculative flagged with ⚠
+- [x] Results panel: cavity radius, cavity depth, energy (J + Mt TNT), seismic-equivalent magnitude, peak amplitude
+- [x] Settings modal: Cesium ion token + theme; first-run disclaimer; in-app citations modal with peer-reviewed links
+- [x] CI/CD pipeline (3 OS matrix); release workflow with workflow_dispatch and signed-installer-ready artifact upload; Dependabot; cargo-audit
 
 ## Phase 2 — Linear Long-Wave Propagation (v0.2.0)
 
