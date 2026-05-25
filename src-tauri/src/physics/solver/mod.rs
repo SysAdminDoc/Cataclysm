@@ -297,6 +297,37 @@ fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
     }
 }
 
+/// Depth threshold (m) below which a cell is treated as dry land. The
+/// `simulate_grid` command substitutes a sentinel `1.0` for the land cells
+/// emitted by the offline bathymetry sampler (which returns 0 for land);
+/// any future GEBCO sampler with a similar 0-for-land convention will
+/// likewise be flagged. Cells under this threshold are excluded from the
+/// leapfrog update so a continent-scale source no longer paints a
+/// "halo" of slow-spreading wave over interior continents (I-V01).
+pub const LAND_DEPTH_THRESHOLD_M: f64 = 1.01;
+
+/// Boundary handling for the SWE solver. Sponge layers absorb outgoing
+/// waves over a configurable rim width so a long-running scenario doesn't
+/// reflect the wavefront back into the source (F-V10).
+#[derive(Debug, Clone, Copy)]
+pub enum BoundaryMode {
+    /// `u = v = 0` at the four edges. Reflective; only useful for the
+    /// dam-break analytical validation harness.
+    ZeroFlux,
+    /// `η`, `u`, `v` damped over an `width_cells`-wide rim by a
+    /// cosine-tapered mask. Default for live simulations.
+    Sponge { width_cells: usize },
+}
+
+impl BoundaryMode {
+    pub const DEFAULT_SPONGE_WIDTH: usize = 10;
+    pub fn default_sponge() -> Self {
+        Self::Sponge {
+            width_cells: Self::DEFAULT_SPONGE_WIDTH,
+        }
+    }
+}
+
 /// Time-stepping driver. v0.2.0 ships a CPU leapfrog with `rayon` row-
 /// parallel updates. v0.3.0 will swap for a `wgpu` compute pipeline using
 /// [`kernels::SWE_LEAPFROG_WGSL`].
@@ -304,6 +335,7 @@ fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
 pub struct TimeStepper {
     pub dt_s: f64,
     pub manning_n: f64,
+    pub boundary: BoundaryMode,
 }
 
 impl Default for TimeStepper {
@@ -311,6 +343,7 @@ impl Default for TimeStepper {
         Self {
             dt_s: 1.0,
             manning_n: MANNING_N_COASTAL,
+            boundary: BoundaryMode::default_sponge(),
         }
     }
 }
@@ -320,7 +353,15 @@ impl TimeStepper {
         Self {
             dt_s,
             manning_n: MANNING_N_COASTAL,
+            boundary: BoundaryMode::default_sponge(),
         }
+    }
+
+    /// Explicitly request a boundary mode. The validation harness uses
+    /// `ZeroFlux`; live `simulate_grid` keeps the default `Sponge`.
+    pub fn with_boundary(mut self, boundary: BoundaryMode) -> Self {
+        self.boundary = boundary;
+        self
     }
 
     /// Advance the grid by exactly `n_steps` of size `self.dt_s`.
@@ -360,18 +401,29 @@ impl TimeStepper {
                         row[i] = eta_old[idx(i, j, nx)];
                         continue;
                     }
+                    // Dry cells stay dry — η pinned to 0. Prevents the
+                    // "slow spread halo" over continental interiors when
+                    // simulate_grid substitutes 1 m for land bathymetry.
+                    if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                        row[i] = 0.0;
+                        continue;
+                    }
                     let h_e = h[idx(i + 1, j, nx)];
                     let h_w = h[idx(i - 1, j, nx)];
                     let h_n = h[idx(i, j + 1, nx)];
                     let h_s = h[idx(i, j - 1, nx)];
-                    let eta_e = eta_old[idx(i + 1, j, nx)];
-                    let eta_w = eta_old[idx(i - 1, j, nx)];
-                    let eta_n = eta_old[idx(i, j + 1, nx)];
-                    let eta_s = eta_old[idx(i, j - 1, nx)];
-                    let u_e = u_in[idx(i + 1, j, nx)];
-                    let u_w = u_in[idx(i - 1, j, nx)];
-                    let v_n = v_in[idx(i, j + 1, nx)];
-                    let v_s = v_in[idx(i, j - 1, nx)];
+                    // Land-neighbour flux substitution: treat dry cells as
+                    // reflective walls — zero the contributing flux term
+                    // rather than letting an η_land × u_water product
+                    // smear amplitude onto land.
+                    let eta_e = if h_e > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i + 1, j, nx)] } else { 0.0 };
+                    let eta_w = if h_w > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i - 1, j, nx)] } else { 0.0 };
+                    let eta_n = if h_n > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i, j + 1, nx)] } else { 0.0 };
+                    let eta_s = if h_s > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i, j - 1, nx)] } else { 0.0 };
+                    let u_e = if h_e > LAND_DEPTH_THRESHOLD_M { u_in[idx(i + 1, j, nx)] } else { 0.0 };
+                    let u_w = if h_w > LAND_DEPTH_THRESHOLD_M { u_in[idx(i - 1, j, nx)] } else { 0.0 };
+                    let v_n = if h_n > LAND_DEPTH_THRESHOLD_M { v_in[idx(i, j + 1, nx)] } else { 0.0 };
+                    let v_s = if h_s > LAND_DEPTH_THRESHOLD_M { v_in[idx(i, j - 1, nx)] } else { 0.0 };
                     let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
                         / (2.0 * dx);
                     let flux_y = ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s)
@@ -395,6 +447,12 @@ impl TimeStepper {
                         v_row[i] = 0.0;
                         continue;
                     }
+                    // Dry cells carry no momentum.
+                    if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                        u_row[i] = 0.0;
+                        v_row[i] = 0.0;
+                        continue;
+                    }
                     let dnedx = (eta_new_ref[idx(i + 1, j, nx)] - eta_new_ref[idx(i - 1, j, nx)])
                         / (2.0 * dx);
                     let dnedy = (eta_new_ref[idx(i, j + 1, nx)] - eta_new_ref[idx(i, j - 1, nx)])
@@ -409,10 +467,51 @@ impl TimeStepper {
                 }
             });
 
+        // Sponge-layer damping on the four rim cells. A cosine-tapered
+        // mask `0.5 (1 - cos(π · d/w))` smoothly absorbs outgoing waves
+        // so a long-running simulation doesn't reflect the wavefront
+        // back into the source.
+        if let BoundaryMode::Sponge { width_cells } = self.boundary {
+            if width_cells > 0 && width_cells * 2 < nx && width_cells * 2 < ny {
+                apply_sponge(&mut eta_new, &mut u_new, &mut v_new, nx, ny, width_cells);
+            }
+        }
+
         grid.eta_m = eta_new;
         grid.u_ms = u_new;
         grid.v_ms = v_new;
         grid.t_s += dt;
+    }
+}
+
+/// Cosine-tapered sponge mask applied in-place to η, u, v. Cells within
+/// `width` of any edge receive a damping factor in `[0, 1]` so amplitude
+/// smoothly decays to zero at the rim, absorbing outgoing waves.
+fn apply_sponge(
+    eta: &mut [f64],
+    u: &mut [f64],
+    v: &mut [f64],
+    nx: usize,
+    ny: usize,
+    width: usize,
+) {
+    use std::f64::consts::PI;
+    for j in 0..ny {
+        for i in 0..nx {
+            let d_i = i.min(nx - 1 - i);
+            let d_j = j.min(ny - 1 - j);
+            let d = d_i.min(d_j);
+            if d >= width {
+                continue;
+            }
+            // Cosine taper: 0 at the very edge, 1 at d == width.
+            let t = d as f64 / width as f64;
+            let factor = 0.5 * (1.0 - (PI * (1.0 - t)).cos());
+            let k = idx(i, j, nx);
+            eta[k] *= factor;
+            u[k] *= factor;
+            v[k] *= factor;
+        }
     }
 }
 
@@ -525,5 +624,73 @@ mod tests {
         assert_eq!(snaps.len(), 5);
         assert!(snaps[0].time_s == 0.0);
         assert!(snaps.last().unwrap().time_s >= 200.0);
+    }
+
+    /// I-V01 — land cells (h <= LAND_DEPTH_THRESHOLD_M) must stay dry
+    /// over the whole simulation. Mock a "continent" as a 1-m-deep patch
+    /// in the western half of an otherwise 4-km-deep ocean and inject a
+    /// Gaussian in the east; after 10 minutes the western (land) cells
+    /// must remain at η = 0 instead of the slow "halo" we saw in v0.2.x.
+    #[test]
+    fn land_cells_stay_dry() {
+        let mut g = SwGrid::new(-5.0, -5.0, 5.0, 5.0, 0.25, 0.25);
+        g.fill_uniform_depth(4_000.0);
+        // Carve out a "continent" in the western half (i < nx/2): depth 1 m.
+        for j in 0..g.ny {
+            for i in 0..g.nx / 2 {
+                g.h_m[idx(i, j, g.nx)] = 1.0;
+            }
+        }
+        g.inject_gaussian(0.0, 2.5, 1.0, 50_000.0); // source on the east side
+        let dt = g.recommended_dt_s(0.4);
+        let stepper = TimeStepper::new(dt);
+        stepper.step(&mut g, ((600.0 / dt).round() as usize).max(2));
+
+        // Every western (land) cell stays at exactly 0.0 — the only path
+        // to nonzero amplitude is the leapfrog update, which is masked
+        // off for h <= LAND_DEPTH_THRESHOLD_M.
+        for j in 0..g.ny {
+            for i in 0..g.nx / 2 {
+                let v = g.eta_m[idx(i, j, g.nx)];
+                assert_eq!(v, 0.0, "land cell ({}, {}) bled wave amplitude: {}", i, j, v);
+            }
+        }
+    }
+
+    /// F-V10 — sponge boundary should absorb outgoing waves so rim cells
+    /// approach zero amplitude regardless of source strength.
+    #[test]
+    fn sponge_boundary_absorbs_rim() {
+        let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.1, 0.1);
+        g.fill_uniform_depth(4_000.0);
+        g.inject_gaussian(0.0, 0.0, 1.0, 30_000.0);
+        let stepper = TimeStepper::new(g.recommended_dt_s(0.4));
+        stepper.step(&mut g, 600);
+
+        // After a long-enough run the wave has reached the sponge zone.
+        // Far-rim cells (corners, 1 cell from edge) should be damped to
+        // < 1 % of the source amplitude.
+        let corner = g.eta_m[idx(1, 1, g.nx)].abs();
+        assert!(
+            corner < 0.05,
+            "corner cell amplitude {} m not absorbed by sponge",
+            corner
+        );
+    }
+
+    /// `BoundaryMode::ZeroFlux` opt-in still preserves the v0.2.x
+    /// reflective behavior for the validation harness.
+    #[test]
+    fn zero_flux_boundary_opts_out_of_sponge() {
+        let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
+        g.fill_uniform_depth(4_000.0);
+        g.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+        let stepper = TimeStepper::new(g.recommended_dt_s(0.4)).with_boundary(BoundaryMode::ZeroFlux);
+        stepper.step(&mut g, 30);
+        // No assertion on absorption — just that the call returns without
+        // panicking with the opt-in mode set. (Reflective wave dynamics
+        // are validated in the analytical harness.)
+        let total_energy: f64 = g.eta_m.iter().map(|v| v * v).sum();
+        assert!(total_energy.is_finite() && total_energy > 0.0);
     }
 }

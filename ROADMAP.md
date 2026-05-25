@@ -59,13 +59,13 @@ Single source of truth for delivery. Phased plan; each phase ends with a working
 
 ### Quick wins (S, low-risk)
 
-- [ ] **I-V03 P1** — `cargo audit` fail-on-vuln (drop `|| true` from `ci.yml`).
-- [ ] **I-V05 P2** — Bump CI/release Actions to Node 24 + `windows-2025-vs2026`.
-- [ ] **I-V06 P2** — `@media (prefers-reduced-motion: reduce)` overrides; Cesium flyTo duration tunable.
-- [ ] **I-V07 P2** — `role="status" aria-live="polite"` regions on SwePlayback error + runup transitions.
-- [ ] **I-V09 P3** — Runup-bar hover labels: arrival + amplitude.
-- [ ] **I-V10 P3** — Settings: Reset-to-defaults + Show-first-run-again.
-- [ ] **F-V13 P3** — Per-preset curated camera views (heading/pitch/range).
+- [x] **I-V03 P1** — `cargo audit` fail-on-vuln (drop `|| true` from `ci.yml`).
+- [x] **I-V05 P2** — Bump CI/release Actions to v5 (`checkout`/`setup-node`/`upload-artifact`/`download-artifact`) + Node 22.
+- [x] **I-V06 P2** — `@media (prefers-reduced-motion: reduce)` overrides; Cesium flyTo duration tunable.
+- [x] **I-V07 P2** — `role="status" aria-live="polite"` regions on SwePlayback error + runup transitions.
+- [x] **I-V09 P3** — Runup-bar hover labels: arrival + amplitude.
+- [x] **I-V10 P3** — Settings: Reset-to-defaults + Show-first-run-again.
+- [x] **F-V13 P3** — Per-preset curated camera views (heading/pitch/range).
 
 ### Solver fidelity (M-L)
 
