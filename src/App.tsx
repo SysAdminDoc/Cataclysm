@@ -6,6 +6,7 @@ import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
+import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri, type RunupAtPointResult } from "./lib/tauri";
 import { applyTheme, loadTheme } from "./lib/theme";
@@ -156,6 +157,7 @@ export default function App() {
             wavefront={wavefront}
             sweSnapshot={sweSnapshot}
             runupResults={runupResults}
+            dartBuoys={dartPinsForPreset(activePresetId)}
             pickMode={pickMode}
             onPick={handlePickGlobe}
             onPickCancel={() => setPickMode(false)}
@@ -166,6 +168,7 @@ export default function App() {
       <aside className="app__panel app__panel--right">
         <ResultsPanel initial={initial} timeS={timeS} onTimeChange={setTimeS} />
         <SwePlayback initial={initial} onSnapshot={setSweSnapshot} />
+        <DartOverlay presetId={activePresetId} timeS={timeS} />
         <ScenarioBuilder
           onSimulate={handleSimulate}
           pickedLocation={pickedLocation}

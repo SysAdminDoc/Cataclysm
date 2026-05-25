@@ -131,3 +131,24 @@ export type CoastalPointDatabase = {
   };
   points: CoastalPoint[];
 };
+
+export type DartBuoy = {
+  id: number;
+  name: string;
+  lat: number;
+  lon: number;
+  depth_m: number;
+  /** `[t_s_since_event, eta_m]` samples, ordered by t. */
+  observations: [number, number][];
+};
+
+export type DartEvent = {
+  event_origin_utc: string;
+  epicenter: { lat: number; lon: number };
+  buoys: DartBuoy[];
+};
+
+export type DartDatabase = {
+  _meta: Record<string, unknown>;
+  events: Record<string, DartEvent>;
+};

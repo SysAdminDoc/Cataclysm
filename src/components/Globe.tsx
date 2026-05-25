@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium, tokenConfigured } from "../lib/cesium";
 import type { RunupAtPointResult } from "../lib/tauri";
-import type { GridSnapshot, InitialDisplacement, PropagationSnapshot } from "../types/scenario";
+import type {
+  DartBuoy,
+  GridSnapshot,
+  InitialDisplacement,
+  PropagationSnapshot,
+} from "../types/scenario";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -11,6 +16,8 @@ type Props = {
   sweSnapshot?: GridSnapshot | null;
   /** Coastal runup samples to render as 3D bars at coastline points. */
   runupResults?: RunupAtPointResult[];
+  /** DART buoy pins for the active historical preset. */
+  dartBuoys?: DartBuoy[];
   /**
    * When set, the globe is in "pick" mode: the next click is consumed,
    * cartographic coords are reported, and the mode toggles off automatically.
@@ -39,6 +46,7 @@ export function Globe({
   wavefront,
   sweSnapshot,
   runupResults,
+  dartBuoys,
   pickMode,
   onPick,
   onPickCancel,
@@ -48,6 +56,7 @@ export function Globe({
   const sourceEntityRef = useRef<Cesium.Entity | null>(null);
   const wavefrontEntitiesRef = useRef<Cesium.Entity[]>([]);
   const runupEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
+  const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const [bathymetryStatus, setBathymetryStatus] = useState<"idle" | "loading" | "ready" | "error">(
@@ -106,6 +115,7 @@ export function Globe({
       sourceEntityRef.current = null;
       wavefrontEntitiesRef.current = [];
       runupEntitiesRef.current = new Map();
+      dartEntitiesRef.current = new Map();
       sweLayerRef.current = null;
     };
   }, []);
@@ -345,6 +355,52 @@ export function Globe({
       }
     }
   }, [runupResults]);
+
+  // DART buoy pins.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    const map = dartEntitiesRef.current;
+    const seen = new Set<number>();
+    for (const b of dartBuoys ?? []) {
+      seen.add(b.id);
+      let entity = map.get(b.id);
+      const position = Cesium.Cartesian3.fromDegrees(b.lon, b.lat, 0);
+      if (!entity) {
+        entity = viewer.entities.add({
+          name: `DART ${b.id}`,
+          position,
+          point: {
+            pixelSize: 9,
+            color: Cesium.Color.fromCssColorString("#eba0ac"),
+            outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+            outlineWidth: 2,
+          },
+          label: {
+            text: `DART ${b.id}`,
+            font: "10px Inter, sans-serif",
+            fillColor: Cesium.Color.fromCssColorString("#eba0ac"),
+            outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            pixelOffset: new Cesium.Cartesian2(0, 10),
+            scale: 0.85,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1.5e7),
+          },
+        });
+        map.set(b.id, entity);
+      } else {
+        entity.position = new Cesium.ConstantPositionProperty(position);
+      }
+    }
+    for (const [id, entity] of map) {
+      if (!seen.has(id)) {
+        viewer.entities.remove(entity);
+        map.delete(id);
+      }
+    }
+  }, [dartBuoys]);
 
   // No token configured → friendly setup empty-state.
   if (!tokenConfigured()) {

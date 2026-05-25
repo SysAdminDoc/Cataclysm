@@ -577,6 +577,50 @@ label {
   color: var(--subtext);
 }
 
+.dart__toggle {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dart__toggle:hover {
+  color: var(--text);
+}
+
+.dart__buoy {
+  background: var(--surface0);
+  border: 1px solid var(--surface1);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dart__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dart__meta {
+  font-size: 10px;
+  color: var(--subtext);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.dart__spark {
+  background: var(--mantle);
+  border-radius: var(--r-sm);
+  margin-top: 4px;
+}
+
 .footer-note {
   font-size: 11px;
   color: var(--overlay);
