@@ -77,6 +77,103 @@ export function exportGlobePng(meta: ScreenshotMeta): boolean {
   return true;
 }
 
+/** F4-09 — Share-card export. Composites the bare globe canvas with a
+ *  200-px-tall header strip containing preset name, key parameters,
+ *  citation short-ref, and the project URL. The header strip is rendered
+ *  to a 1200×800 share-card-friendly aspect via an offscreen canvas
+ *  (no external library needed). Includes a footer "Educational only —
+ *  not for evacuation" trust-signal to preserve product framing. */
+export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
+  const sourceCanvas = findGlobeCanvas();
+  if (!sourceCanvas) return false;
+
+  const W = 1200;
+  const H = 800;
+  const HEADER_H = 100;
+  const FOOTER_H = 40;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+
+  // Background — match the Catppuccin Mocha base so the card reads as
+  // 'made by the same app' on dark or light social timelines.
+  ctx.fillStyle = "#1e1e2e";
+  ctx.fillRect(0, 0, W, H);
+
+  // Globe canvas content fills the middle band.
+  const globeY = HEADER_H;
+  const globeH = H - HEADER_H - FOOTER_H;
+  ctx.drawImage(sourceCanvas, 0, globeY, W, globeH);
+
+  // Header strip.
+  ctx.fillStyle = "#181825";
+  ctx.fillRect(0, 0, W, HEADER_H);
+
+  const presetName = meta.preset?.name ?? "Custom scenario";
+  const date = meta.preset?.date ?? "—";
+  const ref = meta.preset?.reference ?? "";
+  const initialAmp = meta.initial?.peak_amplitude_m;
+  const energyJ = meta.initial?.source_energy_j;
+  const mwEq = meta.initial?.seismic_mw_equivalent;
+
+  ctx.fillStyle = "#cdd6f4";
+  ctx.font = "bold 28px Inter, system-ui, sans-serif";
+  ctx.textBaseline = "top";
+  ctx.fillText(presetName, 24, 16);
+
+  ctx.fillStyle = "#a6adc8";
+  ctx.font = "16px Inter, system-ui, sans-serif";
+  ctx.fillText(date, 24, 52);
+
+  // Parameter strip on the right side of the header.
+  const params: string[] = [];
+  if (initialAmp !== undefined && Number.isFinite(initialAmp)) {
+    params.push(`A₀ ${initialAmp.toFixed(1)} m`);
+  }
+  if (mwEq !== undefined && Number.isFinite(mwEq)) {
+    params.push(`M_w ≈ ${mwEq.toFixed(1)}`);
+  }
+  if (energyJ !== undefined && Number.isFinite(energyJ)) {
+    const mt = energyJ / 4.184e15;
+    if (mt >= 1) params.push(`E ≈ ${mt.toFixed(1)} Mt TNT`);
+    else if (mt >= 1e-3) params.push(`E ≈ ${(mt * 1000).toFixed(1)} kt TNT`);
+  }
+  ctx.fillStyle = "#89b4fa";
+  ctx.font = "bold 16px Inter, system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(params.join("   ·   "), W - 24, 16);
+
+  ctx.fillStyle = "#a6adc8";
+  ctx.font = "12px Inter, system-ui, sans-serif";
+  ctx.fillText(`t = ${(meta.timeS / 60).toFixed(0)} min`, W - 24, 52);
+
+  if (ref) {
+    ctx.fillStyle = "#6c7086";
+    ctx.font = "11px Inter, system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(ref.slice(0, 100), W - 24, 76);
+  }
+  ctx.textAlign = "left";
+
+  // Footer trust strip.
+  ctx.fillStyle = "#11111b";
+  ctx.fillRect(0, H - FOOTER_H, W, FOOTER_H);
+  ctx.fillStyle = "#fab387";
+  ctx.font = "12px Inter, system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "TsunamiSimulator · Educational only · Not for evacuation · github.com/SysAdminDoc/TsunamiSimulator",
+    24,
+    H - FOOTER_H / 2,
+  );
+
+  const dataUrl = canvas.toDataURL("image/png");
+  downloadDataUrl(dataUrl, suggestedFilename(meta, "png").replace(".png", "-share.png"));
+  return true;
+}
+
 /** Pick the best video MIME the current WebView supports. WebM/VP9 is the
  *  most portable; Safari WKWebView only supports MP4/H.264. Fallback to
  *  whatever MediaRecorder.isTypeSupported reports as available. */

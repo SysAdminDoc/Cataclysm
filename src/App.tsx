@@ -12,7 +12,7 @@ import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri } from "./lib/tauri";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeVideo } from "./lib/export";
+import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo } from "./lib/export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
@@ -123,6 +123,21 @@ export default function App() {
             disabled={!slotA.initial}
           >
             📸 Export PNG
+          </button>
+          <button
+            className="icon-button"
+            onClick={() => {
+              const ok = exportGlobeShareCard({
+                preset: activePresetA,
+                initial: slotA.initial,
+                timeS,
+              });
+              if (!ok) console.warn("No globe canvas found to export");
+            }}
+            title="Save a branded share-card with scenario metadata + citation overlay"
+            disabled={!slotA.initial}
+          >
+            🪪 Share card
           </button>
           <button
             className="icon-button"
