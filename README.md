@@ -35,22 +35,25 @@ Existing tools each do one piece:
 | **Underwater nuclear** | ✅ formulas wired | Glasstone & Dolan 1977; Le Méhauté 1996; DNA 1996 (5% energy → wave) |
 | **Atmospheric / surface nuclear (ocean)** | ✅ formulas wired | Van Dorn et al. 1968; Adams 1972 |
 | **"Russia Poseidon" tsunami torpedo** | ✅ realistic mode | Skeptical physics — 360° dispersion, ~5% efficiency |
-| **Earthquake (Okada fault dislocation)** | ⏳ scaffold | Okada 1985; Mansinha & Smylie 1971 |
-| **Subaerial landslide** | ⏳ scaffold | Fritz & Hager 2001 (Lituya); Slingerland & Voight |
-| **Submarine landslide** | 🔲 planned | Watts et al. 2005 |
+| **Earthquake (Okada fault dislocation)** | ✅ leading-order; full I-term v0.3.0 | Okada 1985; Mansinha & Smylie 1971 |
+| **Subaerial landslide** | ✅ Heller–Hager 2D channel | Fritz & Hager 2001 (Lituya); Slingerland & Voight |
+| **Submarine landslide** | ✅ Watts 2003 best-fit | Watts et al. 2005 |
 | **Volcanic caldera collapse** | 🔲 planned | Krakatoa 1883, Hunga Tonga 2022 |
 
 ### Propagation
 
 - ✅ **Linear long-wave** (deep-ocean, fast preview).
-- ⏳ **Nonlinear shallow-water equations** (NSWE) — depth-averaged 2D, finite-volume Godunov on a regular lat-lon grid with `1/cos φ` metric.
+- ✅ **Shallow-water equations** — depth-averaged 2D leapfrog with `rayon`
+  row-parallel updates, Manning bottom friction, CFL-safe Δt, snapshots
+  rendered as PNG overlays on the Cesium globe.
 - 🔲 **Boussinesq** for dispersive waves (impact-tsunami wavelengths shorter than ocean depth — important for Ward–Asphaug regime).
 - 🔲 **Adaptive mesh refinement** (AMR) like GeoClaw — coarse far-field, fine coastal.
-- 🔲 **GPU compute** via `wgpu` (cross-platform; expect 50–100× over CPU for the same grid).
+- 🔲 **GPU compute** via `wgpu` (WGSL kernel scaffolded; v0.3.0 wire-up; expect 50–100× over CPU for the same grid).
 
 ### Coastal inundation
 
-- ⏳ **Synolakis 1987 runup law** for beach geometry: `R/H₀ = 2.831 √(cot β) (H₀/d)^(5/4)`.
+- ✅ **Synolakis 1987 runup law** sampled at 60+ named coastal points,
+  rendered as colour-graded 3D bars on the globe.
 - 🔲 **MOST-style wetting/drying** on bathymetric grid.
 - 🔲 **Inundation polygons** rendered as GeoJSON overlays on Cesium.
 
@@ -71,39 +74,57 @@ Existing tools each do one piece:
 
 ### UX
 
-- **Cesium globe** with GEBCO world bathymetry — accurate seafloor depth everywhere.
-- **Scenario builder** — click anywhere on the globe, dial in diameter/velocity/yield/angle, hit `Simulate`.
-- **Timeline scrubber** — step the simulation forward minute by minute, watch the wave-front ring expand.
-- **Effect overlays** — wave height isolines, arrival-time isochrones, run-up bars on coastlines, debris field.
-- **Side-by-side comparison** — same source over different oceans / locations.
-- **Catppuccin Mocha** default theme (deep dark, branded accents). Light mode toggle.
+- **5 globe styles**: OpenStreetMap (default, no token), Esri World Imagery,
+  Natural Earth II (offline), Cesium World Imagery, Cesium World Bathymetry.
+- **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
+  forms; click-globe-to-pick location.
+- **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
+  through the live shallow-water solver.
+- **Effect overlays** — wavefront ring, coastal runup bars at 60+ named
+  coastal points, DART buoy historical observations for the three modern
+  presets.
+- **Side-by-side comparison mode** — two scenarios on synchronised globes.
+- **Catppuccin Mocha** dark theme default + **Latte** light theme toggle.
 
 ---
 
 ## Install
 
-> v0.0.1 is a scaffold — no shipped binary yet. Build from source.
+Prebuilt installers for the latest release are on the
+[Releases page](https://github.com/SysAdminDoc/TsunamiSimulator/releases) —
+Windows (`.msi`, `.exe`), macOS universal (`.dmg`), and Linux
+(`.AppImage`, `.deb`, `.rpm`).
 
-### Prerequisites
+The app launches on the no-token **OpenStreetMap** globe by default and is
+fully usable out of the box. A free Cesium ion token (optional) unlocks
+high-resolution satellite imagery + GEBCO bathymetric terrain from the
+Settings dialog.
+
+### Build from source
+
+Prerequisites:
 
 - **Node.js** ≥ 20 LTS
 - **Rust** ≥ 1.78 (stable) with `rustup`
-- **Tauri CLI v2** — `cargo install tauri-cli --version "^2.0"`
-- **Cesium ion access token** — free tier at https://cesium.com/ion/signup (paste into `.env`)
-- Windows: WebView2 runtime (preinstalled on Win11)
-- macOS: Xcode CLT
-- Linux: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libssl-dev`, `pkg-config`
+- Windows: Visual Studio 2022/2026 with "Desktop development with C++"
+  workload (provides MSVC `link.exe`); WebView2 runtime (preinstalled on Win11)
+- macOS: Xcode Command Line Tools
+- Linux: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`,
+  `libayatana-appindicator3-dev`, `librsvg2-dev`, `libsoup-3.0-dev`
 
-### Build
+The Tauri CLI ships via the `@tauri-apps/cli` npm dev dependency — no
+separate `cargo install` step.
 
 ```bash
 git clone https://github.com/SysAdminDoc/TsunamiSimulator
 cd TsunamiSimulator
-cp .env.example .env       # paste your Cesium ion token here
 npm install
 npm run tauri dev          # development hot-reload
-npm run tauri build        # production binary in src-tauri/target/release/
+npm run tauri build        # platform installer(s) in src-tauri/target/release/bundle/
 ```
+
+To bake a Cesium ion token at build time, `cp .env.example .env` and paste
+it in; otherwise leave it blank and paste at runtime in **Settings**.
 
 ---
 

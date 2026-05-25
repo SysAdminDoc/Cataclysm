@@ -3,9 +3,10 @@
 ## Supported versions
 
 | Version | Supported |
-|--------|----|
-| 0.1.x  | ✅ |
-| 0.0.x  | ❌ scaffold only |
+|---------|-----------|
+| 0.2.x   | ✅ active |
+| 0.1.x   | ⚠️ critical fixes only |
+| 0.0.x   | ❌ scaffold; do not use |
 
 ## Reporting a vulnerability
 

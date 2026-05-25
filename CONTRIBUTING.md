@@ -25,21 +25,27 @@ Prerequisites:
 
 - Node.js ≥ 20
 - Rust stable ≥ 1.78 (install via `rustup`)
-- Tauri CLI v2: `cargo install tauri-cli --version "^2.0"`
 - Platform deps:
   - **Windows**: Visual Studio 2022/2026 with "Desktop development with C++" workload (provides MSVC `link.exe`)
   - **macOS**: Xcode Command Line Tools
   - **Linux**: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `libsoup-3.0-dev`
+
+The Tauri CLI ships as the `@tauri-apps/cli` npm dev dependency, so
+`npm install` is enough — no separate `cargo install tauri-cli` step.
 
 Run:
 
 ```bash
 git clone https://github.com/SysAdminDoc/TsunamiSimulator
 cd TsunamiSimulator
-cp .env.example .env  # optional: paste a Cesium ion token; or use the Settings UI at runtime
 npm install
 npm run tauri dev
 ```
+
+The app boots on the no-token OpenStreetMap globe out of the box. To use
+the Cesium ion-backed globe styles (World Imagery / GEBCO bathymetry),
+either `cp .env.example .env` and paste a free token, or paste it into
+Settings at runtime.
 
 Before opening a PR, run:
 
