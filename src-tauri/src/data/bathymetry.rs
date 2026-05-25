@@ -181,15 +181,18 @@ mod tests {
 
     #[test]
     fn coastal_shelf_shallower_than_basin() {
-        // Just offshore of Chile (Pacific basin near land box).
-        let deep = sample(-15.0, -140.0); // open ocean
-        let coast = sample(-15.0, -75.5); // ~0.5 deg off South America
+        // Open ocean: middle of Pacific at -15 lat.
+        let deep = sample(-15.0, -140.0);
+        // ~2° off the South America land box (box west edge is -82.0).
+        // Must be west of -82 to be in the ocean, but close enough that
+        // the shelf taper kicks in.
+        let coast = sample(-15.0, -85.0);
+        assert!(coast > 0.0, "coast should still be ocean, got {}", coast);
         assert!(
             coast < deep,
             "coast {} should be shallower than open ocean {}",
             coast,
             deep
         );
-        assert!(coast > 0.0, "coast should still be ocean, got {}", coast);
     }
 }
