@@ -21,6 +21,7 @@ pub mod landslide;
 pub mod earthquake;
 pub mod okada;
 pub mod shallow_water;
+pub mod solver;
 
 use serde::{Deserialize, Serialize};
 
