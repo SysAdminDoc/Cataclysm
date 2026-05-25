@@ -283,7 +283,7 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
             // we'd divide-by-zero; cap at 0 to indicate "no land here".
             let slope_rad = p.beach_slope_deg.to_radians();
             let inundation_extent_m = if slope_rad > 0.0 {
-                (runup_m / slope_rad.tan()).max(0.0).min(50_000.0)
+                (runup_m / slope_rad.tan()).clamp(0.0, 50_000.0)
             } else {
                 0.0
             };
@@ -434,7 +434,7 @@ pub fn inspect_at_point(req: InspectAtPointRequest) -> Result<InspectAtPointResu
     let arrival_time_s = range_m / c;
     let slope_rad = req.beach_slope_deg.to_radians();
     let inundation_extent_m = if slope_rad > 0.0 {
-        (runup_m / slope_rad.tan()).max(0.0).min(50_000.0)
+        (runup_m / slope_rad.tan()).clamp(0.0, 50_000.0)
     } else {
         0.0
     };
