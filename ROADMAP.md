@@ -91,7 +91,7 @@ Single source of truth for delivery. Phased plan; each phase ends with a working
 ### Science-frontier (M)
 
 - [ ] **F-V06 P1** — Real GEBCO 2024 bathymetry via first-run download wizard. *Blocked: needs decision on distribution channel (GitHub Release vs Cloudflare R2) and a built `gebco_2024_30s.zstd` artifact (~440 MB).*
-- [ ] **F-V09 P2** — Hunga Tonga atmospheric Lamb-wave source.
+- [x] **F-V09 P2** — Hunga Tonga atmospheric Lamb-wave source (closed-form module + `lamb_wave_sample` IPC; SWE-solver integration deferred to v0.4.0).
 
 ---
 
