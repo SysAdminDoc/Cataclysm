@@ -66,6 +66,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   slots + activation runbook.
 
 ### Docs
+- **F-V03 — README screenshots + animated demo**. Added five
+  production-build screenshots under `assets/screenshots/` plus an
+  animated Chicxulub playback GIF, then embedded the gallery in the
+  README visual tour.
 - **Per-source science notes**. New `docs/science/{asteroid,
   nuclear,earthquake,landslide,shallow_water,lamb_wave}.md` — each
   documents the formula, paper citation, validation case, and
@@ -105,6 +109,11 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   one of three colour-coded statuses.
 
 ### SWE playback UX
+- **Browser preview demo path**. `npm run dev` / `vite preview` now
+  render deterministic demo presets, custom-scenario readouts, runup
+  points, and SWE frames when Tauri IPC is unavailable. The desktop
+  app still uses the Rust backend; the browser path exists for local
+  visual QA and documentation capture.
 - **Cancel button on in-flight simulations**. `SwePlayback`
   surfaces a Cancel button next to the Computing… state; clicking
   bumps the `reqIdRef` so the response is dropped on arrival and
@@ -244,7 +253,6 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - Fixed `clippy::manual_clamp` on the inundation-extent computation.
 
 ### Blocked / deferred from v0.3.0 (carried to v0.4.0)
-- **F-V03** README screenshots — needs GUI capture from a Windows host.
 - **F-V04** Code signing — needs maintainer EV cert + Apple Developer enrollment.
 - **F-V07** `tauri-plugin-updater` — needs maintainer-generated Ed25519 keypair.
 - **I-V04** OS-keychain token — Tauri 2 keychain plugin ecosystem still emerging.

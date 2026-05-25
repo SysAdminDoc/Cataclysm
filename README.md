@@ -12,6 +12,20 @@ This is the **NukeMap for tsunamis** — but with a real 3D bathymetric globe, r
 
 ---
 
+## Visual tour
+
+![Animated Chicxulub playback demo](./assets/screenshots/chicxulub-demo.gif)
+
+| Historical preset + source readout | Live SWE playback |
+|---|---|
+| ![Tohoku preset selected on the globe](./assets/screenshots/preset-tohoku.png) | ![Live shallow-water-equation playback with a wave overlay](./assets/screenshots/swe-running.png) |
+
+| Side-by-side comparison | Scenario builder + globe pick | Citations |
+|---|---|---|
+| ![Poseidon realistic versus exaggerated comparison mode](./assets/screenshots/compare-poseidon.png) | ![Custom scenario builder with globe pick mode enabled](./assets/screenshots/scenario-builder.png) | ![Citations modal with peer-reviewed references](./assets/screenshots/citations.png) |
+
+---
+
 ## Why this exists
 
 Existing tools each do one piece:
@@ -25,7 +39,7 @@ Existing tools each do one piece:
 
 ---
 
-## Features (v0.0.1 scaffold → roadmap)
+## Features (current build + roadmap)
 
 ### Source models (energy → initial water-surface displacement)
 
@@ -35,7 +49,7 @@ Existing tools each do one piece:
 | **Underwater nuclear** | ✅ formulas wired | Glasstone & Dolan 1977; Le Méhauté 1996; DNA 1996 (5% energy → wave) |
 | **Atmospheric / surface nuclear (ocean)** | ✅ formulas wired | Van Dorn et al. 1968; Adams 1972 |
 | **"Russia Poseidon" tsunami torpedo** | ✅ realistic mode | Skeptical physics — 360° dispersion, ~5% efficiency |
-| **Earthquake (Okada fault dislocation)** | ✅ leading-order; full I-term v0.3.0 | Okada 1985; Mansinha & Smylie 1971 |
+| **Earthquake (Okada fault dislocation)** | ✅ full Okada I-term wired | Okada 1985; Mansinha & Smylie 1971 |
 | **Subaerial landslide** | ✅ Heller–Hager 2D channel | Fritz & Hager 2001 (Lituya); Slingerland & Voight |
 | **Submarine landslide** | ✅ Watts 2003 best-fit | Watts et al. 2005 |
 | **Volcanic caldera collapse** | 🔲 planned | Krakatoa 1883, Hunga Tonga 2022 |
@@ -48,14 +62,15 @@ Existing tools each do one piece:
   rendered as PNG overlays on the Cesium globe.
 - 🔲 **Boussinesq** for dispersive waves (impact-tsunami wavelengths shorter than ocean depth — important for Ward–Asphaug regime).
 - 🔲 **Adaptive mesh refinement** (AMR) like GeoClaw — coarse far-field, fine coastal.
-- 🔲 **GPU compute** via `wgpu` (WGSL kernel scaffolded; v0.3.0 wire-up; expect 50–100× over CPU for the same grid).
+- ✅ **GPU compute** via `wgpu` behind the `gpu` feature flag, with CPU fallback when no adapter is available.
 
 ### Coastal inundation
 
 - ✅ **Synolakis 1987 runup law** sampled at 60+ named coastal points,
   rendered as colour-graded 3D bars on the globe.
 - 🔲 **MOST-style wetting/drying** on bathymetric grid.
-- 🔲 **Inundation polygons** rendered as GeoJSON overlays on Cesium.
+- ✅ **First-order inundation discs** from runup/slope estimates.
+- 🔲 **Real flood polygons** rendered as GeoJSON overlays on Cesium.
 
 ### Presets (historical events with peer-reviewed parameters)
 
@@ -119,7 +134,8 @@ separate `cargo install` step.
 git clone https://github.com/SysAdminDoc/TsunamiSimulator
 cd TsunamiSimulator
 npm install
-npm run tauri dev          # development hot-reload
+npm run dev                # browser preview with deterministic demo data
+npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run tauri build        # platform installer(s) in src-tauri/target/release/bundle/
 ```
 

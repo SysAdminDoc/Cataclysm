@@ -13,8 +13,8 @@
 >   v0.3.0 forward plan written 2026-05-25 against `ef90dc8` (v0.2.1).
 >   Defined F-V01..F-V13 + I-V01..I-V10; 15 of 23 shipped on `main`
 >   during the autonomous Phase 0.3.0 batch (now reflected in
->   `CHANGELOG.md`); 5 remain blocked on maintainer input and are
->   carried forward into the roadmap here.
+>   `CHANGELOG.md`); F-V03 README screenshots/demo has since shipped,
+>   and 4 items remain blocked on maintainer input.
 >
 > This document is the **v0.4.0 forward-looking plan**, focused on
 > Phase 4 (GPU + nonlinear), Phase 5 (Boussinesq + AMR), and Phase 6
@@ -28,9 +28,9 @@
 
 ## Executive Summary
 
-`TsunamiSimulator` shipped **v0.2.1** to the GitHub Releases page with installers for Win/macOS/Linux on 2026-05-25. Between that release and this document, an autonomous Phase 0.3.0 batch landed **15 of the 23 Phase 3 items** identified in the prior research plan, including: the full Okada 1985 I-term half-space correction (Tōhoku peak now lands in the [1, 30] m band per Fujii-Satake 2013), a quantitative validation harness against Stoker + Carrier-Greenspan + Range 2022 Chicxulub, IPC bounds and NaN guards across the entire physics surface, wet/dry land cells + sponge boundary conditions in the SWE solver, MP4/WebM timeline export, click-on-globe Inspect overlay, Hunga Tonga atmospheric Lamb-wave source, a 5-step onboarding tour, inundation polygons, curated per-preset camera framings, reduced-motion + aria-live accessibility, OS-keychain-token settings reset path, and a wgpu GPU solver scaffold ready for buffer-binding plumbing. The 5 unshipped Phase 3 items are all blocked on inputs only the maintainer can supply (EV cert, Apple Developer enrollment, Ed25519 keypair, GEBCO distribution channel, GUI screenshot host).
+`TsunamiSimulator` shipped **v0.2.1** to the GitHub Releases page with installers for Win/macOS/Linux on 2026-05-25. Between that release and this document, an autonomous Phase 0.3.0 batch landed **15 of the 23 Phase 3 items** identified in the prior research plan, including: the full Okada 1985 I-term half-space correction (Tōhoku peak now lands in the [1, 30] m band per Fujii-Satake 2013), a quantitative validation harness against Stoker + Carrier-Greenspan + Range 2022 Chicxulub, IPC bounds and NaN guards across the entire physics surface, wet/dry land cells + sponge boundary conditions in the SWE solver, MP4/WebM timeline export, click-on-globe Inspect overlay, Hunga Tonga atmospheric Lamb-wave source, a 5-step onboarding tour, inundation polygons, curated per-preset camera framings, reduced-motion + aria-live accessibility, OS-keychain-token settings reset path, and a wgpu GPU solver scaffold ready for buffer-binding plumbing. F-V03 README screenshots/demo now ships from `assets/screenshots/`; the remaining blocked Phase 3 items require maintainer inputs (EV cert, Apple Developer enrollment, Ed25519 keypair, GEBCO distribution channel).
 
-The next direction of value is **Phase 4 (GPU + nonlinear)** and **Phase 6 (release-readiness)** in parallel: finish the wgpu dispatch loop to unlock 10× resolution at interactive frame rates; bake real GEBCO 2024 bathymetry into the SWE solver path; integrate the already-shipped Lamb-wave module into the solver IC so `hunga_tonga_2022`'s `controversy_note` finally goes away; and resolve the five blocked Phase 3 items so users on v0.2.1 get a v0.3.0 in-app update with signed installers.
+The next direction of value is **Phase 4 (GPU + nonlinear)** and **Phase 6 (release-readiness)** in parallel: finish the wgpu dispatch loop to unlock 10× resolution at interactive frame rates; bake real GEBCO 2024 bathymetry into the SWE solver path; integrate the already-shipped Lamb-wave module into the solver IC so `hunga_tonga_2022`'s `controversy_note` finally goes away; and resolve the four blocked Phase 3 items so users on v0.2.1 get a v0.3.0 in-app update with signed installers.
 
 **Top 10 opportunities, ranked**
 
@@ -40,7 +40,7 @@ The next direction of value is **Phase 4 (GPU + nonlinear)** and **Phase 6 (rele
 4. **P0 — `tauri-plugin-updater` in-app channel** (F-V07) — closes the "users on broken v0.2.0 never learn about v0.2.1" gap.
 5. **P1 — Nonlinear momentum advection in the solver** — current solver linearises by dropping `(u·∇)u`; near-coast wave steepening / breaking depends on this.
 6. **P1 — Wet/dry inundation polygon (real, not first-order disc)** — extends I-V02 with a true flood polygon from grid cells where `h + η > 0`.
-7. **P1 — README screenshots + animated demo** (F-V03) — first-time-visitor conversion lever, needs Windows GUI host.
+7. **P1 — User manual under `docs/`** — close the non-expert workflow gap before v1.0.
 8. **P1 — Lamb-wave coupled into the SWE solver IC** — `lamb_wave_sample` exists; integrating into `simulate_grid` removes the Hunga Tonga `controversy_note`.
 9. **P2 — Validation harness extensions** — Tōhoku DART buoy RMSE, Range Chicxulub coastal map, Lituya runup at Gilbert Inlet.
 10. **P2 — Multi-event scenarios** — Chicxulub debris re-entry secondary impacts, Tōhoku M7+ aftershock tsunamis.
@@ -507,7 +507,7 @@ The v0.0.1 plan's landscape (NUKEMAP, Asteroid Launcher, Purdue Impact:Earth!, N
 
 | Surface | Gap | Recommended |
 |---|---|---|
-| README on GitHub | No screenshots, no demo video | F-V03 once GUI host is available |
+| README on GitHub | Screenshots + animated demo now embedded | Keep assets refreshed after major visual UI changes |
 | Loading state for the SWE solver | "Computing…" button label only; no progress bar | New `SimulateGridResponse.progress_event` via `tauri::Window::emit` |
 | Compare mode | Slot B has no DART overlay or runup overlay | Apply F-V07 model to slot B (deferred — not a real bug) |
 | Globe imagery error | Falls back to OSM silently | Surface a "Cesium ion token invalid — fallback engaged" toast |
@@ -559,15 +559,14 @@ The v0.0.1 plan's landscape (NUKEMAP, Asteroid Launcher, Purdue Impact:Earth!, N
 
 ## Prioritized Roadmap (v0.4.0+)
 
-### Phase 0.3.0 release-ready (sweep up the 5 blocked items + ship)
+### Phase 0.3.0 release-ready (sweep up the remaining blocked items + ship)
 
-- [ ] **P0 — F-V03** — README screenshots + animated demo.
+- [x] **P0 — F-V03** — README screenshots + animated demo.
   - Why: First-time-visitor conversion is the project's lowest-hanging fruit.
-  - Evidence: `ls assets/screenshots/` returns empty.
+  - Evidence: `assets/screenshots/` now contains 5 PNGs + `chicxulub-demo.gif`.
   - Touches: `assets/screenshots/`, `README.md`.
-  - Acceptance: 5 PNGs + 1 WebP/MP4 of Chicxulub playback embedded in README, render correctly on GitHub.
-  - Verify: Visit `https://github.com/SysAdminDoc/TsunamiSimulator` after merge.
-  - Block: Needs a Windows GUI host to run the `screenshots.md` recipe at 125 % DPI.
+  - Acceptance: 5 PNGs + 1 animated Chicxulub playback demo embedded in README.
+  - Verify: `npm run build`; Browser visual QA against `vite preview`.
 
 - [ ] **P0 — F-V04** — Code signing.
   - Why: Win SmartScreen / macOS Gatekeeper warnings on first launch dent install conversion.

@@ -11,6 +11,7 @@ import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri } from "./lib/tauri";
+import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo } from "./lib/export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
@@ -68,7 +69,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!inTauri) return;
+    if (!inTauri) {
+      setPresets(listDemoPresets());
+      return;
+    }
     api
       .listPresets()
       .then(setPresets)

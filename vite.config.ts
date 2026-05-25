@@ -4,6 +4,10 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
 
 const cesiumSource = "node_modules/cesium/Build/Cesium";
+// Preserve the mapped-drive path on Windows/VMware shared folders. If Rollup
+// realpaths back to `\\vmware-host\Shared Folders`, the space in the share
+// name can be mangled into an invalid `Y: Folders/...` HTML entry path.
+const htmlEntry = path.resolve(__dirname, "index.html").replace(/\\/g, "/");
 
 // Tauri runs the frontend at a fixed port; mobile dev gets a hostname env var.
 const host = process.env.TAURI_DEV_HOST;
@@ -21,6 +25,7 @@ export default defineConfig(async () => ({
     }),
   ],
   resolve: {
+    preserveSymlinks: true,
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
@@ -49,6 +54,7 @@ export default defineConfig(async () => ({
     sourcemap: !!process.env.TAURI_DEBUG,
     chunkSizeWarningLimit: 4000, // Cesium ships a big bundle
     rollupOptions: {
+      input: htmlEntry,
       output: {
         manualChunks(id: string) {
           if (id.includes("node_modules/cesium")) return "cesium";

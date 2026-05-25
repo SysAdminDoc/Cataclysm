@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import { getCoastalPoints } from "../lib/data";
+import { demoRunupAtPoints } from "../lib/demo";
 import type { CoastalPoint, InitialDisplacement, Preset } from "../types/scenario";
 
 type Props = {
@@ -40,7 +41,7 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
   }, [activePreset]);
 
   useEffect(() => {
-    if (!isTauri() || !initial) {
+    if (!initial) {
       onResults([]);
       lastArrivedCountRef.current = 0;
       setAnnouncement("");
@@ -49,6 +50,26 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
     const points: CoastalPoint[] = [...VALID_POINTS];
+    if (!isTauri()) {
+      const res = demoRunupAtPoints({
+        source: initial.center,
+        initial_amplitude_m: initial.peak_amplitude_m,
+        cavity_radius_m: initial.cavity_radius_m,
+        is_impact: isImpact,
+        mean_depth_m: 4000,
+        time_s: timeS,
+        points,
+      }) as RunupAtPointResult[];
+      onResults(res);
+      const arrived = res.filter((r) => r.has_arrived && r.runup_m >= 0.1).length;
+      lastArrivedCountRef.current = arrived;
+      setAnnouncement(
+        arrived > 0
+          ? `Tsunami wave has reached ${arrived} coastal ${arrived === 1 ? "point" : "points"}.`
+          : "",
+      );
+      return;
+    }
     api
       .runupAtPoints({
         source: initial.center,

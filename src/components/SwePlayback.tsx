@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, isTauri } from "../lib/tauri";
+import { simulateDemoGrid } from "../lib/demo";
 import type { GridSnapshot, InitialDisplacement } from "../types/scenario";
 
 type Props = {
@@ -83,7 +84,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
   }, []);
 
   const run = useCallback(async () => {
-    if (!initial || !isTauri()) return;
+    if (!initial) return;
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
     setStatus("running");
@@ -97,18 +98,25 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         Math.max(2, (initial.cavity_radius_m / 1000) * 0.05 + 4),
       );
       const sigmaM = Math.max(initial.cavity_radius_m, 5000);
-      const resp = await api.simulateGrid({
-        source: initial.center,
-        initial_amplitude_m: initial.peak_amplitude_m,
-        source_sigma_m: sigmaM,
-        mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
-        use_real_bathymetry: useBathy,
-        box_half_size_deg: halfDeg,
-        cells_per_deg: 6,
-        t_end_s: 60 * 60, // 1 simulated hour
-        n_snapshots: 24,
-        include_lamb_wave: includeLambWave,
-      });
+      const resp = isTauri()
+        ? await api.simulateGrid({
+            source: initial.center,
+            initial_amplitude_m: initial.peak_amplitude_m,
+            source_sigma_m: sigmaM,
+            mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
+            use_real_bathymetry: useBathy,
+            box_half_size_deg: halfDeg,
+            cells_per_deg: 6,
+            t_end_s: 60 * 60, // 1 simulated hour
+            n_snapshots: 24,
+            include_lamb_wave: includeLambWave,
+          })
+        : simulateDemoGrid(initial, {
+            boxHalfSizeDeg: halfDeg,
+            nSnapshots: 24,
+            tEndS: 60 * 60,
+            includeLambWave,
+          });
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
       setSnapshots(resp.snapshots);
       setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false });
@@ -132,7 +140,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       <p className="swe__hint">
         Run a real shallow-water-equation propagation around the source.
         Offline-bathymetry toggle uses a coarse basin-mean + shelf-taper
-        approximation; real GEBCO 2024 streaming lands in v0.3.0.
+        approximation; browser preview uses deterministic demo frames.
       </p>
       <label className="swe__check">
         <input
@@ -156,7 +164,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         <button
           className="primary"
           onClick={run}
-          disabled={status === "running" || !isTauri()}
+          disabled={status === "running"}
           style={{ flex: 1 }}
         >
           {status === "running" ? "Computing…" : status === "ready" ? "Re-run" : "Run simulation"}
@@ -217,7 +225,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         </>
       )}
       {!isTauri() && (
-        <div className="swe__error">Solver requires the Tauri runtime.</div>
+        <div className="swe__error">Browser preview: demo SWE frames, not backend physics.</div>
       )}
     </div>
   );

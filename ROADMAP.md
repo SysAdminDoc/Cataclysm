@@ -90,7 +90,7 @@ unreleased state is canonical in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ### Trust / release / supply chain (M)
 
-- [ ] **F-V03 P0** — README screenshots + animated demo. *Blocked: needs GUI capture from a Windows host.*
+- [x] **F-V03 P0** — README screenshots + animated demo.
 - [~] **F-V04 P0** — Code signing (Win Authenticode + macOS notarisation). *Workflow scaffolded conditional on `WIN_SIGN_CERT_BASE64` / `APPLE_*` secrets being present (no-op when missing); `docs/release/CODESIGNING.md` documents the 8 secret slots. Activation: needs maintainer EV cert + Apple Developer enrollment.*
 - [~] **F-V07 P1** — `tauri-plugin-updater` Ed25519-signed channel. *Release workflow now emits `latest.json` updater manifest conditional on `TAURI_SIGNING_PRIVATE_KEY` being present. Activation: needs maintainer to run `npx tauri signer generate`, paste private key as GH secret, paste public key into `tauri.conf.json`, and register the plugin in `src-tauri/src/lib.rs` (steps documented in `docs/release/CODESIGNING.md`).*
 - [ ] **I-V04 P1** — Cesium token via OS keychain (Win Credential Manager / macOS Keychain / Linux Secret Service). Deferred: needs `keyring`-crate-equivalent that is Tauri-2 compatible; the `tauri-plugin-keyring` ecosystem is still emerging.
@@ -132,7 +132,7 @@ unreleased state is canonical in [`CHANGELOG.md`](./CHANGELOG.md).
 - [ ] PNG/MP4/WebM share-card export with metadata overlay
 - [ ] Signed Windows installer + macOS .dmg + Linux AppImage via GitHub Actions (replaces F-V04)
 - [ ] User manual under `docs/`
-- [ ] `assets/screenshots/` regenerated and embedded in README (replaces F-V03)
+- [x] `assets/screenshots/` regenerated and embedded in README (replaces F-V03)
 
 ## Future / Stretch
 

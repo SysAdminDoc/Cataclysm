@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
+import { demoInitialForScenario, runDemoPreset } from "../lib/demo";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
@@ -58,10 +59,20 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const inTauri = useMemo(isTauri, []);
 
   useEffect(() => {
-    if (!inTauri || !activePresetId) return;
+    if (!activePresetId) return;
     runPresetReqIdRef.current += 1;
     const reqId = runPresetReqIdRef.current;
     setBusyPresetId(activePresetId);
+    if (!inTauri) {
+      window.setTimeout(() => {
+        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+        const resp = runDemoPreset(activePresetId, timeS);
+        setInitial(resp.initial);
+        setWavefront(resp.wavefront);
+        setBusyPresetId(null);
+      }, 80);
+      return;
+    }
     api
       .runPreset({ preset_id: activePresetId, time_s: timeS, mean_depth_m: 0, n_samples: 48 })
       .then((resp) => {
@@ -83,7 +94,11 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const simulate = useCallback(
     (input: ScenarioInput) => {
       if (!inTauri) {
-        console.warn("Custom scenarios require the Tauri runtime; browser preview disabled.");
+        const d = demoInitialForScenario(input);
+        setInitial(d);
+        setActivePresetId(null);
+        setWavefront(null);
+        setSweSnapshot(null);
         return;
       }
       simulateReqIdRef.current += 1;
