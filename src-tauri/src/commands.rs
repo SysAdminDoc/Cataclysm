@@ -287,12 +287,11 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         // the SWE_MAX_CELLS gate instead of waiting for a panic.
         let approx_nx = ((east - west) / cell).round().max(2.0) as usize;
         let approx_ny = ((north - south) / cell).round().max(2.0) as usize;
-        if approx_nx.checked_mul(approx_ny).unwrap_or(usize::MAX) > SWE_MAX_CELLS {
+        let approx_cells = approx_nx.saturating_mul(approx_ny);
+        if approx_cells > SWE_MAX_CELLS {
             return Err(format!(
                 "grid too large ({}×{} ≈ {} cells) — reduce cells_per_deg or box_half_size_deg",
-                approx_nx,
-                approx_ny,
-                approx_nx.saturating_mul(approx_ny)
+                approx_nx, approx_ny, approx_cells
             ));
         }
 
