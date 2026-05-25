@@ -15,6 +15,10 @@ export type Settings = {
   globe_style: GlobeStyleId;
   disclaimer_acknowledged_at: string | null;
   tour_completed_at: string | null;
+  /** First-run dismissible banner suggesting the user paste a Cesium
+   *  ion token for satellite imagery. Set when the user clicks
+   *  Dismiss; absent / null means the banner should show. */
+  token_banner_dismissed_at: string | null;
 };
 
 const DEFAULTS: Settings = {
@@ -23,6 +27,7 @@ const DEFAULTS: Settings = {
   globe_style: "osm",
   disclaimer_acknowledged_at: null,
   tour_completed_at: null,
+  token_banner_dismissed_at: null,
 };
 
 const STORE_FILE = "settings.json";
@@ -163,6 +168,12 @@ export const settings = {
       }
     }
   },
+  async getTokenBannerDismissed(): Promise<string | null> {
+    return read("token_banner_dismissed_at");
+  },
+  async dismissTokenBanner(): Promise<void> {
+    return write("token_banner_dismissed_at", new Date().toISOString());
+  },
   async loadAll(): Promise<Settings> {
     return {
       cesium_token: await read("cesium_token"),
@@ -170,6 +181,7 @@ export const settings = {
       globe_style: await read("globe_style"),
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
       tour_completed_at: await read("tour_completed_at"),
+      token_banner_dismissed_at: await read("token_banner_dismissed_at"),
     };
   },
   /** Clear every persisted key. Both the Tauri store and the localStorage
@@ -181,6 +193,7 @@ export const settings = {
       "globe_style",
       "disclaimer_acknowledged_at",
       "tour_completed_at",
+      "token_banner_dismissed_at",
     ];
     if (typeof localStorage !== "undefined") {
       for (const k of keys) {

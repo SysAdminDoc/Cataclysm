@@ -195,6 +195,70 @@ a:focus-visible,
   align-items: center;
 }
 
+/* WCAG 2.4.1 — Skip-to-content link for keyboard users. Hidden off-
+   screen until focused; first Tab from any page state surfaces it
+   above the header so screen-reader and keyboard users can jump past
+   the dense control bar straight to the globe canvas. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 1000;
+  background: var(--surface, #1e1e2e);
+  color: var(--text, #cdd6f4);
+  padding: 6px 12px;
+  border: 1px solid var(--overlay, #6c7086);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  transition: top 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 8px;
+  outline: 2px solid var(--accent, #89b4fa);
+}
+
+/* First-launch dismissible Cesium-token banner. Sits above the header
+   until the user pastes a token (auto-dismiss) or clicks ✕. Persists
+   the dismissal via settings.dismissTokenBanner. */
+.token-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--accent, #89b4fa) 12%, var(--surface, #1e1e2e));
+  border-bottom: 1px solid var(--overlay, #6c7086);
+  color: var(--text, #cdd6f4);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.token-banner > span {
+  flex: 1;
+}
+.token-banner__action {
+  background: var(--accent, #89b4fa);
+  color: var(--base, #1e1e2e);
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.token-banner__dismiss {
+  background: transparent;
+  border: 0;
+  color: var(--overlay, #6c7086);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.token-banner__dismiss:hover {
+  color: var(--text, #cdd6f4);
+}
+
 /* Screen-reader-only utility. Used by aria-live announcer regions whose
    content should reach assistive tech but not be visible on screen.
    Standard "visually-hidden" pattern (Tailwind / Bootstrap equivalent). */

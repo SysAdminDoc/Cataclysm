@@ -2,7 +2,76 @@
 
 All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — targeting v0.3.0
+## [Unreleased] — targeting v0.4.0
+
+### v0.4.0 batches
+- **F4-01 — wgpu SWE dispatch loop**. Full GPU compute path landed:
+  ping-pong storage buffers for η/u/v, dispatch loop with bind-group
+  alternation, three readback buffers mapped in parallel, restartable
+  across multiple `step` calls (host-side eta/u/v re-uploaded at the
+  start of each call). `commands::simulate_grid` now probes the
+  adapter when compiled with `--features gpu`; on success runs the
+  GPU path and surfaces a `used_gpu: bool` flag on the response so
+  the UI badge reads "Live SWE Solver (GPU)" instead of "(CPU)".
+  Linux/CI runners without an adapter fall back to CPU cleanly. New
+  `swe_gpu_matches_cpu` regression test asserts < 1e-3 m agreement
+  between GPU and CPU on a 17×17 flat-ocean Gaussian over 50 steps.
+  Manning friction + nonlinear advection in the WGSL kernel
+  deferred to v0.5.0.
+- **F4-02 — Nonlinear momentum advection**. `SolverMode::Nonlinear`
+  is the new default for live `simulate_grid`; computes
+  `(u·∇)u` with first-order upwind differencing for stability across
+  the steepening shock front. Validation harness opts into
+  `SolverMode::Linear` for the Stoker dam-break case.
+- **F4-05 — Lamb-wave coupled into SWE solver IC**. New
+  `SwGrid::apply_lamb_wave` + `SimulateGridRequest.include_lamb_wave`
+  flag wired through `SwePlayback` checkbox. Hunga Tonga 2022
+  preset's `controversy_note` updated to reflect partial coupling.
+- **F4-06 — DART buoy RMSE IPC**. New `dart_buoy_rmse` command
+  computes time-series RMSE between bundled observations and model
+  samples; linear-interpolates between bracketing model samples.
+- **F4-07 — Lituya Bay validation case**. New entry in the
+  `physics::validation` harness runs Heller-Hager + Synolakis at
+  Gilbert Inlet geometry; asserts peak runup lands in [200, 1000] m.
+- **F4-09 — Branded share-card export**. New `exportGlobeShareCard`
+  composites the globe canvas with a 200-px-tall header strip
+  carrying preset name, peak amplitude, Mt-TNT energy, citation
+  short-ref, project URL. 1200×800 PNG suitable for social posts.
+- **I4-04 — Cesium `setView` for reduced-motion users**. Replaces
+  `flyTo({ duration: 0 })` so motion-sensitive users skip the
+  single-frame jitter on preset switches.
+- **I4-05 — Centralised `lib/data.ts` bundled-JSON loader**.
+  `CoastalRunupOverlay` and `DartOverlay` now route through
+  `getCoastalPoints()` / `getDartEvents()` with validation +
+  caching at the boundary.
+
+### Accessibility
+- **Skip-to-globe keyboard link** (WCAG 2.4.1). First Tab from any
+  page state surfaces a top-of-page link that jumps focus past the
+  dense header straight to the globe `<main>` (now `tabIndex={-1}
+  id="main-globe"`).
+- **First-launch Cesium-token banner**. Dismissible inline banner
+  above the header on first launch prompts the user to paste an
+  ion token in Settings for satellite imagery; auto-hides once a
+  token is set or the user clicks ✕. Dismissal persisted via new
+  `settings.token_banner_dismissed_at`. Settings → Reset to
+  defaults re-arms the banner.
+
+### Release / supply chain (scaffolded, awaiting maintainer inputs)
+- **F-V04 + F-V07 scaffolds** — `release.yml` now emits a Tauri
+  updater `latest.json` manifest conditional on
+  `TAURI_SIGNING_PRIVATE_KEY` and runs Windows Authenticode +
+  macOS notarisation steps conditional on the documented secret
+  slots. New `docs/release/CODESIGNING.md` documents the 8 secret
+  slots + activation runbook.
+
+### Docs
+- **Per-source science notes**. New `docs/science/{asteroid,
+  nuclear,earthquake,landslide,shallow_water,lamb_wave}.md` — each
+  documents the formula, paper citation, validation case, and
+  known caveats. `docs/science/README.md` links them.
+
+### Earlier v0.3.0 batch (now part of the v0.4.0 release)
 
 ### Solver fidelity
 - **Full Okada 1985 I-term half-space correction** (F-V02). Tōhoku peak

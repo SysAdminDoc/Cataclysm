@@ -23,7 +23,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
   const [useBathy, setUseBathy] = useState(true);
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number } | null>(null);
+  const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean } | null>(null);
   const lastInitialRef = useRef<InitialDisplacement | null>(null);
   const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
@@ -100,7 +100,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       });
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
       setSnapshots(resp.snapshots);
-      setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny });
+      setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false });
       setActiveIdx(0);
       setStatus("ready");
     } catch (err) {
@@ -115,7 +115,9 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
 
   return (
     <div className="section">
-      <div className="section__title">Live SWE Solver (CPU)</div>
+      <div className="section__title">
+        Live SWE Solver {diag?.used_gpu ? "(GPU)" : "(CPU)"}
+      </div>
       <p className="swe__hint">
         Run a real shallow-water-equation propagation around the source.
         Offline-bathymetry toggle uses a coarse basin-mean + shelf-taper
@@ -189,6 +191,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
               <span>Δt = {diag.dt_s.toFixed(2)} s</span>
               <span>grid {diag.nx}×{diag.ny}</span>
               <span>{(diag.nx * diag.ny).toLocaleString()} cells</span>
+              <span>{diag.used_gpu ? "GPU (wgpu)" : "CPU (rayon)"}</span>
             </div>
           )}
         </>

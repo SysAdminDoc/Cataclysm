@@ -4,8 +4,15 @@ The Rust modules in `src-tauri/src/physics/` are the source of truth for every
 formula. This directory contains:
 
 - `REFERENCES.bib` — full BibTeX of every cited paper
-- per-source notes (asteroid.md, nuclear.md, …) — derivation, assumptions,
-  validation against the original paper's worked example
+- `VALIDATION.md` — quantitative validation harness summary
+- per-source notes — derivation, assumptions, validation against the
+  original paper's worked example:
+  - [`asteroid.md`](asteroid.md) — Ward & Asphaug cavity radius, far-field decay
+  - [`nuclear.md`](nuclear.md) — Le Méhauté & Wang yield scaling, deep vs shallow burst
+  - [`earthquake.md`](earthquake.md) — Okada 1985 closed-form half-space solution
+  - [`landslide.md`](landslide.md) — Heller & Hager impulse-wave law
+  - [`shallow_water.md`](shallow_water.md) — Synolakis runup + leapfrog SWE solver
+  - [`lamb_wave.md`](lamb_wave.md) — Hunga Tonga atmospheric coupling
 
 The high-confidence physics ranges are catalogued here so reviewers can spot
 when a code change pushes a formula outside its validated regime (e.g.

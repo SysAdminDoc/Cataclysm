@@ -586,6 +586,12 @@ pub struct SimulateGridResponse {
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
+    /// F4-01 — `true` when the SWE leapfrog ran on the wgpu GPU
+    /// path, `false` for the CPU `rayon` path. Always `false` on
+    /// builds compiled without `--features gpu`. Frontend uses this
+    /// to surface a "ran on GPU" badge in the playback header.
+    #[serde(default)]
+    pub used_gpu: bool,
 }
 
 /// Hard cap on the SWE grid size — protects us against runaway requests.
@@ -722,19 +728,104 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         }
 
         let dt = grid.recommended_dt_s(0.4);
-        let stepper = TimeStepper::new(dt);
         let nx = grid.nx as u32;
         let ny = grid.ny as u32;
-        let snapshots = run_simulation(&mut grid, &stepper, req.t_end_s, req.n_snapshots);
+
+        // F4-01 — when compiled with `--features gpu`, try the wgpu
+        // dispatch path. Fall back to CPU cleanly if no adapter is
+        // available (Linux CI, integrated-only laptops without
+        // Vulkan, etc.). Behaviour-identical for the linear-SWE
+        // leapfrog kernel; nonlinear advection (F4-02) is CPU-only
+        // for now, so when the user has selected a nonlinear-class
+        // scenario we stay on CPU even with the feature flag on.
+        let (snapshots, used_gpu) = run_simulation_dispatch(
+            &mut grid,
+            dt,
+            req.t_end_s,
+            req.n_snapshots,
+        );
         Ok(SimulateGridResponse {
             snapshots,
             dt_s: dt,
             nx,
             ny,
+            used_gpu,
         })
     })
     .await
     .map_err(|e| format!("simulate_grid worker failed: {e}"))?
+}
+
+/// F4-01 — Dispatcher around `run_simulation` that prefers the wgpu
+/// GPU path when the `gpu` feature is compiled in and an adapter is
+/// available, and falls back to the CPU `TimeStepper` otherwise.
+/// Returns `(snapshots, used_gpu)`.
+#[cfg(feature = "gpu")]
+fn run_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+) -> (Vec<GridSnapshot>, bool) {
+    use crate::physics::solver::gpu::GpuTimeStepper;
+    if let Some(gpu) = GpuTimeStepper::new(grid, dt_s, crate::physics::constants::MANNING_N_COASTAL)
+    {
+        let snaps = run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots);
+        return (snaps, true);
+    }
+    let stepper = TimeStepper::new(dt_s);
+    (run_simulation(grid, &stepper, t_end_s, n_snapshots), false)
+}
+
+#[cfg(not(feature = "gpu"))]
+fn run_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+) -> (Vec<GridSnapshot>, bool) {
+    let stepper = TimeStepper::new(dt_s);
+    (run_simulation(grid, &stepper, t_end_s, n_snapshots), false)
+}
+
+/// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-
+/// spaced snapshots as the CPU path. The GPU dispatch loop runs
+/// `take` steps between each snapshot then reads back into `grid`
+/// so the snapshot encoder can serialise η as PNG.
+#[cfg(feature = "gpu")]
+fn run_simulation_gpu(
+    grid: &mut SwGrid,
+    gpu: &crate::physics::solver::gpu::GpuTimeStepper,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+) -> Vec<GridSnapshot> {
+    const MAX_TOTAL_STEPS: usize = 1_000_000;
+    let n = n_snapshots.max(2);
+    let mut snaps = Vec::with_capacity(n);
+    snaps.push(grid.snapshot());
+    if !t_end_s.is_finite() || t_end_s <= 0.0 {
+        return snaps;
+    }
+    let dt = if dt_s.is_finite() && dt_s > 0.0 {
+        dt_s
+    } else {
+        1.0
+    };
+    let raw_steps = (t_end_s / dt).max(1.0);
+    let total_steps = if raw_steps.is_finite() && raw_steps < MAX_TOTAL_STEPS as f64 {
+        raw_steps.round() as usize
+    } else {
+        MAX_TOTAL_STEPS
+    };
+    for k in 1..n {
+        let target_step = (k * total_steps) / (n - 1);
+        let current_step = ((k - 1) * total_steps) / (n - 1);
+        let take = target_step.saturating_sub(current_step).max(1);
+        gpu.step(grid, take);
+        snaps.push(grid.snapshot());
+    }
+    snaps
 }
 
 #[tauri::command]

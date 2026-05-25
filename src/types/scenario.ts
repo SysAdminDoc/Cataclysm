@@ -119,6 +119,9 @@ export type SimulateGridResponse = {
   dt_s: number;
   nx: number;
   ny: number;
+  /** F4-01 — true when the SWE leapfrog ran on the wgpu GPU path.
+   *  Always false on builds compiled without `--features gpu`. */
+  used_gpu?: boolean;
 };
 
 /** A named coastal point used for Synolakis runup sampling. */

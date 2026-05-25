@@ -594,12 +594,8 @@ The v0.0.1 plan's landscape (NUKEMAP, Asteroid Launcher, Purdue Impact:Earth!, N
 
 ### Phase 4 — GPU + Nonlinear (v0.4.0)
 
-- [ ] **P0 — F4-01** — `wgpu` SWE dispatch loop (full GPU path).
-  - Why: 10× resolution at interactive frame rates unlocks GEBCO-grade scenarios.
-  - Evidence: `physics::solver::gpu::GpuTimeStepper::step` is a TODO no-op; WGSL kernel ready.
-  - Touches: `src-tauri/src/physics/solver/gpu.rs`, `src-tauri/src/commands.rs::simulate_grid`.
-  - Acceptance: `cargo test --release --features gpu -- swe_gpu_matches_cpu` passes; Tohoku at 50 cells/deg completes in <2 s on a dGPU.
-  - Verify: `cargo build --release --features gpu`; manual GPU benchmark.
+- [x] **P0 — F4-01** — `wgpu` SWE dispatch loop (full GPU path).
+  - Shipped: full ping-pong dispatch + 3-way readback + restartable `step` in `physics::solver::gpu`; `commands::simulate_grid` probes the adapter when `--features gpu` and falls back cleanly. `SimulateGridResponse.used_gpu` surfaced; `swe_gpu_matches_cpu` regression test asserts < 1e-3 m vs CPU `SolverMode::Linear`. WGSL kernel still ships the linear form; nonlinear advection in WGSL deferred to v0.5.0.
 
 - [ ] **P0 — F4-03** — Real GEBCO 2024 bathymetry via first-run download wizard.
   - Why: Coarse 7-basin proxy misses every island; wet/dry handling can't shine without it.
@@ -662,13 +658,13 @@ The v0.0.1 plan's landscape (NUKEMAP, Asteroid Launcher, Purdue Impact:Earth!, N
 
 ## Quick Wins (one-morning or less changes)
 
-- [ ] **I4-04** — Cesium `setView` instead of `flyTo(duration:0)` for reduced-motion users.
-- [ ] **I4-05** — `lib/data.ts` centralised JSON loader.
+- [x] **I4-04** — Cesium `setView` instead of `flyTo(duration:0)` for reduced-motion users.
+- [x] **I4-05** — `lib/data.ts` centralised JSON loader.
 - [ ] Pin `windows-latest` → `windows-2025` in `.github/workflows/*.yml` once the June 15 redirect lands (currently no action needed).
-- [ ] Add a `Skip to globe` hidden keyboard link in the App header.
+- [x] Add a `Skip to globe` hidden keyboard link in the App header.
 - [ ] Surface "Cesium ion token invalid → fallback engaged" toast on imagery 401.
-- [ ] First-launch banner "Optional: paste a Cesium ion token in Settings for satellite imagery" (dismissible).
-- [ ] Doc pass on `docs/science/` per-source notes (asteroid.md, nuclear.md, ...).
+- [x] First-launch banner "Optional: paste a Cesium ion token in Settings for satellite imagery" (dismissible).
+- [x] Doc pass on `docs/science/` per-source notes (asteroid.md, nuclear.md, earthquake.md, landslide.md, shallow_water.md, lamb_wave.md).
 
 ---
 

@@ -29,6 +29,7 @@ export default function App() {
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const inTauri = useMemo(isTauri, []);
 
   const slotA = useScenarioSlot(timeS);
@@ -74,6 +75,28 @@ export default function App() {
       .catch((err) => console.error("listPresets failed", err));
   }, [inTauri]);
 
+  // First-launch banner: prompt the user to paste a Cesium ion token
+  // for satellite imagery. Show only when the user has no token AND
+  // hasn't dismissed the banner before. Re-evaluates after Settings
+  // save so pasting a token (or resetting settings) updates it live.
+  useEffect(() => {
+    let cancelled = false;
+    const reeval = () => {
+      Promise.all([settings.getCesiumToken(), settings.getTokenBannerDismissed()])
+        .then(([tok, dismissed]) => {
+          if (cancelled) return;
+          setTokenBannerOpen(!tok && !dismissed);
+        })
+        .catch(() => {});
+    };
+    reeval();
+    window.addEventListener("tsunamisim:settings-saved", reeval);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("tsunamisim:settings-saved", reeval);
+    };
+  }, []);
+
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
 
@@ -84,6 +107,32 @@ export default function App() {
 
   return (
     <div className="app" data-compare={compareMode ? "true" : "false"}>
+      <a className="skip-link" href="#main-globe">Skip to globe</a>
+      {tokenBannerOpen && (
+        <div className="token-banner" role="status" aria-live="polite">
+          <span>
+            Optional: paste a free <strong>Cesium ion</strong> token in Settings for
+            satellite imagery + GEBCO bathymetry. The app works fully without one
+            on the default OSM globe.
+          </span>
+          <button
+            className="token-banner__action"
+            onClick={() => setShowSettings(true)}
+          >
+            Open Settings
+          </button>
+          <button
+            className="token-banner__dismiss"
+            aria-label="Dismiss"
+            onClick={() => {
+              setTokenBannerOpen(false);
+              settings.dismissTokenBanner().catch(() => {});
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <header className="app__header">
         <div>
           <span className="app__title">TsunamiSimulator</span>
@@ -194,7 +243,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="app__globe">
+      <main className="app__globe" id="main-globe" tabIndex={-1}>
         <Suspense fallback={<div className="app__globe-empty"><h2>Loading globe…</h2></div>}>
           <div className="app__globe-stack" data-split={compareMode ? "true" : "false"}>
             <div className="app__globe-pane">

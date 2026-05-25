@@ -106,7 +106,7 @@ unreleased state is canonical in [`CHANGELOG.md`](./CHANGELOG.md).
 
 **DoD**: 10× the grid resolution at 60 FPS playback. NSWE shows wave steepening and breaking near coasts.
 
-- [~] **F-V05 P1** — `wgpu` compute pipeline for SWE solver. Scaffold + feature flag + adapter probe + module skeleton shipped (v0.3.0); buffer-binding + dispatch loop deferred. Build with `--features gpu` to compile.
+- [x] **F-V05 P1** — `wgpu` compute pipeline for SWE solver. Scaffold + feature flag + adapter probe shipped in v0.3.0; full dispatch loop (ping-pong storage buffers + 3-way readback + restartable `step`) shipped in v0.4.0. `commands::simulate_grid` probes the adapter when compiled with `--features gpu` and falls back to CPU otherwise. `SimulateGridResponse.used_gpu` surfaced to the UI. New `swe_gpu_matches_cpu` regression test asserts < 1e-3 m agreement vs the CPU `SolverMode::Linear` path. WGSL kernel still ships the linear-SWE form only; nonlinear advection in WGSL deferred to v0.5.0.
 - [x] **F4-02 P1** — Nonlinear shallow-water equations: upwind-differenced `(u·∇)u` momentum advection via new `SolverMode { Linear, Nonlinear }` enum on TimeStepper. Manning bottom friction already shipped in v0.2.0.
 - [x] Wet/dry cell handling for inundation (shipped in v0.3.0 as I-V01).
 - [ ] **F4-04 P1** — Real flood polygons (marching-squares on `h + η > 0`) as GeoJSON overlays. Deferred: depends on F-V06 GEBCO. First-order inundation discs (I-V02) shipped in v0.3.0.
