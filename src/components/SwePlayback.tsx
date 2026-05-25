@@ -21,6 +21,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [useBathy, setUseBathy] = useState(true);
+  const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number } | null>(null);
   const lastInitialRef = useRef<InitialDisplacement | null>(null);
@@ -95,6 +96,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         cells_per_deg: 6,
         t_end_s: 60 * 60, // 1 simulated hour
         n_snapshots: 24,
+        include_lamb_wave: includeLambWave,
       });
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
       setSnapshots(resp.snapshots);
@@ -107,7 +109,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy]);
+  }, [initial, useBathy, includeLambWave]);
 
   if (!initial) return null;
 
@@ -126,6 +128,16 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
           onChange={(e) => setUseBathy(e.target.checked)}
         />
         <span>Use coarse offline bathymetry (basin-mean + shelf taper)</span>
+      </label>
+      <label className="swe__check">
+        <input
+          type="checkbox"
+          checked={includeLambWave}
+          onChange={(e) => setIncludeLambWave(e.target.checked)}
+        />
+        <span>
+          Include atmospheric Lamb-wave forcing (Hunga Tonga only — Carvajal 2022, Matoza 2022)
+        </span>
       </label>
       <div className="swe__row">
         <button

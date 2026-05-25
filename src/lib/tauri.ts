@@ -132,6 +132,9 @@ export const api = {
     cells_per_deg: number;
     t_end_s: number;
     n_snapshots: number;
+    include_lamb_wave?: boolean;
+    lamb_wave_peak_pressure_pa?: number;
+    lamb_wave_source_radius_m?: number;
   }) {
     return invoke<SimulateGridResponse>("simulate_grid", { req });
   },

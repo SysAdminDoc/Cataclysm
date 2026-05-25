@@ -193,6 +193,45 @@ impl SwGrid {
         }
     }
 
+    /// F4-05 — apply the Hunga-Tonga-class atmospheric Lamb-wave
+    /// surface-pressure forcing to the grid for one time step of
+    /// duration `dt_s` ending at simulated time `t_s`. The η field
+    /// receives the closed-form quasi-static depression contribution
+    /// from `LambWaveSource::surface_depression_m` integrated across
+    /// each cell's distance from the atmospheric source.
+    ///
+    /// Apply this *before* the leapfrog step so the next continuity +
+    /// momentum update consumes the perturbed η as its IC. For long
+    /// runs the caller invokes this every step inside the playback
+    /// loop; for IC-only injections (a one-shot Gaussian-equivalent),
+    /// call once with the full pulse window's `dt_s`.
+    pub fn apply_lamb_wave(
+        &mut self,
+        source: &super::lamb_wave::LambWaveSource,
+        source_lat: f64,
+        source_lon: f64,
+        t_s: f64,
+    ) {
+        use super::constants::R_EARTH_M;
+        let lat_per_m = 360.0 / (2.0 * std::f64::consts::PI * R_EARTH_M);
+        for j in 0..self.ny {
+            for i in 0..self.nx {
+                let lon = self.west_lon + (i as f64 + 0.5) * self.dlon_deg;
+                let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;
+                let dlat_m = (lat - source_lat) / lat_per_m;
+                let lon_per_m = lat_per_m / source_lat.to_radians().cos().abs().max(0.05);
+                let dlon_m = (lon - source_lon) / lon_per_m;
+                let range_m = (dlat_m * dlat_m + dlon_m * dlon_m).sqrt();
+                let depression = source.surface_depression_m(range_m, t_s);
+                if depression > 0.0 {
+                    // Lamb wave drives the surface DOWN under the
+                    // pressure crest. Sign: subtract from η.
+                    self.eta_m[idx(i, j, self.nx)] -= depression;
+                }
+            }
+        }
+    }
+
     /// Take a snapshot of the current state for IPC transport. NaN cells are
     /// treated as zero for the colormap; their presence is reported via
     /// `eta_max_m` / `eta_abs_max_m` clamped to finite.

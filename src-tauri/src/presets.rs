@@ -220,7 +220,7 @@ pub fn all_presets() -> Vec<Preset> {
             reference: "Carvajal et al. 2022, Science 377:91; Matoza et al. 2022 Science 377:95",
             reference_url: Some("https://www.science.org/doi/10.1126/science.abo4364"),
             is_speculative: false,
-            controversy_note: Some("Atmospheric Lamb-wave coupling now available via the `lamb_wave_sample` command (Carvajal 2022, Matoza 2022) but not yet integrated into the SWE solver IC — that lands in v0.4.0 with the wgpu solver port."),
+            controversy_note: Some("Atmospheric Lamb-wave coupling (Carvajal 2022, Matoza 2022) is modelled as an optional IC injection — toggle 'Include atmospheric Lamb-wave forcing' in the Live SWE Solver panel."),
             // Tonga + Pacific basin.
             camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -50.0, range_m: 2_500_000.0 }),
             source: PresetSource::Landslide(LandslideSource {

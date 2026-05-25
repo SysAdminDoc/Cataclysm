@@ -472,6 +472,22 @@ pub struct SimulateGridRequest {
     pub t_end_s: f64,
     /// Number of snapshots to return (≥ 2; includes t=0 and t_end).
     pub n_snapshots: usize,
+    /// F4-05 — apply Hunga-Tonga-class atmospheric Lamb-wave forcing
+    /// every step. Off by default. When on, the SWE η field receives
+    /// the closed-form quasi-static surface depression contribution
+    /// from `LambWaveSource::surface_depression_m` integrated over the
+    /// pulse arrival window at every grid cell.
+    #[serde(default)]
+    pub include_lamb_wave: bool,
+    /// Override the default Hunga-Tonga 200 Pa peak pressure if you
+    /// want to simulate a different VEI eruption. Ignored when
+    /// `include_lamb_wave` is false.
+    #[serde(default)]
+    pub lamb_wave_peak_pressure_pa: Option<f64>,
+    /// Override the default 30 km source radius. Ignored when
+    /// `include_lamb_wave` is false.
+    #[serde(default)]
+    pub lamb_wave_source_radius_m: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -590,6 +606,30 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
             req.initial_amplitude_m,
             req.source_sigma_m.max(1000.0),
         );
+
+        // F4-05 — when include_lamb_wave is set, apply the atmospheric
+        // pressure-driven η contribution at t=0 as a wider IC injection
+        // alongside the Gaussian. Captures the leading-edge Lamb-wave
+        // depression for the first ~100 s after source event; continuous
+        // step-by-step forcing lands in v0.5.0.
+        if req.include_lamb_wave {
+            let mut lamb = crate::physics::lamb_wave::LambWaveSource::hunga_tonga_2022();
+            if let Some(p) = req.lamb_wave_peak_pressure_pa {
+                if p.is_finite() && p > 0.0 {
+                    lamb.peak_pressure_pa = p;
+                }
+            }
+            if let Some(r) = req.lamb_wave_source_radius_m {
+                if r.is_finite() && r > 0.0 {
+                    lamb.source_radius_m = r;
+                }
+            }
+            // Sample at the pulse-arrival time at the source — captures
+            // the peak depression. Subsequent step-by-step propagation
+            // of the η depression is handled by the SWE solver as the
+            // grid relaxes back toward equilibrium.
+            grid.apply_lamb_wave(&lamb, lat, lon, 0.0);
+        }
 
         let dt = grid.recommended_dt_s(0.4);
         let stepper = TimeStepper::new(dt);
