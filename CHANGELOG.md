@@ -4,24 +4,6 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### Hardening (post-0.2.0)
-- IPC commands now enforce explicit bounds: `runup_at_points` returns
-  `Result` with a 2 000-point cap; `simulate_grid` rejects non-finite
-  `source_sigma_m` / `mean_depth_m` / `n_snapshots == 0`; `run_preset`
-  clamps `n_samples` to `[2, 2 000]` and validates `time_s` / `mean_depth_m`.
-- New `presets.rs` test suite verifies preset ID uniqueness, non-empty
-  metadata, controversy-note presence on speculative entries, and finite
-  initial-displacement outputs across every built-in preset.
-- All external citation links use `target="_blank" + rel="noopener
-  noreferrer"` so middle- or right-click cannot navigate the Tauri
-  WebView off the React app.
-- `ResultsPanel` timeline progress clamps to ≥ 0 to defeat negative
-  `scaleX` rendering bugs.
-- Removed dead `forceRender()` no-op from `lib/export.ts` and the unused
-  `zustand` dependency from `package.json`.
-- Fixed `clippy::manual_saturating_arithmetic` on the SWE grid-size
-  pre-allocation gate.
-
 ### Planned for v0.3.0
 - `wgpu` compute SWE solver — port the working CPU leapfrog kernel to WGSL
 - Full Okada 1985 I-term half-space correction (replaces leading-order form)
@@ -30,6 +12,79 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - Boussinesq dispersive solver as opt-in alternative
 - Adaptive Mesh Refinement (GeoClaw-style)
 - Real GEBCO 2024 bathymetry via first-run download wizard
+
+---
+
+## [0.2.1] - 2026-05-25 — Hot-fix + hardening
+
+### Fixed
+- **CRITICAL**: pressing **Run simulation** on v0.2.0 produced a blank
+  globe with no animation. Cesium 1.104+ deprecated the synchronous
+  `new SingleTileImageryProvider(...)` constructor and in 1.124 the
+  provider's `ready` state never flips, so the SWE PNG layer was
+  silently dropped. Switched to the async `.fromUrl(url, { rectangle })`
+  factory with a cancellation guard. Also fixed an imagery-rebuild
+  effect that nuked overlay layers on globe-style swap mid-simulation —
+  the base layer is now removed surgically and `lowerToBottom`'d so
+  overlays stay above it.
+
+### Hardening
+- IPC commands now enforce explicit bounds and finite-value guards:
+  `runup_at_points` returns `Result` with a 2 000-point cap;
+  `simulate_grid` rejects non-finite `source_sigma_m` / `mean_depth_m`
+  / `n_snapshots == 0`; `run_preset` clamps `n_samples` to `[2, 2 000]`
+  and validates `time_s` / `mean_depth_m`.
+- Every `*_initial_conditions` Tauri command now returns
+  `Result<InitialDisplacement, String>` and validates finite,
+  in-range inputs (no more NaN/Inf poisoning the physics layer).
+- `shallow_water::synolakis_runup_m` rejects NaN/negative inputs and
+  uses `|amplitude|` so a negative leading-trough sample never
+  produces NaN runup (previously `powf(5/4)` of negative → NaN poisoned
+  every downstream colour-ramp cell).
+- `solver::run_simulation` caps total leapfrog steps at 1 000 000 and
+  rejects non-finite `dt_s` so a pathological CFL value can't wedge the
+  worker thread.
+- `Cesium.Rectangle` clamp guards a dateline-straddling scenario from
+  constructing an invalid rectangle and blanking the entire scene.
+- `CoastalRunupOverlay`: defensive filter drops out-of-range lat/lon
+  before the IPC batch.
+
+### UX & accessibility
+- Synchronous theme bootstrap in `index.html` reads `localStorage`
+  before React mounts so the Latte (light) theme no longer flashes
+  through Mocha on launch.
+- Global `:focus-visible` ring on every interactive element — Tab
+  navigation now has a visible focus indicator.
+- `:disabled` visual treatment on `button` so disabled actions read as
+  such instead of looking identical to enabled ones.
+- External citation links carry `target="_blank" + rel="noopener
+  noreferrer"` so middle-/right-click can't navigate the Tauri WebView
+  off the React app.
+- `ResultsPanel` timeline progress clamps to ≥ 0.
+- `<noscript>` fallback in `index.html` for a clear message if the
+  WebView fails to bootstrap.
+
+### Tests
+- New `presets.rs` test suite: preset ID uniqueness, non-empty metadata,
+  controversy-note presence on speculative entries, finite
+  initial-displacement outputs for every preset.
+- New `commands.rs` unit tests: validation rejects NaN/zero/out-of-range
+  inputs across all four source types; `run_preset` rejects unknown id
+  and clamps absurd `n_samples`; `haversine_m` handles same-point and
+  NaN safely.
+
+### Cleanup
+- Dropped dead `forceRender()` no-op from `lib/export.ts`.
+- Dropped unused `zustand` (npm) + `@types/cesium` (npm) + `ndarray`
+  (cargo) dependencies.
+- Removed dead `let _ = ...` suppressors + the `i_d * 0.0` branch in
+  `physics::okada`. Kept the `ALPHA` constant under `#[allow(dead_code)]`
+  for the v0.3.0 I-term wiring.
+- README / SECURITY.md / CONTRIBUTING.md / `.env.example` /
+  `data/bathymetry/README.md` synced with the v0.2.x reality (no-token
+  default, shipped installers, working SWE solver, etc.).
+- Fixed `clippy::manual_saturating_arithmetic` on the SWE grid-size
+  pre-allocation gate.
 
 ---
 
