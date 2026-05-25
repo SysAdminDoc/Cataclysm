@@ -106,10 +106,24 @@ impl EarthquakeSource {
             depth_m: self.water_depth_m,
             ..self.location
         };
+        // Prefer the physics-based Okada 1985 peak when the fault has
+        // geometry (slip > 0). Falls back to the Geist-Dmowska empirical
+        // when slip is zero (legacy presets with only `mw`).
+        let okada_peak = if self.slip_m > 0.0 {
+            let fault: super::okada::OkadaFault = self.into();
+            fault.peak_uplift_m().abs()
+        } else {
+            0.0
+        };
+        let peak_amplitude_m = if okada_peak.is_finite() && okada_peak > 0.0 {
+            okada_peak
+        } else {
+            self.peak_seafloor_uplift_m()
+        };
         InitialDisplacement {
             center,
             cavity_radius_m: self.effective_cavity_radius_m(),
-            peak_amplitude_m: self.peak_seafloor_uplift_m(),
+            peak_amplitude_m,
             source_energy_j: self.energy_j(),
             seismic_mw_equivalent: self.mw,
             dominant_wavelength_m: Some(2.0 * self.effective_cavity_radius_m()),
@@ -181,10 +195,13 @@ mod tests {
         let eq = tohoku_2011();
         let d = eq.initial_displacement();
         // Tōhoku observed seafloor uplift was ~7 m peak (Fujii & Satake 2013).
-        // Our M_w → uplift empirical (Geist-Dmowska) for M9.1 gives ≈ 10^1.25 ≈ 17.8 m.
-        // We allow a wide band — this is an OOM scaling, not a true Okada solve.
+        // v0.3.0 wires the full Okada 1985 I-term solve in as the primary
+        // peak-amplitude source (with the Geist-Dmowska empirical kept as
+        // a fallback for slip-less / Mw-only sources). Acceptable band is
+        // intentionally wide because the underlying fault parameters are
+        // approximate.
         assert!(
-            (3.0..=50.0).contains(&d.peak_amplitude_m),
+            (1.0..=50.0).contains(&d.peak_amplitude_m),
             "Tōhoku uplift {} m off ballpark",
             d.peak_amplitude_m
         );

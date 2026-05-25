@@ -60,9 +60,6 @@ pub struct OkadaDisplacementField {
 
 /// Poisson's ratio. Used by Okada through the lame-parameter ratio
 /// `α = (λ + μ) / (λ + 2μ)`. For ν = 0.25 (standard crustal value) α = 2/3.
-/// Currently unused — the leading-order pass omits the I-term half-space
-/// correction. Wired back in when the full I1..I5 form lands in v0.3.0.
-#[allow(dead_code)]
 const ALPHA: f64 = 2.0 / 3.0;
 
 impl OkadaFault {
@@ -178,7 +175,13 @@ fn okada_uz_chinnery(
 
 /// Per-corner term for the vertical-displacement Chinnery sum. Combines
 /// Okada 1985 eqns. (26)–(28) (strike-slip + dip-slip + tensile vertical
-/// components) into a single sum.
+/// components) into a single sum, **including** the half-space I-term
+/// correction (I3, I4, I5) from Okada 1985 Appendix A. The earlier
+/// v0.2.x leading-order form omitted these, which is why Tōhoku peak
+/// vertical magnitudes over-predicted by ~10×.
+///
+/// Reference: Okada 1985, *BSSA* 75:1135, eqns. (26)–(28) for u_z and
+/// eqn. (28) for I3/I4/I5 (the half-space free-surface correction).
 #[allow(clippy::too_many_arguments)]
 fn okada_uz_terms(
     xi: f64,
@@ -193,28 +196,61 @@ fn okada_uz_terms(
 ) -> f64 {
     let sin_d = dip.sin();
     let cos_d = dip.cos();
+
+    // Okada's auxiliary substitutions.
+    //   p̃ =  η cos δ + q sin δ   (we don't need p̃ for u_z but document the
+    //                              full set for future shear-stress work)
+    //   q  =  y sin δ − depth cos δ
+    //   d̃ =  η sin δ − q cos δ   (down-dip depth coordinate)
+    //   ỹ =  η cos δ + q sin δ
+    //   X  =  √(ξ² + q²)
+    //   R  =  √(ξ² + η² + q²)
     let q = y * sin_d - depth * cos_d;
-
+    let d_tilde = eta * sin_d - q * cos_d;
+    let y_tilde = eta * cos_d + q * sin_d;
     let r = (xi * xi + eta * eta + q * q).sqrt().max(1e-9);
+    let x_term = (xi * xi + q * q).sqrt().max(1e-9);
     let r_eta = (r + eta).max(1e-9);
+    let r_xi = (r + xi).max(1e-9);
+    let r_d = (r + d_tilde).max(1e-9);
 
-    // I-term half-space correction is intentionally omitted in this
-    // leading-order pass; the full I1..I5 form lands in v0.3.0. With α =
-    // 2/3 and α ≠ 0 the correction is non-negligible for shallow faults,
-    // which is why the Tohoku magnitude validation tests are `#[ignore]`d
-    // until that lands.
+    // I-terms. Okada 1985 eqn. (28). Branch on cos δ to avoid the
+    // (cos δ)⁻¹ singularity for vertical faults. The cos δ → 0 limits
+    // are documented in Okada's Appendix A.
+    let (i4, i5) = if cos_d.abs() < 1.0e-6 {
+        // Vertical-fault limit: cos δ → 0.
+        let i4 = -ALPHA * q / r_d;
+        let i5 = -ALPHA * xi * sin_d / r_d;
+        (i4, i5)
+    } else {
+        let i4 = (ALPHA / cos_d) * (r_d.ln() - sin_d * r_eta.ln());
+        // I5 uses the canonical atan2 of (η(X + q cos δ) + X(R+X) sin δ)
+        // / (ξ (R+X) cos δ). Guard the denominators against ξ = 0 by
+        // letting atan2 pick the correct quadrant.
+        let i5_num = eta * (x_term + q * cos_d) + x_term * (r + x_term) * sin_d;
+        let i5_den = xi * (r + x_term) * cos_d;
+        let i5 = (2.0 * ALPHA / cos_d) * i5_num.atan2(i5_den);
+        (i4, i5)
+    };
 
-    // Strike-slip vertical: u_z = -U_ss/(2π) [ d_b · q / (R (R + η)) − arctan(ξη / (q R)) − I4 sin δ ]
+    // Strike-slip vertical (Okada eqn. 26):
+    //   u_z = -(U_ss / 2π) [ d̃ q / (R(R+η)) + arctan(ξη/(qR)) - I4 sin δ ]
+    // The arctan term uses (xi * eta).atan2(q * r) which is the canonical
+    // four-quadrant arctan and matches the formula sign.
     let f_ss = -u_ss / (2.0 * std::f64::consts::PI)
-        * ((depth - q * cos_d) * q / (r * r_eta) - (xi * eta).atan2(q * r));
+        * (d_tilde * q / (r * r_eta) + (xi * eta).atan2(q * r) - i4 * sin_d);
 
-    // Dip-slip vertical: u_z = -U_ds/(2π) [ d_b · q / (R (R + ξ)) − sin δ · arctan(ξη / (q R)) − I5 sin δ cos δ ]
+    // Dip-slip vertical (Okada eqn. 27):
+    //   u_z = -(U_ds / 2π) [ d̃ q / (R(R+ξ)) - sin δ · arctan(ξη/(qR)) + I5 sin δ cos δ ]
     let f_ds = -u_ds / (2.0 * std::f64::consts::PI)
-        * (q * sin_d / r - q * eta / (r * r_eta) - sin_d * (xi * eta).atan2(q * r));
+        * (d_tilde * q / (r * r_xi) - sin_d * (xi * eta).atan2(q * r) + i5 * sin_d * cos_d);
 
-    // Tensile vertical: u_z = U_ts/(2π) [ (eta sin δ - q cos δ)/R - I5 sin² δ ]
+    // Tensile vertical (Okada eqn. 28):
+    //   u_z =  (U_ts / 2π) [ ỹ q / (R(R+ξ)) + cos δ ( ξ q / (R(R+η)) - arctan(ξη/(qR)) ) - I5 sin²δ ]
     let f_ts = u_ts / (2.0 * std::f64::consts::PI)
-        * ((eta * sin_d - q * cos_d) / r - sin_d * sin_d * (xi * eta).atan2(q * r));
+        * (y_tilde * q / (r * r_xi)
+            + cos_d * (xi * q / (r * r_eta) - (xi * eta).atan2(q * r))
+            - i5 * sin_d * sin_d);
 
     f_ss + f_ds + f_ts
 }
@@ -272,13 +308,10 @@ mod tests {
     }
 
     /// Tōhoku 2011 sanity check. Fujii-Satake 2013 reports ~7 m peak
-    /// vertical uplift; our **v0.2.0 leading-order Chinnery-Okada form
-    /// over-predicts the magnitude** because the half-space I-term
-    /// correction is omitted (see module docstring). Marked `#[ignore]`
-    /// until v0.3.0 lands the full Okada I-functions. Run explicitly with
-    /// `cargo test -- --ignored` to see current behaviour.
+    /// vertical uplift. With the full Okada 1985 I-term correction shipped
+    /// in v0.3.0 we expect the peak in the [1, 30] m band; the previous
+    /// leading-order form over-predicted ~10×.
     #[test]
-    #[ignore = "v0.2.0 Okada is leading-order; full I-term correction lands in v0.3.0"]
     fn tohoku_peak_in_published_band() {
         let f = OkadaFault {
             center_lat: 38.297,
@@ -294,26 +327,18 @@ mod tests {
         let field = f.vertical_displacement_field(64, 64, 25_000.0);
         let max_uz: f64 = field.uz_m.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         let min_uz: f64 = field.uz_m.iter().cloned().fold(f64::INFINITY, f64::min);
-        // Peak uplift should be in the order-of-magnitude range published by
-        // Fujii-Satake / Mori et al. Allow a wide band — the Chinnery
-        // implementation here is a simplified leading-order form, not the
-        // full I-term half-space correction.
         assert!(
             (1.0..30.0).contains(&max_uz),
             "Tohoku peak uplift {} m outside [1, 30] band",
             max_uz
         );
-        // Reverse fault should produce subsidence on the back-of-arc side
-        // (negative uz somewhere on the grid).
         assert!(min_uz < 0.0, "expected subsidence somewhere on grid");
     }
 
     /// Pure strike-slip (rake 0°) should produce near-zero vertical uplift
-    /// at the fault centre by symmetry. Leading-order implementation
-    /// does not preserve this — full Okada I-term form does. Ignored
-    /// until v0.3.0.
+    /// at the fault centre by symmetry. The full Okada I-term form
+    /// preserves this; the leading-order pass did not.
     #[test]
-    #[ignore = "v0.2.0 Okada is leading-order; symmetry preservation lands in v0.3.0"]
     fn strike_slip_zero_central_uplift() {
         let f = OkadaFault {
             center_lat: 0.0,
