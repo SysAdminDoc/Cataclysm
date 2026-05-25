@@ -102,8 +102,12 @@ impl EarthquakeSource {
     }
 
     pub fn initial_displacement(&self) -> InitialDisplacement {
+        let center = GeoPoint {
+            depth_m: self.water_depth_m,
+            ..self.location
+        };
         InitialDisplacement {
-            center: self.location,
+            center,
             cavity_radius_m: self.effective_cavity_radius_m(),
             peak_amplitude_m: self.peak_seafloor_uplift_m(),
             source_energy_j: self.energy_j(),

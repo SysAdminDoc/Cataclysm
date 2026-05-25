@@ -137,8 +137,12 @@ impl NuclearBurst {
 
     pub fn initial_displacement(&self) -> InitialDisplacement {
         let r_c = self.cavity_radius_m();
+        let center = GeoPoint {
+            depth_m: self.water_depth_m,
+            ..self.location
+        };
         InitialDisplacement {
-            center: self.location,
+            center,
             cavity_radius_m: r_c,
             peak_amplitude_m: self.initial_amplitude_m(),
             source_energy_j: self.energy_j(),

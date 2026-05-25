@@ -136,8 +136,16 @@ impl LandslideSource {
     }
 
     pub fn initial_displacement(&self) -> InitialDisplacement {
+        // Project the location to the *receiving* water depth so the
+        // propagation-depth fallback in `run_preset` uses the right value
+        // even for subaerial slides where the source coordinate sits above
+        // sea level (e.g. Cumbre Vieja).
+        let center = GeoPoint {
+            depth_m: self.water_depth_m,
+            ..self.location
+        };
         InitialDisplacement {
-            center: self.location,
+            center,
             cavity_radius_m: self.effective_cavity_radius_m(),
             peak_amplitude_m: self.initial_amplitude_m(),
             source_energy_j: self.kinetic_energy_j(),

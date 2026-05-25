@@ -113,8 +113,12 @@ impl AsteroidImpact {
     /// Snapshot of the source ready for the propagation solver.
     pub fn initial_displacement(&self) -> InitialDisplacement {
         let cavity_r = self.transient_cavity_diameter_m() / 2.0;
+        let center = GeoPoint {
+            depth_m: self.water_depth_m,
+            ..self.location
+        };
         InitialDisplacement {
-            center: self.location,
+            center,
             cavity_radius_m: cavity_r,
             peak_amplitude_m: self.initial_amplitude_m(),
             source_energy_j: self.kinetic_energy_j(),
