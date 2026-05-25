@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type { CoastalPoint, CoastalPointDatabase, InitialDisplacement, Preset } from "../types/scenario";
 import coastalDb from "../data/coastal_points.json";
@@ -16,9 +16,20 @@ const db = coastalDb as CoastalPointDatabase;
  * Hidden React component that runs the runup_at_points Tauri command whenever
  * the scenario or time changes, and pushes the results back to its parent (so
  * the Globe component can render them as 3D bars). No DOM output of its own.
+ *
+ * Uses a monotonic request id to drop stale responses on rapid scrubbing,
+ * and a mounted ref to avoid setting state on an unmounted component.
  */
 export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }: Props) {
-  const [, setLastError] = useState<string | null>(null);
+  const reqIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const isImpact = useMemo<boolean>(() => {
     if (!activePreset) return false;
@@ -30,6 +41,8 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
       onResults([]);
       return;
     }
+    reqIdRef.current += 1;
+    const reqId = reqIdRef.current;
     const points: CoastalPoint[] = db.points;
     api
       .runupAtPoints({
@@ -42,12 +55,12 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
         points,
       })
       .then((res) => {
-        setLastError(null);
+        if (!mountedRef.current || reqId !== reqIdRef.current) return;
         onResults(res);
       })
       .catch((err) => {
+        if (!mountedRef.current || reqId !== reqIdRef.current) return;
         console.error("runup_at_points failed", err);
-        setLastError(String(err));
         onResults([]);
       });
   }, [initial, isImpact, timeS, onResults]);

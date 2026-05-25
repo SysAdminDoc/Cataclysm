@@ -5,6 +5,7 @@
  */
 
 import * as Cesium from "cesium";
+import { tokenConfigured } from "./cesium";
 
 export type GlobeStyleId =
   | "osm"
@@ -62,9 +63,24 @@ export function findStyle(id: GlobeStyleId | string | undefined | null): GlobeSt
 /**
  * Build a Cesium imagery provider for the given style id. Falls back to the
  * default OSM provider if the requested style isn't constructable (e.g.
- * token-gated provider but no token).
+ * token-gated provider but no token). Token presence is preflighted before
+ * hitting the network so a misconfigured request doesn't waste a Cesium ion
+ * quota point.
  */
 export async function buildImagery(id: GlobeStyleId): Promise<Cesium.ImageryProvider> {
+  // If the style requires a token and we don't have one, short-circuit to
+  // OSM so the user gets a working globe instead of a 401-driven fallback.
+  const meta = findStyle(id);
+  if (meta.requires_token && !tokenConfigured()) {
+    console.info(
+      `[globe] '${id}' requires a Cesium ion token; falling back to OSM. Paste a token in Settings to enable.`,
+    );
+    return new Cesium.OpenStreetMapImageryProvider({
+      url: "https://tile.openstreetmap.org/",
+      credit: "© OpenStreetMap contributors",
+    });
+  }
+
   switch (id) {
     case "osm":
       return new Cesium.OpenStreetMapImageryProvider({
@@ -108,6 +124,7 @@ export async function buildImagery(id: GlobeStyleId): Promise<Cesium.ImageryProv
 /** Build a Cesium terrain provider if the style implies one. */
 export async function buildTerrain(id: GlobeStyleId): Promise<Cesium.TerrainProvider | undefined> {
   if (id === "cesium-bathymetry") {
+    if (!tokenConfigured()) return undefined;
     return await Cesium.createWorldBathymetryAsync({ requestVertexNormals: true });
   }
   return undefined;

@@ -35,17 +35,25 @@ export function tokenConfigured(): boolean {
 
 /**
  * Prime the Cesium default token. Called by the Settings UI when the user
- * pastes a token, and during app boot from persisted settings.
+ * pastes a token, and during app boot from persisted settings. Passing
+ * null/empty clears the cached token (so ion-backed styles fail-fast back
+ * to OSM rather than retrying with a stale value).
  */
 export function primeCesiumToken(token: string | null | undefined): void {
-  if (!token) {
+  const trimmed = (token ?? "").trim();
+  if (!trimmed) {
     const envTok = import.meta.env.VITE_CESIUM_TOKEN as string | undefined;
     if (envTok && envTok.length > 0) {
       Cesium.Ion.defaultAccessToken = envTok;
       cachedToken = envTok;
+    } else {
+      // Explicit clear — Cesium ion APIs will now reject and the Globe
+      // fallback path will choose OSM.
+      Cesium.Ion.defaultAccessToken = "";
+      cachedToken = null;
     }
     return;
   }
-  Cesium.Ion.defaultAccessToken = token;
-  cachedToken = token;
+  Cesium.Ion.defaultAccessToken = trimmed;
+  cachedToken = trimmed;
 }

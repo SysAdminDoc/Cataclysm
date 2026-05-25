@@ -1,4 +1,5 @@
 import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { isTauri } from "../lib/tauri";
 import type { Preset } from "../types/scenario";
 
@@ -16,6 +17,7 @@ function openUrl(url: string) {
 }
 
 export function CitationsModal({ presets, onClose }: Props) {
+  useEscapeKey(onClose);
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal" onClick={(e) => e.stopPropagation()}>

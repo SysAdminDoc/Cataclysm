@@ -7,6 +7,7 @@ type Props = {
 };
 
 function formatEnergy(j: number): { value: string; unit: string } {
+  if (!Number.isFinite(j)) return { value: "—", unit: "" };
   const mt = j / 4.184e15;
   if (mt >= 1) return { value: mt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "Mt TNT" };
   const kt = j / 4.184e12;
@@ -15,8 +16,13 @@ function formatEnergy(j: number): { value: string; unit: string } {
 }
 
 function formatLength(m: number): { value: string; unit: string } {
+  if (!Number.isFinite(m)) return { value: "—", unit: "" };
   if (m >= 1000) return { value: (m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "km" };
   return { value: m.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "m" };
+}
+
+function formatMagnitude(mw: number): string {
+  return Number.isFinite(mw) ? mw.toFixed(2) : "—";
 }
 
 export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
@@ -50,9 +56,9 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
               <span className="results__unit">{energy.unit}</span>
             </div>
           </div>
-          <div className="results__cell">
+          <div className="results__cell" title="Equivalent moment magnitude (Hanks–Kanamori 1979)">
             <div className="results__label">M_w equivalent</div>
-            <div className="results__value">{initial.seismic_mw_equivalent.toFixed(2)}</div>
+            <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
           </div>
           <div className="results__cell">
             <div className="results__label">Cavity radius</div>
@@ -90,6 +96,8 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             step={60}
             value={timeS}
             onChange={(e) => onTimeChange(Number(e.target.value))}
+            aria-label="Scenario timeline scrubber"
+            aria-valuetext={`${Math.round(timeS / 60)} minutes after source event`}
           />
           <div className="timeline__bar">
             <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />

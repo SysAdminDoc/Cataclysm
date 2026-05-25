@@ -14,11 +14,32 @@ export function FirstRunDisclaimer() {
     });
   }, []);
 
+  // Esc / Enter to acknowledge (Enter is the primary action key).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === "Escape") {
+        e.preventDefault();
+        void acknowledge();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   if (!open) return null;
 
   async function acknowledge() {
-    await settings.acknowledgeDisclaimer();
+    // Close the modal eagerly so a setting-store failure doesn't trap the
+    // user inside the dialog. The acknowledgement write is best-effort —
+    // worst case the modal reappears on next launch.
     setOpen(false);
+    try {
+      await settings.acknowledgeDisclaimer();
+    } catch (err) {
+      console.warn("[disclaimer] could not persist acknowledgement", err);
+    }
   }
 
   return (

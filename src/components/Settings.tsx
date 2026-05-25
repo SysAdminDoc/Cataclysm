@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { primeCesiumToken } from "../lib/cesium";
 import { settings, type Theme } from "../lib/settings";
 import { setTheme } from "../lib/theme";
@@ -9,10 +10,12 @@ import { isTauri } from "../lib/tauri";
 type Props = { onClose: () => void };
 
 export function Settings({ onClose }: Props) {
+  useEscapeKey(onClose);
   const [token, setTokenLocal] = useState("");
   const [theme, setThemeLocal] = useState<Theme>("mocha");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>("osm");
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
   useEffect(() => {
     settings.loadAll().then((s) => {
@@ -23,15 +26,26 @@ export function Settings({ onClose }: Props) {
   }, []);
 
   async function save() {
-    await settings.setCesiumToken(token.trim());
-    primeCesiumToken(token.trim() || null);
-    await setTheme(theme);
-    await settings.setGlobeStyle(globeStyle);
-    setSavedAt(new Date().toLocaleTimeString());
-    // Force the globe to reload by dispatching a small storage event-like
-    // signal: the Globe re-reads on next style change via the useEffect on
-    // resolvedStyle, which our `settings.setGlobeStyle` write will trigger
-    // through the localStorage mirror.
+    setSaveErr(null);
+    const trimmedToken = token.trim();
+    // Apply the token immediately so the next imagery request sees it,
+    // even if the persistence write below races. This makes 'Save' feel
+    // instant even on slow disks.
+    primeCesiumToken(trimmedToken || null);
+    try {
+      await Promise.all([
+        settings.setCesiumToken(trimmedToken),
+        setTheme(theme),
+        settings.setGlobeStyle(globeStyle),
+      ]);
+      setSavedAt(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error("[settings] save failed", err);
+      setSaveErr(String(err));
+    }
+    // Always dispatch — Globe + main.tsx listen for this to re-read the
+    // active style + token. Even if persistence failed the in-memory
+    // values are still useful for the current session.
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
     }
@@ -126,9 +140,14 @@ export function Settings({ onClose }: Props) {
             </div>
           </section>
 
-          <section style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <section style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button className="primary" onClick={save}>Save settings</button>
-            {savedAt && <span style={{ color: "var(--green)", fontSize: 12 }}>Saved at {savedAt}</span>}
+            {savedAt && !saveErr && (
+              <span style={{ color: "var(--green)", fontSize: 12 }}>Saved at {savedAt}</span>
+            )}
+            {saveErr && (
+              <span style={{ color: "var(--red)", fontSize: 12 }}>Save failed: {saveErr}</span>
+            )}
           </section>
 
           <hr className="modal__sep" />
