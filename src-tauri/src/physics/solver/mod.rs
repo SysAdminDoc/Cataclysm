@@ -46,6 +46,8 @@ use std::io::Cursor;
 use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
 
 pub mod kernels;
+#[cfg(feature = "gpu")]
+pub mod gpu;
 
 /// One snapshot of the propagation field, suitable for IPC transport.
 #[derive(Debug, Clone, Serialize)]
