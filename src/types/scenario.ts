@@ -91,6 +91,25 @@ export type RunPresetResponse = {
   wavefront: PropagationSnapshot;
 };
 
+/** One snapshot of the SWE simulation field. PNG body lives in eta_png_b64. */
+export type GridSnapshot = {
+  time_s: number;
+  bbox: [number, number, number, number];
+  nx: number;
+  ny: number;
+  eta_min_m: number;
+  eta_max_m: number;
+  eta_abs_max_m: number;
+  eta_png_b64: string;
+};
+
+export type SimulateGridResponse = {
+  snapshots: GridSnapshot[];
+  dt_s: number;
+  nx: number;
+  ny: number;
+};
+
 /** A named coastal point used for Synolakis runup sampling. */
 export type CoastalPoint = {
   id: string;

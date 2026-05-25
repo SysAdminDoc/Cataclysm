@@ -12,6 +12,7 @@ use crate::physics::{
     shallow_water::{
         long_wave_travel_time_s, sample_wavefront, synolakis_runup_m, PropagationSnapshot,
     },
+    solver::{run_simulation, GridSnapshot, SwGrid, TimeStepper},
     GeoPoint, InitialDisplacement,
 };
 use crate::presets::{all_presets, find_preset, Preset};
@@ -181,6 +182,79 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Vec<RunupAtPoint> {
             }
         })
         .collect()
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SimulateGridRequest {
+    /// Source centre (deg).
+    pub source: GeoPoint,
+    /// Peak amplitude at the source (m). Used as Gaussian IC peak.
+    pub initial_amplitude_m: f64,
+    /// 1-σ radius of the IC bump (m).
+    pub source_sigma_m: f64,
+    /// Uniform ocean depth assumed for the simulation domain (m). v0.2.0
+    /// uses a flat-basin approximation; v0.3.0+ samples real bathymetry.
+    pub mean_depth_m: f64,
+    /// Half-extent of the simulation box around the source, degrees.
+    /// Larger = more area covered, slower simulation.
+    pub box_half_size_deg: f64,
+    /// Grid resolution (cells per degree). Default ~10 for fast preview.
+    pub cells_per_deg: f64,
+    /// Total simulated time in seconds.
+    pub t_end_s: f64,
+    /// Number of snapshots to return (≥ 2; includes t=0 and t_end).
+    pub n_snapshots: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SimulateGridResponse {
+    pub snapshots: Vec<GridSnapshot>,
+    pub dt_s: f64,
+    pub nx: u32,
+    pub ny: u32,
+}
+
+/// Run a real CPU shallow-water-equation simulation. Returns evenly-spaced
+/// PNG snapshots ready to drop into Cesium as a `SingleTileImageryProvider`.
+#[tauri::command]
+pub fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridResponse, String> {
+    if req.box_half_size_deg <= 0.0 || req.cells_per_deg <= 0.0 {
+        return Err("box_half_size_deg and cells_per_deg must be positive".into());
+    }
+    let lat = req.source.lat_deg;
+    let lon = req.source.lon_deg;
+    let half = req.box_half_size_deg;
+    let cell = 1.0 / req.cells_per_deg;
+
+    // Clamp latitudes to avoid polar singularities.
+    let south = (lat - half).max(-80.0);
+    let north = (lat + half).min(80.0);
+    let west = lon - half;
+    let east = lon + half;
+
+    let mut grid = SwGrid::new(west, south, east, north, cell, cell);
+    if grid.nx * grid.ny > 4_000_000 {
+        return Err(format!(
+            "grid too large ({}×{} = {} cells) — reduce cells_per_deg or box_half_size_deg",
+            grid.nx,
+            grid.ny,
+            grid.nx * grid.ny
+        ));
+    }
+    grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
+    grid.inject_gaussian(lat, lon, req.initial_amplitude_m, req.source_sigma_m.max(1000.0));
+
+    let dt = grid.recommended_dt_s(0.4);
+    let stepper = TimeStepper::new(dt);
+    let nx = grid.nx as u32;
+    let ny = grid.ny as u32;
+    let snapshots = run_simulation(&mut grid, &stepper, req.t_end_s, req.n_snapshots);
+    Ok(SimulateGridResponse {
+        snapshots,
+        dt_s: dt,
+        nx,
+        ny,
+    })
 }
 
 #[tauri::command]

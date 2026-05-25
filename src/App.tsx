@@ -6,12 +6,14 @@ import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
+import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri, type RunupAtPointResult } from "./lib/tauri";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng } from "./lib/export";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
+  GridSnapshot,
   InitialDisplacement,
   LandslideInput,
   NuclearBurstInput,
@@ -33,6 +35,7 @@ export default function App() {
   const [initial, setInitial] = useState<InitialDisplacement | null>(null);
   const [wavefront, setWavefront] = useState<PropagationSnapshot | null>(null);
   const [runupResults, setRunupResults] = useState<RunupAtPointResult[]>([]);
+  const [sweSnapshot, setSweSnapshot] = useState<GridSnapshot | null>(null);
   const [timeS, setTimeS] = useState<number>(15 * 60);
   const [showCitations, setShowCitations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -151,6 +154,7 @@ export default function App() {
           <Globe
             initial={initial}
             wavefront={wavefront}
+            sweSnapshot={sweSnapshot}
             runupResults={runupResults}
             pickMode={pickMode}
             onPick={handlePickGlobe}
@@ -161,6 +165,7 @@ export default function App() {
 
       <aside className="app__panel app__panel--right">
         <ResultsPanel initial={initial} timeS={timeS} onTimeChange={setTimeS} />
+        <SwePlayback initial={initial} onSnapshot={setSweSnapshot} />
         <ScenarioBuilder
           onSimulate={handleSimulate}
           pickedLocation={pickedLocation}

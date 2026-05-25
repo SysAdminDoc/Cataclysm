@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium, tokenConfigured } from "../lib/cesium";
 import type { RunupAtPointResult } from "../lib/tauri";
-import type { InitialDisplacement, PropagationSnapshot } from "../types/scenario";
+import type { GridSnapshot, InitialDisplacement, PropagationSnapshot } from "../types/scenario";
 
 type Props = {
   initial: InitialDisplacement | null;
   wavefront: PropagationSnapshot | null;
+  /** Live SWE solver snapshot (PNG + bbox) to paint on the globe. */
+  sweSnapshot?: GridSnapshot | null;
   /** Coastal runup samples to render as 3D bars at coastline points. */
   runupResults?: RunupAtPointResult[];
   /**
@@ -32,12 +34,21 @@ const PICK_CURSOR_STYLE = "crosshair";
  *
  * All physics state comes from props. The Viewer is created once and reused.
  */
-export function Globe({ initial, wavefront, runupResults, pickMode, onPick, onPickCancel }: Props) {
+export function Globe({
+  initial,
+  wavefront,
+  sweSnapshot,
+  runupResults,
+  pickMode,
+  onPick,
+  onPickCancel,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const sourceEntityRef = useRef<Cesium.Entity | null>(null);
   const wavefrontEntitiesRef = useRef<Cesium.Entity[]>([]);
   const runupEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
+  const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const [bathymetryStatus, setBathymetryStatus] = useState<"idle" | "loading" | "ready" | "error">(
     () => (tokenConfigured() ? "loading" : "idle"),
@@ -95,6 +106,7 @@ export function Globe({ initial, wavefront, runupResults, pickMode, onPick, onPi
       sourceEntityRef.current = null;
       wavefrontEntitiesRef.current = [];
       runupEntitiesRef.current = new Map();
+      sweLayerRef.current = null;
     };
   }, []);
 
@@ -250,6 +262,26 @@ export function Globe({ initial, wavefront, runupResults, pickMode, onPick, onPi
       );
     }
   }, [initial, wavefront]);
+
+  // SWE snapshot → Cesium imagery layer.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    if (sweLayerRef.current) {
+      viewer.imageryLayers.remove(sweLayerRef.current, true);
+      sweLayerRef.current = null;
+    }
+    if (!sweSnapshot || !sweSnapshot.eta_png_b64) return;
+    const [west, south, east, north] = sweSnapshot.bbox;
+    const url = `data:image/png;base64,${sweSnapshot.eta_png_b64}`;
+    const provider = new Cesium.SingleTileImageryProvider({
+      url,
+      rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north),
+    });
+    const layer = viewer.imageryLayers.addImageryProvider(provider);
+    layer.alpha = 0.9;
+    sweLayerRef.current = layer;
+  }, [sweSnapshot]);
 
   // Runup bars at named coastal points.
   useEffect(() => {

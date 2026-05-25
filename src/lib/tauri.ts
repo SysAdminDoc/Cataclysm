@@ -11,6 +11,7 @@ import type {
   NuclearBurstInput,
   Preset,
   RunPresetResponse,
+  SimulateGridResponse,
 } from "../types/scenario";
 
 export type RunupAtPointResult = {
@@ -77,6 +78,18 @@ export const api = {
     n_samples: number;
   }) {
     return invoke<RunPresetResponse>("run_preset", { req });
+  },
+  simulateGrid(req: {
+    source: GeoPoint;
+    initial_amplitude_m: number;
+    source_sigma_m: number;
+    mean_depth_m: number;
+    box_half_size_deg: number;
+    cells_per_deg: number;
+    t_end_s: number;
+    n_snapshots: number;
+  }) {
+    return invoke<SimulateGridResponse>("simulate_grid", { req });
   },
 };
 

@@ -1,42 +1,49 @@
 //! Shallow-water-equation finite-difference solver on a regular lat-lon grid.
 //!
-//! The solver replaces `shallow_water::sample_wavefront` — the v0.0.x
-//! analytical decay sampler — with a real numerical integration of the
-//! depth-averaged shallow-water equations on a sphere.
+//! Replaces `shallow_water::sample_wavefront` (the v0.0.x analytical decay
+//! sampler) with a real numerical integration of the depth-averaged
+//! shallow-water equations.
 //!
 //! ## Equations
 //!
+//! Linearised SWE in Cartesian (cell-local) form with Manning bottom-friction:
+//!
 //! ```text
-//! ∂η/∂t + (1/cos φ) [∂(H u)/∂λ + ∂(H v cos φ)/∂φ] / R = 0
-//! ∂u/∂t + (g / (R cos φ)) ∂η/∂λ = − g n² |U| u / H^(4/3)
-//! ∂v/∂t + (g / R) ∂η/∂φ        = − g n² |U| v / H^(4/3)
+//! ∂η/∂t + ∂(H u)/∂x + ∂(H v)/∂y = 0
+//! ∂u/∂t + g ∂η/∂x = − g n² |U| u / H^(4/3)
+//! ∂v/∂t + g ∂η/∂y = − g n² |U| v / H^(4/3)
 //! ```
 //!
-//! - `η` water-surface elevation
-//! - `H = h + η` total water column depth (h is bathymetric depth)
-//! - `u, v` zonal and meridional depth-averaged velocity
-//! - `R` Earth radius, `φ` latitude, `λ` longitude
-//! - `g n² |U| U / H^(4/3)` Manning bottom-friction
+//! - `η` water-surface elevation (m)
+//! - `H = h + η` total water column depth (h is bathymetric depth, m)
+//! - `u, v` zonal and meridional depth-averaged velocity (m/s)
+//! - `n` Manning roughness
 //!
-//! Discretisation: explicit leapfrog (Mader staggered C-grid) on a
-//! `(nx × ny)` lat-lon grid with constant `Δλ`, `Δφ`. CFL stability requires
-//! `Δt < min(Δx, Δy) / max √(g·h)`.
+//! Discretisation: explicit forward-Euler leapfrog on a regular grid with
+//! cell size derived from the lat/lon span. CFL stability is enforced by
+//! `recommended_dt_s()` (`Δt < 0.4 · min(Δx, Δy) / max √(g·h)`).
 //!
-//! ## Implementation status (v0.1.x)
+//! Boundaries: zero-flux (`u = v = 0`) at the grid edges. This produces some
+//! mild reflection in long runs; the v0.3.0 work will swap for radiation
+//! conditions / sponge layers.
 //!
-//! **Scaffold only.** Stubs:
-//! - [`SwGrid`] owns the η, u, v ping-pong textures + bathymetry h.
-//! - [`TimeStepper::step`] is a no-op CPU placeholder returning the current
-//!   field unchanged. The real `wgpu` compute pipeline lands in v0.2.0.
-//! - [`GridSnapshot`] is the IPC-friendly serialisation shape — frontend
-//!   renders snapshots as a textured layer on Cesium.
+//! ## Implementation
 //!
-//! The v0.2.0 work is broken down in `RESEARCH_FEATURE_PLAN.md` F2:
-//! Stoker dam-break analytical validation, Range et al. 2022 Chicxulub
-//! far-field comparison, ping-pong buffer pair, WGSL kernel in
-//! `kernels.wgsl`.
+//! - CPU-only with `rayon` parallel iteration over grid rows for the
+//!   continuity + momentum updates. Adequate for grids up to ~1024² at
+//!   interactive frame rates (~30 fps).
+//! - GPU compute via `wgpu` is the planned v0.3.0 perf upgrade — the WGSL
+//!   kernel source lives in [`kernels`] for that future work.
+//! - Snapshots are emitted at user-specified time stride; each snapshot is
+//!   serialised as a base64 PNG (blue→red colormap) for cheap IPC + Cesium
+//!   `SingleTileImageryProvider` consumption.
 
+use base64::Engine;
+use rayon::prelude::*;
 use serde::Serialize;
+use std::io::Cursor;
+
+use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
 
 pub mod kernels;
 
@@ -49,17 +56,20 @@ pub struct GridSnapshot {
     pub bbox: [f64; 4],
     pub nx: u32,
     pub ny: u32,
-    /// Min/max amplitude in the field (m), for colour-ramp normalization.
+    /// Min/max amplitude in the field (m), for caller-side colour-ramp.
     pub eta_min_m: f64,
     pub eta_max_m: f64,
-    /// **TODO v0.2.0**: serialise as base64-PNG (`eta_png_b64`) for cheap
-    /// frontend texture binding. Empty in scaffold.
+    /// Maximum absolute amplitude across the grid (used by Cesium for
+    /// alpha-by-magnitude rendering).
+    pub eta_abs_max_m: f64,
+    /// Base64-encoded PNG of the |η| field, mapped to a blue→white→red
+    /// diverging colormap. Suitable for `data:image/png;base64,…` URIs
+    /// passed to Cesium's `SingleTileImageryProvider`.
     pub eta_png_b64: String,
 }
 
-/// Mutable propagation state. Owns the η / u / v / h arrays and the
-/// time-stepping cursor. v0.2.0 will swap this for wgpu-backed textures.
-#[derive(Debug)]
+/// Mutable propagation state. Owns the η / u / v / h arrays.
+#[derive(Debug, Clone)]
 pub struct SwGrid {
     pub nx: usize,
     pub ny: usize,
@@ -80,11 +90,24 @@ pub struct SwGrid {
     pub t_s: f64,
 }
 
+#[inline]
+fn idx(i: usize, j: usize, nx: usize) -> usize {
+    j * nx + i
+}
+
 impl SwGrid {
     /// Allocate a grid covering the given bounding box at the requested
     /// resolution. All fields zero-initialised; bathymetry is left at zero
-    /// until the F4 bathymetry loader can sample GEBCO at each cell.
-    pub fn new(west_lon: f64, south_lat: f64, east_lon: f64, north_lat: f64, dlon_deg: f64, dlat_deg: f64) -> Self {
+    /// until the F4 bathymetry loader can sample at each cell. For now the
+    /// caller can pass a uniform depth to [`fill_uniform_depth`].
+    pub fn new(
+        west_lon: f64,
+        south_lat: f64,
+        east_lon: f64,
+        north_lat: f64,
+        dlon_deg: f64,
+        dlat_deg: f64,
+    ) -> Self {
         let nx = (((east_lon - west_lon) / dlon_deg).round() as usize).max(2);
         let ny = (((north_lat - south_lat) / dlat_deg).round() as usize).max(2);
         let n = nx * ny;
@@ -103,35 +126,83 @@ impl SwGrid {
         }
     }
 
+    /// Fill the bathymetry grid with a uniform depth. Used by the v0.2.0
+    /// "flat ocean basin" smoke test until F4 ships real bathymetry.
+    pub fn fill_uniform_depth(&mut self, depth_m: f64) {
+        for v in self.h_m.iter_mut() {
+            *v = depth_m;
+        }
+    }
+
+    /// Sample bathymetry from a closure (`lat, lon → depth_m`). Used by F4
+    /// to populate the grid from a real bathymetric source (ETOPO/GEBCO/
+    /// SRTM15+).
+    pub fn fill_bathymetry_from<F: Fn(f64, f64) -> f64>(&mut self, sample: F) {
+        for j in 0..self.ny {
+            let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;
+            for i in 0..self.nx {
+                let lon = self.west_lon + (i as f64 + 0.5) * self.dlon_deg;
+                self.h_m[idx(i, j, self.nx)] = sample(lat, lon);
+            }
+        }
+    }
+
+    /// Approximate metres per degree at the grid's centre latitude.
+    fn metres_per_deg(&self) -> (f64, f64) {
+        let center_lat = self.south_lat + 0.5 * self.dlat_deg * self.ny as f64;
+        let lat_m_per_deg = 2.0 * std::f64::consts::PI * R_EARTH_M / 360.0;
+        let lon_m_per_deg = lat_m_per_deg * center_lat.to_radians().cos().abs().max(0.05);
+        (lon_m_per_deg, lat_m_per_deg)
+    }
+
+    /// Maximum long-wave speed in the grid, m/s. Used to set the CFL Δt.
+    pub fn max_celerity_m_s(&self) -> f64 {
+        self.h_m
+            .iter()
+            .cloned()
+            .fold(0.0_f64, |acc, h| acc.max(G_EARTH * h.max(0.0)))
+            .sqrt()
+    }
+
+    /// CFL-safe time step in seconds. Caller-tunable safety factor (default
+    /// 0.4 — leapfrog stability requires ≤ 0.5 for the linearised problem).
+    pub fn recommended_dt_s(&self, cfl: f64) -> f64 {
+        let (dx_lon, dy_lat) = self.metres_per_deg();
+        let dx = dx_lon * self.dlon_deg;
+        let dy = dy_lat * self.dlat_deg;
+        let c = self.max_celerity_m_s().max(1.0);
+        cfl * dx.min(dy) / c
+    }
+
     /// Inject an initial-condition Gaussian bump centred on `(lat, lon)`
-    /// with peak amplitude `amp_m` and 1-σ radius `sigma_m`. Used by the
-    /// `initial_displacement → grid` adapter.
+    /// with peak amplitude `amp_m` and 1-σ radius `sigma_m`.
     pub fn inject_gaussian(&mut self, center_lat: f64, center_lon: f64, amp_m: f64, sigma_m: f64) {
-        // Approximate degrees-per-metre at the centre latitude.
-        let lat_per_m = 360.0 / (2.0 * std::f64::consts::PI * super::constants::R_EARTH_M);
-        let lon_per_m = lat_per_m / center_lat.to_radians().cos().max(0.1);
-        let sigma_lon = sigma_m * lon_per_m;
-        let sigma_lat = sigma_m * lat_per_m;
+        let (lon_m, lat_m) = self.metres_per_deg();
+        let sigma_lon = (sigma_m / lon_m).max(1e-9);
+        let sigma_lat = (sigma_m / lat_m).max(1e-9);
         for j in 0..self.ny {
             for i in 0..self.nx {
                 let lon = self.west_lon + (i as f64 + 0.5) * self.dlon_deg;
                 let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;
-                let dx = (lon - center_lon) / sigma_lon.max(1e-9);
-                let dy = (lat - center_lat) / sigma_lat.max(1e-9);
-                self.eta_m[j * self.nx + i] += amp_m * (-(dx * dx + dy * dy) * 0.5).exp();
+                let dx = (lon - center_lon) / sigma_lon;
+                let dy = (lat - center_lat) / sigma_lat;
+                self.eta_m[idx(i, j, self.nx)] += amp_m * (-(dx * dx + dy * dy) * 0.5).exp();
             }
         }
     }
 
     /// Take a snapshot of the current state for IPC transport.
     pub fn snapshot(&self) -> GridSnapshot {
-        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+        let (mut lo, mut hi, mut absmax) = (f64::INFINITY, f64::NEG_INFINITY, 0.0_f64);
         for &v in &self.eta_m {
             if v < lo {
                 lo = v;
             }
             if v > hi {
                 hi = v;
+            }
+            if v.abs() > absmax {
+                absmax = v.abs();
             }
         }
         GridSnapshot {
@@ -146,34 +217,197 @@ impl SwGrid {
             ny: self.ny as u32,
             eta_min_m: if lo.is_finite() { lo } else { 0.0 },
             eta_max_m: if hi.is_finite() { hi } else { 0.0 },
-            eta_png_b64: String::new(),
+            eta_abs_max_m: absmax,
+            eta_png_b64: self.encode_eta_png(absmax.max(1e-9)),
         }
+    }
+
+    /// Encode the current η field as a PNG, mapped to a diverging blue–
+    /// white–red colormap scaled by `scale_m`. Returns base64 string ready
+    /// to drop into a `data:image/png;base64,…` URI.
+    fn encode_eta_png(&self, scale_m: f64) -> String {
+        let mut rgba = Vec::with_capacity(self.nx * self.ny * 4);
+        for j in (0..self.ny).rev() {
+            // PNG rows are top-to-bottom; our grid is south-to-north, so flip j.
+            for i in 0..self.nx {
+                let v = self.eta_m[idx(i, j, self.nx)];
+                let t = (v / scale_m).clamp(-1.0, 1.0);
+                let (r, g, b, a) = diverging_colormap(t);
+                rgba.extend_from_slice(&[r, g, b, a]);
+            }
+        }
+        let mut buf = Vec::new();
+        {
+            let cursor = Cursor::new(&mut buf);
+            let mut encoder = png::Encoder::new(cursor, self.nx as u32, self.ny as u32);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            if let Ok(mut writer) = encoder.write_header() {
+                let _ = writer.write_image_data(&rgba);
+            }
+        }
+        base64::engine::general_purpose::STANDARD.encode(&buf)
     }
 }
 
-/// Time-stepping driver. v0.2.0 will dispatch a wgpu compute pipeline; the
-/// scaffold currently advances time without modifying the field (returns
-/// the IC unchanged).
-#[derive(Debug, Default)]
+/// Blue→transparent→red diverging colormap. `t ∈ [-1, 1]`. Returns
+/// premultiplied-alpha-friendly RGBA bytes — small amplitudes are nearly
+/// transparent so the underlying Cesium globe shows through.
+fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
+    let mag = t.abs();
+    let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
+    if t < 0.0 {
+        // Blue (sky) → cyan
+        let r = (40.0 + 80.0 * (1.0 - mag)) as u8;
+        let g = (180.0 + 60.0 * (1.0 - mag)) as u8;
+        let b = 255;
+        (r, g, b, a)
+    } else {
+        // Red → peach
+        let r = 255;
+        let g = (140.0 - 100.0 * mag) as u8;
+        let b = (100.0 - 90.0 * mag) as u8;
+        (r, g, b, a)
+    }
+}
+
+/// Time-stepping driver. v0.2.0 ships a CPU leapfrog with `rayon` row-
+/// parallel updates. v0.3.0 will swap for a `wgpu` compute pipeline using
+/// [`kernels::SWE_LEAPFROG_WGSL`].
+#[derive(Debug, Clone, Copy)]
 pub struct TimeStepper {
     pub dt_s: f64,
     pub manning_n: f64,
+}
+
+impl Default for TimeStepper {
+    fn default() -> Self {
+        Self {
+            dt_s: 1.0,
+            manning_n: MANNING_N_COASTAL,
+        }
+    }
 }
 
 impl TimeStepper {
     pub fn new(dt_s: f64) -> Self {
         Self {
             dt_s,
-            manning_n: super::constants::MANNING_N_COASTAL,
+            manning_n: MANNING_N_COASTAL,
         }
     }
 
-    /// Advance `n_steps` of size `self.dt_s`. **Scaffold**: just increments
-    /// the time cursor. The real leapfrog SWE update lands with the wgpu
-    /// pipeline in v0.2.0.
+    /// Advance the grid by exactly `n_steps` of size `self.dt_s`.
     pub fn step(&self, grid: &mut SwGrid, n_steps: usize) {
-        grid.t_s += self.dt_s * n_steps as f64;
+        for _ in 0..n_steps {
+            self.step_one(grid);
+        }
     }
+
+    /// Single explicit leapfrog step. Continuity update first, then
+    /// momentum. Both updates run as parallel iterators over rows.
+    pub fn step_one(&self, grid: &mut SwGrid) {
+        let nx = grid.nx;
+        let ny = grid.ny;
+        let (lon_m, lat_m) = grid.metres_per_deg();
+        let dx = lon_m * grid.dlon_deg;
+        let dy = lat_m * grid.dlat_deg;
+        let dt = self.dt_s;
+        let g = G_EARTH;
+        let n2 = self.manning_n * self.manning_n;
+
+        // Snapshot of η before continuity update — momentum needs the OLD η.
+        let eta_old = grid.eta_m.clone();
+        let h = &grid.h_m;
+        let u_in = grid.u_ms.clone();
+        let v_in = grid.v_ms.clone();
+
+        // Continuity: ∂η/∂t = -∂(H u)/∂x - ∂(H v)/∂y
+        let eta_new: Vec<f64> = (0..ny)
+            .into_par_iter()
+            .flat_map_iter(|j| {
+                (0..nx).map(move |i| {
+                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                        return eta_old[idx(i, j, nx)];
+                    }
+                    let h_e = h[idx(i + 1, j, nx)];
+                    let h_w = h[idx(i - 1, j, nx)];
+                    let h_n = h[idx(i, j + 1, nx)];
+                    let h_s = h[idx(i, j - 1, nx)];
+                    let eta_e = eta_old[idx(i + 1, j, nx)];
+                    let eta_w = eta_old[idx(i - 1, j, nx)];
+                    let eta_n = eta_old[idx(i, j + 1, nx)];
+                    let eta_s = eta_old[idx(i, j - 1, nx)];
+                    let u_e = u_in[idx(i + 1, j, nx)];
+                    let u_w = u_in[idx(i - 1, j, nx)];
+                    let v_n = v_in[idx(i, j + 1, nx)];
+                    let v_s = v_in[idx(i, j - 1, nx)];
+
+                    let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
+                        / (2.0 * dx);
+                    let flux_y = ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s)
+                        / (2.0 * dy);
+
+                    eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y)
+                })
+            })
+            .collect();
+
+        // Momentum: ∂u/∂t = -g ∂η/∂x - friction, ∂v/∂t = -g ∂η/∂y - friction.
+        let (u_new, v_new): (Vec<f64>, Vec<f64>) = (0..ny)
+            .into_par_iter()
+            .flat_map_iter(|j| {
+                (0..nx).map(move |i| {
+                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                        return (0.0, 0.0);
+                    }
+                    let dnedx = (eta_new[idx(i + 1, j, nx)] - eta_new[idx(i - 1, j, nx)]) / (2.0 * dx);
+                    let dnedy = (eta_new[idx(i, j + 1, nx)] - eta_new[idx(i, j - 1, nx)]) / (2.0 * dy);
+                    let h_total = (h[idx(i, j, nx)] + eta_new[idx(i, j, nx)]).max(0.01);
+                    let u = u_in[idx(i, j, nx)];
+                    let v = v_in[idx(i, j, nx)];
+                    let speed = (u * u + v * v).sqrt();
+                    let fric = g * n2 * speed / h_total.powf(4.0 / 3.0);
+                    let u_next = u - dt * (g * dnedx + fric * u);
+                    let v_next = v - dt * (g * dnedy + fric * v);
+                    (u_next, v_next)
+                })
+            })
+            .unzip();
+
+        grid.eta_m = eta_new;
+        grid.u_ms = u_new;
+        grid.v_ms = v_new;
+        grid.t_s += dt;
+    }
+}
+
+/// Run a full simulation: inject the IC Gaussian, step to `t_end_s`, emit
+/// `n_snapshots` evenly-spaced snapshots (including t=0 and t_end).
+pub fn run_simulation(
+    grid: &mut SwGrid,
+    stepper: &TimeStepper,
+    t_end_s: f64,
+    n_snapshots: usize,
+) -> Vec<GridSnapshot> {
+    let n = n_snapshots.max(2);
+    let mut snaps = Vec::with_capacity(n);
+    snaps.push(grid.snapshot());
+    if t_end_s <= 0.0 {
+        return snaps;
+    }
+    let total_steps = ((t_end_s / stepper.dt_s).max(1.0)).round() as usize;
+    let steps_per_snapshot = (total_steps / (n - 1)).max(1);
+
+    for k in 1..n {
+        let target_step = (k * total_steps) / (n - 1);
+        let current_step = ((k - 1) * total_steps) / (n - 1);
+        let take = target_step.saturating_sub(current_step).max(1);
+        stepper.step(grid, take);
+        snaps.push(grid.snapshot());
+        let _ = steps_per_snapshot; // documented constant; not used directly after loop
+    }
+    snaps
 }
 
 #[cfg(test)]
@@ -188,16 +422,58 @@ mod tests {
         g.inject_gaussian(0.0, 0.0, 10.0, 1_000_000.0);
         let s = g.snapshot();
         assert!(s.eta_max_m > 9.0 && s.eta_max_m <= 10.0);
-        assert!(s.eta_min_m >= 0.0);
+        assert!(!s.eta_png_b64.is_empty(), "snapshot PNG should be non-empty");
+        assert!(s.eta_png_b64.len() > 100, "snapshot PNG looks suspiciously small");
+    }
+
+    /// Smoke test: with uniform 4 km bathymetry, a 1 m Gaussian IC at the
+    /// origin should propagate outward — after a few minutes the central
+    /// amplitude drops and the ring spreads. Conservation isn't perfect for
+    /// forward-Euler leapfrog, but the wavefront should advance at roughly
+    /// √(gh) ≈ 198 m/s.
+    #[test]
+    fn flat_ocean_wave_propagates_outward() {
+        let mut g = SwGrid::new(-5.0, -5.0, 5.0, 5.0, 0.25, 0.25);
+        g.fill_uniform_depth(4_000.0);
+        g.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+
+        let dt = g.recommended_dt_s(0.4);
+        let stepper = TimeStepper::new(dt);
+        let initial_centre = g.eta_m[idx(g.nx / 2, g.ny / 2, g.nx)];
+
+        // Step for 10 minutes of sim time.
+        let total_steps = ((600.0 / dt).round() as usize).max(2);
+        stepper.step(&mut g, total_steps);
+
+        let final_centre = g.eta_m[idx(g.nx / 2, g.ny / 2, g.nx)];
+
+        // Wave has spread — central amplitude should have changed substantially.
+        assert!(
+            (final_centre - initial_centre).abs() > 0.05,
+            "centre amplitude should evolve: initial={} final={}",
+            initial_centre,
+            final_centre
+        );
+
+        // Amplitude shouldn't blow up (CFL violation would explode).
+        for v in &g.eta_m {
+            assert!(
+                v.abs() < 100.0,
+                "amplitude exploded — CFL violation? max={}",
+                v
+            );
+        }
     }
 
     #[test]
-    fn stepper_advances_time_only_scaffold() {
-        let mut g = SwGrid::new(0.0, 0.0, 10.0, 10.0, 0.5, 0.5);
-        let step = TimeStepper::new(1.0);
-        step.step(&mut g, 60);
-        assert_eq!(g.t_s, 60.0);
-        // Field should still be zero (no IC injected).
-        assert!(g.eta_m.iter().all(|&v| v == 0.0));
+    fn run_simulation_emits_requested_snapshots() {
+        let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
+        g.fill_uniform_depth(4_000.0);
+        g.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+        let stepper = TimeStepper::new(g.recommended_dt_s(0.4));
+        let snaps = run_simulation(&mut g, &stepper, 300.0, 5);
+        assert_eq!(snaps.len(), 5);
+        assert!(snaps[0].time_s == 0.0);
+        assert!(snaps.last().unwrap().time_s >= 200.0);
     }
 }

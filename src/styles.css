@@ -546,6 +546,37 @@ label {
   justify-content: space-between;
 }
 
+.swe__hint {
+  font-size: 11px;
+  color: var(--subtext);
+  line-height: 1.5;
+}
+
+.swe__row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.swe__error {
+  background: rgba(243, 139, 168, 0.12);
+  color: var(--red);
+  border: 1px solid rgba(243, 139, 168, 0.4);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.swe__readout {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--subtext);
+}
+
 .footer-note {
   font-size: 11px;
   color: var(--overlay);

@@ -24,6 +24,7 @@ pub fn run() {
             runup_at_points,
             list_presets,
             run_preset,
+            simulate_grid,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
