@@ -189,6 +189,18 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 onClick={async () => {
+                  await settings.clearTokenBannerDismissed();
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                  }
+                  setSavedAt("Token banner re-armed (visible when no token is set).");
+                }}
+              >
+                Show token banner again
+              </button>
+              <button
+                className="scenario-tab"
+                onClick={async () => {
                   if (
                     !window.confirm(
                       "Reset every setting (token, theme, globe style, first-run ack) to defaults? This can't be undone.",

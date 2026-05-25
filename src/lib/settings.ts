@@ -174,6 +174,26 @@ export const settings = {
   async dismissTokenBanner(): Promise<void> {
     return write("token_banner_dismissed_at", new Date().toISOString());
   },
+  /** Clear the token-banner dismissal so it re-appears on next eval.
+   *  Used by Settings → Advanced → Show token banner again. */
+  async clearTokenBannerDismissed(): Promise<void> {
+    if (typeof localStorage !== "undefined") {
+      try {
+        localStorage.removeItem(LS_PREFIX + "token_banner_dismissed_at");
+      } catch {
+        /* ignore */
+      }
+    }
+    const store = await getStore();
+    if (store && typeof store.delete === "function") {
+      try {
+        await store.delete("token_banner_dismissed_at");
+        await store.save();
+      } catch {
+        /* best-effort */
+      }
+    }
+  },
   async loadAll(): Promise<Settings> {
     return {
       cesium_token: await read("cesium_token"),

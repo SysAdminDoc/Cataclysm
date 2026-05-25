@@ -96,6 +96,19 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **`commands::dart_buoy_rmse_rejects_out_of_range_location`** —
   asserts buoy lat > 90° is rejected at the boundary.
 
+### SWE playback UX
+- **Cancel button on in-flight simulations**. `SwePlayback`
+  surfaces a Cancel button next to the Computing… state; clicking
+  bumps the `reqIdRef` so the response is dropped on arrival and
+  the UI returns to idle. The Tauri worker keeps running to
+  completion (the IPC layer has no cancel signal yet) so this is
+  UI-side defence-in-depth; a future Tauri command + cancel token
+  can make it a true server-side cancel.
+- **Settings → Advanced → Show token banner again**. Clears the
+  first-launch banner's dismissed-at timestamp so it re-arms on
+  the next settings-saved event (still gated on the user having
+  no token set).
+
 ### Earlier v0.3.0 batch (now part of the v0.4.0 release)
 
 ### Solver fidelity

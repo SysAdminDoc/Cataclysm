@@ -71,6 +71,17 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
     return () => window.clearInterval(interval);
   }, [isPlaying, snapshots]);
 
+  // Cancel an in-flight simulation. The Tauri worker keeps running
+  // to completion (the IPC layer has no cancel signal), but bumping
+  // `reqIdRef` causes the response to be ignored on arrival and the
+  // UI returns to idle immediately so the user can re-configure.
+  const cancel = useCallback(() => {
+    reqIdRef.current += 1;
+    setStatus("idle");
+    setErrMsg(null);
+    setIsPlaying(false);
+  }, []);
+
   const run = useCallback(async () => {
     if (!initial || !isTauri()) return;
     reqIdRef.current += 1;
@@ -150,6 +161,15 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         >
           {status === "running" ? "Computing…" : status === "ready" ? "Re-run" : "Run simulation"}
         </button>
+        {status === "running" && (
+          <button
+            onClick={cancel}
+            style={{ flex: "0 0 auto" }}
+            title="Cancel the in-flight simulation and return to idle. The worker keeps running in the background but its result will be dropped."
+          >
+            Cancel
+          </button>
+        )}
       </div>
       {status === "error" && (
         <div className="swe__error" role="status" aria-live="polite">
