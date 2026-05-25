@@ -397,15 +397,17 @@ impl TimeStepper {
             .enumerate()
             .for_each(|(j, row)| {
                 for i in 0..nx {
-                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                        row[i] = eta_old[idx(i, j, nx)];
-                        continue;
-                    }
                     // Dry cells stay dry — η pinned to 0. Prevents the
                     // "slow spread halo" over continental interiors when
                     // simulate_grid substitutes 1 m for land bathymetry.
+                    // Runs BEFORE the boundary fall-through so a land-on-
+                    // the-rim cell can't leak a residual IC amplitude.
                     if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
                         row[i] = 0.0;
+                        continue;
+                    }
+                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                        row[i] = eta_old[idx(i, j, nx)];
                         continue;
                     }
                     let h_e = h[idx(i + 1, j, nx)];
@@ -442,13 +444,14 @@ impl TimeStepper {
             .enumerate()
             .for_each(|(j, (u_row, v_row))| {
                 for i in 0..nx {
-                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                    // Dry cells carry no momentum (land + rim land both go
+                    // to 0 before the boundary fall-through).
+                    if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
                         u_row[i] = 0.0;
                         v_row[i] = 0.0;
                         continue;
                     }
-                    // Dry cells carry no momentum.
-                    if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
                         u_row[i] = 0.0;
                         v_row[i] = 0.0;
                         continue;
@@ -487,6 +490,10 @@ impl TimeStepper {
 /// Cosine-tapered sponge mask applied in-place to η, u, v. Cells within
 /// `width` of any edge receive a damping factor in `[0, 1]` so amplitude
 /// smoothly decays to zero at the rim, absorbing outgoing waves.
+///
+/// Taper:  `factor = 0.5 (1 − cos(π · d/width))`, with `d` the distance
+/// in cells to the nearest edge. At d=0 (edge): factor=0 (full damping);
+/// at d=width (interior): factor=1 (no damping).
 fn apply_sponge(
     eta: &mut [f64],
     u: &mut [f64],
@@ -504,9 +511,8 @@ fn apply_sponge(
             if d >= width {
                 continue;
             }
-            // Cosine taper: 0 at the very edge, 1 at d == width.
             let t = d as f64 / width as f64;
-            let factor = 0.5 * (1.0 - (PI * (1.0 - t)).cos());
+            let factor = 0.5 * (1.0 - (PI * t).cos());
             let k = idx(i, j, nx);
             eta[k] *= factor;
             u[k] *= factor;
