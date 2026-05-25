@@ -3,6 +3,7 @@
 //! Physics lives in `physics::*`. Tauri command handlers are in `commands`.
 //! Historical event registry lives in `presets`.
 
+pub mod data;
 pub mod physics;
 pub mod presets;
 pub mod commands;

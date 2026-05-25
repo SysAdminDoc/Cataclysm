@@ -84,6 +84,7 @@ export const api = {
     initial_amplitude_m: number;
     source_sigma_m: number;
     mean_depth_m: number;
+    use_real_bathymetry?: boolean;
     box_half_size_deg: number;
     cells_per_deg: number;
     t_end_s: number;

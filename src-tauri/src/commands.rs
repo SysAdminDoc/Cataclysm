@@ -192,9 +192,13 @@ pub struct SimulateGridRequest {
     pub initial_amplitude_m: f64,
     /// 1-σ radius of the IC bump (m).
     pub source_sigma_m: f64,
-    /// Uniform ocean depth assumed for the simulation domain (m). v0.2.0
-    /// uses a flat-basin approximation; v0.3.0+ samples real bathymetry.
+    /// Fallback uniform depth (m) when `use_real_bathymetry = false` or
+    /// when the bathymetry sampler returns 0 (land).
     pub mean_depth_m: f64,
+    /// If true, use `data::bathymetry::sample(lat, lon)` per cell; if false
+    /// or zero-depth, fall back to `mean_depth_m`.
+    #[serde(default)]
+    pub use_real_bathymetry: bool,
     /// Half-extent of the simulation box around the source, degrees.
     /// Larger = more area covered, slower simulation.
     pub box_half_size_deg: f64,
@@ -241,7 +245,22 @@ pub fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridResponse, S
             grid.nx * grid.ny
         ));
     }
-    grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
+    let fallback_depth = req.mean_depth_m.max(50.0);
+    if req.use_real_bathymetry {
+        grid.fill_bathymetry_from(|lat, lon| {
+            let d = crate::data::bathymetry::sample(lat, lon);
+            // Solver dislikes zero-depth (CFL = inf). Replace land cells
+            // with a tiny "wet" depth so they reflect rather than divide
+            // by zero; v0.3.0 will swap for proper wet/dry handling.
+            if d <= 0.0 {
+                fallback_depth.min(20.0)
+            } else {
+                d
+            }
+        });
+    } else {
+        grid.fill_uniform_depth(fallback_depth);
+    }
     grid.inject_gaussian(lat, lon, req.initial_amplitude_m, req.source_sigma_m.max(1000.0));
 
     let dt = grid.recommended_dt_s(0.4);

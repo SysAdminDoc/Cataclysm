@@ -22,6 +22,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [useBathy, setUseBathy] = useState(true);
   const lastInitialRef = useRef<InitialDisplacement | null>(null);
 
   // Reset state when scenario changes.
@@ -59,6 +60,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         initial_amplitude_m: initial.peak_amplitude_m,
         source_sigma_m: sigmaM,
         mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
+        use_real_bathymetry: useBathy,
         box_half_size_deg: halfDeg,
         cells_per_deg: 6,
         t_end_s: 60 * 60, // 1 simulated hour
@@ -72,7 +74,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial]);
+  }, [initial, useBathy]);
 
   if (!initial) return null;
 
@@ -83,6 +85,14 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         Run a real shallow-water-equation propagation around the source.
         Uniform-depth approximation; coastal bathymetry lands in v0.3.0.
       </p>
+      <label className="swe__check">
+        <input
+          type="checkbox"
+          checked={useBathy}
+          onChange={(e) => setUseBathy(e.target.checked)}
+        />
+        <span>Use coarse offline bathymetry (basin-mean + shelf taper)</span>
+      </label>
       <div className="swe__row">
         <button
           className="primary"
