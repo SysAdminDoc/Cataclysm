@@ -36,6 +36,17 @@ pub struct GeoPoint {
     pub depth_m: f64,
 }
 
+/// A camera framing for the Cesium `flyTo` when this source is selected.
+/// Optional per-preset override of the heuristic auto-clamp; useful for
+/// confined scenarios (Lituya Bay fjord wants a 50 km tight view) and
+/// for global ones (Chicxulub wants a continent-wide view).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct CameraView {
+    pub heading_deg: f64,
+    pub pitch_deg: f64,
+    pub range_m: f64,
+}
+
 /// Snapshot of the initial water-surface displacement for the source.
 ///
 /// This is the "t=0" condition that propagation solvers operate on.
@@ -55,4 +66,9 @@ pub struct InitialDisplacement {
     pub dominant_wavelength_m: Option<f64>,
     /// Human-readable description of the source.
     pub label: String,
+    /// Optional curated camera framing populated by `run_preset` for
+    /// historical presets. Custom scenarios leave this `None` and the
+    /// frontend falls back to its heuristic auto-clamp.
+    #[serde(default)]
+    pub camera_view: Option<CameraView>,
 }

@@ -16,11 +16,11 @@ jobs:
     name: Frontend (TypeScript + Vite)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install npm deps
@@ -34,7 +34,7 @@ jobs:
 
       - name: Upload web dist (debug)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: web-dist-${{ github.run_id }}
           path: dist/
@@ -86,12 +86,16 @@ jobs:
     name: cargo audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
       - name: Run cargo audit
         working-directory: src-tauri
-        # Non-fatal: surface advisories but don't block PRs while we
-        # establish the baseline. Promote to fail-on-vuln after v0.2.0.
-        run: cargo audit || true
+        # Fail-on-vuln as of v0.3.0. Baseline was clean at v0.2.1; any
+        # future Dependabot bump or transitive-dep pickup that introduces
+        # a known-vulnerable crate will now block CI loudly. To unblock
+        # an emergency merge with a known-good waiver, add an `--ignore
+        # RUSTSEC-XXXX-XXXX` line here and document the rationale in
+        # the commit message.
+        run: cargo audit

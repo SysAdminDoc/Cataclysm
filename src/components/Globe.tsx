@@ -299,10 +299,20 @@ export function Globe({
 
     // Tune the fly-to range so small cavities (Lituya 100 m) don't zoom to the
     // centre of Earth and Chicxulub-class events (~50 km cavity) aren't lost.
-    const flyRange = Cesium.Math.clamp(cavity_radius_m * 25, 5e5, 8e6);
+    // Per-preset curated views override the auto-clamp (F-V13).
+    const view = initial.camera_view;
+    const flyRange = view
+      ? view.range_m
+      : Cesium.Math.clamp(cavity_radius_m * 25, 5e5, 8e6);
+    const flyHeading = Cesium.Math.toRadians(view?.heading_deg ?? 0);
+    const flyPitch = Cesium.Math.toRadians(view?.pitch_deg ?? -45);
+    // Honour OS-level reduced-motion preference (WCAG 2.2 SC 2.3.3).
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
     const flyResult = viewer.flyTo(sourceEntityRef.current, {
-      duration: 1.8,
-      offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), flyRange),
+      duration: reducedMotion ? 0.0 : 1.8,
+      offset: new Cesium.HeadingPitchRange(flyHeading, flyPitch, flyRange),
     });
     // flyTo returns a Promise<boolean>; swallow rejections (terrain not
     // ready, scenario changed mid-flight, viewer unmounted) so they don't
@@ -450,9 +460,19 @@ export function Globe({
             ? Cesium.Color.fromCssColorString("#f9e2af")
             : Cesium.Color.fromCssColorString("#f38ba8");
 
+      // Format the hover label. Arrival time as "T+HhMM"; runup to 1 dp.
+      const arrivalMin = r.arrival_time_s / 60;
+      const arrivalLabel =
+        arrivalMin < 60
+          ? `T+${arrivalMin.toFixed(0)}m`
+          : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
+      const hoverText = `${r.name}\n${arrivalLabel}  •  ${r.runup_m.toFixed(1)} m runup\n${r.offshore_amplitude_m.toFixed(2)} m offshore`;
+
       let entity = map.get(r.id);
       if (!entity) {
         entity = viewer.entities.add({
+          name: r.name,
+          description: hoverText.replace(/\n/g, "<br/>"),
           position: Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM / 2),
           cylinder: {
             length: heightM,
@@ -460,6 +480,23 @@ export function Globe({
             bottomRadius: 9000,
             material: color.withAlpha(0.85),
             outline: false,
+          },
+          // Distance-display-condition label so labels don't clutter when
+          // zoomed out to a global view.
+          label: {
+            text: hoverText,
+            font: "10px Inter, sans-serif",
+            fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
+            outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(0, -10),
+            showBackground: true,
+            backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.9),
+            backgroundPadding: new Cesium.Cartesian2(6, 4),
+            scale: 0.9,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3_000_000),
           },
         });
         map.set(r.id, entity);
@@ -470,6 +507,9 @@ export function Globe({
         if (entity.cylinder) {
           entity.cylinder.length = new Cesium.ConstantProperty(heightM);
           entity.cylinder.material = new Cesium.ColorMaterialProperty(color.withAlpha(0.85));
+        }
+        if (entity.label) {
+          entity.label.text = new Cesium.ConstantProperty(hoverText);
         }
       }
     }

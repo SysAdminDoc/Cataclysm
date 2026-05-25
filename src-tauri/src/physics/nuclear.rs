@@ -154,6 +154,7 @@ impl NuclearBurst {
                 self.burst_mode,
                 self.burst_depth_m
             ),
+            camera_view: None,
         }
     }
 }

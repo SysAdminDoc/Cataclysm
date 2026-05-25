@@ -138,7 +138,9 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         </button>
       </div>
       {status === "error" && (
-        <div className="swe__error">{errMsg ?? "Simulation failed."}</div>
+        <div className="swe__error" role="status" aria-live="polite">
+          {errMsg ?? "Simulation failed."}
+        </div>
       )}
       {snapshots && snapshots.length > 1 && (
         <>

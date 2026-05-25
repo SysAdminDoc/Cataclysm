@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type { CoastalPoint, CoastalPointDatabase, InitialDisplacement, Preset } from "../types/scenario";
 import coastalDb from "../data/coastal_points.json";
@@ -38,6 +38,8 @@ const VALID_POINTS: CoastalPoint[] = db.points.filter(
 export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }: Props) {
   const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
+  const lastArrivedCountRef = useRef(0);
+  const [announcement, setAnnouncement] = useState<string>("");
 
   useEffect(() => {
     mountedRef.current = true;
@@ -54,6 +56,8 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
   useEffect(() => {
     if (!isTauri() || !initial) {
       onResults([]);
+      lastArrivedCountRef.current = 0;
+      setAnnouncement("");
       return;
     }
     reqIdRef.current += 1;
@@ -72,6 +76,17 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
       .then((res) => {
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
         onResults(res);
+        const arrived = res.filter((r) => r.has_arrived && r.runup_m >= 0.1).length;
+        if (arrived !== lastArrivedCountRef.current) {
+          lastArrivedCountRef.current = arrived;
+          if (arrived === 0) {
+            setAnnouncement("");
+          } else {
+            setAnnouncement(
+              `Tsunami wave has reached ${arrived} coastal ${arrived === 1 ? "point" : "points"}.`,
+            );
+          }
+        }
       })
       .catch((err) => {
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
@@ -80,5 +95,12 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
       });
   }, [initial, isImpact, timeS, onResults]);
 
-  return null;
+  // Screen-reader-only aria-live region. Visually hidden via the global
+  // `.sr-only` utility class (styles.css). Sighted users get the same
+  // information visually from the 3D bars on the globe.
+  return (
+    <div role="status" aria-live="polite" className="sr-only">
+      {announcement}
+    </div>
+  );
 }

@@ -118,6 +118,7 @@ impl EarthquakeSource {
                 self.mw,
                 self.depth_m / 1000.0
             ),
+            camera_view: None,
         }
     }
 }

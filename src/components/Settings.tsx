@@ -153,6 +153,52 @@ export function Settings({ onClose }: Props) {
           </section>
 
           <hr className="modal__sep" />
+
+          <section style={{ marginBottom: 20 }}>
+            <h3 className="settings__h3">Advanced</h3>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                className="scenario-tab"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      "Show the first-run disclaimer modal again on next launch?",
+                    )
+                  ) {
+                    return;
+                  }
+                  await settings.clearDisclaimerAck();
+                  setSavedAt("First-run modal will appear on next launch.");
+                }}
+              >
+                Show first-run again
+              </button>
+              <button
+                className="scenario-tab"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      "Reset every setting (token, theme, globe style, first-run ack) to defaults? This can't be undone.",
+                    )
+                  ) {
+                    return;
+                  }
+                  await settings.resetAll();
+                  setTokenLocal("");
+                  setThemeLocal("mocha");
+                  setGlobeStyle("osm");
+                  primeCesiumToken(null);
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                  }
+                  setSavedAt("Reset complete.");
+                }}
+              >
+                Reset to defaults
+              </button>
+            </div>
+          </section>
+
           <p className="modal__footnote">
             For evacuation warnings use <strong>NOAA NTWC / PTWC</strong> — this
             tool is for education and hazard awareness only.

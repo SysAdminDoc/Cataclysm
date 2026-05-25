@@ -8,7 +8,7 @@ use crate::physics::{
     earthquake::EarthquakeSource,
     landslide::LandslideSource,
     nuclear::NuclearBurst,
-    GeoPoint, InitialDisplacement,
+    CameraView, GeoPoint, InitialDisplacement,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -59,6 +59,10 @@ pub struct Preset {
     /// Optional one-line caveat shown alongside the ⚠ icon when `is_speculative`.
     #[serde(default)]
     pub controversy_note: Option<&'static str>,
+    /// Optional curated Cesium camera framing for this preset; overrides
+    /// the frontend's heuristic auto-clamp on `flyTo`.
+    #[serde(default)]
+    pub camera_view: Option<CameraView>,
 }
 
 /// All built-in presets. IDs are stable; the frontend keys off them.
@@ -73,6 +77,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://doi.org/10.1029/2021AV000627"),
             is_speculative: false,
             controversy_note: None,
+            // Continent-scale view — Chicxulub's ring wave reaches the Atlantic seaboard.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -55.0, range_m: 5_000_000.0 }),
             source: PresetSource::Asteroid(AsteroidImpact {
                 diameter_m: 14_000.0,
                 density_kg_m3: 3000.0,
@@ -91,6 +97,7 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://www.nature.com/articles/37044"),
             is_speculative: false,
             controversy_note: None,
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -60.0, range_m: 6_000_000.0 }),
             source: PresetSource::Asteroid(AsteroidImpact {
                 diameter_m: 1_000.0,
                 density_kg_m3: 3000.0,
@@ -109,6 +116,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2011GL049210"),
             is_speculative: false,
             controversy_note: None,
+            // Frames Honshu + the Japan Trench rupture zone.
+            camera_view: Some(CameraView { heading_deg: 280.0, pitch_deg: -45.0, range_m: 2_000_000.0 }),
             source: PresetSource::Earthquake(EarthquakeSource {
                 mw: 9.1,
                 depth_m: 30_000.0,
@@ -131,6 +140,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://www.science.org/doi/10.1126/science.1112250"),
             is_speculative: false,
             controversy_note: None,
+            // Frames Sumatra-Andaman + the rupture zone running NNW.
+            camera_view: Some(CameraView { heading_deg: 330.0, pitch_deg: -40.0, range_m: 3_000_000.0 }),
             source: PresetSource::Earthquake(EarthquakeSource {
                 mw: 9.2,
                 depth_m: 30_000.0,
@@ -153,6 +164,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("http://library.lanl.gov/tsunami/ts193.pdf"),
             is_speculative: false,
             controversy_note: None,
+            // Tight fjord-scale view — Gilbert Inlet is only ~1.3 km wide.
+            camera_view: Some(CameraView { heading_deg: 60.0, pitch_deg: -30.0, range_m: 50_000.0 }),
             source: PresetSource::Landslide(crate::physics::landslide::lituya_bay_1958()),
         },
         Preset {
@@ -164,6 +177,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("http://www.tsunamisociety.org/213choi.pdf"),
             is_speculative: false,
             controversy_note: None,
+            // Sunda Strait + Java/Sumatra coasts.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -45.0, range_m: 1_500_000.0 }),
             source: PresetSource::Landslide(LandslideSource {
                 kind: crate::physics::landslide::LandslideKind::Submarine,
                 volume_m3: 1.2e10,
@@ -184,6 +199,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018JC014893"),
             is_speculative: false,
             controversy_note: None,
+            // Frames the Norwegian Sea + Scotland + Faroes runup zones.
+            camera_view: Some(CameraView { heading_deg: 220.0, pitch_deg: -50.0, range_m: 3_000_000.0 }),
             source: PresetSource::Landslide(LandslideSource {
                 kind: crate::physics::landslide::LandslideKind::Submarine,
                 volume_m3: 3.0e12,
@@ -204,6 +221,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://www.science.org/doi/10.1126/science.abo4364"),
             is_speculative: false,
             controversy_note: Some("Atmospheric Lamb-wave coupling (a major component of the real event) not yet modeled."),
+            // Tonga + Pacific basin.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -50.0, range_m: 2_500_000.0 }),
             source: PresetSource::Landslide(LandslideSource {
                 kind: crate::physics::landslide::LandslideKind::Submarine,
                 volume_m3: 1.9e10,
@@ -224,6 +243,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2001GL013110"),
             is_speculative: true,
             controversy_note: Some("Disputed hypothesis: Ward-Day 2001 worst case vs. Løvholt 2008 dispersive rebuttal (3–8 m Atlantic, not 25 m)."),
+            // Atlantic basin: La Palma + US East Coast in one view.
+            camera_view: Some(CameraView { heading_deg: 270.0, pitch_deg: -55.0, range_m: 5_500_000.0 }),
             source: PresetSource::Landslide(LandslideSource {
                 kind: crate::physics::landslide::LandslideKind::Submarine,
                 volume_m3: 5.0e11,
@@ -244,6 +265,8 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://www.forbes.com/sites/davidhambling/2022/05/04/russias-poseidon-2km-tsunami-apocalypse-weapon-just-propaganda/"),
             is_speculative: true,
             controversy_note: Some("Hypothetical weapon system; yield estimate, not historical event."),
+            // Mid-Atlantic local view.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -40.0, range_m: 1_000_000.0 }),
             source: PresetSource::Nuclear(crate::physics::nuclear::poseidon_realistic(
                 GeoPoint { lat_deg: 50.0, lon_deg: -10.0, depth_m: 4_000.0 },
                 4_000.0,
@@ -258,6 +281,9 @@ pub fn all_presets() -> Vec<Preset> {
             reference_url: Some("https://www.forbes.com/sites/davidhambling/2022/05/04/russias-poseidon-2km-tsunami-apocalypse-weapon-just-propaganda/"),
             is_speculative: true,
             controversy_note: Some("Propaganda-grade yield. Western technical analysts call the 100-Mt claim 'simply insane' (Hambling 2022)."),
+            // Same Mid-Atlantic local view as the realistic variant, so
+            // toggling between the two doesn't visually relocate.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -40.0, range_m: 1_000_000.0 }),
             source: PresetSource::Nuclear(crate::physics::nuclear::poseidon_propaganda(
                 GeoPoint { lat_deg: 50.0, lon_deg: -10.0, depth_m: 4_000.0 },
                 4_000.0,

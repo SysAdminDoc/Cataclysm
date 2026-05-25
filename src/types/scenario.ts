@@ -6,6 +6,12 @@ export type GeoPoint = {
   depth_m?: number;
 };
 
+export type CameraView = {
+  heading_deg: number;
+  pitch_deg: number;
+  range_m: number;
+};
+
 export type InitialDisplacement = {
   center: GeoPoint;
   cavity_radius_m: number;
@@ -14,6 +20,10 @@ export type InitialDisplacement = {
   seismic_mw_equivalent: number;
   dominant_wavelength_m?: number | null;
   label: string;
+  /** Optional curated camera framing populated by `run_preset` for
+   * historical presets. Custom scenarios leave this `null`/undefined and
+   * the frontend falls back to its heuristic auto-clamp. */
+  camera_view?: CameraView | null;
 };
 
 export type AsteroidImpactInput = {
@@ -76,6 +86,7 @@ export type Preset = {
   reference_url?: string | null;
   is_speculative?: boolean;
   controversy_note?: string | null;
+  camera_view?: CameraView | null;
   source: PresetSource;
 };
 

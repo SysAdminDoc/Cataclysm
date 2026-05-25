@@ -145,4 +145,58 @@ export const settings = {
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
     };
   },
+  /** Clear every persisted key. Both the Tauri store and the localStorage
+   * mirror. Used by Settings → "Reset to defaults". */
+  async resetAll(): Promise<void> {
+    const keys: (keyof Settings)[] = [
+      "cesium_token",
+      "theme",
+      "globe_style",
+      "disclaimer_acknowledged_at",
+    ];
+    if (typeof localStorage !== "undefined") {
+      for (const k of keys) {
+        try {
+          localStorage.removeItem(LS_PREFIX + k);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    const store = await getStore();
+    if (store && typeof store.delete === "function") {
+      for (const k of keys) {
+        try {
+          await store.delete(k);
+        } catch {
+          /* best-effort */
+        }
+      }
+      try {
+        await store.save();
+      } catch {
+        /* ignore */
+      }
+    }
+  },
+  /** Clear only the disclaimer-ack timestamp so the first-run modal
+   * re-appears on next launch. */
+  async clearDisclaimerAck(): Promise<void> {
+    if (typeof localStorage !== "undefined") {
+      try {
+        localStorage.removeItem(LS_PREFIX + "disclaimer_acknowledged_at");
+      } catch {
+        /* ignore */
+      }
+    }
+    const store = await getStore();
+    if (store && typeof store.delete === "function") {
+      try {
+        await store.delete("disclaimer_acknowledged_at");
+        await store.save();
+      } catch {
+        /* best-effort */
+      }
+    }
+  },
 };

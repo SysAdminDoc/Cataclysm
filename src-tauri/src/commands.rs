@@ -456,7 +456,10 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
     }
     let preset = find_preset(&req.preset_id)
         .ok_or_else(|| format!("unknown preset id: {}", req.preset_id))?;
-    let initial = preset.source.initial_displacement();
+    let mut initial = preset.source.initial_displacement();
+    // Propagate the preset's curated camera framing into the response so the
+    // frontend can override its heuristic auto-clamp on flyTo (F-V13).
+    initial.camera_view = preset.camera_view;
     let alpha = preset.source.far_field_decay_alpha();
     // Use the source's own water depth as the propagation depth unless the
     // caller passed an explicit override > 0 (e.g. for transoceanic averaging).

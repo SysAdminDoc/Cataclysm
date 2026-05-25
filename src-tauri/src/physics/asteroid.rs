@@ -132,6 +132,7 @@ impl AsteroidImpact {
                 self.angle_deg,
                 self.kinetic_energy_mt()
             ),
+            camera_view: None,
         }
     }
 }
