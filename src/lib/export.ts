@@ -12,14 +12,6 @@ function findGlobeCanvas(): HTMLCanvasElement | null {
   return w;
 }
 
-/** Trigger a synchronous Cesium render so toDataURL captures the current frame. */
-function forceRender(): void {
-  // CesiumJS auto-renders, but a request-animation-frame tick gives the next
-  // dispatch a chance to settle (timeline scrub etc.). We rely on toDataURL
-  // being called from a user-initiated click handler so the WebGL context is
-  // not in a stale state.
-}
-
 export type ScreenshotMeta = {
   preset?: Preset | null;
   initial?: InitialDisplacement | null;
@@ -42,7 +34,6 @@ export function suggestedFilename(meta: ScreenshotMeta): string {
 export function captureGlobePng(): string | null {
   const canvas = findGlobeCanvas();
   if (!canvas) return null;
-  forceRender();
   try {
     return canvas.toDataURL("image/png");
   } catch (err) {

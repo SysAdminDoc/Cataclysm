@@ -162,8 +162,22 @@ pub struct RunupAtPoint {
 /// from the source) and the Synolakis runup at the local beach. Used by the
 /// `CoastalRunupOverlay` Cesium component.
 #[tauri::command]
-pub fn runup_at_points(req: RunupAtPointsRequest) -> Vec<RunupAtPoint> {
-    req.points
+pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, String> {
+    if req.points.len() > RUNUP_MAX_POINTS {
+        return Err(format!(
+            "too many coastal points ({}); cap is {}",
+            req.points.len(),
+            RUNUP_MAX_POINTS
+        ));
+    }
+    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
+        return Err("source latitude out of range".into());
+    }
+    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
+        return Err("source longitude out of range".into());
+    }
+    let out = req
+        .points
         .into_iter()
         .map(|p| {
             let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, p.lat, p.lon);
@@ -187,7 +201,8 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Vec<RunupAtPoint> {
                 has_arrived: req.time_s >= arrival_time_s,
             }
         })
-        .collect()
+        .collect();
+    Ok(out)
 }
 
 #[derive(Debug, Deserialize)]
@@ -230,6 +245,10 @@ const SWE_MAX_CELLS: usize = 4_000_000;
 const SWE_MAX_SNAPSHOTS: usize = 240;
 /// Hard cap on simulated time — runaway scrubs.
 const SWE_MAX_T_END_S: f64 = 24.0 * 3600.0;
+/// Hard cap on coastal-runup query batch size — protects against IPC flooding.
+const RUNUP_MAX_POINTS: usize = 2_000;
+/// Hard cap on wavefront sample count.
+const WAVEFRONT_MAX_SAMPLES: usize = 2_000;
 
 fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
@@ -241,6 +260,12 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.initial_amplitude_m.is_finite() || req.initial_amplitude_m.abs() > 1.0e5 {
         return Err("initial_amplitude_m must be finite and ≤ 100 km".into());
     }
+    if !req.source_sigma_m.is_finite() || req.source_sigma_m < 0.0 || req.source_sigma_m > 1.0e7 {
+        return Err("source_sigma_m must be finite and in [0, 10 000 km]".into());
+    }
+    if !req.mean_depth_m.is_finite() || req.mean_depth_m < 0.0 || req.mean_depth_m > 12_000.0 {
+        return Err("mean_depth_m must be finite and in [0, 12 000 m]".into());
+    }
     if !(req.box_half_size_deg.is_finite() && req.box_half_size_deg > 0.0 && req.box_half_size_deg <= 60.0)
     {
         return Err("box_half_size_deg must be in (0, 60]".into());
@@ -251,8 +276,11 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.t_end_s.is_finite() || req.t_end_s < 0.0 || req.t_end_s > SWE_MAX_T_END_S {
         return Err(format!("t_end_s must be in [0, {}]", SWE_MAX_T_END_S));
     }
-    if req.n_snapshots > SWE_MAX_SNAPSHOTS {
-        return Err(format!("n_snapshots must be ≤ {}", SWE_MAX_SNAPSHOTS));
+    if req.n_snapshots == 0 || req.n_snapshots > SWE_MAX_SNAPSHOTS {
+        return Err(format!(
+            "n_snapshots must be in [1, {}]",
+            SWE_MAX_SNAPSHOTS
+        ));
     }
     Ok(())
 }
@@ -338,6 +366,12 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
 
 #[tauri::command]
 pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
+    if !req.time_s.is_finite() || req.time_s < 0.0 || req.time_s > SWE_MAX_T_END_S {
+        return Err(format!("time_s must be finite and in [0, {}]", SWE_MAX_T_END_S));
+    }
+    if !req.mean_depth_m.is_finite() || req.mean_depth_m < 0.0 || req.mean_depth_m > 12_000.0 {
+        return Err("mean_depth_m must be finite and in [0, 12 000 m]".into());
+    }
     let preset = find_preset(&req.preset_id)
         .ok_or_else(|| format!("unknown preset id: {}", req.preset_id))?;
     let initial = preset.source.initial_displacement();
@@ -349,13 +383,14 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
     } else {
         initial.center.depth_m.max(50.0)
     };
+    let n_samples = req.n_samples.clamp(2, WAVEFRONT_MAX_SAMPLES);
     let wavefront = sample_wavefront(
         initial.peak_amplitude_m,
         initial.cavity_radius_m,
         alpha,
         mean_depth_m,
         req.time_s,
-        req.n_samples.max(2),
+        n_samples,
     );
     Ok(RunPresetResponse {
         preset,

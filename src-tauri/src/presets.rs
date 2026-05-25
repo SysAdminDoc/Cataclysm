@@ -269,3 +269,48 @@ pub fn all_presets() -> Vec<Preset> {
 pub fn find_preset(id: &str) -> Option<Preset> {
     all_presets().into_iter().find(|p| p.id == id)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn preset_ids_are_unique() {
+        let presets = all_presets();
+        let mut seen: HashSet<&'static str> = HashSet::new();
+        for p in &presets {
+            assert!(seen.insert(p.id), "duplicate preset id: {}", p.id);
+        }
+        assert_eq!(seen.len(), presets.len());
+    }
+
+    #[test]
+    fn every_preset_has_nonempty_metadata() {
+        for p in all_presets() {
+            assert!(!p.id.is_empty(), "preset id must be non-empty");
+            assert!(!p.name.is_empty(), "preset name must be non-empty: {}", p.id);
+            assert!(!p.reference.is_empty(), "preset reference must be non-empty: {}", p.id);
+            assert!(!p.blurb.is_empty(), "preset blurb must be non-empty: {}", p.id);
+            if p.is_speculative {
+                assert!(
+                    p.controversy_note.is_some(),
+                    "speculative preset {} must have a controversy_note",
+                    p.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_preset_initial_displacement_is_finite() {
+        for p in all_presets() {
+            let d = p.source.initial_displacement();
+            assert!(d.peak_amplitude_m.is_finite(), "preset {} produced non-finite amplitude", p.id);
+            assert!(d.cavity_radius_m.is_finite(), "preset {} produced non-finite cavity radius", p.id);
+            assert!(d.source_energy_j.is_finite(), "preset {} produced non-finite energy", p.id);
+            assert!(d.peak_amplitude_m >= 0.0, "preset {} produced negative amplitude", p.id);
+            assert!(d.cavity_radius_m > 0.0, "preset {} produced non-positive cavity radius", p.id);
+        }
+    }
+}

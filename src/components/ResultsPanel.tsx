@@ -42,7 +42,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
   const amp = formatLength(initial.peak_amplitude_m);
   const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m) : null;
   const totalT = 6 * 3600;
-  const progress = Math.min(1, timeS / totalT);
+  const progress = Math.max(0, Math.min(1, timeS / totalT));
 
   return (
     <>

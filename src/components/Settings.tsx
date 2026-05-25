@@ -96,6 +96,8 @@ export function Settings({ onClose }: Props) {
               anywhere except <code>cesium.com</code>. Get a free token at{" "}
               <a
                 href="https://cesium.com/ion/signup"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => {
                   e.preventDefault();
                   if (isTauri()) {

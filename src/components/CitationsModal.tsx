@@ -41,6 +41,8 @@ export function CitationsModal({ presets, onClose }: Props) {
                   {p.reference_url ? (
                     <a
                       href={p.reference_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       onClick={(e) => {
                         e.preventDefault();
                         openUrl(p.reference_url!);
