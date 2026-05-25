@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type {
   AsteroidImpactInput,
@@ -41,19 +41,43 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const [sweSnapshot, setSweSnapshot] = useState<GridSnapshot | null>(null);
   const [runupResults, setRunupResults] = useState<RunupAtPointResult[]>([]);
   const [busyPresetId, setBusyPresetId] = useState<string | null>(null);
-  const inTauri = isTauri();
+  // Monotonic request id — only the most recent runPreset response is
+  // allowed to commit. Stops a slow earlier call from overwriting a fast
+  // later one on rapid timeline scrubs.
+  const runPresetReqIdRef = useRef(0);
+  const simulateReqIdRef = useRef(0);
+  // Track whether the hook is still mounted so async resolvers don't
+  // setState on an unmounted component.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const inTauri = useMemo(isTauri, []);
 
   useEffect(() => {
     if (!inTauri || !activePresetId) return;
+    runPresetReqIdRef.current += 1;
+    const reqId = runPresetReqIdRef.current;
     setBusyPresetId(activePresetId);
     api
       .runPreset({ preset_id: activePresetId, time_s: timeS, mean_depth_m: 0, n_samples: 48 })
       .then((resp) => {
+        // Drop stale responses + don't touch unmounted state.
+        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         setInitial(resp.initial);
         setWavefront(resp.wavefront);
       })
-      .catch((err) => console.error("runPreset failed", err))
-      .finally(() => setBusyPresetId(null));
+      .catch((err) => {
+        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+        console.error("runPreset failed", err);
+      })
+      .finally(() => {
+        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+        setBusyPresetId(null);
+      });
   }, [activePresetId, timeS, inTauri]);
 
   const simulate = useCallback(
@@ -62,6 +86,8 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
         console.warn("Custom scenarios require the Tauri runtime; browser preview disabled.");
         return;
       }
+      simulateReqIdRef.current += 1;
+      const reqId = simulateReqIdRef.current;
       const route =
         input.kind === "Asteroid"
           ? api.asteroidInitialConditions(input.source)
@@ -72,17 +98,22 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
               : api.landslideInitialConditions(input.source);
       route
         .then((d) => {
+          if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
           setInitial(d);
           setActivePresetId(null);
           setWavefront(null);
           setSweSnapshot(null);
         })
-        .catch((err) => console.error(`${input.kind} initial_conditions failed`, err));
+        .catch((err) => {
+          if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
+          console.error(`${input.kind} initial_conditions failed`, err);
+        });
     },
     [inTauri],
   );
 
-  // Reset SWE + runup when preset/initial changes.
+  // Reset SWE + runup when the source location/amplitude meaningfully
+  // changes (a new scenario, not a timeline scrub).
   useEffect(() => {
     setSweSnapshot(null);
     setRunupResults([]);

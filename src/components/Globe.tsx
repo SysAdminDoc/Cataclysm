@@ -64,6 +64,7 @@ export function Globe({
   const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
+  const imageryRequestIdRef = useRef(0);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
@@ -140,43 +141,49 @@ export function Globe({
   }, [styleId]);
 
   // (Re)build the imagery + terrain providers when the style changes.
+  // Uses a monotonic request id so rapid style swaps don't race — only the
+  // most recent request's result is allowed to commit.
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
 
+    imageryRequestIdRef.current += 1;
+    const requestId = imageryRequestIdRef.current;
     let cancelled = false;
+    const isStale = () => cancelled || imageryRequestIdRef.current !== requestId || !viewerRef.current;
     setImageryStatus("loading");
 
     (async () => {
       try {
         const imagery = await buildImagery(resolvedStyle);
-        if (cancelled || !viewerRef.current) return;
-        // Remove any prior imagery layer we installed.
+        if (isStale()) return;
+        // Remove any prior imagery layer we installed + any internal default.
         if (imageryLayerRef.current) {
           viewer.imageryLayers.remove(imageryLayerRef.current, true);
           imageryLayerRef.current = null;
         }
-        // Remove any extra base layers Cesium may have added internally.
         while (viewer.imageryLayers.length > 0) {
           viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
         }
-        const layer = viewer.imageryLayers.addImageryProvider(imagery);
-        imageryLayerRef.current = layer;
+        if (isStale()) return;
+        imageryLayerRef.current = viewer.imageryLayers.addImageryProvider(imagery);
         const terrain = await buildTerrain(resolvedStyle);
-        if (cancelled || !viewerRef.current) return;
+        if (isStale()) return;
         viewer.scene.terrainProvider = terrain ?? new Cesium.EllipsoidTerrainProvider();
         setImageryStatus("ready");
       } catch (err) {
+        if (isStale()) return;
         console.warn("[globe] imagery/terrain load failed; falling back to OSM.", err);
         try {
           const fallback = await buildImagery("osm");
-          if (cancelled || !viewerRef.current) return;
+          if (isStale()) return;
           if (imageryLayerRef.current) {
             viewer.imageryLayers.remove(imageryLayerRef.current, true);
           }
           imageryLayerRef.current = viewer.imageryLayers.addImageryProvider(fallback);
           setImageryStatus("ready");
         } catch (innerErr) {
+          if (isStale()) return;
           console.error("[globe] OSM fallback also failed", innerErr);
           setImageryStatus("error");
         }
@@ -287,10 +294,18 @@ export function Globe({
     // Tune the fly-to range so small cavities (Lituya 100 m) don't zoom to the
     // centre of Earth and Chicxulub-class events (~50 km cavity) aren't lost.
     const flyRange = Cesium.Math.clamp(cavity_radius_m * 25, 5e5, 8e6);
-    viewer.flyTo(sourceEntityRef.current, {
+    const flyResult = viewer.flyTo(sourceEntityRef.current, {
       duration: 1.8,
       offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), flyRange),
     });
+    // flyTo returns a Promise<boolean>; swallow rejections (terrain not
+    // ready, scenario changed mid-flight, viewer unmounted) so they don't
+    // surface as unhandled rejections.
+    if (flyResult && typeof (flyResult as Promise<unknown>).then === "function") {
+      (flyResult as Promise<unknown>).catch((err) => {
+        console.debug("[globe] flyTo cancelled or failed", err);
+      });
+    }
   }, [initial]);
 
   // React to a new wavefront snapshot — update existing entities in place.
@@ -300,7 +315,15 @@ export function Globe({
 
     const { lat_deg, lon_deg } = initial.center;
     const position = Cesium.Cartesian3.fromDegrees(lon_deg, lat_deg, 0);
-    const maxA = Math.max(...wavefront.amplitudes_m.filter(Number.isFinite), 1e-9);
+    // Compute max via reduce — Math.max(...arr) overflows the call stack for
+    // large arrays in some engines (~10k args).
+    const maxA = Math.max(
+      1e-9,
+      wavefront.amplitudes_m.reduce(
+        (m, a) => (Number.isFinite(a) && a > m ? a : m),
+        1e-9,
+      ),
+    );
 
     const targetCount = Math.ceil(wavefront.ranges_m.length / 2);
 

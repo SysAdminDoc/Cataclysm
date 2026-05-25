@@ -191,10 +191,15 @@ impl SwGrid {
         }
     }
 
-    /// Take a snapshot of the current state for IPC transport.
+    /// Take a snapshot of the current state for IPC transport. NaN cells are
+    /// treated as zero for the colormap; their presence is reported via
+    /// `eta_max_m` / `eta_abs_max_m` clamped to finite.
     pub fn snapshot(&self) -> GridSnapshot {
         let (mut lo, mut hi, mut absmax) = (f64::INFINITY, f64::NEG_INFINITY, 0.0_f64);
         for &v in &self.eta_m {
+            if !v.is_finite() {
+                continue;
+            }
             if v < lo {
                 lo = v;
             }
@@ -227,12 +232,24 @@ impl SwGrid {
     /// to drop into a `data:image/png;base64,…` URI.
     fn encode_eta_png(&self, scale_m: f64) -> String {
         let mut rgba = Vec::with_capacity(self.nx * self.ny * 4);
+        let safe_scale = if scale_m.is_finite() && scale_m > 0.0 {
+            scale_m
+        } else {
+            1.0
+        };
         for j in (0..self.ny).rev() {
             // PNG rows are top-to-bottom; our grid is south-to-north, so flip j.
             for i in 0..self.nx {
                 let v = self.eta_m[idx(i, j, self.nx)];
-                let t = (v / scale_m).clamp(-1.0, 1.0);
-                let (r, g, b, a) = diverging_colormap(t);
+                // Treat NaN / Inf as transparent black instead of letting them
+                // poison the colormap (which would produce stuck-bright pixels
+                // or alpha = 0 NaN that the GPU rounds unpredictably).
+                let (r, g, b, a) = if v.is_finite() {
+                    let t = (v / safe_scale).clamp(-1.0, 1.0);
+                    diverging_colormap(t)
+                } else {
+                    (0, 0, 0, 0)
+                };
                 rgba.extend_from_slice(&[r, g, b, a]);
             }
         }
@@ -242,8 +259,17 @@ impl SwGrid {
             let mut encoder = png::Encoder::new(cursor, self.nx as u32, self.ny as u32);
             encoder.set_color(png::ColorType::Rgba);
             encoder.set_depth(png::BitDepth::Eight);
-            if let Ok(mut writer) = encoder.write_header() {
-                let _ = writer.write_image_data(&rgba);
+            match encoder.write_header() {
+                Ok(mut writer) => {
+                    if let Err(e) = writer.write_image_data(&rgba) {
+                        eprintln!("[solver] PNG encode failed: {e}");
+                        return String::new();
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[solver] PNG header write failed: {e}");
+                    return String::new();
+                }
             }
         }
         base64::engine::general_purpose::STANDARD.encode(&buf)
@@ -405,7 +431,6 @@ pub fn run_simulation(
         return snaps;
     }
     let total_steps = ((t_end_s / stepper.dt_s).max(1.0)).round() as usize;
-    let steps_per_snapshot = (total_steps / (n - 1)).max(1);
 
     for k in 1..n {
         let target_step = (k * total_steps) / (n - 1);
@@ -413,7 +438,6 @@ pub fn run_simulation(
         let take = target_step.saturating_sub(current_step).max(1);
         stepper.step(grid, take);
         snaps.push(grid.snapshot());
-        let _ = steps_per_snapshot; // documented constant; not used directly after loop
     }
     snaps
 }

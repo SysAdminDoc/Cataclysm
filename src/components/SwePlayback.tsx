@@ -14,8 +14,6 @@ type Status = "idle" | "running" | "ready" | "error";
  * and renders a small control panel for kicking off / scrubbing through the
  * resulting snapshots. Snapshot PNG data flows to the parent via `onSnapshot`
  * so the Globe component can paint it as an imagery layer.
- *
- * Returns its own UI (button + scrubber) — placed in the right rail.
  */
 export function SwePlayback({ initial, onSnapshot }: Props) {
   const [status, setStatus] = useState<Status>("idle");
@@ -23,7 +21,18 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [useBathy, setUseBathy] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number } | null>(null);
   const lastInitialRef = useRef<InitialDisplacement | null>(null);
+  const reqIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Reset state when scenario changes.
   useEffect(() => {
@@ -32,6 +41,8 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       setStatus("idle");
       setSnapshots(null);
       setActiveIdx(0);
+      setIsPlaying(false);
+      setDiag(null);
       onSnapshot?.(null);
     }
   }, [initial, onSnapshot]);
@@ -43,10 +54,29 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
     }
   }, [snapshots, activeIdx, onSnapshot]);
 
+  // Auto-play: advance the scrubber every 250 ms when playing.
+  useEffect(() => {
+    if (!isPlaying || !snapshots || snapshots.length < 2) return;
+    const interval = window.setInterval(() => {
+      setActiveIdx((i) => {
+        const next = i + 1;
+        if (next >= (snapshots?.length ?? 0)) {
+          setIsPlaying(false);
+          return i;
+        }
+        return next;
+      });
+    }, 250);
+    return () => window.clearInterval(interval);
+  }, [isPlaying, snapshots]);
+
   const run = useCallback(async () => {
     if (!initial || !isTauri()) return;
+    reqIdRef.current += 1;
+    const reqId = reqIdRef.current;
     setStatus("running");
     setErrMsg(null);
+    setIsPlaying(false);
     try {
       // Box half-size scales with the source cavity so small impacts get a
       // tight grid and ocean-scale impacts get a wider one. Clamp 2°–25°.
@@ -66,10 +96,13 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         t_end_s: 60 * 60, // 1 simulated hour
         n_snapshots: 24,
       });
+      if (!mountedRef.current || reqId !== reqIdRef.current) return;
       setSnapshots(resp.snapshots);
+      setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny });
       setActiveIdx(0);
       setStatus("ready");
     } catch (err) {
+      if (!mountedRef.current || reqId !== reqIdRef.current) return;
       console.error("simulate_grid failed", err);
       setErrMsg(String(err));
       setStatus("error");
@@ -83,7 +116,8 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       <div className="section__title">Live SWE Solver (CPU)</div>
       <p className="swe__hint">
         Run a real shallow-water-equation propagation around the source.
-        Uniform-depth approximation; coastal bathymetry lands in v0.3.0.
+        Offline-bathymetry toggle uses a coarse basin-mean + shelf-taper
+        approximation; real GEBCO 2024 streaming lands in v0.3.0.
       </p>
       <label className="swe__check">
         <input
@@ -108,19 +142,41 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       )}
       {snapshots && snapshots.length > 1 && (
         <>
-          <input
-            type="range"
-            min={0}
-            max={snapshots.length - 1}
-            step={1}
-            value={activeIdx}
-            onChange={(e) => setActiveIdx(Number(e.target.value))}
-          />
+          <div className="swe__row">
+            <button
+              onClick={() => setIsPlaying((p) => !p)}
+              disabled={status !== "ready"}
+              style={{ flex: "0 0 auto" }}
+              title="Play / pause the snapshot sequence"
+            >
+              {isPlaying ? "❚❚ Pause" : "▶ Play"}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={snapshots.length - 1}
+              step={1}
+              value={activeIdx}
+              onChange={(e) => {
+                setIsPlaying(false);
+                setActiveIdx(Number(e.target.value));
+              }}
+              style={{ flex: 1 }}
+              aria-label="Simulation timeline scrubber"
+            />
+          </div>
           <div className="swe__readout">
             <span>frame {activeIdx + 1}/{snapshots.length}</span>
             <span>t = {(snapshots[activeIdx].time_s / 60).toFixed(1)} min</span>
             <span>|η|max = {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
           </div>
+          {diag && (
+            <div className="swe__readout" style={{ color: "var(--overlay)" }}>
+              <span>Δt = {diag.dt_s.toFixed(2)} s</span>
+              <span>grid {diag.nx}×{diag.ny}</span>
+              <span>{(diag.nx * diag.ny).toLocaleString()} cells</span>
+            </div>
+          )}
         </>
       )}
       {!isTauri() && (

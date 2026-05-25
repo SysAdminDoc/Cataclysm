@@ -103,12 +103,18 @@ pub struct RunPresetResponse {
 }
 
 /// Great-circle distance, meters, between two WGS84 points (Haversine).
+/// Clamps `s` to `[0, 1]` so float-precision drift on near-antipodal points
+/// doesn't produce NaN from `sqrt(1 - s)` when s slightly exceeds 1.0.
 fn haversine_m(a_lat: f64, a_lon: f64, b_lat: f64, b_lon: f64) -> f64 {
+    if !(a_lat.is_finite() && a_lon.is_finite() && b_lat.is_finite() && b_lon.is_finite()) {
+        return 0.0;
+    }
     let phi1 = a_lat.to_radians();
     let phi2 = b_lat.to_radians();
     let dphi = (b_lat - a_lat).to_radians();
     let dlmb = (b_lon - a_lon).to_radians();
-    let s = (dphi * 0.5).sin().powi(2) + phi1.cos() * phi2.cos() * (dlmb * 0.5).sin().powi(2);
+    let s = ((dphi * 0.5).sin().powi(2) + phi1.cos() * phi2.cos() * (dlmb * 0.5).sin().powi(2))
+        .clamp(0.0, 1.0);
     2.0 * R_EARTH_M * s.sqrt().atan2((1.0 - s).sqrt())
 }
 
@@ -218,62 +224,117 @@ pub struct SimulateGridResponse {
     pub ny: u32,
 }
 
+/// Hard cap on the SWE grid size — protects us against runaway requests.
+const SWE_MAX_CELLS: usize = 4_000_000;
+/// Hard cap on number of snapshots per simulation.
+const SWE_MAX_SNAPSHOTS: usize = 240;
+/// Hard cap on simulated time — runaway scrubs.
+const SWE_MAX_T_END_S: f64 = 24.0 * 3600.0;
+
+fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
+    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
+        return Err(format!("source latitude {} out of range", req.source.lat_deg));
+    }
+    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
+        return Err(format!("source longitude {} out of range", req.source.lon_deg));
+    }
+    if !req.initial_amplitude_m.is_finite() || req.initial_amplitude_m.abs() > 1.0e5 {
+        return Err("initial_amplitude_m must be finite and ≤ 100 km".into());
+    }
+    if !(req.box_half_size_deg.is_finite() && req.box_half_size_deg > 0.0 && req.box_half_size_deg <= 60.0)
+    {
+        return Err("box_half_size_deg must be in (0, 60]".into());
+    }
+    if !(req.cells_per_deg.is_finite() && req.cells_per_deg > 0.0 && req.cells_per_deg <= 200.0) {
+        return Err("cells_per_deg must be in (0, 200]".into());
+    }
+    if !req.t_end_s.is_finite() || req.t_end_s < 0.0 || req.t_end_s > SWE_MAX_T_END_S {
+        return Err(format!("t_end_s must be in [0, {}]", SWE_MAX_T_END_S));
+    }
+    if req.n_snapshots > SWE_MAX_SNAPSHOTS {
+        return Err(format!("n_snapshots must be ≤ {}", SWE_MAX_SNAPSHOTS));
+    }
+    Ok(())
+}
+
 /// Run a real CPU shallow-water-equation simulation. Returns evenly-spaced
 /// PNG snapshots ready to drop into Cesium as a `SingleTileImageryProvider`.
+///
+/// Runs on a Tauri async runtime worker via `spawn_blocking` so the Cesium
+/// + Tauri IPC threads stay responsive even during a multi-second
+/// simulation. The future awaits the join handle; if the worker panics or
+/// is cancelled, we surface a stringified error.
 #[tauri::command]
-pub fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridResponse, String> {
-    if req.box_half_size_deg <= 0.0 || req.cells_per_deg <= 0.0 {
-        return Err("box_half_size_deg and cells_per_deg must be positive".into());
-    }
-    let lat = req.source.lat_deg;
-    let lon = req.source.lon_deg;
-    let half = req.box_half_size_deg;
-    let cell = 1.0 / req.cells_per_deg;
+pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridResponse, String> {
+    validate_simulate_grid(&req)?;
 
-    // Clamp latitudes to avoid polar singularities.
-    let south = (lat - half).max(-80.0);
-    let north = (lat + half).min(80.0);
-    let west = lon - half;
-    let east = lon + half;
+    tauri::async_runtime::spawn_blocking(move || {
+        let lat = req.source.lat_deg;
+        let lon = req.source.lon_deg;
+        let half = req.box_half_size_deg;
+        let cell = 1.0 / req.cells_per_deg;
 
-    let mut grid = SwGrid::new(west, south, east, north, cell, cell);
-    if grid.nx * grid.ny > 4_000_000 {
-        return Err(format!(
-            "grid too large ({}×{} = {} cells) — reduce cells_per_deg or box_half_size_deg",
-            grid.nx,
-            grid.ny,
-            grid.nx * grid.ny
-        ));
-    }
-    let fallback_depth = req.mean_depth_m.max(50.0);
-    if req.use_real_bathymetry {
-        grid.fill_bathymetry_from(|lat, lon| {
-            let d = crate::data::bathymetry::sample(lat, lon);
-            // Solver dislikes zero-depth (CFL = inf). Replace land cells
-            // with a tiny "wet" depth so they reflect rather than divide
-            // by zero; v0.3.0 will swap for proper wet/dry handling.
-            if d <= 0.0 {
-                fallback_depth.min(20.0)
-            } else {
-                d
-            }
-        });
-    } else {
-        grid.fill_uniform_depth(fallback_depth);
-    }
-    grid.inject_gaussian(lat, lon, req.initial_amplitude_m, req.source_sigma_m.max(1000.0));
+        // Clamp latitudes to avoid polar singularities, keeping the box
+        // symmetric around the source even if it would otherwise exceed
+        // [-80, 80].
+        let south = (lat - half).max(-80.0);
+        let north = (lat + half).min(80.0);
+        let west = lon - half;
+        let east = lon + half;
 
-    let dt = grid.recommended_dt_s(0.4);
-    let stepper = TimeStepper::new(dt);
-    let nx = grid.nx as u32;
-    let ny = grid.ny as u32;
-    let snapshots = run_simulation(&mut grid, &stepper, req.t_end_s, req.n_snapshots);
-    Ok(SimulateGridResponse {
-        snapshots,
-        dt_s: dt,
-        nx,
-        ny,
+        // Cheap cell-count estimate to catch the overflow case before
+        // alloc — usize::MAX / 8 bytes ≈ 2.3 Gcells on 64-bit, so we use
+        // the SWE_MAX_CELLS gate instead of waiting for a panic.
+        let approx_nx = ((east - west) / cell).round().max(2.0) as usize;
+        let approx_ny = ((north - south) / cell).round().max(2.0) as usize;
+        if approx_nx.checked_mul(approx_ny).unwrap_or(usize::MAX) > SWE_MAX_CELLS {
+            return Err(format!(
+                "grid too large ({}×{} ≈ {} cells) — reduce cells_per_deg or box_half_size_deg",
+                approx_nx,
+                approx_ny,
+                approx_nx.saturating_mul(approx_ny)
+            ));
+        }
+
+        let mut grid = SwGrid::new(west, south, east, north, cell, cell);
+        let fallback_depth = req.mean_depth_m.max(50.0);
+        if req.use_real_bathymetry {
+            grid.fill_bathymetry_from(|lat, lon| {
+                let d = crate::data::bathymetry::sample(lat, lon);
+                // Solver dislikes zero-depth (CFL = inf). Replace land cells
+                // with a tiny "wet" depth (1 m) so they effectively reflect
+                // the wave rather than acting as deep ocean. v0.3.0 will
+                // swap for proper wet/dry handling.
+                if d <= 0.0 {
+                    1.0
+                } else {
+                    d
+                }
+            });
+        } else {
+            grid.fill_uniform_depth(fallback_depth);
+        }
+        grid.inject_gaussian(
+            lat,
+            lon,
+            req.initial_amplitude_m,
+            req.source_sigma_m.max(1000.0),
+        );
+
+        let dt = grid.recommended_dt_s(0.4);
+        let stepper = TimeStepper::new(dt);
+        let nx = grid.nx as u32;
+        let ny = grid.ny as u32;
+        let snapshots = run_simulation(&mut grid, &stepper, req.t_end_s, req.n_snapshots);
+        Ok(SimulateGridResponse {
+            snapshots,
+            dt_s: dt,
+            nx,
+            ny,
+        })
     })
+    .await
+    .map_err(|e| format!("simulate_grid worker failed: {e}"))?
 }
 
 #[tauri::command]
