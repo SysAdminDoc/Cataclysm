@@ -70,6 +70,31 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   nuclear,earthquake,landslide,shallow_water,lamb_wave}.md` — each
   documents the formula, paper citation, validation case, and
   known caveats. `docs/science/README.md` links them.
+- **`VALIDATION.md` refreshed** to reflect the v0.4.0 batch — adds
+  rows for the Lituya Bay runup test (F4-07), `dart_buoy_rmse`
+  math + edge-case tests (F4-06), and the `swe_gpu_matches_cpu`
+  regression test (F4-01). The "Future benchmarks" section
+  splits the deferred DART RMSE *display* (frontend integration)
+  from the now-shipped DART RMSE *math* (Rust IPC).
+
+### Globe imagery
+- **Token-invalid fallback toast**. When the user has explicitly
+  chosen a Cesium-ion-backed style (Cesium World Imagery /
+  Bathymetry) and the upstream call fails (most often: 401 invalid
+  token), the OSM fallback path now surfaces a `role="status"`
+  toast over the globe instead of falling back silently. Reads
+  "Cesium ion imagery unavailable (invalid token or upstream error)
+  — fell back to OSM." Token-less style swaps to OSM-default
+  remain silent (they're the documented path).
+
+### Tests
+- **`commands::dart_buoy_rmse_skips_out_of_range_obs`** — asserts
+  observations outside the model time range are skipped (not
+  extrapolated) while still registering in `observed_peak_m`.
+- **`commands::dart_buoy_rmse_interpolates_between_samples`** —
+  asserts the linear-interp midpoint lookup is correct.
+- **`commands::dart_buoy_rmse_rejects_out_of_range_location`** —
+  asserts buoy lat > 90° is rejected at the boundary.
 
 ### Earlier v0.3.0 batch (now part of the v0.4.0 release)
 

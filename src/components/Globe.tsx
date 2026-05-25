@@ -79,7 +79,7 @@ export function Globe({
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectEntityRef = useRef<Cesium.Entity | null>(null);
-  const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
   const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
 
   // One-time viewer mount
@@ -204,7 +204,13 @@ export function Globe({
           const fallbackLayer = viewer.imageryLayers.addImageryProvider(fallback);
           viewer.imageryLayers.lowerToBottom(fallbackLayer);
           imageryLayerRef.current = fallbackLayer;
-          setImageryStatus("ready");
+          // Only surface the toast when the user explicitly chose a
+          // token-gated style (i.e. they pasted a token but it 401'd
+          // or upstream is down). For style swaps to OSM-default no
+          // toast is needed — the fallback path engages routinely on
+          // missing-token cases via buildImagery's short-circuit.
+          const styleMeta = (await import("../lib/globe-styles")).findStyle(resolvedStyle);
+          setImageryStatus(styleMeta.requires_token ? "fallback" : "ready");
         } catch (innerErr) {
           if (isStale()) return;
           console.error("[globe] OSM fallback also failed", innerErr);
@@ -788,6 +794,11 @@ export function Globe({
       {imageryStatus === "error" && (
         <div className="app__globe-status" data-status="error">
           Imagery failed to load — check your network.
+        </div>
+      )}
+      {imageryStatus === "fallback" && (
+        <div className="app__globe-status" data-status="fallback" role="status" aria-live="polite">
+          Cesium ion imagery unavailable (invalid token or upstream error) — fell back to OSM.
         </div>
       )}
       {!initial && imageryStatus === "ready" && (

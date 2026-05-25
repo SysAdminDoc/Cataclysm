@@ -662,7 +662,7 @@ The v0.0.1 plan's landscape (NUKEMAP, Asteroid Launcher, Purdue Impact:Earth!, N
 - [x] **I4-05** — `lib/data.ts` centralised JSON loader.
 - [ ] Pin `windows-latest` → `windows-2025` in `.github/workflows/*.yml` once the June 15 redirect lands (currently no action needed).
 - [x] Add a `Skip to globe` hidden keyboard link in the App header.
-- [ ] Surface "Cesium ion token invalid → fallback engaged" toast on imagery 401.
+- [x] Surface "Cesium ion token invalid → fallback engaged" toast on imagery 401.
 - [x] First-launch banner "Optional: paste a Cesium ion token in Settings for satellite imagery" (dismissible).
 - [x] Doc pass on `docs/science/` per-source notes (asteroid.md, nuclear.md, earthquake.md, landslide.md, shallow_water.md, lamb_wave.md).
 

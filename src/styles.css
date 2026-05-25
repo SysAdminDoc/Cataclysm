@@ -537,6 +537,18 @@ label {
   color: var(--peach);
 }
 
+.app__globe-status[data-status="fallback"] {
+  background: color-mix(in srgb, var(--peach) 12%, var(--mantle));
+  border-color: var(--peach);
+  color: var(--text);
+  max-width: 360px;
+  pointer-events: auto;
+}
+.app__globe-status[data-status="fallback"]::before {
+  content: "⚠ ";
+  color: var(--peach);
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }

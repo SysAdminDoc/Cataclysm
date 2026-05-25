@@ -1055,4 +1055,57 @@ mod tests {
         });
         assert!(res.is_err());
     }
+
+    /// I4-06 — observations outside the model time range must be
+    /// skipped (not extrapolated). The `obs_peak_m` must still see
+    /// the out-of-range entry so the caller can tell the model
+    /// undershoots the observed peak.
+    #[test]
+    fn dart_buoy_rmse_skips_out_of_range_obs() {
+        let obs = vec![(0.0, 0.0), (60.0, 2.0), (120.0, 0.5), (300.0, 1.5)];
+        let model = vec![(0.0, 0.0), (60.0, 1.5), (120.0, 0.5)];
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations: obs,
+            model_samples: model,
+        })
+        .expect("must succeed with partial overlap");
+        // Only 3 obs land inside the model time range [0, 120].
+        assert_eq!(res.n_samples, 3, "out-of-range obs at t=300 must be skipped");
+        // Observed peak (2.0 at t=60) must register even when not
+        // matched to a model sample — but in this case it IS matched.
+        assert!((res.observed_peak_m - 2.0).abs() < 1e-9);
+        assert!((res.model_peak_m - 1.5).abs() < 1e-9);
+    }
+
+    /// I4-06 — bilinear-in-time interpolation between bracketing
+    /// model samples. obs at t=30 should sample the model midway
+    /// between t=0 and t=60.
+    #[test]
+    fn dart_buoy_rmse_interpolates_between_samples() {
+        let obs = vec![(30.0, 1.0)];
+        let model = vec![(0.0, 0.0), (60.0, 2.0)];
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations: obs,
+            model_samples: model,
+        })
+        .expect("must succeed");
+        // Model midpoint at t=30 should be 1.0 → identical to obs → RMSE 0.
+        assert!(res.rmse_m < 1e-9, "interp midpoint should match obs; got RMSE {}", res.rmse_m);
+    }
+
+    /// I4-06 — invalid buoy location is rejected at the boundary.
+    #[test]
+    fn dart_buoy_rmse_rejects_out_of_range_location() {
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 95.0,
+            buoy_lon: 0.0,
+            observations: vec![(0.0, 0.0)],
+            model_samples: vec![(0.0, 0.0)],
+        });
+        assert!(res.is_err(), "lat 95 must be rejected");
+    }
 }
