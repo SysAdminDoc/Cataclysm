@@ -153,6 +153,12 @@ export const api = {
   }) {
     return invoke<SimulateGridResponse>("simulate_grid", { req });
   },
+  /** F4-01 — Lightweight GPU-availability probe. Returns one of:
+   *  "available", "no-adapter", or "feature-off". See the Rust
+   *  `gpu_probe` command for full semantics. */
+  gpuProbe(): Promise<"available" | "no-adapter" | "feature-off"> {
+    return invoke<"available" | "no-adapter" | "feature-off">("gpu_probe");
+  },
 };
 
 /**

@@ -756,6 +756,36 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
     .map_err(|e| format!("simulate_grid worker failed: {e}"))?
 }
 
+/// F4-01 — Lightweight GPU-availability probe. Returns a string so
+/// the frontend doesn't need to mirror the `GpuAvailability` enum.
+/// Possible return values:
+/// - `"available"` — `--features gpu` compiled in AND an adapter
+///   was acquired successfully.
+/// - `"no-adapter"` — `--features gpu` compiled in but the host has
+///   no usable adapter (e.g. Linux without Vulkan/Mesa, headless CI).
+/// - `"feature-off"` — built without `--features gpu`; the wgpu
+///   dependency isn't compiled and the GPU path is unavailable.
+///
+/// Frontend uses this to surface "GPU acceleration: ✓ / unavailable"
+/// in Settings without requiring a full `simulate_grid` round-trip.
+#[tauri::command]
+pub fn gpu_probe() -> String {
+    #[cfg(feature = "gpu")]
+    {
+        use crate::physics::solver::gpu::{probe_adapter, GpuAvailability};
+        match probe_adapter() {
+            GpuAvailability::Available => "available".to_string(),
+            GpuAvailability::NoAdapter | GpuAvailability::AdapterFailed(_) => {
+                "no-adapter".to_string()
+            }
+        }
+    }
+    #[cfg(not(feature = "gpu"))]
+    {
+        "feature-off".to_string()
+    }
+}
+
 /// F4-01 — Dispatcher around `run_simulation` that prefers the wgpu
 /// GPU path when the `gpu` feature is compiled in and an adapter is
 /// available, and falls back to the CPU `TimeStepper` otherwise.

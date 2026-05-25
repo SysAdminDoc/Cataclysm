@@ -29,6 +29,7 @@ pub fn run() {
             inspect_at_point,
             lamb_wave_sample,
             dart_buoy_rmse,
+            gpu_probe,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

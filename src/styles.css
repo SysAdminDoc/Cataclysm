@@ -396,6 +396,18 @@ label {
   color: var(--text);
 }
 
+.settings__row {
+  font-size: 12px;
+  color: var(--subtext);
+  line-height: 1.5;
+}
+.settings__row code {
+  background: var(--surface0);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
 .app__panel {
   background: var(--mantle);
   border-right: 1px solid var(--surface0);

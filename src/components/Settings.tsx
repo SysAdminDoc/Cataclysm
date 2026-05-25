@@ -5,7 +5,9 @@ import { primeCesiumToken } from "../lib/cesium";
 import { settings, type Theme } from "../lib/settings";
 import { setTheme } from "../lib/theme";
 import { GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
-import { isTauri } from "../lib/tauri";
+import { api, isTauri } from "../lib/tauri";
+
+type GpuStatus = "available" | "no-adapter" | "feature-off" | "unknown";
 
 type Props = { onClose: () => void };
 
@@ -16,6 +18,7 @@ export function Settings({ onClose }: Props) {
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>("osm");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [gpuStatus, setGpuStatus] = useState<GpuStatus>("unknown");
 
   useEffect(() => {
     settings.loadAll().then((s) => {
@@ -23,6 +26,12 @@ export function Settings({ onClose }: Props) {
       setThemeLocal(s.theme);
       setGlobeStyle(s.globe_style);
     });
+    if (isTauri()) {
+      api
+        .gpuProbe()
+        .then((s) => setGpuStatus(s))
+        .catch(() => setGpuStatus("unknown"));
+    }
   }, []);
 
   async function save() {
@@ -153,6 +162,35 @@ export function Settings({ onClose }: Props) {
           </section>
 
           <hr className="modal__sep" />
+
+          <section style={{ marginBottom: 16 }}>
+            <h3 className="settings__h3">GPU acceleration (F4-01)</h3>
+            <p className="modal__intro">
+              The SWE leapfrog can run on the GPU via <code>wgpu</code> when
+              the binary is built with <code>--features gpu</code>. Status
+              is probed lazily on first Settings open.
+            </p>
+            <div className="settings__row">
+              <strong>Status:</strong>{" "}
+              {gpuStatus === "available" && (
+                <span style={{ color: "var(--green)" }}>✓ Available — simulations will use the GPU.</span>
+              )}
+              {gpuStatus === "no-adapter" && (
+                <span style={{ color: "var(--peach)" }}>
+                  ⚠ No usable adapter — falling back to CPU. Check Vulkan/Metal/D3D12 drivers.
+                </span>
+              )}
+              {gpuStatus === "feature-off" && (
+                <span style={{ color: "var(--overlay)" }}>
+                  GPU feature not compiled in this build (CPU-only). Build with{" "}
+                  <code>cargo tauri build -- --features gpu</code> to enable.
+                </span>
+              )}
+              {gpuStatus === "unknown" && (
+                <span style={{ color: "var(--overlay)" }}>Probing…</span>
+              )}
+            </div>
+          </section>
 
           <section style={{ marginBottom: 20 }}>
             <h3 className="settings__h3">Advanced</h3>

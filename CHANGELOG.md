@@ -96,6 +96,14 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **`commands::dart_buoy_rmse_rejects_out_of_range_location`** —
   asserts buoy lat > 90° is rejected at the boundary.
 
+### GPU diagnostics
+- **`gpu_probe` IPC**. New Tauri command returns
+  `"available" | "no-adapter" | "feature-off"`. Lets the frontend
+  surface GPU status without paying a full `simulate_grid`
+  round-trip. Settings panel grows a new "GPU acceleration (F4-01)"
+  section that calls the probe lazily on first open and renders
+  one of three colour-coded statuses.
+
 ### SWE playback UX
 - **Cancel button on in-flight simulations**. `SwePlayback`
   surfaces a Cancel button next to the Computing… state; clicking
