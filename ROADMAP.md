@@ -79,7 +79,7 @@ Single source of truth for delivery. Phased plan; each phase ends with a working
 
 - [x] **F-V08 P1** — MP4 / WebM timeline export (extends shipped PNG export).
 - [x] **F-V11 P2** — Click-on-globe inspect overlay (point-readout for amplitude + arrival + runup).
-- [ ] **F-V12 P3** — Onboarding tour (5-step tooltip pass).
+- [x] **F-V12 P3** — Onboarding tour (5-step tooltip pass).
 
 ### Trust / release / supply chain (M)
 

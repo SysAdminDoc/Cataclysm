@@ -23,6 +23,15 @@ export type InspectAtPointResult = {
   inundation_extent_m: number;
 };
 
+export type LambWaveSampleResult = {
+  range_m: number;
+  arrival_time_s: number;
+  pressure_pa: number;
+  surface_depression_m: number;
+  proudman_resonance_depth_m: number;
+  lamb_wave_speed_m_s: number;
+};
+
 export type RunupAtPointResult = {
   id: string;
   name: string;
@@ -88,6 +97,16 @@ export const api = {
     n_samples: number;
   }) {
     return invoke<RunPresetResponse>("run_preset", { req });
+  },
+  lambWaveSample(req: {
+    source: GeoPoint;
+    lat: number;
+    lon: number;
+    time_s: number;
+    peak_pressure_pa?: number;
+    source_radius_m?: number;
+  }) {
+    return invoke<LambWaveSampleResult>("lamb_wave_sample", { req });
   },
   inspectAtPoint(req: {
     source: GeoPoint;

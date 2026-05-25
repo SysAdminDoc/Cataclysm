@@ -20,6 +20,7 @@ pub mod nuclear;
 pub mod landslide;
 pub mod earthquake;
 pub mod okada;
+pub mod lamb_wave;
 pub mod shallow_water;
 pub mod solver;
 #[cfg(feature = "validation")]

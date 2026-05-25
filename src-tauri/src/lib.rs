@@ -27,6 +27,7 @@ pub fn run() {
             run_preset,
             simulate_grid,
             inspect_at_point,
+            lamb_wave_sample,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,6 +7,7 @@ use crate::physics::{
     asteroid::{far_field_amplitude_m as impact_far_field, AsteroidImpact},
     constants::{G_EARTH, R_EARTH_M},
     earthquake::EarthquakeSource,
+    lamb_wave::{proudman_resonance_depth_m, LambWaveSource, LAMB_WAVE_SPEED_M_S},
     landslide::LandslideSource,
     nuclear::{far_field_amplitude_m as nuclear_far_field, NuclearBurst},
     shallow_water::{
@@ -301,6 +302,81 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
         })
         .collect();
     Ok(out)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LambWaveSampleRequest {
+    /// Source location of the atmospheric pulse (typically the volcanic
+    /// preset's center).
+    pub source: GeoPoint,
+    /// Receiver location to evaluate η_LW at.
+    pub lat: f64,
+    pub lon: f64,
+    /// Time since source event, seconds.
+    pub time_s: f64,
+    /// Override the default Hunga-Tonga 200 Pa peak pressure if you
+    /// want to simulate a different VEI eruption.
+    #[serde(default)]
+    pub peak_pressure_pa: Option<f64>,
+    #[serde(default)]
+    pub source_radius_m: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LambWaveSampleResult {
+    pub range_m: f64,
+    pub arrival_time_s: f64,
+    pub pressure_pa: f64,
+    /// Sea-surface depression in meters at (lat, lon, time_s). Negative
+    /// = sea surface down under the high-pressure ring.
+    pub surface_depression_m: f64,
+    /// Proudman resonance depth (constant for the canonical
+    /// `LAMB_WAVE_SPEED_M_S = 310 m/s`). Surfaced for the UI so users
+    /// can see why bathymetry near 9.8 km amplifies the signal.
+    pub proudman_resonance_depth_m: f64,
+    pub lamb_wave_speed_m_s: f64,
+}
+
+/// F-V09 — sample the atmospheric Lamb-wave-driven sea-surface
+/// elevation contribution at a receiver point for a Hunga-Tonga-class
+/// volcanic source.
+#[tauri::command]
+pub fn lamb_wave_sample(req: LambWaveSampleRequest) -> Result<LambWaveSampleResult, String> {
+    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
+        return Err("source latitude out of range".into());
+    }
+    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
+        return Err("source longitude out of range".into());
+    }
+    if !req.lat.is_finite() || req.lat.abs() > 90.0 {
+        return Err("receiver latitude out of range".into());
+    }
+    if !req.lon.is_finite() || req.lon.abs() > 360.0 {
+        return Err("receiver longitude out of range".into());
+    }
+    if !req.time_s.is_finite() || req.time_s < 0.0 {
+        return Err("time_s must be finite and non-negative".into());
+    }
+    let mut s = LambWaveSource::hunga_tonga_2022();
+    if let Some(p) = req.peak_pressure_pa {
+        if p.is_finite() && p > 0.0 {
+            s.peak_pressure_pa = p;
+        }
+    }
+    if let Some(r) = req.source_radius_m {
+        if r.is_finite() && r > 0.0 {
+            s.source_radius_m = r;
+        }
+    }
+    let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, req.lat, req.lon);
+    Ok(LambWaveSampleResult {
+        range_m,
+        arrival_time_s: s.arrival_time_s(range_m),
+        pressure_pa: s.pressure_pa(range_m),
+        surface_depression_m: s.surface_depression_m(range_m, req.time_s),
+        proudman_resonance_depth_m: proudman_resonance_depth_m(),
+        lamb_wave_speed_m_s: LAMB_WAVE_SPEED_M_S,
+    })
 }
 
 #[derive(Debug, Deserialize)]
