@@ -19,6 +19,7 @@ pub mod asteroid;
 pub mod nuclear;
 pub mod landslide;
 pub mod earthquake;
+pub mod okada;
 pub mod shallow_water;
 
 use serde::{Deserialize, Serialize};
