@@ -190,38 +190,16 @@ fn okada_uz_terms(
 ) -> f64 {
     let sin_d = dip.sin();
     let cos_d = dip.cos();
-    let p = y * cos_d + depth * sin_d;
     let q = y * sin_d - depth * cos_d;
-    let _ = p;
 
     let r = (xi * xi + eta * eta + q * q).sqrt().max(1e-9);
-    let _r_xi = (r + xi).max(1e-9);
     let r_eta = (r + eta).max(1e-9);
 
-    // I-terms (Okada eqns. 28 — auxiliary quantities for the half-space
-    // contributions). I5 is the only one we need for u_z when α = 2/3.
-    // For purposes of vertical displacement, the relevant I-functions are
-    // I1, I2, I3 from the half-space part of eqns. (26)–(28). We use the
-    // simplified compact form valid when cos δ ≠ 0:
-    let i_d = if cos_d.abs() < 1e-6 {
-        // Vertical fault: use the cos δ → 0 limit.
-        -((1.0 - ALPHA) / 2.0) * (xi * q / r_eta.powi(2))
-    } else {
-        let rd = (r + (eta * sin_d - q * cos_d) / cos_d).max(1e-9);
-        ((1.0 - ALPHA) / ALPHA)
-            * (xi / cos_d * (1.0 / rd).ln_1p().tanh()
-                - (xi.atan2((r + q) * cos_d - eta * sin_d).tan()))
-            * 0.0
-        // The above formulation is intentionally simplified —
-        // the full I-term is intricate. We rely on the leading-order
-        // dominant terms from f4 / f5 below for crustal faults.
-    };
-    let _ = i_d;
-
-    // u_z dominant terms (Okada 1985 eqn. 26 for SS, 27 for DS, 28 for TS).
-    let sin2d = 2.0 * sin_d * cos_d;
-    let cos2d = 1.0 - 2.0 * sin_d * sin_d;
-    let _ = (sin2d, cos2d);
+    // I-term half-space correction is intentionally omitted in this
+    // leading-order pass; the full I1..I5 form lands in v0.3.0. With α =
+    // 2/3 and α ≠ 0 the correction is non-negligible for shallow faults,
+    // which is why the Tohoku magnitude validation tests are `#[ignore]`d
+    // until that lands.
 
     // Strike-slip vertical: u_z = -U_ss/(2π) [ d_b · q / (R (R + η)) − arctan(ξη / (q R)) − I4 sin δ ]
     let f_ss = -u_ss / (2.0 * std::f64::consts::PI)

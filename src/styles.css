@@ -83,17 +83,37 @@ button {
   border-radius: var(--r-md);
   padding: 8px 14px;
   cursor: pointer;
-  transition: background 120ms ease, transform 80ms ease, border-color 120ms ease;
+  transition: background 120ms ease, transform 80ms ease, border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: var(--surface1);
   border-color: var(--lavender);
   transform: translateY(-1px);
 }
 
-button:active {
+button:active:not(:disabled) {
   transform: translateY(0);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* Keyboard-only focus ring. Skips the ring on mouse clicks (matches
+   modern browser default behaviour); shows it for Tab navigation so the
+   app is usable without a mouse. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(116, 199, 236, 0.45);
+  border-color: var(--sapphire);
 }
 
 button.primary {

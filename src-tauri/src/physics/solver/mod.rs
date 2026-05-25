@@ -416,6 +416,12 @@ impl TimeStepper {
     }
 }
 
+/// Hard cap on total leapfrog steps. Protects us against pathological
+/// inputs (e.g. `t_end_s = 24h` paired with a `dt_s` driven absurdly low
+/// by an extreme bathymetry corner case) that would otherwise wedge the
+/// solver thread for minutes.
+const MAX_TOTAL_STEPS: usize = 1_000_000;
+
 /// Run a full simulation: inject the IC Gaussian, step to `t_end_s`, emit
 /// `n_snapshots` evenly-spaced snapshots (including t=0 and t_end).
 pub fn run_simulation(
@@ -427,10 +433,22 @@ pub fn run_simulation(
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot());
-    if t_end_s <= 0.0 {
+    if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return snaps;
     }
-    let total_steps = ((t_end_s / stepper.dt_s).max(1.0)).round() as usize;
+    // `dt_s` must be a real positive number or `t_end_s / dt_s` overflows
+    // `usize` via the inf-cast path and we'd hang the worker thread.
+    let dt = if stepper.dt_s.is_finite() && stepper.dt_s > 0.0 {
+        stepper.dt_s
+    } else {
+        1.0
+    };
+    let raw_steps = (t_end_s / dt).max(1.0);
+    let total_steps = if raw_steps.is_finite() && raw_steps < MAX_TOTAL_STEPS as f64 {
+        raw_steps.round() as usize
+    } else {
+        MAX_TOTAL_STEPS
+    };
 
     for k in 1..n {
         let target_step = (k * total_steps) / (n - 1);

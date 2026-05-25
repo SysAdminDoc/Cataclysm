@@ -17,24 +17,106 @@ use crate::physics::{
 };
 use crate::presets::{all_presets, find_preset, Preset};
 
-#[tauri::command]
-pub fn asteroid_initial_conditions(input: AsteroidImpact) -> InitialDisplacement {
-    input.initial_displacement()
+fn check_finite(name: &str, value: f64) -> Result<(), String> {
+    if !value.is_finite() {
+        return Err(format!("{name} must be finite (got {value})"));
+    }
+    Ok(())
+}
+
+fn check_finite_positive(name: &str, value: f64) -> Result<(), String> {
+    if !value.is_finite() || value <= 0.0 {
+        return Err(format!("{name} must be finite and positive (got {value})"));
+    }
+    Ok(())
+}
+
+fn check_lat_lon(loc: &GeoPoint) -> Result<(), String> {
+    if !loc.lat_deg.is_finite() || loc.lat_deg.abs() > 90.0 {
+        return Err(format!("location.lat_deg {} out of range", loc.lat_deg));
+    }
+    if !loc.lon_deg.is_finite() || loc.lon_deg.abs() > 360.0 {
+        return Err(format!("location.lon_deg {} out of range", loc.lon_deg));
+    }
+    Ok(())
 }
 
 #[tauri::command]
-pub fn nuclear_initial_conditions(input: NuclearBurst) -> InitialDisplacement {
-    input.initial_displacement()
+pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDisplacement, String> {
+    check_finite_positive("diameter_m", input.diameter_m)?;
+    check_finite_positive("density_kg_m3", input.density_kg_m3)?;
+    check_finite_positive("velocity_m_s", input.velocity_m_s)?;
+    check_finite("angle_deg", input.angle_deg)?;
+    if input.angle_deg <= 0.0 || input.angle_deg > 90.0 {
+        return Err(format!("angle_deg must be in (0, 90] (got {})", input.angle_deg));
+    }
+    check_finite("water_depth_m", input.water_depth_m)?;
+    if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
+        return Err("water_depth_m must be in [0, 12 000 m]".into());
+    }
+    check_lat_lon(&input.location)?;
+    Ok(input.initial_displacement())
 }
 
 #[tauri::command]
-pub fn landslide_initial_conditions(input: LandslideSource) -> InitialDisplacement {
-    input.initial_displacement()
+pub fn nuclear_initial_conditions(input: NuclearBurst) -> Result<InitialDisplacement, String> {
+    check_finite_positive("yield_kt", input.yield_kt)?;
+    if input.yield_kt > 1.0e7 {
+        return Err("yield_kt above 10 000 Mt is non-physical".into());
+    }
+    check_finite("burst_depth_m", input.burst_depth_m)?;
+    if input.burst_depth_m < 0.0 || input.burst_depth_m > 12_000.0 {
+        return Err("burst_depth_m must be in [0, 12 000 m]".into());
+    }
+    check_finite("water_depth_m", input.water_depth_m)?;
+    if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
+        return Err("water_depth_m must be in [0, 12 000 m]".into());
+    }
+    check_lat_lon(&input.location)?;
+    Ok(input.initial_displacement())
 }
 
 #[tauri::command]
-pub fn earthquake_initial_conditions(input: EarthquakeSource) -> InitialDisplacement {
-    input.initial_displacement()
+pub fn landslide_initial_conditions(input: LandslideSource) -> Result<InitialDisplacement, String> {
+    check_finite_positive("volume_m3", input.volume_m3)?;
+    check_finite_positive("density_kg_m3", input.density_kg_m3)?;
+    check_finite("drop_height_m", input.drop_height_m)?;
+    if input.drop_height_m < 0.0 {
+        return Err("drop_height_m must be non-negative".into());
+    }
+    check_finite("slope_deg", input.slope_deg)?;
+    if input.slope_deg < 0.0 || input.slope_deg > 90.0 {
+        return Err("slope_deg must be in [0, 90]".into());
+    }
+    check_finite_positive("water_depth_m", input.water_depth_m)?;
+    check_finite_positive("water_body_width_m", input.water_body_width_m)?;
+    check_lat_lon(&input.location)?;
+    Ok(input.initial_displacement())
+}
+
+#[tauri::command]
+pub fn earthquake_initial_conditions(input: EarthquakeSource) -> Result<InitialDisplacement, String> {
+    check_finite("mw", input.mw)?;
+    if input.mw < 4.0 || input.mw > 10.5 {
+        return Err("mw must be in [4.0, 10.5]".into());
+    }
+    check_finite("depth_m", input.depth_m)?;
+    if input.depth_m < 0.0 || input.depth_m > 700_000.0 {
+        return Err("depth_m must be in [0, 700 km]".into());
+    }
+    check_finite("strike_deg", input.strike_deg)?;
+    check_finite("dip_deg", input.dip_deg)?;
+    if input.dip_deg < 0.0 || input.dip_deg > 90.0 {
+        return Err("dip_deg must be in [0, 90]".into());
+    }
+    check_finite("rake_deg", input.rake_deg)?;
+    check_finite("slip_m", input.slip_m)?;
+    if input.slip_m < 0.0 {
+        return Err("slip_m must be non-negative".into());
+    }
+    check_finite("water_depth_m", input.water_depth_m)?;
+    check_lat_lon(&input.location)?;
+    Ok(input.initial_displacement())
 }
 
 #[derive(Debug, Serialize, Deserialize)]

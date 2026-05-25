@@ -55,12 +55,23 @@ pub fn long_wave_travel_time_s(range_m: f64, mean_depth_m: f64) -> f64 {
 /// Valid for H_0 / d ≲ 0.78 (the breaking criterion). For larger amplitudes
 /// the wave breaks offshore and run-up saturates — we clamp here at 0.78.
 pub fn synolakis_runup_m(offshore_amplitude_m: f64, offshore_depth_m: f64, beach_slope_deg: f64) -> f64 {
-    if offshore_depth_m <= 0.0 || beach_slope_deg <= 0.0 {
+    // The Synolakis 1987 closed form uses an integer 5/4 power on a
+    // non-negative ratio — passing a negative amplitude produces NaN from
+    // `powf(5/4)` of a negative base, then poisons every downstream cell.
+    // Treat absolute amplitude as the physical input; runup height is the
+    // non-negative envelope of crest + trough.
+    if !offshore_amplitude_m.is_finite()
+        || !offshore_depth_m.is_finite()
+        || !beach_slope_deg.is_finite()
+        || offshore_depth_m <= 0.0
+        || beach_slope_deg <= 0.0
+    {
         return 0.0;
     }
-    let h_over_d = (offshore_amplitude_m / offshore_depth_m).min(0.78);
+    let amp = offshore_amplitude_m.abs();
+    let h_over_d = (amp / offshore_depth_m).min(0.78);
     let cot_beta = 1.0 / beach_slope_deg.to_radians().tan().max(1e-6);
-    2.831 * cot_beta.sqrt() * h_over_d.powf(5.0 / 4.0) * offshore_amplitude_m
+    2.831 * cot_beta.sqrt() * h_over_d.powf(5.0 / 4.0) * amp
 }
 
 /// Whether a wave at the given amplitude / depth ratio is past the breaking
