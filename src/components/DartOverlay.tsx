@@ -1,19 +1,13 @@
 import { useMemo, useState } from "react";
-import type { DartBuoy, DartDatabase, DartEvent } from "../types/scenario";
-import dartDb from "../data/dart_buoys.json";
+import { getDartEvents, getDartBuoysForPreset, PRESET_TO_DART_EVENT } from "../lib/data";
+import type { DartBuoy, DartEvent } from "../types/scenario";
 
 type Props = {
   presetId: string | null;
   timeS: number;
 };
 
-const db = dartDb as unknown as DartDatabase;
-
-const PRESET_TO_EVENT: Record<string, string> = {
-  tohoku_2011: "tohoku_2011",
-  indian_ocean_2004: "indian_ocean_2004",
-  hunga_tonga_2022: "hunga_tonga_2022",
-};
+const db = getDartEvents();
 
 function sampleEta(buoy: DartBuoy, t_s: number): number {
   const obs = buoy.observations;
@@ -65,7 +59,7 @@ function Sparkline({ buoy, timeS }: { buoy: DartBuoy; timeS: number }) {
 
 export function DartOverlay({ presetId, timeS }: Props) {
   const [expanded, setExpanded] = useState(true);
-  const eventKey = presetId ? PRESET_TO_EVENT[presetId] : null;
+  const eventKey = presetId ? PRESET_TO_DART_EVENT[presetId] : null;
   const event: DartEvent | null = useMemo(
     () => (eventKey ? db.events[eventKey] ?? null : null),
     [eventKey],
@@ -108,7 +102,5 @@ export function DartOverlay({ presetId, timeS }: Props) {
 
 /** Helper for the Globe component: list DART pins to render for an event. */
 export function dartPinsForPreset(presetId: string | null): DartBuoy[] {
-  const eventKey = presetId ? PRESET_TO_EVENT[presetId] : null;
-  if (!eventKey) return [];
-  return db.events[eventKey]?.buoys ?? [];
+  return [...getDartBuoysForPreset(presetId)];
 }

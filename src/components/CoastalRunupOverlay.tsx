@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
-import type { CoastalPoint, CoastalPointDatabase, InitialDisplacement, Preset } from "../types/scenario";
-import coastalDb from "../data/coastal_points.json";
+import { getCoastalPoints } from "../lib/data";
+import type { CoastalPoint, InitialDisplacement, Preset } from "../types/scenario";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -10,22 +10,8 @@ type Props = {
   onResults: (results: RunupAtPointResult[]) => void;
 };
 
-const db = coastalDb as CoastalPointDatabase;
-
-// Defensive filter: a corrupted bundled JSON (or a future schema change) with
-// out-of-range lat/lon would silently nuke the haversine math in the Rust
-// command. Drop bad points up front so the rest of the database still works.
-const VALID_POINTS: CoastalPoint[] = db.points.filter(
-  (p) =>
-    Number.isFinite(p.lat) &&
-    Number.isFinite(p.lon) &&
-    p.lat >= -90 &&
-    p.lat <= 90 &&
-    p.lon >= -180 &&
-    p.lon <= 180 &&
-    Number.isFinite(p.beach_slope_deg) &&
-    Number.isFinite(p.offshore_depth_m),
-);
+// Coastal points + integrity filter live in lib/data.ts (I4-05).
+const VALID_POINTS: readonly CoastalPoint[] = getCoastalPoints();
 
 /**
  * Hidden React component that runs the runup_at_points Tauri command whenever
@@ -62,7 +48,7 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
     }
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
-    const points: CoastalPoint[] = VALID_POINTS;
+    const points: CoastalPoint[] = [...VALID_POINTS];
     api
       .runupAtPoints({
         source: initial.center,

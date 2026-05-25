@@ -427,20 +427,35 @@ export function Globe({
     const flyHeading = Cesium.Math.toRadians(view?.heading_deg ?? 0);
     const flyPitch = Cesium.Math.toRadians(view?.pitch_deg ?? -45);
     // Honour OS-level reduced-motion preference (WCAG 2.2 SC 2.3.3).
+    // I4-04: at flyTo duration=0 Cesium still renders one frame of camera
+    // interpolation which produces a brief visual jitter. Use the
+    // instant `camera.setView` path for reduced-motion users instead.
     const reducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-    const flyResult = viewer.flyTo(sourceEntityRef.current, {
-      duration: reducedMotion ? 0.0 : 1.8,
-      offset: new Cesium.HeadingPitchRange(flyHeading, flyPitch, flyRange),
-    });
-    // flyTo returns a Promise<boolean>; swallow rejections (terrain not
-    // ready, scenario changed mid-flight, viewer unmounted) so they don't
-    // surface as unhandled rejections.
-    if (flyResult && typeof (flyResult as Promise<unknown>).then === "function") {
-      (flyResult as Promise<unknown>).catch((err) => {
-        console.debug("[globe] flyTo cancelled or failed", err);
+    if (reducedMotion) {
+      viewer.camera.setView({
+        destination: position,
+        orientation: {
+          heading: flyHeading,
+          pitch: flyPitch,
+          roll: 0,
+        },
       });
+      viewer.camera.zoomOut(flyRange);
+    } else {
+      const flyResult = viewer.flyTo(sourceEntityRef.current, {
+        duration: 1.8,
+        offset: new Cesium.HeadingPitchRange(flyHeading, flyPitch, flyRange),
+      });
+      // flyTo returns a Promise<boolean>; swallow rejections (terrain not
+      // ready, scenario changed mid-flight, viewer unmounted) so they don't
+      // surface as unhandled rejections.
+      if (flyResult && typeof (flyResult as Promise<unknown>).then === "function") {
+        (flyResult as Promise<unknown>).catch((err) => {
+          console.debug("[globe] flyTo cancelled or failed", err);
+        });
+      }
     }
   }, [initial]);
 
