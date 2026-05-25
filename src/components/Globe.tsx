@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
-import { configureCesium, tokenConfigured } from "../lib/cesium";
+import { configureCesium } from "../lib/cesium";
+import { buildImagery, buildTerrain, DEFAULT_STYLE, type GlobeStyleId } from "../lib/globe-styles";
+import { settings } from "../lib/settings";
 import type { RunupAtPointResult } from "../lib/tauri";
 import type {
   DartBuoy,
@@ -18,6 +20,8 @@ type Props = {
   runupResults?: RunupAtPointResult[];
   /** DART buoy pins for the active historical preset. */
   dartBuoys?: DartBuoy[];
+  /** Override style; if absent, the persisted Settings style is used. */
+  styleId?: GlobeStyleId;
   /**
    * When set, the globe is in "pick" mode: the next click is consumed,
    * cartographic coords are reported, and the mode toggles off automatically.
@@ -47,6 +51,7 @@ export function Globe({
   sweSnapshot,
   runupResults,
   dartBuoys,
+  styleId,
   pickMode,
   onPick,
   onPickCancel,
@@ -58,10 +63,10 @@ export function Globe({
   const runupEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
   const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
+  const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
-  const [bathymetryStatus, setBathymetryStatus] = useState<"idle" | "loading" | "ready" | "error">(
-    () => (tokenConfigured() ? "loading" : "idle"),
-  );
+  const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
 
   // One-time viewer mount
   useEffect(() => {
@@ -71,6 +76,9 @@ export function Globe({
 
     const viewer = new Cesium.Viewer(containerRef.current, {
       terrain: undefined,
+      // Don't auto-pick a default base layer — we install our own below
+      // (OSM by default) so the globe always renders without a token.
+      baseLayer: false as unknown as Cesium.ImageryLayer,
       baseLayerPicker: false,
       geocoder: false,
       sceneModePicker: false,
@@ -81,29 +89,12 @@ export function Globe({
       fullscreenButton: false,
       selectionIndicator: false,
       infoBox: false,
-      // Needed for canvas.toDataURL() in lib/export.ts to capture a non-blank
-      // image. Slight perf cost; acceptable for desktop.
-      contextOptions: {
-        webgl: { preserveDrawingBuffer: true },
-      },
+      contextOptions: { webgl: { preserveDrawingBuffer: true } },
     });
 
     viewer.scene.globe.enableLighting = true;
     if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
     viewer.scene.fog.enabled = true;
-
-    if (tokenConfigured()) {
-      setBathymetryStatus("loading");
-      Cesium.createWorldBathymetryAsync({ requestVertexNormals: true })
-        .then((provider) => {
-          viewer.scene.terrainProvider = provider;
-          setBathymetryStatus("ready");
-        })
-        .catch((err) => {
-          console.warn("Cesium World Bathymetry failed to load — falling back to ellipsoid.", err);
-          setBathymetryStatus("error");
-        });
-    }
 
     viewerRef.current = viewer;
 
@@ -119,6 +110,83 @@ export function Globe({
       sweLayerRef.current = null;
     };
   }, []);
+
+  // Resolve which globe style we should be using — prop override, persisted
+  // setting, or DEFAULT_STYLE (OSM). Listens for `tsunamisim:settings-saved`
+  // so the user sees the change without having to restart.
+  useEffect(() => {
+    if (styleId) {
+      setResolvedStyle(styleId);
+      return;
+    }
+    let cancelled = false;
+    const load = () => {
+      settings
+        .getGlobeStyle()
+        .then((s) => {
+          if (!cancelled) setResolvedStyle(s);
+        })
+        .catch(() => {
+          if (!cancelled) setResolvedStyle(DEFAULT_STYLE);
+        });
+    };
+    load();
+    const onSettingsSaved = () => load();
+    window.addEventListener("tsunamisim:settings-saved", onSettingsSaved);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("tsunamisim:settings-saved", onSettingsSaved);
+    };
+  }, [styleId]);
+
+  // (Re)build the imagery + terrain providers when the style changes.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    let cancelled = false;
+    setImageryStatus("loading");
+
+    (async () => {
+      try {
+        const imagery = await buildImagery(resolvedStyle);
+        if (cancelled || !viewerRef.current) return;
+        // Remove any prior imagery layer we installed.
+        if (imageryLayerRef.current) {
+          viewer.imageryLayers.remove(imageryLayerRef.current, true);
+          imageryLayerRef.current = null;
+        }
+        // Remove any extra base layers Cesium may have added internally.
+        while (viewer.imageryLayers.length > 0) {
+          viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
+        }
+        const layer = viewer.imageryLayers.addImageryProvider(imagery);
+        imageryLayerRef.current = layer;
+        const terrain = await buildTerrain(resolvedStyle);
+        if (cancelled || !viewerRef.current) return;
+        viewer.scene.terrainProvider = terrain ?? new Cesium.EllipsoidTerrainProvider();
+        setImageryStatus("ready");
+      } catch (err) {
+        console.warn("[globe] imagery/terrain load failed; falling back to OSM.", err);
+        try {
+          const fallback = await buildImagery("osm");
+          if (cancelled || !viewerRef.current) return;
+          if (imageryLayerRef.current) {
+            viewer.imageryLayers.remove(imageryLayerRef.current, true);
+          }
+          imageryLayerRef.current = viewer.imageryLayers.addImageryProvider(fallback);
+          setImageryStatus("ready");
+        } catch (innerErr) {
+          console.error("[globe] OSM fallback also failed", innerErr);
+          setImageryStatus("error");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedStyle]);
 
   // Pick mode: install a left-click handler that reports cartographic coords.
   useEffect(() => {
@@ -402,25 +470,6 @@ export function Globe({
     }
   }, [dartBuoys]);
 
-  // No token configured → friendly setup empty-state.
-  if (!tokenConfigured()) {
-    return (
-      <div className="app__globe-empty">
-        <h2>Cesium ion token not configured</h2>
-        <p>
-          The 3D globe and GEBCO bathymetry stream from Cesium ion. Open the{" "}
-          <strong>Settings</strong> panel (top right gear) and paste your free
-          token, or set <code>VITE_CESIUM_TOKEN</code> in <code>.env</code>{" "}
-          before running <code>npm run tauri dev</code>.
-        </p>
-        <p style={{ marginTop: 10 }}>
-          Get one at <code>https://cesium.com/ion/signup</code> — the free tier
-          is sufficient.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="app__globe-mount" ref={containerRef} />
@@ -431,17 +480,17 @@ export function Globe({
           to cancel.
         </div>
       )}
-      {bathymetryStatus === "loading" && (
+      {imageryStatus === "loading" && (
         <div className="app__globe-status" data-status="loading">
-          Loading GEBCO bathymetry…
+          Loading globe imagery…
         </div>
       )}
-      {bathymetryStatus === "error" && (
+      {imageryStatus === "error" && (
         <div className="app__globe-status" data-status="error">
-          Bathymetry unavailable; using WGS84 ellipsoid.
+          Imagery failed to load — check your network.
         </div>
       )}
-      {!initial && bathymetryStatus !== "loading" && (
+      {!initial && imageryStatus === "ready" && (
         <div className="app__globe-hint">
           Choose a preset on the left, or build a custom scenario on the right,
           to see the source event animate.
