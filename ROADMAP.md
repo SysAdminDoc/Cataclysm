@@ -91,8 +91,8 @@ unreleased state is canonical in [`CHANGELOG.md`](./CHANGELOG.md).
 ### Trust / release / supply chain (M)
 
 - [ ] **F-V03 P0** — README screenshots + animated demo. *Blocked: needs GUI capture from a Windows host.*
-- [ ] **F-V04 P0** — Code signing (Win Authenticode + macOS notarisation). *Blocked: needs maintainer EV cert + Apple Developer enrollment.*
-- [ ] **F-V07 P1** — `tauri-plugin-updater` Ed25519-signed channel. *Blocked: needs maintainer-generated Ed25519 keypair stored as GH secret.*
+- [~] **F-V04 P0** — Code signing (Win Authenticode + macOS notarisation). *Workflow scaffolded conditional on `WIN_SIGN_CERT_BASE64` / `APPLE_*` secrets being present (no-op when missing); `docs/release/CODESIGNING.md` documents the 8 secret slots. Activation: needs maintainer EV cert + Apple Developer enrollment.*
+- [~] **F-V07 P1** — `tauri-plugin-updater` Ed25519-signed channel. *Release workflow now emits `latest.json` updater manifest conditional on `TAURI_SIGNING_PRIVATE_KEY` being present. Activation: needs maintainer to run `npx tauri signer generate`, paste private key as GH secret, paste public key into `tauri.conf.json`, and register the plugin in `src-tauri/src/lib.rs` (steps documented in `docs/release/CODESIGNING.md`).*
 - [ ] **I-V04 P1** — Cesium token via OS keychain (Win Credential Manager / macOS Keychain / Linux Secret Service). Deferred: needs `keyring`-crate-equivalent that is Tauri-2 compatible; the `tauri-plugin-keyring` ecosystem is still emerging.
 
 ### Science-frontier (M)
@@ -106,10 +106,16 @@ unreleased state is canonical in [`CHANGELOG.md`](./CHANGELOG.md).
 
 **DoD**: 10× the grid resolution at 60 FPS playback. NSWE shows wave steepening and breaking near coasts.
 
-- [~] **F-V05 P1** — `wgpu` compute pipeline for SWE solver. Scaffold + feature flag + adapter probe + module skeleton shipped (v0.3.0); buffer-binding + dispatch loop deferred to v0.4.0. Build with `--features gpu` to compile.
-- [ ] Nonlinear shallow-water equations with Manning bottom friction `n=0.025`
-- [ ] Wet/dry cell handling for inundation
-- [ ] Inundation polygons as GeoJSON overlays on Cesium
+- [~] **F-V05 P1** — `wgpu` compute pipeline for SWE solver. Scaffold + feature flag + adapter probe + module skeleton shipped (v0.3.0); buffer-binding + dispatch loop deferred. Build with `--features gpu` to compile.
+- [x] **F4-02 P1** — Nonlinear shallow-water equations: upwind-differenced `(u·∇)u` momentum advection via new `SolverMode { Linear, Nonlinear }` enum on TimeStepper. Manning bottom friction already shipped in v0.2.0.
+- [x] Wet/dry cell handling for inundation (shipped in v0.3.0 as I-V01).
+- [ ] **F4-04 P1** — Real flood polygons (marching-squares on `h + η > 0`) as GeoJSON overlays. Deferred: depends on F-V06 GEBCO. First-order inundation discs (I-V02) shipped in v0.3.0.
+- [x] **F4-05 P1** — Lamb-wave coupled into SWE solver IC via `simulate_grid` `include_lamb_wave` flag + SwePlayback checkbox.
+- [x] **F4-06 P2** — `dart_buoy_rmse` IPC + tests. Frontend RMSE display needs SWE PNG decoding work in a follow-up.
+- [x] **F4-07 P2** — Lituya Bay validation case (Synolakis runup on Gilbert Inlet geometry in `physics::validation`).
+- [x] **F4-09 P2** — Branded share-card export with metadata + citation overlay.
+- [x] **I4-04 P3** — Cesium `camera.setView` for `prefers-reduced-motion` users.
+- [x] **I4-05 P3** — Centralised `src/lib/data.ts` bundled-JSON loader.
 
 ## Phase 5 — Boussinesq + AMR (v0.5.0)
 
