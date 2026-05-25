@@ -12,6 +12,21 @@ type Props = {
 
 const db = coastalDb as CoastalPointDatabase;
 
+// Defensive filter: a corrupted bundled JSON (or a future schema change) with
+// out-of-range lat/lon would silently nuke the haversine math in the Rust
+// command. Drop bad points up front so the rest of the database still works.
+const VALID_POINTS: CoastalPoint[] = db.points.filter(
+  (p) =>
+    Number.isFinite(p.lat) &&
+    Number.isFinite(p.lon) &&
+    p.lat >= -90 &&
+    p.lat <= 90 &&
+    p.lon >= -180 &&
+    p.lon <= 180 &&
+    Number.isFinite(p.beach_slope_deg) &&
+    Number.isFinite(p.offshore_depth_m),
+);
+
 /**
  * Hidden React component that runs the runup_at_points Tauri command whenever
  * the scenario or time changes, and pushes the results back to its parent (so
@@ -43,7 +58,7 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
     }
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
-    const points: CoastalPoint[] = db.points;
+    const points: CoastalPoint[] = VALID_POINTS;
     api
       .runupAtPoints({
         source: initial.center,
