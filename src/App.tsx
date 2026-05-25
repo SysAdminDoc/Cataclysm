@@ -8,6 +8,7 @@ import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { api, isTauri, type RunupAtPointResult } from "./lib/tauri";
 import { applyTheme, loadTheme } from "./lib/theme";
+import { exportGlobePng } from "./lib/export";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
@@ -112,6 +113,17 @@ export default function App() {
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
         </div>
         <div className="app__header-actions">
+          <button
+            className="icon-button"
+            onClick={() => {
+              const ok = exportGlobePng({ preset: activePreset, initial, timeS });
+              if (!ok) console.warn("No globe canvas found to export");
+            }}
+            title="Save the current globe view as PNG"
+            disabled={!initial}
+          >
+            📸 Export PNG
+          </button>
           <button className="icon-button" onClick={() => setShowCitations(true)} title="View citations">
             Citations
           </button>

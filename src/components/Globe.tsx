@@ -61,6 +61,11 @@ export function Globe({ initial, wavefront, runupResults, pickMode, onPick, onPi
       fullscreenButton: false,
       selectionIndicator: false,
       infoBox: false,
+      // Needed for canvas.toDataURL() in lib/export.ts to capture a non-blank
+      // image. Slight perf cost; acceptable for desktop.
+      contextOptions: {
+        webgl: { preserveDrawingBuffer: true },
+      },
     });
 
     viewer.scene.globe.enableLighting = true;
