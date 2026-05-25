@@ -480,3 +480,152 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
         wavefront,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::physics::landslide::LandslideKind;
+
+    fn good_loc() -> GeoPoint {
+        GeoPoint {
+            lat_deg: 0.0,
+            lon_deg: 0.0,
+            depth_m: 4_000.0,
+        }
+    }
+
+    #[test]
+    fn asteroid_validation_rejects_nan_diameter() {
+        let bad = AsteroidImpact {
+            diameter_m: f64::NAN,
+            density_kg_m3: 3000.0,
+            velocity_m_s: 20_000.0,
+            angle_deg: 45.0,
+            water_depth_m: 4_000.0,
+            location: good_loc(),
+        };
+        assert!(asteroid_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn asteroid_validation_rejects_zero_velocity() {
+        let bad = AsteroidImpact {
+            diameter_m: 500.0,
+            density_kg_m3: 3000.0,
+            velocity_m_s: 0.0,
+            angle_deg: 45.0,
+            water_depth_m: 4_000.0,
+            location: good_loc(),
+        };
+        assert!(asteroid_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn asteroid_validation_rejects_out_of_range_angle() {
+        let bad = AsteroidImpact {
+            diameter_m: 500.0,
+            density_kg_m3: 3000.0,
+            velocity_m_s: 20_000.0,
+            angle_deg: 91.0,
+            water_depth_m: 4_000.0,
+            location: good_loc(),
+        };
+        assert!(asteroid_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn asteroid_validation_accepts_good_input() {
+        let good = AsteroidImpact {
+            diameter_m: 500.0,
+            density_kg_m3: 3000.0,
+            velocity_m_s: 20_000.0,
+            angle_deg: 45.0,
+            water_depth_m: 4_000.0,
+            location: good_loc(),
+        };
+        let d = asteroid_initial_conditions(good).expect("valid input must succeed");
+        assert!(d.source_energy_j.is_finite());
+        assert!(d.peak_amplitude_m.is_finite());
+    }
+
+    #[test]
+    fn nuclear_validation_rejects_insane_yield() {
+        let bad = NuclearBurst {
+            yield_kt: 1.0e9,
+            burst_mode: crate::physics::nuclear::BurstMode::DeepOptimal,
+            burst_depth_m: 100.0,
+            water_depth_m: 4_000.0,
+            location: good_loc(),
+        };
+        assert!(nuclear_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn landslide_validation_rejects_zero_water_depth() {
+        let bad = LandslideSource {
+            kind: LandslideKind::Submarine,
+            volume_m3: 1.0e9,
+            density_kg_m3: 2500.0,
+            drop_height_m: 100.0,
+            slope_deg: 20.0,
+            water_depth_m: 0.0,
+            water_body_width_m: 1000.0,
+            location: good_loc(),
+        };
+        assert!(landslide_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn earthquake_validation_rejects_low_mw() {
+        let bad = EarthquakeSource {
+            mw: 3.5,
+            depth_m: 30_000.0,
+            strike_deg: 0.0,
+            dip_deg: 30.0,
+            rake_deg: 90.0,
+            slip_m: 5.0,
+            fault_length_m: 0.0,
+            fault_width_m: 0.0,
+            water_depth_m: 2000.0,
+            location: good_loc(),
+        };
+        assert!(earthquake_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn run_preset_rejects_unknown_id() {
+        let req = RunPresetRequest {
+            preset_id: "does-not-exist".to_string(),
+            time_s: 1800.0,
+            mean_depth_m: 0.0,
+            n_samples: 48,
+        };
+        assert!(run_preset(req).is_err());
+    }
+
+    #[test]
+    fn run_preset_clamps_huge_n_samples() {
+        let req = RunPresetRequest {
+            preset_id: "tohoku_2011".to_string(),
+            time_s: 1800.0,
+            mean_depth_m: 0.0,
+            n_samples: 999_999,
+        };
+        let resp = run_preset(req).expect("preset should resolve");
+        // Sample count is clamped at WAVEFRONT_MAX_SAMPLES = 2 000; the
+        // function emits a roughly 80/20 split so the returned vector is
+        // approximately that many samples (always <= 2 × WAVEFRONT_MAX_SAMPLES).
+        assert!(resp.wavefront.ranges_m.len() <= WAVEFRONT_MAX_SAMPLES * 2);
+    }
+
+    #[test]
+    fn haversine_handles_same_point() {
+        assert_eq!(haversine_m(45.0, -75.0, 45.0, -75.0), 0.0);
+    }
+
+    #[test]
+    fn haversine_handles_nan() {
+        // Should not panic; returns 0 as documented.
+        assert_eq!(haversine_m(f64::NAN, 0.0, 0.0, 0.0), 0.0);
+    }
+}
