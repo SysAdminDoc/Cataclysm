@@ -14,8 +14,15 @@ bathymetry tiles. The plan:
 3. Cache the decimated tiles in `data/cache/` (gitignored).
 4. Sample via `physics::data::bathymetry::sample(lat, lon)` in Rust.
 
-For v0.0.1 the SWE solver is a scaffold — depth is a single scalar passed in
-with the scenario. Variable-bathymetry support lands in v0.2.0.
+**As of v0.2.0** the SWE solver supports two bathymetry sources:
+
+- A coarse offline approximation (`src-tauri/src/data/bathymetry.rs`) that
+  classifies points into seven ocean basins and applies a 5° continental-shelf
+  taper. Selectable via the "coarse offline bathymetry" toggle in the
+  SwePlayback panel.
+- A uniform-depth fallback derived from the preset's water_depth_m.
+
+The real GEBCO 2024 download wizard (per the plan below) lands in v0.3.0.
 
 **Nothing in this directory is committed.** This README is the only tracked
 file; everything else is gitignored.
