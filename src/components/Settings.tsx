@@ -21,7 +21,9 @@ export function Settings({ onClose }: Props) {
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>("unknown");
 
   useEffect(() => {
+    let cancelled = false;
     settings.loadAll().then((s) => {
+      if (cancelled) return;
       setTokenLocal(s.cesium_token);
       setThemeLocal(s.theme);
       setGlobeStyle(s.globe_style);
@@ -29,9 +31,16 @@ export function Settings({ onClose }: Props) {
     if (isTauri()) {
       api
         .gpuProbe()
-        .then((s) => setGpuStatus(s))
-        .catch(() => setGpuStatus("unknown"));
+        .then((s) => {
+          if (!cancelled) setGpuStatus(s);
+        })
+        .catch(() => {
+          if (!cancelled) setGpuStatus("unknown");
+        });
     }
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function save() {
@@ -63,14 +72,14 @@ export function Settings({ onClose }: Props) {
   const needsToken = GLOBE_STYLES.find((s) => s.id === globeStyle)?.requires_token ?? false;
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
-          <h2>Settings</h2>
+          <h2 id="settings-title">Settings</h2>
           <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
         </header>
         <div className="modal__body">
-          <section style={{ marginBottom: 20 }}>
+          <section className="settings__section">
             <h3 className="settings__h3">Globe imagery</h3>
             <p className="modal__intro">
               Pick how the globe is rendered. The default
@@ -88,21 +97,22 @@ export function Settings({ onClose }: Props) {
                 </option>
               ))}
             </select>
-            <p className="modal__footnote" style={{ marginTop: 8 }}>
+            <p className="modal__footnote settings__description">
               {GLOBE_STYLES.find((s) => s.id === globeStyle)?.description}
             </p>
           </section>
 
-          <section style={{ marginBottom: 20 }}>
+          <section className="settings__section">
             <h3 className="settings__h3">
               Cesium ion access token{!needsToken && " (optional)"}
             </h3>
             <p className="modal__intro">
               Optional. Only needed if you select a Cesium ion-backed globe
               style above (terrain, bathymetry, satellite imagery). Token is
-              stored locally in your <code>app_data_dir</code> +
-              <code>localStorage</code> — never embedded in the binary or sent
-              anywhere except <code>cesium.com</code>. Get a free token at{" "}
+              stored locally in your app data settings store in the desktop
+              build, and in <code>localStorage</code> only for browser preview.
+              It is never embedded in the binary or sent anywhere except{" "}
+              <code>cesium.com</code>. Get a free token at{" "}
               <a
                 href="https://cesium.com/ion/signup"
                 target="_blank"
@@ -131,9 +141,9 @@ export function Settings({ onClose }: Props) {
             />
           </section>
 
-          <section style={{ marginBottom: 20 }}>
+          <section className="settings__section">
             <h3 className="settings__h3">Theme</h3>
-            <div style={{ display: "flex", gap: 10 }}>
+            <div className="settings__theme-grid">
               <button
                 className="scenario-tab"
                 data-active={theme === "mocha" ? "true" : "false"}
@@ -151,19 +161,19 @@ export function Settings({ onClose }: Props) {
             </div>
           </section>
 
-          <section style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <section className="settings__actions">
             <button className="primary" onClick={save}>Save settings</button>
             {savedAt && !saveErr && (
-              <span style={{ color: "var(--green)", fontSize: 12 }}>Saved at {savedAt}</span>
+              <span className="settings__status" data-tone="success">Saved at {savedAt}</span>
             )}
             {saveErr && (
-              <span style={{ color: "var(--red)", fontSize: 12 }}>Save failed: {saveErr}</span>
+              <span className="settings__status" data-tone="danger">Save failed: {saveErr}</span>
             )}
           </section>
 
           <hr className="modal__sep" />
 
-          <section style={{ marginBottom: 16 }}>
+          <section className="settings__section">
             <h3 className="settings__h3">GPU acceleration (F4-01)</h3>
             <p className="modal__intro">
               The SWE leapfrog can run on the GPU via <code>wgpu</code> when
@@ -173,28 +183,28 @@ export function Settings({ onClose }: Props) {
             <div className="settings__row">
               <strong>Status:</strong>{" "}
               {gpuStatus === "available" && (
-                <span style={{ color: "var(--green)" }}>✓ Available — simulations will use the GPU.</span>
+                <span className="settings__status" data-tone="success">Available — simulations will use the GPU.</span>
               )}
               {gpuStatus === "no-adapter" && (
-                <span style={{ color: "var(--peach)" }}>
-                  ⚠ No usable adapter — falling back to CPU. Check Vulkan/Metal/D3D12 drivers.
+                <span className="settings__status" data-tone="warning">
+                  No usable adapter — falling back to CPU. Check Vulkan/Metal/D3D12 drivers.
                 </span>
               )}
               {gpuStatus === "feature-off" && (
-                <span style={{ color: "var(--overlay)" }}>
+                <span className="settings__status" data-tone="muted">
                   GPU feature not compiled in this build (CPU-only). Build with{" "}
                   <code>cargo tauri build -- --features gpu</code> to enable.
                 </span>
               )}
               {gpuStatus === "unknown" && (
-                <span style={{ color: "var(--overlay)" }}>Probing…</span>
+                <span className="settings__status" data-tone="muted">Checking hardware…</span>
               )}
             </div>
           </section>
 
-          <section style={{ marginBottom: 20 }}>
+          <section className="settings__section">
             <h3 className="settings__h3">Advanced</h3>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="settings__button-row">
               <button
                 className="scenario-tab"
                 onClick={async () => {

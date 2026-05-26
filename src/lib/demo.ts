@@ -26,6 +26,15 @@ export type DemoRunupAtPointResult = {
   inundation_extent_m: number;
 };
 
+export type DemoInspectAtPointResult = {
+  range_m: number;
+  offshore_amplitude_m: number;
+  runup_m: number;
+  arrival_time_s: number;
+  has_arrived: boolean;
+  inundation_extent_m: number;
+};
+
 const TNT_J_PER_KT = 4.184e12;
 const G = 9.81;
 
@@ -443,6 +452,36 @@ export function demoRunupAtPoints(req: {
       inundation_extent_m: Math.min(60_000, runup_m / slope),
     };
   });
+}
+
+export function demoInspectAtPoint(req: {
+  source: GeoPoint;
+  initial_amplitude_m: number;
+  cavity_radius_m: number;
+  is_impact: boolean;
+  mean_depth_m: number;
+  time_s: number;
+  click_lat: number;
+  click_lon: number;
+  beach_slope_deg: number;
+  offshore_depth_m: number;
+}): DemoInspectAtPointResult {
+  const range_m = Math.max(1, haversineM(req.source.lat_deg, req.source.lon_deg, req.click_lat, req.click_lon));
+  const c = Math.sqrt(G * Math.max(req.mean_depth_m, 50));
+  const alpha = req.is_impact ? 5 / 6 : 0.5;
+  const attenuation = Math.pow(Math.max(req.cavity_radius_m, 1000) / range_m, alpha);
+  const offshore = Math.max(0, req.initial_amplitude_m * attenuation * 0.32);
+  const slope = Math.max(0.001, Math.tan((req.beach_slope_deg * Math.PI) / 180));
+  const runup_m = Math.min(750, offshore * (offshore > 25 ? 1.4 : 2.6));
+  const arrival_time_s = range_m / c;
+  return {
+    range_m,
+    offshore_amplitude_m: offshore,
+    runup_m,
+    arrival_time_s,
+    has_arrived: req.time_s >= arrival_time_s,
+    inundation_extent_m: Math.min(60_000, runup_m / slope),
+  };
 }
 
 function initialForPreset(preset: Preset): InitialDisplacement {

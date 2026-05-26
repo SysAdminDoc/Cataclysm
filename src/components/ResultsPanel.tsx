@@ -9,7 +9,13 @@ type Props = {
 function formatEnergy(j: number): { value: string; unit: string } {
   if (!Number.isFinite(j)) return { value: "—", unit: "" };
   const mt = j / 4.184e15;
-  if (mt >= 1) return { value: mt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "Mt TNT" };
+  if (mt >= 1) {
+    const value =
+      mt >= 10_000
+        ? Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(mt)
+        : mt.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    return { value, unit: "Mt TNT" };
+  }
   const kt = j / 4.184e12;
   if (kt >= 1) return { value: kt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "kt TNT" };
   return { value: j.toExponential(2), unit: "J" };
@@ -30,8 +36,9 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
     return (
       <div className="section">
         <div className="section__title">Source Readout</div>
-        <p style={{ color: "var(--subtext)", fontSize: 12 }}>
-          Select a preset or build a scenario to see source-energy, cavity geometry, and seismic-equivalent magnitude.
+        <p className="empty-copy">
+          Select a preset or simulate a custom source to see energy, cavity geometry,
+          peak amplitude, and equivalent moment magnitude.
         </p>
       </div>
     );
@@ -53,6 +60,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             <div className="results__label">Energy</div>
             <div className="results__value">
               {energy.value}
+              {" "}
               <span className="results__unit">{energy.unit}</span>
             </div>
           </div>
@@ -64,6 +72,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             <div className="results__label">Cavity radius</div>
             <div className="results__value">
               {cavity.value}
+              {" "}
               <span className="results__unit">{cavity.unit}</span>
             </div>
           </div>
@@ -71,14 +80,16 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             <div className="results__label">Peak amplitude</div>
             <div className="results__value">
               {amp.value}
+              {" "}
               <span className="results__unit">{amp.unit}</span>
             </div>
           </div>
           {wl && (
-            <div className="results__cell" style={{ gridColumn: "span 2" }}>
+            <div className="results__cell results__cell--wide">
               <div className="results__label">Dominant wavelength</div>
               <div className="results__value">
                 {wl.value}
+                {" "}
                 <span className="results__unit">{wl.unit}</span>
               </div>
             </div>

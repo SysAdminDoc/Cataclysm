@@ -43,36 +43,35 @@ export function FirstRunDisclaimer() {
   }
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className="modal">
+    <div className="modal-overlay">
+      <div className="modal modal--notice" role="dialog" aria-modal="true" aria-labelledby="first-run-title">
         <header className="modal__header">
-          <h2>Welcome to TsunamiSimulator</h2>
+          <h2 id="first-run-title">Welcome to TsunamiSimulator</h2>
         </header>
         <div className="modal__body">
-          <p>
+          <p className="modal__copy">
             <strong>TsunamiSimulator is an educational physics-visualization tool.</strong>
             {" "}
             It is <strong>NOT</strong> for evacuation planning, hazard
             forecasting, or any operational decision-making.
           </p>
-          <p style={{ marginTop: 12 }}>
+          <p className="modal__copy">
             For real tsunami warnings, contact your national tsunami warning
             centre — for example,{" "}
             <strong>NOAA NTWC (Atlantic) / PTWC (Pacific)</strong>,{" "}
             <strong>JMA (Japan)</strong>, or{" "}
             <strong>IOC/UNESCO ICG-NEAMTWS (Mediterranean & NE Atlantic)</strong>.
           </p>
-          <p style={{ marginTop: 12 }}>
+          <p className="modal__copy">
             All physics in this app comes from peer-reviewed literature
             (Ward & Asphaug 2000, Synolakis 1987, Okada 1985, Glasstone & Dolan
             1977, and others). See <em>Citations</em> in the header at any
-            time. Inevitably this means accepting limitations: linear-long-wave
-            approximations, simplified runup, no atmospheric coupling (yet).
+            time.
           </p>
-          <p style={{ marginTop: 14, fontSize: 12, color: "var(--subtext)" }}>
-            This notice is shown once. Click <em>Got it</em> below to continue.
+          <p className="modal__copy modal__copy--muted">
+            This notice is shown once. Press Enter or choose <em>Got it</em> to continue.
           </p>
-          <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end" }}>
+          <div className="modal__actions">
             <button className="primary" onClick={acknowledge}>Got it</button>
           </div>
         </div>

@@ -32,12 +32,31 @@ fn check_finite_positive(name: &str, value: f64) -> Result<(), String> {
     Ok(())
 }
 
+fn check_finite_nonnegative(name: &str, value: f64) -> Result<(), String> {
+    if !value.is_finite() || value < 0.0 {
+        return Err(format!(
+            "{name} must be finite and non-negative (got {value})"
+        ));
+    }
+    Ok(())
+}
+
 fn check_lat_lon(loc: &GeoPoint) -> Result<(), String> {
     if !loc.lat_deg.is_finite() || loc.lat_deg.abs() > 90.0 {
         return Err(format!("location.lat_deg {} out of range", loc.lat_deg));
     }
     if !loc.lon_deg.is_finite() || loc.lon_deg.abs() > 360.0 {
         return Err(format!("location.lon_deg {} out of range", loc.lon_deg));
+    }
+    Ok(())
+}
+
+fn check_lat_lon_values(prefix: &str, lat: f64, lon: f64) -> Result<(), String> {
+    if !lat.is_finite() || lat.abs() > 90.0 {
+        return Err(format!("{prefix} latitude {lat} out of range"));
+    }
+    if !lon.is_finite() || lon.abs() > 360.0 {
+        return Err(format!("{prefix} longitude {lon} out of range"));
     }
     Ok(())
 }
@@ -49,7 +68,10 @@ pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDispl
     check_finite_positive("velocity_m_s", input.velocity_m_s)?;
     check_finite("angle_deg", input.angle_deg)?;
     if input.angle_deg <= 0.0 || input.angle_deg > 90.0 {
-        return Err(format!("angle_deg must be in (0, 90] (got {})", input.angle_deg));
+        return Err(format!(
+            "angle_deg must be in (0, 90] (got {})",
+            input.angle_deg
+        ));
     }
     check_finite("water_depth_m", input.water_depth_m)?;
     if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
@@ -96,7 +118,9 @@ pub fn landslide_initial_conditions(input: LandslideSource) -> Result<InitialDis
 }
 
 #[tauri::command]
-pub fn earthquake_initial_conditions(input: EarthquakeSource) -> Result<InitialDisplacement, String> {
+pub fn earthquake_initial_conditions(
+    input: EarthquakeSource,
+) -> Result<InitialDisplacement, String> {
     check_finite("mw", input.mw)?;
     if input.mw < 4.0 || input.mw > 10.5 {
         return Err("mw must be in [4.0, 10.5]".into());
@@ -137,17 +161,31 @@ pub struct FarFieldResponse {
 }
 
 #[tauri::command]
-pub fn far_field_amplitude(req: FarFieldRequest) -> FarFieldResponse {
+pub fn far_field_amplitude(req: FarFieldRequest) -> Result<FarFieldResponse, String> {
+    check_finite("initial_amplitude_m", req.initial_amplitude_m)?;
+    if req.initial_amplitude_m.abs() > 1.0e5 {
+        return Err("initial_amplitude_m must be ≤ 100 km".into());
+    }
+    check_finite_positive("cavity_radius_m", req.cavity_radius_m)?;
+    if req.cavity_radius_m > 1.0e7 {
+        return Err("cavity_radius_m must be ≤ 10 000 km".into());
+    }
+    check_finite_nonnegative("range_m", req.range_m)?;
+    check_finite_nonnegative("mean_depth_m", req.mean_depth_m)?;
+    if req.mean_depth_m > 12_000.0 {
+        return Err("mean_depth_m must be ≤ 12 000 m".into());
+    }
+    check_finite("decay_alpha", req.decay_alpha)?;
     let amplitude_m = if req.is_impact {
         impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, req.range_m)
     } else {
         nuclear_far_field(req.initial_amplitude_m, req.cavity_radius_m, req.range_m)
     };
     let travel_time_s = long_wave_travel_time_s(req.range_m, req.mean_depth_m);
-    FarFieldResponse {
+    Ok(FarFieldResponse {
         amplitude_m,
         travel_time_s,
-    }
+    })
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -158,8 +196,24 @@ pub struct RunupRequest {
 }
 
 #[tauri::command]
-pub fn coastal_runup(req: RunupRequest) -> f64 {
-    synolakis_runup_m(req.offshore_amplitude_m, req.offshore_depth_m, req.beach_slope_deg)
+pub fn coastal_runup(req: RunupRequest) -> Result<f64, String> {
+    check_finite("offshore_amplitude_m", req.offshore_amplitude_m)?;
+    if req.offshore_amplitude_m.abs() > 1.0e5 {
+        return Err("offshore_amplitude_m must be ≤ 100 km".into());
+    }
+    check_finite_positive("offshore_depth_m", req.offshore_depth_m)?;
+    if req.offshore_depth_m > 12_000.0 {
+        return Err("offshore_depth_m must be ≤ 12 000 m".into());
+    }
+    check_finite("beach_slope_deg", req.beach_slope_deg)?;
+    if req.beach_slope_deg <= 0.0 || req.beach_slope_deg > 90.0 {
+        return Err("beach_slope_deg must be in (0, 90]".into());
+    }
+    Ok(synolakis_runup_m(
+        req.offshore_amplitude_m,
+        req.offshore_depth_m,
+        req.beach_slope_deg,
+    ))
 }
 
 #[tauri::command]
@@ -259,11 +313,33 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
             RUNUP_MAX_POINTS
         ));
     }
-    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
-        return Err("source latitude out of range".into());
+    check_lat_lon_values("source", req.source.lat_deg, req.source.lon_deg)?;
+    check_finite("initial_amplitude_m", req.initial_amplitude_m)?;
+    if req.initial_amplitude_m.abs() > 1.0e5 {
+        return Err("initial_amplitude_m must be ≤ 100 km".into());
     }
-    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
-        return Err("source longitude out of range".into());
+    check_finite_positive("cavity_radius_m", req.cavity_radius_m)?;
+    if req.cavity_radius_m > 1.0e7 {
+        return Err("cavity_radius_m must be ≤ 10 000 km".into());
+    }
+    check_finite_nonnegative("mean_depth_m", req.mean_depth_m)?;
+    if req.mean_depth_m > 12_000.0 {
+        return Err("mean_depth_m must be ≤ 12 000 m".into());
+    }
+    check_finite_nonnegative("time_s", req.time_s)?;
+    if req.time_s > SWE_MAX_T_END_S {
+        return Err(format!("time_s must be in [0, {}]", SWE_MAX_T_END_S));
+    }
+    for p in &req.points {
+        check_lat_lon_values(&format!("coastal point {}", p.id), p.lat, p.lon)?;
+        check_finite("beach_slope_deg", p.beach_slope_deg)?;
+        if p.beach_slope_deg <= 0.0 || p.beach_slope_deg > 90.0 {
+            return Err(format!("coastal point {} slope must be in (0, 90]", p.id));
+        }
+        check_finite_positive("offshore_depth_m", p.offshore_depth_m)?;
+        if p.offshore_depth_m > 12_000.0 {
+            return Err(format!("coastal point {} depth must be ≤ 12 000 m", p.id));
+        }
     }
     let out = req
         .points
@@ -351,8 +427,16 @@ pub fn dart_buoy_rmse(req: DartRmseRequest) -> Result<DartRmseResult, String> {
     }
     // Pair model + obs at each obs timestamp via linear interpolation
     // of the model series. Skip points outside the model time range.
-    let mut model_sorted = req.model_samples.clone();
-    model_sorted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    let mut model_sorted: Vec<(f64, f64)> = req
+        .model_samples
+        .iter()
+        .copied()
+        .filter(|(t, eta)| t.is_finite() && eta.is_finite())
+        .collect();
+    if model_sorted.is_empty() {
+        return Err("model series has no finite samples".into());
+    }
+    model_sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
     let t_min = model_sorted.first().map(|s| s.0).unwrap_or(0.0);
     let t_max = model_sorted.last().map(|s| s.0).unwrap_or(0.0);
 
@@ -380,12 +464,18 @@ pub fn dart_buoy_rmse(req: DartRmseRequest) -> Result<DartRmseResult, String> {
             let span = (t1 - t0).max(1e-9);
             v0 + (v1 - v0) * ((t - t0) / span)
         };
+        if !model_eta.is_finite() {
+            continue;
+        }
         mod_peak = mod_peak.max(model_eta.abs());
         let d = model_eta - obs_eta;
         sum_sq += d * d;
         n += 1;
     }
-    let rmse_m = if n > 0 { (sum_sq / n as f64).sqrt() } else { f64::NAN };
+    if n == 0 {
+        return Err("observation and model series have no overlapping finite samples".into());
+    }
+    let rmse_m = (sum_sq / n as f64).sqrt();
     Ok(DartRmseResult {
         rmse_m,
         n_samples: n,
@@ -449,14 +539,16 @@ pub fn lamb_wave_sample(req: LambWaveSampleRequest) -> Result<LambWaveSampleResu
     }
     let mut s = LambWaveSource::hunga_tonga_2022();
     if let Some(p) = req.peak_pressure_pa {
-        if p.is_finite() && p > 0.0 {
-            s.peak_pressure_pa = p;
+        if !p.is_finite() || p <= 0.0 || p > 1.0e6 {
+            return Err("peak_pressure_pa must be finite and in (0, 1 000 000]".into());
         }
+        s.peak_pressure_pa = p;
     }
     if let Some(r) = req.source_radius_m {
-        if r.is_finite() && r > 0.0 {
-            s.source_radius_m = r;
+        if !r.is_finite() || r <= 0.0 || r > 1.0e7 {
+            return Err("source_radius_m must be finite and in (0, 10 000 km]".into());
         }
+        s.source_radius_m = r;
     }
     let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, req.lat, req.lon);
     Ok(LambWaveSampleResult {
@@ -501,19 +593,38 @@ pub struct InspectAtPointResult {
 /// user from the globe.
 #[tauri::command]
 pub fn inspect_at_point(req: InspectAtPointRequest) -> Result<InspectAtPointResult, String> {
-    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
-        return Err("source latitude out of range".into());
+    check_lat_lon_values("source", req.source.lat_deg, req.source.lon_deg)?;
+    check_lat_lon_values("click", req.click_lat, req.click_lon)?;
+    check_finite("initial_amplitude_m", req.initial_amplitude_m)?;
+    if req.initial_amplitude_m.abs() > 1.0e5 {
+        return Err("initial_amplitude_m must be ≤ 100 km".into());
     }
-    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
-        return Err("source longitude out of range".into());
+    check_finite_positive("cavity_radius_m", req.cavity_radius_m)?;
+    if req.cavity_radius_m > 1.0e7 {
+        return Err("cavity_radius_m must be ≤ 10 000 km".into());
     }
-    if !req.click_lat.is_finite() || req.click_lat.abs() > 90.0 {
-        return Err("click latitude out of range".into());
+    check_finite_nonnegative("mean_depth_m", req.mean_depth_m)?;
+    if req.mean_depth_m > 12_000.0 {
+        return Err("mean_depth_m must be ≤ 12 000 m".into());
     }
-    if !req.click_lon.is_finite() || req.click_lon.abs() > 360.0 {
-        return Err("click longitude out of range".into());
+    check_finite_nonnegative("time_s", req.time_s)?;
+    if req.time_s > SWE_MAX_T_END_S {
+        return Err(format!("time_s must be in [0, {}]", SWE_MAX_T_END_S));
     }
-    let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, req.click_lat, req.click_lon);
+    check_finite("beach_slope_deg", req.beach_slope_deg)?;
+    if req.beach_slope_deg <= 0.0 || req.beach_slope_deg > 90.0 {
+        return Err("beach_slope_deg must be in (0, 90]".into());
+    }
+    check_finite_positive("offshore_depth_m", req.offshore_depth_m)?;
+    if req.offshore_depth_m > 12_000.0 {
+        return Err("offshore_depth_m must be ≤ 12 000 m".into());
+    }
+    let range_m = haversine_m(
+        req.source.lat_deg,
+        req.source.lon_deg,
+        req.click_lat,
+        req.click_lon,
+    );
     let amp = if req.is_impact {
         impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
     } else {
@@ -607,10 +718,16 @@ const WAVEFRONT_MAX_SAMPLES: usize = 2_000;
 
 fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
-        return Err(format!("source latitude {} out of range", req.source.lat_deg));
+        return Err(format!(
+            "source latitude {} out of range",
+            req.source.lat_deg
+        ));
     }
     if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
-        return Err(format!("source longitude {} out of range", req.source.lon_deg));
+        return Err(format!(
+            "source longitude {} out of range",
+            req.source.lon_deg
+        ));
     }
     if !req.initial_amplitude_m.is_finite() || req.initial_amplitude_m.abs() > 1.0e5 {
         return Err("initial_amplitude_m must be finite and ≤ 100 km".into());
@@ -621,7 +738,9 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.mean_depth_m.is_finite() || req.mean_depth_m < 0.0 || req.mean_depth_m > 12_000.0 {
         return Err("mean_depth_m must be finite and in [0, 12 000 m]".into());
     }
-    if !(req.box_half_size_deg.is_finite() && req.box_half_size_deg > 0.0 && req.box_half_size_deg <= 60.0)
+    if !(req.box_half_size_deg.is_finite()
+        && req.box_half_size_deg > 0.0
+        && req.box_half_size_deg <= 60.0)
     {
         return Err("box_half_size_deg must be in (0, 60]".into());
     }
@@ -632,10 +751,17 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
         return Err(format!("t_end_s must be in [0, {}]", SWE_MAX_T_END_S));
     }
     if req.n_snapshots == 0 || req.n_snapshots > SWE_MAX_SNAPSHOTS {
-        return Err(format!(
-            "n_snapshots must be in [1, {}]",
-            SWE_MAX_SNAPSHOTS
-        ));
+        return Err(format!("n_snapshots must be in [1, {}]", SWE_MAX_SNAPSHOTS));
+    }
+    if let Some(p) = req.lamb_wave_peak_pressure_pa {
+        if !p.is_finite() || p <= 0.0 || p > 1.0e6 {
+            return Err("lamb_wave_peak_pressure_pa must be in (0, 1 000 000]".into());
+        }
+    }
+    if let Some(r) = req.lamb_wave_source_radius_m {
+        if !r.is_finite() || r <= 0.0 || r > 1.0e7 {
+            return Err("lamb_wave_source_radius_m must be in (0, 10 000 km]".into());
+        }
     }
     Ok(())
 }
@@ -738,12 +864,8 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         // leapfrog kernel; nonlinear advection (F4-02) is CPU-only
         // for now, so when the user has selected a nonlinear-class
         // scenario we stay on CPU even with the feature flag on.
-        let (snapshots, used_gpu) = run_simulation_dispatch(
-            &mut grid,
-            dt,
-            req.t_end_s,
-            req.n_snapshots,
-        );
+        let (snapshots, used_gpu) =
+            run_simulation_dispatch(&mut grid, dt, req.t_end_s, req.n_snapshots);
         Ok(SimulateGridResponse {
             snapshots,
             dt_s: dt,
@@ -860,8 +982,14 @@ fn run_simulation_gpu(
 
 #[tauri::command]
 pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
+    if req.preset_id.is_empty() || req.preset_id.len() > 128 {
+        return Err("preset_id must be 1..128 characters".into());
+    }
     if !req.time_s.is_finite() || req.time_s < 0.0 || req.time_s > SWE_MAX_T_END_S {
-        return Err(format!("time_s must be finite and in [0, {}]", SWE_MAX_T_END_S));
+        return Err(format!(
+            "time_s must be finite and in [0, {}]",
+            SWE_MAX_T_END_S
+        ));
     }
     if !req.mean_depth_m.is_finite() || req.mean_depth_m < 0.0 || req.mean_depth_m > 12_000.0 {
         return Err("mean_depth_m must be finite and in [0, 12 000 m]".into());
@@ -1034,6 +1162,71 @@ mod tests {
     }
 
     #[test]
+    fn far_field_rejects_nonfinite_ipc_input() {
+        let res = far_field_amplitude(FarFieldRequest {
+            initial_amplitude_m: f64::NAN,
+            cavity_radius_m: 1_000.0,
+            range_m: 10_000.0,
+            mean_depth_m: 4_000.0,
+            decay_alpha: 0.5,
+            is_impact: true,
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn coastal_runup_rejects_invalid_slope() {
+        let res = coastal_runup(RunupRequest {
+            offshore_amplitude_m: 1.0,
+            offshore_depth_m: 50.0,
+            beach_slope_deg: 0.0,
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn runup_at_points_rejects_bad_point_coordinates() {
+        let res = runup_at_points(RunupAtPointsRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            cavity_radius_m: 1_000.0,
+            is_impact: true,
+            mean_depth_m: 4_000.0,
+            time_s: 0.0,
+            points: vec![CoastalPoint {
+                id: "bad".to_string(),
+                name: "Bad point".to_string(),
+                lat: 95.0,
+                lon: 0.0,
+                beach_slope_deg: 1.0,
+                offshore_depth_m: 50.0,
+            }],
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn runup_at_points_rejects_zero_slope() {
+        let res = runup_at_points(RunupAtPointsRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            cavity_radius_m: 1_000.0,
+            is_impact: true,
+            mean_depth_m: 4_000.0,
+            time_s: 0.0,
+            points: vec![CoastalPoint {
+                id: "flat".to_string(),
+                name: "Flat coast".to_string(),
+                lat: 0.0,
+                lon: 0.0,
+                beach_slope_deg: 0.0,
+                offshore_depth_m: 50.0,
+            }],
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
     fn haversine_handles_same_point() {
         assert_eq!(haversine_m(45.0, -75.0, 45.0, -75.0), 0.0);
     }
@@ -1057,7 +1250,11 @@ mod tests {
             model_samples: model_identical,
         })
         .expect("identical series must succeed");
-        assert!(res.rmse_m < 1e-9, "identical series RMSE should be 0, got {}", res.rmse_m);
+        assert!(
+            res.rmse_m < 1e-9,
+            "identical series RMSE should be 0, got {}",
+            res.rmse_m
+        );
         assert_eq!(res.n_samples, 4);
 
         let model_offset = vec![(0.0, 0.5), (60.0, 1.0), (120.0, 1.5), (180.0, 1.0)];
@@ -1086,6 +1283,32 @@ mod tests {
         assert!(res.is_err());
     }
 
+    #[test]
+    fn dart_buoy_rmse_rejects_no_overlap() {
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations: vec![(300.0, 1.0)],
+            model_samples: vec![(0.0, 0.0), (60.0, 0.2)],
+        });
+        assert!(
+            res.is_err(),
+            "no-overlap series must not return NaN success"
+        );
+    }
+
+    #[test]
+    fn dart_buoy_rmse_filters_nonfinite_model_samples() {
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations: vec![(30.0, 1.0)],
+            model_samples: vec![(f64::NAN, 99.0), (0.0, 0.0), (60.0, 2.0)],
+        })
+        .expect("finite model samples should still be usable");
+        assert!(res.rmse_m < 1e-9);
+    }
+
     /// I4-06 — observations outside the model time range must be
     /// skipped (not extrapolated). The `obs_peak_m` must still see
     /// the out-of-range entry so the caller can tell the model
@@ -1102,7 +1325,10 @@ mod tests {
         })
         .expect("must succeed with partial overlap");
         // Only 3 obs land inside the model time range [0, 120].
-        assert_eq!(res.n_samples, 3, "out-of-range obs at t=300 must be skipped");
+        assert_eq!(
+            res.n_samples, 3,
+            "out-of-range obs at t=300 must be skipped"
+        );
         // Observed peak (2.0 at t=60) must register even when not
         // matched to a model sample — but in this case it IS matched.
         assert!((res.observed_peak_m - 2.0).abs() < 1e-9);
@@ -1124,7 +1350,11 @@ mod tests {
         })
         .expect("must succeed");
         // Model midpoint at t=30 should be 1.0 → identical to obs → RMSE 0.
-        assert!(res.rmse_m < 1e-9, "interp midpoint should match obs; got RMSE {}", res.rmse_m);
+        assert!(
+            res.rmse_m < 1e-9,
+            "interp midpoint should match obs; got RMSE {}",
+            res.rmse_m
+        );
     }
 
     /// I4-06 — invalid buoy location is rejected at the boundary.
@@ -1137,5 +1367,58 @@ mod tests {
             model_samples: vec![(0.0, 0.0)],
         });
         assert!(res.is_err(), "lat 95 must be rejected");
+    }
+
+    #[test]
+    fn inspect_rejects_invalid_depth() {
+        let res = inspect_at_point(InspectAtPointRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            cavity_radius_m: 1_000.0,
+            is_impact: true,
+            mean_depth_m: 4_000.0,
+            time_s: 0.0,
+            click_lat: 0.0,
+            click_lon: 0.0,
+            beach_slope_deg: 1.0,
+            offshore_depth_m: 0.0,
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn inspect_rejects_zero_slope() {
+        let res = inspect_at_point(InspectAtPointRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            cavity_radius_m: 1_000.0,
+            is_impact: true,
+            mean_depth_m: 4_000.0,
+            time_s: 0.0,
+            click_lat: 0.0,
+            click_lon: 0.0,
+            beach_slope_deg: 0.0,
+            offshore_depth_m: 50.0,
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn simulate_grid_rejects_bad_lamb_wave_override() {
+        let res = validate_simulate_grid(&SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 4_000.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: true,
+            lamb_wave_peak_pressure_pa: Some(-1.0),
+            lamb_wave_source_radius_m: None,
+        });
+        assert!(res.is_err());
     }
 }

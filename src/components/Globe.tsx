@@ -3,7 +3,8 @@ import * as Cesium from "cesium";
 import { configureCesium } from "../lib/cesium";
 import { buildImagery, buildTerrain, DEFAULT_STYLE, type GlobeStyleId } from "../lib/globe-styles";
 import { settings } from "../lib/settings";
-import { api, type RunupAtPointResult } from "../lib/tauri";
+import { demoInspectAtPoint } from "../lib/demo";
+import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type {
   DartBuoy,
   GridSnapshot,
@@ -290,19 +291,24 @@ export function Globe({
       const lat = Cesium.Math.toDegrees(carto.latitude);
       const lon = Cesium.Math.toDegrees(carto.longitude);
 
-      api
-        .inspectAtPoint({
-          source: initial.center,
-          initial_amplitude_m: initial.peak_amplitude_m,
-          cavity_radius_m: initial.cavity_radius_m,
-          is_impact: inspectIsImpact === true,
-          mean_depth_m: 4000,
-          time_s: inspectTimeS ?? 0,
-          click_lat: lat,
-          click_lon: lon,
-          beach_slope_deg: 1.0,
-          offshore_depth_m: 50.0,
-        })
+      const req = {
+        source: initial.center,
+        initial_amplitude_m: initial.peak_amplitude_m,
+        cavity_radius_m: initial.cavity_radius_m,
+        is_impact: inspectIsImpact === true,
+        mean_depth_m: 4000,
+        time_s: inspectTimeS ?? 0,
+        click_lat: lat,
+        click_lon: lon,
+        beach_slope_deg: 1.0,
+        offshore_depth_m: 50.0,
+      };
+
+      const inspectPromise = isTauri()
+        ? api.inspectAtPoint(req)
+        : Promise.resolve(demoInspectAtPoint(req));
+
+      inspectPromise
         .then((res) => {
           if (!viewerRef.current) return;
           const arrivalMin = res.arrival_time_s / 60;

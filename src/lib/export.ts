@@ -25,8 +25,18 @@ function timestampSuffix(): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
+function safeFilenamePart(value: string): string {
+  const cleaned = value
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return cleaned || "custom-scenario";
+}
+
 export function suggestedFilename(meta: ScreenshotMeta, ext: "png" | "webm" | "mp4" = "png"): string {
-  const id = meta.preset?.id ?? "custom-scenario";
+  const id = safeFilenamePart(meta.preset?.id ?? "custom-scenario");
   const t = Math.round(meta.timeS / 60);
   return `tsunamisim-${id}-t${t}min-${timestampSuffix()}.${ext}`;
 }
@@ -47,7 +57,7 @@ export function captureGlobePng(): string | null {
 export function downloadDataUrl(dataUrl: string, filename: string): void {
   const a = document.createElement("a");
   a.href = dataUrl;
-  a.download = filename;
+  a.download = safeFilenamePart(filename);
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -59,7 +69,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   try {
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = safeFilenamePart(filename);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -215,23 +225,36 @@ export async function exportGlobeVideo(
       reason: "MediaRecorder unsupported by this WebView — no video codecs available",
     };
   }
-  const stream = canvas.captureStream(opts.fps ?? 30);
+  const fps = Math.min(60, Math.max(1, Math.round(opts.fps ?? 30)));
+  const durationMs = Math.min(30_000, Math.max(1_000, Math.round(opts.durationMs ?? 6_000)));
+  const bitsPerSecond = Math.min(25_000_000, Math.max(500_000, Math.round(opts.bitsPerSecond ?? 6_000_000)));
+  const stream = canvas.captureStream(fps);
   const recorder = new MediaRecorder(stream, {
     mimeType: mime.mime,
-    bitsPerSecond: opts.bitsPerSecond ?? 6_000_000,
+    bitsPerSecond,
   });
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) chunks.push(e.data);
   };
-  const stopped = new Promise<void>((resolve) => {
+  const stopped = new Promise<void>((resolve, reject) => {
     recorder.onstop = () => resolve();
+    recorder.onerror = () => reject(new Error("MediaRecorder failed while recording"));
   });
-  recorder.start();
-  await new Promise((r) => setTimeout(r, opts.durationMs ?? 6_000));
-  recorder.stop();
-  await stopped;
+  try {
+    recorder.start();
+    await new Promise((r) => setTimeout(r, durationMs));
+    if (recorder.state !== "inactive") recorder.stop();
+    await stopped;
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  } finally {
+    for (const track of stream.getTracks()) track.stop();
+  }
   const blob = new Blob(chunks, { type: mime.mime });
+  if (blob.size === 0) {
+    return { ok: false, reason: "Video encoder produced an empty recording" };
+  }
   downloadBlob(blob, suggestedFilename(meta, mime.ext));
   return { ok: true, ext: mime.ext, size: blob.size };
 }

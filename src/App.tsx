@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { PresetSelector } from "./components/PresetSelector";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
@@ -18,6 +18,108 @@ import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
+
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "citations" | "settings";
+
+function ToolbarIcon({ name }: { name: ToolbarIconName }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  if (name === "inspect") {
+    return (
+      <svg {...common}>
+        <circle cx="10.5" cy="10.5" r="5.5" />
+        <path d="m15 15 5 5" />
+      </svg>
+    );
+  }
+  if (name === "compare") {
+    return (
+      <svg {...common}>
+        <path d="M7 7h13m0 0-4-4m4 4-4 4" />
+        <path d="M17 17H4m0 0 4 4m-4-4 4-4" />
+      </svg>
+    );
+  }
+  if (name === "image") {
+    return (
+      <svg {...common}>
+        <rect x="4" y="5" width="16" height="14" rx="2" />
+        <path d="m7 16 4-4 3 3 2-2 3 3" />
+        <circle cx="9" cy="9" r="1" />
+      </svg>
+    );
+  }
+  if (name === "share") {
+    return (
+      <svg {...common}>
+        <rect x="5" y="4" width="14" height="16" rx="2" />
+        <path d="M8 9h8M8 13h5" />
+        <path d="M15 15h4v4" />
+      </svg>
+    );
+  }
+  if (name === "video") {
+    return (
+      <svg {...common}>
+        <rect x="4" y="6" width="12" height="12" rx="2" />
+        <path d="m16 10 4-2v8l-4-2" />
+      </svg>
+    );
+  }
+  if (name === "citations") {
+    return (
+      <svg {...common}>
+        <path d="M6 5h9a3 3 0 0 1 3 3v11H8a3 3 0 0 0-3 3V8a3 3 0 0 1 3-3Z" />
+        <path d="M8 9h6M8 13h7" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v3M12 18v3M4.8 4.8 7 7M17 17l2.2 2.2M3 12h3M18 12h3M4.8 19.2 7 17M17 7l2.2-2.2" />
+    </svg>
+  );
+}
+
+function ToolbarButton({
+  icon,
+  active,
+  disabled,
+  title,
+  onClick,
+  children,
+}: {
+  icon: ToolbarIconName;
+  active?: boolean;
+  disabled?: boolean;
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      className="icon-button"
+      data-active={active ? "true" : "false"}
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      type="button"
+    >
+      <ToolbarIcon name={icon} />
+      <span>{children}</span>
+    </button>
+  );
+}
 
 export default function App() {
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -114,10 +216,12 @@ export default function App() {
       <a className="skip-link" href="#main-globe">Skip to globe</a>
       {tokenBannerOpen && (
         <div className="token-banner" role="status" aria-live="polite">
+          <span className="token-banner__icon" aria-hidden>
+            i
+          </span>
           <span>
-            Optional: paste a free <strong>Cesium ion</strong> token in Settings for
-            satellite imagery + GEBCO bathymetry. The app works fully without one
-            on the default OSM globe.
+            <strong>Optional imagery token.</strong> Add a free Cesium ion token for
+            satellite imagery and bathymetry. The default OSM globe works without setup.
           </span>
           <button
             className="token-banner__action"
@@ -127,7 +231,7 @@ export default function App() {
           </button>
           <button
             className="token-banner__dismiss"
-            aria-label="Dismiss"
+            aria-label="Dismiss imagery token notice"
             onClick={() => {
               setTokenBannerOpen(false);
               settings.dismissTokenBanner().catch(() => {});
@@ -138,7 +242,10 @@ export default function App() {
         </div>
       )}
       <header className="app__header">
-        <div>
+        <div className="app__brand">
+          <span className="app__brand-mark" aria-hidden>
+            TS
+          </span>
           <span className="app__title">TsunamiSimulator</span>
           <span className="app__version">v0.2.1</span>
         </div>
@@ -146,9 +253,9 @@ export default function App() {
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
         </div>
         <div className="app__header-actions">
-          <button
-            className="icon-button"
-            data-active={inspectMode ? "true" : "false"}
+          <ToolbarButton
+            icon="inspect"
+            active={inspectMode}
             onClick={() => {
               setInspectMode((v) => !v);
               if (!inspectMode) setPickMode(false);
@@ -156,18 +263,18 @@ export default function App() {
             title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
             disabled={!slotA.initial}
           >
-            🔍 Inspect
-          </button>
-          <button
-            className="icon-button"
-            data-active={compareMode ? "true" : "false"}
+            Inspect
+          </ToolbarButton>
+          <ToolbarButton
+            icon="compare"
+            active={compareMode}
             onClick={() => setCompareMode((v) => !v)}
             title="Toggle side-by-side comparison mode"
           >
-            ⇆ Compare
-          </button>
-          <button
-            className="icon-button"
+            Compare
+          </ToolbarButton>
+          <ToolbarButton
+            icon="image"
             onClick={() => {
               const ok = exportGlobePng({ preset: activePresetA, initial: slotA.initial, timeS });
               if (!ok) console.warn("No globe canvas found to export");
@@ -175,10 +282,10 @@ export default function App() {
             title="Save the current globe view as PNG"
             disabled={!slotA.initial}
           >
-            📸 Export PNG
-          </button>
-          <button
-            className="icon-button"
+            PNG
+          </ToolbarButton>
+          <ToolbarButton
+            icon="share"
             onClick={() => {
               const ok = exportGlobeShareCard({
                 preset: activePresetA,
@@ -190,10 +297,10 @@ export default function App() {
             title="Save a branded share-card with scenario metadata + citation overlay"
             disabled={!slotA.initial}
           >
-            🪪 Share card
-          </button>
-          <button
-            className="icon-button"
+            Share
+          </ToolbarButton>
+          <ToolbarButton
+            icon="video"
             onClick={async () => {
               if (recording) return;
               setRecording(true);
@@ -212,18 +319,18 @@ export default function App() {
             title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
             disabled={!slotA.initial || recording}
           >
-            {recording ? "● Recording…" : "🎬 Export Video"}
-          </button>
-          <button className="icon-button" onClick={() => setShowCitations(true)} title="View citations">
+            {recording ? "Recording" : "Video"}
+          </ToolbarButton>
+          <ToolbarButton icon="citations" onClick={() => setShowCitations(true)} title="View citations">
             Citations
-          </button>
-          <button className="icon-button" onClick={() => setShowSettings(true)} title="Settings">
-            ⚙ Settings
-          </button>
+          </ToolbarButton>
+          <ToolbarButton icon="settings" onClick={() => setShowSettings(true)} title="Settings">
+            Settings
+          </ToolbarButton>
         </div>
       </header>
 
-      <aside className="app__panel">
+      <aside className="app__panel" aria-label="Preset scenarios">
         <PresetSelector
           presets={presets}
           activeId={slotA.activePresetId}
@@ -247,8 +354,16 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="app__globe" id="main-globe" tabIndex={-1}>
-        <Suspense fallback={<div className="app__globe-empty"><h2>Loading globe…</h2></div>}>
+      <main className="app__globe" id="main-globe" tabIndex={-1} aria-label="Interactive globe simulation">
+        <Suspense
+          fallback={
+            <div className="app__globe-empty">
+              <div className="loading-orbit" aria-hidden />
+              <h2>Preparing globe</h2>
+              <p>Loading terrain, imagery, and simulation layers.</p>
+            </div>
+          }
+        >
           <div className="app__globe-stack" data-split={compareMode ? "true" : "false"}>
             <div className="app__globe-pane">
               <Globe
@@ -283,7 +398,7 @@ export default function App() {
         </Suspense>
       </main>
 
-      <aside className="app__panel app__panel--right">
+      <aside className="app__panel app__panel--right" aria-label="Simulation controls and results">
         <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} />
         {compareMode && (
           <div className="app__compare-rail">

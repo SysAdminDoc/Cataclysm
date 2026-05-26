@@ -14,9 +14,17 @@ function sortKey(p: Preset): number {
 
 export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
   const sorted = [...presets].sort((a, b) => sortKey(a) - sortKey(b));
+  if (sorted.length === 0) {
+    return (
+      <div className="section">
+        <div className="section__title">Historical presets</div>
+        <p className="empty-copy">Loading curated source events…</p>
+      </div>
+    );
+  }
   return (
     <div className="section">
-      <div className="section__title">Historical Presets</div>
+      <div className="section__title">Historical presets</div>
       <div className="preset-list">
         {sorted.map((p) => {
           const isBusy = busyId === p.id;
@@ -26,13 +34,15 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
               className="preset-card"
               data-active={activeId === p.id ? "true" : "false"}
               data-speculative={p.is_speculative ? "true" : "false"}
+              aria-pressed={activeId === p.id}
               onClick={() => onSelect(p.id)}
               disabled={isBusy}
               title={p.controversy_note ?? p.reference}
+              type="button"
             >
               <div className="preset-card__name">
                 {p.is_speculative && (
-                  <span className="preset-card__warning" aria-label="Hypothetical / contested">⚠</span>
+                  <span className="preset-card__warning" aria-label="Hypothetical or contested">Speculative</span>
                 )}
                 {p.name}
                 {isBusy && <span className="preset-card__busy" aria-label="Loading">…</span>}

@@ -21,37 +21,37 @@ const STEPS: TourStep[] = [
   {
     title: "Welcome to TsunamiSimulator",
     body:
-      "A scientifically grounded simulator for tsunami generation, propagation, and coastal runup from asteroid impacts, nuclear detonations, earthquakes, and landslides. Educational only — not for evacuation planning.",
+      "Explore scientifically grounded tsunami source models, propagation, and coastal runup. Educational only — not for evacuation planning.",
     pos: "center",
   },
   {
     title: "1 · Pick a historical event",
     body:
-      "The left panel lists 11 peer-reviewed presets (Tōhoku 2011, Chicxulub 66 Ma, Lituya Bay 1958, and more). Click one to see the source render on the globe with its cavity geometry and computed energy.",
+      "Choose a curated preset to render the source on the globe with its geometry, energy, and citation trail.",
     pos: "top-left",
   },
   {
     title: "2 · Read the results",
     body:
-      "The right panel shows source energy, equivalent moment magnitude, cavity radius, peak amplitude, and a 0 → 6 h timeline scrubber for the analytical wavefront ring.",
+      "Use the readout and timeline to inspect energy, equivalent magnitude, source scale, and wavefront timing.",
     pos: "top-right",
   },
   {
     title: "3 · Run the live SWE solver",
     body:
-      "Scroll the right panel to find 'Live SWE Solver'. Click 'Run simulation' to compute a 24-frame shallow-water-equation propagation; the PNG sequence overlays on the globe and you can scrub or Play it back.",
+      "Run a 24-frame shallow-water simulation, then scrub or play the resulting propagation layer on the globe.",
     pos: "bottom-right",
   },
   {
     title: "4 · Inspect any coast",
     body:
-      "Toggle '🔍 Inspect' in the header, then click anywhere on the globe to read the arrival time, offshore amplitude, Synolakis runup, and inundation extent at that point. Esc exits.",
+      "Turn on Inspect, click the globe, and read arrival, offshore amplitude, runup, and inundation at that point. Esc exits.",
     pos: "top-center",
   },
   {
     title: "5 · Build your own scenario",
     body:
-      "The right panel's 'Custom Scenario Builder' lets you dial in asteroid / nuclear / earthquake / landslide parameters, click-globe-to-pick a location, and run any what-if. Use 'Compare' in the header for side-by-side runs.",
+      "Create asteroid, nuclear, earthquake, or landslide scenarios, pick a location on the globe, and compare two runs side by side.",
     pos: "bottom-right",
   },
 ];
@@ -98,7 +98,7 @@ export function Tour({ open, onClose }: Props) {
           <button className="scenario-tab" onClick={onClose}>
             Skip
           </button>
-          <div style={{ flex: 1 }} />
+          <div className="tour-card__spacer" />
           <button
             className="scenario-tab"
             onClick={() => setIdx((i) => (i > 0 ? i - 1 : 0))}

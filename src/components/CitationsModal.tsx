@@ -19,10 +19,10 @@ function openUrl(url: string) {
 export function CitationsModal({ presets, onClose }: Props) {
   useEscapeKey(onClose);
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
         <header className="modal__header">
-          <h2>Citations & References</h2>
+          <h2 id="citations-title">Citations & references</h2>
           <button onClick={onClose} aria-label="Close" className="modal__close">×</button>
         </header>
         <div className="modal__body">
@@ -34,7 +34,7 @@ export function CitationsModal({ presets, onClose }: Props) {
             {presets.map((p) => (
               <li key={p.id} className="citations__row">
                 <div className="citations__name">
-                  {p.is_speculative && <span style={{ color: "var(--peach)" }}>⚠ </span>}
+                  {p.is_speculative && <span className="citations__tag">Speculative</span>}
                   {p.name} <span className="citations__date">— {p.date}</span>
                 </div>
                 <div className="citations__ref">

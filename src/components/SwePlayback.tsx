@@ -165,14 +165,12 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
           className="primary"
           onClick={run}
           disabled={status === "running"}
-          style={{ flex: 1 }}
         >
           {status === "running" ? "Computing…" : status === "ready" ? "Re-run" : "Run simulation"}
         </button>
         {status === "running" && (
           <button
             onClick={cancel}
-            style={{ flex: "0 0 auto" }}
             title="Cancel the in-flight simulation and return to idle. The worker keeps running in the background but its result will be dropped."
           >
             Cancel
@@ -190,7 +188,6 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
             <button
               onClick={() => setIsPlaying((p) => !p)}
               disabled={status !== "ready"}
-              style={{ flex: "0 0 auto" }}
               title="Play / pause the snapshot sequence"
             >
               {isPlaying ? "❚❚ Pause" : "▶ Play"}
@@ -205,7 +202,6 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
                 setIsPlaying(false);
                 setActiveIdx(Number(e.target.value));
               }}
-              style={{ flex: 1 }}
               aria-label="Simulation timeline scrubber"
             />
           </div>
@@ -215,7 +211,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
             <span>|η|max = {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
           </div>
           {diag && (
-            <div className="swe__readout" style={{ color: "var(--overlay)" }}>
+            <div className="swe__readout swe__readout--muted">
               <span>Δt = {diag.dt_s.toFixed(2)} s</span>
               <span>grid {diag.nx}×{diag.ny}</span>
               <span>{(diag.nx * diag.ny).toLocaleString()} cells</span>

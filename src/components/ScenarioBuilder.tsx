@@ -164,12 +164,15 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
 
   return (
     <div className="section">
-      <div className="section__title">Custom Scenario Builder</div>
-      <div className="scenario-tabs">
+      <div className="section__title">Custom scenario</div>
+      <div className="scenario-tabs" role="tablist" aria-label="Scenario source type">
         {TABS.map((t) => (
           <button
             key={t.key}
             className="scenario-tab"
+            role="tab"
+            type="button"
+            aria-selected={tab === t.key}
             data-active={tab === t.key ? "true" : "false"}
             onClick={() => setTab(t.key)}
           >
@@ -276,7 +279,7 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
             applyDepth(v, { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide })
           } />
 
-        <label className="full" style={{ flexDirection: "row", gap: 8 }}>
+        <div className="scenario-form__actions">
           <button
             className="scenario-pick"
             data-active={pickActive ? "true" : "false"}
@@ -285,10 +288,10 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
           >
             {pickActive ? "Click globe to pick (Esc to cancel)" : "Pick on globe →"}
           </button>
-          <button className="primary" style={{ flex: 1 }} onClick={submit} type="button">
+          <button className="primary" onClick={submit} type="button">
             Simulate
           </button>
-        </label>
+        </div>
       </div>
     </div>
   );

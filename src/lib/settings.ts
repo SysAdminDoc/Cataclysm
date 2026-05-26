@@ -1,7 +1,9 @@
 /**
  * Persistent app settings, stored via tauri-plugin-store under
  * `app_data_dir/settings.json`. In browser-preview mode we fall back to
- * `localStorage` so the same API works in `npm run dev`.
+ * `localStorage` so the same API works in `npm run dev`. Sensitive
+ * desktop values such as `cesium_token` are not mirrored into WebView
+ * storage.
  */
 
 import { isTauri } from "./tauri";
@@ -32,6 +34,14 @@ const DEFAULTS: Settings = {
 
 const STORE_FILE = "settings.json";
 const LS_PREFIX = "tsunamisim.";
+const SENSITIVE_KEYS = new Set<keyof Settings>(["cesium_token"]);
+const GLOBE_STYLE_IDS: readonly GlobeStyleId[] = [
+  "osm",
+  "natural-earth-2",
+  "esri-world-imagery",
+  "cesium-bathymetry",
+  "cesium-world-imagery",
+];
 
 type LazyStore = {
   get<T>(key: string): Promise<T | undefined>;
@@ -49,9 +59,9 @@ function getStore(): Promise<LazyStore | null> {
         try {
           const store = (await load(STORE_FILE, { defaults: DEFAULTS, autoSave: false })) as LazyStore;
           // Smoke test: confirm we can write and read back. If this throws
-          // we fall through to localStorage so the UI still works. The probe
-          // key is deleted immediately afterwards so it doesn't pollute the
-          // user's settings file.
+          // non-sensitive settings fall through to localStorage so the UI
+          // still works. The probe key is deleted immediately afterwards so
+          // it doesn't pollute the user's settings file.
           await store.set("__init_probe", true);
           await store.save();
           if (typeof store.delete === "function") {
@@ -76,37 +86,103 @@ function getStore(): Promise<LazyStore | null> {
   return storePromise;
 }
 
+function removeLocalMirror(key: keyof Settings): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(LS_PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function shouldMirrorToLocalStorage(key: keyof Settings): boolean {
+  // Browser preview has no Tauri store, so localStorage is its only
+  // persistence layer. In the desktop app, do not mirror sensitive values
+  // into WebView storage where they are easier to inspect or leak.
+  return !isTauri() || !SENSITIVE_KEYS.has(key);
+}
+
+function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Settings[K] | undefined {
+  switch (key) {
+    case "cesium_token":
+      return (typeof value === "string" ? value : undefined) as Settings[K] | undefined;
+    case "theme":
+      return (value === "mocha" || value === "latte" ? value : undefined) as Settings[K] | undefined;
+    case "globe_style":
+      return (typeof value === "string" && GLOBE_STYLE_IDS.includes(value as GlobeStyleId)
+        ? value
+        : undefined) as Settings[K] | undefined;
+    case "disclaimer_acknowledged_at":
+    case "tour_completed_at":
+    case "token_banner_dismissed_at":
+      return (typeof value === "string" || value === null ? value : undefined) as Settings[K] | undefined;
+    default:
+      return undefined;
+  }
+}
+
+function readLocalMirror<K extends keyof Settings>(key: K): Settings[K] | undefined {
+  const raw = typeof localStorage !== "undefined" ? localStorage.getItem(LS_PREFIX + key) : null;
+  if (raw === null) return undefined;
+  try {
+    const normalised = normaliseSetting(key, JSON.parse(raw));
+    if (normalised === undefined) removeLocalMirror(key);
+    return normalised;
+  } catch {
+    removeLocalMirror(key);
+    return undefined;
+  }
+}
+
 async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
   const store = await getStore();
   if (store) {
     try {
       const v = await store.get<Settings[K]>(key);
-      if (v !== undefined && v !== null) return v;
+      const normalised = normaliseSetting(key, v);
+      if (normalised !== undefined) {
+        if (isTauri() && SENSITIVE_KEYS.has(key)) removeLocalMirror(key);
+        return normalised;
+      }
     } catch (err) {
       console.warn(`[settings] store.get(${String(key)}) failed`, err);
     }
   }
-  // Fall through to localStorage as a robust mirror.
-  const raw = typeof localStorage !== "undefined" ? localStorage.getItem(LS_PREFIX + key) : null;
-  if (raw !== null) {
-    try {
-      return JSON.parse(raw) as Settings[K];
-    } catch {
-      // Bad JSON — fall through to default.
+
+  const mirrored = readLocalMirror(key);
+  if (mirrored !== undefined) {
+    if (isTauri() && SENSITIVE_KEYS.has(key)) {
+      // One-time migration for tokens written by older builds that mirrored
+      // `cesium_token` into localStorage. Move it into plugin-store when
+      // available, then purge the WebView copy either way.
+      if (store) {
+        try {
+          await store.set(key, mirrored);
+          await store.save();
+        } catch (err) {
+          console.warn(`[settings] legacy ${String(key)} migration failed`, err);
+          removeLocalMirror(key);
+          return DEFAULTS[key];
+        }
+      }
+      removeLocalMirror(key);
+      return store ? mirrored : DEFAULTS[key];
     }
+    return mirrored;
   }
+
   return DEFAULTS[key];
 }
 
 async function write<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
-  // Always also mirror to localStorage so a future plugin-store regression
-  // doesn't silently lose user data.
-  if (typeof localStorage !== "undefined") {
+  if (shouldMirrorToLocalStorage(key) && typeof localStorage !== "undefined") {
     try {
       localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
     } catch {
       // Quota/private-mode — ignore.
     }
+  } else if (isTauri() && SENSITIVE_KEYS.has(key)) {
+    removeLocalMirror(key);
   }
   const store = await getStore();
   if (store) {
@@ -114,8 +190,13 @@ async function write<K extends keyof Settings>(key: K, value: Settings[K]): Prom
       await store.set(key, value);
       await store.save();
     } catch (err) {
-      console.warn(`[settings] store.set/save failed for ${String(key)}; localStorage mirror kept.`, err);
+      const suffix = SENSITIVE_KEYS.has(key)
+        ? "value not mirrored to localStorage."
+        : "localStorage mirror kept.";
+      console.warn(`[settings] store.set/save failed for ${String(key)}; ${suffix}`, err);
     }
+  } else if (isTauri() && SENSITIVE_KEYS.has(key)) {
+    console.warn(`[settings] Tauri store unavailable; ${String(key)} was not persisted.`);
   }
 }
 
@@ -204,8 +285,8 @@ export const settings = {
       token_banner_dismissed_at: await read("token_banner_dismissed_at"),
     };
   },
-  /** Clear every persisted key. Both the Tauri store and the localStorage
-   * mirror. Used by Settings → "Reset to defaults". */
+  /** Clear every persisted key from both the Tauri store and any browser /
+   * legacy localStorage copies. Used by Settings → "Reset to defaults". */
   async resetAll(): Promise<void> {
     const keys: (keyof Settings)[] = [
       "cesium_token",

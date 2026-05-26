@@ -44,6 +44,9 @@ jobs:
           - { os: windows-latest, label: windows-x86_64 }
           - { os: macos-latest, label: macos-universal }
     runs-on: ${{ matrix.platform.os }}
+    env:
+      WIN_SIGN_CERT_PRESENT: ${{ secrets.WIN_SIGN_CERT_BASE64 != '' }}
+      APPLE_CERTIFICATE_PRESENT: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -95,7 +98,7 @@ jobs:
       # as PFX, base64-encode (`base64 -w0 cert.pfx`), paste into a GH
       # secret WIN_SIGN_CERT_BASE64 + WIN_SIGN_PASSWORD.
       - name: Sign Windows artifacts
-        if: matrix.platform.os == 'windows-latest' && env.WIN_SIGN_CERT_BASE64 != ''
+        if: matrix.platform.os == 'windows-latest' && env.WIN_SIGN_CERT_PRESENT == 'true'
         env:
           WIN_SIGN_CERT_BASE64: ${{ secrets.WIN_SIGN_CERT_BASE64 }}
           WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD }}
@@ -115,7 +118,7 @@ jobs:
       # password. When secrets are absent, the .dmg ships unsigned
       # (Gatekeeper "App is damaged" warning on first launch).
       - name: Sign + notarise macOS artifacts
-        if: matrix.platform.os == 'macos-latest' && env.APPLE_CERTIFICATE_BASE64 != ''
+        if: matrix.platform.os == 'macos-latest' && env.APPLE_CERTIFICATE_PRESENT == 'true'
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -164,6 +167,8 @@ jobs:
     name: Publish GitHub Release
     needs: [prepare, build]
     runs-on: ubuntu-latest
+    env:
+      TAURI_SIGNING_KEY_PRESENT: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
@@ -196,7 +201,7 @@ jobs:
       # exist, the manifest is skipped, and the in-app updater stays
       # disabled until the maintainer adds the Ed25519 key.
       - name: Generate updater manifest
-        if: env.TAURI_SIGNING_PRIVATE_KEY != ''
+        if: env.TAURI_SIGNING_KEY_PRESENT == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -213,6 +218,14 @@ jobs:
           win_sig=$(read_sig "${win_msi}.sig")
           mac_sig=$(read_sig "${mac_dmg}.sig")
           linux_sig=$(read_sig "${linux_appimage}.sig")
+          if [ -z "$win_msi" ] || [ -z "$mac_dmg" ] || [ -z "$linux_appimage" ]; then
+            echo "Signed updater manifest requested, but one or more installer artifacts are missing." >&2
+            exit 1
+          fi
+          if [ -z "$win_sig" ] || [ -z "$mac_sig" ] || [ -z "$linux_sig" ]; then
+            echo "Signed updater manifest requested, but one or more .sig files are missing." >&2
+            exit 1
+          fi
           cat > release/latest.json <<JSON
           {
             "version": "${version}",

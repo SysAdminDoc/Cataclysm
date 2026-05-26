@@ -2,7 +2,54 @@
 
 All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — targeting v0.4.0
+## [0.4.0] - 2026-05-25 — Premium polish + GPU SWE + Lamb-wave coupling
+
+### Premium polish pass
+- **App shell layout fixed and refined**. The first-launch Cesium token
+  banner now owns a dedicated grid row instead of displacing the presets,
+  globe, and results panels. Desktop keeps the intended three-column
+  simulation cockpit; narrow viewports stack into banner, header, globe,
+  presets, and controls without horizontal overflow.
+- **Toolbar and component system upgraded**. Header actions now use a
+  consistent inline-SVG icon treatment, refined active/disabled states,
+  improved spacing, and mobile wrapping so all primary commands remain
+  discoverable.
+- **Primary workflow polish**. Preset cards, source readouts, scenario tabs,
+  form fields, SWE controls, empty states, and speculative/caution tags now
+  share a more coherent visual system with stronger hierarchy and cleaner
+  microcopy.
+- **Modal and onboarding refinement**. Settings, citations, disclaimer, and
+  tour dialogs now have stronger semantics, calmer copy, consistent spacing,
+  and polished status badges for saved, warning, muted, and error states.
+
+### Hardening audit
+- **Cesium token storage tightened**. Desktop builds no longer mirror
+  `settings.cesium_token` into WebView `localStorage`; older mirrored
+  values are migrated into `tauri-plugin-store` when available and then
+  purged from `localStorage`. Settings reads now validate corrupted
+  theme/style/timestamp values before applying them.
+- **IPC edge-case guards expanded**. `far_field_amplitude`,
+  `coastal_runup`, `runup_at_points`, `inspect_at_point`,
+  `lamb_wave_sample`, and `simulate_grid` now reject non-finite,
+  out-of-range, or physically impossible inputs before they can produce
+  NaN/Inf outputs across the Tauri boundary. `dart_buoy_rmse` filters
+  non-finite model samples and rejects no-overlap series instead of
+  returning a NaN success.
+- **Browser-preview Inspect fixed**. The Inspect tool now uses the
+  deterministic demo math when Tauri IPC is unavailable, so README /
+  browser QA sessions no longer log `inspect_at_point` failures.
+- **Release workflow activation fixed**. Code-signing and updater
+  manifest steps now gate on job-level secret-presence flags; the
+  previous step-local env checks could skip signing even when secrets
+  existed. Updater manifest generation now fails fast if a signed
+  installer or `.sig` file is missing.
+- **Export cleanup hardened**. Video export clamps caller-provided
+  duration/fps/bitrate, stops capture-stream tracks after recording, and
+  refuses to download empty encoder output. Download filenames are
+  sanitized before being handed to the browser.
+- **Preset/custom race fixed**. Starting a custom scenario now invalidates
+  any in-flight preset request immediately, preventing slow preset
+  responses from overwriting the custom source.
 
 ### v0.4.0 batches
 - **F4-01 — wgpu SWE dispatch loop**. Full GPU compute path landed:

@@ -59,7 +59,11 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const inTauri = useMemo(isTauri, []);
 
   useEffect(() => {
-    if (!activePresetId) return;
+    if (!activePresetId) {
+      runPresetReqIdRef.current += 1;
+      setBusyPresetId(null);
+      return;
+    }
     runPresetReqIdRef.current += 1;
     const reqId = runPresetReqIdRef.current;
     setBusyPresetId(activePresetId);
@@ -93,10 +97,15 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
 
   const simulate = useCallback(
     (input: ScenarioInput) => {
+      // A custom scenario supersedes any preset fetch already in flight.
+      // Without this, a slow `run_preset` response can overwrite the custom
+      // source after the user has moved on.
+      runPresetReqIdRef.current += 1;
+      setBusyPresetId(null);
+      setActivePresetId(null);
       if (!inTauri) {
         const d = demoInitialForScenario(input);
         setInitial(d);
-        setActivePresetId(null);
         setWavefront(null);
         setSweSnapshot(null);
         return;
@@ -115,7 +124,6 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
         .then((d) => {
           if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
           setInitial(d);
-          setActivePresetId(null);
           setWavefront(null);
           setSweSnapshot(null);
         })
