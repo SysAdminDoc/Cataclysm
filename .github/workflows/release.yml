@@ -21,7 +21,7 @@ jobs:
     outputs:
       tag: ${{ steps.set.outputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - id: set
@@ -48,7 +48,7 @@ jobs:
       WIN_SIGN_CERT_PRESENT: ${{ secrets.WIN_SIGN_CERT_BASE64 != '' }}
       APPLE_CERTIFICATE_PRESENT: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install Linux WebKit deps
         if: matrix.platform.os == 'ubuntu-latest'
@@ -170,7 +170,7 @@ jobs:
     env:
       TAURI_SIGNING_KEY_PRESENT: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v5
         with:
           path: dist
