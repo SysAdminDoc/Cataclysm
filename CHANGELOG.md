@@ -306,7 +306,7 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **F-V06** Real GEBCO 2024 — needs distribution-channel decision.
 
 ### Planned for v0.4.0+
-See `RESEARCH_FEATURE_PLAN.md` for the full v0.4.0 forward plan:
+See `docs/history/RESEARCH_FEATURE_PLAN_v0.4.0.md` for the full v0.4.0 forward plan:
 F4-01 wgpu dispatch loop, F4-02 nonlinear advection, F4-03 real GEBCO,
 F4-04 wet/dry flood polygons, F4-05 Lamb-wave SWE coupling, F4-06
 DART buoy RMSE display, F4-07 Lituya validation, F4-09 share-card

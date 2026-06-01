@@ -1,6 +1,6 @@
 # Project Research and Feature Plan — v0.3.0 forward
 
-> **Companion** to the original [`RESEARCH_FEATURE_PLAN.md`](./RESEARCH_FEATURE_PLAN.md) (written against the v0.0.1 scaffold at commit `91c360c`, 2026-05-24) and to [`ROADMAP.md`](./ROADMAP.md) / [`TODO.md`](./TODO.md). The v0.0.1 plan's competitive landscape (NUKEMAP, Asteroid Launcher, NOAA MOST, GeoClaw, FUNWAVE-TVD, JAGURS) and citation evidence remain accurate and are **not** repeated here. This document is the fresh post-v0.2.1 audit-driven plan for what comes next.
+> **Companion** to the original [`RESEARCH_FEATURE_PLAN_v0.0.1.md`](./RESEARCH_FEATURE_PLAN_v0.0.1.md) (written against the v0.0.1 scaffold at commit `91c360c`, 2026-05-24) and to [`../../ROADMAP.md`](../../ROADMAP.md) / [`../../TODO.md`](../../TODO.md). The v0.0.1 plan's competitive landscape (NUKEMAP, Asteroid Launcher, NOAA MOST, GeoClaw, FUNWAVE-TVD, JAGURS) and citation evidence remain accurate and are **not** repeated here. This document is the fresh post-v0.2.1 audit-driven plan for what comes next.
 >
 > **Last refreshed:** 2026-05-25, against repo state at commit `ef90dc8` (`v0.2.1` tagged, release workflow `26405597335` in flight).
 > **Confidence labels:** *Verified* (read in code or run), *Likely* (inferred from strong evidence), *Assumption* (unverified — flagged with verification step), *Needs live validation* (requires a Windows/macOS/Linux runtime to confirm).
@@ -35,7 +35,7 @@ Everything below is implementation-ready: every recommendation has a verified fi
 ### Repo files inspected (full read this session)
 
 **Root configs / docs**
-- `README.md` (now v0.2.1, sync'd) · `CHANGELOG.md` (now contains [0.2.1] section) · `ROADMAP.md` · `TODO.md` · `RESEARCH_FEATURE_PLAN.md` (the v0.0.1-era plan)
+- `README.md` (now v0.2.1, sync'd) · `CHANGELOG.md` (now contains [0.2.1] section) · `ROADMAP.md` · `TODO.md` · `RESEARCH_FEATURE_PLAN_v0.0.1.md` (the v0.0.1-era plan)
 - `package.json` · `package-lock.json` · `tsconfig.json` · `tsconfig.node.json` · `vite.config.ts` · `index.html` · `.env.example` · `.gitignore`
 - `CONTRIBUTING.md` · `SECURITY.md` · `LICENSE`
 - `.github/workflows/{ci,release}.yml` · `.github/dependabot.yml` · `.github/ISSUE_TEMPLATE/*.yml` · `.github/PULL_REQUEST_TEMPLATE.md`
@@ -288,7 +288,7 @@ The competitive positioning claim from the v0.0.1 plan ("no existing product com
 ### F-V01 — Validation harness against analytical + published-sim benchmarks (P0)
 
 - **Problem solved**: There is currently no quantitative evidence that the SWE solver agrees with any standard reference. The README claims "NOAA-grade physics" but no published-simulation comparison has run. Without this, the project remains "scaffold-quality science" to a reviewing scientist.
-- **Evidence**: `RESEARCH_FEATURE_PLAN.md` Phase 5 DoD: "Chicxulub simulation matches Range et al. 2022 AGU Advances wave heights to within 25% at the named coastal sample points." Currently unscored. `docs/science/README.md` lists validation targets — all unverified.
+- **Evidence**: `RESEARCH_FEATURE_PLAN_v0.0.1.md` Phase 5 DoD: "Chicxulub simulation matches Range et al. 2022 AGU Advances wave heights to within 25% at the named coastal sample points." Currently unscored. `docs/science/README.md` lists validation targets — all unverified.
 - **Proposed behavior**: A new `cargo test --release --features validation` target runs:
   1. **Stoker 1957 dam-break** analytical: 1D rectangular channel, sudden release. Compare `physics/solver` 1D slice against `2/3 √(g h0) · t`. Acceptable error: ±5% on wave-front position at t = 5, 10, 20 s.
   2. **Carrier & Greenspan 1958 plane-beach runup**: closed-form runup for a solitary wave on a plane beach. Compare `synolakis_runup_m` for `H/d ∈ [0.005, 0.5]` against the Carrier-Greenspan analytical. Acceptable error: ±10%.
@@ -337,7 +337,7 @@ The competitive positioning claim from the v0.0.1 plan ("no existing product com
 ### F-V05 — `wgpu` compute SWE solver (P1)
 
 - **Problem solved**: CPU leapfrog tops out at ~200×200 grids for interactive (~30 s) runs. A full GEBCO 4 arc-min resolution covering a Chicxulub-class basin needs ~2000×2000 cells — currently 100× too slow. The WGSL kernel already exists in `physics/solver/kernels.rs` waiting to be compiled.
-- **Evidence**: `kernels::SWE_LEAPFROG_WGSL` is a complete kernel; `solver/mod.rs::run_simulation` runs the CPU path; `ROADMAP.md` Phase 4 + `RESEARCH_FEATURE_PLAN.md` P0.2 both call this out. Qin et al. 2019 reports 3.6–6.4× on a single GPU vs. 16-core CPU for GeoClaw — `wgpu` should land in the same band.
+- **Evidence**: `kernels::SWE_LEAPFROG_WGSL` is a complete kernel; `solver/mod.rs::run_simulation` runs the CPU path; `ROADMAP.md` Phase 4 + `RESEARCH_FEATURE_PLAN_v0.0.1.md` P0.2 both call this out. Qin et al. 2019 reports 3.6–6.4× on a single GPU vs. 16-core CPU for GeoClaw — `wgpu` should land in the same band.
 - **Proposed behavior**: Add `wgpu` + `pollster` to `Cargo.toml`. Create `physics/solver/gpu.rs` with a `GpuTimeStepper` that compiles `SWE_LEAPFROG_WGSL`, sets up ping-pong storage buffers for `(η, u, v)`, dispatches `((nx+7)/8, (ny+7)/8)` workgroups per step. New `SimulateGridRequest.use_gpu: bool` (default true on capable hardware, fall back to CPU on failure).
 - **Implementation**: `src-tauri/src/physics/solver/gpu.rs` (new), `src-tauri/Cargo.toml` deps, `src-tauri/src/commands.rs::simulate_grid` dispatcher. Provide an `--features gpu` cargo feature so Linux/CI without a GPU can still test the CPU path.
 - **Risks**:
@@ -682,7 +682,7 @@ Implementation-ready checklist. Each item ties to a section above for the full r
 
 - [ ] **P0 — Validation harness (F-V01)**
   - Why: Removes the "no quantitative agreement with any reference" gap that blocks the project from being taken seriously by researchers.
-  - Evidence: `RESEARCH_FEATURE_PLAN.md` Phase 5 DoD; `docs/science/README.md` validation targets — all unverified today.
+  - Evidence: `RESEARCH_FEATURE_PLAN_v0.0.1.md` Phase 5 DoD; `docs/science/README.md` validation targets — all unverified today.
   - Touches: `src-tauri/src/physics/validation.rs` (new), `docs/science/VALIDATION.md` (new), `Cargo.toml` `[features] validation`.
   - Acceptance: `cargo test --release --features validation` green on all three targets (Stoker ±5%, Carrier-Greenspan ±10%, Range Chicxulub OOM).
   - Verify: `cd src-tauri && cargo test --release --features validation -- validation::`.
@@ -780,8 +780,8 @@ Implementation-ready checklist. Each item ties to a section above for the full r
 
 ### Phase 1.0.0 — Research-grade
 
-- [ ] **P3 — Boussinesq dispersive solver** (`RESEARCH_FEATURE_PLAN.md` Phase 5)
-- [ ] **P3 — Adaptive Mesh Refinement** (`RESEARCH_FEATURE_PLAN.md` Phase 5)
+- [ ] **P3 — Boussinesq dispersive solver** (`RESEARCH_FEATURE_PLAN_v0.0.1.md` Phase 5)
+- [ ] **P3 — Adaptive Mesh Refinement** (`RESEARCH_FEATURE_PLAN_v0.0.1.md` Phase 5)
 - [ ] **P3 — Population casualty overlay** (`TODO.md` F14 — heavy disclaimer required)
 
 ---
@@ -839,4 +839,4 @@ Everything else has been answered by inspecting the repo, the code, the docs, th
 
 ---
 
-*End of research and feature plan v0.3.0. Generated 2026-05-25 against commit `ef90dc8` (`v0.2.1`). Companion to `RESEARCH_FEATURE_PLAN.md` (v0.0.1 baseline), `ROADMAP.md` (canonical phased plan), and `TODO.md` (granular checklist).*
+*End of research and feature plan v0.3.0. Generated 2026-05-25 against commit `ef90dc8` (`v0.2.1`). Companion to `RESEARCH_FEATURE_PLAN_v0.0.1.md` (v0.0.1 baseline), `ROADMAP.md` (canonical phased plan), and `TODO.md` (granular checklist).*

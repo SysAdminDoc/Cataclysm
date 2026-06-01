@@ -1,6 +1,6 @@
 # TsunamiSimulator
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -201,7 +201,9 @@ See [`docs/science/`](./docs/science) for formula derivations and citations.
 ## Roadmap & research
 
 - [`ROADMAP.md`](./ROADMAP.md) — phased delivery plan (v0.1.0 → v1.0.0).
-- [`RESEARCH_FEATURE_PLAN.md`](./RESEARCH_FEATURE_PLAN.md) — evidence-backed feature plan with competitive research (NUKEMAP, Asteroid Launcher, NOAA MOST, GeoClaw, BROWNI, FUNWAVE-TVD, JAGURS), prioritized roadmap, and recommendations grounded in peer-reviewed physics literature.
+- [`COMPLETED.md`](./COMPLETED.md) — shipped feature summary.
+- [`RESEARCH_REPORT.md`](./RESEARCH_REPORT.md) — current research synthesis.
+- [`docs/history/`](./docs/history/) — archived research plans, including the v0.4.0 forward plan.
 
 ## License
 

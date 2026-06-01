@@ -1,15 +1,21 @@
 # Project Research and Feature Plan
 
+> **Archive note (2026-06-01):** This v0.4.0 forward plan is retained as
+> historical evidence and implementation context. The active delivery plan lives
+> in [`../../ROADMAP.md`](../../ROADMAP.md), shipped work is summarized in
+> [`../../COMPLETED.md`](../../COMPLETED.md), and current research synthesis
+> lives in [`../../RESEARCH_REPORT.md`](../../RESEARCH_REPORT.md).
+
 > Active research evidence + forward-looking proposals backing
-> [`ROADMAP.md`](./ROADMAP.md) (canonical phased plan). Historical
+> [`../../ROADMAP.md`](../../ROADMAP.md) (canonical phased plan). Historical
 > research from earlier phases is archived under
-> [`docs/history/`](./docs/history/) and remains valid for the time
+> [`docs/history/`](./) and remains valid for the time
 > windows it documents:
 >
-> - [`docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md) —
+> - [`RESEARCH_FEATURE_PLAN_v0.0.1.md`](./RESEARCH_FEATURE_PLAN_v0.0.1.md) —
 >   scaffold-era competitive research (NUKEMAP / Asteroid Launcher /
 >   NOAA MOST / GeoClaw / FUNWAVE-TVD / JAGURS landscape). Still accurate.
-> - [`docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md) —
+> - [`RESEARCH_FEATURE_PLAN_v0.3.0.md`](./RESEARCH_FEATURE_PLAN_v0.3.0.md) —
 >   v0.3.0 forward plan written 2026-05-25 against `ef90dc8` (v0.2.1).
 >   Defined F-V01..F-V13 + I-V01..I-V10; 15 of 23 shipped on `main`
 >   during the autonomous Phase 0.3.0 batch (now reflected in
@@ -710,8 +716,8 @@ These remain the same 4 open questions from the v0.3.0 plan plus 3 new ones surf
 ---
 
 *End of research and feature plan v0.4.0+. Generated 2026-05-25 against commit `28d9242`. Companions:*
-- *[`docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.0.1.md) — v0.0.1 competitive landscape (archived)*
-- *[`docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md`](./docs/history/RESEARCH_FEATURE_PLAN_v0.3.0.md) — v0.3.0 forward plan, 15 of 23 items shipped (archived)*
+- *[`RESEARCH_FEATURE_PLAN_v0.0.1.md`](./RESEARCH_FEATURE_PLAN_v0.0.1.md) — v0.0.1 competitive landscape (archived)*
+- *[`RESEARCH_FEATURE_PLAN_v0.3.0.md`](./RESEARCH_FEATURE_PLAN_v0.3.0.md) — v0.3.0 forward plan, 15 of 23 items shipped (archived)*
 - *[`ROADMAP.md`](./ROADMAP.md) — canonical phased plan (source of truth)*
 - *[`CHANGELOG.md`](./CHANGELOG.md) — shipped + unreleased state*
 - *[`docs/science/VALIDATION.md`](./docs/science/VALIDATION.md) — quantitative validation harness*
