@@ -27,7 +27,7 @@ serde_json = "1.0"
 # the v0.3.0 wgpu work where the kernel binding layout maps cleanly to it).
 rayon = "1.10"
 base64 = "0.22"
-png = "0.17"
+png = "0.18"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

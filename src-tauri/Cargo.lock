@@ -3923,7 +3923,7 @@ version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "bytemuck",
- "png 0.17.16",
+ "png 0.18.1",
  "pollster",
  "rayon",
  "serde",
