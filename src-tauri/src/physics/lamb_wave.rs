@@ -102,6 +102,13 @@ impl LambWaveSource {
         // Half-width: pulse FWHM ~ 2 σ over c_L. With source_radius_m
         // as σ, the pulse passes the observer in ~2σ/c_L seconds.
         let half_width_s = self.source_radius_m / LAMB_WAVE_SPEED_M_S;
+        // A zero (or non-finite) source radius collapses the pulse window to a
+        // point: the `|Δt| > 0` guard is false exactly at arrival, and the
+        // cosine envelope below would evaluate `cos(π·0/0) = cos(NaN) = NaN`.
+        // Treat a degenerate pulse as no contribution.
+        if !half_width_s.is_finite() || half_width_s <= 0.0 {
+            return 0.0;
+        }
         if (time_s - arrival_t).abs() > half_width_s {
             return 0.0;
         }
@@ -156,5 +163,16 @@ mod tests {
         // 310² / 9.81 ≈ 9799 m. Matches Carvajal 2022 finding that
         // Pacific basin amplification was strongest over ~9.8 km bathymetry.
         assert!(h > 9_000.0 && h < 10_500.0, "Proudman depth {} m off published", h);
+    }
+
+    #[test]
+    fn zero_source_radius_does_not_nan() {
+        let s = LambWaveSource { peak_pressure_pa: 200.0, source_radius_m: 0.0 };
+        let range = 1_000_000.0;
+        let arrival_t = s.arrival_time_s(range);
+        // Exactly at arrival is the degenerate case that produced cos(NaN).
+        let eta = s.surface_depression_m(range, arrival_t);
+        assert!(eta.is_finite(), "depression must be finite, got {eta}");
+        assert_eq!(eta, 0.0);
     }
 }

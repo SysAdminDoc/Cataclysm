@@ -74,8 +74,12 @@ impl NuclearBurst {
     /// For a near-surface burst (depth ~0) the cavity is "vented" and the
     /// effective radius is approximated by the Le Méhauté & Wang 1996 scaling.
     pub fn cavity_radius_m(&self) -> f64 {
-        let w_kt = self.yield_kt;
-        let p_h_atm = 1.0 + (self.burst_depth_m / 10.0); // each 10 m water = ~1 atm
+        let w_kt = self.yield_kt.max(0.0);
+        // Hydrostatic pressure at/above the surface can never drop below 1 atm,
+        // so floor it: a (mis-entered) negative burst depth would otherwise make
+        // p_h_atm ≤ 0 → division by zero (+inf radius) or a cube-root of a
+        // negative number (NaN radius), poisoning the amplitude path.
+        let p_h_atm = (1.0 + self.burst_depth_m / 10.0).max(1.0); // each 10 m water ≈ 1 atm
         let base = 13.6 * w_kt.powf(1.0 / 3.0) / p_h_atm.powf(1.0 / 3.0);
         match self.burst_mode {
             BurstMode::Surface => 0.5 * base,
@@ -131,8 +135,7 @@ impl NuclearBurst {
     /// We use 1% coupling efficiency to ground motion (Glasstone & Dolan §6.92).
     pub fn seismic_mw_equivalent(&self) -> f64 {
         let radiated_j = 0.01 * self.energy_j();
-        let m0 = radiated_j / 5.0e-5;
-        (2.0 / 3.0) * (m0.log10() - 9.1)
+        super::mw_from_radiated_j(radiated_j)
     }
 
     pub fn initial_displacement(&self) -> InitialDisplacement {

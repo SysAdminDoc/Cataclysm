@@ -292,8 +292,16 @@ pub fn all_presets() -> Vec<Preset> {
     ]
 }
 
+/// Process-wide cached registry. `all_presets()` rebuilds (and heap-allocates)
+/// the full Vec on every call; `find_preset` is invoked on every `run_preset`,
+/// so back lookups with a `OnceLock` and clone only the single match.
+fn presets_cached() -> &'static [Preset] {
+    static CACHE: std::sync::OnceLock<Vec<Preset>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(all_presets)
+}
+
 pub fn find_preset(id: &str) -> Option<Preset> {
-    all_presets().into_iter().find(|p| p.id == id)
+    presets_cached().iter().find(|p| p.id == id).cloned()
 }
 
 #[cfg(test)]
@@ -325,6 +333,53 @@ mod tests {
                     p.id
                 );
             }
+        }
+    }
+
+    /// Every shipped preset must satisfy the same input bounds the live
+    /// `*_initial_conditions` IPC commands enforce, so the curated preset path
+    /// can never describe an event the custom-scenario path would reject.
+    #[test]
+    fn every_preset_source_is_within_command_bounds() {
+        for p in all_presets() {
+            let id = p.id;
+            match &p.source {
+                PresetSource::Asteroid(a) => {
+                    assert!(a.diameter_m > 0.0, "{id}: diameter");
+                    assert!(a.density_kg_m3 > 0.0, "{id}: density");
+                    assert!(a.velocity_m_s > 0.0, "{id}: velocity");
+                    assert!(a.angle_deg > 0.0 && a.angle_deg <= 90.0, "{id}: angle {}", a.angle_deg);
+                    assert!((0.0..=12_000.0).contains(&a.water_depth_m), "{id}: water_depth");
+                }
+                PresetSource::Nuclear(n) => {
+                    assert!(n.yield_kt > 0.0 && n.yield_kt <= 1.0e7, "{id}: yield {}", n.yield_kt);
+                    assert!((0.0..=12_000.0).contains(&n.burst_depth_m), "{id}: burst_depth");
+                    assert!((0.0..=12_000.0).contains(&n.water_depth_m), "{id}: water_depth");
+                }
+                PresetSource::Earthquake(e) => {
+                    assert!((4.0..=10.5).contains(&e.mw), "{id}: mw {}", e.mw);
+                    assert!((0.0..=700_000.0).contains(&e.depth_m), "{id}: depth");
+                    assert!(e.dip_deg >= 0.0 && e.dip_deg <= 90.0, "{id}: dip");
+                    assert!(e.slip_m >= 0.0, "{id}: slip");
+                }
+                PresetSource::Landslide(l) => {
+                    assert!(l.volume_m3 > 0.0, "{id}: volume");
+                    assert!(l.density_kg_m3 > 0.0, "{id}: density");
+                    assert!(l.drop_height_m >= 0.0, "{id}: drop_height");
+                    assert!(l.slope_deg >= 0.0 && l.slope_deg <= 90.0, "{id}: slope");
+                    assert!(l.water_depth_m > 0.0, "{id}: water_depth");
+                    assert!(l.water_body_width_m > 0.0, "{id}: water_body_width");
+                }
+            }
+            // Location domain matches check_lat_lon (lat ±90, lon ±180).
+            let loc = match &p.source {
+                PresetSource::Asteroid(a) => a.location,
+                PresetSource::Nuclear(n) => n.location,
+                PresetSource::Earthquake(e) => e.location,
+                PresetSource::Landslide(l) => l.location,
+            };
+            assert!(loc.lat_deg.abs() <= 90.0, "{id}: lat {}", loc.lat_deg);
+            assert!(loc.lon_deg.abs() <= 180.0, "{id}: lon {}", loc.lon_deg);
         }
     }
 

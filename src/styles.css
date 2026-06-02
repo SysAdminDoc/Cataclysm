@@ -315,6 +315,78 @@ a:focus-visible,
   background: color-mix(in srgb, var(--surface0) 74%, transparent);
 }
 
+/* Ephemeral status toast (exports, IPC errors) — fixed, top-centre, above
+   every overlay so a failure is never silent. */
+.app-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(560px, 92vw);
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--sapphire) 12%, var(--mantle));
+  border: 1px solid color-mix(in srgb, var(--sapphire) 40%, var(--panel-border));
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--crust) 55%, transparent);
+}
+.app-toast[data-tone="error"] {
+  background: color-mix(in srgb, var(--red) 12%, var(--mantle));
+  border-color: color-mix(in srgb, var(--red) 45%, var(--panel-border));
+}
+.app-toast__dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  color: var(--overlay);
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 26px;
+  width: 26px;
+  padding: 0;
+  border-radius: var(--r-sm);
+}
+.app-toast__dismiss:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface0) 74%, transparent);
+}
+
+/* Inline panel error (e.g. preset list failed to load) with a retry. */
+.panel-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--red) 10%, var(--mantle));
+  border: 1px solid color-mix(in srgb, var(--red) 36%, var(--panel-border));
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.panel-error > span {
+  flex: 1;
+}
+.panel-error button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--r-sm);
+  background: var(--red);
+  color: var(--crust);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
 /* Screen-reader-only utility. Used by aria-live announcer regions whose
    content should reach assistive tech but not be visible on screen.
    Standard "visually-hidden" pattern (Tailwind / Bootstrap equivalent). */

@@ -29,6 +29,10 @@ export type ScenarioSlot = {
   setRunupResults: (r: RunupAtPointResult[]) => void;
   busyPresetId: string | null;
   simulate: (input: ScenarioInput) => void;
+  /** Last preset/scenario IPC failure, surfaced to the user. Cleared on the
+   *  next successful (or newly-started) request. */
+  error: string | null;
+  clearError: () => void;
 };
 
 /**
@@ -42,6 +46,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const [sweSnapshot, setSweSnapshot] = useState<GridSnapshot | null>(null);
   const [runupResults, setRunupResults] = useState<RunupAtPointResult[]>([]);
   const [busyPresetId, setBusyPresetId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   // Monotonic request id — only the most recent runPreset response is
   // allowed to commit. Stops a slow earlier call from overwriting a fast
   // later one on rapid timeline scrubs.
@@ -67,6 +72,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     runPresetReqIdRef.current += 1;
     const reqId = runPresetReqIdRef.current;
     setBusyPresetId(activePresetId);
+    setError(null);
     if (!inTauri) {
       window.setTimeout(() => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
@@ -88,6 +94,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       .catch((err) => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         console.error("runPreset failed", err);
+        setError(`Couldn't load this preset: ${String(err)}`);
       })
       .finally(() => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
@@ -103,6 +110,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       runPresetReqIdRef.current += 1;
       setBusyPresetId(null);
       setActivePresetId(null);
+      setError(null);
       if (!inTauri) {
         const d = demoInitialForScenario(input);
         setInitial(d);
@@ -130,6 +138,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
         .catch((err) => {
           if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
           console.error(`${input.kind} initial_conditions failed`, err);
+          setError(`Couldn't simulate this ${input.kind.toLowerCase()} scenario: ${String(err)}`);
         });
     },
     [inTauri],
@@ -153,6 +162,8 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     setRunupResults,
     busyPresetId,
     simulate,
+    error,
+    clearError: () => setError(null),
   };
 }
 

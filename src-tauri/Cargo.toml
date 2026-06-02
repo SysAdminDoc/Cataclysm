@@ -41,7 +41,7 @@ validation = []
 # integrated GPU adapter on the host. Falls back to CPU on adapter
 # failure. Off by default — Linux CI runners may not have a usable
 # Vulkan/Metal device.
-gpu = ["dep:wgpu", "dep:pollster"]
+gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
 
 [dependencies.wgpu]
 version = "26.0"
@@ -52,6 +52,13 @@ features = ["wgsl"]
 [dependencies.pollster]
 version = "0.4"
 optional = true
+
+# Zero-copy casting of the f32 grid buffers + the `GpuParams` uniform struct.
+# Only pulled in with the `gpu` feature (gpu.rs is the sole user).
+[dependencies.bytemuck]
+version = "1"
+optional = true
+features = ["derive"]
 
 [profile.release]
 opt-level = 3
