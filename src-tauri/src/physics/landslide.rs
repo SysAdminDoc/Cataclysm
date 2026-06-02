@@ -130,9 +130,11 @@ impl LandslideSource {
     /// Equivalent seismic moment magnitude. Landslide slides radiate ~0.1% of
     /// kinetic energy seismically (Eissler & Kanamori 1987).
     pub fn seismic_mw_equivalent(&self) -> f64 {
+        // A subaerial/submarine slide entered with drop_height_m = 0 yields
+        // zero free-fall velocity and therefore zero kinetic energy; the
+        // floored helper keeps Mw finite (→ very small) instead of -inf.
         let radiated_j = 1.0e-3 * self.kinetic_energy_j();
-        let m0 = radiated_j / 5.0e-5;
-        (2.0 / 3.0) * (m0.log10() - 9.1)
+        super::mw_from_radiated_j(radiated_j)
     }
 
     pub fn initial_displacement(&self) -> InitialDisplacement {
@@ -204,5 +206,27 @@ mod tests {
             d.peak_amplitude_m
         );
         assert!(d.source_energy_j > 1.0e14, "Lituya energy too low");
+    }
+
+    /// A submarine slope-failure entered with drop_height_m = 0 has zero
+    /// free-fall energy. The displacement snapshot must stay fully finite —
+    /// the seismic Mw used to be -inf (log10 of zero energy), which then
+    /// serialised over IPC and surfaced as a non-finite magnitude in the UI.
+    #[test]
+    fn zero_drop_height_keeps_displacement_finite() {
+        let s = LandslideSource {
+            kind: LandslideKind::Submarine,
+            volume_m3: 1.0e9,
+            density_kg_m3: 2500.0,
+            drop_height_m: 0.0,
+            slope_deg: 10.0,
+            water_depth_m: 1000.0,
+            water_body_width_m: 5000.0,
+            location: GeoPoint { lat_deg: 0.0, lon_deg: 0.0, depth_m: 1000.0 },
+        };
+        let d = s.initial_displacement();
+        assert!(d.seismic_mw_equivalent.is_finite(), "Mw must be finite, got {}", d.seismic_mw_equivalent);
+        assert!(d.peak_amplitude_m.is_finite());
+        assert!(d.source_energy_j.is_finite());
     }
 }

@@ -4,7 +4,7 @@
 //! - [`asteroid`] — Ward & Asphaug 2000, Schmidt & Holsapple 1982 cavity scaling.
 //! - [`nuclear`]  — Glasstone & Dolan 1977 + Le Méhauté 1996 + DNA 1996 efficiency.
 //! - [`landslide`] — Fritz & Hager 2001 (Lituya); Slingerland & Voight.
-//! - [`earthquake`] — Okada 1985 fault dislocation (scaffold).
+//! - [`earthquake`] — Okada 1985 fault dislocation (see [`okada`]).
 //!
 //! ## Propagation + runup
 //! - [`shallow_water`] — linear long-wave dispersion, Synolakis 1987 runup,
@@ -27,6 +27,21 @@ pub mod solver;
 pub mod validation;
 
 use serde::{Deserialize, Serialize};
+
+/// Equivalent seismic moment magnitude from radiated seismic energy (J),
+/// via the Gutenberg-Richter energy relation inverted into Hanks-Kanamori
+/// `Mw = (2/3)·(log10 M0 − 9.1)` with `M0 = E_s / 5e-5`.
+///
+/// The argument is floored to `f64::MIN_POSITIVE` before `log10` so a zero
+/// or negative energy (e.g. a landslide with `drop_height_m = 0`, which the
+/// IPC layer currently admits) can never produce `-inf`/`NaN` and poison the
+/// `InitialDisplacement` snapshot that is serialised to the UI. Callers should
+/// still pass non-negative energy; this is a defensive floor, not a license to
+/// feed garbage.
+pub(crate) fn mw_from_radiated_j(radiated_j: f64) -> f64 {
+    let m0 = (radiated_j / 5.0e-5).max(f64::MIN_POSITIVE);
+    (2.0 / 3.0) * (m0.log10() - 9.1)
+}
 
 /// A point on Earth's surface (WGS84, degrees, with sea-level reference).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

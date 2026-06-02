@@ -26,7 +26,7 @@
         { "url": "https://www.nature.com/*" },
         { "url": "https://www.researchgate.net/*" },
         { "url": "https://www.sciencedirect.com/*" },
-        { "url": "https://www.forbes.com/*" },
+        { "url": "https://www.forbes.com/sites/davidhambling/*" },
         { "url": "http://www.tsunamisociety.org/*" },
         { "url": "http://library.lanl.gov/*" },
         { "url": "https://nuclearsecrecy.com/*" },
@@ -38,7 +38,8 @@
         { "url": "https://portal.opentopography.org/*" },
         { "url": "https://www.naturalearthdata.com/*" },
         { "url": "https://www.clawpack.org/*" },
-        { "url": "https://github.com/SysAdminDoc/TsunamiSimulator*" }
+        { "url": "https://github.com/SysAdminDoc/TsunamiSimulator" },
+      { "url": "https://github.com/SysAdminDoc/TsunamiSimulator/*" }
       ]
     }
   ]

@@ -611,8 +611,16 @@ impl TimeStepper {
         // so a long-running simulation doesn't reflect the wavefront
         // back into the source.
         if let BoundaryMode::Sponge { width_cells } = self.boundary {
-            if width_cells > 0 && width_cells * 2 < nx && width_cells * 2 < ny {
-                apply_sponge(&mut eta_new, &mut u_new, &mut v_new, nx, ny, width_cells);
+            // Clamp the rim width to what the grid can hold (leaving at least
+            // one interior cell on each axis) rather than silently disabling
+            // the absorbing boundary on small grids — which used to revert them
+            // to reflective edges with no indication, bouncing the wavefront
+            // back into the source.
+            let w = width_cells
+                .min(nx.saturating_sub(1) / 2)
+                .min(ny.saturating_sub(1) / 2);
+            if w > 0 {
+                apply_sponge(&mut eta_new, &mut u_new, &mut v_new, nx, ny, w);
             }
         }
 

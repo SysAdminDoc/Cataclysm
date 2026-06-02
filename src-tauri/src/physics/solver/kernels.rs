@@ -1,21 +1,25 @@
-//! WGSL kernel source code, embedded as a string constant. v0.2.0 will
-//! compile this into a `wgpu::ShaderModule` and dispatch it from
-//! [`TimeStepper::step`](super::TimeStepper::step).
+//! WGSL kernel source code, embedded as a string constant. When the crate is
+//! built with `--features gpu` this is compiled into a `wgpu::ShaderModule`
+//! and dispatched by [`super::gpu::GpuTimeStepper`].
 //!
-//! The kernel implements one leapfrog step of the depth-averaged shallow-
-//! water equations on a regular lat-lon grid. Inputs: bathymetry texture
-//! `h`, two ping-pong textures for the staggered C-grid quantities
-//! `(η, u, v)`. Output: updated `(η, u, v)` written to the back buffer.
+//! The kernel implements one leapfrog step of the depth-averaged shallow-water
+//! equations on a regular lat-lon grid. Data layout is **collocated** (A-grid),
+//! all quantities in flat `array<f32>` storage buffers (not textures, not a
+//! staggered C-grid): bindings 1-4 read `h`/`η`/`u`/`v`, bindings 5-7 write the
+//! updated `(η, u, v)`.
 //!
-//! For v0.1.x this is just the source text; nothing compiles it yet. The
-//! file lives next to the Rust scaffold so a future WGSL syntax check
-//! (`naga-cli`) can be wired into CI.
+//! NOTE: this kernel intentionally implements only the *linear* momentum form
+//! with reflective (zero-normal-flux) edges and **no** land masking or sponge
+//! damping — unlike the CPU [`super::TimeStepper`] default
+//! (`SolverMode::Nonlinear` + `BoundaryMode::Sponge` + `LAND_DEPTH_THRESHOLD_M`
+//! masking). The dispatcher (`commands::run_simulation_dispatch`) therefore only
+//! routes a run to the GPU when those CPU-only features are not in play; see
+//! that function before porting work here.
 
-/// Leapfrog SWE update kernel. Workgroup size 8×8 (64 invocations) over an
-/// `(nx, ny)` grid. Boundary cells reflect (zero-normal-flux); coastal
-/// wet/dry handling is deferred to v0.4.0.
+/// Linear leapfrog SWE update kernel. Workgroup size 8×8 (64 invocations) over
+/// an `(nx, ny)` collocated grid. Boundary cells reflect (zero-normal-flux).
 pub const SWE_LEAPFROG_WGSL: &str = r#"
-// TsunamiSimulator — shallow-water leapfrog kernel (scaffold, v0.1.x)
+// TsunamiSimulator — shallow-water leapfrog kernel (linear, collocated A-grid)
 // Reference: Mader 1988 "Numerical Modelling of Water Waves", chapter 3
 // Reference: Kowalik & Murty 1993 "Numerical Modeling of Ocean Dynamics"
 

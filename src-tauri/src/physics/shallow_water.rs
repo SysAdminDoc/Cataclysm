@@ -69,9 +69,18 @@ pub fn synolakis_runup_m(offshore_amplitude_m: f64, offshore_depth_m: f64, beach
         return 0.0;
     }
     let amp = offshore_amplitude_m.abs();
+    // Breaking gate: the Synolakis 1987 closed form is valid for H/d ≲ 0.78
+    // (Miche/McCowan). Above it the wave breaks offshore and run-up saturates,
+    // so we clamp the ratio that drives the (H/d)^(5/4) term.
     let h_over_d = (amp / offshore_depth_m).min(0.78);
     let cot_beta = 1.0 / beach_slope_deg.to_radians().tan().max(1e-6);
-    2.831 * cot_beta.sqrt() * h_over_d.powf(5.0 / 4.0) * amp
+    // Synolakis 1987 / Carrier-Greenspan 1958: R/d = 2.831·√(cot β)·(H/d)^(5/4),
+    // i.e. R = d · 2.831·√(cot β)·(H/d)^(5/4). The amplification scales with the
+    // *offshore depth* d, not the amplitude — multiplying by `amp` here was a
+    // long-standing bug that under-predicted run-up by a factor of d/H and made
+    // the feature-gated `synolakis_matches_carrier_greenspan_envelope` validation
+    // fail by up to 100 %.
+    2.831 * cot_beta.sqrt() * h_over_d.powf(5.0 / 4.0) * offshore_depth_m
 }
 
 /// Whether a wave at the given amplitude / depth ratio is past the breaking
@@ -160,26 +169,35 @@ mod tests {
     #[test]
     fn synolakis_amplifies_for_mild_slope() {
         // 10-m wave, 50-m offshore depth, 2° beach (representative Pacific
-        // shelf approach for a large near-field tsunami). H/d = 0.2 puts us
-        // above the amplification threshold for this slope.
+        // shelf approach for a large near-field tsunami). For the canonical
+        // R/d = 2.831·√(cot β)·(H/d)^(5/4) form this gives ≈101 m — a strong
+        // amplification that mild slopes are known to produce.
         let r = synolakis_runup_m(10.0, 50.0, 2.0);
-        // Mild slopes amplify — expect ~1.5× to 5× the offshore amplitude
-        // before the H/d=0.78 breaking cap kicks in.
         assert!(
-            (12.0..50.0).contains(&r),
-            "Synolakis runup {} m outside expected 12–50 m band",
+            (80.0..130.0).contains(&r),
+            "Synolakis runup {} m outside expected 80–130 m band",
             r
         );
     }
 
-    /// Tiny offshore amplitudes on the same slope should NOT amplify above
-    /// the offshore amplitude — the Synolakis formula only amplifies once
-    /// H/d crosses ~0.116 for a 2° slope, so a 1 m wave on 50 m water gives
-    /// a runup well under 1 m. Sanity-check that.
+    /// The implementation must reproduce the Synolakis 1987 closed form
+    /// exactly (R = 2.831·√(cot β)·H^(5/4)/d^(1/4)) below the breaking limit.
+    /// This is the non-feature-gated mirror of the `validation` harness so a
+    /// regression in the formula is caught by the default `cargo test` run.
     #[test]
-    fn synolakis_does_not_amplify_below_threshold() {
-        let r = synolakis_runup_m(1.0, 50.0, 2.0);
-        assert!(r < 1.0, "Synolakis runup {} should not amplify (H/d=0.02)", r);
+    fn synolakis_matches_closed_form() {
+        let depth_m: f64 = 50.0;
+        let slope_deg: f64 = 2.0;
+        let cot_beta = 1.0 / slope_deg.to_radians().tan();
+        for &amp in &[0.5_f64, 1.0, 2.5, 5.0, 10.0] {
+            // Stay below the H/d = 0.78 breaking clamp for all cases here.
+            let expected = 2.831 * cot_beta.sqrt() * amp.powf(5.0 / 4.0) / depth_m.powf(1.0 / 4.0);
+            let got = synolakis_runup_m(amp, depth_m, slope_deg);
+            assert!(
+                (got - expected).abs() / expected < 1e-9,
+                "synolakis({amp}, {depth_m}, {slope_deg}) = {got}, expected {expected}"
+            );
+        }
     }
 
     #[test]

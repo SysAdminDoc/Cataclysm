@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
@@ -115,6 +115,24 @@ function NumField({
   step?: number;
 }) {
   const b = BOUNDS[field];
+  // Hold an uncommitted text draft so the user can clear the field and retype
+  // intermediate states ("", "-", "1.", "1e") without each keystroke being
+  // clamped (Number("") === 0 used to snap the field to its minimum, making
+  // it effectively un-editable). We clamp + commit on blur, and re-sync from
+  // the prop when it changes externally (e.g. a globe pick).
+  const [draft, setDraft] = useState<string>(() => String(value));
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(String(value));
+  }, [value]);
+
+  function commit() {
+    const parsed = Number(draft);
+    const next = clamp(field, parsed);
+    onChange(next);
+    setDraft(String(next));
+  }
+
   return (
     <label>
       <span>
@@ -127,11 +145,18 @@ function NumField({
       </span>
       <input
         type="number"
-        value={value}
+        value={draft}
         step={step ?? "any"}
         min={b?.min}
         max={b?.max}
-        onChange={(e) => onChange(clamp(field, Number(e.target.value)))}
+        onFocus={() => {
+          focusedRef.current = true;
+        }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          focusedRef.current = false;
+          commit();
+        }}
       />
     </label>
   );

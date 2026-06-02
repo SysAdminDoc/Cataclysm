@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
@@ -12,7 +12,24 @@ const htmlEntry = path.resolve(__dirname, "index.html").replace(/\\/g, "/");
 // Tauri runs the frontend at a fixed port; mobile dev gets a hostname env var.
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig(async () => ({
+export default defineConfig(async ({ command, mode }) => {
+  // Guard against shipping a personal Cesium ion token: Vite statically inlines
+  // every VITE_-prefixed var into the client bundle, so a token left in .env
+  // during `tauri build` would be baked into the installer handed to end users
+  // (leaking the credential + burning its free-tier quota). The desktop app
+  // reads the token from the in-app Settings store instead. CI sets
+  // VITE_CESIUM_TOKEN="" so release builds are unaffected.
+  if (command === "build") {
+    const env = loadEnv(mode, process.cwd(), "");
+    if (env.VITE_CESIUM_TOKEN && env.VITE_CESIUM_TOKEN.trim() && !process.env.ALLOW_TOKEN_IN_BUNDLE) {
+      throw new Error(
+        "VITE_CESIUM_TOKEN is set and would be inlined into the distributable bundle.\n" +
+          "Unset it for production builds (the desktop app reads the token from the in-app\n" +
+          "Settings store), or set ALLOW_TOKEN_IN_BUNDLE=1 to override intentionally.",
+      );
+    }
+  }
+  return {
   plugins: [
     react(),
     viteStaticCopy({
@@ -66,4 +83,5 @@ export default defineConfig(async () => ({
       },
     },
   },
-}));
+  };
+});

@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isTauri } from "../lib/tauri";
 import type { Preset } from "../types/scenario";
 
@@ -18,9 +20,11 @@ function openUrl(url: string) {
 
 export function CitationsModal({ presets, onClose }: Props) {
   useEscapeKey(onClose);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
+      <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
         <header className="modal__header">
           <h2 id="citations-title">Citations & references</h2>
           <button onClick={onClose} aria-label="Close" className="modal__close">×</button>

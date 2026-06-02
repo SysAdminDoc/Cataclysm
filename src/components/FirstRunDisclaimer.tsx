@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { settings } from "../lib/settings";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /**
  * Shown once on first launch. After acknowledgement the timestamp is stored
@@ -7,6 +8,8 @@ import { settings } from "../lib/settings";
  */
 export function FirstRunDisclaimer() {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   useEffect(() => {
     settings.getDisclaimerAcknowledged().then((ack) => {
@@ -44,7 +47,7 @@ export function FirstRunDisclaimer() {
 
   return (
     <div className="modal-overlay">
-      <div className="modal modal--notice" role="dialog" aria-modal="true" aria-labelledby="first-run-title">
+      <div className="modal modal--notice" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="first-run-title">
         <header className="modal__header">
           <h2 id="first-run-title">Welcome to TsunamiSimulator</h2>
         </header>
