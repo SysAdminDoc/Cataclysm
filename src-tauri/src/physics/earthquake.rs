@@ -13,11 +13,13 @@
 //! approximation: initial water-surface displacement = vertical seafloor
 //! displacement (validated for wavelengths much longer than ocean depth).
 //!
-//! This scaffold provides an order-of-magnitude estimate from moment magnitude
-//! using Abe (1979) `log M0 = 1.5 M_w + 9.1`. A full Okada-1985 dislocation
-//! field (strike, dip, rake, slip, fault length × width, depth) is planned for
-//! v0.3.0 — it requires elliptic-integral evaluations that we'll add when the
-//! full propagation grid is in place.
+//! The full Okada-1985 dislocation field (strike, dip, rake, slip, fault
+//! length × width, depth) is implemented in [`super::okada`] and is the primary
+//! peak-amplitude source whenever `slip_m > 0` (see [`Self::initial_displacement`]).
+//! For slip-less, magnitude-only sources we fall back to the Geist-Dmowska 1999
+//! empirical `log(η₀) ≈ 0.5·M_w − 3.3`. (Okada 1985 is closed-form algebraic —
+//! no elliptic integrals; those appear only in the older Mansinha-Smylie 1971
+//! formulation.)
 
 use serde::{Deserialize, Serialize};
 
@@ -30,13 +32,13 @@ pub struct EarthquakeSource {
     pub mw: f64,
     /// Hypocentral depth, meters.
     pub depth_m: f64,
-    /// Fault strike, degrees clockwise from north. For Okada (planned).
+    /// Fault strike, degrees clockwise from north. Drives the Okada 1985 field.
     pub strike_deg: f64,
-    /// Fault dip, degrees from horizontal. For Okada (planned).
+    /// Fault dip, degrees from horizontal. Drives the Okada 1985 field.
     pub dip_deg: f64,
-    /// Slip rake, degrees. For Okada (planned).
+    /// Slip rake, degrees. Drives the Okada 1985 field.
     pub rake_deg: f64,
-    /// Average slip on the fault, meters. For Okada (planned).
+    /// Average slip on the fault, meters. Drives the Okada 1985 field.
     pub slip_m: f64,
     /// Fault length along strike, meters. Pass 0 to derive from Wells &
     /// Coppersmith 1994 scaling: `log L = 0.5·M_w − 1.85`.

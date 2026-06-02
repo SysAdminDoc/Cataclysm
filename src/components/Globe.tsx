@@ -36,6 +36,10 @@ type Props = {
   inspectIsImpact?: boolean;
   inspectTimeS?: number;
   onInspectCancel?: () => void;
+  /** Whether this is the primary (exportable) globe pane. Only the primary
+   *  pane keeps the WebGL backbuffer alive for PNG/share/video export — the
+   *  Slot B compare pane skips that per-frame cost. */
+  primary?: boolean;
 };
 
 const PICK_CURSOR_STYLE = "crosshair";
@@ -66,6 +70,7 @@ export function Globe({
   inspectIsImpact,
   inspectTimeS,
   onInspectCancel,
+  primary = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -82,6 +87,11 @@ export function Globe({
   const inspectEntityRef = useRef<Cesium.Entity | null>(null);
   const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
   const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
+  // Bumped each time the Viewer is (re)created. React 19 StrictMode mounts →
+  // unmounts → remounts in dev, which destroys the first Viewer; including this
+  // in every data effect's deps re-binds entities/imagery to the fresh Viewer
+  // instead of leaving the dev globe blank until the next prop change.
+  const [viewerEpoch, setViewerEpoch] = useState(0);
 
   // One-time viewer mount
   useEffect(() => {
@@ -104,7 +114,9 @@ export function Globe({
       fullscreenButton: false,
       selectionIndicator: false,
       infoBox: false,
-      contextOptions: { webgl: { preserveDrawingBuffer: true } },
+      // Only the primary (exportable) pane pays the preserveDrawingBuffer
+      // compositing cost; canvas.toDataURL/captureStream target Slot A only.
+      contextOptions: { webgl: { preserveDrawingBuffer: primary } },
     });
 
     viewer.scene.globe.enableLighting = true;
@@ -112,6 +124,8 @@ export function Globe({
     viewer.scene.fog.enabled = true;
 
     viewerRef.current = viewer;
+    // Signal dependent effects that a (new) viewer is live so they re-bind.
+    setViewerEpoch((n) => n + 1);
 
     return () => {
       pickHandlerRef.current?.destroy();
@@ -223,7 +237,7 @@ export function Globe({
     return () => {
       cancelled = true;
     };
-  }, [resolvedStyle]);
+  }, [resolvedStyle, viewerEpoch]);
 
   // Pick mode: install a left-click handler that reports cartographic coords.
   useEffect(() => {
@@ -258,7 +272,7 @@ export function Globe({
       window.removeEventListener("keydown", onKey);
       viewer.canvas.style.cursor = "";
     };
-  }, [pickMode, onPick, onPickCancel]);
+  }, [pickMode, onPick, onPickCancel, viewerEpoch]);
 
   // F-V11 — Inspect mode: a left-click queries the backend for the
   // per-point readout and pops a Cesium label at the click position.
@@ -291,12 +305,16 @@ export function Globe({
       const lat = Cesium.Math.toDegrees(carto.latitude);
       const lon = Cesium.Math.toDegrees(carto.longitude);
 
+      // Use the source's own water depth as the propagation depth so the
+      // inspect readout reconciles with run_preset / the results panel,
+      // instead of a hardcoded flat 4000 m that contradicts shelf/lake events.
+      const sourceDepth = initial.center.depth_m ?? 0;
       const req = {
         source: initial.center,
         initial_amplitude_m: initial.peak_amplitude_m,
         cavity_radius_m: initial.cavity_radius_m,
         is_impact: inspectIsImpact === true,
-        mean_depth_m: 4000,
+        mean_depth_m: Number.isFinite(sourceDepth) && sourceDepth > 0 ? sourceDepth : 4000,
         time_s: inspectTimeS ?? 0,
         click_lat: lat,
         click_lon: lon,
@@ -310,26 +328,34 @@ export function Globe({
 
       inspectPromise
         .then((res) => {
-          if (!viewerRef.current) return;
+          // Re-read the viewer from the ref (it may have been recreated) and
+          // use that instance for all entity mutations — never the closure.
+          const v = viewerRef.current;
+          if (!v) return;
+          // Coalesce any non-finite physics field to an em dash so a degenerate
+          // result (e.g. clicking exactly on the source) never renders
+          // "Range NaN km" / "T+Infinityh" into the on-globe label.
+          const fmt = (x: number, d: number) => (Number.isFinite(x) ? x.toFixed(d) : "—");
           const arrivalMin = res.arrival_time_s / 60;
-          const arrivalLabel =
-            arrivalMin < 60
+          const arrivalLabel = !Number.isFinite(arrivalMin)
+            ? "—"
+            : arrivalMin < 60
               ? `T+${arrivalMin.toFixed(0)}m`
               : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
           const status = res.has_arrived ? "ARRIVED" : "in transit";
           const text = [
-            `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`,
-            `Range  ${(res.range_m / 1000).toFixed(0)} km   ·   ${status}`,
+            `${fmt(lat, 2)}°, ${fmt(lon, 2)}°`,
+            `Range  ${fmt(res.range_m / 1000, 0)} km   ·   ${status}`,
             `Arrival ${arrivalLabel}`,
-            `Offshore ${res.offshore_amplitude_m.toFixed(2)} m   ·   Runup ${res.runup_m.toFixed(1)} m`,
-            `Inundation ~${(res.inundation_extent_m / 1000).toFixed(2)} km`,
+            `Offshore ${fmt(res.offshore_amplitude_m, 2)} m   ·   Runup ${fmt(res.runup_m, 1)} m`,
+            `Inundation ~${fmt(res.inundation_extent_m / 1000, 2)} km`,
           ].join("\n");
 
           if (inspectEntityRef.current) {
-            viewer.entities.remove(inspectEntityRef.current);
+            v.entities.remove(inspectEntityRef.current);
             inspectEntityRef.current = null;
           }
-          inspectEntityRef.current = viewer.entities.add({
+          inspectEntityRef.current = v.entities.add({
             position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
             point: {
               pixelSize: 10,
@@ -366,7 +392,7 @@ export function Globe({
       window.removeEventListener("keydown", onKey);
       viewer.canvas.style.cursor = "";
     };
-  }, [inspectMode, initial, inspectIsImpact, inspectTimeS, onInspectCancel]);
+  }, [inspectMode, initial, inspectIsImpact, inspectTimeS, onInspectCancel, viewerEpoch]);
 
   // React to a new initial displacement
   useEffect(() => {
@@ -469,12 +495,20 @@ export function Globe({
         });
       }
     }
-  }, [initial]);
+  }, [initial, viewerEpoch]);
 
   // React to a new wavefront snapshot — update existing entities in place.
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !initial || !wavefront) return;
+    if (!viewer) return;
+    // When the source or its wavefront clears, tear down the existing rings
+    // instead of leaving them stranded on the globe after switching back to
+    // the empty state.
+    if (!initial || !wavefront) {
+      for (const e of wavefrontEntitiesRef.current) viewer.entities.remove(e);
+      wavefrontEntitiesRef.current = [];
+      return;
+    }
 
     const { lat_deg, lon_deg } = initial.center;
     const position = Cesium.Cartesian3.fromDegrees(lon_deg, lat_deg, 0);
@@ -525,7 +559,7 @@ export function Globe({
         Cesium.Color.fromCssColorString("#74c7ec").withAlpha(0.25 + 0.55 * t),
       );
     }
-  }, [initial, wavefront]);
+  }, [initial, wavefront, viewerEpoch]);
 
   // SWE snapshot → Cesium imagery layer.
   //
@@ -554,7 +588,10 @@ export function Globe({
     const e = Math.max(-180, Math.min(180, east));
     const s = Math.max(-90, Math.min(90, south));
     const n = Math.max(-90, Math.min(90, north));
-    if (e <= w || n <= s) return;
+    // NaN slips through Math.max/min and through `e <= w` (NaN comparisons are
+    // always false), and a NaN rectangle makes Cesium throw / blank the scene.
+    // Require all four edges finite and properly ordered before constructing it.
+    if (![w, e, s, n].every(Number.isFinite) || e <= w || n <= s) return;
 
     const url = `data:image/png;base64,${sweSnapshot.eta_png_b64}`;
     let cancelled = false;
@@ -575,7 +612,7 @@ export function Globe({
     return () => {
       cancelled = true;
     };
-  }, [sweSnapshot]);
+  }, [sweSnapshot, viewerEpoch]);
 
   // Runup bars at named coastal points.
   useEffect(() => {
@@ -609,11 +646,13 @@ export function Globe({
 
       // Format the hover label. Arrival time as "T+HhMM"; runup to 1 dp.
       const arrivalMin = r.arrival_time_s / 60;
-      const arrivalLabel =
-        arrivalMin < 60
+      const arrivalLabel = !Number.isFinite(arrivalMin)
+        ? "—"
+        : arrivalMin < 60
           ? `T+${arrivalMin.toFixed(0)}m`
           : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
-      const hoverText = `${r.name}\n${arrivalLabel}  •  ${r.runup_m.toFixed(1)} m runup\n${r.offshore_amplitude_m.toFixed(2)} m offshore`;
+      const offshore = Number.isFinite(r.offshore_amplitude_m) ? r.offshore_amplitude_m.toFixed(2) : "—";
+      const hoverText = `${r.name}\n${arrivalLabel}  •  ${r.runup_m.toFixed(1)} m runup\n${offshore} m offshore`;
 
       let entity = map.get(r.id);
       if (!entity) {
@@ -728,7 +767,7 @@ export function Globe({
         inMap.delete(id);
       }
     }
-  }, [runupResults]);
+  }, [runupResults, viewerEpoch]);
 
   // DART buoy pins.
   useEffect(() => {
@@ -774,7 +813,7 @@ export function Globe({
         map.delete(id);
       }
     }
-  }, [dartBuoys]);
+  }, [dartBuoys, viewerEpoch]);
 
   return (
     <>

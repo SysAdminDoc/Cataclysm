@@ -32,11 +32,16 @@ function safeFilenamePart(value: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
-  return cleaned || "custom-scenario";
+  const base = cleaned || "custom-scenario";
+  // Windows reserved device names (CON, NUL, COM1…) can make a download fail
+  // or behave oddly on WebView2 — prefix to neutralise them.
+  return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(base) ? `_${base}` : base;
 }
 
 export function suggestedFilename(meta: ScreenshotMeta, ext: "png" | "webm" | "mp4" = "png"): string {
-  const id = safeFilenamePart(meta.preset?.id ?? "custom-scenario");
+  // Clamp the id so a very long preset/scenario name + timestamp can't blow
+  // past path length limits (the extension is appended after the clamp).
+  const id = safeFilenamePart(meta.preset?.id ?? "custom-scenario").slice(0, 64);
   const t = Math.round(meta.timeS / 60);
   return `tsunamisim-${id}-t${t}min-${timestampSuffix()}.${ext}`;
 }
@@ -237,9 +242,21 @@ export async function exportGlobeVideo(
   recorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) chunks.push(e.data);
   };
+  let settled = false;
   const stopped = new Promise<void>((resolve, reject) => {
-    recorder.onstop = () => resolve();
-    recorder.onerror = () => reject(new Error("MediaRecorder failed while recording"));
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      fn();
+    };
+    recorder.onstop = () => settle(resolve);
+    recorder.onerror = () => settle(() => reject(new Error("MediaRecorder failed while recording")));
+    // Watchdog: some WebView2 codec paths never fire onstop/onerror, which
+    // would hang `await stopped` forever and leave the capture stream live.
+    setTimeout(
+      () => settle(() => reject(new Error("Recording timed out (no stop event from MediaRecorder)"))),
+      durationMs + 5_000,
+    );
   });
   try {
     recorder.start();

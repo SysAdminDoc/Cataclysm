@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PresetSelector } from "./components/PresetSelector";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
@@ -133,10 +133,30 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
+  const [presetsError, setPresetsError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
   const inTauri = useMemo(isTauri, []);
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
+
+  // Ephemeral status toast for actions that otherwise fail silently
+  // (exports, IPC errors). Auto-dismisses; replaced by the next message.
+  const showToast = useCallback((msg: string, tone: "error" | "info" = "info") => {
+    setToast({ msg, tone });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 6000);
+  }, []);
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  // Surface scenario/preset IPC failures (from either slot) to the user.
+  useEffect(() => {
+    if (slotA.error) showToast(slotA.error, "error");
+  }, [slotA.error, showToast]);
+  useEffect(() => {
+    if (slotB.error) showToast(slotB.error, "error");
+  }, [slotB.error, showToast]);
 
   // Apply persisted theme once at startup.
   useEffect(() => {
@@ -175,10 +195,17 @@ export default function App() {
       setPresets(listDemoPresets());
       return;
     }
+    setPresetsError(null);
     api
       .listPresets()
-      .then(setPresets)
-      .catch((err) => console.error("listPresets failed", err));
+      .then((p) => {
+        setPresets(p);
+        setPresetsError(null);
+      })
+      .catch((err) => {
+        console.error("listPresets failed", err);
+        setPresetsError(String(err));
+      });
   }, [inTauri]);
 
   // First-launch banner: prompt the user to paste a Cesium ion token
@@ -214,6 +241,18 @@ export default function App() {
   return (
     <div className="app" data-compare={compareMode ? "true" : "false"}>
       <a className="skip-link" href="#main-globe">Skip to globe</a>
+      {toast && (
+        <div className="app-toast" data-tone={toast.tone} role="alert" aria-live="assertive">
+          <span>{toast.msg}</span>
+          <button
+            className="app-toast__dismiss"
+            aria-label="Dismiss notification"
+            onClick={() => setToast(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {tokenBannerOpen && (
         <div className="token-banner" role="status" aria-live="polite">
           <span className="token-banner__icon" aria-hidden>
@@ -247,7 +286,7 @@ export default function App() {
             TS
           </span>
           <span className="app__title">TsunamiSimulator</span>
-          <span className="app__version">v0.2.1</span>
+          <span className="app__version">v0.4.0</span>
         </div>
         <div className="app__warning">
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
@@ -277,7 +316,7 @@ export default function App() {
             icon="image"
             onClick={() => {
               const ok = exportGlobePng({ preset: activePresetA, initial: slotA.initial, timeS });
-              if (!ok) console.warn("No globe canvas found to export");
+              showToast(ok ? "Saved globe PNG." : "No globe view to export yet.", ok ? "info" : "error");
             }}
             title="Save the current globe view as PNG"
             disabled={!slotA.initial}
@@ -292,7 +331,7 @@ export default function App() {
                 initial: slotA.initial,
                 timeS,
               });
-              if (!ok) console.warn("No globe canvas found to export");
+              showToast(ok ? "Saved share card." : "No globe view to export yet.", ok ? "info" : "error");
             }}
             title="Save a branded share-card with scenario metadata + citation overlay"
             disabled={!slotA.initial}
@@ -309,9 +348,10 @@ export default function App() {
                   { preset: activePresetA, initial: slotA.initial, timeS },
                   { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
                 );
-                if (!result.ok) {
-                  console.warn("Video export failed:", result.reason);
-                }
+                showToast(
+                  result.ok ? "Saved globe recording." : `Video export failed: ${result.reason}`,
+                  result.ok ? "info" : "error",
+                );
               } finally {
                 setRecording(false);
               }
@@ -331,6 +371,23 @@ export default function App() {
       </header>
 
       <aside className="app__panel" aria-label="Preset scenarios">
+        {presetsError && (
+          <div className="panel-error" role="status" aria-live="polite">
+            <span>Couldn't load presets: {presetsError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setPresetsError(null);
+                api
+                  .listPresets()
+                  .then((p) => setPresets(p))
+                  .catch((err) => setPresetsError(String(err)));
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         <PresetSelector
           presets={presets}
           activeId={slotA.activePresetId}
@@ -390,6 +447,7 @@ export default function App() {
                   sweSnapshot={slotB.sweSnapshot}
                   runupResults={slotB.runupResults}
                   dartBuoys={dartPinsForPreset(slotB.activePresetId)}
+                  primary={false}
                 />
                 <div className="app__globe-tag" data-slot="b">Slot B</div>
               </div>

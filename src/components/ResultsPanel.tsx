@@ -49,7 +49,10 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
   const amp = formatLength(initial.peak_amplitude_m);
   const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m) : null;
   const totalT = 6 * 3600;
-  const progress = Math.max(0, Math.min(1, timeS / totalT));
+  // Coerce a non-finite timeS to 0 so a bad upstream value can't apply
+  // scaleX(NaN) (which collapses the fill bar) or render "NaN minutes".
+  const safeTimeS = Number.isFinite(timeS) ? timeS : 0;
+  const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
 
   return (
     <>
@@ -105,17 +108,17 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             min={0}
             max={totalT}
             step={60}
-            value={timeS}
+            value={safeTimeS}
             onChange={(e) => onTimeChange(Number(e.target.value))}
             aria-label="Scenario timeline scrubber"
-            aria-valuetext={`${Math.round(timeS / 60)} minutes after source event`}
+            aria-valuetext={`${Math.round(safeTimeS / 60)} minutes after source event`}
           />
           <div className="timeline__bar">
             <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />
           </div>
           <div className="timeline__readout">
-            <span>t = {(timeS / 60).toFixed(0)} min</span>
-            <span>{(timeS / 3600).toFixed(2)} h</span>
+            <span>t = {(safeTimeS / 60).toFixed(0)} min</span>
+            <span>{(safeTimeS / 3600).toFixed(2)} h</span>
           </div>
         </div>
       </div>

@@ -3919,9 +3919,10 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tsunami-simulator"
-version = "0.2.1"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
+ "bytemuck",
  "png 0.17.16",
  "pollster",
  "rayon",

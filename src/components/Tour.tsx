@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /**
  * Lightweight 5-step onboarding tour. In-house implementation rather
@@ -64,6 +65,8 @@ type Props = {
 export function Tour({ open, onClose }: Props) {
   const [idx, setIdx] = useState(0);
   const step = useMemo(() => STEPS[idx], [idx]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -86,7 +89,7 @@ export function Tour({ open, onClose }: Props) {
 
   return (
     <div className="tour-overlay" role="dialog" aria-modal="true" aria-labelledby="tour-title">
-      <div className={`tour-card tour-card--${step.pos}`}>
+      <div className={`tour-card tour-card--${step.pos}`} ref={dialogRef} tabIndex={-1}>
         <div className="tour-card__step">
           Step {idx + 1} of {STEPS.length}
         </div>

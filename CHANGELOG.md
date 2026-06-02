@@ -2,6 +2,82 @@
 
 All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Deep correctness, reliability & UX hardening
+
+### Fixed — physics correctness
+- **Synolakis 1987 coastal run-up corrected.** `synolakis_runup_m` multiplied
+  by the offshore *amplitude* instead of the offshore *depth*, so every run-up
+  / inundation figure (overlay bars, Inspect readout) under-predicted by a
+  factor of `d/H`. The implementation now matches the documented
+  `R = 2.831·√(cot β)·H^(5/4)/d^(1/4)` Carrier-Greenspan form, and the
+  feature-gated `synolakis_matches_carrier_greenspan_envelope` validation —
+  previously failing by up to 100 % — now passes. Added a non-gated
+  closed-form regression test so the default suite guards it.
+- **Non-finite seismic magnitude eliminated.** A custom landslide with
+  `drop_height_m = 0` (admitted by the IPC validator) produced zero kinetic
+  energy and a `-inf` `seismic_mw_equivalent` that crossed the IPC boundary
+  into the UI. A shared, floored `mw_from_radiated_j` helper now backs the
+  asteroid, nuclear, and landslide magnitude paths.
+- **Latent NaN sources guarded** in the asteroid cavity-scaling (zero diameter
+  / out-of-range angle), nuclear cavity radius (negative burst depth →
+  cube-root of a negative number), and Lamb-wave envelope (zero source radius
+  → `cos(NaN)` at arrival).
+
+### Fixed — reliability & safety
+- **`simulate_grid` compute budget.** The cell count and step count were each
+  capped but their *product* was not, so a single request could wedge the
+  blocking worker for minutes. A combined cell-steps budget now rejects
+  pathological requests up front.
+- **`simulate_grid` polar/longitude robustness.** A source beyond ±80°
+  latitude no longer builds an inverted (degenerate, silently blank) grid, and
+  the source longitude is normalised so the returned bbox stays inside the
+  frame Cesium expects. Longitude validation is now a single canonical ±180°
+  contract across every command.
+- **GPU SWE path.** Fixed a missing `bytemuck` dependency that meant the `gpu`
+  feature never compiled. The GPU readback no longer advances simulated time
+  over a failed/garbage field — it returns a clean failure so the dispatcher
+  falls back to the CPU — and the dispatcher only routes all-wet grids to the
+  (linear, land-mask-free) kernel so it can't re-flood continents.
+- **SWE sponge boundary** is now applied (thinner) on small grids instead of
+  silently reverting to reflective edges.
+- **Preset registry** now has a test asserting every shipped preset satisfies
+  the same input bounds the live `*_initial_conditions` commands enforce, and
+  `find_preset` no longer rebuilds the whole registry on each lookup.
+
+### Fixed — UX & accessibility
+- **Custom number fields are editable again.** Scenario-builder inputs held a
+  draft string and clamp on blur, so clearing a field to retype no longer
+  snaps it to its minimum on every keystroke.
+- **Failures are no longer silent.** Preset/scenario IPC errors, preset-list
+  load failures (with retry), and PNG/share/video export failures now surface
+  a visible toast / inline status instead of only a console log.
+- **Modal focus management.** Settings, Citations, first-run, and tour dialogs
+  now move focus inside on open, trap Tab/Shift-Tab, and restore focus on close
+  (WCAG 2.4.3 / 2.1.2).
+- **Globe NaN-proofing.** The Inspect readout and run-up labels coalesce
+  non-finite physics to an em dash, the SWE imagery layer rejects non-finite
+  bounding boxes before handing them to Cesium, stale wavefront rings are torn
+  down when the source clears, and the Inspect readout now uses the source’s
+  real water depth instead of a hardcoded 4000 m.
+- Inspect uses the live viewer instance (not a stale closure); the dev-mode
+  StrictMode remount no longer leaves a blank globe; SWE Play restarts from the
+  top at the final frame and stays usable after Cancel; the Settings Save
+  button shows a saving state; the timeline tolerates a non-finite time.
+
+### Fixed — security & DX
+- CSP/permissions: tightened the `shell:allow-open` allow-list (scoped Forbes
+  to the cited author path, added the explicit repo URL with a trailing-slash
+  glob).
+- Production builds now **fail loudly if a personal `VITE_CESIUM_TOKEN` would
+  be inlined** into the distributable bundle (override with
+  `ALLOW_TOKEN_IN_BUNDLE=1`).
+- Settings store uses a read-only init probe so it no longer writes an
+  `__init_probe` key into the user’s `settings.json`; the video exporter has a
+  watchdog so a missing `MediaRecorder` stop event can’t hang forever; export
+  filenames neutralise Windows reserved device names and clamp length.
+- App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
+  stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
+
 ## [0.4.0] - 2026-05-25 — Premium polish + GPU SWE + Lamb-wave coupling
 
 ### Premium polish pass

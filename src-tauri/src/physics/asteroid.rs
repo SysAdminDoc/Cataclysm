@@ -73,11 +73,23 @@ impl AsteroidImpact {
     /// ```
     /// with `C_T = 1.88`, `β = 0.22` for water.
     pub fn transient_cavity_diameter_m(&self) -> f64 {
-        let theta_rad = self.angle_deg.to_radians();
+        // Defensive guards (the IPC command already rejects these, but this
+        // is a `pub` helper that presets and future callers reach directly):
+        //  - a zero/negative diameter makes `pi_term` infinite and then
+        //    `0 · inf = NaN`, poisoning the whole InitialDisplacement;
+        //  - `sin(θ)` raised to a fractional power is NaN for θ outside
+        //    (0°, 180°), so clamp the impact angle into the physical (0, 90].
+        if !self.diameter_m.is_finite()
+            || self.diameter_m <= 0.0
+            || !self.velocity_m_s.is_finite()
+        {
+            return 0.0;
+        }
+        let theta_rad = self.angle_deg.clamp(f64::MIN_POSITIVE, 90.0).to_radians();
         let pi_term = self.velocity_m_s.powi(2) / (G_EARTH * self.diameter_m);
         SCHMIDT_HOLSAPPLE_CT
             * self.diameter_m
-            * (self.density_kg_m3 / RHO_SEAWATER).powf(1.0 / 3.0)
+            * (self.density_kg_m3.max(0.0) / RHO_SEAWATER).powf(1.0 / 3.0)
             * pi_term.powf(SCHMIDT_HOLSAPPLE_BETA)
             * theta_rad.sin().powf(1.0 / 3.0)
     }
@@ -96,6 +108,11 @@ impl AsteroidImpact {
     /// amplitude saturates at the local water depth.
     pub fn initial_amplitude_m(&self) -> f64 {
         let cavity_depth = self.transient_cavity_depth_m();
+        // Don't let a non-finite cavity depth get laundered into a
+        // plausible-looking depth-limited amplitude by `min`/`max`.
+        if !cavity_depth.is_finite() {
+            return 0.0;
+        }
         let saturated = cavity_depth.min(self.water_depth_m);
         0.5 * saturated.max(0.0)
     }
@@ -105,9 +122,9 @@ impl AsteroidImpact {
     /// Gault 1975 for hypervelocity oceanic impacts).
     pub fn seismic_mw_equivalent(&self) -> f64 {
         let radiated_j = 0.01 * self.kinetic_energy_j();
-        // log10(M0) = log10(E_s / 5e-5)  ⇒  Mw = (2/3) (log10 M0 − 9.1)
-        let m0 = radiated_j / 5.0e-5;
-        (2.0 / 3.0) * (m0.log10() - 9.1)
+        // log10(M0) = log10(E_s / 5e-5)  ⇒  Mw = (2/3) (log10 M0 − 9.1).
+        // Shared floored helper guards against zero/negative energy → -inf.
+        super::mw_from_radiated_j(radiated_j)
     }
 
     /// Snapshot of the source ready for the propagation solver.

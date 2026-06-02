@@ -56,21 +56,23 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
     }
   }, [snapshots, activeIdx, onSnapshot]);
 
-  // Auto-play: advance the scrubber every 250 ms when playing.
+  // Auto-play: advance the scrubber every 250 ms when playing. The updater
+  // stays pure (no nested setState) — reaching the end is handled by the
+  // separate effect below so it behaves correctly under StrictMode.
   useEffect(() => {
     if (!isPlaying || !snapshots || snapshots.length < 2) return;
     const interval = window.setInterval(() => {
-      setActiveIdx((i) => {
-        const next = i + 1;
-        if (next >= (snapshots?.length ?? 0)) {
-          setIsPlaying(false);
-          return i;
-        }
-        return next;
-      });
+      setActiveIdx((i) => Math.min(i + 1, snapshots.length - 1));
     }, 250);
     return () => window.clearInterval(interval);
   }, [isPlaying, snapshots]);
+
+  // Stop playback when the scrubber reaches the final frame.
+  useEffect(() => {
+    if (isPlaying && snapshots && activeIdx >= snapshots.length - 1) {
+      setIsPlaying(false);
+    }
+  }, [isPlaying, snapshots, activeIdx]);
 
   // Cancel an in-flight simulation. The Tauri worker keeps running
   // to completion (the IPC layer has no cancel signal), but bumping
@@ -186,8 +188,15 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         <>
           <div className="swe__row">
             <button
-              onClick={() => setIsPlaying((p) => !p)}
-              disabled={status !== "ready"}
+              onClick={() => {
+                // Pressing Play at the final frame restarts from the top
+                // instead of silently no-opping.
+                if (!isPlaying && activeIdx >= snapshots.length - 1) {
+                  setActiveIdx(0);
+                }
+                setIsPlaying((p) => !p);
+              }}
+              disabled={status === "running" || snapshots.length < 2}
               title="Play / pause the snapshot sequence"
             >
               {isPlaying ? "❚❚ Pause" : "▶ Play"}

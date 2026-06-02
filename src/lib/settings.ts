@@ -58,20 +58,12 @@ function getStore(): Promise<LazyStore | null> {
       .then(async ({ load }) => {
         try {
           const store = (await load(STORE_FILE, { defaults: DEFAULTS, autoSave: false })) as LazyStore;
-          // Smoke test: confirm we can write and read back. If this throws
-          // non-sensitive settings fall through to localStorage so the UI
-          // still works. The probe key is deleted immediately afterwards so
-          // it doesn't pollute the user's settings file.
-          await store.set("__init_probe", true);
-          await store.save();
-          if (typeof store.delete === "function") {
-            try {
-              await store.delete("__init_probe");
-              await store.save();
-            } catch {
-              /* delete is best-effort */
-            }
-          }
+          // Read-only smoke test: confirm the store opened and is readable. A
+          // read can't pollute the user's settings.json (the old write+delete
+          // probe left an `__init_probe` key behind whenever delete was
+          // unsupported or failed). If this throws, non-sensitive settings
+          // fall through to localStorage so the UI still works.
+          await store.get("theme");
           return store;
         } catch (err) {
           console.warn("[settings] tauri-plugin-store probe failed; falling back to localStorage.", err);

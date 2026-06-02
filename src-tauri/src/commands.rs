@@ -41,21 +41,22 @@ fn check_finite_nonnegative(name: &str, value: f64) -> Result<(), String> {
     Ok(())
 }
 
+// Canonical geographic domain enforced uniformly across every command:
+// latitude in [-90, 90], longitude in [-180, 180]. The whole frontend (preset
+// registry, coastal-point DB, globe picks) already works in this range, so
+// accepting the looser ±360 longitude only admitted un-normalised values that
+// then produced off-frame Cesium bounding boxes. Keep all callers in one domain.
+const LON_ABS_MAX: f64 = 180.0;
+
 fn check_lat_lon(loc: &GeoPoint) -> Result<(), String> {
-    if !loc.lat_deg.is_finite() || loc.lat_deg.abs() > 90.0 {
-        return Err(format!("location.lat_deg {} out of range", loc.lat_deg));
-    }
-    if !loc.lon_deg.is_finite() || loc.lon_deg.abs() > 360.0 {
-        return Err(format!("location.lon_deg {} out of range", loc.lon_deg));
-    }
-    Ok(())
+    check_lat_lon_values("location", loc.lat_deg, loc.lon_deg)
 }
 
 fn check_lat_lon_values(prefix: &str, lat: f64, lon: f64) -> Result<(), String> {
     if !lat.is_finite() || lat.abs() > 90.0 {
         return Err(format!("{prefix} latitude {lat} out of range"));
     }
-    if !lon.is_finite() || lon.abs() > 360.0 {
+    if !lon.is_finite() || lon.abs() > LON_ABS_MAX {
         return Err(format!("{prefix} longitude {lon} out of range"));
     }
     Ok(())
@@ -522,18 +523,8 @@ pub struct LambWaveSampleResult {
 /// volcanic source.
 #[tauri::command]
 pub fn lamb_wave_sample(req: LambWaveSampleRequest) -> Result<LambWaveSampleResult, String> {
-    if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
-        return Err("source latitude out of range".into());
-    }
-    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
-        return Err("source longitude out of range".into());
-    }
-    if !req.lat.is_finite() || req.lat.abs() > 90.0 {
-        return Err("receiver latitude out of range".into());
-    }
-    if !req.lon.is_finite() || req.lon.abs() > 360.0 {
-        return Err("receiver longitude out of range".into());
-    }
+    check_lat_lon_values("source", req.source.lat_deg, req.source.lon_deg)?;
+    check_lat_lon_values("receiver", req.lat, req.lon)?;
     if !req.time_s.is_finite() || req.time_s < 0.0 {
         return Err("time_s must be finite and non-negative".into());
     }
@@ -707,6 +698,13 @@ pub struct SimulateGridResponse {
 
 /// Hard cap on the SWE grid size — protects us against runaway requests.
 const SWE_MAX_CELLS: usize = 4_000_000;
+/// Hard cap on total *work* (grid cells × time steps). The cell cap and the
+/// step cap are each individually bounded, but their product is what actually
+/// determines wall-clock time; without this a request that passes both (e.g.
+/// 4 M cells × ~250 k steps) could wedge the blocking worker for many minutes.
+/// 5e10 cell-steps is a few seconds of CPU on this solver and far above any
+/// legitimate interactive request (a typical run is well under 1e7).
+const SWE_MAX_CELL_STEPS: u64 = 50_000_000_000;
 /// Hard cap on number of snapshots per simulation.
 const SWE_MAX_SNAPSHOTS: usize = 240;
 /// Hard cap on simulated time — runaway scrubs.
@@ -723,7 +721,7 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             req.source.lat_deg
         ));
     }
-    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > 360.0 {
+    if !req.source.lon_deg.is_finite() || req.source.lon_deg.abs() > LON_ABS_MAX {
         return Err(format!(
             "source longitude {} out of range",
             req.source.lon_deg
@@ -778,16 +776,20 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
     validate_simulate_grid(&req)?;
 
     tauri::async_runtime::spawn_blocking(move || {
-        let lat = req.source.lat_deg;
-        let lon = req.source.lon_deg;
+        // Keep the simulation-box centre off the poles so the lon/lat box is
+        // always well-ordered (north > south). A source beyond ±80° would
+        // otherwise make `(lat - half).max(-80)` exceed `(lat + half).min(80)`,
+        // producing an inverted/degenerate grid that silently renders nothing.
+        let lat = req.source.lat_deg.clamp(-80.0, 80.0);
+        // Normalise longitude into [-180, 180) so the returned snapshot bbox
+        // stays inside the frame Cesium expects (a source at lon 359 must not
+        // build a box spanning [357, 361]).
+        let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
         let half = req.box_half_size_deg;
         let cell = 1.0 / req.cells_per_deg;
 
-        // Clamp latitudes to avoid polar singularities, keeping the box
-        // symmetric around the source even if it would otherwise exceed
-        // [-80, 80].
-        let south = (lat - half).max(-80.0);
-        let north = (lat + half).min(80.0);
+        let south = (lat - half).max(-89.0);
+        let north = (lat + half).min(89.0);
         let west = lon - half;
         let east = lon + half;
 
@@ -857,6 +859,23 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         let nx = grid.nx as u32;
         let ny = grid.ny as u32;
 
+        // Combined work budget (cells × steps). The cell count and the step
+        // count are each capped, but only their product bounds wall-clock time.
+        let est_steps = if dt.is_finite() && dt > 0.0 {
+            (req.t_end_s / dt).clamp(1.0, 1.0e9)
+        } else {
+            1.0
+        };
+        let work = (grid.nx as u64)
+            .saturating_mul(grid.ny as u64)
+            .saturating_mul(est_steps as u64);
+        if work > SWE_MAX_CELL_STEPS {
+            return Err(format!(
+                "simulation too expensive (~{} cell-steps; cap {}). Reduce cells_per_deg, box_half_size_deg, or t_end_s.",
+                work, SWE_MAX_CELL_STEPS
+            ));
+        }
+
         // F4-01 — when compiled with `--features gpu`, try the wgpu
         // dispatch path. Fall back to CPU cleanly if no adapter is
         // available (Linux CI, integrated-only laptops without
@@ -920,10 +939,29 @@ fn run_simulation_dispatch(
     n_snapshots: usize,
 ) -> (Vec<GridSnapshot>, bool) {
     use crate::physics::solver::gpu::GpuTimeStepper;
-    if let Some(gpu) = GpuTimeStepper::new(grid, dt_s, crate::physics::constants::MANNING_N_COASTAL)
-    {
-        let snaps = run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots);
-        return (snaps, true);
+    use crate::physics::solver::LAND_DEPTH_THRESHOLD_M;
+
+    // The WGSL kernel is a LINEAR leapfrog with reflective edges and NO land
+    // masking, whereas the CPU default is nonlinear + sponge + land-aware. To
+    // avoid the GPU silently producing materially different physics, only route
+    // to it when the grid is entirely wet — otherwise the missing land mask
+    // would re-flood the 1 m land sentinel into a slow-spreading halo across
+    // continents (exactly the artefact the CPU mask was added to remove).
+    // (The remaining sponge/advection differences for all-wet grids are tracked
+    // for a future WGSL kernel-parity pass; see solver/kernels.rs.)
+    let all_wet = grid.h_m.iter().all(|&h| h > LAND_DEPTH_THRESHOLD_M);
+    if all_wet {
+        if let Some(gpu) =
+            GpuTimeStepper::new(grid, dt_s, crate::physics::constants::MANNING_N_COASTAL)
+        {
+            // Snapshot the (already-injected) state so a mid-run GPU failure
+            // can cleanly retry on the CPU rather than emitting a frozen field.
+            let pristine = grid.clone();
+            if let Some(snaps) = run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots) {
+                return (snaps, true);
+            }
+            *grid = pristine;
+        }
     }
     let stepper = TimeStepper::new(dt_s);
     (run_simulation(grid, &stepper, t_end_s, n_snapshots), false)
@@ -944,6 +982,8 @@ fn run_simulation_dispatch(
 /// spaced snapshots as the CPU path. The GPU dispatch loop runs
 /// `take` steps between each snapshot then reads back into `grid`
 /// so the snapshot encoder can serialise η as PNG.
+/// Returns `None` if any GPU step fails (map/poll error or non-finite field),
+/// signalling the dispatcher to fall back to the CPU path.
 #[cfg(feature = "gpu")]
 fn run_simulation_gpu(
     grid: &mut SwGrid,
@@ -951,13 +991,13 @@ fn run_simulation_gpu(
     dt_s: f64,
     t_end_s: f64,
     n_snapshots: usize,
-) -> Vec<GridSnapshot> {
+) -> Option<Vec<GridSnapshot>> {
     const MAX_TOTAL_STEPS: usize = 1_000_000;
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot());
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
-        return snaps;
+        return Some(snaps);
     }
     let dt = if dt_s.is_finite() && dt_s > 0.0 {
         dt_s
@@ -974,10 +1014,12 @@ fn run_simulation_gpu(
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let take = target_step.saturating_sub(current_step).max(1);
-        gpu.step(grid, take);
+        if !gpu.step(grid, take) {
+            return None;
+        }
         snaps.push(grid.snapshot());
     }
-    snaps
+    Some(snaps)
 }
 
 #[tauri::command]

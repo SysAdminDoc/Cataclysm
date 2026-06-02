@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { settings, type Theme } from "../lib/settings";
 import { setTheme } from "../lib/theme";
@@ -13,11 +14,14 @@ type Props = { onClose: () => void };
 
 export function Settings({ onClose }: Props) {
   useEscapeKey(onClose);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   const [token, setTokenLocal] = useState("");
   const [theme, setThemeLocal] = useState<Theme>("mocha");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>("osm");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>("unknown");
 
   useEffect(() => {
@@ -44,6 +48,8 @@ export function Settings({ onClose }: Props) {
   }, []);
 
   async function save() {
+    if (saving) return;
+    setSaving(true);
     setSaveErr(null);
     const trimmedToken = token.trim();
     // Apply the token immediately so the next imagery request sees it,
@@ -60,6 +66,8 @@ export function Settings({ onClose }: Props) {
     } catch (err) {
       console.error("[settings] save failed", err);
       setSaveErr(String(err));
+    } finally {
+      setSaving(false);
     }
     // Always dispatch — Globe + main.tsx listen for this to re-read the
     // active style + token. Even if persistence failed the in-memory
@@ -73,7 +81,7 @@ export function Settings({ onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
           <h2 id="settings-title">Settings</h2>
           <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
@@ -162,7 +170,9 @@ export function Settings({ onClose }: Props) {
           </section>
 
           <section className="settings__actions">
-            <button className="primary" onClick={save}>Save settings</button>
+            <button className="primary" onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save settings"}
+            </button>
             {savedAt && !saveErr && (
               <span className="settings__status" data-tone="success">Saved at {savedAt}</span>
             )}

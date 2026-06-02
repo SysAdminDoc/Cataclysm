@@ -281,13 +281,19 @@ impl GpuTimeStepper {
     /// the dispatch loop the η, u, v fields are copied back to
     /// `grid.{eta_m,u_ms,v_ms}` via staging buffers so the next call
     /// resumes from the correct host-side state.
-    pub fn step(&self, grid: &mut SwGrid, n_steps: usize) {
-        pollster::block_on(self.step_async(grid, n_steps));
+    /// Returns `true` on success. Returns `false` (leaving `grid` and its
+    /// simulated time untouched) if a buffer map / device poll fails or the
+    /// read-back field contains non-finite values — letting the caller fall
+    /// back to the CPU path instead of advancing time over a frozen/garbage
+    /// field, which previously happened silently.
+    #[must_use]
+    pub fn step(&self, grid: &mut SwGrid, n_steps: usize) -> bool {
+        pollster::block_on(self.step_async(grid, n_steps))
     }
 
-    async fn step_async(&self, grid: &mut SwGrid, n_steps: usize) {
+    async fn step_async(&self, grid: &mut SwGrid, n_steps: usize) -> bool {
         if n_steps == 0 {
-            return;
+            return true;
         }
 
         // Re-upload the host-side eta/u/v into the "A" set so multiple
@@ -361,36 +367,53 @@ impl GpuTimeStepper {
             .map_async(wgpu::MapMode::Read, move |r| {
                 let _ = tx_v.send(r);
             });
-        let _ = self.device.poll(wgpu::PollType::Wait);
+        if self.device.poll(wgpu::PollType::Wait).is_err() {
+            eprintln!("[gpu] device.poll failed during readback — aborting GPU step");
+            return false;
+        }
 
-        if let Ok(Ok(())) = rx_eta.recv() {
-            let view = self.readback_eta.slice(..).get_mapped_range();
-            let f32_slice: &[f32] = bytemuck::cast_slice(&view);
-            for (i, &val) in f32_slice.iter().take(self.n_cells).enumerate() {
-                grid.eta_m[i] = val as f64;
+        // Copy each field into a scratch Vec first; only commit to `grid`
+        // (and advance time) once all three readbacks succeeded AND the field
+        // is finite, so a failed/garbage readback never freezes the field
+        // under a later timestamp.
+        let read_field = |rx: &std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>,
+                          buf: &wgpu::Buffer|
+         -> Option<Vec<f64>> {
+            match rx.recv() {
+                Ok(Ok(())) => {}
+                _ => return None,
             }
-            drop(view);
-            self.readback_eta.unmap();
-        }
-        if let Ok(Ok(())) = rx_u.recv() {
-            let view = self.readback_u.slice(..).get_mapped_range();
+            let view = buf.slice(..).get_mapped_range();
             let f32_slice: &[f32] = bytemuck::cast_slice(&view);
-            for (i, &val) in f32_slice.iter().take(self.n_cells).enumerate() {
-                grid.u_ms[i] = val as f64;
-            }
+            let out: Vec<f64> = f32_slice
+                .iter()
+                .take(self.n_cells)
+                .map(|&v| v as f64)
+                .collect();
             drop(view);
-            self.readback_u.unmap();
-        }
-        if let Ok(Ok(())) = rx_v.recv() {
-            let view = self.readback_v.slice(..).get_mapped_range();
-            let f32_slice: &[f32] = bytemuck::cast_slice(&view);
-            for (i, &val) in f32_slice.iter().take(self.n_cells).enumerate() {
-                grid.v_ms[i] = val as f64;
+            buf.unmap();
+            if out.iter().any(|v| !v.is_finite()) {
+                return None;
             }
-            drop(view);
-            self.readback_v.unmap();
+            Some(out)
+        };
+
+        let new_eta = read_field(&rx_eta, &self.readback_eta);
+        let new_u = read_field(&rx_u, &self.readback_u);
+        let new_v = read_field(&rx_v, &self.readback_v);
+        match (new_eta, new_u, new_v) {
+            (Some(eta), Some(u), Some(v)) => {
+                grid.eta_m = eta;
+                grid.u_ms = u;
+                grid.v_ms = v;
+                grid.t_s += self.dt_s * n_steps as f64;
+                true
+            }
+            _ => {
+                eprintln!("[gpu] readback failed or produced non-finite field — aborting GPU step");
+                false
+            }
         }
-        grid.t_s += self.dt_s * n_steps as f64;
     }
 
     fn make_bg(&self, a_is_in: bool) -> wgpu::BindGroup {
@@ -496,7 +519,7 @@ mod tests {
                 return;
             }
         };
-        gpu.step(&mut g_gpu, 50);
+        assert!(gpu.step(&mut g_gpu, 50), "GPU step reported failure");
 
         let mut max_diff = 0.0_f64;
         for (a, b) in g_cpu.eta_m.iter().zip(g_gpu.eta_m.iter()) {
