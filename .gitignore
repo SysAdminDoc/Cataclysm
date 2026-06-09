@@ -63,3 +63,11 @@ $RECYCLE.BIN/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+# Markdown files local-only (except README)
+*.md
+!README.md
+
+# Markdown files local-only (except README)
+*.md
+!README.md
