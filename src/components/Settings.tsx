@@ -3,7 +3,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
-import { settings, type Theme } from "../lib/settings";
+import { settings, type Theme, type ColormapId } from "../lib/settings";
 import { setTheme } from "../lib/theme";
 import { GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
@@ -19,6 +19,7 @@ export function Settings({ onClose }: Props) {
   const [token, setTokenLocal] = useState("");
   const [theme, setThemeLocal] = useState<Theme>("mocha");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>("osm");
+  const [colormapId, setColormapId] = useState<ColormapId>("diverging");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -31,6 +32,7 @@ export function Settings({ onClose }: Props) {
       setTokenLocal(s.cesium_token);
       setThemeLocal(s.theme);
       setGlobeStyle(s.globe_style);
+      setColormapId(s.colormap);
     });
     if (isTauri()) {
       api
@@ -61,6 +63,7 @@ export function Settings({ onClose }: Props) {
         settings.setCesiumToken(trimmedToken),
         setTheme(theme),
         settings.setGlobeStyle(globeStyle),
+        settings.setColormap(colormapId),
       ]);
       setSavedAt(new Date().toLocaleTimeString());
     } catch (err) {
@@ -169,6 +172,26 @@ export function Settings({ onClose }: Props) {
             </div>
           </section>
 
+          <section className="settings__section">
+            <h3 className="settings__h3">Colormap</h3>
+            <div className="settings__theme-grid">
+              <button
+                className="scenario-tab"
+                data-active={colormapId === "diverging" ? "true" : "false"}
+                onClick={() => setColormapId("diverging")}
+              >
+                Blue &rarr; Red (classic)
+              </button>
+              <button
+                className="scenario-tab"
+                data-active={colormapId === "cividis" ? "true" : "false"}
+                onClick={() => setColormapId("cividis")}
+              >
+                Cividis (CVD-safe)
+              </button>
+            </div>
+          </section>
+
           <section className="settings__actions">
             <button className="primary" onClick={save} disabled={saving}>
               {saving ? "Saving…" : "Save settings"}
@@ -270,6 +293,7 @@ export function Settings({ onClose }: Props) {
                   setTokenLocal("");
                   setThemeLocal("mocha");
                   setGlobeStyle("osm");
+                  setColormapId("diverging");
                   primeCesiumToken(null);
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));

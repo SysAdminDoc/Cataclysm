@@ -94,7 +94,8 @@ Existing tools each do one piece:
 - **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
   forms; click-globe-to-pick location.
 - **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
-  through the live shallow-water solver.
+  through the live shallow-water solver, with classic or colorblind-safe
+  overlay colormaps.
 - **Effect overlays** — wavefront ring, coastal runup bars at 60+ named
   coastal points, DART buoy historical observations for the three modern
   presets.

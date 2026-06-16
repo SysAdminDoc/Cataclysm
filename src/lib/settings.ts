@@ -11,10 +11,13 @@ import type { GlobeStyleId } from "./globe-styles";
 
 export type Theme = "mocha" | "latte";
 
+export type ColormapId = "diverging" | "cividis";
+
 export type Settings = {
   cesium_token: string;
   theme: Theme;
   globe_style: GlobeStyleId;
+  colormap: ColormapId;
   disclaimer_acknowledged_at: string | null;
   tour_completed_at: string | null;
   /** First-run dismissible banner suggesting the user paste a Cesium
@@ -27,6 +30,7 @@ const DEFAULTS: Settings = {
   cesium_token: "",
   theme: "mocha",
   globe_style: "osm",
+  colormap: "diverging",
   disclaimer_acknowledged_at: null,
   tour_completed_at: null,
   token_banner_dismissed_at: null,
@@ -104,6 +108,8 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
       return (typeof value === "string" && GLOBE_STYLE_IDS.includes(value as GlobeStyleId)
         ? value
         : undefined) as Settings[K] | undefined;
+    case "colormap":
+      return (value === "diverging" || value === "cividis" ? value : undefined) as Settings[K] | undefined;
     case "disclaimer_acknowledged_at":
     case "tour_completed_at":
     case "token_banner_dismissed_at":
@@ -211,6 +217,12 @@ export const settings = {
   async setGlobeStyle(s: GlobeStyleId): Promise<void> {
     return write("globe_style", s);
   },
+  async getColormap(): Promise<ColormapId> {
+    return read("colormap");
+  },
+  async setColormap(c: ColormapId): Promise<void> {
+    return write("colormap", c);
+  },
   async getDisclaimerAcknowledged(): Promise<string | null> {
     return read("disclaimer_acknowledged_at");
   },
@@ -272,6 +284,7 @@ export const settings = {
       cesium_token: await read("cesium_token"),
       theme: await read("theme"),
       globe_style: await read("globe_style"),
+      colormap: await read("colormap"),
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
       tour_completed_at: await read("tour_completed_at"),
       token_banner_dismissed_at: await read("token_banner_dismissed_at"),
@@ -284,6 +297,7 @@ export const settings = {
       "cesium_token",
       "theme",
       "globe_style",
+      "colormap",
       "disclaimer_acknowledged_at",
       "tour_completed_at",
       "token_banner_dismissed_at",
