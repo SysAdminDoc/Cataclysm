@@ -42,6 +42,55 @@ jobs:
           path: dist/
           if-no-files-found: ignore
 
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+  e2e:
+    name: Playwright smoke test
+    runs-on: ubuntu-latest
+    needs: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build for preview
+        run: npx vite build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright smoke tests
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          if-no-files-found: ignore
+
   rust:
     name: Rust backend (${{ matrix.os }})
     strategy:
@@ -80,9 +129,14 @@ jobs:
         working-directory: src-tauri
         run: cargo test --release
 
-      - name: cargo clippy
+      - name: cargo clippy (default features)
         working-directory: src-tauri
         run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo clippy (gpu feature)
+        if: matrix.os != 'ubuntu-latest'
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --features gpu -- -D warnings
 
   audit:
     name: cargo audit
