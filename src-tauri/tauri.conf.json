@@ -25,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' tauri:; script-src 'self' 'unsafe-eval' 'unsafe-inline' tauri:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.cesium.com https://*.ion.cesium.com https://*.openstreetmap.org https://tile.openstreetmap.org https://*.arcgisonline.com https://server.arcgisonline.com; connect-src 'self' tauri: ipc: https://*.cesium.com https://*.ion.cesium.com https://*.openstreetmap.org https://tile.openstreetmap.org https://*.arcgisonline.com https://server.arcgisonline.com; worker-src 'self' blob:; child-src 'self' blob:; font-src 'self' data:"
+      "csp": "default-src 'self' tauri:; script-src 'self' 'unsafe-eval' tauri:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.cesium.com https://*.ion.cesium.com https://*.openstreetmap.org https://tile.openstreetmap.org https://*.arcgisonline.com https://server.arcgisonline.com; connect-src 'self' tauri: ipc: https://*.cesium.com https://*.ion.cesium.com https://*.openstreetmap.org https://tile.openstreetmap.org https://*.arcgisonline.com https://server.arcgisonline.com; worker-src 'self' blob:; child-src 'self' blob:; font-src 'self' data:"
     }
   },
   "bundle": {
