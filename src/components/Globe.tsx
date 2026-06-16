@@ -42,6 +42,55 @@ type Props = {
   primary?: boolean;
 };
 
+function CoordEntryForm({
+  onSubmit,
+  label,
+}: {
+  onSubmit: (lat: number, lon: number) => void;
+  label: string;
+}) {
+  const [lat, setLat] = useState("");
+  const [lon, setLon] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const la = Number(lat);
+    const lo = Number(lon);
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return;
+    if (la < -90 || la > 90 || lo < -180 || lo > 180) return;
+    onSubmit(la, lo);
+  }
+
+  return (
+    <form className="coord-entry" onSubmit={handleSubmit} aria-label={label}>
+      <span className="coord-entry__label">{label}</span>
+      <input
+        type="number"
+        placeholder="Lat (°)"
+        aria-label="Latitude"
+        step="any"
+        min={-90}
+        max={90}
+        value={lat}
+        onChange={(e) => setLat(e.target.value)}
+        className="coord-entry__input"
+      />
+      <input
+        type="number"
+        placeholder="Lon (°)"
+        aria-label="Longitude"
+        step="any"
+        min={-180}
+        max={180}
+        value={lon}
+        onChange={(e) => setLon(e.target.value)}
+        className="coord-entry__input"
+      />
+      <button type="submit" className="coord-entry__go">Go</button>
+    </form>
+  );
+}
+
 const PICK_CURSOR_STYLE = "crosshair";
 
 /**
@@ -823,12 +872,97 @@ export function Globe({
           Click anywhere on the globe to set scenario location. Press
           <kbd> Esc </kbd>
           to cancel.
+          <CoordEntryForm
+            onSubmit={(lat, lon) => onPick?.(lat, lon)}
+            label="Or enter coordinates:"
+          />
         </div>
       )}
       {inspectMode && (
         <div className="app__globe-pickbanner">
           Click anywhere on the globe to read amplitude / arrival / runup.
           Press <kbd> Esc </kbd> to exit.
+          <CoordEntryForm
+            onSubmit={(lat, lon) => {
+              if (!viewerRef.current || !initial) return;
+              const viewer = viewerRef.current;
+              const fakeEvt = {
+                position: new Cesium.Cartesian2(
+                  viewer.canvas.width / 2,
+                  viewer.canvas.height / 2,
+                ),
+              };
+              void fakeEvt;
+              const sourceDepth = initial.center.depth_m ?? 0;
+              const req = {
+                source: initial.center,
+                initial_amplitude_m: initial.peak_amplitude_m,
+                cavity_radius_m: initial.cavity_radius_m,
+                is_impact: inspectIsImpact === true,
+                mean_depth_m:
+                  Number.isFinite(sourceDepth) && sourceDepth > 0 ? sourceDepth : 4000,
+                time_s: inspectTimeS ?? 0,
+                click_lat: lat,
+                click_lon: lon,
+                beach_slope_deg: 1.0,
+                offshore_depth_m: 50.0,
+              };
+              const inspectPromise = isTauri()
+                ? api.inspectAtPoint(req)
+                : Promise.resolve(demoInspectAtPoint(req));
+
+              inspectPromise
+                .then((res) => {
+                  const v = viewerRef.current;
+                  if (!v) return;
+                  const fmt = (x: number, d: number) =>
+                    Number.isFinite(x) ? x.toFixed(d) : "—";
+                  const arrivalMin = res.arrival_time_s / 60;
+                  const arrivalLabel = !Number.isFinite(arrivalMin)
+                    ? "—"
+                    : arrivalMin < 60
+                      ? `T+${arrivalMin.toFixed(0)}m`
+                      : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
+                  const status = res.has_arrived ? "ARRIVED" : "in transit";
+                  const text = [
+                    `${fmt(lat, 2)}°, ${fmt(lon, 2)}°`,
+                    `Range  ${fmt(res.range_m / 1000, 0)} km   ·   ${status}`,
+                    `Arrival ${arrivalLabel}`,
+                    `Offshore ${fmt(res.offshore_amplitude_m, 2)} m   ·   Runup ${fmt(res.runup_m, 1)} m`,
+                    `Inundation ~${fmt(res.inundation_extent_m / 1000, 2)} km`,
+                  ].join("\n");
+
+                  if (inspectEntityRef.current) {
+                    v.entities.remove(inspectEntityRef.current);
+                    inspectEntityRef.current = null;
+                  }
+                  inspectEntityRef.current = v.entities.add({
+                    position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+                    point: {
+                      pixelSize: 10,
+                      color: Cesium.Color.fromCssColorString("#89dceb"),
+                      outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+                      outlineWidth: 2,
+                    },
+                    label: {
+                      text,
+                      font: "11px Inter, sans-serif",
+                      fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
+                      outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+                      outlineWidth: 2,
+                      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                      pixelOffset: new Cesium.Cartesian2(0, -16),
+                      showBackground: true,
+                      backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.92),
+                      backgroundPadding: new Cesium.Cartesian2(10, 8),
+                    },
+                  });
+                })
+                .catch((err) => console.warn("[globe] keyboard inspect failed", err));
+            }}
+            label="Or enter coordinates:"
+          />
         </div>
       )}
       {imageryStatus === "loading" && (

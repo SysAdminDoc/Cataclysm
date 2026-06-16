@@ -14,12 +14,13 @@ import { api, isTauri } from "./lib/tauri";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo } from "./lib/export";
+import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -72,6 +73,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <rect x="4" y="6" width="12" height="12" rx="2" />
         <path d="m16 10 4-2v8l-4-2" />
+      </svg>
+    );
+  }
+  if (name === "text") {
+    return (
+      <svg {...common}>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+        <path d="M14 2v6h6M8 13h8M8 17h5" />
       </svg>
     );
   }
@@ -360,6 +369,22 @@ export default function App() {
             disabled={!slotA.initial || recording}
           >
             {recording ? "Recording" : "Video"}
+          </ToolbarButton>
+          <ToolbarButton
+            icon="text"
+            onClick={() => {
+              downloadTextExport({
+                preset: activePresetA,
+                initial: slotA.initial,
+                timeS,
+                runupResults: slotA.runupResults,
+              });
+              showToast("Saved text results.", "info");
+            }}
+            title="Export scenario parameters and runup results as a screen-reader-friendly text file"
+            disabled={!slotA.initial}
+          >
+            Text
           </ToolbarButton>
           <ToolbarButton icon="citations" onClick={() => setShowCitations(true)} title="View citations">
             Citations

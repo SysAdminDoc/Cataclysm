@@ -884,7 +884,41 @@ a {
   color: var(--crust);
   font-size: 13px;
   font-weight: 600;
-  pointer-events: none;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.coord-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.coord-entry__label {
+  font-size: 11px;
+  opacity: 0.9;
+}
+.coord-entry__input {
+  width: 72px;
+  padding: 3px 6px;
+  font-size: 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--crust);
+  background: var(--crust);
+  color: var(--text);
+}
+.coord-entry__go {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--crust);
+  background: var(--crust);
+  color: var(--text);
+  cursor: pointer;
+}
+.coord-entry__go:hover {
+  background: var(--surface0);
 }
 
 .app__globe-pickbanner kbd {
@@ -1081,6 +1115,55 @@ a {
   font-size: 10px;
   text-transform: none;
   letter-spacing: 0.2px;
+}
+
+.scenario-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scenario-field__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scenario-field__help-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--subtext);
+  background: color-mix(in srgb, var(--surface0) 60%, transparent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.scenario-field__help-btn:hover,
+.scenario-field__help-btn:focus-visible {
+  color: var(--text);
+  background: var(--surface0);
+}
+.scenario-field__help-text {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--subtext);
+  padding: 4px 0;
+}
+.scenario-field__inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scenario-field__slider {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--blue);
+  cursor: pointer;
 }
 
 .scenario-tabs {

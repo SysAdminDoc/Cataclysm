@@ -92,6 +92,36 @@ const BOUNDS: Record<string, Bound> = {
   lon_deg: { min: -180, max: 180 },
 };
 
+const PARAM_HELP: Record<string, string> = {
+  diameter_m: "Impactor diameter. Chicxulub: ~14 km; typical NEO: 100–500 m. Ward & Asphaug 2000.",
+  density_kg_m3: "Material density. Iron: ~7 800; stony: ~3 000; cometary ice: ~500. Schmidt & Holsapple 1982.",
+  velocity_m_s: "Impact speed. Earth-crossing asteroids average ~18 km/s; comets up to 72 km/s.",
+  angle_deg: "Impact angle from horizontal. 45° is most probable. Steeper = deeper cavity.",
+  water_depth_m: "Ocean depth at the source. Controls wave speed c = √(gh) and cavity geometry.",
+  yield_kt: "Nuclear yield in kilotons TNT equivalent. Glasstone & Dolan 1977.",
+  burst_depth_m: "Detonation depth below surface. Deeper = more coupling to water column. Le Méhauté 1996.",
+  mw: "Moment magnitude. Controls fault slip area and displacement. Kanamori 1977.",
+  depth_m: "Hypocentre depth below seafloor. Shallower = more seafloor displacement.",
+  strike_deg: "Fault strike azimuth (0–360°). Direction the fault plane faces. Okada 1985.",
+  dip_deg: "Fault dip angle (0–90°). Angle the fault plane makes with horizontal. Okada 1985.",
+  rake_deg: "Slip direction on the fault plane (−180 to 180°). 90° = pure thrust. Okada 1985.",
+  slip_m: "Average coseismic displacement on the fault. Tōhoku 2011: ~15 m. Okada 1985.",
+  fault_length_m: "Along-strike fault dimension. 0 = auto from Wells–Coppersmith 1994 scaling.",
+  fault_width_m: "Down-dip fault dimension. 0 = auto from Wells–Coppersmith 1994 scaling.",
+  volume_m3: "Slide volume. Lituya Bay 1958: ~30 M m³; Storegga: ~3 000 km³.",
+  drop_height_m: "Vertical fall of the slide mass centre. Fritz & Hager 2001.",
+  slope_deg: "Slope angle of the failure surface. Steeper = faster slide. Slingerland & Voight.",
+  water_body_width_m: "Width of the receiving water body. Constrains 2D channel geometry.",
+  lat_deg: "Source latitude (−90° to 90°).",
+  lon_deg: "Source longitude (−180° to 180°).",
+};
+
+const SLIDER_FIELDS = new Set([
+  "diameter_m", "density_kg_m3", "velocity_m_s", "angle_deg",
+  "water_depth_m", "yield_kt", "burst_depth_m", "mw",
+  "dip_deg", "slope_deg", "drop_height_m", "slip_m",
+]);
+
 function clamp(field: string, v: number): number {
   if (!Number.isFinite(v)) return BOUNDS[field]?.min ?? 0;
   const b = BOUNDS[field];
@@ -115,11 +145,9 @@ function NumField({
   step?: number;
 }) {
   const b = BOUNDS[field];
-  // Hold an uncommitted text draft so the user can clear the field and retype
-  // intermediate states ("", "-", "1.", "1e") without each keystroke being
-  // clamped (Number("") === 0 used to snap the field to its minimum, making
-  // it effectively un-editable). We clamp + commit on blur, and re-sync from
-  // the prop when it changes externally (e.g. a globe pick).
+  const help = PARAM_HELP[field];
+  const showSlider = SLIDER_FIELDS.has(field);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [draft, setDraft] = useState<string>(() => String(value));
   const focusedRef = useRef(false);
   useEffect(() => {
@@ -134,30 +162,61 @@ function NumField({
   }
 
   return (
-    <label>
-      <span>
-        {label}
-        {b && (
-          <span className="scenario-form__bound" aria-hidden>
-            {" "}({b.min ?? "−∞"} … {b.max ?? "+∞"})
-          </span>
+    <label className="scenario-field">
+      <span className="scenario-field__header">
+        <span>
+          {label}
+          {b && (
+            <span className="scenario-form__bound" aria-hidden>
+              {" "}({b.min ?? "−∞"} … {b.max ?? "+∞"})
+            </span>
+          )}
+        </span>
+        {help && (
+          <button
+            type="button"
+            className="scenario-field__help-btn"
+            aria-label={`Help: ${label}`}
+            aria-expanded={helpOpen}
+            onClick={(e) => { e.preventDefault(); setHelpOpen((v) => !v); }}
+          >
+            ?
+          </button>
         )}
       </span>
-      <input
-        type="number"
-        value={draft}
-        step={step ?? "any"}
-        min={b?.min}
-        max={b?.max}
-        onFocus={() => {
-          focusedRef.current = true;
-        }}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          focusedRef.current = false;
-          commit();
-        }}
-      />
+      {helpOpen && help && (
+        <span className="scenario-field__help-text" role="note">
+          {help}
+        </span>
+      )}
+      <span className="scenario-field__inputs">
+        <input
+          type="number"
+          value={draft}
+          step={step ?? "any"}
+          min={b?.min}
+          max={b?.max}
+          onFocus={() => { focusedRef.current = true; }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => { focusedRef.current = false; commit(); }}
+        />
+        {showSlider && b?.min !== undefined && b?.max !== undefined && (
+          <input
+            type="range"
+            className="scenario-field__slider"
+            min={b.min}
+            max={b.max}
+            step={step ?? (b.max - b.min) / 200}
+            value={value}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              onChange(v);
+              setDraft(String(v));
+            }}
+            aria-label={`${label} slider`}
+          />
+        )}
+      </span>
     </label>
   );
 }
