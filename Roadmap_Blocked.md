@@ -59,3 +59,6 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 - **P3** — Volcanic caldera collapse source model (L).
   **Blocker:** Requires Maeno & Imamura 2011 implementation + Krakatoa preset conversion. Significant physics research needed.
+
+- **P3** — NetCDF output export for interoperability (M).
+  **Blocker:** Requires `netcdf` crate which depends on `netcdf-sys` → `libnetcdf` (C library) + CMake at build time. The C dependency complicates cross-platform CI and local builds. Consider a pure-Rust alternative or bundling libnetcdf as a static lib.
