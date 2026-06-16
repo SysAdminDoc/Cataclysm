@@ -119,6 +119,34 @@ impl GpuTimeStepper {
             })
             .await
             .ok()?;
+
+        let n_cells = grid.nx * grid.ny;
+        let n_bytes = (n_cells * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+
+        // VRAM pre-check: we allocate ~10 storage buffers of n_bytes each
+        // (h, eta_a/b, u_a/b, v_a/b, readback_eta/u/v) plus a small params
+        // uniform. Reject if any single buffer exceeds the adapter's
+        // max_buffer_binding_size, or if total estimated usage exceeds 80%
+        // of max_buffer_binding_size (a rough heuristic since wgpu doesn't
+        // expose total VRAM). This triggers CPU fallback before an OOM panic.
+        let limits = adapter.limits();
+        let max_buf = limits.max_buffer_binding_size as u64;
+        if n_bytes > max_buf {
+            eprintln!(
+                "[gpu] grid requires {} bytes per buffer but adapter max is {} — falling back to CPU",
+                n_bytes, max_buf
+            );
+            return None;
+        }
+        let total_estimated = n_bytes * 10;
+        if total_estimated > (max_buf as f64 * 0.8) as u64 {
+            eprintln!(
+                "[gpu] estimated total VRAM {} exceeds 80% of max_buffer_binding_size {} — falling back to CPU",
+                total_estimated, max_buf
+            );
+            return None;
+        }
+
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("tsunamisim-swe"),
@@ -129,9 +157,6 @@ impl GpuTimeStepper {
             })
             .await
             .ok()?;
-
-        let n_cells = grid.nx * grid.ny;
-        let n_bytes = (n_cells * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("swe-leapfrog"),

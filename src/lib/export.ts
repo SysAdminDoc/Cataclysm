@@ -5,6 +5,7 @@
  */
 
 import type { InitialDisplacement, Preset } from "../types/scenario";
+import { isTauri } from "./tauri";
 
 /** Find the Cesium globe canvas. */
 function findGlobeCanvas(): HTMLCanvasElement | null {
@@ -84,8 +85,39 @@ export function downloadBlob(blob: Blob, filename: string): void {
   }
 }
 
+function stampDemoWatermark(canvas: HTMLCanvasElement): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const text = "BROWSER PREVIEW — APPROXIMATE";
+  ctx.save();
+  ctx.font = "bold 18px Inter, system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const x = canvas.width / 2;
+  const y = canvas.height - 30;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  const m = ctx.measureText(text);
+  ctx.fillRect(x - m.width / 2 - 12, y - 14, m.width + 24, 28);
+  ctx.fillStyle = "#fab387";
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
 /** Full export flow — capture + download. Returns true if a screenshot was produced. */
 export function exportGlobePng(meta: ScreenshotMeta): boolean {
+  const sourceCanvas = findGlobeCanvas();
+  if (!sourceCanvas) return false;
+  if (!isTauri()) {
+    const offscreen = document.createElement("canvas");
+    offscreen.width = sourceCanvas.width;
+    offscreen.height = sourceCanvas.height;
+    const ctx = offscreen.getContext("2d");
+    if (!ctx) return false;
+    ctx.drawImage(sourceCanvas, 0, 0);
+    stampDemoWatermark(offscreen);
+    downloadDataUrl(offscreen.toDataURL("image/png"), suggestedFilename(meta, "png"));
+    return true;
+  }
   const url = captureGlobePng();
   if (!url) return false;
   downloadDataUrl(url, suggestedFilename(meta, "png"));
@@ -183,6 +215,17 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
     24,
     H - FOOTER_H / 2,
   );
+
+  if (!isTauri()) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(W / 2 - 180, H / 2 - 16, 360, 32);
+    ctx.fillStyle = "#fab387";
+    ctx.font = "bold 16px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("BROWSER PREVIEW — APPROXIMATE", W / 2, H / 2);
+    ctx.textAlign = "left";
+  }
 
   const dataUrl = canvas.toDataURL("image/png");
   downloadDataUrl(dataUrl, suggestedFilename(meta, "png").replace(".png", "-share.png"));
