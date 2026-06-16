@@ -64,10 +64,9 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# Markdown files local-only (except README)
+# Markdown files local-only (except README, docs, and CHANGELOG)
 *.md
 !README.md
-
-# Markdown files local-only (except README)
-*.md
-!README.md
+!CHANGELOG.md
+!docs/**/*.md
+!Roadmap_Blocked.md
