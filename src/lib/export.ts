@@ -318,3 +318,70 @@ export async function exportGlobeVideo(
   downloadBlob(blob, suggestedFilename(meta, mime.ext));
   return { ok: true, ext: mime.ext, size: blob.size };
 }
+
+/** Export SWE simulation snapshots as a CZML document for playback in
+ *  any CesiumJS viewer. Each snapshot's PNG becomes a time-interval
+ *  rectangle overlay. */
+export function exportCzml(
+  meta: ScreenshotMeta,
+  snapshots: import("../types/scenario").GridSnapshot[],
+): boolean {
+  if (!snapshots.length) return false;
+
+  const epoch = "2024-01-01T00:00:00Z";
+  const epochMs = new Date(epoch).getTime();
+
+  function toIso(s: number): string {
+    return new Date(epochMs + s * 1000).toISOString().replace(/\.000Z$/, "Z");
+  }
+
+  const tStart = snapshots[0].time_s;
+  const tEnd = snapshots[snapshots.length - 1].time_s;
+  const interval = `${toIso(tStart)}/${toIso(Math.max(tEnd, tStart + 1))}`;
+
+  const materialIntervals: unknown[] = [];
+  for (let k = 0; k < snapshots.length; k++) {
+    const snap = snapshots[k];
+    const next = k + 1 < snapshots.length ? snapshots[k + 1].time_s : tEnd + 1;
+    materialIntervals.push({
+      interval: `${toIso(snap.time_s)}/${toIso(next)}`,
+      image: `data:image/png;base64,${snap.eta_png_b64}`,
+      repeat: { cartesian2: [1, 1] },
+      color: { rgba: [255, 255, 255, 230] },
+    });
+  }
+
+  const [west, south, east, north] = snapshots[0].bbox;
+
+  const czml = [
+    {
+      id: "document",
+      name: meta.preset?.name ?? "TsunamiSimulator Export",
+      version: "1.0",
+      clock: {
+        interval,
+        currentTime: toIso(tStart),
+        multiplier: 60,
+        range: "LOOP_STOP",
+        step: "SYSTEM_CLOCK_MULTIPLIER",
+      },
+    },
+    {
+      id: "wave-field",
+      name: "SWE wave field",
+      availability: interval,
+      description: `TsunamiSimulator ${meta.preset?.name ?? "custom"} — ${snapshots.length} snapshots`,
+      rectangle: {
+        coordinates: { wsenDegrees: [west, south, east, north] },
+        material: { image: { image: materialIntervals } },
+        height: 0,
+      },
+    },
+  ];
+
+  const json = JSON.stringify(czml, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const presetId = meta.preset?.id ?? "custom-scenario";
+  downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}.czml`);
+  return true;
+}

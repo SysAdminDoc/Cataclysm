@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, isTauri } from "../lib/tauri";
+import { settings } from "../lib/settings";
 import { simulateDemoGrid } from "../lib/demo";
 import type { GridSnapshot, InitialDisplacement } from "../types/scenario";
 
 type Props = {
   initial: InitialDisplacement | null;
   onSnapshot?: (snap: GridSnapshot | null) => void;
+  onSnapshotsReady?: (snaps: GridSnapshot[] | null) => void;
 };
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -16,7 +18,7 @@ type Status = "idle" | "running" | "ready" | "error";
  * resulting snapshots. Snapshot PNG data flows to the parent via `onSnapshot`
  * so the Globe component can paint it as an imagery layer.
  */
-export function SwePlayback({ initial, onSnapshot }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -46,6 +48,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       setIsPlaying(false);
       setDiag(null);
       onSnapshot?.(null);
+      onSnapshotsReady?.(null);
     }
   }, [initial, onSnapshot]);
 
@@ -74,12 +77,11 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
     }
   }, [isPlaying, snapshots, activeIdx]);
 
-  // Cancel an in-flight simulation. The Tauri worker keeps running
-  // to completion (the IPC layer has no cancel signal), but bumping
-  // `reqIdRef` causes the response to be ignored on arrival and the
-  // UI returns to idle immediately so the user can re-configure.
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
+    if (isTauri()) {
+      api.cancelSimulation().catch(() => {});
+    }
     setStatus("idle");
     setErrMsg(null);
     setIsPlaying(false);
@@ -100,6 +102,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         Math.max(2, (initial.cavity_radius_m / 1000) * 0.05 + 4),
       );
       const sigmaM = Math.max(initial.cavity_radius_m, 5000);
+      const colormap = await settings.getColormap();
       const resp = isTauri()
         ? await api.simulateGrid({
             source: initial.center,
@@ -112,6 +115,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
             t_end_s: 60 * 60, // 1 simulated hour
             n_snapshots: 24,
             include_lamb_wave: includeLambWave,
+            colormap,
           })
         : simulateDemoGrid(initial, {
             boxHalfSizeDeg: halfDeg,
@@ -124,6 +128,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
       setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false });
       setActiveIdx(0);
       setStatus("ready");
+      onSnapshotsReady?.(resp.snapshots);
     } catch (err) {
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
       console.error("simulate_grid failed", err);
@@ -173,7 +178,7 @@ export function SwePlayback({ initial, onSnapshot }: Props) {
         {status === "running" && (
           <button
             onClick={cancel}
-            title="Cancel the in-flight simulation and return to idle. The worker keeps running in the background but its result will be dropped."
+            title="Cancel the in-flight simulation and return to idle."
           >
             Cancel
           </button>
