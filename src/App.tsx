@@ -519,7 +519,7 @@ export default function App() {
         )}
         <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} onSnapshotsReady={setSweSnapshots} />
         {compareMode && <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />}
-        <DartOverlay presetId={slotA.activePresetId} timeS={timeS} />
+        <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} />
         {!compareMode && (
           <ScenarioBuilder
             onSimulate={slotA.simulate}

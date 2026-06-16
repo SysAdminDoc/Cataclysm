@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { getDartEvents, getDartBuoysForPreset, PRESET_TO_DART_EVENT } from "../lib/data";
-import type { DartBuoy, DartEvent } from "../types/scenario";
+import type { DartBuoy, DartEvent, InitialDisplacement } from "../types/scenario";
 
 type Props = {
   presetId: string | null;
   timeS: number;
+  initial?: InitialDisplacement | null;
 };
 
 const db = getDartEvents();
@@ -29,8 +30,37 @@ function buoyPeakAbsAmp(buoy: DartBuoy): number {
   return buoy.observations.reduce((m, [, v]) => Math.max(m, Math.abs(v)), 0);
 }
 
-/** Sparkline of a buoy's observation series — observed in red, current-time cursor in blue. */
-function Sparkline({ buoy, timeS }: { buoy: DartBuoy; timeS: number }) {
+function observedArrivalS(buoy: DartBuoy): number | null {
+  const threshold = buoyPeakAbsAmp(buoy) * 0.05;
+  if (threshold < 1e-4) return null;
+  for (const [t, v] of buoy.observations) {
+    if (Math.abs(v) > threshold) return t;
+  }
+  return null;
+}
+
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_008.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function modelArrivalS(buoy: DartBuoy, initial: InitialDisplacement | null | undefined): number | null {
+  if (!initial) return null;
+  const dist = haversineM(initial.center.lat_deg, initial.center.lon_deg, buoy.lat, buoy.lon);
+  const depth = initial.center.depth_m ?? 4000;
+  const c = Math.sqrt(9.81 * Math.max(depth, 50));
+  if (c <= 0) return null;
+  return dist / c;
+}
+
+/** Sparkline of a buoy's observation series — observed in red, current-time cursor in blue,
+ *  with optional model/observed arrival-time comparison markers. */
+function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; initial?: InitialDisplacement | null }) {
   const w = 280;
   const h = 60;
   const obs = buoy.observations;
@@ -43,21 +73,43 @@ function Sparkline({ buoy, timeS }: { buoy: DartBuoy; timeS: number }) {
   const d = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
   const cursorX = ((timeS - tMin) / (tMax - tMin || 1)) * w;
   const cur = sampleEta(buoy, timeS);
+  const obsArr = observedArrivalS(buoy);
+  const modArr = modelArrivalS(buoy, initial);
+  const obsArrX = obsArr != null ? ((obsArr - tMin) / (tMax - tMin || 1)) * w : null;
+  const modArrX = modArr != null ? ((modArr - tMin) / (tMax - tMin || 1)) * w : null;
+  const arrivalDeltaMin = obsArr != null && modArr != null ? ((modArr - obsArr) / 60) : null;
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="dart__spark">
+    <svg width={w} height={h + 14} viewBox={`0 0 ${w} ${h + 14}`} className="dart__spark">
       <line x1={0} x2={w} y1={h * 0.5} y2={h * 0.5} stroke="var(--surface2)" strokeDasharray="2 4" />
       <path d={d} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
       {Number.isFinite(cursorX) && cursorX >= 0 && cursorX <= w && (
         <line x1={cursorX} x2={cursorX} y1={0} y2={h} stroke="var(--sapphire)" strokeWidth={1.5} />
       )}
+      {obsArrX != null && obsArrX >= 0 && obsArrX <= w && (
+        <>
+          <line x1={obsArrX} x2={obsArrX} y1={0} y2={h} stroke="var(--green)" strokeWidth={1} strokeDasharray="3 3" />
+          <text x={obsArrX + 2} y={h - 2} fontSize="8" fill="var(--green)">obs</text>
+        </>
+      )}
+      {modArrX != null && modArrX >= 0 && modArrX <= w && (
+        <>
+          <line x1={modArrX} x2={modArrX} y1={0} y2={h} stroke="var(--peach)" strokeWidth={1} strokeDasharray="3 3" />
+          <text x={modArrX + 2} y={10} fontSize="8" fill="var(--peach)">model</text>
+        </>
+      )}
       <text x={4} y={12} fontSize="10" fill="var(--subtext)">
         peak {peak.toFixed(2)} m · t-cursor {cur.toFixed(2)} m · {obs.length} samples
       </text>
+      {arrivalDeltaMin != null && (
+        <text x={4} y={h + 11} fontSize="9" fill="var(--subtext)">
+          arrival Δ {arrivalDeltaMin > 0 ? "+" : ""}{arrivalDeltaMin.toFixed(0)} min (model vs observed)
+        </text>
+      )}
     </svg>
   );
 }
 
-export function DartOverlay({ presetId, timeS }: Props) {
+export function DartOverlay({ presetId, timeS, initial }: Props) {
   const [expanded, setExpanded] = useState(true);
   const eventKey = presetId ? PRESET_TO_DART_EVENT[presetId] : null;
   const event: DartEvent | null = useMemo(
@@ -91,7 +143,7 @@ export function DartOverlay({ presetId, timeS }: Props) {
               <div className="dart__meta">
                 {b.lat.toFixed(2)}°, {b.lon.toFixed(2)}° · {b.depth_m} m deep
               </div>
-              <Sparkline buoy={b} timeS={timeS} />
+              <Sparkline buoy={b} timeS={timeS} initial={initial} />
             </div>
           ))}
         </>
