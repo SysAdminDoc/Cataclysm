@@ -6,6 +6,7 @@ import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { Tour } from "./components/Tour";
+import { LogViewer } from "./components/LogViewer";
 import { settings } from "./lib/settings";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
@@ -152,6 +153,7 @@ export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [presetsError, setPresetsError] = useState<string | null>(null);
+  const [showLog, setShowLog] = useState(false);
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const inTauri = useMemo(isTauri, []);
@@ -457,6 +459,8 @@ export default function App() {
         <div className="footer-note">
           Each preset cites a peer-reviewed paper.{" "}
           <button onClick={() => setShowCitations(true)}>View all citations →</button>
+          {" · "}
+          <button onClick={() => setShowLog(true)}>Diagnostics log</button>
         </div>
       </aside>
 
@@ -542,6 +546,7 @@ export default function App() {
       )}
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      <LogViewer open={showLog} onClose={() => setShowLog(false)} />
       <FirstRunDisclaimer />
       <Tour
         open={tourOpen}
