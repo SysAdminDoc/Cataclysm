@@ -35,19 +35,20 @@
 //! - GPU compute via `wgpu` is the planned v0.3.0 perf upgrade — the WGSL
 //!   kernel source lives in [`kernels`] for that future work.
 //! - Snapshots are emitted at user-specified time stride; each snapshot is
-//!   serialised as a base64 PNG (blue→red colormap) for cheap IPC + Cesium
-//!   `SingleTileImageryProvider` consumption.
+//!   serialised as a base64 PNG (selected SWE colormap) for cheap IPC +
+//!   Cesium `SingleTileImageryProvider` consumption.
 
 use base64::Engine;
 use rayon::prelude::*;
 use serde::Serialize;
 use std::io::Cursor;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
 
-pub mod kernels;
 #[cfg(feature = "gpu")]
 pub mod gpu;
+pub mod kernels;
 
 /// One snapshot of the propagation field, suitable for IPC transport.
 #[derive(Debug, Clone, Serialize)]
@@ -90,6 +91,7 @@ pub struct SwGrid {
     pub v_ms: Vec<f64>,
     /// Simulation time, seconds.
     pub t_s: f64,
+    pub colormap: Colormap,
 }
 
 #[inline]
@@ -125,6 +127,7 @@ impl SwGrid {
             u_ms: vec![0.0; n],
             v_ms: vec![0.0; n],
             t_s: 0.0,
+            colormap: Colormap::default(),
         }
     }
 
@@ -287,7 +290,10 @@ impl SwGrid {
                 // or alpha = 0 NaN that the GPU rounds unpredictably).
                 let (r, g, b, a) = if v.is_finite() {
                     let t = (v / safe_scale).clamp(-1.0, 1.0);
-                    diverging_colormap(t)
+                    match self.colormap {
+                        Colormap::Diverging => diverging_colormap(t),
+                        Colormap::Cividis => cividis_colormap(t),
+                    }
                 } else {
                     (0, 0, 0, 0)
                 };
@@ -317,6 +323,13 @@ impl SwGrid {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum Colormap {
+    #[default]
+    Diverging,
+    Cividis,
+}
+
 /// Blue→transparent→red diverging colormap. `t ∈ [-1, 1]`. Returns
 /// premultiplied-alpha-friendly RGBA bytes — small amplitudes are nearly
 /// transparent so the underlying Cesium globe shows through.
@@ -334,6 +347,24 @@ fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
         let r = 255;
         let g = (140.0 - 100.0 * mag) as u8;
         let b = (100.0 - 90.0 * mag) as u8;
+        (r, g, b, a)
+    }
+}
+
+/// Diverging cividis colormap (Nunez et al. 2018, CVD-safe).
+/// `t ∈ [-1, 1]`: negative → dark blue-gray, positive → bright yellow.
+fn cividis_colormap(t: f64) -> (u8, u8, u8, u8) {
+    let mag = t.abs();
+    let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
+    if t < 0.0 {
+        let r = (0.0 + 0.0 * (1.0 - mag)) as u8;
+        let g = (34.0 * mag) as u8;
+        let b = (78.0 * mag) as u8;
+        (r, g, b, a)
+    } else {
+        let r = (253.0 * mag) as u8;
+        let g = (231.0 * mag) as u8;
+        let b = (37.0 * mag) as u8;
         (r, g, b, a)
     }
 }
@@ -441,9 +472,24 @@ impl TimeStepper {
 
     /// Advance the grid by exactly `n_steps` of size `self.dt_s`.
     pub fn step(&self, grid: &mut SwGrid, n_steps: usize) {
+        let _ = self.step_cancellable(grid, n_steps, None);
+    }
+
+    /// Advance the grid by up to `n_steps`, stopping early when `cancel`
+    /// is set. Returns `false` if cancellation interrupted the batch.
+    pub fn step_cancellable(
+        &self,
+        grid: &mut SwGrid,
+        n_steps: usize,
+        cancel: Option<&AtomicBool>,
+    ) -> bool {
         for _ in 0..n_steps {
+            if cancel.map_or(false, |c| c.load(Ordering::Relaxed)) {
+                return false;
+            }
             self.step_one(grid);
         }
+        true
     }
 
     /// Single explicit leapfrog step. Continuity update first, then
@@ -467,47 +513,76 @@ impl TimeStepper {
 
         // Continuity update: rows in parallel.
         let mut eta_new = vec![0.0f64; nx * ny];
-        eta_new
-            .par_chunks_mut(nx)
-            .enumerate()
-            .for_each(|(j, row)| {
-                for i in 0..nx {
-                    // Dry cells stay dry — η pinned to 0. Prevents the
-                    // "slow spread halo" over continental interiors when
-                    // simulate_grid substitutes 1 m for land bathymetry.
-                    // Runs BEFORE the boundary fall-through so a land-on-
-                    // the-rim cell can't leak a residual IC amplitude.
-                    if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
-                        row[i] = 0.0;
-                        continue;
-                    }
-                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                        row[i] = eta_old[idx(i, j, nx)];
-                        continue;
-                    }
-                    let h_e = h[idx(i + 1, j, nx)];
-                    let h_w = h[idx(i - 1, j, nx)];
-                    let h_n = h[idx(i, j + 1, nx)];
-                    let h_s = h[idx(i, j - 1, nx)];
-                    // Land-neighbour flux substitution: treat dry cells as
-                    // reflective walls — zero the contributing flux term
-                    // rather than letting an η_land × u_water product
-                    // smear amplitude onto land.
-                    let eta_e = if h_e > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i + 1, j, nx)] } else { 0.0 };
-                    let eta_w = if h_w > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i - 1, j, nx)] } else { 0.0 };
-                    let eta_n = if h_n > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i, j + 1, nx)] } else { 0.0 };
-                    let eta_s = if h_s > LAND_DEPTH_THRESHOLD_M { eta_old[idx(i, j - 1, nx)] } else { 0.0 };
-                    let u_e = if h_e > LAND_DEPTH_THRESHOLD_M { u_in[idx(i + 1, j, nx)] } else { 0.0 };
-                    let u_w = if h_w > LAND_DEPTH_THRESHOLD_M { u_in[idx(i - 1, j, nx)] } else { 0.0 };
-                    let v_n = if h_n > LAND_DEPTH_THRESHOLD_M { v_in[idx(i, j + 1, nx)] } else { 0.0 };
-                    let v_s = if h_s > LAND_DEPTH_THRESHOLD_M { v_in[idx(i, j - 1, nx)] } else { 0.0 };
-                    let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
-                        / (2.0 * dx);
-                    let flux_y = ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s)
-                        / (2.0 * dy);
-                    row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
+        eta_new.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
+            for i in 0..nx {
+                // Dry cells stay dry — η pinned to 0. Prevents the
+                // "slow spread halo" over continental interiors when
+                // simulate_grid substitutes 1 m for land bathymetry.
+                // Runs BEFORE the boundary fall-through so a land-on-
+                // the-rim cell can't leak a residual IC amplitude.
+                if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                    row[i] = 0.0;
+                    continue;
                 }
-            });
+                if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                    row[i] = eta_old[idx(i, j, nx)];
+                    continue;
+                }
+                let h_e = h[idx(i + 1, j, nx)];
+                let h_w = h[idx(i - 1, j, nx)];
+                let h_n = h[idx(i, j + 1, nx)];
+                let h_s = h[idx(i, j - 1, nx)];
+                // Land-neighbour flux substitution: treat dry cells as
+                // reflective walls — zero the contributing flux term
+                // rather than letting an η_land × u_water product
+                // smear amplitude onto land.
+                let eta_e = if h_e > LAND_DEPTH_THRESHOLD_M {
+                    eta_old[idx(i + 1, j, nx)]
+                } else {
+                    0.0
+                };
+                let eta_w = if h_w > LAND_DEPTH_THRESHOLD_M {
+                    eta_old[idx(i - 1, j, nx)]
+                } else {
+                    0.0
+                };
+                let eta_n = if h_n > LAND_DEPTH_THRESHOLD_M {
+                    eta_old[idx(i, j + 1, nx)]
+                } else {
+                    0.0
+                };
+                let eta_s = if h_s > LAND_DEPTH_THRESHOLD_M {
+                    eta_old[idx(i, j - 1, nx)]
+                } else {
+                    0.0
+                };
+                let u_e = if h_e > LAND_DEPTH_THRESHOLD_M {
+                    u_in[idx(i + 1, j, nx)]
+                } else {
+                    0.0
+                };
+                let u_w = if h_w > LAND_DEPTH_THRESHOLD_M {
+                    u_in[idx(i - 1, j, nx)]
+                } else {
+                    0.0
+                };
+                let v_n = if h_n > LAND_DEPTH_THRESHOLD_M {
+                    v_in[idx(i, j + 1, nx)]
+                } else {
+                    0.0
+                };
+                let v_s = if h_s > LAND_DEPTH_THRESHOLD_M {
+                    v_in[idx(i, j - 1, nx)]
+                } else {
+                    0.0
+                };
+                let flux_x =
+                    ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w) / (2.0 * dx);
+                let flux_y =
+                    ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s) / (2.0 * dy);
+                row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
+            }
+        });
 
         // Momentum update: rows in parallel.
         let mut u_new = vec![0.0f64; nx * ny];
@@ -590,10 +665,26 @@ impl TimeStepper {
                         // Upwind: take the backward gradient when the
                         // velocity points east/north, the forward gradient
                         // when it points west/south.
-                        let dudx_up = if u >= 0.0 { (u - u_west) / dx } else { (u_east - u) / dx };
-                        let dudy_up = if v >= 0.0 { (u - u_south) / dy } else { (u_north - u) / dy };
-                        let dvdx_up = if u >= 0.0 { (v - v_west) / dx } else { (v_east - v) / dx };
-                        let dvdy_up = if v >= 0.0 { (v - v_south) / dy } else { (v_north - v) / dy };
+                        let dudx_up = if u >= 0.0 {
+                            (u - u_west) / dx
+                        } else {
+                            (u_east - u) / dx
+                        };
+                        let dudy_up = if v >= 0.0 {
+                            (u - u_south) / dy
+                        } else {
+                            (u_north - u) / dy
+                        };
+                        let dvdx_up = if u >= 0.0 {
+                            (v - v_west) / dx
+                        } else {
+                            (v_east - v) / dx
+                        };
+                        let dvdy_up = if v >= 0.0 {
+                            (v - v_south) / dy
+                        } else {
+                            (v_north - v) / dy
+                        };
                         (u * dudx_up + v * dudy_up, u * dvdx_up + v * dvdy_up)
                     } else {
                         (0.0, 0.0)
@@ -638,14 +729,7 @@ impl TimeStepper {
 /// Taper:  `factor = 0.5 (1 − cos(π · d/width))`, with `d` the distance
 /// in cells to the nearest edge. At d=0 (edge): factor=0 (full damping);
 /// at d=width (interior): factor=1 (no damping).
-fn apply_sponge(
-    eta: &mut [f64],
-    u: &mut [f64],
-    v: &mut [f64],
-    nx: usize,
-    ny: usize,
-    width: usize,
-) {
+fn apply_sponge(eta: &mut [f64], u: &mut [f64], v: &mut [f64], nx: usize, ny: usize, width: usize) {
     use std::f64::consts::PI;
     for j in 0..ny {
         for i in 0..nx {
@@ -678,6 +762,7 @@ pub fn run_simulation(
     stepper: &TimeStepper,
     t_end_s: f64,
     n_snapshots: usize,
+    cancel: Option<&AtomicBool>,
 ) -> Vec<GridSnapshot> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
@@ -685,8 +770,6 @@ pub fn run_simulation(
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return snaps;
     }
-    // `dt_s` must be a real positive number or `t_end_s / dt_s` overflows
-    // `usize` via the inf-cast path and we'd hang the worker thread.
     let dt = if stepper.dt_s.is_finite() && stepper.dt_s > 0.0 {
         stepper.dt_s
     } else {
@@ -700,10 +783,15 @@ pub fn run_simulation(
     };
 
     for k in 1..n {
+        if cancel.map_or(false, |c| c.load(Ordering::Relaxed)) {
+            break;
+        }
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let take = target_step.saturating_sub(current_step).max(1);
-        stepper.step(grid, take);
+        if !stepper.step_cancellable(grid, take, cancel) {
+            break;
+        }
         snaps.push(grid.snapshot());
     }
     snaps
@@ -721,8 +809,33 @@ mod tests {
         g.inject_gaussian(0.0, 0.0, 10.0, 1_000_000.0);
         let s = g.snapshot();
         assert!(s.eta_max_m > 9.0 && s.eta_max_m <= 10.0);
-        assert!(!s.eta_png_b64.is_empty(), "snapshot PNG should be non-empty");
-        assert!(s.eta_png_b64.len() > 100, "snapshot PNG looks suspiciously small");
+        assert!(
+            !s.eta_png_b64.is_empty(),
+            "snapshot PNG should be non-empty"
+        );
+        assert!(
+            s.eta_png_b64.len() > 100,
+            "snapshot PNG looks suspiciously small"
+        );
+    }
+
+    #[test]
+    fn cividis_colormap_is_distinct_and_cvd_safe_hued() {
+        let classic = diverging_colormap(1.0);
+        let cividis = cividis_colormap(1.0);
+        assert_ne!(classic, cividis);
+        assert!(cividis.0 > 200 && cividis.1 > 180 && cividis.2 < 80);
+    }
+
+    #[test]
+    fn run_simulation_obeys_pre_cancelled_token() {
+        let mut g = SwGrid::new(-5.0, -5.0, 5.0, 5.0, 0.25, 0.25);
+        g.fill_uniform_depth(4_000.0);
+        g.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+        let stepper = TimeStepper::new(g.recommended_dt_s(0.4));
+        let cancel = AtomicBool::new(true);
+        let snaps = run_simulation(&mut g, &stepper, 300.0, 5, Some(&cancel));
+        assert_eq!(snaps.len(), 1);
     }
 
     /// Smoke test: with uniform 4 km bathymetry, a 1 m Gaussian IC at the
@@ -770,7 +883,7 @@ mod tests {
         g.fill_uniform_depth(4_000.0);
         g.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
         let stepper = TimeStepper::new(g.recommended_dt_s(0.4));
-        let snaps = run_simulation(&mut g, &stepper, 300.0, 5);
+        let snaps = run_simulation(&mut g, &stepper, 300.0, 5, None);
         assert_eq!(snaps.len(), 5);
         assert!(snaps[0].time_s == 0.0);
         assert!(snaps.last().unwrap().time_s >= 200.0);
@@ -802,7 +915,11 @@ mod tests {
         for j in 0..g.ny {
             for i in 0..g.nx / 2 {
                 let v = g.eta_m[idx(i, j, g.nx)];
-                assert_eq!(v, 0.0, "land cell ({}, {}) bled wave amplitude: {}", i, j, v);
+                assert_eq!(
+                    v, 0.0,
+                    "land cell ({}, {}) bled wave amplitude: {}",
+                    i, j, v
+                );
             }
         }
     }
@@ -835,7 +952,8 @@ mod tests {
         let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
         g.fill_uniform_depth(4_000.0);
         g.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
-        let stepper = TimeStepper::new(g.recommended_dt_s(0.4)).with_boundary(BoundaryMode::ZeroFlux);
+        let stepper =
+            TimeStepper::new(g.recommended_dt_s(0.4)).with_boundary(BoundaryMode::ZeroFlux);
         stepper.step(&mut g, 30);
         // No assertion on absorption — just that the call returns without
         // panicking with the opt-in mode set. (Reflective wave dynamics
@@ -864,8 +982,12 @@ mod tests {
         let mut g_non = make_grid();
         let dt = g_lin.recommended_dt_s(0.4);
         let steps = ((600.0 / dt).round() as usize).max(2);
-        TimeStepper::new(dt).with_mode(SolverMode::Linear).step(&mut g_lin, steps);
-        TimeStepper::new(dt).with_mode(SolverMode::Nonlinear).step(&mut g_non, steps);
+        TimeStepper::new(dt)
+            .with_mode(SolverMode::Linear)
+            .step(&mut g_lin, steps);
+        TimeStepper::new(dt)
+            .with_mode(SolverMode::Nonlinear)
+            .step(&mut g_non, steps);
 
         // Both stable.
         for v in &g_lin.eta_m {
