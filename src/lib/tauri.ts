@@ -1,6 +1,6 @@
 // Typed wrappers over tauri::invoke. One per Rust command in src-tauri/src/commands.rs.
 
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, Channel } from "@tauri-apps/api/core";
 import type {
   AsteroidImpactInput,
   CoastalPoint,
@@ -13,6 +13,7 @@ import type {
   RunPresetResponse,
   SimulateGridResponse,
 } from "../types/scenario";
+import type { ColormapId } from "./settings";
 
 export type InspectAtPointResult = {
   range_m: number;
@@ -150,6 +151,7 @@ export const api = {
     include_lamb_wave?: boolean;
     lamb_wave_peak_pressure_pa?: number;
     lamb_wave_source_radius_m?: number;
+    colormap?: ColormapId;
   }) {
     return invoke<SimulateGridResponse>("simulate_grid", { req });
   },
@@ -158,6 +160,31 @@ export const api = {
    *  `gpu_probe` command for full semantics. */
   gpuProbe(): Promise<"available" | "no-adapter" | "feature-off"> {
     return invoke<"available" | "no-adapter" | "feature-off">("gpu_probe");
+  },
+  simulateGridStreaming(
+    req: {
+      source: GeoPoint;
+      initial_amplitude_m: number;
+      source_sigma_m: number;
+      mean_depth_m: number;
+      use_real_bathymetry?: boolean;
+      box_half_size_deg: number;
+      cells_per_deg: number;
+      t_end_s: number;
+      n_snapshots: number;
+      include_lamb_wave?: boolean;
+      lamb_wave_peak_pressure_pa?: number;
+      lamb_wave_source_radius_m?: number;
+      colormap?: ColormapId;
+    },
+    onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
+  ): Promise<{ dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number }> {
+    const channel = new Channel<import("../types/scenario").GridSnapshot>();
+    channel.onmessage = onSnapshot;
+    return invoke("simulate_grid_streaming", { req, onSnapshot: channel });
+  },
+  cancelSimulation() {
+    return invoke<void>("cancel_simulation");
   },
 };
 

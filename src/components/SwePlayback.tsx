@@ -103,32 +103,47 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       );
       const sigmaM = Math.max(initial.cavity_radius_m, 5000);
       const colormap = await settings.getColormap();
-      const resp = isTauri()
-        ? await api.simulateGrid({
-            source: initial.center,
-            initial_amplitude_m: initial.peak_amplitude_m,
-            source_sigma_m: sigmaM,
-            mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
-            use_real_bathymetry: useBathy,
-            box_half_size_deg: halfDeg,
-            cells_per_deg: 6,
-            t_end_s: 60 * 60, // 1 simulated hour
-            n_snapshots: 24,
-            include_lamb_wave: includeLambWave,
-            colormap,
-          })
-        : simulateDemoGrid(initial, {
-            boxHalfSizeDeg: halfDeg,
-            nSnapshots: 24,
-            tEndS: 60 * 60,
-            includeLambWave,
-          });
-      if (!mountedRef.current || reqId !== reqIdRef.current) return;
-      setSnapshots(resp.snapshots);
-      setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false });
-      setActiveIdx(0);
-      setStatus("ready");
-      onSnapshotsReady?.(resp.snapshots);
+      const gridReq = {
+        source: initial.center,
+        initial_amplitude_m: initial.peak_amplitude_m,
+        source_sigma_m: sigmaM,
+        mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
+        use_real_bathymetry: useBathy,
+        box_half_size_deg: halfDeg,
+        cells_per_deg: 6,
+        t_end_s: 60 * 60,
+        n_snapshots: 24,
+        include_lamb_wave: includeLambWave,
+        colormap,
+      };
+      if (isTauri()) {
+        const streamSnaps: GridSnapshot[] = [];
+        const meta = await api.simulateGridStreaming(gridReq, (snap) => {
+          if (!mountedRef.current || reqId !== reqIdRef.current) return;
+          streamSnaps.push(snap);
+          setSnapshots([...streamSnaps]);
+          setActiveIdx(streamSnaps.length - 1);
+          onSnapshot?.(snap);
+        });
+        if (!mountedRef.current || reqId !== reqIdRef.current) return;
+        setDiag({ dt_s: meta.dt_s, nx: meta.nx, ny: meta.ny, used_gpu: meta.used_gpu });
+        setActiveIdx(0);
+        setStatus("ready");
+        onSnapshotsReady?.(streamSnaps);
+      } else {
+        const resp = simulateDemoGrid(initial, {
+          boxHalfSizeDeg: halfDeg,
+          nSnapshots: 24,
+          tEndS: 60 * 60,
+          includeLambWave,
+        });
+        if (!mountedRef.current || reqId !== reqIdRef.current) return;
+        setSnapshots(resp.snapshots);
+        setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false });
+        setActiveIdx(0);
+        setStatus("ready");
+        onSnapshotsReady?.(resp.snapshots);
+      }
     } catch (err) {
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
       console.error("simulate_grid failed", err);
