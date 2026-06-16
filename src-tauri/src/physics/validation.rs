@@ -51,7 +51,11 @@ fn stoker_wavefront_speed_matches_sqrt_gh() {
 
     let mut g = SwGrid::new(-10.0, -10.0, 10.0, 10.0, 0.1, 0.1);
     g.fill_uniform_depth(h0_m);
-    g.inject_gaussian(0.0, 0.0, 1.0, 30_000.0);
+    // σ = 10 km: the 5% skirt of the Gaussian extends to ~2.45σ ≈ 24.5 km,
+    // well within the wave front's travel distance at c₀ × t. The previous
+    // σ = 30 km placed the skirt at ~73 km, beyond the 300s front (~59 km),
+    // causing the front-detection heuristic to over-read.
+    g.inject_gaussian(0.0, 0.0, 1.0, 10_000.0);
 
     // 5 minutes — wave should travel c0 * 300 ≈ 60 km.
     let t_end_s = 300.0;
