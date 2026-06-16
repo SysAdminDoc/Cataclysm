@@ -931,6 +931,131 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
     .map_err(|e| format!("simulate_grid worker failed: {e}"))?
 }
 
+/// Streaming variant of `simulate_grid`. Sends each GridSnapshot
+/// through a Tauri Channel as it's computed, enabling real-time
+/// playback during simulation instead of waiting for all snapshots.
+/// Returns the grid metadata (dt_s, nx, ny, used_gpu) once complete.
+#[derive(Debug, Serialize)]
+pub struct SimulateGridStreamMeta {
+    pub dt_s: f64,
+    pub nx: u32,
+    pub ny: u32,
+    pub used_gpu: bool,
+    pub n_snapshots: u32,
+}
+
+#[tauri::command]
+pub async fn simulate_grid_streaming(
+    req: SimulateGridRequest,
+    on_snapshot: tauri::ipc::Channel<GridSnapshot>,
+) -> Result<SimulateGridStreamMeta, String> {
+    validate_simulate_grid(&req)?;
+
+    let cancel = Arc::new(AtomicBool::new(false));
+    register_simulation_cancel(&cancel);
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = (|| {
+            let lat = req.source.lat_deg.clamp(-80.0, 80.0);
+            let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
+            let half = req.box_half_size_deg;
+            let cell = 1.0 / req.cells_per_deg;
+
+            let south = (lat - half).max(-89.0);
+            let north = (lat + half).min(89.0);
+            let west = lon - half;
+            let east = lon + half;
+
+            let approx_nx = ((east - west) / cell).round().max(2.0) as usize;
+            let approx_ny = ((north - south) / cell).round().max(2.0) as usize;
+            let approx_cells = approx_nx.saturating_mul(approx_ny);
+            if approx_cells > SWE_MAX_CELLS {
+                return Err(format!(
+                    "grid too large ({}×{} ≈ {} cells)",
+                    approx_nx, approx_ny, approx_cells
+                ));
+            }
+
+            let mut grid = SwGrid::new(west, south, east, north, cell, cell);
+            grid.colormap = match req.colormap.as_str() {
+                "cividis" => Colormap::Cividis,
+                _ => Colormap::Diverging,
+            };
+            let fallback_depth = req.mean_depth_m.max(50.0);
+            if req.use_real_bathymetry {
+                grid.fill_bathymetry_from(|lat, lon| {
+                    let d = crate::data::bathymetry::sample(lat, lon);
+                    if d <= 0.0 { 1.0 } else { d }
+                });
+            } else {
+                grid.fill_uniform_depth(fallback_depth);
+            }
+            grid.inject_gaussian(lat, lon, req.initial_amplitude_m, req.source_sigma_m.max(1000.0));
+
+            if req.include_lamb_wave {
+                let mut lamb = crate::physics::lamb_wave::LambWaveSource::hunga_tonga_2022();
+                if let Some(p) = req.lamb_wave_peak_pressure_pa {
+                    if p.is_finite() && p > 0.0 { lamb.peak_pressure_pa = p; }
+                }
+                if let Some(r) = req.lamb_wave_source_radius_m {
+                    if r.is_finite() && r > 0.0 { lamb.source_radius_m = r; }
+                }
+                grid.apply_lamb_wave(&lamb, lat, lon, 0.0);
+            }
+
+            let dt = grid.recommended_dt_s(0.4);
+            let nx = grid.nx as u32;
+            let ny = grid.ny as u32;
+            let n = req.n_snapshots.max(2);
+
+            let est_steps = if dt.is_finite() && dt > 0.0 {
+                (req.t_end_s / dt).clamp(1.0, 1.0e9)
+            } else { 1.0 };
+            let work = (grid.nx as u64)
+                .saturating_mul(grid.ny as u64)
+                .saturating_mul(est_steps as u64);
+            if work > SWE_MAX_CELL_STEPS {
+                return Err(format!(
+                    "simulation too expensive (~{} cell-steps; cap {})",
+                    work, SWE_MAX_CELL_STEPS
+                ));
+            }
+
+            // Stream t=0 snapshot immediately
+            let _ = on_snapshot.send(grid.snapshot());
+
+            let stepper = TimeStepper::new(dt);
+            let total_raw = (req.t_end_s / dt).max(1.0);
+            let total_steps = if total_raw.is_finite() && total_raw < 1_000_000.0 {
+                total_raw.round() as usize
+            } else { 1_000_000 };
+
+            for k in 1..n {
+                if cancel.load(Ordering::Relaxed) { break; }
+                let target_step = (k * total_steps) / (n - 1);
+                let current_step = ((k - 1) * total_steps) / (n - 1);
+                let take = target_step.saturating_sub(current_step).max(1);
+                if !stepper.step_cancellable(&mut grid, take, Some(cancel.as_ref())) {
+                    break;
+                }
+                let _ = on_snapshot.send(grid.snapshot());
+            }
+
+            Ok(SimulateGridStreamMeta {
+                dt_s: dt,
+                nx,
+                ny,
+                used_gpu: false,
+                n_snapshots: n as u32,
+            })
+        })();
+        unregister_simulation_cancel(&cancel);
+        result
+    })
+    .await
+    .map_err(|e| format!("simulate_grid_streaming worker failed: {e}"))?
+}
+
 /// F4-01 — Lightweight GPU-availability probe. Returns a string so
 /// the frontend doesn't need to mirror the `GpuAvailability` enum.
 /// Possible return values:
