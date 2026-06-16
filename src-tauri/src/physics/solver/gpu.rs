@@ -56,7 +56,7 @@ pub fn probe_adapter() -> GpuAvailability {
     }
 }
 
-/// 32-byte Params struct matching the WGSL `struct Params` layout in
+/// 48-byte Params struct matching the WGSL `struct Params` layout in
 /// [`SWE_LEAPFROG_WGSL`].
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -66,9 +66,13 @@ struct GpuParams {
     dt_s: f32,
     g: f32,
     manning_n: f32,
+    land_threshold_m: f32,
     nx: u32,
     ny: u32,
-    _pad: u32,
+    sponge_width: u32,
+    nonlinear: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 /// GPU-side time stepper. Owns the wgpu device/queue, the compiled
@@ -105,11 +109,23 @@ impl GpuTimeStepper {
     /// Build the GPU pipeline for the given grid + dt. Returns `None`
     /// when no adapter is available — callers fall back to the CPU
     /// path.
-    pub fn new(grid: &SwGrid, dt_s: f64, manning_n: f64) -> Option<Self> {
-        pollster::block_on(Self::new_async(grid, dt_s, manning_n))
+    pub fn new(
+        grid: &SwGrid,
+        dt_s: f64,
+        manning_n: f64,
+        sponge_width: u32,
+        nonlinear: bool,
+    ) -> Option<Self> {
+        pollster::block_on(Self::new_async(grid, dt_s, manning_n, sponge_width, nonlinear))
     }
 
-    async fn new_async(grid: &SwGrid, dt_s: f64, manning_n: f64) -> Option<Self> {
+    async fn new_async(
+        grid: &SwGrid,
+        dt_s: f64,
+        manning_n: f64,
+        sponge_width: u32,
+        nonlinear: bool,
+    ) -> Option<Self> {
         let instance = wgpu::Instance::default();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -172,9 +188,13 @@ impl GpuTimeStepper {
             dt_s: dt_s as f32,
             g: super::super::constants::G_EARTH as f32,
             manning_n: manning_n as f32,
+            land_threshold_m: super::LAND_DEPTH_THRESHOLD_M as f32,
             nx: grid.nx as u32,
             ny: grid.ny as u32,
-            _pad: 0,
+            sponge_width,
+            nonlinear: if nonlinear { 1 } else { 0 },
+            _pad1: 0,
+            _pad2: 0,
         };
 
         // Cast h, η, u, v from f64 → f32 for upload. The numerical
@@ -516,13 +536,7 @@ mod tests {
     /// F4-01 regression: with a flat-ocean Gaussian IC, the GPU
     /// linear-SWE leapfrog should agree with the CPU linear-SWE
     /// leapfrog to within 1e-3 m on η across the grid after a
-    /// short run. f32 vs f64 introduces ~1e-7 round-off per step;
-    /// 50 leapfrog steps × cancellation noise comfortably fits in
-    /// 1e-3 even on a downlevel adapter.
-    ///
-    /// CI runners that lack a GPU silently no-op (the test
-    /// returns early when `GpuTimeStepper::new` yields `None`).
-    /// A regression on real hardware will surface immediately.
+    /// short run.
     #[test]
     fn swe_gpu_matches_cpu() {
         let mut g_cpu = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.25, 0.25);
@@ -532,12 +546,10 @@ mod tests {
 
         let dt = g_cpu.recommended_dt_s(0.4);
         let cpu = TimeStepper::new(dt).with_mode(SolverMode::Linear);
-        // Match the WGSL kernel's reflective-edge convention exactly
-        // by running the CPU in `ZeroFlux` mode.
         let cpu = cpu.with_boundary(super::super::BoundaryMode::ZeroFlux);
         cpu.step(&mut g_cpu, 50);
 
-        let gpu = match GpuTimeStepper::new(&g_gpu, dt, 0.0) {
+        let gpu = match GpuTimeStepper::new(&g_gpu, dt, 0.0, 0, false) {
             Some(g) => g,
             None => {
                 eprintln!("swe_gpu_matches_cpu: no adapter — skipping");
@@ -555,5 +567,66 @@ mod tests {
             "GPU η disagrees with CPU η by {} m (> 1e-3)",
             max_diff
         );
+    }
+
+    /// GPU kernel with sponge boundary should produce damped rim
+    /// cells, matching the CPU sponge behavior.
+    #[test]
+    fn swe_gpu_sponge_damps_rim() {
+        let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.25, 0.25);
+        g.fill_uniform_depth(4_000.0);
+        g.inject_gaussian(0.0, 0.0, 1.0, 60_000.0);
+
+        let dt = g.recommended_dt_s(0.4);
+        let gpu = match GpuTimeStepper::new(&g, dt, 0.0, 5, false) {
+            Some(g) => g,
+            None => {
+                eprintln!("swe_gpu_sponge_damps_rim: no adapter — skipping");
+                return;
+            }
+        };
+        assert!(gpu.step(&mut g, 200), "GPU step reported failure");
+
+        let corner = g.eta_m[super::super::idx(1, 1, g.nx)].abs();
+        assert!(
+            corner < 0.1,
+            "corner cell {} m not absorbed by GPU sponge",
+            corner
+        );
+    }
+
+    /// GPU kernel with land masking should keep dry cells at zero.
+    #[test]
+    fn swe_gpu_land_stays_dry() {
+        let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.25, 0.25);
+        g.fill_uniform_depth(4_000.0);
+        // Make western half land (depth = 1.0 m, below LAND_DEPTH_THRESHOLD_M)
+        for j in 0..g.ny {
+            for i in 0..g.nx / 2 {
+                g.h_m[super::super::idx(i, j, g.nx)] = 1.0;
+            }
+        }
+        g.inject_gaussian(0.0, 1.0, 1.0, 60_000.0);
+
+        let dt = g.recommended_dt_s(0.4);
+        let gpu = match GpuTimeStepper::new(&g, dt, 0.0, 0, false) {
+            Some(g) => g,
+            None => {
+                eprintln!("swe_gpu_land_stays_dry: no adapter — skipping");
+                return;
+            }
+        };
+        assert!(gpu.step(&mut g, 100), "GPU step reported failure");
+
+        for j in 0..g.ny {
+            for i in 0..g.nx / 2 {
+                let v = g.eta_m[super::super::idx(i, j, g.nx)];
+                assert_eq!(
+                    v, 0.0,
+                    "GPU land cell ({}, {}) bled wave amplitude: {}",
+                    i, j, v
+                );
+            }
+        }
     }
 }

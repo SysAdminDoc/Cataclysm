@@ -8,18 +8,16 @@
 //! staggered C-grid): bindings 1-4 read `h`/`η`/`u`/`v`, bindings 5-7 write the
 //! updated `(η, u, v)`.
 //!
-//! NOTE: this kernel intentionally implements only the *linear* momentum form
-//! with reflective (zero-normal-flux) edges and **no** land masking or sponge
-//! damping — unlike the CPU [`super::TimeStepper`] default
-//! (`SolverMode::Nonlinear` + `BoundaryMode::Sponge` + `LAND_DEPTH_THRESHOLD_M`
-//! masking). The dispatcher (`commands::run_simulation_dispatch`) therefore only
-//! routes a run to the GPU when those CPU-only features are not in play; see
-//! that function before porting work here.
+//! The kernel now matches the CPU `TimeStepper` feature set:
+//! - Land masking (cells with h <= land_threshold are pinned to zero)
+//! - Sponge boundary (cosine-tapered damping at edges)
+//! - Nonlinear advection (upwind-differenced (u·∇)u, toggled by params.nonlinear)
 
-/// Linear leapfrog SWE update kernel. Workgroup size 8×8 (64 invocations) over
-/// an `(nx, ny)` collocated grid. Boundary cells reflect (zero-normal-flux).
+/// Full SWE leapfrog kernel with land masking, sponge boundary, and
+/// nonlinear advection. Workgroup size 8×8 (64 invocations) over an
+/// `(nx, ny)` collocated grid.
 pub const SWE_LEAPFROG_WGSL: &str = r#"
-// TsunamiSimulator — shallow-water leapfrog kernel (linear, collocated A-grid)
+// TsunamiSimulator — shallow-water leapfrog kernel (full-parity with CPU solver)
 // Reference: Mader 1988 "Numerical Modelling of Water Waves", chapter 3
 // Reference: Kowalik & Murty 1993 "Numerical Modeling of Ocean Dynamics"
 
@@ -29,9 +27,13 @@ struct Params {
   dt_s: f32,
   g: f32,
   manning_n: f32,
+  land_threshold_m: f32,
   nx: u32,
   ny: u32,
-  _pad: u32,
+  sponge_width: u32,
+  nonlinear: u32,
+  _pad1: u32,
+  _pad2: u32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -47,17 +49,42 @@ fn idx(i: i32, j: i32) -> i32 {
   return j * i32(params.nx) + i;
 }
 
+fn is_wet(i: i32, j: i32) -> bool {
+  return h[idx(i, j)] > params.land_threshold_m;
+}
+
+fn sponge_factor(i: i32, j: i32) -> f32 {
+  let sw = i32(params.sponge_width);
+  if (sw <= 0) { return 1.0; }
+  let d_i = min(i, i32(params.nx) - 1 - i);
+  let d_j = min(j, i32(params.ny) - 1 - j);
+  let d = min(d_i, d_j);
+  if (d >= sw) { return 1.0; }
+  let t = f32(d) / f32(sw);
+  return 0.5 * (1.0 - cos(3.14159265 * t));
+}
+
 @compute @workgroup_size(8, 8)
 fn cs_leapfrog(@builtin(global_invocation_id) gid: vec3<u32>) {
   let i = i32(gid.x);
   let j = i32(gid.y);
   if (i >= i32(params.nx) || j >= i32(params.ny)) { return; }
 
-  // Reflective boundaries: zero-flux outside grid.
+  let k = idx(i, j);
+
+  // Land cells: pin to zero.
+  if (!is_wet(i, j)) {
+    eta_out[k] = 0.0;
+    u_out[k] = 0.0;
+    v_out[k] = 0.0;
+    return;
+  }
+
+  // Boundary cells: zero-flux.
   if (i == 0 || i == i32(params.nx) - 1 || j == 0 || j == i32(params.ny) - 1) {
-    eta_out[idx(i, j)] = eta_in[idx(i, j)];
-    u_out[idx(i, j)]   = 0.0;
-    v_out[idx(i, j)]   = 0.0;
+    eta_out[k] = eta_in[k];
+    u_out[k] = 0.0;
+    v_out[k] = 0.0;
     return;
   }
 
@@ -66,34 +93,79 @@ fn cs_leapfrog(@builtin(global_invocation_id) gid: vec3<u32>) {
   let dt = params.dt_s;
   let g  = params.g;
 
+  // Land-aware neighbour sampling: dry neighbours contribute zero flux.
+  let wet_e = is_wet(i + 1, j);
+  let wet_w = is_wet(i - 1, j);
+  let wet_n = is_wet(i, j + 1);
+  let wet_s = is_wet(i, j - 1);
+
+  let h_e = select(0.0, h[idx(i + 1, j)], wet_e);
+  let h_w = select(0.0, h[idx(i - 1, j)], wet_w);
+  let h_n = select(0.0, h[idx(i, j + 1)], wet_n);
+  let h_s = select(0.0, h[idx(i, j - 1)], wet_s);
+
+  let eta_e = select(0.0, eta_in[idx(i + 1, j)], wet_e);
+  let eta_w = select(0.0, eta_in[idx(i - 1, j)], wet_w);
+  let eta_n = select(0.0, eta_in[idx(i, j + 1)], wet_n);
+  let eta_s = select(0.0, eta_in[idx(i, j - 1)], wet_s);
+
+  let u_e = select(0.0, u_in[idx(i + 1, j)], wet_e);
+  let u_w = select(0.0, u_in[idx(i - 1, j)], wet_w);
+  let v_n = select(0.0, v_in[idx(i, j + 1)], wet_n);
+  let v_s = select(0.0, v_in[idx(i, j - 1)], wet_s);
+
   // Continuity: ∂η/∂t = -∂(Hu)/∂x - ∂(Hv)/∂y
-  let h_e = h[idx(i + 1, j)];   let h_w = h[idx(i - 1, j)];
-  let h_n = h[idx(i, j + 1)];   let h_s = h[idx(i, j - 1)];
-  let u_e = u_in[idx(i + 1, j)]; let u_w = u_in[idx(i - 1, j)];
-  let v_n = v_in[idx(i, j + 1)]; let v_s = v_in[idx(i, j - 1)];
+  let flux_x = (max(h_e + eta_e, 0.0) * u_e - max(h_w + eta_w, 0.0) * u_w) / (2.0 * dx);
+  let flux_y = (max(h_n + eta_n, 0.0) * v_n - max(h_s + eta_s, 0.0) * v_s) / (2.0 * dy);
 
-  let flux_x = ((h_e + eta_in[idx(i + 1, j)]) * u_e -
-                (h_w + eta_in[idx(i - 1, j)]) * u_w) / (2.0 * dx);
-  let flux_y = ((h_n + eta_in[idx(i, j + 1)]) * v_n -
-                (h_s + eta_in[idx(i, j - 1)]) * v_s) / (2.0 * dy);
+  var new_eta = eta_in[k] - dt * (flux_x + flux_y);
 
-  eta_out[idx(i, j)] = eta_in[idx(i, j)] - dt * (flux_x + flux_y);
-
-  // Momentum (linearised, no Coriolis, no advection in v0.2.0 first cut):
-  // ∂u/∂t = -g ∂η/∂x - friction
-  // ∂v/∂t = -g ∂η/∂y - friction
+  // Momentum: ∂u/∂t + [advection] + g ∂η/∂x = − friction
   let dnedx = (eta_in[idx(i + 1, j)] - eta_in[idx(i - 1, j)]) / (2.0 * dx);
   let dnedy = (eta_in[idx(i, j + 1)] - eta_in[idx(i, j - 1)]) / (2.0 * dy);
 
-  let H = max(h[idx(i, j)] + eta_in[idx(i, j)], 0.01);
-  let u = u_in[idx(i, j)];
-  let v = v_in[idx(i, j)];
+  let H = max(h[k] + eta_in[k], 0.01);
+  let u = u_in[k];
+  let v = v_in[k];
   let speed = sqrt(u * u + v * v);
   let n2 = params.manning_n * params.manning_n;
   let fric = g * n2 * speed / pow(H, 1.333);
 
-  u_out[idx(i, j)] = u - dt * (g * dnedx + fric * u);
-  v_out[idx(i, j)] = v - dt * (g * dnedy + fric * v);
+  // Nonlinear advection: upwind-differenced (u·∇)u
+  var adv_u = 0.0;
+  var adv_v = 0.0;
+  if (params.nonlinear != 0u) {
+    let u_east = select(0.0, u_in[idx(i + 1, j)], wet_e);
+    let u_west = select(0.0, u_in[idx(i - 1, j)], wet_w);
+    let u_north = select(0.0, u_in[idx(i, j + 1)], wet_n);
+    let u_south = select(0.0, u_in[idx(i, j - 1)], wet_s);
+    let v_east = select(0.0, v_in[idx(i + 1, j)], wet_e);
+    let v_west = select(0.0, v_in[idx(i - 1, j)], wet_w);
+    let v_north = select(0.0, v_in[idx(i, j + 1)], wet_n);
+    let v_south = select(0.0, v_in[idx(i, j - 1)], wet_s);
+
+    // Upwind: backward gradient when velocity points positive, forward when negative
+    let dudx = select((u_east - u) / dx, (u - u_west) / dx, u >= 0.0);
+    let dudy = select((u_north - u) / dy, (u - u_south) / dy, v >= 0.0);
+    let dvdx = select((v_east - v) / dx, (v - v_west) / dx, u >= 0.0);
+    let dvdy = select((v_north - v) / dy, (v - v_south) / dy, v >= 0.0);
+
+    adv_u = u * dudx + v * dudy;
+    adv_v = u * dvdx + v * dvdy;
+  }
+
+  var new_u = u - dt * (adv_u + g * dnedx + fric * u);
+  var new_v = v - dt * (adv_v + g * dnedy + fric * v);
+
+  // Sponge boundary damping
+  let sf = sponge_factor(i, j);
+  new_eta *= sf;
+  new_u *= sf;
+  new_v *= sf;
+
+  eta_out[k] = new_eta;
+  u_out[k] = new_u;
+  v_out[k] = new_v;
 }
 "#;
 
@@ -103,10 +175,27 @@ mod tests {
 
     #[test]
     fn kernel_source_is_nonempty() {
-        // Sanity-check that the embedded WGSL string is present so the next
-        // session can pipe it into wgpu::ShaderModuleDescriptor.
         assert!(SWE_LEAPFROG_WGSL.len() > 500);
         assert!(SWE_LEAPFROG_WGSL.contains("cs_leapfrog"));
         assert!(SWE_LEAPFROG_WGSL.contains("workgroup_size(8, 8)"));
+    }
+
+    #[test]
+    fn kernel_contains_land_masking() {
+        assert!(SWE_LEAPFROG_WGSL.contains("is_wet"));
+        assert!(SWE_LEAPFROG_WGSL.contains("land_threshold_m"));
+    }
+
+    #[test]
+    fn kernel_contains_sponge_damping() {
+        assert!(SWE_LEAPFROG_WGSL.contains("sponge_factor"));
+        assert!(SWE_LEAPFROG_WGSL.contains("sponge_width"));
+    }
+
+    #[test]
+    fn kernel_contains_nonlinear_advection() {
+        assert!(SWE_LEAPFROG_WGSL.contains("nonlinear"));
+        assert!(SWE_LEAPFROG_WGSL.contains("adv_u"));
+        assert!(SWE_LEAPFROG_WGSL.contains("adv_v"));
     }
 }

@@ -1,6 +1,9 @@
 //! Tauri command handlers exposed to the React frontend.
 //! Every function returns serde-serializable types; errors are stringified.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+
 use serde::{Deserialize, Serialize};
 
 use crate::physics::{
@@ -13,10 +16,25 @@ use crate::physics::{
     shallow_water::{
         long_wave_travel_time_s, sample_wavefront, synolakis_runup_m, PropagationSnapshot,
     },
-    solver::{run_simulation, GridSnapshot, SwGrid, TimeStepper},
+    solver::{run_simulation, Colormap, GridSnapshot, SwGrid, TimeStepper},
     GeoPoint, InitialDisplacement,
 };
 use crate::presets::{all_presets, find_preset, Preset};
+
+static SIM_CANCEL_TOKENS: Mutex<Vec<Arc<AtomicBool>>> = Mutex::new(Vec::new());
+
+fn register_simulation_cancel(cancel: &Arc<AtomicBool>) {
+    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
+        guard.retain(|token| Arc::strong_count(token) > 1);
+        guard.push(Arc::clone(cancel));
+    }
+}
+
+fn unregister_simulation_cancel(cancel: &Arc<AtomicBool>) {
+    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
+        guard.retain(|token| !Arc::ptr_eq(token, cancel));
+    }
+}
 
 fn check_finite(name: &str, value: f64) -> Result<(), String> {
     if !value.is_finite() {
@@ -680,6 +698,8 @@ pub struct SimulateGridRequest {
     /// `include_lamb_wave` is false.
     #[serde(default)]
     pub lamb_wave_source_radius_m: Option<f64>,
+    #[serde(default)]
+    pub colormap: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -761,6 +781,9 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             return Err("lamb_wave_source_radius_m must be in (0, 10 000 km]".into());
         }
     }
+    if !(req.colormap.is_empty() || req.colormap == "diverging" || req.colormap == "cividis") {
+        return Err("colormap must be 'diverging' or 'cividis'".into());
+    }
     Ok(())
 }
 
@@ -775,7 +798,11 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
 pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridResponse, String> {
     validate_simulate_grid(&req)?;
 
+    let cancel = Arc::new(AtomicBool::new(false));
+    register_simulation_cancel(&cancel);
+
     tauri::async_runtime::spawn_blocking(move || {
+        let result = (|| {
         // Keep the simulation-box centre off the poles so the lon/lat box is
         // always well-ordered (north > south). A source beyond ±80° would
         // otherwise make `(lat - half).max(-80)` exceed `(lat + half).min(80)`,
@@ -807,6 +834,10 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         }
 
         let mut grid = SwGrid::new(west, south, east, north, cell, cell);
+        grid.colormap = match req.colormap.as_str() {
+            "cividis" => Colormap::Cividis,
+            _ => Colormap::Diverging,
+        };
         let fallback_depth = req.mean_depth_m.max(50.0);
         if req.use_real_bathymetry {
             grid.fill_bathymetry_from(|lat, lon| {
@@ -884,7 +915,7 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         // for now, so when the user has selected a nonlinear-class
         // scenario we stay on CPU even with the feature flag on.
         let (snapshots, used_gpu) =
-            run_simulation_dispatch(&mut grid, dt, req.t_end_s, req.n_snapshots);
+            run_simulation_dispatch(&mut grid, dt, req.t_end_s, req.n_snapshots, cancel.as_ref());
         Ok(SimulateGridResponse {
             snapshots,
             dt_s: dt,
@@ -892,6 +923,9 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
             ny,
             used_gpu,
         })
+        })();
+        unregister_simulation_cancel(&cancel);
+        result
     })
     .await
     .map_err(|e| format!("simulate_grid worker failed: {e}"))?
@@ -927,6 +961,16 @@ pub fn gpu_probe() -> String {
     }
 }
 
+#[tauri::command]
+pub fn cancel_simulation() {
+    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
+        guard.retain(|token| Arc::strong_count(token) > 1);
+        for token in guard.iter() {
+            token.store(true, Ordering::Relaxed);
+        }
+    }
+}
+
 /// F4-01 — Dispatcher around `run_simulation` that prefers the wgpu
 /// GPU path when the `gpu` feature is compiled in and an adapter is
 /// available, and falls back to the CPU `TimeStepper` otherwise.
@@ -937,34 +981,34 @@ fn run_simulation_dispatch(
     dt_s: f64,
     t_end_s: f64,
     n_snapshots: usize,
+    cancel: &AtomicBool,
 ) -> (Vec<GridSnapshot>, bool) {
     use crate::physics::solver::gpu::GpuTimeStepper;
-    use crate::physics::solver::LAND_DEPTH_THRESHOLD_M;
+    use crate::physics::solver::BoundaryMode;
 
-    // The WGSL kernel is a LINEAR leapfrog with reflective edges and NO land
-    // masking, whereas the CPU default is nonlinear + sponge + land-aware. To
-    // avoid the GPU silently producing materially different physics, only route
-    // to it when the grid is entirely wet — otherwise the missing land mask
-    // would re-flood the 1 m land sentinel into a slow-spreading halo across
-    // continents (exactly the artefact the CPU mask was added to remove).
-    // (The remaining sponge/advection differences for all-wet grids are tracked
-    // for a future WGSL kernel-parity pass; see solver/kernels.rs.)
-    let all_wet = grid.h_m.iter().all(|&h| h > LAND_DEPTH_THRESHOLD_M);
-    if all_wet {
-        if let Some(gpu) =
-            GpuTimeStepper::new(grid, dt_s, crate::physics::constants::MANNING_N_COASTAL)
+    let sponge_width = match BoundaryMode::default_sponge() {
+        BoundaryMode::Sponge { width_cells } => width_cells as u32,
+        BoundaryMode::ZeroFlux => 0,
+    };
+    if let Some(gpu) = GpuTimeStepper::new(
+        grid,
+        dt_s,
+        crate::physics::constants::MANNING_N_COASTAL,
+        sponge_width,
+        true,
+    ) {
+        let pristine = grid.clone();
+        if let Some(snaps) = run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots, cancel)
         {
-            // Snapshot the (already-injected) state so a mid-run GPU failure
-            // can cleanly retry on the CPU rather than emitting a frozen field.
-            let pristine = grid.clone();
-            if let Some(snaps) = run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots) {
-                return (snaps, true);
-            }
-            *grid = pristine;
+            return (snaps, true);
         }
+        *grid = pristine;
     }
     let stepper = TimeStepper::new(dt_s);
-    (run_simulation(grid, &stepper, t_end_s, n_snapshots), false)
+    (
+        run_simulation(grid, &stepper, t_end_s, n_snapshots, Some(cancel)),
+        false,
+    )
 }
 
 #[cfg(not(feature = "gpu"))]
@@ -973,9 +1017,13 @@ fn run_simulation_dispatch(
     dt_s: f64,
     t_end_s: f64,
     n_snapshots: usize,
+    cancel: &AtomicBool,
 ) -> (Vec<GridSnapshot>, bool) {
     let stepper = TimeStepper::new(dt_s);
-    (run_simulation(grid, &stepper, t_end_s, n_snapshots), false)
+    (
+        run_simulation(grid, &stepper, t_end_s, n_snapshots, Some(cancel)),
+        false,
+    )
 }
 
 /// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-
@@ -991,6 +1039,7 @@ fn run_simulation_gpu(
     dt_s: f64,
     t_end_s: f64,
     n_snapshots: usize,
+    cancel: &AtomicBool,
 ) -> Option<Vec<GridSnapshot>> {
     const MAX_TOTAL_STEPS: usize = 1_000_000;
     let n = n_snapshots.max(2);
@@ -1011,11 +1060,21 @@ fn run_simulation_gpu(
         MAX_TOTAL_STEPS
     };
     for k in 1..n {
+        if cancel.load(Ordering::Relaxed) {
+            break;
+        }
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
-        let take = target_step.saturating_sub(current_step).max(1);
-        if !gpu.step(grid, take) {
-            return None;
+        let mut remaining = target_step.saturating_sub(current_step).max(1);
+        while remaining > 0 {
+            if cancel.load(Ordering::Relaxed) {
+                return Some(snaps);
+            }
+            let take = remaining.min(16);
+            if !gpu.step(grid, take) {
+                return None;
+            }
+            remaining -= take;
         }
         snaps.push(grid.snapshot());
     }
@@ -1460,6 +1519,26 @@ mod tests {
             include_lamb_wave: true,
             lamb_wave_peak_pressure_pa: Some(-1.0),
             lamb_wave_source_radius_m: None,
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn simulate_grid_rejects_unknown_colormap() {
+        let res = validate_simulate_grid(&SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 4_000.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "rainbow".to_string(),
         });
         assert!(res.is_err());
     }
