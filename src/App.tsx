@@ -13,14 +13,14 @@ import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri } from "./lib/tauri";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo } from "./lib/export";
+import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml } from "./lib/export";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "czml" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -84,6 +84,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       </svg>
     );
   }
+  if (name === "czml") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 3a14 14 0 0 0 0 18M12 3a14 14 0 0 1 0 18M3 12h18" />
+      </svg>
+    );
+  }
   if (name === "citations") {
     return (
       <svg {...common}>
@@ -140,6 +148,7 @@ export default function App() {
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [presetsError, setPresetsError] = useState<string | null>(null);
@@ -386,6 +395,21 @@ export default function App() {
           >
             Text
           </ToolbarButton>
+          <ToolbarButton
+            icon="czml"
+            onClick={() => {
+              if (sweSnapshots && sweSnapshots.length > 0) {
+                const ok = exportCzml({ preset: activePresetA, initial: slotA.initial, timeS }, sweSnapshots);
+                showToast(ok ? "Saved CZML playback file." : "No snapshots to export.", ok ? "info" : "error");
+              } else {
+                showToast("Run SWE simulation first to export CZML.", "error");
+              }
+            }}
+            title="Export SWE simulation as a CZML file for playback in any Cesium viewer"
+            disabled={!sweSnapshots || sweSnapshots.length === 0}
+          >
+            CZML
+          </ToolbarButton>
           <ToolbarButton icon="citations" onClick={() => setShowCitations(true)} title="View citations">
             Citations
           </ToolbarButton>
@@ -489,7 +513,7 @@ export default function App() {
             <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} />
           </div>
         )}
-        <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} />
+        <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} onSnapshotsReady={setSweSnapshots} />
         {compareMode && <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />}
         <DartOverlay presetId={slotA.activePresetId} timeS={timeS} />
         {!compareMode && (
