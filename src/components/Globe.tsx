@@ -134,7 +134,7 @@ export function Globe({
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectEntityRef = useRef<Cesium.Entity | null>(null);
-  const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
+  const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "fallback" | "error" | "offline">("loading");
   const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
   // Bumped each time the Viewer is (re)created. React 19 StrictMode mounts →
   // unmounts → remounts in dev, which destroys the first Viewer; including this
@@ -220,6 +220,23 @@ export function Globe({
       window.removeEventListener("tsunamisim:settings-saved", onSettingsSaved);
     };
   }, [styleId]);
+
+  useEffect(() => {
+    const goOffline = () => {
+      if (imageryStatus === "ready" || imageryStatus === "loading") {
+        setImageryStatus("offline");
+      }
+    };
+    const goOnline = () => {
+      if (imageryStatus === "offline") setImageryStatus("ready");
+    };
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, [imageryStatus]);
 
   // (Re)build the imagery + terrain providers when the style changes.
   // Uses a monotonic request id so rapid style swaps don't race — only the
@@ -985,6 +1002,11 @@ export function Globe({
       {imageryStatus === "fallback" && (
         <div className="app__globe-status" data-status="fallback" role="status" aria-live="polite">
           Cesium ion imagery unavailable (invalid token or upstream error) — fell back to OSM.
+        </div>
+      )}
+      {imageryStatus === "offline" && (
+        <div className="app__globe-status" data-status="offline" role="status" aria-live="polite">
+          Offline — using cached tiles. Select Natural Earth II in Settings for full offline support.
         </div>
       )}
       {!initial && imageryStatus === "ready" && (
