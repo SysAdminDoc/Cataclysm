@@ -52,6 +52,31 @@ Return them to ROADMAP.md once the blocker is resolved.
 - **P1** — GEBCO 2024 progressive bathymetry loader (XL).
   **Blocker:** Same as F-V06; needs distribution channel decision + artifact.
 
+## Research-Driven — Needs visual verification
+
+- **P2** — Split Globe.tsx into composable hooks (M).
+  **Blocker:** At 1000+ lines, this is a significant refactor that needs visual verification (Cesium globe rendering, entity placement, SWE overlay, inspect tooltips). Requires running `npm run tauri dev` or `npm run dev` + browser and verifying no regressions in all globe interactions.
+
+- **P3** — CSP hash for inline styles (L).
+  **Blocker:** CesiumJS injects dynamic inline styles that change across versions and based on the scene content (picked entity tooltips, info box, widgets). Hash-based allowlists would break on every CesiumJS upgrade. The current `'unsafe-inline'` in `style-src` is the pragmatic choice until CesiumJS moves to stylesheet-based styling (tracked upstream).
+
+- **P3** — Structured error reporting with diagnostics bundle (S).
+  **Blocker:** Full diagnostics (GPU adapter name/driver, wgpu version) requires a new Rust IPC command (`diagnostics_bundle`). Needs MSVC linker for Rust compilation. The frontend LogViewer could be enhanced independently, but the most valuable diagnostics come from the Rust side.
+
+## Research-Driven — Rust compilation required
+
+- **P1** — Property-based tests for physics modules (M).
+  **Blocker:** Needs `cargo test` with MSVC linker. Add `proptest` dev-dep, write property tests for asteroid cavity monotonicity, Okada slip bound, SWE mass conservation.
+
+- **P1** — DART RMSE display in sparklines (M).
+  **Blocker:** Requires Rust IPC change — the SWE solver must output raw eta values at specific buoy lat/lon coordinates alongside PNG snapshots. The existing `dart_buoy_rmse` IPC accepts `model_samples` but the frontend has no way to extract spatial samples from PNG-encoded SWE output.
+
+- **P2** — Modularize commands.rs (M).
+  **Blocker:** Needs `cargo check` to verify the refactor doesn't break compilation. Split 1750+ line commands.rs into sub-modules (types, validators, simulation, source, query).
+
+- **P2** — Build-time demo data generation from Rust (L).
+  **Blocker:** Needs new `[[bin]]` target in Cargo.toml + Rust compilation. Would replace 665-line demo.ts JS physics reimplementation with generated fixtures.
+
 ## Research-Driven — P3 Future
 
 - **P3** — NTHMP benchmark suite integration (XL).
