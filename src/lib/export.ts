@@ -391,3 +391,71 @@ export function exportCzml(
   downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}.czml`);
   return true;
 }
+
+export type RunupPoint = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  runup_m: number;
+  arrival_time_s: number;
+  inundation_extent_m: number;
+  offshore_amplitude_m: number;
+};
+
+export function exportGeoJson(
+  points: RunupPoint[],
+  meta: ScreenshotMeta,
+): boolean {
+  if (!points.length) return false;
+
+  const features = points.map((p) => {
+    const r = Math.max(p.inundation_extent_m, 50);
+    const coords = circlePolygon(p.lat, p.lon, r);
+    return {
+      type: "Feature" as const,
+      properties: {
+        id: p.id,
+        name: p.name,
+        runup_m: round5(p.runup_m),
+        arrival_time_s: round5(p.arrival_time_s),
+        inundation_extent_m: round5(p.inundation_extent_m),
+        offshore_amplitude_m: round5(p.offshore_amplitude_m),
+      },
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: [coords],
+      },
+    };
+  });
+
+  const fc = {
+    type: "FeatureCollection" as const,
+    features,
+  };
+
+  const json = JSON.stringify(fc, null, 2);
+  const blob = new Blob([json], { type: "application/geo+json" });
+  const presetId = meta.preset?.id ?? "custom-scenario";
+  downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}-inundation.geojson`);
+  return true;
+}
+
+function round5(v: number): number {
+  return Math.round(v * 100_000) / 100_000;
+}
+
+function circlePolygon(lat: number, lon: number, radius_m: number, n = 32): number[][] {
+  const coords: number[][] = [];
+  const R = 6_371_008.8;
+  for (let i = 0; i <= n; i++) {
+    const angle = (2 * Math.PI * i) / n;
+    const dlat = (radius_m * Math.cos(angle)) / R;
+    const dlon = (radius_m * Math.sin(angle)) / (R * Math.cos((lat * Math.PI) / 180));
+    coords.push([
+      round5(lon + (dlon * 180) / Math.PI),
+      round5(lat + (dlat * 180) / Math.PI),
+    ]);
+  }
+  return coords;
+}

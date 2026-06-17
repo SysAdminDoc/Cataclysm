@@ -19,6 +19,14 @@ type Status = "idle" | "running" | "ready" | "error";
  * resulting snapshots. Snapshot PNG data flows to the parent via `onSnapshot`
  * so the Globe component can paint it as an imagery layer.
  */
+const N_SNAPSHOTS = 24;
+const SPEED_OPTIONS = [
+  { label: "0.5×", ms: 500 },
+  { label: "1×", ms: 250 },
+  { label: "2×", ms: 125 },
+  { label: "4×", ms: 62 },
+] as const;
+
 export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
@@ -27,6 +35,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const [useBathy, setUseBathy] = useState(true);
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [speedIdx, setSpeedIdx] = useState(1);
+  const [cellsPerDeg, setCellsPerDeg] = useState(6);
+  const [streamProgress, setStreamProgress] = useState(0);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean } | null>(null);
   const lastInitialRef = useRef<InitialDisplacement | null>(null);
   const reqIdRef = useRef(0);
@@ -60,16 +71,13 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
     }
   }, [snapshots, activeIdx, onSnapshot]);
 
-  // Auto-play: advance the scrubber every 250 ms when playing. The updater
-  // stays pure (no nested setState) — reaching the end is handled by the
-  // separate effect below so it behaves correctly under StrictMode.
   useEffect(() => {
     if (!isPlaying || !snapshots || snapshots.length < 2) return;
     const interval = window.setInterval(() => {
       setActiveIdx((i) => Math.min(i + 1, snapshots.length - 1));
-    }, 250);
+    }, SPEED_OPTIONS[speedIdx].ms);
     return () => window.clearInterval(interval);
-  }, [isPlaying, snapshots]);
+  }, [isPlaying, snapshots, speedIdx]);
 
   // Stop playback when the scrubber reaches the final frame.
   useEffect(() => {
@@ -95,9 +103,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
     setStatus("running");
     setErrMsg(null);
     setIsPlaying(false);
+    setStreamProgress(0);
     try {
-      // Box half-size scales with the source cavity so small impacts get a
-      // tight grid and ocean-scale impacts get a wider one. Clamp 2°–25°.
       const halfDeg = Math.min(
         25,
         Math.max(2, (initial.cavity_radius_m / 1000) * 0.05 + 4),
@@ -111,9 +118,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
         mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
         use_real_bathymetry: useBathy,
         box_half_size_deg: halfDeg,
-        cells_per_deg: 6,
+        cells_per_deg: cellsPerDeg,
         t_end_s: 60 * 60,
-        n_snapshots: 24,
+        n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
         colormap,
       };
@@ -124,6 +131,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
           streamSnaps.push(snap);
           setSnapshots([...streamSnaps]);
           setActiveIdx(streamSnaps.length - 1);
+          setStreamProgress(streamSnaps.length);
           onSnapshot?.(snap);
         });
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
@@ -134,7 +142,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       } else {
         const resp = simulateDemoGrid(initial, {
           boxHalfSizeDeg: halfDeg,
-          nSnapshots: 24,
+          nSnapshots: N_SNAPSHOTS,
           tEndS: 60 * 60,
           includeLambWave,
         });
@@ -151,7 +159,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, onSnapshot, onSnapshotsReady]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, onSnapshot, onSnapshotsReady]);
 
   if (!initial) return null;
 
@@ -184,6 +192,19 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
           Include atmospheric Lamb-wave forcing (Hunga Tonga only — Carvajal 2022, Matoza 2022)
         </span>
       </label>
+      <label className="swe__check swe__resolution">
+        <span>Resolution: {cellsPerDeg} cells/° ({cellsPerDeg <= 4 ? "fast preview" : cellsPerDeg >= 10 ? "high fidelity" : "balanced"})</span>
+        <input
+          type="range"
+          min={3}
+          max={12}
+          step={1}
+          value={cellsPerDeg}
+          onChange={(e) => setCellsPerDeg(Number(e.target.value))}
+          aria-label="Grid resolution in cells per degree"
+          title="Higher resolution is more accurate but slower. Default is 6."
+        />
+      </label>
       <div className="swe__row">
         <button
           className="primary"
@@ -205,9 +226,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       </div>
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">
-          <span>Streaming solver snapshots</span>
+          <span>Streaming frame {streamProgress} / {N_SNAPSHOTS}</span>
           <div className="swe__progress" aria-hidden>
-            <span />
+            <span style={{ width: `${(streamProgress / N_SNAPSHOTS) * 100}%` }} />
           </div>
         </div>
       )}
@@ -244,6 +265,17 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
                 </>
               )}
             </button>
+            <select
+              className="swe__speed"
+              value={speedIdx}
+              onChange={(e) => setSpeedIdx(Number(e.target.value))}
+              aria-label="Playback speed"
+              title="Playback speed"
+            >
+              {SPEED_OPTIONS.map((opt, i) => (
+                <option key={opt.label} value={i}>{opt.label}</option>
+              ))}
+            </select>
             <input
               type="range"
               min={0}
