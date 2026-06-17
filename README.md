@@ -6,9 +6,9 @@
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
 [![Physics](https://img.shields.io/badge/physics-Ward%E2%80%93Asphaug%20%7C%20Synolakis%20%7C%20Okada%20%7C%20Glasstone-purple.svg)](./docs/science)
 
-> A scientifically grounded 3D-globe desktop application for simulating tsunami generation, propagation, and coastal inundation from asteroid impacts, nuclear detonations (atmospheric and underwater), seafloor earthquakes, and subaerial landslides — with peer-reviewed historical presets like Chicxulub (66 Ma), Tōhoku 2011, Indian Ocean 2004, and Lituya Bay 1958.
+> A scientifically grounded 3D-globe desktop application for simulating tsunami generation, propagation, and first-order coastal effects from asteroid impacts, nuclear detonations (atmospheric and underwater), seafloor earthquakes, and subaerial landslides — with peer-reviewed historical presets like Chicxulub (66 Ma), Tōhoku 2011, Indian Ocean 2004, and Lituya Bay 1958.
 
-This is the **NukeMap for tsunamis** — but with a real 3D bathymetric globe, real shallow-water physics, and presets you can scrub through frame-by-frame.
+This is the **NukeMap for tsunamis** — but with a 3D globe, peer-reviewed source models, a coarse bathymetry-aware shallow-water solver, and presets you can scrub through frame-by-frame.
 
 ---
 
@@ -35,7 +35,7 @@ Existing tools each do one piece:
 - **[Purdue "Impact: Earth!"](https://impact.ese.ic.ac.uk/ImpactEarth/)** — accurate formulas, single-point readout, no animation.
 - **[GeoClaw](http://depts.washington.edu/clawpack/geoclaw/)** / **[COMCOT](https://www.researchgate.net/publication/374553562)** / **[MOST](https://www.pmel.noaa.gov/news-story/first-global-tsunami-simulation-chicxulub-asteroid-impact-66-million-years-ago)** — operational accuracy, Fortran/Python, no consumer UI.
 
-`TsunamiSimulator` combines them: **NOAA-grade physics + consumer-grade interactive globe**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a real shallow-water solution propagate over GEBCO bathymetry, run up real coastlines, and produce inundation polygons.
+`TsunamiSimulator` combines them: **peer-reviewed source physics + consumer-grade interactive globe**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the app's coarse offline bathymetry, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
 
 ---
 
@@ -113,8 +113,9 @@ Windows (`.msi`, `.exe`), macOS universal (`.dmg`), and Linux
 
 The app launches on the no-token **OpenStreetMap** globe by default and is
 fully usable out of the box. A free Cesium ion token (optional) unlocks
-high-resolution satellite imagery + GEBCO bathymetric terrain from the
-Settings dialog.
+high-resolution satellite imagery and visual bathymetric terrain from the
+Settings dialog. Solver bathymetry remains the app's coarse offline
+basin/shelf approximation until the blocked GEBCO data path is resolved.
 
 ### Build from source
 
@@ -151,7 +152,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 ┌─────────────────────────── Tauri 2 Window ───────────────────────────┐
 │ ┌─────────────────────────────────────────────────────────────────┐  │
 │ │  React 19 + TypeScript + Vite (frontend / WebView2)             │  │
-│ │  ─ CesiumJS 1.124+ globe with GEBCO bathymetry                   │  │
+│ │  ─ CesiumJS 1.142+ globe with optional bathymetric terrain        │  │
 │ │  ─ Scenario builder, timeline, overlays, results panel           │  │
 │ └──────────────────────────────  ▲  ───────────────────────────────┘  │
 │                                  │ tauri::invoke (JSON over IPC)      │
@@ -162,7 +163,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 │ │  ─ physics::landslide   Fritz–Hager + Slingerland–Voight         │  │
 │ │  ─ physics::earthquake  Okada 1985 (planned)                     │  │
 │ │  ─ physics::shallow_water  NSWE + Synolakis runup                │  │
-│ │  ─ data::bathymetry     GEBCO 15-arcsec sampler                  │  │
+│ │  ─ data::bathymetry     coarse basin/shelf depth sampler         │  │
 │ │  ─ presets              Chicxulub / Tōhoku / Lituya / …          │  │
 │ └──────────────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────────────┘
@@ -176,8 +177,8 @@ Heavy physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgp
 
 This is not a forecast tool. Compared to operational models like NOAA MOST:
 
-- **What's accurate** — initial conditions (cavity geometry from Ward–Asphaug, fault displacement from Okada), open-ocean propagation in deep water, far-field arrival times.
-- **What's approximate** — coastal runup (we use Synolakis 1987 analytical instead of full wetting/drying), dispersion (linear long-wave first, Boussinesq later).
+- **What's accurate** — initial conditions (cavity geometry from Ward–Asphaug, fault displacement from Okada), idealized open-ocean propagation in deep water, far-field arrival times.
+- **What's approximate** — solver bathymetry (coarse basin means with a shelf taper, not GEBCO/SRTM15+), coastal runup (we use Synolakis 1987 analytical instead of full wetting/drying), first-order inundation discs, dispersion (linear long-wave first, Boussinesq later).
 - **What's wrong** — anything involving the atmosphere coupling (Hunga Tonga–style Lamb-wave coupling is a research frontier), tsunami earthquake source-time functions (we use static dislocation), submarine landslide rheology.
 - **The "Russia Poseidon" honest take** — Russian state media's 500-m-wave claim is propaganda. The 1996 Defense Nuclear Agency study put underwater-explosion wave-generation efficiency at ~5%. A 100-Mt warhead at 100 km open ocean produces a ~few-meter wave, not a city-killer. We model both the propaganda yield and a realistic one — the comparison is the point.
 

@@ -170,7 +170,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
         <span className="section__badge">{diag?.used_gpu ? "GPU" : "CPU"}</span>
       </div>
       <p className="swe__hint">
-        Run a real shallow-water-equation propagation around the source.
+        Run a shallow-water-equation propagation around the source.
         Offline-bathymetry toggle uses a coarse basin-mean + shelf-taper
         approximation; browser preview uses deterministic demo frames.
       </p>

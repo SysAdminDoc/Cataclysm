@@ -57,6 +57,11 @@ export function FirstRunDisclaimer() {
             1977, and others). See <em>Citations</em> in the header at any
             time.
           </p>
+          <p className="modal__copy">
+            Solver bathymetry uses a coarse basin-mean plus shelf-taper
+            approximation, and inundation overlays are first-order discs from
+            runup/slope estimates. Treat every map and export as approximate.
+          </p>
           <div className="notice-grid" aria-label="Use guidance">
             <div className="notice-grid__item">
               <strong>Educational model</strong>

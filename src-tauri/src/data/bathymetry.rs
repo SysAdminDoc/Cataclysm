@@ -10,8 +10,8 @@
 //! - Charette & Smith (2010), "The volume of Earth's ocean," *Oceanography* 23:112.
 //! - GEBCO 2024 global compilation summary statistics.
 //!
-//! v0.3.0 will replace this with a real bathymetric raster sampler that
-//! reads from a bundled GEBCO subset or a downloaded full grid.
+//! A future GEBCO/SRTM15+ raster sampler can replace this once data
+//! distribution, storage, and first-run download decisions are resolved.
 
 /// Approximate ocean depth at the given latitude/longitude (deg WGS84),
 /// in meters. Returns 0.0 for land. Coarse — accuracy is order-of-magnitude
@@ -29,7 +29,7 @@ pub fn sample(lat_deg: f64, lon_deg: f64) -> f64 {
 
 /// Crude land mask using continental bounding rectangles. Anything inside
 /// one of these boxes is treated as land. Misses islands, archipelagos,
-/// and complex coastlines — accept that until real GEBCO is wired.
+/// and complex coastlines until a high-resolution raster sampler is wired.
 fn is_land(lat: f64, lon: f64) -> bool {
     // (south_lat, north_lat, west_lon, east_lon) boxes for major land masses.
     const LAND_BOXES: &[(f64, f64, f64, f64)] = &[

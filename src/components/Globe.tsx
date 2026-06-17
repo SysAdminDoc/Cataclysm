@@ -777,8 +777,8 @@ export function Globe({
     // I-V02 — inundation discs alongside the runup bars. A semi-transparent
     // circular polygon at each runup point with radius = inundation_extent_m
     // and colour matching the bar's runup severity. Land-side first-order
-    // geometric approximation; refined to real flood polygons in v0.4.0
-    // once GEBCO bathymetry + wet/dry cell handling land in production.
+    // geometric approximation; keep labelled as approximate until real
+    // bathymetry and wet/dry cell handling support flood polygons.
     const inMap = inundationEntitiesRef.current;
     const inSeen = new Set<string>();
     for (const r of runupResults ?? []) {
