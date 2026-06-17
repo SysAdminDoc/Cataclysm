@@ -20,6 +20,9 @@ export type ScreenshotMeta = {
   timeS: number;
 };
 
+const MODEL_LIMIT_NOTICE =
+  "Educational only - approximate coarse bathymetry/runup model - not for evacuation.";
+
 function timestampSuffix(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -217,7 +220,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   ctx.font = "12px Inter, system-ui, sans-serif";
   ctx.textBaseline = "middle";
   ctx.fillText(
-    "TsunamiSimulator · Educational only · Not for evacuation · github.com/SysAdminDoc/TsunamiSimulator",
+    `TsunamiSimulator - ${MODEL_LIMIT_NOTICE} - github.com/SysAdminDoc/TsunamiSimulator`,
     24,
     H - FOOTER_H / 2,
   );
@@ -376,7 +379,7 @@ export function exportCzml(
       id: "wave-field",
       name: "SWE wave field",
       availability: interval,
-      description: `TsunamiSimulator ${meta.preset?.name ?? "custom"} — ${snapshots.length} snapshots`,
+      description: `TsunamiSimulator ${meta.preset?.name ?? "custom"} - ${snapshots.length} snapshots. ${MODEL_LIMIT_NOTICE}`,
       rectangle: {
         coordinates: { wsenDegrees: [west, south, east, north] },
         material: { image: { image: materialIntervals } },
@@ -431,6 +434,13 @@ export function exportGeoJson(
 
   const fc = {
     type: "FeatureCollection" as const,
+    properties: {
+      model_notice: MODEL_LIMIT_NOTICE,
+      bathymetry_source: "coarse offline basin/shelf approximation",
+      geometry_notice: "First-order circular inundation discs from runup and beach-slope estimates.",
+      scenario: meta.preset?.name ?? "Custom scenario",
+      time_s: round5(meta.timeS),
+    },
     features,
   };
 

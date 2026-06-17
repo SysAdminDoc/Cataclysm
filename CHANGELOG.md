@@ -49,6 +49,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `find_preset` no longer rebuilds the whole registry on each lookup.
 
 ### Fixed — UX & accessibility
+- **Bathymetry confidence wording corrected.** README, first-run copy, globe
+  style text, and export metadata now state that the solver uses a coarse
+  offline bathymetry approximation and that inundation overlays are first-order
+  estimates, not operational GEBCO-backed flood products.
 - **Colorblind-safe SWE overlays.** Settings now persist a SWE colormap choice:
   the classic blue→red ramp remains the default, with a CVD-safe Cividis
   option for playback PNG overlays.

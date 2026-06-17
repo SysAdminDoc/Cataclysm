@@ -49,7 +49,7 @@ export const GLOBE_STYLES: GlobeStyleMeta[] = [
   {
     id: "cesium-bathymetry",
     label: "Cesium World Bathymetry (token required)",
-    description: "GEBCO bathymetric terrain — shows real seafloor topography.",
+    description: "GEBCO bathymetric terrain for visual context; solver still uses coarse offline depth.",
     requires_token: true,
   },
 ];
