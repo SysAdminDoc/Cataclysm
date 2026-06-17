@@ -3,6 +3,7 @@ import { api, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid } from "../lib/demo";
 import type { GridSnapshot, InitialDisplacement } from "../types/scenario";
+import { UiIcon } from "./UiIcon";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -50,7 +51,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
     }
-  }, [initial, onSnapshot]);
+  }, [initial, onSnapshot, onSnapshotsReady]);
 
   // Push the currently-scrubbed snapshot up.
   useEffect(() => {
@@ -150,14 +151,15 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave]);
+  }, [initial, useBathy, includeLambWave, onSnapshot, onSnapshotsReady]);
 
   if (!initial) return null;
 
   return (
     <div className="section">
       <div className="section__title">
-        Live SWE Solver {diag?.used_gpu ? "(GPU)" : "(CPU)"}
+        <span>Live SWE Solver</span>
+        <span className="section__badge">{diag?.used_gpu ? "GPU" : "CPU"}</span>
       </div>
       <p className="swe__hint">
         Run a real shallow-water-equation propagation around the source.
@@ -187,18 +189,28 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
           className="primary"
           onClick={run}
           disabled={status === "running"}
+          type="button"
         >
-          {status === "running" ? "Computing…" : status === "ready" ? "Re-run" : "Run simulation"}
+          {status === "running" ? "Computing..." : status === "ready" ? "Re-run" : "Run simulation"}
         </button>
         {status === "running" && (
           <button
             onClick={cancel}
             title="Cancel the in-flight simulation and return to idle."
+            type="button"
           >
             Cancel
           </button>
         )}
       </div>
+      {status === "running" && (
+        <div className="swe__run-state" role="status" aria-live="polite">
+          <span>Streaming solver snapshots</span>
+          <div className="swe__progress" aria-hidden>
+            <span />
+          </div>
+        </div>
+      )}
       {status === "error" && (
         <div className="swe__error" role="status" aria-live="polite">
           {errMsg ?? "Simulation failed."}
@@ -218,8 +230,19 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
               }}
               disabled={status === "running" || snapshots.length < 2}
               title="Play / pause the snapshot sequence"
+              type="button"
             >
-              {isPlaying ? "❚❚ Pause" : "▶ Play"}
+              {isPlaying ? (
+                <>
+                  <UiIcon name="pause" size={14} />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <UiIcon name="play" size={14} />
+                  Play
+                </>
+              )}
             </button>
             <input
               type="range"

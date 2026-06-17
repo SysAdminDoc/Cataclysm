@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+import { UiIcon } from "./UiIcon";
 import type { Preset } from "../types/scenario";
 
 type Props = {
@@ -13,20 +15,61 @@ function sortKey(p: Preset): number {
 }
 
 export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
-  const sorted = [...presets].sort((a, b) => sortKey(a) - sortKey(b));
+  const [query, setQuery] = useState("");
+  const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visible = useMemo(
+    () =>
+      normalizedQuery
+        ? sorted.filter((p) =>
+            [p.name, p.date, p.blurb, p.reference, p.source.kind]
+              .join(" ")
+              .toLowerCase()
+              .includes(normalizedQuery),
+          )
+        : sorted,
+    [normalizedQuery, sorted],
+  );
   if (sorted.length === 0) {
     return (
       <div className="section">
         <div className="section__title">Historical presets</div>
-        <p className="empty-copy">Loading curated source events…</p>
+        <div className="empty-state" role="status" aria-live="polite">
+          <span className="empty-state__icon" aria-hidden />
+          <div>
+            <strong>Loading source library</strong>
+            <p>Curated historical events and peer-reviewed source models are being prepared.</p>
+          </div>
+        </div>
       </div>
     );
   }
   return (
     <div className="section">
-      <div className="section__title">Historical presets</div>
+      <div className="section__title">
+        <span>Historical presets</span>
+        <span className="section__count">{visible.length}/{sorted.length}</span>
+      </div>
+      <label className="preset-search">
+        <span className="sr-only">Search presets</span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search events, dates, or source type"
+          type="search"
+        />
+      </label>
       <div className="preset-list">
-        {sorted.map((p) => {
+        {visible.length === 0 && (
+          <div className="empty-state empty-state--compact" role="status">
+            <span className="empty-state__icon" aria-hidden />
+            <div>
+              <strong>No matching presets</strong>
+              <p>Try a source type, date, event name, or citation keyword.</p>
+            </div>
+          </div>
+        )}
+        {visible.map((p) => {
           const isBusy = busyId === p.id;
           return (
             <button
@@ -44,10 +87,18 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
                 {p.is_speculative && (
                   <span className="preset-card__warning" aria-label="Hypothetical or contested">Speculative</span>
                 )}
-                {p.name}
-                {isBusy && <span className="preset-card__busy" aria-label="Loading">…</span>}
+                <span>{p.name}</span>
+                {activeId === p.id && (
+                  <span className="preset-card__active" aria-label="Selected">
+                    <UiIcon name="check" size={13} />
+                  </span>
+                )}
+                {isBusy && <span className="preset-card__busy" aria-label="Loading">...</span>}
               </div>
-              <div className="preset-card__meta">{p.date}</div>
+              <div className="preset-card__meta">
+                <span>{p.date}</span>
+                <span>{p.source.kind}</span>
+              </div>
               <div className="preset-card__blurb">{p.blurb}</div>
               {p.is_speculative && p.controversy_note && (
                 <div className="preset-card__warn-note">{p.controversy_note}</div>

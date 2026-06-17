@@ -4,6 +4,7 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isTauri } from "../lib/tauri";
 import type { Preset } from "../types/scenario";
+import { UiIcon } from "./UiIcon";
 
 type Props = {
   presets: Preset[];
@@ -27,7 +28,9 @@ export function CitationsModal({ presets, onClose }: Props) {
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
         <header className="modal__header">
           <h2 id="citations-title">Citations & references</h2>
-          <button onClick={onClose} aria-label="Close" className="modal__close">×</button>
+          <button onClick={onClose} aria-label="Close" className="modal__close" type="button">
+            <UiIcon name="close" size={16} />
+          </button>
         </header>
         <div className="modal__body">
           <p className="modal__intro">
@@ -39,7 +42,7 @@ export function CitationsModal({ presets, onClose }: Props) {
               <li key={p.id} className="citations__row">
                 <div className="citations__name">
                   {p.is_speculative && <span className="citations__tag">Speculative</span>}
-                  {p.name} <span className="citations__date">— {p.date}</span>
+                  {p.name} <span className="citations__date">- {p.date}</span>
                 </div>
                 <div className="citations__ref">
                   {p.reference_url ? (

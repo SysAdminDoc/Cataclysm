@@ -17,20 +17,6 @@ export function FirstRunDisclaimer() {
     });
   }, []);
 
-  // Esc / Enter to acknowledge (Enter is the primary action key).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === "Escape") {
-        e.preventDefault();
-        void acknowledge();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   if (!open) return null;
 
   async function acknowledge() {
@@ -71,11 +57,21 @@ export function FirstRunDisclaimer() {
             1977, and others). See <em>Citations</em> in the header at any
             time.
           </p>
+          <div className="notice-grid" aria-label="Use guidance">
+            <div className="notice-grid__item">
+              <strong>Educational model</strong>
+              <span>Useful for scenario exploration, classroom demos, and model intuition.</span>
+            </div>
+            <div className="notice-grid__item" data-tone="warning">
+              <strong>Not a warning tool</strong>
+              <span>Forecasting and evacuation guidance must come from official warning centres.</span>
+            </div>
+          </div>
           <p className="modal__copy modal__copy--muted">
-            This notice is shown once. Press Enter or choose <em>Got it</em> to continue.
+            This notice is shown once. You can show it again from Settings.
           </p>
           <div className="modal__actions">
-            <button className="primary" onClick={acknowledge}>Got it</button>
+            <button className="primary" onClick={acknowledge}>I understand</button>
           </div>
         </div>
       </div>

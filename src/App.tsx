@@ -7,11 +7,13 @@ import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { Tour } from "./components/Tour";
 import { LogViewer } from "./components/LogViewer";
+import { UiIcon } from "./components/UiIcon";
 import { settings } from "./lib/settings";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
-import { DartOverlay, dartPinsForPreset } from "./components/DartOverlay";
+import { DartOverlay } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { api, isTauri } from "./lib/tauri";
+import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml } from "./lib/export";
@@ -252,6 +254,9 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+  const cockpitMode = compareMode ? "Compare" : inspectMode ? "Inspect" : pickMode ? "Pick location" : "Explore";
+  const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
+  const timelineLabel = `${Math.round(timeS / 60)} min`;
 
   function handlePickGlobe(lat: number, lon: number) {
     setPickedLocation({ lat, lon });
@@ -268,15 +273,16 @@ export default function App() {
             className="app-toast__dismiss"
             aria-label="Dismiss notification"
             onClick={() => setToast(null)}
+            type="button"
           >
-            ✕
+            <UiIcon name="close" size={14} />
           </button>
         </div>
       )}
       {tokenBannerOpen && (
         <div className="token-banner" role="status" aria-live="polite">
           <span className="token-banner__icon" aria-hidden>
-            i
+            <UiIcon name="info" size={14} />
           </span>
           <span>
             <strong>Optional imagery token.</strong> Add a free Cesium ion token for
@@ -285,18 +291,20 @@ export default function App() {
           <button
             className="token-banner__action"
             onClick={() => setShowSettings(true)}
+            type="button"
           >
             Open Settings
           </button>
           <button
             className="token-banner__dismiss"
             aria-label="Dismiss imagery token notice"
+            type="button"
             onClick={() => {
               setTokenBannerOpen(false);
               settings.dismissTokenBanner().catch(() => {});
             }}
           >
-            ✕
+            <UiIcon name="close" size={14} />
           </button>
         </div>
       )}
@@ -306,7 +314,7 @@ export default function App() {
             TS
           </span>
           <span className="app__title">TsunamiSimulator</span>
-          <span className="app__version">v0.4.0</span>
+          <span className="app__version">v0.4.1</span>
         </div>
         <div className="app__warning">
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
@@ -458,9 +466,9 @@ export default function App() {
         )}
         <div className="footer-note">
           Each preset cites a peer-reviewed paper.{" "}
-          <button onClick={() => setShowCitations(true)}>View all citations →</button>
-          {" · "}
-          <button onClick={() => setShowLog(true)}>Diagnostics log</button>
+          <button type="button" onClick={() => setShowCitations(true)}>View all citations</button>
+          {" | "}
+          <button type="button" onClick={() => setShowLog(true)}>Diagnostics log</button>
         </div>
       </aside>
 
@@ -555,6 +563,25 @@ export default function App() {
           settings.markTourCompleted().catch(() => {});
         }}
       />
+      <footer className="app__statusbar" role="status" aria-live="polite">
+        <div className="statusbar__item statusbar__item--ready">
+          <span className="status-dot" aria-hidden />
+          Model ready
+        </div>
+        <div className="statusbar__item">
+          Mode <strong>{cockpitMode}</strong>
+        </div>
+        <div className="statusbar__item statusbar__item--wide">
+          {activeSourceLabel}
+        </div>
+        <div className="statusbar__item">
+          Timeline <strong>{timelineLabel}</strong>
+        </div>
+        <div className="statusbar__item statusbar__item--warning">
+          <UiIcon name="alert" size={14} />
+          Educational only
+        </div>
+      </footer>
     </div>
   );
 }

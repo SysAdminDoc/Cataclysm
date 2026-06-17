@@ -29,6 +29,13 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "landslide", label: "Landslide" },
 ];
 
+const TAB_DESCRIPTIONS: Record<TabKey, string> = {
+  asteroid: "Impact cavity model with water-depth-aware source geometry.",
+  nuclear: "Underwater and surface burst coupling with yield and depth controls.",
+  earthquake: "Fault-source parameters for Okada-style seafloor displacement.",
+  landslide: "Subaerial and submarine slide source geometry for confined or open water.",
+};
+
 const INITIAL_ASTEROID: AsteroidImpactInput = {
   diameter_m: 500,
   density_kg_m3: 3000,
@@ -264,6 +271,7 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
           </button>
         ))}
       </div>
+      <p className="scenario-summary">{TAB_DESCRIPTIONS[tab]}</p>
 
       <div className="scenario-form">
         {tab === "asteroid" && (
@@ -370,7 +378,7 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
             onClick={onTogglePick}
             type="button"
           >
-            {pickActive ? "Click globe to pick (Esc to cancel)" : "Pick on globe →"}
+            {pickActive ? "Picking location" : "Pick on globe"}
           </button>
           <button className="primary" onClick={submit} type="button">
             Simulate
