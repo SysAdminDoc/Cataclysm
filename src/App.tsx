@@ -16,14 +16,14 @@ import { api, isTauri } from "./lib/tauri";
 import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml } from "./lib/export";
+import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, type RunupPoint } from "./lib/export";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "czml" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "czml" | "geojson" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -92,6 +92,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 3a14 14 0 0 0 0 18M12 3a14 14 0 0 1 0 18M3 12h18" />
+      </svg>
+    );
+  }
+  if (name === "geojson") {
+    return (
+      <svg {...common}>
+        <path d="M12 2 L22 8.5 L22 15.5 L12 22 L2 15.5 L2 8.5 Z" />
+        <circle cx="12" cy="12" r="3" />
       </svg>
     );
   }
@@ -419,6 +427,27 @@ export default function App() {
             disabled={!sweSnapshots || sweSnapshots.length === 0}
           >
             CZML
+          </ToolbarButton>
+          <ToolbarButton
+            icon="geojson"
+            onClick={() => {
+              const points: RunupPoint[] = slotA.runupResults.map((r) => ({
+                id: r.id,
+                name: r.name,
+                lat: r.lat,
+                lon: r.lon,
+                runup_m: r.runup_m,
+                arrival_time_s: r.arrival_time_s,
+                inundation_extent_m: r.inundation_extent_m,
+                offshore_amplitude_m: r.offshore_amplitude_m,
+              }));
+              const ok = exportGeoJson(points, { preset: activePresetA, initial: slotA.initial, timeS });
+              showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
+            }}
+            title="Export inundation polygons as GeoJSON"
+            disabled={slotA.runupResults.length === 0}
+          >
+            GeoJSON
           </ToolbarButton>
           <ToolbarButton icon="citations" onClick={() => setShowCitations(true)} title="View citations">
             Citations

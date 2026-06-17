@@ -246,11 +246,55 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
     else setLandslide((s) => ({ ...s, location: { ...s.location, ...loc } }));
   }, [pickedLocation, tab]);
 
+  const [clipMsg, setClipMsg] = useState<string | null>(null);
+
   function submit() {
     if (tab === "asteroid") onSimulate({ kind: "Asteroid", source: asteroid });
     else if (tab === "nuclear") onSimulate({ kind: "Nuclear", source: nuclear });
     else if (tab === "earthquake") onSimulate({ kind: "Earthquake", source: earthquake });
     else onSimulate({ kind: "Landslide", source: landslide });
+  }
+
+  function copyScenario() {
+    const data: ScenarioInput =
+      tab === "asteroid" ? { kind: "Asteroid", source: asteroid }
+      : tab === "nuclear" ? { kind: "Nuclear", source: nuclear }
+      : tab === "earthquake" ? { kind: "Earthquake", source: earthquake }
+      : { kind: "Landslide", source: landslide };
+    navigator.clipboard.writeText(JSON.stringify(data)).then(
+      () => { setClipMsg("Copied!"); setTimeout(() => setClipMsg(null), 2000); },
+      () => setClipMsg("Copy failed"),
+    );
+  }
+
+  function pasteScenario() {
+    navigator.clipboard.readText().then((text) => {
+      try {
+        const data = JSON.parse(text) as ScenarioInput;
+        if (data.kind === "Asteroid" && data.source) {
+          setTab("asteroid");
+          setAsteroid({ ...INITIAL_ASTEROID, ...data.source });
+        } else if (data.kind === "Nuclear" && data.source) {
+          setTab("nuclear");
+          setNuclear({ ...INITIAL_NUCLEAR, ...data.source });
+        } else if (data.kind === "Earthquake" && data.source) {
+          setTab("earthquake");
+          setEarthquake({ ...INITIAL_EARTHQUAKE, ...data.source });
+        } else if (data.kind === "Landslide" && data.source) {
+          setTab("landslide");
+          setLandslide({ ...INITIAL_LANDSLIDE, ...data.source });
+        } else {
+          setClipMsg("Invalid scenario");
+          setTimeout(() => setClipMsg(null), 2000);
+          return;
+        }
+        setClipMsg("Pasted!");
+        setTimeout(() => setClipMsg(null), 2000);
+      } catch {
+        setClipMsg("Invalid JSON");
+        setTimeout(() => setClipMsg(null), 2000);
+      }
+    }).catch(() => { setClipMsg("Paste failed"); setTimeout(() => setClipMsg(null), 2000); });
   }
 
   return (
@@ -383,6 +427,15 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
           <button className="primary" onClick={submit} type="button">
             Simulate
           </button>
+        </div>
+        <div className="scenario-actions__row">
+          <button onClick={copyScenario} type="button" title="Copy scenario parameters to clipboard">
+            Copy scenario
+          </button>
+          <button onClick={pasteScenario} type="button" title="Paste scenario parameters from clipboard">
+            Paste scenario
+          </button>
+          {clipMsg && <span className="scenario-actions__clip">{clipMsg}</span>}
         </div>
       </div>
     </div>

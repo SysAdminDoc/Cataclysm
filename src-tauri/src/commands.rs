@@ -1024,28 +1024,20 @@ pub async fn simulate_grid_streaming(
             // Stream t=0 snapshot immediately
             let _ = on_snapshot.send(grid.snapshot());
 
-            let stepper = TimeStepper::new(dt);
             let total_raw = (req.t_end_s / dt).max(1.0);
             let total_steps = if total_raw.is_finite() && total_raw < 1_000_000.0 {
                 total_raw.round() as usize
             } else { 1_000_000 };
 
-            for k in 1..n {
-                if cancel.load(Ordering::Relaxed) { break; }
-                let target_step = (k * total_steps) / (n - 1);
-                let current_step = ((k - 1) * total_steps) / (n - 1);
-                let take = target_step.saturating_sub(current_step).max(1);
-                if !stepper.step_cancellable(&mut grid, take, Some(cancel.as_ref())) {
-                    break;
-                }
-                let _ = on_snapshot.send(grid.snapshot());
-            }
+            let used_gpu = stream_simulation_dispatch(
+                &mut grid, dt, n, total_steps, cancel.as_ref(), &on_snapshot,
+            );
 
             Ok(SimulateGridStreamMeta {
                 dt_s: dt,
                 nx,
                 ny,
-                used_gpu: false,
+                used_gpu,
                 n_snapshots: n as u32,
             })
         })();
@@ -1100,6 +1092,85 @@ pub fn cancel_simulation() {
 /// GPU path when the `gpu` feature is compiled in and an adapter is
 /// available, and falls back to the CPU `TimeStepper` otherwise.
 /// Returns `(snapshots, used_gpu)`.
+fn stream_simulation_cpu(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    n: usize,
+    total_steps: usize,
+    cancel: &AtomicBool,
+    on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
+) {
+    let stepper = TimeStepper::new(dt_s);
+    for k in 1..n {
+        if cancel.load(Ordering::Relaxed) { break; }
+        let target_step = (k * total_steps) / (n - 1);
+        let current_step = ((k - 1) * total_steps) / (n - 1);
+        let take = target_step.saturating_sub(current_step).max(1);
+        if !stepper.step_cancellable(grid, take, Some(cancel)) {
+            break;
+        }
+        let _ = on_snapshot.send(grid.snapshot());
+    }
+}
+
+#[cfg(feature = "gpu")]
+fn stream_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    n: usize,
+    total_steps: usize,
+    cancel: &AtomicBool,
+    on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
+) -> bool {
+    use crate::physics::solver::gpu::GpuTimeStepper;
+    use crate::physics::solver::BoundaryMode;
+
+    let sponge_width = match BoundaryMode::default_sponge() {
+        BoundaryMode::Sponge { width_cells } => width_cells as u32,
+        BoundaryMode::ZeroFlux => 0,
+    };
+    if let Some(gpu) = GpuTimeStepper::new(
+        grid,
+        dt_s,
+        crate::physics::constants::MANNING_N_COASTAL,
+        sponge_width,
+        true,
+    ) {
+        let pristine = grid.clone();
+        let mut ok = true;
+        for k in 1..n {
+            if cancel.load(Ordering::Relaxed) { break; }
+            let target_step = (k * total_steps) / (n - 1);
+            let current_step = ((k - 1) * total_steps) / (n - 1);
+            let take = target_step.saturating_sub(current_step).max(1);
+            if !gpu.step(grid, take) {
+                ok = false;
+                break;
+            }
+            let _ = on_snapshot.send(grid.snapshot());
+        }
+        if ok {
+            return true;
+        }
+        *grid = pristine;
+    }
+    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot);
+    false
+}
+
+#[cfg(not(feature = "gpu"))]
+fn stream_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    n: usize,
+    total_steps: usize,
+    cancel: &AtomicBool,
+    on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
+) -> bool {
+    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot);
+    false
+}
+
 #[cfg(feature = "gpu")]
 fn run_simulation_dispatch(
     grid: &mut SwGrid,
