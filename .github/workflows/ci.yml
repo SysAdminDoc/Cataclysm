@@ -42,6 +42,23 @@ jobs:
           path: dist/
           if-no-files-found: ignore
 
+  unit:
+    name: Unit tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
   lint:
     name: ESLint
     runs-on: ubuntu-latest
