@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { primeCesiumToken } from "./lib/cesium";
 import { settings } from "./lib/settings";
 import "./styles.css";
@@ -20,10 +21,18 @@ if (typeof window !== "undefined") {
   window.addEventListener("tsunamisim:settings-saved", () => {
     settings.getCesiumToken().then((tok) => primeCesiumToken(tok || null)).catch(() => {});
   });
+  window.addEventListener("error", (event) => {
+    console.error("[app] Unhandled window error", event.error ?? event.message);
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("[app] Unhandled promise rejection", event.reason);
+  });
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );

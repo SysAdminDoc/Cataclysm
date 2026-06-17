@@ -869,6 +869,82 @@ a {
   color: var(--peach);
 }
 
+.app-fatal {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--base);
+}
+
+.app-fatal__panel {
+  width: min(640px, 100%);
+  background: color-mix(in srgb, var(--mantle) 94%, var(--surface0));
+  border: 1px solid color-mix(in srgb, var(--red) 32%, var(--panel-border));
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+}
+
+.app-fatal__eyebrow {
+  margin: 0 0 8px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.app-fatal h1 {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.app-fatal p {
+  margin: 0;
+  color: var(--subtext);
+  line-height: 1.55;
+}
+
+.app-fatal__message,
+.app-fatal__details pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--crust);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-md);
+  padding: 12px;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.app-fatal__message {
+  margin: 16px 0 0;
+}
+
+.app-fatal__details {
+  margin-top: 12px;
+  color: var(--subtext);
+}
+
+.app-fatal__details summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.app-fatal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 .app__globe-status {
   position: absolute;
   top: 12px;

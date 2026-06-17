@@ -24,6 +24,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   → `cos(NaN)` at arrival).
 
 ### Fixed — reliability & safety
+- **Root render recovery added.** The React root is wrapped in a calm error
+  boundary with retry/reload actions, and global `error` /
+  `unhandledrejection` events are routed into the diagnostics log.
 - **SWE Cancel now reaches the Rust worker.** The playback Cancel button
   signals a server-side cancellation token, and the CPU/GPU stepping loops poll
   it between short batches so long simulations bail out promptly instead of
