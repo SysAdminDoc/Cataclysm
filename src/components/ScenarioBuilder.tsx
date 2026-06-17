@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { settings, type SavedScenario } from "../lib/settings";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
@@ -247,6 +248,53 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
   }, [pickedLocation, tab]);
 
   const [clipMsg, setClipMsg] = useState<string | null>(null);
+  const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
+
+  useEffect(() => {
+    settings.getSavedScenarios().then(setSavedScenarios).catch(() => {});
+  }, []);
+
+  function currentScenarioData(): ScenarioInput {
+    return tab === "asteroid" ? { kind: "Asteroid", source: asteroid }
+      : tab === "nuclear" ? { kind: "Nuclear", source: nuclear }
+      : tab === "earthquake" ? { kind: "Earthquake", source: earthquake }
+      : { kind: "Landslide", source: landslide };
+  }
+
+  function saveCurrentScenario() {
+    const data = currentScenarioData();
+    const name = `${data.kind} — ${new Date().toLocaleString()}`;
+    settings.saveScenario(name, data).then(() => {
+      settings.getSavedScenarios().then(setSavedScenarios);
+      setClipMsg("Saved!");
+      setTimeout(() => setClipMsg(null), 2000);
+    });
+  }
+
+  function loadScenario(s: SavedScenario) {
+    const data = s.data as ScenarioInput;
+    if (data.kind === "Asteroid" && data.source) {
+      setTab("asteroid");
+      setAsteroid({ ...INITIAL_ASTEROID, ...data.source });
+    } else if (data.kind === "Nuclear" && data.source) {
+      setTab("nuclear");
+      setNuclear({ ...INITIAL_NUCLEAR, ...data.source });
+    } else if (data.kind === "Earthquake" && data.source) {
+      setTab("earthquake");
+      setEarthquake({ ...INITIAL_EARTHQUAKE, ...data.source });
+    } else if (data.kind === "Landslide" && data.source) {
+      setTab("landslide");
+      setLandslide({ ...INITIAL_LANDSLIDE, ...data.source });
+    }
+    setShowSaved(false);
+  }
+
+  function deleteScenario(idx: number) {
+    settings.deleteScenario(idx).then(() => {
+      settings.getSavedScenarios().then(setSavedScenarios);
+    });
+  }
 
   function submit() {
     if (tab === "asteroid") onSimulate({ kind: "Asteroid", source: asteroid });
@@ -429,14 +477,46 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
           </button>
         </div>
         <div className="scenario-actions__row">
+          <button onClick={saveCurrentScenario} type="button" title="Save current scenario for later">
+            Save
+          </button>
+          <button onClick={() => setShowSaved((v) => !v)} type="button" title="Load a saved scenario">
+            Load{savedScenarios.length > 0 ? ` (${savedScenarios.length})` : ""}
+          </button>
           <button onClick={copyScenario} type="button" title="Copy scenario parameters to clipboard">
-            Copy scenario
+            Copy
           </button>
           <button onClick={pasteScenario} type="button" title="Paste scenario parameters from clipboard">
-            Paste scenario
+            Paste
           </button>
           {clipMsg && <span className="scenario-actions__clip">{clipMsg}</span>}
         </div>
+        {showSaved && savedScenarios.length > 0 && (
+          <div className="scenario-saved">
+            {savedScenarios.map((s, i) => (
+              <div key={i} className="scenario-saved__item">
+                <button
+                  className="scenario-saved__load"
+                  onClick={() => loadScenario(s)}
+                  type="button"
+                >
+                  {s.name}
+                </button>
+                <button
+                  className="scenario-saved__del"
+                  onClick={() => deleteScenario(i)}
+                  type="button"
+                  aria-label={`Delete ${s.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {showSaved && savedScenarios.length === 0 && (
+          <div className="scenario-saved__empty">No saved scenarios yet.</div>
+        )}
       </div>
     </div>
   );
