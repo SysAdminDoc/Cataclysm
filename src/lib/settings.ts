@@ -198,6 +198,53 @@ async function write<K extends keyof Settings>(key: K, value: Settings[K]): Prom
   }
 }
 
+const SCENARIOS_KEY = "saved_scenarios";
+const MAX_SAVED_SCENARIOS = 20;
+
+export type SavedScenario = {
+  name: string;
+  savedAt: string;
+  data: unknown;
+};
+
+async function readScenarios(): Promise<SavedScenario[]> {
+  const store = await getStore();
+  if (store) {
+    try {
+      const v = await store.get<SavedScenario[]>(SCENARIOS_KEY);
+      if (Array.isArray(v)) return v;
+    } catch { /* ignore */ }
+  }
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LS_PREFIX + SCENARIOS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch { /* ignore */ }
+  }
+  return [];
+}
+
+async function writeScenarios(list: SavedScenario[]): Promise<void> {
+  const capped = list.slice(0, MAX_SAVED_SCENARIOS);
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(LS_PREFIX + SCENARIOS_KEY, JSON.stringify(capped));
+    } catch { /* quota */ }
+  }
+  const store = await getStore();
+  if (store) {
+    try {
+      await store.set(SCENARIOS_KEY, capped);
+      await store.save();
+    } catch (err) {
+      console.warn("[settings] failed to save scenarios", err);
+    }
+  }
+}
+
 export const settings = {
   async getCesiumToken(): Promise<string> {
     return read("cesium_token");
@@ -325,6 +372,21 @@ export const settings = {
       } catch {
         /* ignore */
       }
+    }
+  },
+  async getSavedScenarios(): Promise<SavedScenario[]> {
+    return readScenarios();
+  },
+  async saveScenario(name: string, data: unknown): Promise<void> {
+    const list = await readScenarios();
+    list.unshift({ name, savedAt: new Date().toISOString(), data });
+    return writeScenarios(list);
+  },
+  async deleteScenario(index: number): Promise<void> {
+    const list = await readScenarios();
+    if (index >= 0 && index < list.length) {
+      list.splice(index, 1);
+      return writeScenarios(list);
     }
   },
   /** Clear only the disclaimer-ack timestamp so the first-run modal
