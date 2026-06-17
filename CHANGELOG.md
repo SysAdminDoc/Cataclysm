@@ -76,6 +76,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   button shows a saving state; the timeline tolerates a non-finite time.
 
 ### Fixed — security & DX
+- **npm audit is clean at low severity.** Updated the lockfile to
+  `@babel/core` 7.29.7 and added a direct/overridden `esbuild` 0.28.1 dev
+  dependency while keeping the known-good Vite 7.3.5 build line.
 - CSP/permissions: tightened the `shell:allow-open` allow-list (scoped Forbes
   to the cited author path, added the explicit repo URL with a trailing-slash
   glob).
