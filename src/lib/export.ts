@@ -26,10 +26,16 @@ function timestampSuffix(): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
+function isForbiddenFilenameChar(ch: string): boolean {
+  return ch.charCodeAt(0) <= 0x1f || '<>:"/\\|?*'.includes(ch);
+}
+
 function safeFilenamePart(value: string): string {
   const cleaned = value
     .trim()
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .split("")
+    .map((ch) => (isForbiddenFilenameChar(ch) ? "-" : ch))
+    .join("")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");

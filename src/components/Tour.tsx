@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { UiIcon } from "./UiIcon";
 
 /**
  * Lightweight 5-step onboarding tour. In-house implementation rather
@@ -46,7 +47,7 @@ const STEPS: TourStep[] = [
   {
     title: "4 · Inspect any coast",
     body:
-      "Turn on Inspect, click the globe, and read arrival, offshore amplitude, runup, and inundation at that point. Esc exits.",
+      "Turn on Inspect, click the globe, and read arrival, offshore amplitude, runup, and inundation at that point.",
     pos: "top-center",
   },
   {
@@ -69,19 +70,8 @@ export function Tour({ open, onClose }: Props) {
   useFocusTrap(dialogRef, open);
 
   useEffect(() => {
-    if (!open) return;
-    setIdx(0);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "Enter" || e.key === "ArrowRight") {
-        setIdx((i) => (i + 1 < STEPS.length ? i + 1 : i));
-      } else if (e.key === "ArrowLeft") {
-        setIdx((i) => (i > 0 ? i - 1 : 0));
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    if (open) setIdx(0);
+  }, [open]);
 
   if (!open) return null;
 
@@ -98,7 +88,7 @@ export function Tour({ open, onClose }: Props) {
         </h3>
         <p className="tour-card__body">{step.body}</p>
         <div className="tour-card__actions">
-          <button className="scenario-tab" onClick={onClose}>
+          <button className="scenario-tab" onClick={onClose} type="button">
             Skip
           </button>
           <div className="tour-card__spacer" />
@@ -106,8 +96,10 @@ export function Tour({ open, onClose }: Props) {
             className="scenario-tab"
             onClick={() => setIdx((i) => (i > 0 ? i - 1 : 0))}
             disabled={idx === 0}
+            type="button"
           >
-            ← Back
+            <UiIcon name="chevronRight" size={14} className="icon--flip" />
+            Back
           </button>
           <button
             className="primary"
@@ -115,8 +107,16 @@ export function Tour({ open, onClose }: Props) {
               if (isLast) onClose();
               else setIdx((i) => i + 1);
             }}
+            type="button"
           >
-            {isLast ? "Done" : "Next →"}
+            {isLast ? (
+              "Done"
+            ) : (
+              <>
+                Next
+                <UiIcon name="chevronRight" size={14} />
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -36,10 +36,16 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
     return (
       <div className="section">
         <div className="section__title">Source Readout</div>
-        <p className="empty-copy">
-          Select a preset or simulate a custom source to see energy, cavity geometry,
-          peak amplitude, and equivalent moment magnitude.
-        </p>
+        <div className="empty-state">
+          <span className="empty-state__icon" aria-hidden />
+          <div>
+            <strong>No source selected</strong>
+            <p>
+              Select a preset or simulate a custom source to see energy, cavity geometry,
+              peak amplitude, and equivalent moment magnitude.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

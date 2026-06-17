@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { getDartEvents, getDartBuoysForPreset, PRESET_TO_DART_EVENT } from "../lib/data";
+import { getDartEvents, PRESET_TO_DART_EVENT } from "../lib/data";
 import type { DartBuoy, DartEvent, InitialDisplacement } from "../types/scenario";
+import { UiIcon } from "./UiIcon";
 
 type Props = {
   presetId: string | null;
@@ -126,8 +127,10 @@ export function DartOverlay({ presetId, timeS, initial }: Props) {
           onClick={() => setExpanded((v) => !v)}
           className="dart__toggle"
           aria-expanded={expanded}
+          type="button"
         >
-          {expanded ? "▼" : "▶"} DART buoy observations
+          <UiIcon name={expanded ? "chevronDown" : "chevronRight"} size={13} />
+          DART buoy observations
         </button>
       </div>
       {expanded && (
@@ -150,9 +153,4 @@ export function DartOverlay({ presetId, timeS, initial }: Props) {
       )}
     </div>
   );
-}
-
-/** Helper for the Globe component: list DART pins to render for an event. */
-export function dartPinsForPreset(presetId: string | null): DartBuoy[] {
-  return [...getDartBuoysForPreset(presetId)];
 }

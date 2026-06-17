@@ -191,7 +191,7 @@ export function Globe({
       inundationEntitiesRef.current = new Map();
       sweLayerRef.current = null;
     };
-  }, []);
+  }, [primary]);
 
   // Resolve which globe style we should be using — prop override, persisted
   // setting, or DEFAULT_STYLE (OSM). Listens for `tsunamisim:settings-saved`
@@ -869,19 +869,26 @@ export function Globe({
       <div className="app__globe-mount" ref={containerRef} />
       {pickMode && (
         <div className="app__globe-pickbanner">
-          Click anywhere on the globe to set scenario location. Press
-          <kbd> Esc </kbd>
-          to cancel.
+          <div className="app__globe-pickbanner-row">
+            <span>Click anywhere on the globe to set scenario location.</span>
+            <button className="app__globe-banner-cancel" onClick={onPickCancel} type="button">
+              Cancel
+            </button>
+          </div>
           <CoordEntryForm
             onSubmit={(lat, lon) => onPick?.(lat, lon)}
-            label="Or enter coordinates:"
+            label="Enter coordinates"
           />
         </div>
       )}
       {inspectMode && (
         <div className="app__globe-pickbanner">
-          Click anywhere on the globe to read amplitude / arrival / runup.
-          Press <kbd> Esc </kbd> to exit.
+          <div className="app__globe-pickbanner-row">
+            <span>Click anywhere on the globe to read amplitude, arrival, and runup.</span>
+            <button className="app__globe-banner-cancel" onClick={onInspectCancel} type="button">
+              Cancel
+            </button>
+          </div>
           <CoordEntryForm
             onSubmit={(lat, lon) => {
               if (!viewerRef.current || !initial) return;
@@ -961,7 +968,7 @@ export function Globe({
                 })
                 .catch((err) => console.warn("[globe] keyboard inspect failed", err));
             }}
-            label="Or enter coordinates:"
+            label="Enter coordinates"
           />
         </div>
       )}

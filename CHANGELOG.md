@@ -85,6 +85,29 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
   stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
 
+## [0.4.1] - 2026-06-16 - Premium UX polish pass
+
+### Changed
+- Refined the main cockpit with a persistent status band, cleaner header
+  hierarchy, compact SVG icon controls, and a calmer educational-only status
+  treatment that avoids header crowding.
+- Added searchable preset selection with result counts, selected-state icons,
+  clearer preset metadata, and improved loading / empty states.
+- Strengthened first-run, tour, Settings, SWE playback, DART, citations,
+  diagnostics, scenario builder, and results-panel polish with clearer copy,
+  explicit states, consistent button semantics, and reduced shortcut clutter.
+- Replaced fully-rounded UI backdrops with the app's tighter radius system,
+  improved focus/hover affordances, and added an indeterminate SWE progress
+  treatment for long-running simulations.
+- Refreshed README screenshots against the polished desktop cockpit.
+
+### Fixed
+- Removed confirmation-dialog dependency from Settings reset/dismiss actions in
+  favor of inline status feedback.
+- Reworked export filename sanitisation to avoid the ESLint no-control-regex
+  blocker while preserving Windows-safe filenames.
+- Synced package and Tauri metadata to `0.4.1`.
+
 ## [0.4.0] - 2026-05-25 — Premium polish + GPU SWE + Lamb-wave coupling
 
 ### Premium polish pass

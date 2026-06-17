@@ -7,6 +7,7 @@ import { settings, type Theme, type ColormapId } from "../lib/settings";
 import { setTheme } from "../lib/theme";
 import { GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
+import { UiIcon } from "./UiIcon";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "unknown";
 
@@ -20,7 +21,7 @@ export function Settings({ onClose }: Props) {
   const [theme, setThemeLocal] = useState<Theme>("mocha");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>("osm");
   const [colormapId, setColormapId] = useState<ColormapId>("diverging");
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>("unknown");
@@ -65,7 +66,7 @@ export function Settings({ onClose }: Props) {
         settings.setGlobeStyle(globeStyle),
         settings.setColormap(colormapId),
       ]);
-      setSavedAt(new Date().toLocaleTimeString());
+      setStatusMsg(`Saved at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       console.error("[settings] save failed", err);
       setSaveErr(String(err));
@@ -87,7 +88,9 @@ export function Settings({ onClose }: Props) {
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
           <h2 id="settings-title">Settings</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
+          <button className="modal__close" onClick={onClose} aria-label="Close" type="button">
+            <UiIcon name="close" size={16} />
+          </button>
         </header>
         <div className="modal__body">
           <section className="settings__section">
@@ -146,7 +149,7 @@ export function Settings({ onClose }: Props) {
             <input
               type="password"
               autoComplete="off"
-              placeholder={needsToken ? "Required for this globe style…" : "Paste your token here (optional)…"}
+              placeholder={needsToken ? "Required for this globe style..." : "Paste your token here (optional)..."}
               value={token}
               onChange={(e) => setTokenLocal(e.target.value)}
             />
@@ -194,10 +197,10 @@ export function Settings({ onClose }: Props) {
 
           <section className="settings__actions">
             <button className="primary" onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save settings"}
+              {saving ? "Saving..." : "Save settings"}
             </button>
-            {savedAt && !saveErr && (
-              <span className="settings__status" data-tone="success">Saved at {savedAt}</span>
+            {statusMsg && !saveErr && (
+              <span className="settings__status" data-tone="success">{statusMsg}</span>
             )}
             {saveErr && (
               <span className="settings__status" data-tone="danger">Save failed: {saveErr}</span>
@@ -230,7 +233,7 @@ export function Settings({ onClose }: Props) {
                 </span>
               )}
               {gpuStatus === "unknown" && (
-                <span className="settings__status" data-tone="muted">Checking hardware…</span>
+                <span className="settings__status" data-tone="muted">Checking hardware...</span>
               )}
             </div>
           </section>
@@ -241,16 +244,10 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      "Show the first-run disclaimer modal again on next launch?",
-                    )
-                  ) {
-                    return;
-                  }
                   await settings.clearDisclaimerAck();
-                  setSavedAt("First-run modal will appear on next launch.");
+                  setStatusMsg("First-run notice will show on next launch.");
                 }}
+                type="button"
               >
                 Show first-run again
               </button>
@@ -261,9 +258,10 @@ export function Settings({ onClose }: Props) {
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                   }
-                  setSavedAt("Tour will replay shortly.");
+                  setStatusMsg("Tour will replay shortly.");
                   onClose();
                 }}
+                type="button"
               >
                 Replay tour
               </button>
@@ -274,21 +272,15 @@ export function Settings({ onClose }: Props) {
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                   }
-                  setSavedAt("Token banner re-armed (visible when no token is set).");
+                  setStatusMsg("Imagery token banner re-armed.");
                 }}
+                type="button"
               >
                 Show token banner again
               </button>
               <button
                 className="scenario-tab"
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      "Reset every setting (token, theme, globe style, first-run ack) to defaults? This can't be undone.",
-                    )
-                  ) {
-                    return;
-                  }
                   await settings.resetAll();
                   setTokenLocal("");
                   setThemeLocal("mocha");
@@ -298,8 +290,9 @@ export function Settings({ onClose }: Props) {
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                   }
-                  setSavedAt("Reset complete.");
+                  setStatusMsg("Settings reset to defaults.");
                 }}
+                type="button"
               >
                 Reset to defaults
               </button>

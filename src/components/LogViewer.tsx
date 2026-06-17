@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { UiIcon } from "./UiIcon";
 
 type LogEntry = {
   level: "log" | "warn" | "error" | "info";
@@ -104,8 +105,8 @@ export function LogViewer({ open, onClose }: Props) {
       >
         <div className="modal__header">
           <h2 className="modal__title">Diagnostics log</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close log viewer">
-            ✕
+          <button className="modal__close" onClick={onClose} aria-label="Close log viewer" type="button">
+            <UiIcon name="close" size={16} />
           </button>
         </div>
         <div className="log-viewer__toolbar">
