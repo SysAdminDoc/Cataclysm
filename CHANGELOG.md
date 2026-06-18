@@ -27,6 +27,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Root render recovery added.** The React root is wrapped in a calm error
   boundary with retry/reload actions, and global `error` /
   `unhandledrejection` events are routed into the diagnostics log.
+- **Saved and shared scenarios now have a schema boundary.** Copy/save writes a
+  versioned payload, legacy unversioned scenarios migrate on load/paste, and
+  invalid clipboard or store payloads are rejected with specific inline
+  feedback before they can alter visible scenario state.
 - **SWE Cancel now reaches the Rust worker.** The playback Cancel button
   signals a server-side cancellation token, and the CPU/GPU stepping loops poll
   it between short batches so long simulations bail out promptly instead of
