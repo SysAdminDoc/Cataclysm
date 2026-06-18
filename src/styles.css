@@ -1491,6 +1491,14 @@ a {
   color: var(--subtext);
 }
 
+.scenario-actions__clip[data-tone="success"] {
+  color: var(--success);
+}
+
+.scenario-actions__clip[data-tone="error"] {
+  color: var(--danger);
+}
+
 .scenario-saved {
   display: flex;
   flex-direction: column;

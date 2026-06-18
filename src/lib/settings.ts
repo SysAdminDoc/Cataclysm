@@ -8,6 +8,7 @@
 
 import { isTauri } from "./tauri";
 import type { GlobeStyleId } from "./globe-styles";
+import { parseScenarioPayload } from "./scenario-schema";
 
 export type Theme = "mocha" | "latte";
 
@@ -378,8 +379,10 @@ export const settings = {
     return readScenarios();
   },
   async saveScenario(name: string, data: unknown): Promise<void> {
+    const parsed = parseScenarioPayload(data);
+    if (!parsed.ok) throw new Error(parsed.reason);
     const list = await readScenarios();
-    list.unshift({ name, savedAt: new Date().toISOString(), data });
+    list.unshift({ name, savedAt: new Date().toISOString(), data: parsed.payload });
     return writeScenarios(list);
   },
   async deleteScenario(index: number): Promise<void> {

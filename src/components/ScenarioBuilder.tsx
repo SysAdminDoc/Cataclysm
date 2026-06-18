@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { settings, type SavedScenario } from "../lib/settings";
+import {
+  createScenarioPayload,
+  INITIAL_ASTEROID,
+  INITIAL_EARTHQUAKE,
+  INITIAL_LANDSLIDE,
+  INITIAL_NUCLEAR,
+  parseScenarioPayload,
+  SCENARIO_BOUNDS as BOUNDS,
+  type ScenarioInput,
+} from "../lib/scenario-schema";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
   LandslideInput,
   NuclearBurstInput,
 } from "../types/scenario";
-
-type ScenarioInput =
-  | { kind: "Asteroid"; source: AsteroidImpactInput }
-  | { kind: "Nuclear"; source: NuclearBurstInput }
-  | { kind: "Earthquake"; source: EarthquakeInput }
-  | { kind: "Landslide"; source: LandslideInput };
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
@@ -22,6 +26,7 @@ type Props = {
 };
 
 type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide";
+type InlineStatus = { text: string; tone: "info" | "success" | "error" };
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "asteroid", label: "Asteroid" },
@@ -35,69 +40,6 @@ const TAB_DESCRIPTIONS: Record<TabKey, string> = {
   nuclear: "Underwater and surface burst coupling with yield and depth controls.",
   earthquake: "Fault-source parameters for Okada-style seafloor displacement.",
   landslide: "Subaerial and submarine slide source geometry for confined or open water.",
-};
-
-const INITIAL_ASTEROID: AsteroidImpactInput = {
-  diameter_m: 500,
-  density_kg_m3: 3000,
-  velocity_m_s: 18_000,
-  angle_deg: 45,
-  water_depth_m: 4_000,
-  location: { lat_deg: 0, lon_deg: -30, depth_m: 4_000 },
-};
-const INITIAL_NUCLEAR: NuclearBurstInput = {
-  yield_kt: 1000,
-  burst_mode: "DeepOptimal",
-  burst_depth_m: 100,
-  water_depth_m: 4_000,
-  location: { lat_deg: 50, lon_deg: -10, depth_m: 4_000 },
-};
-const INITIAL_EARTHQUAKE: EarthquakeInput = {
-  mw: 8.5,
-  depth_m: 30_000,
-  strike_deg: 195,
-  dip_deg: 12,
-  rake_deg: 85,
-  slip_m: 15,
-  fault_length_m: 0,
-  fault_width_m: 0,
-  water_depth_m: 2_000,
-  location: { lat_deg: 38.0, lon_deg: 143.0, depth_m: 2_000 },
-};
-const INITIAL_LANDSLIDE: LandslideInput = {
-  kind: "Submarine",
-  volume_m3: 1.0e10,
-  density_kg_m3: 2200,
-  drop_height_m: 700,
-  slope_deg: 25,
-  water_depth_m: 1_500,
-  water_body_width_m: 10_000,
-  location: { lat_deg: -20.55, lon_deg: -175.39, depth_m: 1_500 },
-};
-
-type Bound = { min?: number; max?: number };
-const BOUNDS: Record<string, Bound> = {
-  diameter_m: { min: 1, max: 50_000 },
-  density_kg_m3: { min: 500, max: 8_000 },
-  velocity_m_s: { min: 1_000, max: 72_000 },
-  angle_deg: { min: 1, max: 90 },
-  water_depth_m: { min: 0, max: 12_000 },
-  yield_kt: { min: 0.001, max: 1_000_000 },
-  burst_depth_m: { min: 0, max: 6_000 },
-  mw: { min: 5, max: 10 },
-  depth_m: { min: 0, max: 100_000 },
-  strike_deg: { min: 0, max: 360 },
-  dip_deg: { min: 0, max: 90 },
-  rake_deg: { min: -180, max: 180 },
-  slip_m: { min: 0, max: 100 },
-  fault_length_m: { min: 0, max: 2_000_000 },
-  fault_width_m: { min: 0, max: 500_000 },
-  volume_m3: { min: 1, max: 1.0e14 },
-  drop_height_m: { min: 0, max: 10_000 },
-  slope_deg: { min: 0, max: 90 },
-  water_body_width_m: { min: 1, max: 1_000_000 },
-  lat_deg: { min: -90, max: 90 },
-  lon_deg: { min: -180, max: 180 },
 };
 
 const PARAM_HELP: Record<string, string> = {
@@ -247,13 +189,21 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
     else setLandslide((s) => ({ ...s, location: { ...s.location, ...loc } }));
   }, [pickedLocation, tab]);
 
-  const [clipMsg, setClipMsg] = useState<string | null>(null);
+  const [clipMsg, setClipMsg] = useState<InlineStatus | null>(null);
   const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
   const [showSaved, setShowSaved] = useState(false);
+  const clipTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     settings.getSavedScenarios().then(setSavedScenarios).catch(() => {});
   }, []);
+  useEffect(() => () => window.clearTimeout(clipTimer.current), []);
+
+  function showStatus(text: string, tone: InlineStatus["tone"] = "info") {
+    setClipMsg({ text, tone });
+    window.clearTimeout(clipTimer.current);
+    clipTimer.current = window.setTimeout(() => setClipMsg(null), tone === "error" ? 5000 : 2200);
+  }
 
   function currentScenarioData(): ScenarioInput {
     return tab === "asteroid" ? { kind: "Asteroid", source: asteroid }
@@ -262,32 +212,47 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
       : { kind: "Landslide", source: landslide };
   }
 
+  function applyScenario(data: ScenarioInput) {
+    if (data.kind === "Asteroid") {
+      setTab("asteroid");
+      setAsteroid(data.source);
+    } else if (data.kind === "Nuclear") {
+      setTab("nuclear");
+      setNuclear(data.source);
+    } else if (data.kind === "Earthquake") {
+      setTab("earthquake");
+      setEarthquake(data.source);
+    } else {
+      setTab("landslide");
+      setLandslide(data.source);
+    }
+  }
+
   function saveCurrentScenario() {
     const data = currentScenarioData();
+    const payload = createScenarioPayload(data);
+    if (!payload.ok) {
+      showStatus(`Save blocked: ${payload.reason}`, "error");
+      return;
+    }
     const name = `${data.kind} — ${new Date().toLocaleString()}`;
-    settings.saveScenario(name, data).then(() => {
+    settings.saveScenario(name, payload.payload).then(() => {
       settings.getSavedScenarios().then(setSavedScenarios);
-      setClipMsg("Saved!");
-      setTimeout(() => setClipMsg(null), 2000);
+      showStatus("Saved scenario.", "success");
+    }).catch((err) => {
+      showStatus(`Save failed: ${err instanceof Error ? err.message : String(err)}`, "error");
     });
   }
 
   function loadScenario(s: SavedScenario) {
-    const data = s.data as ScenarioInput;
-    if (data.kind === "Asteroid" && data.source) {
-      setTab("asteroid");
-      setAsteroid({ ...INITIAL_ASTEROID, ...data.source });
-    } else if (data.kind === "Nuclear" && data.source) {
-      setTab("nuclear");
-      setNuclear({ ...INITIAL_NUCLEAR, ...data.source });
-    } else if (data.kind === "Earthquake" && data.source) {
-      setTab("earthquake");
-      setEarthquake({ ...INITIAL_EARTHQUAKE, ...data.source });
-    } else if (data.kind === "Landslide" && data.source) {
-      setTab("landslide");
-      setLandslide({ ...INITIAL_LANDSLIDE, ...data.source });
+    const parsed = parseScenarioPayload(s.data);
+    if (!parsed.ok) {
+      showStatus(`Saved scenario rejected: ${parsed.reason}`, "error");
+      return;
     }
+    applyScenario(parsed.scenario);
     setShowSaved(false);
+    showStatus(parsed.migrated ? "Loaded legacy scenario." : "Loaded scenario.", "success");
   }
 
   function deleteScenario(idx: number) {
@@ -304,45 +269,31 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
   }
 
   function copyScenario() {
-    const data: ScenarioInput =
-      tab === "asteroid" ? { kind: "Asteroid", source: asteroid }
-      : tab === "nuclear" ? { kind: "Nuclear", source: nuclear }
-      : tab === "earthquake" ? { kind: "Earthquake", source: earthquake }
-      : { kind: "Landslide", source: landslide };
-    navigator.clipboard.writeText(JSON.stringify(data)).then(
-      () => { setClipMsg("Copied!"); setTimeout(() => setClipMsg(null), 2000); },
-      () => setClipMsg("Copy failed"),
+    const payload = createScenarioPayload(currentScenarioData());
+    if (!payload.ok) {
+      showStatus(`Copy blocked: ${payload.reason}`, "error");
+      return;
+    }
+    navigator.clipboard.writeText(JSON.stringify(payload.payload)).then(
+      () => showStatus("Copied scenario.", "success"),
+      () => showStatus("Copy failed.", "error"),
     );
   }
 
   function pasteScenario() {
     navigator.clipboard.readText().then((text) => {
       try {
-        const data = JSON.parse(text) as ScenarioInput;
-        if (data.kind === "Asteroid" && data.source) {
-          setTab("asteroid");
-          setAsteroid({ ...INITIAL_ASTEROID, ...data.source });
-        } else if (data.kind === "Nuclear" && data.source) {
-          setTab("nuclear");
-          setNuclear({ ...INITIAL_NUCLEAR, ...data.source });
-        } else if (data.kind === "Earthquake" && data.source) {
-          setTab("earthquake");
-          setEarthquake({ ...INITIAL_EARTHQUAKE, ...data.source });
-        } else if (data.kind === "Landslide" && data.source) {
-          setTab("landslide");
-          setLandslide({ ...INITIAL_LANDSLIDE, ...data.source });
-        } else {
-          setClipMsg("Invalid scenario");
-          setTimeout(() => setClipMsg(null), 2000);
+        const parsed = parseScenarioPayload(JSON.parse(text));
+        if (!parsed.ok) {
+          showStatus(`Paste rejected: ${parsed.reason}`, "error");
           return;
         }
-        setClipMsg("Pasted!");
-        setTimeout(() => setClipMsg(null), 2000);
+        applyScenario(parsed.scenario);
+        showStatus(parsed.migrated ? "Pasted legacy scenario." : "Pasted scenario.", "success");
       } catch {
-        setClipMsg("Invalid JSON");
-        setTimeout(() => setClipMsg(null), 2000);
+        showStatus("Paste rejected: clipboard does not contain valid JSON.", "error");
       }
-    }).catch(() => { setClipMsg("Paste failed"); setTimeout(() => setClipMsg(null), 2000); });
+    }).catch(() => showStatus("Paste failed.", "error"));
   }
 
   return (
@@ -489,7 +440,16 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
           <button onClick={pasteScenario} type="button" title="Paste scenario parameters from clipboard">
             Paste
           </button>
-          {clipMsg && <span className="scenario-actions__clip">{clipMsg}</span>}
+          {clipMsg && (
+            <span
+              className="scenario-actions__clip"
+              data-tone={clipMsg.tone}
+              role={clipMsg.tone === "error" ? "alert" : "status"}
+              aria-live={clipMsg.tone === "error" ? "assertive" : "polite"}
+            >
+              {clipMsg.text}
+            </span>
+          )}
         </div>
         {showSaved && savedScenarios.length > 0 && (
           <div className="scenario-saved">
