@@ -5,13 +5,13 @@ export default defineConfig({
   timeout: 60_000,
   retries: 1,
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: "http://127.0.0.1:4187",
     headless: true,
   },
   webServer: {
-    command: "npx vite preview --port 4173",
-    port: 4173,
-    reuseExistingServer: !process.env.CI,
+    command: "npx vite preview --host 127.0.0.1 --port 4187 --strictPort",
+    port: 4187,
+    reuseExistingServer: false,
     timeout: 30_000,
   },
 });
