@@ -72,6 +72,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Diagnostics feedback hardened.** The log viewer now tolerates circular
   console payloads, surfaces clipboard-copy failures, and Settings save/reset
   status is announced to assistive technology instead of being visual-only.
+- **Scenario sharing clipboard guard.** Copy/Paste now reports when the
+  Clipboard API is unavailable instead of throwing from the primary scenario
+  workflow.
 - **Modal focus management.** Settings, Citations, first-run, and tour dialogs
   now move focus inside on open, trap Tab/Shift-Tab, and restore focus on close
   (WCAG 2.4.3 / 2.1.2).

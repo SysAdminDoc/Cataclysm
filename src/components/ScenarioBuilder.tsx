@@ -274,14 +274,24 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
       showStatus(`Copy blocked: ${payload.reason}`, "error");
       return;
     }
-    navigator.clipboard.writeText(JSON.stringify(payload.payload)).then(
+    const writeText = navigator.clipboard?.writeText;
+    if (!writeText) {
+      showStatus("Copy failed: clipboard is unavailable.", "error");
+      return;
+    }
+    writeText.call(navigator.clipboard, JSON.stringify(payload.payload)).then(
       () => showStatus("Copied scenario.", "success"),
       () => showStatus("Copy failed.", "error"),
     );
   }
 
   function pasteScenario() {
-    navigator.clipboard.readText().then((text) => {
+    const readText = navigator.clipboard?.readText;
+    if (!readText) {
+      showStatus("Paste failed: clipboard is unavailable.", "error");
+      return;
+    }
+    readText.call(navigator.clipboard).then((text) => {
       try {
         const parsed = parseScenarioPayload(JSON.parse(text));
         if (!parsed.ok) {
