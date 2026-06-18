@@ -1715,6 +1715,7 @@ mod tests {
             include_lamb_wave: true,
             lamb_wave_peak_pressure_pa: Some(-1.0),
             lamb_wave_source_radius_m: None,
+            colormap: "diverging".to_string(),
         });
         assert!(res.is_err());
     }

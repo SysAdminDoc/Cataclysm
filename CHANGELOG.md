@@ -103,6 +103,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   controls, SWE streaming progress/cancel/snapshot handoff, and a Playwright
   saved-scenario round trip. The e2e preview server now uses a strict
   repo-specific port so tests cannot attach to an unrelated local app.
+- **Rust backend tests compile again.** Updated the stale
+  `SimulateGridRequest` validation fixture so `cargo test` covers the current
+  colormap-aware IPC shape.
 - CSP/permissions: tightened the `shell:allow-open` allow-list (scoped Forbes
   to the cited author path, added the explicit repo URL with a trailing-slash
   glob).
