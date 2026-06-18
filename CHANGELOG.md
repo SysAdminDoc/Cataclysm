@@ -34,6 +34,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Scenario slot race fixed.** Selecting a preset now invalidates any
   in-flight custom scenario IPC response so a slow custom result cannot
   overwrite the preset the user just chose.
+- **GeoJSON export coordinates hardened.** Inundation export now clamps
+  polar/non-finite edge inputs before writing geometry so generated GeoJSON
+  does not contain invalid `null` coordinates.
 - **SWE Cancel now reaches the Rust worker.** The playback Cancel button
   signals a server-side cancellation token, and the CPU/GPU stepping loops poll
   it between short batches so long simulations bail out promptly instead of

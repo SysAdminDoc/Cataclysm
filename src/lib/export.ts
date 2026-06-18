@@ -452,19 +452,34 @@ export function exportGeoJson(
 }
 
 function round5(v: number): number {
+  if (!Number.isFinite(v)) return 0;
   return Math.round(v * 100_000) / 100_000;
+}
+
+function clampNumber(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+function normaliseLon(lon: number): number {
+  if (!Number.isFinite(lon)) return 0;
+  const wrapped = ((((lon + 180) % 360) + 360) % 360) - 180;
+  return wrapped === -180 && lon > 0 ? 180 : wrapped;
 }
 
 function circlePolygon(lat: number, lon: number, radius_m: number, n = 32): number[][] {
   const coords: number[][] = [];
   const R = 6_371_008.8;
+  const safeLat = clampNumber(Number.isFinite(lat) ? lat : 0, -89.999, 89.999);
+  const safeLon = normaliseLon(lon);
+  const safeRadiusM = clampNumber(Number.isFinite(radius_m) ? radius_m : 0, 0, 50_000);
+  const cosLat = Math.max(Math.abs(Math.cos((safeLat * Math.PI) / 180)), 1e-6);
   for (let i = 0; i <= n; i++) {
     const angle = (2 * Math.PI * i) / n;
-    const dlat = (radius_m * Math.cos(angle)) / R;
-    const dlon = (radius_m * Math.sin(angle)) / (R * Math.cos((lat * Math.PI) / 180));
+    const dlat = (safeRadiusM * Math.cos(angle)) / R;
+    const dlon = (safeRadiusM * Math.sin(angle)) / (R * cosLat);
     coords.push([
-      round5(lon + (dlon * 180) / Math.PI),
-      round5(lat + (dlat * 180) / Math.PI),
+      round5(normaliseLon(safeLon + (dlon * 180) / Math.PI)),
+      round5(clampNumber(safeLat + (dlat * 180) / Math.PI, -90, 90)),
     ]);
   }
   return coords;
