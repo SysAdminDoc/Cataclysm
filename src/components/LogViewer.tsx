@@ -9,12 +9,38 @@ type LogEntry = {
   message: string;
 };
 
+type CopyStatus = "idle" | "copied" | "error";
+
 const MAX_ENTRIES = 500;
 const logBuffer: LogEntry[] = [];
 let listeners: (() => void)[] = [];
 
 function notify() {
   for (const fn of listeners) fn();
+}
+
+function formatLogArg(arg: unknown): string {
+  if (typeof arg === "string") return arg;
+  if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
+  if (arg === null) return "null";
+  if (typeof arg === "undefined") return "undefined";
+  if (typeof arg === "number" || typeof arg === "boolean" || typeof arg === "bigint") {
+    return String(arg);
+  }
+
+  const seen = new WeakSet<object>();
+  try {
+    const serialized = JSON.stringify(arg, (_key, value: unknown) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return "[Circular]";
+        seen.add(value);
+      }
+      return value;
+    });
+    return serialized ?? String(arg);
+  } catch {
+    return Object.prototype.toString.call(arg);
+  }
 }
 
 function installIntercepts() {
@@ -26,15 +52,22 @@ function installIntercepts() {
     info: console.info.bind(console),
   };
   function push(level: LogEntry["level"], args: unknown[]) {
-    const message = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+    const message = args.map(formatLogArg).join(" ");
     logBuffer.push({ level, timestamp: Date.now(), message });
     if (logBuffer.length > MAX_ENTRIES) logBuffer.shift();
     notify();
   }
-  console.log = (...args: unknown[]) => { orig.log(...args); push("log", args); };
-  console.warn = (...args: unknown[]) => { orig.warn(...args); push("warn", args); };
-  console.error = (...args: unknown[]) => { orig.error(...args); push("error", args); };
-  console.info = (...args: unknown[]) => { orig.info(...args); push("info", args); };
+  function safePush(level: LogEntry["level"], args: unknown[]) {
+    try {
+      push(level, args);
+    } catch {
+      // Logging should never become the reason the application fails.
+    }
+  }
+  console.log = (...args: unknown[]) => { orig.log(...args); safePush("log", args); };
+  console.warn = (...args: unknown[]) => { orig.warn(...args); safePush("warn", args); };
+  console.error = (...args: unknown[]) => { orig.error(...args); safePush("error", args); };
+  console.info = (...args: unknown[]) => { orig.info(...args); safePush("info", args); };
   (console as unknown as Record<string, unknown>).__tsunamisim_patched = true;
 }
 
@@ -47,9 +80,10 @@ type Props = {
 
 export function LogViewer({ open, onClose }: Props) {
   const [entries, setEntries] = useState<LogEntry[]>([...logBuffer]);
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const dialogRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEscapeKey(onClose, open);
   useFocusTrap(dialogRef, open);
 
@@ -67,6 +101,20 @@ export function LogViewer({ open, onClose }: Props) {
     }
   }, [entries]);
 
+  useEffect(() => {
+    return () => {
+      if (copyTimer.current) window.clearTimeout(copyTimer.current);
+    };
+  }, []);
+
+  const setTransientCopyStatus = useCallback((status: CopyStatus) => {
+    setCopyStatus(status);
+    if (copyTimer.current) window.clearTimeout(copyTimer.current);
+    if (status !== "idle") {
+      copyTimer.current = window.setTimeout(() => setCopyStatus("idle"), 2500);
+    }
+  }, []);
+
   const copyAll = useCallback(() => {
     const text = entries
       .map((e) => {
@@ -81,11 +129,16 @@ export function LogViewer({ open, onClose }: Props) {
       `Entries: ${entries.length}`,
       `---`,
     ].join("\n");
-    navigator.clipboard.writeText(`${header}\n${text}`).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, [entries]);
+    const writeText = navigator.clipboard?.writeText;
+    if (!writeText) {
+      setTransientCopyStatus("error");
+      return;
+    }
+    writeText.call(navigator.clipboard, `${header}\n${text}`).then(
+      () => setTransientCopyStatus("copied"),
+      () => setTransientCopyStatus("error"),
+    );
+  }, [entries, setTransientCopyStatus]);
 
   const clearLog = useCallback(() => {
     logBuffer.length = 0;
@@ -111,9 +164,24 @@ export function LogViewer({ open, onClose }: Props) {
         </div>
         <div className="log-viewer__toolbar">
           <span className="log-viewer__count">{entries.length} entries</span>
-          <button onClick={copyAll} className="log-viewer__btn" type="button">
-            {copied ? "Copied!" : "Copy to clipboard"}
+          <button
+            onClick={copyAll}
+            className="log-viewer__btn"
+            type="button"
+            aria-describedby={copyStatus !== "idle" ? "log-copy-status" : undefined}
+          >
+            Copy to clipboard
           </button>
+          {copyStatus !== "idle" && (
+            <span
+              id="log-copy-status"
+              className="log-viewer__copy-status"
+              data-tone={copyStatus === "copied" ? "success" : "error"}
+              role={copyStatus === "copied" ? "status" : "alert"}
+            >
+              {copyStatus === "copied" ? "Copied." : "Copy failed."}
+            </span>
+          )}
           <button onClick={clearLog} className="log-viewer__btn" type="button">
             Clear
           </button>

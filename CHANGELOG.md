@@ -69,6 +69,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Failures are no longer silent.** Preset/scenario IPC errors, preset-list
   load failures (with retry), and PNG/share/video export failures now surface
   a visible toast / inline status instead of only a console log.
+- **Diagnostics feedback hardened.** The log viewer now tolerates circular
+  console payloads, surfaces clipboard-copy failures, and Settings save/reset
+  status is announced to assistive technology instead of being visual-only.
 - **Modal focus management.** Settings, Citations, first-run, and tour dialogs
   now move focus inside on open, trap Tab/Shift-Tab, and restore focus on close
   (WCAG 2.4.3 / 2.1.2).

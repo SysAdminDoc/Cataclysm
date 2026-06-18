@@ -162,6 +162,7 @@ export function Settings({ onClose }: Props) {
                 className="scenario-tab"
                 data-active={theme === "mocha" ? "true" : "false"}
                 onClick={() => setThemeLocal("mocha")}
+                type="button"
               >
                 Catppuccin Mocha (dark)
               </button>
@@ -169,6 +170,7 @@ export function Settings({ onClose }: Props) {
                 className="scenario-tab"
                 data-active={theme === "latte" ? "true" : "false"}
                 onClick={() => setThemeLocal("latte")}
+                type="button"
               >
                 Catppuccin Latte (light)
               </button>
@@ -182,6 +184,7 @@ export function Settings({ onClose }: Props) {
                 className="scenario-tab"
                 data-active={colormapId === "diverging" ? "true" : "false"}
                 onClick={() => setColormapId("diverging")}
+                type="button"
               >
                 Blue &rarr; Red (classic)
               </button>
@@ -189,6 +192,7 @@ export function Settings({ onClose }: Props) {
                 className="scenario-tab"
                 data-active={colormapId === "cividis" ? "true" : "false"}
                 onClick={() => setColormapId("cividis")}
+                type="button"
               >
                 Cividis (CVD-safe)
               </button>
@@ -200,10 +204,14 @@ export function Settings({ onClose }: Props) {
               {saving ? "Saving..." : "Save settings"}
             </button>
             {statusMsg && !saveErr && (
-              <span className="settings__status" data-tone="success">{statusMsg}</span>
+              <span className="settings__status" data-tone="success" role="status" aria-live="polite">
+                {statusMsg}
+              </span>
             )}
             {saveErr && (
-              <span className="settings__status" data-tone="danger">Save failed: {saveErr}</span>
+              <span className="settings__status" data-tone="danger" role="alert">
+                Save failed: {saveErr}
+              </span>
             )}
           </section>
 
