@@ -86,6 +86,11 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **npm audit is clean at low severity.** Updated the lockfile to
   `@babel/core` 7.29.7 and added a direct/overridden `esbuild` 0.28.1 dev
   dependency while keeping the known-good Vite 7.3.5 build line.
+- **High-risk frontend workflows now have regression coverage.** Added tests
+  for ScenarioBuilder save/load/delete/copy/paste errors, Settings token/reset
+  controls, SWE streaming progress/cancel/snapshot handoff, and a Playwright
+  saved-scenario round trip. The e2e preview server now uses a strict
+  repo-specific port so tests cannot attach to an unrelated local app.
 - CSP/permissions: tightened the `shell:allow-open` allow-list (scoped Forbes
   to the cited author path, added the explicit repo URL with a trailing-slash
   glob).

@@ -59,6 +59,34 @@ describe("ScenarioBuilder scenario persistence", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Copied scenario.");
   });
 
+  it("surfaces clipboard write failures", async () => {
+    clipboard.writeText.mockRejectedValue(new Error("denied"));
+    const user = setupUser();
+    renderBuilder();
+
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed.");
+  });
+
+  it("saves and deletes scenarios from the saved list", async () => {
+    const user = setupUser();
+    renderBuilder();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved scenario.");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Load \(1\)/ })).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /Load \(1\)/ }));
+    const savedList = document.querySelector(".scenario-saved");
+    expect(savedList).not.toBeNull();
+    expect(savedList?.querySelector(".scenario-saved__load")).toHaveTextContent(/^Asteroid/);
+    await user.click(screen.getByLabelText(/Delete Asteroid/));
+
+    await waitFor(() => expect(screen.getByText("No saved scenarios yet.")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Load" })).toBeInTheDocument();
+  });
+
   it("rejects pasted out-of-range payloads without changing visible scenario state", async () => {
     clipboard.readText.mockResolvedValue(JSON.stringify({
       kind: "Asteroid",
