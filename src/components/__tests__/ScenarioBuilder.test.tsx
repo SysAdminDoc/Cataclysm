@@ -35,6 +35,15 @@ function setupUser() {
   return user;
 }
 
+function setupUserWithoutClipboard() {
+  const user = userEvent.setup();
+  Object.defineProperty(navigator, "clipboard", {
+    value: undefined,
+    configurable: true,
+  });
+  return user;
+}
+
 describe("ScenarioBuilder scenario persistence", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -67,6 +76,15 @@ describe("ScenarioBuilder scenario persistence", () => {
     await user.click(screen.getByRole("button", { name: "Copy" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed.");
+  });
+
+  it("surfaces unavailable clipboard when copying", async () => {
+    const user = setupUserWithoutClipboard();
+    renderBuilder();
+
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed: clipboard is unavailable.");
   });
 
   it("saves and deletes scenarios from the saved list", async () => {
@@ -106,6 +124,15 @@ describe("ScenarioBuilder scenario persistence", () => {
       kind: "Asteroid",
       source: INITIAL_ASTEROID,
     });
+  });
+
+  it("surfaces unavailable clipboard when pasting", async () => {
+    const user = setupUserWithoutClipboard();
+    renderBuilder();
+
+    await user.click(screen.getByRole("button", { name: "Paste" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Paste failed: clipboard is unavailable.");
   });
 
   it("migrates valid legacy clipboard payloads before simulation", async () => {
