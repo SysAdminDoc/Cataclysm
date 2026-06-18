@@ -69,6 +69,9 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       setBusyPresetId(null);
       return;
     }
+    // A preset selection supersedes any custom scenario IPC already in flight.
+    // Otherwise a slow custom response can overwrite the preset the user just picked.
+    simulateReqIdRef.current += 1;
     runPresetReqIdRef.current += 1;
     const reqId = runPresetReqIdRef.current;
     setBusyPresetId(activePresetId);
