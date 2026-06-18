@@ -31,6 +31,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   versioned payload, legacy unversioned scenarios migrate on load/paste, and
   invalid clipboard or store payloads are rejected with specific inline
   feedback before they can alter visible scenario state.
+- **Scenario slot race fixed.** Selecting a preset now invalidates any
+  in-flight custom scenario IPC response so a slow custom result cannot
+  overwrite the preset the user just chose.
 - **SWE Cancel now reaches the Rust worker.** The playback Cancel button
   signals a server-side cancellation token, and the CPU/GPU stepping loops poll
   it between short batches so long simulations bail out promptly instead of
