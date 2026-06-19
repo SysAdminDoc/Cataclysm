@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 async function seedAcknowledgedPreview(page: { addInitScript: (script: () => void) => Promise<void> }) {
   await page.addInitScript(() => {
@@ -67,5 +68,74 @@ test.describe("TsunamiSimulator browser preview", () => {
 
     await expect(page.getByRole("tab", { name: "Asteroid" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("status").filter({ hasText: "Loaded scenario." })).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Automated accessibility regression checks (axe-core)
+// ---------------------------------------------------------------------------
+// Scoped to WCAG 2.x A/AA conformance rules — the standard CI gate for
+// interactive web apps. Best-practice and AAA rules run as advisory outside
+// CI. Cesium's WebGL canvas and internal widgets are excluded (GPU-rendered
+// 3D scene with no DOM semantics).
+const AXE_EXCLUDE = [".cesium-widget", ".cesium-viewer-toolbar"];
+const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+
+function axeScan(page: import("@playwright/test").Page) {
+  return new AxeBuilder({ page })
+    .withTags(WCAG_TAGS)
+    .exclude(AXE_EXCLUDE)
+    .analyze();
+}
+
+test.describe("Accessibility (axe-core WCAG A/AA)", () => {
+  test("first-run disclaimer dialog has no violations", async ({ page }) => {
+    await page.goto("/");
+    const dialog = page.getByRole("dialog", { name: /educational model/i });
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
+  test("main cockpit has no violations", async ({ page }) => {
+    await seedAcknowledgedPreview(page);
+    await page.goto("/");
+    await expect(page.locator(".app__title")).toHaveText("TsunamiSimulator", { timeout: 10_000 });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
+  test("Settings dialog has no violations", async ({ page }) => {
+    await seedAcknowledgedPreview(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
+  test("LogViewer dialog has no violations", async ({ page }) => {
+    await seedAcknowledgedPreview(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Diagnostics log" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
+  test("cockpit with active preset has no violations", async ({ page }) => {
+    await seedAcknowledgedPreview(page);
+    await page.goto("/");
+    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    await expect(chicxulub).toBeVisible({ timeout: 10_000 });
+    await chicxulub.click();
+    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
   });
 });

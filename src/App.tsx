@@ -340,7 +340,7 @@ export default function App() {
           <span className="app__brand-mark" aria-hidden>
             TS
           </span>
-          <span className="app__title">TsunamiSimulator</span>
+          <h1 className="app__title">TsunamiSimulator</h1>
           <span className="app__version">v0.4.2</span>
         </div>
         <div className="app__warning">
@@ -625,7 +625,7 @@ export default function App() {
           settings.markTourCompleted().catch(() => {});
         }}
       />
-      <footer className="app__statusbar" role="status" aria-live="polite">
+      <div className="app__statusbar" role="status" aria-live="polite">
         <div className="statusbar__item statusbar__item--ready">
           <span className="status-dot" aria-hidden />
           Model ready
@@ -643,7 +643,7 @@ export default function App() {
           <UiIcon name="alert" size={14} />
           Educational only
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
