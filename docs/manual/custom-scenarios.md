@@ -67,7 +67,7 @@ After clicking **Simulate**, the initial conditions panel shows the source reado
 1. Click **Run simulation** in the SWE Playback section
 2. The shallow-water solver runs (GPU or CPU) and produces 24 time snapshots
 3. Use the scrubber or Play button to animate the wave propagation
-4. Toggle **Coastal runup** (F6) to see Synolakis 1987 runup predictions at 60+ coastal points
+4. Toggle **Coastal runup** to see Synolakis 1987 runup predictions at 60+ coastal points
 
 ## Export options
 
