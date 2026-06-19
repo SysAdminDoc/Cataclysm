@@ -54,14 +54,11 @@ The **Results panel** shows:
 | **Seismic Mw** | Equivalent moment magnitude (energy-based) |
 | **Wavelength** | Dominant wavelength of the generated wave |
 
-## Keyboard shortcuts
+## Keyboard navigation
 
 | Key | Action |
 |---|---|
-| **F6** | Toggle coastal runup overlay |
-| **F7** | Toggle side-by-side comparison mode |
-| **F8** | Toggle DART buoy overlay |
-| **Esc** | Cancel pick mode or inspect mode |
+| **Esc** | Cancel pick mode, inspect mode, or close any dialog |
 | **Tab** | Navigate through all controls |
 
 ## Next steps
