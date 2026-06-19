@@ -639,9 +639,27 @@ a {
   color: var(--subtext);
 }
 
+.icon-button[data-disabled="true"] {
+  cursor: help;
+  color: color-mix(in srgb, var(--subtext) 72%, var(--surface2));
+  background: color-mix(in srgb, var(--surface0) 38%, var(--mantle));
+  border-color: color-mix(in srgb, var(--panel-border) 74%, transparent);
+  box-shadow: none;
+}
+
+.icon-button[data-disabled="true"] svg {
+  color: color-mix(in srgb, var(--subtext) 60%, var(--surface2));
+}
+
 .icon-button:hover {
   background: color-mix(in srgb, var(--surface1) 72%, var(--mantle));
   border-color: var(--sapphire);
+}
+
+.icon-button[data-disabled="true"]:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--surface0) 48%, var(--mantle));
+  border-color: color-mix(in srgb, var(--sapphire) 32%, var(--panel-border));
 }
 
 .icon-button:hover svg {
@@ -826,6 +844,13 @@ a {
   color: var(--crust);
 }
 
+.icon-button[data-active="true"][data-disabled="true"] {
+  background: color-mix(in srgb, var(--surface0) 50%, var(--mantle));
+  color: var(--subtext);
+  border-color: var(--panel-border);
+  box-shadow: none;
+}
+
 .app__globe-empty {
   position: absolute;
   inset: 0;
@@ -1001,19 +1026,36 @@ a {
 
 .app__globe-hint {
   position: absolute;
-  bottom: 24px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 10px 16px;
-  border-radius: var(--r-md);
-  background: var(--mantle);
-  border: 1px solid var(--surface1);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--mantle) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sapphire) 30%, var(--surface1));
   color: var(--subtext);
   font-size: 13px;
-  max-width: 520px;
+  max-width: min(420px, calc(100% - 32px));
   text-align: center;
   pointer-events: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+}
+
+.app__globe-hint-kicker {
+  color: var(--sapphire);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+.app__globe-hint strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .app__globe-pickbanner {
@@ -1796,7 +1838,7 @@ a {
 }
 
 .modal--notice {
-  width: min(680px, 92vw);
+  width: min(720px, 92vw);
 }
 
 .modal__header {
@@ -1851,31 +1893,43 @@ a {
   font-size: 12px;
 }
 
+.notice-lede {
+  margin-bottom: 16px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.62;
+}
+
 .notice-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
   margin: 16px 0;
 }
 
 .notice-grid__item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: 6px;
+  min-height: 106px;
+  padding: 14px;
   border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--sapphire) 8%, var(--surface0));
-  border: 1px solid color-mix(in srgb, var(--sapphire) 24%, var(--panel-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sapphire) 8%, transparent), transparent),
+    color-mix(in srgb, var(--surface0) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sapphire) 26%, var(--panel-border));
 }
 
 .notice-grid__item[data-tone="warning"] {
-  background: color-mix(in srgb, var(--warning) 8%, var(--surface0));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--warning) 8%, transparent), transparent),
+    color-mix(in srgb, var(--surface0) 62%, transparent);
   border-color: color-mix(in srgb, var(--warning) 28%, var(--panel-border));
 }
 
 .notice-grid__item strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .notice-grid__item span {
@@ -2076,7 +2130,7 @@ a {
     min-height: 100vh;
     height: auto;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(420px, 58vh) auto auto auto;
+    grid-template-rows: auto auto minmax(300px, 38vh) auto auto auto;
     grid-template-areas:
       "banner"
       "header"
@@ -2155,6 +2209,12 @@ a {
 
   .scenario-form__actions {
     grid-column: span 1;
+  }
+
+  .app__globe-hint {
+    bottom: 18px;
+    max-width: min(320px, calc(100% - 28px));
+    padding: 12px 14px;
   }
 }
 

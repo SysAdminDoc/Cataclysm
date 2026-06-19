@@ -1010,9 +1010,10 @@ export function Globe({
         </div>
       )}
       {!initial && imageryStatus === "ready" && (
-        <div className="app__globe-hint">
-          Choose a preset on the left, or build a custom scenario on the right,
-          to see the source event animate.
+        <div className="app__globe-hint" role="status" aria-live="polite">
+          <span className="app__globe-hint-kicker">Ready for a source</span>
+          <strong>Select a preset or simulate a custom source.</strong>
+          <span>Wavefronts, runup bars, exports, and inspection unlock after a scenario is active.</span>
         </div>
       )}
     </>

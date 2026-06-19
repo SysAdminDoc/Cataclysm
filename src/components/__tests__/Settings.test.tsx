@@ -15,7 +15,7 @@ describe("Settings", () => {
     expect(screen.getByText(/works out of the box/i)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "OpenStreetMap (no token)" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Natural Earth II (offline-friendly)" })).toBeInTheDocument();
-    expect(screen.getByText(/Checking hardware/i)).toBeInTheDocument();
+    expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();
   });
 
   it("saves a trimmed token and dispatches settings updates", async () => {

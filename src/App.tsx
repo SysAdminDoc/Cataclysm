@@ -123,24 +123,38 @@ function ToolbarButton({
   icon,
   active,
   disabled,
+  disabledReason,
   title,
   onClick,
+  onUnavailable,
   children,
 }: {
   icon: ToolbarIconName;
   active?: boolean;
   disabled?: boolean;
+  disabledReason?: string;
   title: string;
   onClick: () => void;
+  onUnavailable?: (reason: string) => void;
   children: ReactNode;
 }) {
+  const unavailable = disabled === true;
+  const resolvedTitle = unavailable && disabledReason ? disabledReason : title;
+
   return (
     <button
       className="icon-button"
       data-active={active ? "true" : "false"}
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
+      data-disabled={unavailable ? "true" : "false"}
+      aria-disabled={unavailable}
+      onClick={() => {
+        if (unavailable) {
+          onUnavailable?.(disabledReason ?? "This action is not available yet.");
+          return;
+        }
+        onClick();
+      }}
+      title={resolvedTitle}
       type="button"
     >
       <ToolbarIcon name={icon} />
@@ -205,7 +219,7 @@ export default function App() {
       })
       .catch(() => {});
     const onSaved = () => {
-      // Re-evaluate after Settings save (in case the user reset the tour).
+      // Re-evaluate after Settings save or first-run acknowledgement.
       Promise.all([settings.getDisclaimerAcknowledged(), settings.getTourCompleted()])
         .then(([disclaimer, tour]) => {
           if (cancelled) return;
@@ -214,9 +228,11 @@ export default function App() {
         .catch(() => {});
     };
     window.addEventListener("tsunamisim:settings-saved", onSaved);
+    window.addEventListener("tsunamisim:disclaimer-acknowledged", onSaved);
     return () => {
       cancelled = true;
       window.removeEventListener("tsunamisim:settings-saved", onSaved);
+      window.removeEventListener("tsunamisim:disclaimer-acknowledged", onSaved);
     };
   }, []);
 
@@ -265,6 +281,9 @@ export default function App() {
   const cockpitMode = compareMode ? "Compare" : inspectMode ? "Inspect" : pickMode ? "Pick location" : "Explore";
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
   const timelineLabel = `${Math.round(timeS / 60)} min`;
+  const sourceRequiredReason = "Select a preset or simulate a custom source first.";
+  const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
+  const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
 
   function handlePickGlobe(lat: number, lon: number) {
     setPickedLocation({ lat, lon });
@@ -322,7 +341,7 @@ export default function App() {
             TS
           </span>
           <span className="app__title">TsunamiSimulator</span>
-          <span className="app__version">v0.4.1</span>
+          <span className="app__version">v0.4.2</span>
         </div>
         <div className="app__warning">
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
@@ -337,6 +356,8 @@ export default function App() {
             }}
             title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
             disabled={!slotA.initial}
+            disabledReason={sourceRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             Inspect
           </ToolbarButton>
@@ -356,6 +377,8 @@ export default function App() {
             }}
             title="Save the current globe view as PNG"
             disabled={!slotA.initial}
+            disabledReason={sourceRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             PNG
           </ToolbarButton>
@@ -371,6 +394,8 @@ export default function App() {
             }}
             title="Save a branded share-card with scenario metadata + citation overlay"
             disabled={!slotA.initial}
+            disabledReason={sourceRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             Share
           </ToolbarButton>
@@ -394,6 +419,8 @@ export default function App() {
             }}
             title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
             disabled={!slotA.initial || recording}
+            disabledReason={recording ? "Recording is already in progress." : sourceRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             {recording ? "Recording" : "Video"}
           </ToolbarButton>
@@ -410,6 +437,8 @@ export default function App() {
             }}
             title="Export scenario parameters and runup results as a screen-reader-friendly text file"
             disabled={!slotA.initial}
+            disabledReason={sourceRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             Text
           </ToolbarButton>
@@ -425,6 +454,8 @@ export default function App() {
             }}
             title="Export SWE simulation as a CZML file for playback in any Cesium viewer"
             disabled={!sweSnapshots || sweSnapshots.length === 0}
+            disabledReason={snapshotsRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             CZML
           </ToolbarButton>
@@ -446,6 +477,8 @@ export default function App() {
             }}
             title="Export inundation polygons as GeoJSON"
             disabled={slotA.runupResults.length === 0}
+            disabledReason={runupRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
           >
             GeoJSON
           </ToolbarButton>
