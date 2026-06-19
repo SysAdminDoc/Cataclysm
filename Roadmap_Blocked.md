@@ -87,3 +87,14 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 - **P3** — NetCDF output export for interoperability (M).
   **Blocker:** Requires `netcdf` crate which depends on `netcdf-sys` → `libnetcdf` (C library) + CMake at build time. The C dependency complicates cross-platform CI and local builds. Consider a pure-Rust alternative or bundling libnetcdf as a static lib.
+
+## Future / Stretch
+
+- **Population casualty overlay** (opt-in, heavy disclaimer).
+  **Blocker:** Requires population density data source decision (GPW, WorldPop), ethical review for displaying estimated casualties, and appropriate disclaimers.
+
+- **Multi-event scenarios** — Chicxulub debris re-entry secondary impacts, Tōhoku aftershock tsunamis.
+  **Blocker:** Significant solver architecture work — multiple concurrent sources, superposition of wave fields, sequential event timing.
+
+- **Multi-language UI** (en/ja first — Tōhoku audience).
+  **Blocker:** Requires i18n infrastructure (react-intl or similar), extraction of all user-facing strings, and Japanese translation.
