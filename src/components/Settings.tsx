@@ -106,6 +106,7 @@ export function Settings({ onClose }: Props) {
             <select
               value={globeStyle}
               onChange={(e) => setGlobeStyle(e.target.value as GlobeStyleId)}
+              aria-label="Globe imagery style"
             >
               {GLOBE_STYLES.map((s) => (
                 <option key={s.id} value={s.id}>
