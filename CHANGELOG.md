@@ -4,6 +4,28 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased] — Deep correctness, reliability & UX hardening
 
+### Changed — accessibility & rendering
+- **Automated WCAG A/AA regression checks.** Five axe-core Playwright tests
+  now gate CI across the first-run dialog, main cockpit, Settings, LogViewer,
+  and a preset-active cockpit. Violations fail the build.
+- **Runup overlays migrated to Cesium Primitive API.** Cylinder bars and
+  inundation discs now render as batched `CylinderGeometry` /
+  `EllipseGeometry` primitives instead of per-point entities. Labels remain
+  as entities (Cesium labels are entity-only). Scales to thousands of coastal
+  points without entity-system overhead.
+- **WCAG 2.2 AA touch targets.** Scenario field help buttons enlarged from
+  18 px to 24 px minimum to meet WCAG 2.5.8.
+- **Colour contrast bumped.** Muted overlay text raised from Catppuccin
+  Overlay0 (#6c7086) to Overlay1 (#7f849c) and active preset card
+  blurb/meta promoted to `--text` for WCAG AA compliance on the active
+  card background.
+- **Semantic fixes.** App title changed from `<span>` to `<h1>`;
+  status bar changed from `<footer role="status">` to `<div role="status">`;
+  Settings globe-style `<select>` labelled with `aria-label`.
+- **Stale keyboard shortcut docs removed.** Manual no longer advertises
+  unimplemented F6/F7/F8 shortcuts; all toggle features have visible UI
+  controls.
+
 ### Fixed — physics correctness
 - **Synolakis 1987 coastal run-up corrected.** `synolakis_runup_m` multiplied
   by the offshore *amplitude* instead of the offshore *depth*, so every run-up
