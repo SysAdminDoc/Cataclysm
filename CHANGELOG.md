@@ -119,6 +119,25 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
   stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
 
+## [0.4.2] - 2026-06-19 - Premium interaction-state polish
+
+### Changed
+- Refined the first-run notice into a clearer trust-and-limits brief with
+  stronger scanning, official-warning guidance, and model-limit cards.
+- Upgraded unavailable header actions from inert disabled buttons to reachable
+  controls that explain what is needed before Inspect, export, CZML, or GeoJSON
+  actions can run.
+- Strengthened the empty globe state with a clearer ready panel and tightened
+  the narrow-viewport globe height so mobile users reach presets sooner.
+- Settings now reports browser-preview GPU state honestly instead of leaving the
+  GPU probe in a perpetual "Checking hardware..." state.
+
+### Fixed
+- First-run onboarding now starts after the disclaimer acknowledgement event
+  instead of waiting for a later settings save or subsequent launch.
+- Synced package, Tauri, Cargo, README badge, and visible app metadata to
+  `0.4.2`.
+
 ## [0.4.1] - 2026-06-16 - Premium UX polish pass
 
 ### Changed

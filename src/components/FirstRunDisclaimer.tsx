@@ -26,6 +26,7 @@ export function FirstRunDisclaimer() {
     setOpen(false);
     try {
       await settings.acknowledgeDisclaimer();
+      window.dispatchEvent(new CustomEvent("tsunamisim:disclaimer-acknowledged"));
     } catch (err) {
       console.warn("[disclaimer] could not persist acknowledgement", err);
     }
@@ -35,43 +36,36 @@ export function FirstRunDisclaimer() {
     <div className="modal-overlay">
       <div className="modal modal--notice" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="first-run-title">
         <header className="modal__header">
-          <h2 id="first-run-title">Welcome to TsunamiSimulator</h2>
+          <h2 id="first-run-title">Educational model, not a warning system</h2>
         </header>
         <div className="modal__body">
-          <p className="modal__copy">
-            <strong>TsunamiSimulator is an educational physics-visualization tool.</strong>
-            {" "}
-            It is <strong>NOT</strong> for evacuation planning, hazard
-            forecasting, or any operational decision-making.
-          </p>
-          <p className="modal__copy">
-            For real tsunami warnings, contact your national tsunami warning
-            centre — for example,{" "}
-            <strong>NOAA NTWC (Atlantic) / PTWC (Pacific)</strong>,{" "}
-            <strong>JMA (Japan)</strong>, or{" "}
-            <strong>IOC/UNESCO ICG-NEAMTWS (Mediterranean & NE Atlantic)</strong>.
-          </p>
-          <p className="modal__copy">
-            All physics in this app comes from peer-reviewed literature
-            (Ward & Asphaug 2000, Synolakis 1987, Okada 1985, Glasstone & Dolan
-            1977, and others). See <em>Citations</em> in the header at any
-            time.
-          </p>
-          <p className="modal__copy">
-            Solver bathymetry uses a coarse basin-mean plus shelf-taper
-            approximation, and inundation overlays are first-order discs from
-            runup/slope estimates. Treat every map and export as approximate.
+          <p className="notice-lede">
+            TsunamiSimulator helps explore peer-reviewed source models and
+            first-order coastal effects. It must not guide evacuation,
+            routing, hazard forecasting, insurance, or operational decisions.
           </p>
           <div className="notice-grid" aria-label="Use guidance">
             <div className="notice-grid__item">
-              <strong>Educational model</strong>
-              <span>Useful for scenario exploration, classroom demos, and model intuition.</span>
+              <strong>Use for</strong>
+              <span>Scenario exploration, classroom demos, and model intuition.</span>
             </div>
             <div className="notice-grid__item" data-tone="warning">
-              <strong>Not a warning tool</strong>
-              <span>Forecasting and evacuation guidance must come from official warning centres.</span>
+              <strong>Do not use for</strong>
+              <span>Forecasts, evacuation timing, route choice, or emergency decisions.</span>
+            </div>
+            <div className="notice-grid__item">
+              <strong>Official warnings</strong>
+              <span>Use NOAA NTWC/PTWC, JMA, IOC/UNESCO systems, or your local authority.</span>
+            </div>
+            <div className="notice-grid__item" data-tone="warning">
+              <strong>Known limits</strong>
+              <span>Coarse bathymetry, simplified runup, and approximate export geometry.</span>
             </div>
           </div>
+          <p className="modal__copy">
+            Physics references are available from <em>Citations</em>. Treat
+            every map, overlay, and export as approximate.
+          </p>
           <p className="modal__copy modal__copy--muted">
             This notice is shown once. You can show it again from Settings.
           </p>

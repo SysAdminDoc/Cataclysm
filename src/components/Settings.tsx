@@ -9,7 +9,7 @@ import { GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
 
-type GpuStatus = "available" | "no-adapter" | "feature-off" | "unknown";
+type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
 
 type Props = { onClose: () => void };
 
@@ -24,7 +24,7 @@ export function Settings({ onClose }: Props) {
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [gpuStatus, setGpuStatus] = useState<GpuStatus>("unknown");
+  const [gpuStatus, setGpuStatus] = useState<GpuStatus>(isTauri() ? "unknown" : "browser-preview");
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +44,8 @@ export function Settings({ onClose }: Props) {
         .catch(() => {
           if (!cancelled) setGpuStatus("unknown");
         });
+    } else {
+      setGpuStatus("browser-preview");
     }
     return () => {
       cancelled = true;
@@ -161,6 +163,7 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 data-active={theme === "mocha" ? "true" : "false"}
+                aria-pressed={theme === "mocha"}
                 onClick={() => setThemeLocal("mocha")}
                 type="button"
               >
@@ -169,6 +172,7 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 data-active={theme === "latte" ? "true" : "false"}
+                aria-pressed={theme === "latte"}
                 onClick={() => setThemeLocal("latte")}
                 type="button"
               >
@@ -183,6 +187,7 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 data-active={colormapId === "diverging" ? "true" : "false"}
+                aria-pressed={colormapId === "diverging"}
                 onClick={() => setColormapId("diverging")}
                 type="button"
               >
@@ -191,6 +196,7 @@ export function Settings({ onClose }: Props) {
               <button
                 className="scenario-tab"
                 data-active={colormapId === "cividis" ? "true" : "false"}
+                aria-pressed={colormapId === "cividis"}
                 onClick={() => setColormapId("cividis")}
                 type="button"
               >
@@ -238,6 +244,11 @@ export function Settings({ onClose }: Props) {
                 <span className="settings__status" data-tone="muted">
                   GPU feature not compiled in this build (CPU-only). Build with{" "}
                   <code>cargo tauri build -- --features gpu</code> to enable.
+                </span>
+              )}
+              {gpuStatus === "browser-preview" && (
+                <span className="settings__status" data-tone="muted">
+                  Desktop build only — browser preview uses deterministic demo frames.
                 </span>
               )}
               {gpuStatus === "unknown" && (
