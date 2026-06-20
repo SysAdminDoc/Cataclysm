@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Activity, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PresetSelector } from "./components/PresetSelector";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
@@ -658,7 +658,9 @@ export default function App() {
           </div>
         )}
         <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} onSnapshotsReady={setSweSnapshots} />
-        {compareMode && <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />}
+        <Activity mode={compareMode ? "visible" : "hidden"}>
+          <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />
+        </Activity>
         <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} />
         {!compareMode && (
           <ScenarioBuilder
