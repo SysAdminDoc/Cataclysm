@@ -3,6 +3,7 @@ window.NM = window.NM || {};
 
 NM.Animation = {
   active: [],
+  _reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
 
   // Animate expanding blast rings from center outward
   blastWave(map, lat, lng, effects, duration) {
@@ -53,6 +54,8 @@ NM.Animation = {
       if (progress >= 1 || allDone) {
         animCircles.forEach(ac => map.removeLayer(ac.circle));
         anim.done = true;
+        const idx = NM.Animation.active.indexOf(anim);
+        if (idx !== -1) NM.Animation.active.splice(idx, 1);
       } else {
         requestAnimationFrame(tick);
       }
@@ -60,8 +63,8 @@ NM.Animation = {
     requestAnimationFrame(tick);
   },
 
-  // Flash overlay with bloom effect
   flash(intensity) {
+    if (this._reducedMotion) return;
     const fl = document.getElementById('flash');
     fl.style.background = intensity > 0.5
       ? 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,240,200,0.8) 40%, rgba(255,200,150,0) 70%)'
@@ -71,8 +74,8 @@ NM.Animation = {
     fl.classList.add('active');
   },
 
-  // Camera shake
   shake(map, intensity, duration) {
+    if (this._reducedMotion) return;
     duration = duration || 800;
     intensity = intensity || 3;
     const container = map.getContainer();

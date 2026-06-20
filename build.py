@@ -23,7 +23,7 @@ def download(url):
         return None
 
 def build():
-    print('NukeMap Offline Builder v3.0.0')
+    print('NukeMap Offline Builder v3.3.0')
     print('=' * 40)
 
     # Read HTML template
@@ -32,19 +32,21 @@ def build():
     # Download CDN resources
     leaflet_css = download('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css') or '/* Leaflet CSS unavailable */'
     leaflet_js = download('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js') or '/* Leaflet JS unavailable */'
-    three_js = download('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js') or '/* Three.js unavailable */'
 
     # Read local files
     css = read('css/styles.css')
     js_files = ['data.js','physics.js','search.js','effects.js','animation.js','sound.js',
-                'mushroom3d.js','mirv.js','shelter.js','compare.js','heatmap.js','app.js']
+                'mushroom3d.js','mirv.js','shelter.js','compare.js','heatmap.js',
+                'extras.js','advanced.js','premium.js','immersive.js','ww3.js','app.js']
     js_all = '\n'.join(read(f'js/{f}') for f in js_files)
 
     # Replace CDN links with inline
     html = re.sub(r'<link rel="stylesheet" href="https://unpkg\.com/leaflet[^"]*"[^/]*/>', f'<style>{leaflet_css}</style>', html)
     html = re.sub(r'<link rel="stylesheet" href="css/styles\.css"\s*/>', f'<style>{css}</style>', html)
     html = re.sub(r'<script src="https://unpkg\.com/leaflet[^"]*"[^>]*></script>', f'<script>{leaflet_js}</script>', html)
-    html = re.sub(r'<script src="https://cdnjs\.cloudflare[^"]*"[^>]*></script>', f'<script>{three_js}</script>', html)
+
+    # Remove Three.js comment line if present
+    html = re.sub(r'<!--\s*Three\.js removed[^>]*-->\s*\n?', '', html)
 
     # Replace local JS includes with inline
     for f in js_files:
