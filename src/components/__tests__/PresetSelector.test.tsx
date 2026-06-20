@@ -70,8 +70,10 @@ describe("PresetSelector", () => {
 
   it("marks the active preset with aria-pressed", () => {
     render(<PresetSelector presets={PRESETS} activeId="tohoku" onSelect={() => {}} />);
-    const btn = screen.getByRole("button", { pressed: true });
-    expect(btn).toHaveTextContent("Tōhoku 2011");
+    const pressed = screen.getAllByRole("button", { pressed: true });
+    const presetBtn = pressed.find((b) => b.classList.contains("preset-card"));
+    expect(presetBtn).toBeDefined();
+    expect(presetBtn).toHaveTextContent("Tōhoku 2011");
   });
 
   it("shows speculative badge on speculative presets", () => {

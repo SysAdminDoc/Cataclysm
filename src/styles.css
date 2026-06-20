@@ -1304,6 +1304,121 @@ a {
   line-height: 1.45;
 }
 
+/* --- Timeline view --- */
+
+.timeline {
+  padding: 4px 0;
+}
+
+.timeline__track {
+  position: relative;
+  height: 80px;
+  margin: 0 24px;
+}
+
+.timeline__line {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--surface1);
+  border-radius: 1px;
+}
+
+.timeline__marker {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1;
+  top: 14px;
+}
+
+.timeline__marker:hover .timeline__dot {
+  transform: scale(1.4);
+}
+
+.timeline__marker[data-active="true"] .timeline__dot {
+  transform: scale(1.6);
+}
+
+.timeline__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--base);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.timeline__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--subtext);
+  white-space: nowrap;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline__label strong {
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.timeline__marker[data-active="true"] .timeline__label strong {
+  color: var(--accent);
+}
+
+.timeline__axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px;
+  font-size: 10px;
+  color: var(--overlay0);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preset-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--surface0);
+  border-radius: var(--r-sm);
+  padding: 2px;
+}
+
+.preset-view-toggle button {
+  background: none;
+  border: none;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--subtext);
+  border-radius: var(--r-xs, 4px);
+  cursor: pointer;
+}
+
+.preset-view-toggle button[aria-pressed="true"] {
+  background: var(--surface1);
+  color: var(--text);
+}
+
+/* --- Results --- */
+
 .results {
   display: grid;
   grid-template-columns: 1fr 1fr;
