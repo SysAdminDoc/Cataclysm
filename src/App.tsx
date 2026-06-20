@@ -16,14 +16,14 @@ import { api, isTauri } from "./lib/tauri";
 import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, type RunupPoint } from "./lib/export";
+import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, type RunupPoint } from "./lib/export";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import type { Preset } from "./types/scenario";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "czml" | "geojson" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "czml" | "geojson" | "kml" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -100,6 +100,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <path d="M12 2 L22 8.5 L22 15.5 L12 22 L2 15.5 L2 8.5 Z" />
         <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+  if (name === "kml") {
+    return (
+      <svg {...common}>
+        <path d="M12 2 L20 7v10l-8 5-8-5V7Z" />
+        <path d="M12 12V2M12 12l8-5M12 12l-8-5" />
       </svg>
     );
   }
@@ -481,6 +489,29 @@ export default function App() {
             onUnavailable={(reason) => showToast(reason, "info")}
           >
             GeoJSON
+          </ToolbarButton>
+          <ToolbarButton
+            icon="kml"
+            onClick={() => {
+              const points: RunupPoint[] = slotA.runupResults.map((r) => ({
+                id: r.id,
+                name: r.name,
+                lat: r.lat,
+                lon: r.lon,
+                runup_m: r.runup_m,
+                arrival_time_s: r.arrival_time_s,
+                inundation_extent_m: r.inundation_extent_m,
+                offshore_amplitude_m: r.offshore_amplitude_m,
+              }));
+              const ok = exportKml({ preset: activePresetA, initial: slotA.initial, timeS }, points);
+              showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
+            }}
+            title="Export source and runup data as KML for Google Earth"
+            disabled={!slotA.initial}
+            disabledReason={sourceRequiredReason}
+            onUnavailable={(reason) => showToast(reason, "info")}
+          >
+            KML
           </ToolbarButton>
           <ToolbarButton icon="citations" onClick={() => setShowCitations(true)} title="View citations">
             Citations
