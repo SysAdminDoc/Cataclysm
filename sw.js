@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nukemap-v3.3.2';
+const CACHE_NAME = 'nukemap-v3.4.0';
 const TILE_CACHE = 'nukemap-tiles-v3';
 const MAX_TILE_ENTRIES = 2000;
 const PRECACHE = [

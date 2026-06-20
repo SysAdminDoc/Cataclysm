@@ -40,6 +40,8 @@ NM.Sound = {
     crackFilter.frequency.value = crackPitch;
     crack.connect(crackFilter).connect(crackGain).connect(ctx.destination);
     crack.start(now);
+    crack.stop(now + 0.15);
+    crack.onended = () => { try { crack.disconnect(); crackFilter.disconnect(); crackGain.disconnect(); } catch(e){} };
 
     // Deep boom (duration and pitch scale with yield)
     const boomLen = 1.5 + Math.min(4, yLog * 0.9);
@@ -62,6 +64,8 @@ NM.Sound = {
     boomGain.gain.exponentialRampToValueAtTime(0.001, now + boomLen);
     boom.connect(boomFilter).connect(boomGain).connect(ctx.destination);
     boom.start(now + 0.05);
+    boom.stop(now + 0.05 + boomLen + 0.1);
+    boom.onended = () => { try { boom.disconnect(); boomFilter.disconnect(); boomGain.disconnect(); } catch(e){} };
 
     // Sub bass throb (deeper and longer for bigger weapons)
     const subFreq = Math.max(12, 40 - yLog * 5);
@@ -76,6 +80,7 @@ NM.Sound = {
     sub.connect(subGain).connect(ctx.destination);
     sub.start(now + 0.1);
     sub.stop(now + boomLen);
+    sub.onended = () => { try { sub.disconnect(); subGain.disconnect(); } catch(e){} };
 
     // Mid-frequency pressure wave (new: adds body for larger yields)
     if (yieldKt >= 10) {
@@ -96,6 +101,8 @@ NM.Sound = {
       midGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08 + midLen);
       mid.connect(midFilter).connect(midGain).connect(ctx.destination);
       mid.start(now + 0.08);
+      mid.stop(now + 0.08 + midLen + 0.1);
+      mid.onended = () => { try { mid.disconnect(); midFilter.disconnect(); midGain.disconnect(); } catch(e){} };
     }
 
     // Distant rumble / echo (delayed, longer for bigger weapons)
@@ -117,5 +124,7 @@ NM.Sound = {
     echoGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5 + echoLen);
     echo.connect(echoFilter).connect(echoGain).connect(ctx.destination);
     echo.start(now + 0.5);
+    echo.stop(now + 0.5 + echoLen + 0.1);
+    echo.onended = () => { try { echo.disconnect(); echoFilter.disconnect(); echoGain.disconnect(); } catch(e){} };
   }
 };

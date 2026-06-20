@@ -128,6 +128,7 @@ NM.Animation = {
   _announce(msg) {
     let el = document.getElementById('a11y-announce');
     if (!el) { el = document.createElement('div'); el.id = 'a11y-announce'; el.setAttribute('role', 'log'); el.setAttribute('aria-live', 'polite'); el.setAttribute('aria-atomic', 'false'); el.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)'; document.body.appendChild(el); }
+    while (el.children.length >= 5) el.removeChild(el.firstChild);
     const span = document.createElement('span');
     span.textContent = msg;
     el.appendChild(span);

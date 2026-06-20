@@ -36,7 +36,8 @@ NM.CITATIONS = {
 NM.calcEffects = function(Y, burstType, heightM, fissionFrac) {
   Y = Math.max(Y, 0.001);
   fissionFrac = (fissionFrac ?? 50) / 100;
-  const isSurface = burstType === 'surface';
+  const isWater = burstType === 'water';
+  const isSurface = burstType === 'surface' || isWater;
   const optH = 0.22 * Math.pow(Y, 1/3) * 1000;  // G&D Ch.3 §3.73
   const h = burstType === 'airburst' ? optH : (heightM || 0);
   const hf = isSurface ? 0.8 : 1.0;  // NWFAQ §5.2: surface burst factor
@@ -67,12 +68,12 @@ NM.calcEffects = function(Y, burstType, heightM, fissionFrac) {
       : null,
     flashBlindDay:  2.1 * Math.pow(Y, 0.4),   // km - temporary blindness in daylight
     flashBlindNight: 55 * Math.pow(Y, 0.25),  // km - temporary blindness at night (much larger)
-    firestormR: 0.68 * Math.pow(Y, 0.41) * 0.85, // km - firestorm probability zone (inside 3rd degree burns)
+    firestormR: isWater ? 0 : 0.67 * Math.pow(Y, 0.41) * 0.85, // km - ~85% of thermal3 radius (G&D Ch.7)
     burstHeight: h, optimalHeight: optH, isSurface, yieldKt: Y,
-    isWater: burstType === 'water',
-    baseSurge: burstType === 'water' ? 0.34 * Math.pow(Y, 0.4) : 0,  // G&D Ch.6 §6.43: base surge radius
-    baseSurgeH: burstType === 'water' ? 0.06 * Math.pow(Y, 0.4) : 0, // G&D Ch.6: base surge cloud height km
-    waveHeight: burstType === 'water' ? 10 * Math.pow(Y, 0.54) : 0,  // G&D Ch.6 §6.50: wave height meters at 1km
+    isWater,
+    baseSurge: isWater ? 0.34 * Math.pow(Y, 0.4) : 0,  // G&D Ch.6 §6.43: base surge radius
+    baseSurgeH: isWater ? 0.06 * Math.pow(Y, 0.4) : 0, // G&D Ch.6: base surge cloud height km
+    waveHeight: isWater ? 10 * Math.pow(Y, 0.54) : 0,  // G&D Ch.6 §6.50: wave height meters at 1km
   };
 };
 

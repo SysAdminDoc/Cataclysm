@@ -121,14 +121,12 @@ function triggerDetonation(lat, lng) {
     effects.burstHeight = 400000;
     effects.isSurface = false;
   }
-  // Water burst: reduced blast (absorbed by water), heavy radioactive base surge
+  // Water burst: reduced blast/thermal (absorbed by water), no crater
   if (isWater) {
     effects.psi200 *= 0.3; effects.psi20 *= 0.5; effects.psi5 *= 0.6;
     effects.psi3 *= 0.65; effects.psi1 *= 0.7;
     effects.thermal3 *= 0.4; effects.thermal2 *= 0.5; effects.thermal1 *= 0.6;
-    effects.firestormR = 0;
     effects.craterR = 0; effects.craterDepth = 0;
-    effects.isSurface = true;
   }
   const cas = (isHEMP) ? {deaths: 0, injuries: 0, density: 0} : NM.estimateCasualties(lat, lng, effects);
 
@@ -360,7 +358,7 @@ function initControls() {
     updateYieldUI(kt); syncYieldInput(kt);
     // Show preview circle at map center
     const c = map.getCenter();
-    const previewR = 0.59 * Math.pow(kt, 1/3); // 5 psi radius
+    const previewR = 0.71 * Math.pow(kt, 1/3); // 5 psi radius (NWFAQ optimum burst)
     if (yieldPreviewRing) map.removeLayer(yieldPreviewRing);
     yieldPreviewRing = L.circle([c.lat, c.lng], {
       radius: previewR * 1000, color: '#cba6f7', weight: 1.5, opacity: 0.4,
