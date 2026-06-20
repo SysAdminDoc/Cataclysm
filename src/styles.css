@@ -1417,6 +1417,14 @@ a {
   color: var(--text);
 }
 
+/* --- Attenuation chart --- */
+
+.attenuation-chart {
+  width: 100%;
+  height: auto;
+  max-height: 140px;
+}
+
 /* --- Results --- */
 
 .results {
