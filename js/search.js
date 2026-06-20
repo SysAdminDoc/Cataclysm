@@ -115,6 +115,7 @@ NM.searchLocations = function(q) {
     ...(NM.WW3_TARGETS_US || []).map(t => ({...t, side: 'US'})),
     ...(NM.WW3_TARGETS_RU || []).map(t => ({...t, side: 'RU'})),
     ...(NM.WW3_TARGETS_NATO || []).map(t => ({...t, side: 'NATO'})),
+    ...(NM.WW3_TARGETS_CN || []).map(t => ({...t, side: 'CN'})),
   ];
   for (const t of allTargets) {
     const n = t.name.toLowerCase(), catL = (t.cat || '').toLowerCase(), typeL = (t.type || '').toLowerCase();
