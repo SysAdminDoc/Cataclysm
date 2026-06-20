@@ -8,127 +8,78 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P0 — Now
+### P0
 
-- [ ] P0 — Upgrade Vite 7.3 → 8.0 (Rolldown bundler)
-  Why: 10-30x faster builds via Rust-based Rolldown bundler; browser console forwarding for Tauri WebView debugging
-  Evidence: Vite 8 announcement (vite.dev/blog/announcing-vite8); Rolldown replaces esbuild+Rollup
-  Touches: package.json, vite.config.ts; verify CesiumJS manualChunks compatibility with Rolldown
-  Acceptance: `npm run build` completes significantly faster; `npm run tauri dev` hot-reload works; all CI jobs pass
+- [ ] P0 — Complete Vite 8 migration: `rolldownOptions` + `codeSplitting`
+  Why: vite.config.ts still uses deprecated `build.rollupOptions` and `manualChunks` function — both produce deprecation warnings and may be removed in Vite 9
+  Evidence: Vite 8 migration guide (vite.dev/guide/migration); Rolldown codeSplitting docs
+  Touches: vite.config.ts — rename key, replace `manualChunks` function with `codeSplitting.groups` regex array, update stale "Rollup" comment on line 9
+  Acceptance: `npx vite build` produces no deprecation warnings; CesiumJS and React chunks are correctly split
   Complexity: S
 
-- [ ] P0 — Add cargo-deny to CI pipeline
-  Why: License auditing, duplicate dependency detection, and crate ban-lists are absent; cargo-audit alone misses license and duplication risks
-  Evidence: Microsoft Rust training supply-chain guide; corgea.com Rust security best practices 2025
-  Touches: src-tauri/deny.toml (new), .github/workflows/ci.yml (new job)
-  Acceptance: CI job runs `cargo deny check` clean; deny.toml configured with license allowlist and advisory DB
+- [ ] P0 — Add unit tests for recently shipped features
+  Why: AttenuationChart, TimelineView, exportKml, scenarioFromUrl/scenarioToUrlParams were shipped with zero test coverage
+  Evidence: No matching test imports found in src/**/__tests__/
+  Touches: src/lib/__tests__/export.test.ts (add KML tests), src/lib/__tests__/scenario-schema.test.ts (add URL encoding/decoding tests), new src/components/__tests__/TimelineView.test.tsx, new src/components/__tests__/AttenuationChart.test.tsx
+  Acceptance: `npm run test:unit` covers KML export edge cases (empty points, missing center), URL round-trip encoding, timeline date parsing for all preset date formats, attenuation chart log-scale axis computation
+  Complexity: M
+
+- [ ] P0 — Fix TimelineView hardcoded year 2026
+  Why: `parseDateToYearsAgo` on line 30 of TimelineView.tsx uses `2026 - parseInt(...)` — will show wrong "years ago" values starting January 2027
+  Evidence: src/components/TimelineView.tsx:30
+  Touches: src/components/TimelineView.tsx — replace `2026` with `new Date().getFullYear()`
+  Acceptance: Timeline labels show correct relative ages regardless of the current year
   Complexity: S
 
-- [ ] P0 — Upgrade rayon 1.10 → 1.12
-  Why: `par_array_windows` enables fixed-size windowed parallel computations; bug fixes for WASM edge cases and Range iteration
-  Evidence: rayon RELEASES.md (v1.11.0 + v1.12.0)
-  Touches: src-tauri/Cargo.toml
-  Acceptance: `cargo check` + `cargo test --release` pass; no behavioral change
+### P1
+
+- [ ] P1 — Update Playwright smoke test for new toolbar buttons
+  Why: The "export buttons are present" test (smoke.spec.ts lines 46-53) doesn't verify the new KML or Link buttons
+  Evidence: tests/smoke.spec.ts — only checks PNG, Share, Video, Text, Citations, Settings
+  Touches: tests/smoke.spec.ts — add assertions for KML and Link buttons
+  Acceptance: Playwright test verifies all toolbar buttons including KML and Link are rendered
   Complexity: S
 
-### P1 — Next
-
-- [ ] P1 — Upgrade TypeScript 5.7 → 6.0
-  Why: `strict: true` default catches latent type bugs; Temporal API types for time-series data; `es2025` target; prepares for 10x-faster TS 7.0 native port
-  Evidence: TypeScript 6.0 announcement (devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
-  Touches: package.json, tsconfig.json; fix any new strict-mode type errors
-  Acceptance: `npx tsc --noEmit` passes with TypeScript 6.0; no runtime regressions; all CI jobs pass
-  Complexity: M
-
-- [ ] P1 — Unblock property-based tests for physics modules
-  Why: MSVC linker blocker resolved 2026-06-01 (CLAUDE.md); proptest catches edge-case physics bugs that hand-written unit tests miss (monotonicity, conservation, bound violations)
-  Evidence: CLAUDE.md MSVC resolution note; Roadmap_Blocked.md "Property-based tests" item cites MSVC as sole blocker
-  Touches: src-tauri/Cargo.toml (add proptest dev-dep), src-tauri/src/physics/asteroid.rs, okada.rs, solver/mod.rs
-  Acceptance: `cargo test` runs proptest strategies for cavity-diameter monotonicity, Okada slip bound, SWE mass conservation
-  Complexity: M
-
-- [ ] P1 — Unblock modularize commands.rs
-  Why: MSVC linker resolved; 1742-line monolith hinders navigation, review, and independent testing
-  Evidence: CLAUDE.md MSVC resolution; Roadmap_Blocked.md "Modularize commands.rs" cites cargo check as blocker
-  Touches: src-tauri/src/commands.rs → commands/{mod,types,validators,simulation,source,query}.rs
-  Acceptance: `cargo check --all-targets` + `cargo test --release` pass; no IPC contract change; same 15 Tauri commands registered
-  Complexity: M
-
-- [ ] P1 — GEBCO REST API for on-demand solver bathymetry
-  Why: Newly published GEBCO REST API (2026 peer-reviewed paper) enables real depth queries at solver resolution without downloading the blocked 440 MB grid; partially unblocks F-V06
-  Evidence: GEBCO API paper (ScienceDirect S2665963826000291); download.gebco.net subsetting tool
-  Touches: src-tauri/Cargo.toml (add reqwest with rustls), src-tauri/src/data/bathymetry.rs (API client alongside offline fallback)
-  Acceptance: `simulate_grid` uses GEBCO API depth at source region when online; falls back to coarse offline bathymetry when offline or rate-limited
-  Complexity: L
-
-- [ ] P1 — Arrival-time isochrone overlay on globe
-  Why: Table-stakes in operational tools (MOST, ComMIT, Tsunami-HySEA); shows when the wave reaches each coastline; absent from every consumer tool surveyed
-  Evidence: NOAA MOST visualization; ComMIT GUI documentation; Tsunami-HySEA publications
-  Touches: src-tauri/src/commands.rs (new `isochrone_contours` IPC), src/components/Globe.tsx (contour entity rendering)
-  Acceptance: Concentric contour lines on globe showing T+1h, T+2h, etc. wave arrival times; updates when source or depth changes
-  Complexity: M
-
-- [ ] P1 — Use Tauri emit_str* for SWE streaming IPC
-  Why: Pre-serialized JSON over IPC avoids double-serialization overhead on high-frequency SWE snapshot delivery (24 PNG snapshots per simulation)
-  Evidence: Tauri 2.3.0 changelog — emit_str/emit_str_to methods added for pre-serialized payloads
-  Touches: src-tauri/src/commands.rs (simulate_grid_streaming serialization path)
-  Acceptance: Measurable throughput improvement on SWE streaming; no behavioral change
+- [ ] P1 — Fix KML export fragile placemark-to-folder indexing
+  Why: Lines 508-511 of export.ts use conditional array indexing (`placemarks[1]` when `cavityR > 500`) duplicated between placemark building and folder slotting — divergence would misattribute placemarks
+  Evidence: src/lib/export.ts:508-511
+  Touches: src/lib/export.ts — build separate source/runup arrays instead of indexing a flat placemarks list
+  Acceptance: KML export produces correct folder structure for sources with and without cavity polygons; existing KML test covers both cases
   Complexity: S
 
-### P2 — Later
-
-- [ ] P2 — Unblock build-time demo data generation from Rust
-  Why: MSVC resolved; replaces the 665-line demo.ts JS physics reimplementation (known drift risk per CLAUDE.md) with Rust-generated JSON fixtures
-  Evidence: CLAUDE.md demo.ts drift note and "BROWSER PREVIEW — APPROXIMATE" watermark; MSVC resolution 2026-06-01
-  Touches: src-tauri/Cargo.toml (new [[bin]] target), new src-tauri/src/bin/gen_demo.rs, src/lib/demo.ts (remove physics, keep data)
-  Acceptance: Browser preview uses Rust-generated JSON fixtures; demo.ts contains only preset data and lookup functions, no physics formulas
-  Complexity: L
-
-- [ ] P2 — Wave attenuation chart panel
-  Why: Interactive height-vs-distance plot complements the spatial globe visualization; Impact: Earth! and NUKEMAP show numerical readouts but no chart; no consumer tool surveyed offers this
-  Evidence: Impact: Earth! distance-based output; NUKEMAP damage zones; DART sparklines already in the app (DartOverlay.tsx)
-  Touches: new src/components/AttenuationChart.tsx, App.tsx layout integration
-  Acceptance: Chart shows amplitude-vs-distance curve synced with time scrubber; updates live during SWE playback
-  Complexity: M
-
-- [ ] P2 — Scenario deep-link URL sharing
-  Why: Shareable links without clipboard copy/paste; standard in consumer tools (NUKEMAP, TerriaJS)
-  Evidence: NUKEMAP URL-based scenario sharing; TerriaJS shareable URLs with encoded state
-  Touches: src/lib/scenario-schema.ts (URL encoding/decoding), App.tsx (URL query parsing on mount)
-  Acceptance: "Copy link" button produces URL that restores full scenario state including source type and parameters
-  Complexity: M
-
-- [ ] P2 — Playwright CDP-based Tauri desktop testing
-  Why: Current e2e tests run against browser preview only (vite preview on port 4187); CDP testing exercises the real WebView2 + Rust IPC path
-  Evidence: playwright-cdp project (github.com/Haprog/playwright-cdp); Playwright 1.58 isLocal CDP option
-  Touches: playwright.config.ts (add Tauri CDP project), tests/ (new desktop-specific test file)
-  Acceptance: At least 3 smoke tests run against actual Tauri WebView2 window on Windows CI
-  Complexity: M
-
-- [ ] P2 — Historical event timeline visualization
-  Why: Chronological visual of all 10+ presets from 66 Ma to present; makes the preset catalog more discoverable and educational
-  Evidence: IRIS Earthquake Browser timeline; TsunamiLab museum exhibition patterns
-  Touches: new src/components/TimelineView.tsx, PresetSelector.tsx (alternate view toggle)
-  Acceptance: Scrollable horizontal timeline with clickable event markers; clicking selects the corresponding preset
+- [ ] P1 — Wire custom scenario URL sharing
+  Why: scenarioToUrlParams supports base64 custom scenario encoding but App.tsx line 432 passes null; scenarioFromUrl restores presets but ignores ?scenario= path
+  Evidence: src/App.tsx:432 (passes null), src/App.tsx:231-233 (only handles preset type), src/lib/scenario-schema.ts:378-388 (encoding exists)
+  Touches: src/App.tsx — pass current custom scenario input to scenarioToUrlParams; handle scenario type in URL restore effect
+  Acceptance: Custom scenario Link button copies a ?scenario= URL that another user can paste to restore the full scenario
   Complexity: S
 
-- [ ] P2 — KMZ/KML export for Google Earth
-  Why: Google Earth compatibility for offline viewing and classroom presentations; NUKEMAP ships KMZ export; CZML export already exists in the app
-  Evidence: NUKEMAP KMZ export feature; existing exportCzml() in src/lib/export.ts
-  Touches: src/lib/export.ts (add KML generation function)
-  Acceptance: Exported KMZ opens in Google Earth Pro showing wavefront ring and runup bar positions
-  Complexity: M
-
-- [ ] P2 — Unblock structured error reporting with diagnostics bundle
-  Why: MSVC resolved; Rust-side diagnostics (GPU adapter name, wgpu version, OS info) enable actionable bug reports from users
-  Evidence: CLAUDE.md MSVC resolution; Roadmap_Blocked.md lists this as blocked on MSVC + new IPC command
-  Touches: src-tauri/src/commands.rs (new `diagnostics_bundle` IPC command), src/components/LogViewer.tsx (copy diagnostics button)
-  Acceptance: LogViewer "Copy diagnostics" button includes GPU adapter name, driver version, OS, app version, feature flags
+- [ ] P1 — Upgrade Rust edition 2021 → 2024
+  Why: Edition 2024 (stable since Rust 1.85, Feb 2025) enables new Cargo resolver, async closures, cfg_select!, updated Rustfmt
+  Evidence: Rust 1.85 announcement; Cargo.toml edition = "2021"
+  Touches: src-tauri/Cargo.toml — change `edition = "2021"` to `edition = "2024"`
+  Acceptance: `cargo check` passes with edition 2024; CI Rust jobs remain green
   Complexity: S
 
-- [ ] P2 — React 19.2 Activity component for panel state preservation
-  Why: Switching between compare/normal mode or between panels destroys component state; Activity preserves hidden subtrees without unmounting effects
-  Evidence: React 19.2 blog post (react.dev/blog/2025/10/01/react-19-2)
-  Touches: package.json (React 19.0→19.2), App.tsx panel management for compare/SWE/settings panels
-  Acceptance: SWE playback state survives compare mode toggle; simulation snapshots not lost on panel switch
+### P2
+
+- [ ] P2 — Bump tsconfig target to ES2025
+  Why: TypeScript 6 defaults to ES2025; vite.config.ts build target already includes es2022/chrome105; ES2025 unlocks Set operations, Array.fromAsync, and other modern syntax without downleveling
+  Evidence: tsconfig.json target = "ES2022"; TS 6 announcement defaults to ES2025
+  Touches: tsconfig.json — change target and lib from ES2022 to ES2025
+  Acceptance: `npx tsc --noEmit` passes; no new runtime errors in browser preview or Playwright tests
+  Complexity: S
+
+- [ ] P2 — Pass busyId to TimelineView for loading feedback
+  Why: Selecting a preset from the timeline shows no loading indicator because TimelineView doesn't accept or use busyId
+  Evidence: src/components/TimelineView.tsx props lack busyId; src/components/PresetSelector.tsx passes busyId to card list but not timeline
+  Touches: src/components/TimelineView.tsx (add busyId prop, show loading state on active marker), src/components/PresetSelector.tsx (pass busyId through)
+  Acceptance: Clicking a timeline marker shows a visual loading indicator matching the card view's behavior
+  Complexity: S
+
+- [ ] P2 — Document AttenuationChart JS physics as architecture carve-out
+  Why: computeDecayCurve in AttenuationChart.tsx violates the "physics in Rust only" rule (CLAUDE.md); it should either be migrated to a Rust IPC call (blocked on MSVC) or explicitly documented as a sanctioned carve-out like demo.ts
+  Evidence: src/components/AttenuationChart.tsx:23-40 — JS wave decay computation; CLAUDE.md architecture rule
+  Touches: CLAUDE.md — add AttenuationChart to Known residuals as a sanctioned carve-out alongside demo.ts, or add a BROWSER PREVIEW label
+  Acceptance: Architecture violation is either resolved (Rust IPC) or explicitly sanctioned with the same treatment as demo.ts
   Complexity: S
