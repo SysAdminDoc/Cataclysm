@@ -374,3 +374,34 @@ export function createScenarioPayload(input: ScenarioInput): ScenarioValidationR
     source: input.source,
   });
 }
+
+export function scenarioToUrlParams(presetId: string | null, scenario: ScenarioInput | null): string {
+  if (presetId) return `?preset=${encodeURIComponent(presetId)}`;
+  if (!scenario) return "";
+  try {
+    const payload = { schemaVersion: SCENARIO_SCHEMA_VERSION, ...scenario };
+    const json = JSON.stringify(payload);
+    return `?scenario=${encodeURIComponent(btoa(json))}`;
+  } catch {
+    return "";
+  }
+}
+
+export type UrlScenarioResult =
+  | { type: "preset"; presetId: string }
+  | { type: "scenario"; scenario: ScenarioInput }
+  | { type: "none" };
+
+export function scenarioFromUrl(search: string): UrlScenarioResult {
+  const params = new URLSearchParams(search);
+  const presetId = params.get("preset");
+  if (presetId) return { type: "preset", presetId };
+  const encoded = params.get("scenario");
+  if (!encoded) return { type: "none" };
+  try {
+    const json = atob(decodeURIComponent(encoded));
+    const parsed = parseScenarioPayload(JSON.parse(json));
+    if (parsed.ok) return { type: "scenario", scenario: parsed.scenario };
+  } catch { /* invalid URL param — ignore silently */ }
+  return { type: "none" };
+}

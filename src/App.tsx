@@ -19,11 +19,12 @@ import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, type RunupPoint } from "./lib/export";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
+import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
 import type { Preset } from "./types/scenario";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "video" | "text" | "czml" | "geojson" | "kml" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "geojson" | "kml" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -68,6 +69,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
         <rect x="5" y="4" width="14" height="16" rx="2" />
         <path d="M8 9h8M8 13h5" />
         <path d="M15 15h4v4" />
+      </svg>
+    );
+  }
+  if (name === "link") {
+    return (
+      <svg {...common}>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
       </svg>
     );
   }
@@ -213,6 +222,15 @@ export default function App() {
   // Apply persisted theme once at startup.
   useEffect(() => {
     loadTheme().then(applyTheme).catch(() => applyTheme("mocha"));
+  }, []);
+
+  // Restore scenario from URL query params (?preset=id or ?scenario=base64).
+  useEffect(() => {
+    const result = scenarioFromUrl(window.location.search);
+    if (result.type === "preset") {
+      slotA.setActivePresetId(result.presetId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // First-run tour: trigger after the disclaimer is acknowledged (or
@@ -406,6 +424,27 @@ export default function App() {
             onUnavailable={(reason) => showToast(reason, "info")}
           >
             Share
+          </ToolbarButton>
+          <ToolbarButton
+            icon="link"
+            onClick={() => {
+              const params = scenarioToUrlParams(slotA.activePresetId, null);
+              if (!params) {
+                showToast("Select a preset to share as a link. Custom scenarios use Copy/Paste.", "info");
+                return;
+              }
+              const url = `${window.location.origin}${window.location.pathname}${params}`;
+              navigator.clipboard.writeText(url).then(
+                () => showToast("Scenario link copied to clipboard.", "info"),
+                () => showToast("Failed to copy link to clipboard.", "error"),
+              );
+            }}
+            title="Copy a shareable URL for the current preset"
+            disabled={!slotA.activePresetId}
+            disabledReason="Select a preset first"
+            onUnavailable={(reason) => showToast(reason, "info")}
+          >
+            Link
           </ToolbarButton>
           <ToolbarButton
             icon="video"
