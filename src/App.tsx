@@ -12,6 +12,7 @@ import { settings } from "./lib/settings";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
+import { AttenuationChart } from "./components/AttenuationChart";
 import { api, isTauri } from "./lib/tauri";
 import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
@@ -651,6 +652,12 @@ export default function App() {
 
       <aside className="app__panel app__panel--right" aria-label="Simulation controls and results">
         <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} />
+        <AttenuationChart
+          initial={slotA.initial}
+          isImpact={activePresetA?.source.kind === "Asteroid"}
+          timeS={timeS}
+          runupResults={slotA.runupResults}
+        />
         {compareMode && (
           <div className="app__compare-rail">
             <div className="app__compare-rail-label">Slot B readout</div>
