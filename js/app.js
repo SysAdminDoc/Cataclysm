@@ -1127,13 +1127,40 @@ function resetPanels() {
 
 // ---- URL STATE ----
 function updateURL() {
+  if (NM.WW3.active && NM.WW3._scenario) {
+    const targeting = ($('ww3-targeting') || {}).value || 'all';
+    const speed = ($('ww3-speed') || {}).value || '5';
+    let qs = `?ww3=${NM.WW3._scenario.id}`;
+    if (targeting !== 'all') qs += `&targeting=${targeting}`;
+    if (speed !== '5') qs += `&speed=${speed}`;
+    history.replaceState(null, '', qs);
+    return;
+  }
   if (!currentDets.length) { history.replaceState(null, '', location.pathname); return; }
   const params = currentDets.map(d => `${d.lat.toFixed(4)},${d.lng.toFixed(4)},${d.yieldKt},${d.burstType[0]}`).join(';');
   history.replaceState(null, '', `?d=${params}`);
 }
 
 function loadFromURL() {
-  const p = new URLSearchParams(location.search), d = p.get('d');
+  const p = new URLSearchParams(location.search);
+  // WW3 scenario from URL
+  const ww3Id = p.get('ww3');
+  if (ww3Id) {
+    const targeting = p.get('targeting') || 'all';
+    const speed = p.get('speed') || '5';
+    setTimeout(() => {
+      const ww3Sel = $('ww3-scenario');
+      if (ww3Sel) ww3Sel.value = ww3Id;
+      const tgtSel = $('ww3-targeting');
+      if (tgtSel) tgtSel.value = targeting;
+      const spdSel = $('ww3-speed');
+      if (spdSel) spdSel.value = speed;
+      NM.WW3.start(map, ww3Id);
+      $('ww3-pause').style.display = '';
+    }, 1500);
+    return;
+  }
+  const d = p.get('d');
   if (!d) return;
   multiMode = true; $('multi-check').checked = true;
   d.split(';').forEach(seg => {
