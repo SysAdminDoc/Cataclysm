@@ -850,6 +850,29 @@ function initWindCompass() {
   function upd() { arr.style.transform = `rotate(${windAngle}deg)`; lbl.textContent = `From ${dirs[Math.round(windAngle / 45) % 8]} (${Math.round(windAngle)}\u00B0)`; }
   comp.addEventListener('click', e => { const r = comp.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; windAngle = (Math.atan2(e.clientX - cx, -(e.clientY - cy)) * 180 / Math.PI + 360) % 360; upd(); });
   upd();
+
+  // Real wind from Open-Meteo (free, no auth, 10K calls/day)
+  $('realwind-check').addEventListener('change', () => {
+    if (!$('realwind-check').checked) { $('realwind-label').textContent = 'Use real wind (Open-Meteo)'; return; }
+    const center = map.getCenter();
+    $('realwind-label').textContent = 'Fetching wind...';
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${center.lat.toFixed(4)}&longitude=${center.lng.toFixed(4)}&current=wind_speed_10m,wind_direction_10m`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.current) {
+          windAngle = data.current.wind_direction_10m;
+          const speed = data.current.wind_speed_10m;
+          $('wind-speed').value = Math.round(speed);
+          upd();
+          $('realwind-label').textContent = `Real wind: ${Math.round(speed)} km/h from ${dirs[Math.round(windAngle / 45) % 8]}`;
+        }
+      })
+      .catch(() => {
+        $('realwind-check').checked = false;
+        $('realwind-label').textContent = 'Wind fetch failed (offline?)';
+        setTimeout(() => { $('realwind-label').textContent = 'Use real wind (Open-Meteo)'; }, 3000);
+      });
+  });
 }
 
 // ---- QUICK TARGETS / PRESETS / HISTORICAL ----

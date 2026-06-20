@@ -3,7 +3,7 @@
 <head>
     <meta property="og:image" content="https://raw.githubusercontent.com/SysAdminDoc/NukeMap/main/banner.png">
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.arcgisonline.com https://raw.githubusercontent.com blob:; connect-src 'self' https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.arcgisonline.com; font-src 'self'; media-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.arcgisonline.com https://raw.githubusercontent.com blob:; connect-src 'self' https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.arcgisonline.com https://api.open-meteo.com; font-src 'self'; media-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>NukeMap v3.3.0</title>
     <meta name="description" content="Nuclear weapon effects simulator with blast waves, WW3 simulation, MIRV strikes,">
@@ -135,6 +135,7 @@
                 <div class="wind-dir-label" id="wind-dir-label">From N (0deg)</div>
               </div>
             </div>
+            <label class="toggle-row" style="margin-top:4px"><input type="checkbox" id="realwind-check"/><span class="tg-slider"></span><span class="tg-label" id="realwind-label">Use real wind (Open-Meteo)</span></label>
           </div>
         </div>
 
