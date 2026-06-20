@@ -451,6 +451,78 @@ export function exportGeoJson(
   return true;
 }
 
+export function exportKml(
+  meta: ScreenshotMeta,
+  runupPoints: RunupPoint[],
+): boolean {
+  const name = meta.preset?.name ?? "Custom scenario";
+  const ref = meta.preset?.reference ?? "";
+  const center = meta.initial?.center;
+  const cavityR = meta.initial?.cavity_radius_m ?? 0;
+
+  const placemarks: string[] = [];
+
+  if (center) {
+    placemarks.push(`
+    <Placemark>
+      <name>${escapeXml(name)} — Source</name>
+      <description>${escapeXml(ref)}\n${escapeXml(MODEL_LIMIT_NOTICE)}</description>
+      <Style><IconStyle><color>ff0000ff</color><scale>1.2</scale></IconStyle></Style>
+      <Point><coordinates>${center.lon_deg},${center.lat_deg},0</coordinates></Point>
+    </Placemark>`);
+
+    if (cavityR > 500) {
+      const ring = circlePolygon(center.lat_deg, center.lon_deg, cavityR, 64);
+      const coords = ring.map(([lon, lat]) => `${lon},${lat},0`).join(" ");
+      placemarks.push(`
+    <Placemark>
+      <name>Source cavity (r=${Math.round(cavityR / 1000)} km)</name>
+      <Style><LineStyle><color>ff4444ff</color><width>2</width></LineStyle>
+      <PolyStyle><color>334444ff</color></PolyStyle></Style>
+      <Polygon><outerBoundaryIs><LinearRing>
+        <coordinates>${coords}</coordinates>
+      </LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>`);
+    }
+  }
+
+  for (const p of runupPoints) {
+    if (!Number.isFinite(p.runup_m) || p.runup_m <= 0) continue;
+    placemarks.push(`
+    <Placemark>
+      <name>${escapeXml(p.name)}</name>
+      <description>Runup: ${p.runup_m.toFixed(1)} m\nArrival: T+${Math.round(p.arrival_time_s / 60)} min\nInundation: ${Math.round(p.inundation_extent_m)} m</description>
+      <Style><IconStyle><color>ff00aaff</color><scale>0.8</scale></IconStyle></Style>
+      <Point><coordinates>${p.lon},${p.lat},0</coordinates></Point>
+    </Placemark>`);
+  }
+
+  if (placemarks.length === 0) return false;
+
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>TsunamiSimulator — ${escapeXml(name)}</name>
+  <description>${escapeXml(MODEL_LIMIT_NOTICE)}</description>
+  <Folder>
+    <name>Source</name>${placemarks[0]}${placemarks.length > 1 && cavityR > 500 ? placemarks[1] : ""}
+  </Folder>
+  <Folder>
+    <name>Coastal runup points</name>${placemarks.slice(center ? (cavityR > 500 ? 2 : 1) : 0).join("")}
+  </Folder>
+</Document>
+</kml>`;
+
+  const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+  const presetId = meta.preset?.id ?? "custom-scenario";
+  downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}.kml`);
+  return true;
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function round5(v: number): number {
   if (!Number.isFinite(v)) return 0;
   return Math.round(v * 100_000) / 100_000;
