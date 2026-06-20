@@ -66,7 +66,7 @@ export default defineConfig(async ({ command, mode }) => {
     },
   },
   build: {
-    target: ["es2022", "chrome105", "safari13"],
+    target: ["es2022", "chrome105", "safari15"],
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
     chunkSizeWarningLimit: 4000, // Cesium ships a big bundle
