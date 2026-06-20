@@ -23,7 +23,7 @@ def download(url):
         return None
 
 def build():
-    print('NukeMap Offline Builder v3.3.0')
+    print('NukeMap Offline Builder v3.4.0')
     print('=' * 40)
 
     # Read HTML template
@@ -40,10 +40,10 @@ def build():
                 'extras.js','advanced.js','premium.js','immersive.js','ww3.js','app.js']
     js_all = '\n'.join(read(f'js/{f}') for f in js_files)
 
-    # Replace CDN links with inline
-    html = re.sub(r'<link rel="stylesheet" href="https://unpkg\.com/leaflet[^"]*"[^/]*/>', f'<style>{leaflet_css}</style>', html)
-    html = re.sub(r'<link rel="stylesheet" href="css/styles\.css"\s*/>', f'<style>{css}</style>', html)
-    html = re.sub(r'<script src="https://unpkg\.com/leaflet[^"]*"[^>]*></script>', f'<script>{leaflet_js}</script>', html)
+    # Replace CDN links with inline (lambda avoids regex backreference interpretation in replacement)
+    html = re.sub(r'<link rel="stylesheet" href="https://unpkg\.com/leaflet[^"]*"[^/]*/>', lambda m: f'<style>{leaflet_css}</style>', html)
+    html = re.sub(r'<link rel="stylesheet" href="css/styles\.css"\s*/>', lambda m: f'<style>{css}</style>', html)
+    html = re.sub(r'<script src="https://unpkg\.com/leaflet[^"]*"[^>]*></script>', lambda m: f'<script>{leaflet_js}</script>', html)
 
     # Remove Three.js comment line if present
     html = re.sub(r'<!--\s*Three\.js removed[^>]*-->\s*\n?', '', html)
