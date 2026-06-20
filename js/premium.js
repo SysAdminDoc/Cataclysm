@@ -30,17 +30,19 @@ NM.DraggableGZ = {
   }
 };
 
-// ---- PER-ZONE CASUALTY BREAKDOWN ----
+// ---- PER-ZONE CASUALTY BREAKDOWN (Bayesian combined mortality) ----
 NM.ZoneCasualties = {
   generate(effects, density) {
+    const indoorFrac = 0.8, indoorPF = 0.4;
+    const shieldF = density > 5000 ? 0.65 : density > 1000 ? 0.75 : density > 200 ? 0.85 : 1.0;
     const zones = [
-      {name: 'Fireball', r: effects.fireball, color: '#f5e0dc', dfrac: 1.0, ifrac: 0},
-      {name: '200 psi', r: effects.psi200, color: '#89dceb', dfrac: 0.98, ifrac: 0.02},
-      {name: '20 psi', r: effects.psi20, color: '#89b4fa', dfrac: 0.90, ifrac: 0.08},
-      {name: '5 psi', r: effects.psi5, color: '#cba6f7', dfrac: 0.50, ifrac: 0.40},
-      {name: '3rd\u00B0 Burns', r: effects.thermal3, color: '#fab387', dfrac: 0.25, ifrac: 0.40},
-      {name: '1 psi', r: effects.psi1, color: '#f9e2af', dfrac: 0.05, ifrac: 0.30},
-      {name: '1st\u00B0 Burns', r: effects.thermal1, color: '#f5c2e7', dfrac: 0.01, ifrac: 0.15},
+      {name: 'Fireball', r: effects.fireball, color: '#f5e0dc', pB: 1.0, pT: 1.0, pR: 1.0, pInjB: 0, pInjT: 0},
+      {name: '200 psi', r: effects.psi200, color: '#89dceb', pB: 0.98, pT: 0.9, pR: 0.8, pInjB: 0.02, pInjT: 0.05},
+      {name: '20 psi', r: effects.psi20, color: '#89b4fa', pB: 0.85, pT: 0.6, pR: 0.3, pInjB: 0.12, pInjT: 0.15},
+      {name: '5 psi', r: effects.psi5, color: '#cba6f7', pB: 0.40, pT: 0.3, pR: 0.05, pInjB: 0.45, pInjT: 0.20},
+      {name: '3rd\u00B0 Burns', r: Math.max(effects.thermal3, effects.psi3), color: '#fab387', pB: 0.15, pT: 0.25, pR: 0.02, pInjB: 0.35, pInjT: 0.30},
+      {name: '1 psi', r: effects.psi1, color: '#f9e2af', pB: 0.02, pT: 0.05, pR: 0.0, pInjB: 0.20, pInjT: 0.15},
+      {name: '1st\u00B0 Burns', r: effects.thermal1, color: '#f5c2e7', pB: 0.0, pT: 0.01, pR: 0.0, pInjB: 0.05, pInjT: 0.10},
     ].filter(z => z.r > 0.001);
 
     let html = '<div class="zone-table"><div class="zt-row zt-head"><span>Zone</span><span>Area</span><span>Fatalities</span><span>Injuries</span></div>';
@@ -48,8 +50,15 @@ NM.ZoneCasualties = {
     for (const z of zones) {
       const area = Math.PI * z.r * z.r;
       const ring = Math.max(0, area - prevArea);
-      const deaths = Math.round(ring * density * z.dfrac);
-      const injuries = Math.round(ring * density * z.ifrac);
+      const pop = ring * density;
+      const outPop = pop * (1 - indoorFrac);
+      const outDeath = 1 - (1 - z.pB) * (1 - z.pT) * (1 - z.pR);
+      const outInj = Math.min(1 - outDeath, z.pInjB + z.pInjT);
+      const inPop = pop * indoorFrac;
+      const inDeath = 1 - (1 - z.pB) * (1 - z.pT * indoorPF) * (1 - z.pR * indoorPF);
+      const inInj = Math.min(1 - inDeath, z.pInjB + z.pInjT * indoorPF);
+      const deaths = Math.round((outPop * outDeath + inPop * inDeath) * shieldF);
+      const injuries = Math.round((outPop * outInj + inPop * inInj) * shieldF);
       totalD += deaths; totalI += injuries;
       html += `<div class="zt-row"><span style="color:${z.color};font-weight:700">${z.name}</span><span>${NM.fmtArea(z.r)}</span><span class="zt-d">${NM.fmtNum(deaths)}</span><span class="zt-i">${NM.fmtNum(injuries)}</span></div>`;
       prevArea = area;

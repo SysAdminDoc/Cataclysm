@@ -1185,12 +1185,14 @@ function loadFromURL() {
   multiMode = true; $('multi-check').checked = true;
   d.split(';').forEach(seg => {
     const [lat, lng, y, bt] = seg.split(',');
-    if (lat && lng && y) {
-      const burst = bt === 's' ? 'surface' : bt === 'c' ? 'custom' : 'airburst';
-      setYield(+y);
-      document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === burst));
-      triggerDetonation(+lat, +lng);
-    }
+    const la = +lat, ln = +lng, yk = +y;
+    if (!isFinite(la) || !isFinite(ln) || !isFinite(yk)) return;
+    if (la < -90 || la > 90 || ln < -180 || ln > 180) return;
+    if (yk < 0.001 || yk > 100000) return;
+    const burst = bt === 's' ? 'surface' : bt === 'c' ? 'custom' : 'airburst';
+    setYield(yk);
+    document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === burst));
+    triggerDetonation(la, ln);
   });
 }
 
