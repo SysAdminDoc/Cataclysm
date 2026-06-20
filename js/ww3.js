@@ -795,9 +795,13 @@ NM.WW3 = {
     if (!this.active) return;
     this._updateStatus(phase.name);
 
+    const targeting = (document.getElementById('ww3-targeting') || {}).value || 'all';
+    const targetingFilter = targeting === 'counterforce' ? (t => t.type !== 'city' && t.type !== 'infra')
+      : targeting === 'countervalue' ? (t => t.type === 'city' || t.type === 'infra')
+      : () => true;
     const allTargets = [];
     for (const [side, targets] of Object.entries(scenario.targetSets)) {
-      const filtered = targets.filter(phase.filter);
+      const filtered = targets.filter(phase.filter).filter(targetingFilter);
       // Determine who attacks this target set - enemies of the target's country
       let attackerKeys;
       if (side === 'us') {
