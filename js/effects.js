@@ -8,19 +8,19 @@ NM.Effects = {
     const {lat, lng, effects: e} = det;
     const flashR = NM._nightMode ? e.flashBlindNight : e.flashBlindDay;
     const rings = [
-      {id:'flashblind',r:flashR,color:'#b4befe',fo:0.03,bo:0.15,dashed:true},
-      {id:'emp',r:e.emp,color:'#94e2d5',fo:0.06,bo:0.25,dashed:true},
-      {id:'thermal1',r:e.thermal1,color:'#f5c2e7',fo:0.08,bo:0.35},
-      {id:'psi1',r:e.psi1,color:'#f9e2af',fo:0.10,bo:0.40},
-      {id:'thermal3',r:e.thermal3,color:'#fab387',fo:0.12,bo:0.45},
-      {id:'firestorm',r:e.firestormR,color:'#e64553',fo:0.14,bo:0.50},
-      {id:'psi5',r:e.psi5,color:'#cba6f7',fo:0.15,bo:0.50},
-      {id:'psi20',r:e.psi20,color:'#89b4fa',fo:0.18,bo:0.55},
-      {id:'psi200',r:e.psi200,color:'#89dceb',fo:0.22,bo:0.60},
-      {id:'radiation',r:e.radiation,color:'#a6e3a1',fo:0.20,bo:0.60},
-      {id:'fireball',r:e.fireball,color:'#f5e0dc',fo:0.45,bo:0.75},
+      {id:'flashblind',r:flashR,color:'#b4befe',fo:0.03,bo:0.15,dash:'2 8'},
+      {id:'emp',r:e.emp,color:'#94e2d5',fo:0.06,bo:0.25,dash:'12 4'},
+      {id:'thermal1',r:e.thermal1,color:'#f5c2e7',fo:0.08,bo:0.35,dash:'8 4 2 4'},
+      {id:'psi1',r:e.psi1,color:'#f9e2af',fo:0.10,bo:0.40,dash:null},
+      {id:'thermal3',r:e.thermal3,color:'#fab387',fo:0.12,bo:0.45,dash:'4 4'},
+      {id:'firestorm',r:e.firestormR,color:'#e64553',fo:0.14,bo:0.50,dash:'2 4'},
+      {id:'psi5',r:e.psi5,color:'#cba6f7',fo:0.15,bo:0.50,dash:null},
+      {id:'psi20',r:e.psi20,color:'#89b4fa',fo:0.18,bo:0.55,dash:null},
+      {id:'psi200',r:e.psi200,color:'#89dceb',fo:0.22,bo:0.60,dash:null},
+      {id:'radiation',r:e.radiation,color:'#a6e3a1',fo:0.20,bo:0.60,dash:'6 3 2 3'},
+      {id:'fireball',r:e.fireball,color:'#f5e0dc',fo:0.45,bo:0.75,dash:null},
     ];
-    if (e.craterR > 0) rings.push({id:'crater',r:e.craterR,color:'#585b70',fo:0.5,bo:0.7,dashed:true});
+    if (e.craterR > 0) rings.push({id:'crater',r:e.craterR,color:'#585b70',fo:0.5,bo:0.7,dash:'6 6'});
 
     const layers = [];
 
@@ -39,7 +39,7 @@ NM.Effects = {
       if (ring.r < 0.0005) continue;
       const circ = L.circle([lat, lng], {
         radius: ring.r * 1000, color: ring.color, weight: 1.5, opacity: ring.bo,
-        fillColor: ring.color, fillOpacity: ring.fo, dashArray: ring.dashed ? '6 5' : null
+        fillColor: ring.color, fillOpacity: ring.fo, dashArray: ring.dash || null
       });
       circ._effectId = ring.id;
       circ._effectR = ring.r;
