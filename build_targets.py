@@ -58,7 +58,7 @@ def assign_wh(cat, name='', desc=''):
     return 'military', 1, 300
 
 def fmt_entry(name, lat, lng, typ, wh, yt, cat):
-    cat_s = cat.replace("'", "\\'")[:60]
+    cat_s = cat.replace("'", "\\'")[:120]
     name_s = name.replace("'", "\\'")
     return f"  {{name:'{name_s}',lat:{lat:.4f},lng:{lng:.4f},type:'{typ}',warheads:{wh},yieldKt:{yt},cat:'{cat_s}'}},"
 
@@ -82,10 +82,10 @@ for group in us_data['targets']:
         elif 'pentagon' in n: wh, yt = 3, 800
         elif 'icbm' in t.get('type','').lower() or 'icbm' in t['name'].lower(): wh = max(wh, 8); yt = 800
         elif 'ssbn' in t.get('type','').lower(): wh = max(wh, 3); yt = 800
-        us_lines.append(fmt_entry(t['name'], t['lat'], t['lng'], typ, wh, yt, t.get('description', cat)[:60]))
+        us_lines.append(fmt_entry(t['name'], t['lat'], t['lng'], typ, wh, yt, t.get('description', cat)[:120]))
 
 # ---- RUSSIA TARGETS ----
-ru_data = load('russia_targets.json')
+ru_data = load('data/russia_targets.json')
 ru_lines = []
 seen_ru = set()
 for t in ru_data['targets']:

@@ -284,7 +284,9 @@ function triggerDetonation(lat, lng) {
   // Detonation toast
   showDetToast(det);
 
-  // No auto-zoom — let user control the map view
+  // Focus management: move focus to results for screen reader users
+  const statsEl = $('stat-deaths');
+  if (statsEl) setTimeout(() => statsEl.focus(), 300);
 
   updateURL();
 }
@@ -418,6 +420,7 @@ function initControls() {
 
   // Panel toggle
   $('panel-toggle').addEventListener('click', () => $('panel').classList.toggle('collapsed'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('panel').classList.toggle('collapsed'); });
 
   // Coords click-to-copy
   $('coords').addEventListener('click', () => {
@@ -755,11 +758,18 @@ function initControls() {
     if (!currentDets.length) return;
     const name = $('save-name').value.trim() || `Scenario ${new Date().toLocaleDateString()}`;
     const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
+    if (saves.length >= 50) { alert('Maximum 50 saved scenarios. Delete old ones first.'); return; }
     saves.push({
       name, date: Date.now(),
       dets: currentDets.map(d => ({lat:d.lat,lng:d.lng,yieldKt:d.yieldKt,burstType:d.burstType,weapon:d.weapon}))
     });
-    localStorage.setItem('nukemap-saves', JSON.stringify(saves));
+    try {
+      localStorage.setItem('nukemap-saves', JSON.stringify(saves));
+    } catch(e) {
+      saves.pop();
+      alert('Storage full. Delete saved scenarios or clear browser data.');
+      return;
+    }
     $('save-name').value = '';
     renderSavedList();
   });
