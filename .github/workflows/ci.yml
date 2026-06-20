@@ -194,3 +194,12 @@ jobs:
         # RUSTSEC-XXXX-XXXX` line here and document the rationale in
         # the commit message.
         run: cargo audit
+
+  deny:
+    name: cargo deny (licenses + bans + advisories)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: src-tauri/Cargo.toml
