@@ -347,13 +347,6 @@ NM.ExportPNG = {
     const scale = hiDpi ? 4 : 2;
     const mapEl = document.getElementById('map');
     try {
-      // Try using the canvas renderer directly if available
-      const leafletCanvas = mapEl.querySelector('canvas');
-      if (leafletCanvas && !hiDpi) {
-        const dataURL = leafletCanvas.toDataURL('image/png');
-        this.download(dataURL, 'nukemap-export.png');
-        return;
-      }
       const canvas = document.createElement('canvas');
       const rect = mapEl.getBoundingClientRect();
       canvas.width = rect.width * scale;
@@ -363,18 +356,23 @@ NM.ExportPNG = {
       ctx.fillStyle = '#11111b';
       ctx.fillRect(0, 0, rect.width, rect.height);
 
-      // Draw all visible tile images
+      // Draw tile images (IMG elements from tile layers)
       const tiles = mapEl.querySelectorAll('.leaflet-tile');
       for (const tile of tiles) {
-        if (tile.tagName === 'IMG' && tile.complete) {
+        if (tile.complete && (tile.tagName === 'IMG' || tile.tagName === 'CANVAS')) {
           const tr = tile.getBoundingClientRect();
-          const x = tr.left - rect.left;
-          const y = tr.top - rect.top;
-          try { ctx.drawImage(tile, x, y, tr.width, tr.height); } catch(e) {}
+          try { ctx.drawImage(tile, tr.left - rect.left, tr.top - rect.top, tr.width, tr.height); } catch(e) {}
         }
       }
 
-      // Draw SVG overlays (circles)
+      // Draw canvas overlays (preferCanvas renderer)
+      const canvases = mapEl.querySelectorAll('canvas.leaflet-zoom-animated');
+      for (const c of canvases) {
+        const cr = c.getBoundingClientRect();
+        try { ctx.drawImage(c, cr.left - rect.left, cr.top - rect.top, cr.width, cr.height); } catch(e) {}
+      }
+
+      // Draw SVG overlays (if any remain from non-canvas layers)
       const svgs = mapEl.querySelectorAll('svg.leaflet-zoom-animated');
       for (const svg of svgs) {
         const svgData = new XMLSerializer().serializeToString(svg);

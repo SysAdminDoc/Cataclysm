@@ -1484,9 +1484,12 @@ function init() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 
   // Lazy-load ZIP code database (1.5MB) after app is interactive
-  setTimeout(() => {
-    const s = document.createElement('script'); s.src = 'js/zipcodes.js'; document.body.appendChild(s);
-  }, 2000);
+  // Skip if already loaded (e.g., inlined by build.py offline bundler)
+  if (!NM.ZIPDB) {
+    setTimeout(() => {
+      const s = document.createElement('script'); s.src = 'js/zipcodes.js'; document.body.appendChild(s);
+    }, 2000);
+  }
 
   // Welcome overlay
   const wo = $('welcome-overlay');
