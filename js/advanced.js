@@ -204,6 +204,57 @@ NM.Scenarios = [
       {lat:47.6062,lng:-122.332,yield_kt:300,burst:'airburst'},
     ]
   },
+  // ---- HISTORICAL SCENARIOS ----
+  {
+    name: 'Cuban Missile Crisis (1962)',
+    desc: 'Soviet IL-28 bombers + MRBMs targeting US East Coast. Hypothetical if crisis escalated.',
+    dets: [
+      {lat:38.8977,lng:-77.037,yield_kt:1000,burst:'airburst'},   // Washington DC (SS-4 MRBM)
+      {lat:40.758,lng:-73.9855,yield_kt:1000,burst:'airburst'},   // New York City
+      {lat:29.7604,lng:-95.3698,yield_kt:500,burst:'airburst'},   // Houston (SAC base nearby)
+      {lat:32.7767,lng:-96.797,yield_kt:500,burst:'airburst'},    // Dallas
+      {lat:25.7617,lng:-80.1918,yield_kt:500,burst:'airburst'},   // Miami (closest to Cuba)
+      {lat:28.5383,lng:-81.3792,yield_kt:300,burst:'airburst'},   // Orlando (McCoy AFB)
+    ]
+  },
+  {
+    name: 'Able Archer 83',
+    desc: 'NATO exercise nearly triggered Soviet first strike. If Soviets had launched:',
+    dets: [
+      {lat:50.0755,lng:14.4378,yield_kt:500,burst:'airburst'},   // Prague (Warsaw Pact HQ)
+      {lat:48.8566,lng:2.3522,yield_kt:800,burst:'airburst'},    // Paris (NATO Europe)
+      {lat:51.5074,lng:-0.1278,yield_kt:800,burst:'airburst'},   // London
+      {lat:50.1109,lng:8.6821,yield_kt:455,burst:'airburst'},    // Frankfurt (US forces HQ)
+      {lat:52.52,lng:13.405,yield_kt:455,burst:'airburst'},      // West Berlin
+      {lat:48.1351,lng:11.582,yield_kt:300,burst:'surface'},     // Munich (Pershing II base area)
+    ]
+  },
+  {
+    name: 'India-Pakistan Exchange',
+    desc: 'Limited nuclear war between regional powers (~100 warheads)',
+    dets: [
+      {lat:28.6139,lng:77.209,yield_kt:40,burst:'airburst'},     // New Delhi
+      {lat:19.076,lng:72.8777,yield_kt:40,burst:'airburst'},     // Mumbai
+      {lat:33.6844,lng:73.0479,yield_kt:40,burst:'airburst'},    // Islamabad
+      {lat:24.8607,lng:67.0011,yield_kt:40,burst:'airburst'},    // Karachi
+      {lat:31.5204,lng:74.3587,yield_kt:40,burst:'airburst'},    // Lahore
+      {lat:22.5726,lng:88.3639,yield_kt:15,burst:'airburst'},    // Kolkata
+    ]
+  },
+  {
+    name: 'Castle Bravo (1954)',
+    desc: 'Largest US test: 15 MT at Bikini Atoll. 2.5x expected yield.',
+    dets: [
+      {lat:11.697,lng:165.273,yield_kt:15000,burst:'surface'},
+    ]
+  },
+  {
+    name: 'Tsar Bomba (1961)',
+    desc: 'Largest weapon ever detonated: 50 MT over Novaya Zemlya.',
+    dets: [
+      {lat:73.812,lng:54.583,yield_kt:50000,burst:'airburst'},
+    ]
+  },
 ];
 
 // ---- MEASUREMENT TOOL ----

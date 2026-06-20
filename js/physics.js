@@ -1,30 +1,60 @@
 // NukeMap - Nuclear Physics Module (Glasstone & Dolan + Brode)
+// Sources: G&D = "The Effects of Nuclear Weapons" 3rd ed. (1977)
+//          NWFAQ = Nuclear Weapon Archive FAQ Section 5
+//          HSAJ = Homeland Security Affairs Journal (peer-reviewed)
+//          OTA = Office of Technology Assessment "Effects of Nuclear War" (1979)
 window.NM = window.NM || {};
+
+// Physics citation database — every constant linked to its source
+NM.CITATIONS = {
+  fireball:  {ref:'G&D Ch.2 §2.127–2.128', note:'Maximum fireball radius ≈ 2× breakaway. Air: 0.066·Y^0.4 km, Surface: 0.05·Y^0.4 km.'},
+  psi200:    {ref:'NWFAQ §5.2', note:'200 psi overpressure at optimum burst height with Mach stem. Coefficient 0.13.'},
+  psi20:     {ref:'NWFAQ §5.2; HSAJ 10kT', note:'20 psi radius. NWFAQ coefficient 0.28. HSAJ 10kT: 0.60 km.'},
+  psi5:      {ref:'NWFAQ §5.2; HSAJ 10kT', note:'5 psi radius. NWFAQ coefficient 0.71. HSAJ 10kT: 1.51 km. Buildings destroyed, 160 mph winds.'},
+  psi3:      {ref:'NWFAQ §5.2', note:'3 psi radius. NWFAQ coefficient 0.95. Moderate structural damage.'},
+  psi1:      {ref:'NWFAQ §5.2; HSAJ 10kT', note:'1 psi radius. NWFAQ coefficient 2.2. HSAJ 10kT: 4.58 km. Window breakage, glass shrapnel.'},
+  thermal3:  {ref:'NWFAQ §5.3; G&D Ch.7', note:'3rd degree burns (8 cal/cm²). Coefficient 0.67, exponent 0.41.'},
+  thermal2:  {ref:'NWFAQ §5.3', note:'2nd degree burns (5 cal/cm²). Coefficient 0.87, exponent 0.40.'},
+  thermal1:  {ref:'NWFAQ §5.3', note:'1st degree burns (2.5 cal/cm²). Coefficient 1.20, exponent 0.38.'},
+  radiation: {ref:'NWFAQ §5.4; G&D Ch.8', note:'500 rem lethal dose radius. Coefficient 1.15, exponent 0.19. Attenuated by atmosphere.'},
+  neutronRad:{ref:'NWFAQ §5.4', note:'Neutron radiation radius. Coefficient 0.7, capped at 2.5 km. Dominant for low yields.'},
+  gammaRad:  {ref:'NWFAQ §5.4', note:'Initial gamma radiation radius. Coefficient 1.0, capped at 3.0 km.'},
+  emp:       {ref:'G&D Ch.11 §11.01–11.71', note:'EMP radius ≈ 2.5·Y^0.33 km, capped at 500 km for low-altitude. HEMP extends to 2200 km.'},
+  craterR:   {ref:'G&D Ch.6 §6.63–6.65', note:'Apparent crater radius. Surface burst only. 0.038·Y^(1/3.4) km.'},
+  craterD:   {ref:'G&D Ch.6 §6.63–6.65', note:'Apparent crater depth. Surface burst only. 0.013·Y^(1/3.4) km.'},
+  cloudTop:  {ref:'G&D Ch.2 §2.16', note:'Cloud top height. Air: 0.29·Y^0.42 km. Surface: 0.24·Y^0.42 km.'},
+  fallout:   {ref:'G&D Ch.9; Miller SFSS', note:'Simplified fallout scaling. Heavy zone: 1.3·(Y·f)^0.45 km downwind.'},
+  flashBlind:{ref:'G&D Ch.12 §12.40–12.44', note:'Temporary flash blindness. Day: 2.1·Y^0.4 km. Night (scotopic): 55·Y^0.25 km.'},
+  firestorm: {ref:'G&D Ch.7 §7.58–7.60', note:'Firestorm zone ≈ 85% of 3rd-degree thermal radius. Requires >8 cal/cm² + urban fuel load.'},
+  surfaceFactor: {ref:'NWFAQ §5.2; HSAJ §3', note:'Surface burst blast radii ≈ 0.8× airburst (enhanced ground coupling, no Mach stem).'},
+  optHeight: {ref:'G&D Ch.3 §3.73', note:'Optimal burst height for max 5-psi radius ≈ 0.22·Y^(1/3) km.'},
+  mortality: {ref:'Harney 2009; Nuclear Radius Pro', note:'Bayesian combined mortality: P(death)=1-(1-Pb)(1-Pt)(1-Pr). Indoor PF=0.4, indoor fraction=80%.'},
+};
 
 NM.calcEffects = function(Y, burstType, heightM, fissionFrac) {
   Y = Math.max(Y, 0.001);
   fissionFrac = (fissionFrac ?? 50) / 100;
   const isSurface = burstType === 'surface';
-  const optH = 0.22 * Math.pow(Y, 1/3) * 1000;
+  const optH = 0.22 * Math.pow(Y, 1/3) * 1000;  // G&D Ch.3 §3.73
   const h = burstType === 'airburst' ? optH : (heightM || 0);
-  const hf = isSurface ? 0.8 : 1.0;
+  const hf = isSurface ? 0.8 : 1.0;  // NWFAQ §5.2: surface burst factor
 
   return {
-    fireball:  isSurface ? 0.05*Math.pow(Y,0.4) : 0.066*Math.pow(Y,0.4),
-    psi200:    hf * 0.13 * Math.pow(Y, 1/3),
-    psi20:     hf * 0.28 * Math.pow(Y, 1/3),
-    psi5:      hf * 0.71 * Math.pow(Y, 1/3),
-    psi3:      hf * 0.95 * Math.pow(Y, 1/3),
-    psi1:      hf * 2.2 * Math.pow(Y, 1/3),
-    thermal3:  0.67 * Math.pow(Y, 0.41),
-    thermal2:  0.87 * Math.pow(Y, 0.40),
-    thermal1:  1.20 * Math.pow(Y, 0.38),
-    radiation: 1.15 * Math.pow(Y, 0.19),
-    neutronRad: Math.min(2.5, 0.7 * Math.pow(Y, 0.19)),
-    gammaRad: Math.min(3.0, 1.0 * Math.pow(Y, 0.19)),
-    emp:       Math.min(2.5 * Math.pow(Y, 0.33), 500),
-    craterR:   isSurface ? 0.038*Math.pow(Y,1/3.4) : 0,
-    craterDepth: isSurface ? 0.013*Math.pow(Y,1/3.4) : 0,
+    fireball:  isSurface ? 0.05*Math.pow(Y,0.4) : 0.066*Math.pow(Y,0.4),  // G&D Ch.2
+    psi200:    hf * 0.13 * Math.pow(Y, 1/3),  // NWFAQ §5.2
+    psi20:     hf * 0.28 * Math.pow(Y, 1/3),  // NWFAQ §5.2
+    psi5:      hf * 0.71 * Math.pow(Y, 1/3),  // NWFAQ §5.2
+    psi3:      hf * 0.95 * Math.pow(Y, 1/3),  // NWFAQ §5.2
+    psi1:      hf * 2.2 * Math.pow(Y, 1/3),   // NWFAQ §5.2
+    thermal3:  0.67 * Math.pow(Y, 0.41),  // NWFAQ §5.3: 8 cal/cm²
+    thermal2:  0.87 * Math.pow(Y, 0.40),  // NWFAQ §5.3: 5 cal/cm²
+    thermal1:  1.20 * Math.pow(Y, 0.38),  // NWFAQ §5.3: 2.5 cal/cm²
+    radiation: 1.15 * Math.pow(Y, 0.19),  // NWFAQ §5.4: 500 rem
+    neutronRad: Math.min(2.5, 0.7 * Math.pow(Y, 0.19)),  // NWFAQ §5.4
+    gammaRad: Math.min(3.0, 1.0 * Math.pow(Y, 0.19)),  // NWFAQ §5.4
+    emp:       Math.min(2.5 * Math.pow(Y, 0.33), 500),  // G&D Ch.11
+    craterR:   isSurface ? 0.038*Math.pow(Y,1/3.4) : 0,  // G&D Ch.6
+    craterDepth: isSurface ? 0.013*Math.pow(Y,1/3.4) : 0,  // G&D Ch.6
     cloudTopH: (isSurface?0.24:0.29) * Math.pow(Y, 0.42),
     cloudTopR: 0.19 * Math.pow(Y, 0.4),
     stemR:     0.05 * Math.pow(Y, 0.35),

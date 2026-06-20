@@ -131,6 +131,10 @@ NM.LayerSwitcher = {
       osm:        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OSM',maxZoom:19}),
       voyager:    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {attribution:'&copy; CARTO',subdomains:'abcd',maxZoom:19}),
       positron:   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {attribution:'&copy; CARTO',subdomains:'abcd',maxZoom:19}),
+      openTopo:   L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenTopoMap',subdomains:'abc',maxZoom:17}),
+      esriGray:   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {attribution:'&copy; Esri',maxZoom:16}),
+      esriDarkGray: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {attribution:'&copy; Esri',maxZoom:16}),
+      humanitarian: L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {attribution:'&copy; HOT OSM',subdomains:'abc',maxZoom:19}),
     };
     // Satellite + labels combo: overlay labels on imagery
     this._labelOverlay = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {subdomains:'abcd',maxZoom:19,pane:'shadowPane'});

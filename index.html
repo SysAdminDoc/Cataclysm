@@ -3,7 +3,7 @@
 <head>
     <meta property="og:image" content="https://raw.githubusercontent.com/SysAdminDoc/NukeMap/main/banner.png">
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.arcgisonline.com https://raw.githubusercontent.com blob:; connect-src 'self' https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.arcgisonline.com https://api.open-meteo.com; font-src 'self'; media-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr https://*.tile.opentopomap.org https://*.arcgisonline.com https://raw.githubusercontent.com blob:; connect-src 'self' https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://*.tile.openstreetmap.fr https://*.tile.opentopomap.org https://*.arcgisonline.com https://api.open-meteo.com; font-src 'self'; media-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>NukeMap v3.3.0</title>
     <meta name="description" content="Nuclear weapon effects simulator with blast waves, WW3 simulation, MIRV strikes,">
@@ -411,6 +411,10 @@
             <button class="layer-btn" data-layer="osm">OpenStreetMap</button>
             <button class="layer-btn" data-layer="voyager">Voyager</button>
             <button class="layer-btn" data-layer="positron">Light</button>
+            <button class="layer-btn" data-layer="openTopo">OpenTopo</button>
+            <button class="layer-btn" data-layer="esriGray">Esri Gray</button>
+            <button class="layer-btn" data-layer="esriDarkGray">Esri Dark Gray</button>
+            <button class="layer-btn" data-layer="humanitarian">Humanitarian</button>
           </div>
         </div>
 
@@ -604,6 +608,10 @@
     <button class="ms-btn" data-layer="osm">OSM</button>
     <button class="ms-btn" data-layer="voyager">Voyager</button>
     <button class="ms-btn" data-layer="positron">Light</button>
+    <button class="ms-btn" data-layer="openTopo">Topo</button>
+    <button class="ms-btn" data-layer="esriGray">Gray</button>
+    <button class="ms-btn" data-layer="esriDarkGray">Dark Gray</button>
+    <button class="ms-btn" data-layer="humanitarian">Humanitarian</button>
   </div>
 </div>
 <div id="screenshot-hint">Click here or press Escape to exit screenshot mode</div>
