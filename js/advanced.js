@@ -418,16 +418,27 @@ NM.YieldChart = {
 
 // ---- NUCLEAR WINTER ESTIMATES ----
 NM.NuclearWinter = {
-  // Soot injection model (simplified from Toon et al. 2008)
+  // Soot injection model \u2014 Robock & Toon (2007, 2022), Xia et al. (2022, Nature Food)
+  // Calibrated to: 5 Tg soot (India-Pakistan ~100 weapons) \u2192 1-2\u00B0C cooling
+  //                150 Tg soot (US-Russia full exchange) \u2192 8-10\u00B0C cooling, crop failure
   estimate(totalYieldMT, numDets, isUrban) {
-    // Each MT on a city generates ~5 Tg of soot (very rough)
-    // 150 Tg soot = full nuclear winter (~10C global cooling)
-    const sootPerMT = isUrban ? 5 : 0.5; // Tg per MT
+    const sootPerMT = isUrban ? 5 : 0.5; // Tg per MT (Robock & Toon 2007: ~5 Tg/MT urban)
     const totalSoot = totalYieldMT * sootPerMT;
 
-    // Temperature drop (simplified from multiple studies)
-    const tempDrop = Math.min(15, totalSoot * 0.07); // ~0.07 C per Tg
-    const growingSeasonLoss = Math.min(90, tempDrop * 6); // days lost
+    // Robock & Toon temperature model: non-linear soot\u2192cooling relationship
+    // 5 Tg \u2192 ~1.5\u00B0C, 50 Tg \u2192 ~5\u00B0C, 150 Tg \u2192 ~10\u00B0C (saturates due to albedo)
+    const tempDrop = totalSoot < 1 ? totalSoot * 0.3 :
+                     totalSoot < 50 ? 1.5 + (totalSoot - 5) * 0.08 :
+                     totalSoot < 150 ? 5 + (totalSoot - 50) * 0.05 :
+                     Math.min(15, 10 + (totalSoot - 150) * 0.02);
+    const growingSeasonLoss = Math.min(90, tempDrop * 6);
+    // Xia et al. 2022 (Nature Food): famine deaths from crop failure
+    // 5 Tg \u2192 ~250M starve, 47 Tg \u2192 ~2B starve, 150 Tg \u2192 ~5B starve
+    const famineDeaths = totalSoot < 1 ? 0 :
+                         totalSoot < 10 ? totalSoot * 50e6 :
+                         totalSoot < 50 ? 500e6 + (totalSoot - 10) * 37.5e6 :
+                         totalSoot < 150 ? 2e9 + (totalSoot - 50) * 30e6 :
+                         Math.min(5e9, 5e9);
 
     return {
       sootTg: totalSoot,
@@ -436,6 +447,8 @@ NM.NuclearWinter = {
       growingSeasonLossDays: growingSeasonLoss,
       uvIncreasePct: Math.min(80, totalSoot * 0.5),
       ozoneDepletionPct: Math.min(70, totalSoot * 0.4),
+      famineDeaths: Math.round(famineDeaths),
+      recoveryYears: totalSoot < 5 ? 1 : totalSoot < 50 ? 5 : totalSoot < 150 ? 10 : 25,
       severity: totalSoot < 5 ? 'Negligible' : totalSoot < 20 ? 'Minor cooling' : totalSoot < 50 ? 'Significant cooling' : totalSoot < 100 ? 'Nuclear autumn' : 'Nuclear winter'
     };
   },
@@ -451,8 +464,10 @@ NM.NuclearWinter = {
       <div class="nw-row"><span class="nw-label">Growing season lost</span><span class="nw-val">${est.growingSeasonLossDays.toFixed(0)} days</span></div>
       <div class="nw-row"><span class="nw-label">UV increase</span><span class="nw-val">+${est.uvIncreasePct.toFixed(0)}%</span></div>
       <div class="nw-row"><span class="nw-label">Ozone depletion</span><span class="nw-val">${est.ozoneDepletionPct.toFixed(0)}%</span></div>
+      ${est.famineDeaths > 0 ? `<div class="nw-row"><span class="nw-label">Famine deaths (est.)</span><span class="nw-val" style="color:var(--red)">${NM.fmtNum(est.famineDeaths)}</span></div>` : ''}
+      <div class="nw-row"><span class="nw-label">Recovery time</span><span class="nw-val">~${est.recoveryYears} years</span></div>
       <div class="nw-severity" style="color:${est.sootTg > 50 ? 'var(--red)' : est.sootTg > 20 ? 'var(--peach)' : 'var(--green)'}">${est.severity}</div>
-      <div class="nw-note">Based on Toon et al. (2008) soot injection model. Assumes urban targets.</div>
+      <div class="nw-note">Robock & Toon (2007/2022); Xia et al. (2022, Nature Food). Famine from global crop failure.</div>
     </div>`;
   }
 };

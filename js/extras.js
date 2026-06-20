@@ -188,18 +188,52 @@ NM.RadDecay = {
     return results;
   },
 
+  // Fallout arrival time at a downwind distance (G&D Ch.9)
+  arrivalTime(distanceKm, windSpeedKmh) {
+    windSpeedKmh = Math.max(windSpeedKmh || 24, 5);
+    return distanceKm / windSpeedKmh; // hours
+  },
+
+  // Integrated dose from arrival to departure (G&D Ch.9 §9.16)
+  integratedDose(rateAt1hr, arriveHr, stayHr) {
+    if (arriveHr < 0.01) arriveHr = 0.01;
+    const endHr = arriveHr + stayHr;
+    // Integral of R1*t^(-1.2) from t1 to t2 = R1 * (t2^(-0.2) - t1^(-0.2)) / (-0.2)
+    return rateAt1hr * (Math.pow(endHr, -0.2) - Math.pow(arriveHr, -0.2)) / (-0.2);
+  },
+
   generateHTML(yieldKt, fissionFrac, distanceKm) {
     const data = this.calculate(yieldKt, fissionFrac, distanceKm, 720);
     if (!data.length) return '<div style="color:var(--overlay0);font-size:11px">No fallout data (airburst)</div>';
 
+    const windSpeed = +(document.getElementById('wind-speed')?.value) || 24;
+    const arriveHr = this.arrivalTime(distanceKm, windSpeed);
+    const fissionF = (fissionFrac || 50) / 100;
+    const refRate = 3000 * yieldKt * fissionF;
+    const rateAt1hr = refRate * Math.pow(Math.max(distanceKm, 0.1), -2);
+    const doseIfShelter2hr = this.integratedDose(rateAt1hr, arriveHr, 2);
+    const doseIfShelter24hr = this.integratedDose(rateAt1hr, arriveHr, 24);
+    const doseIfExposed = this.integratedDose(rateAt1hr, arriveHr, 48);
+    const rainFactor = 1.5; // rainfall rainout increases local dose ~1.5x (G&D Ch.9)
+
     let html = `<div class="rd-header">Radiation at ${NM.fmtR(distanceKm)} from GZ (${NM.fmtYield(yieldKt)} surface)</div>`;
-    html += '<div class="rd-table"><div class="rd-row rd-head"><span>Time</span><span>Rate (R/hr)</span><span>Status</span></div>';
+    html += `<div class="rd-arrival" style="color:var(--yellow);font-size:11px;margin:4px 0">Fallout arrives: ~${arriveHr < 1 ? (arriveHr * 60).toFixed(0) + ' min' : arriveHr.toFixed(1) + ' hr'} (wind ${windSpeed} km/h)</div>`;
+    html += '<div class="rd-table"><div class="rd-row rd-head"><span>Time</span><span>Rate (R/hr)</span><span>Cum. Dose (R)</span><span>Status</span></div>';
     for (const d of data) {
+      if (d.hours < arriveHr) continue;
+      const cumFromArrival = this.integratedDose(rateAt1hr, arriveHr, d.hours - arriveHr);
       const status = d.rate > 300 ? 'LETHAL' : d.rate > 100 ? 'SEVERE' : d.rate > 10 ? 'DANGER' : d.rate > 0.5 ? 'CAUTION' : 'LOW';
       const statusColor = d.rate > 300 ? 'var(--red)' : d.rate > 100 ? 'var(--peach)' : d.rate > 10 ? 'var(--yellow)' : d.rate > 0.5 ? 'var(--teal)' : 'var(--green)';
-      html += `<div class="rd-row"><span class="rd-time">${d.label}</span><span class="rd-rate">${d.rate >= 1 ? d.rate.toFixed(0) : d.rate.toFixed(2)}</span><span class="rd-status" style="color:${statusColor}">${status}</span></div>`;
+      html += `<div class="rd-row"><span class="rd-time">${d.label}</span><span class="rd-rate">${d.rate >= 1 ? d.rate.toFixed(0) : d.rate.toFixed(2)}</span><span>${cumFromArrival >= 1 ? cumFromArrival.toFixed(0) : cumFromArrival.toFixed(1)} R</span><span class="rd-status" style="color:${statusColor}">${status}</span></div>`;
     }
-    html += '</div><div class="rd-note">7:10 rule: every 7x time increase = 10x dose rate decrease</div>';
+    html += '</div>';
+    html += `<div style="font-size:10px;color:var(--overlay0);margin-top:6px;line-height:1.5">
+      <div>Exposure if sheltered 2 hr then evacuate: <b style="color:var(--text)">${doseIfShelter2hr.toFixed(0)} R</b></div>
+      <div>Exposure if sheltered 24 hr: <b style="color:var(--text)">${doseIfShelter24hr.toFixed(0)} R</b></div>
+      <div>Exposure if outdoors 48 hr: <b style="color:var(--red)">${doseIfExposed.toFixed(0)} R</b> ${doseIfExposed > 450 ? '(LETHAL)' : doseIfExposed > 100 ? '(radiation sickness)' : ''}</div>
+      <div>With rainfall: doses increase ~${rainFactor}× due to rainout concentration</div>
+    </div>`;
+    html += '<div class="rd-note">G&D Ch.9: 7:10 rule with arrival time + dose integration. Rainfall rainout factor ~1.5×.</div>';
     return html;
   }
 };
