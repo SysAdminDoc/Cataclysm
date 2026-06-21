@@ -5,8 +5,8 @@ description = "Scientifically grounded 3D-globe desktop simulator for tsunami ge
 authors = ["SysAdminDoc"]
 license = "MIT"
 repository = "https://github.com/SysAdminDoc/TsunamiSimulator"
-edition = "2021"
-rust-version = "1.78"
+edition = "2024"
+rust-version = "1.85"
 
 [lib]
 name = "tsunami_simulator_lib"

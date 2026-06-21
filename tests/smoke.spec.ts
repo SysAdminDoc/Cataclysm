@@ -48,6 +48,8 @@ test.describe("TsunamiSimulator browser preview", () => {
     await expect(page.getByRole("button", { name: "Share", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Video", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Text", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "KML", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Link", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Citations", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   });

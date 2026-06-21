@@ -29,6 +29,7 @@ export type ScenarioSlot = {
   setRunupResults: (r: RunupAtPointResult[]) => void;
   busyPresetId: string | null;
   simulate: (input: ScenarioInput) => void;
+  lastCustomScenario: ScenarioInput | null;
   /** Last preset/scenario IPC failure, surfaced to the user. Cleared on the
    *  next successful (or newly-started) request. */
   error: string | null;
@@ -47,6 +48,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const [runupResults, setRunupResults] = useState<RunupAtPointResult[]>([]);
   const [busyPresetId, setBusyPresetId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastCustomScenario, setLastCustomScenario] = useState<ScenarioInput | null>(null);
   // Monotonic request id — only the most recent runPreset response is
   // allowed to commit. Stops a slow earlier call from overwriting a fast
   // later one on rapid timeline scrubs.
@@ -69,6 +71,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       setBusyPresetId(null);
       return;
     }
+    setLastCustomScenario(null);
     // A preset selection supersedes any custom scenario IPC already in flight.
     // Otherwise a slow custom response can overwrite the preset the user just picked.
     simulateReqIdRef.current += 1;
@@ -113,6 +116,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       runPresetReqIdRef.current += 1;
       setBusyPresetId(null);
       setActivePresetId(null);
+      setLastCustomScenario(input);
       setError(null);
       if (!inTauri) {
         const d = demoInitialForScenario(input);
@@ -165,6 +169,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     setRunupResults,
     busyPresetId,
     simulate,
+    lastCustomScenario,
     error,
     clearError: () => setError(null),
   };

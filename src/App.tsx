@@ -230,6 +230,8 @@ export default function App() {
     const result = scenarioFromUrl(window.location.search);
     if (result.type === "preset") {
       slotA.setActivePresetId(result.presetId);
+    } else if (result.type === "scenario") {
+      slotA.simulate(result.scenario);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -429,9 +431,9 @@ export default function App() {
           <ToolbarButton
             icon="link"
             onClick={() => {
-              const params = scenarioToUrlParams(slotA.activePresetId, null);
+              const params = scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario);
               if (!params) {
-                showToast("Select a preset to share as a link. Custom scenarios use Copy/Paste.", "info");
+                showToast("Select a preset or run a custom scenario to share as a link.", "info");
                 return;
               }
               const url = `${window.location.origin}${window.location.pathname}${params}`;
@@ -440,9 +442,9 @@ export default function App() {
                 () => showToast("Failed to copy link to clipboard.", "error"),
               );
             }}
-            title="Copy a shareable URL for the current preset"
-            disabled={!slotA.activePresetId}
-            disabledReason="Select a preset first"
+            title="Copy a shareable URL for the current scenario"
+            disabled={!slotA.activePresetId && !slotA.lastCustomScenario}
+            disabledReason={sourceRequiredReason}
             onUnavailable={(reason) => showToast(reason, "info")}
           >
             Link
