@@ -73,7 +73,7 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
       </div>
 
       {viewMode === "timeline" ? (
-        <TimelineView presets={sorted} activeId={activeId} onSelect={onSelect} />
+        <TimelineView presets={sorted} activeId={activeId} onSelect={onSelect} busyId={busyId} />
       ) : (
         <>
           <label className="preset-search">
