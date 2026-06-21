@@ -5,6 +5,7 @@ type Props = {
   presets: Preset[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  busyId?: string | null;
 };
 
 type TimelineEntry = {
@@ -38,7 +39,7 @@ function formatAge(yearsAgo: number): string {
   return `${yearsAgo} yr ago`;
 }
 
-export function TimelineView({ presets, activeId, onSelect }: Props) {
+export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
   const entries = useMemo<TimelineEntry[]>(() => {
     const parsed: TimelineEntry[] = [];
     for (const p of presets) {
@@ -64,6 +65,7 @@ export function TimelineView({ presets, activeId, onSelect }: Props) {
           const pct = ((maxLog - Math.log10(Math.max(e.yearsAgo, 0.1))) / range) * 100;
           const color = SOURCE_COLORS[e.preset.source.kind] ?? "var(--accent)";
           const isActive = activeId === e.preset.id;
+          const isBusy = busyId === e.preset.id;
           return (
             <button
               key={e.preset.id}
@@ -72,6 +74,7 @@ export function TimelineView({ presets, activeId, onSelect }: Props) {
               data-active={isActive ? "true" : "false"}
               style={{ left: `${pct}%` }}
               onClick={() => onSelect(e.preset.id)}
+              disabled={isBusy}
               title={`${e.preset.name} — ${e.preset.date}`}
               type="button"
             >
@@ -81,7 +84,7 @@ export function TimelineView({ presets, activeId, onSelect }: Props) {
               />
               <span className="timeline__label">
                 <strong>{e.preset.name.split(/\s+/).slice(0, 2).join(" ")}</strong>
-                <span>{e.label}</span>
+                <span>{isBusy ? "..." : e.label}</span>
               </span>
             </button>
           );
