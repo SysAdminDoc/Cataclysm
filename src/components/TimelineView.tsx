@@ -27,7 +27,7 @@ function parseDateToYearsAgo(date: string): number | null {
   const bpMatch = date.match(/^~?(\d+)\s*BP$/i);
   if (bpMatch) return parseInt(bpMatch[1], 10);
   const isoMatch = date.match(/^(\d{4})/);
-  if (isoMatch) return 2026 - parseInt(isoMatch[1], 10);
+  if (isoMatch) return new Date().getFullYear() - parseInt(isoMatch[1], 10);
   return null;
 }
 
