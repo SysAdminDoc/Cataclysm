@@ -4,7 +4,7 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
 
 const cesiumSource = "node_modules/cesium/Build/Cesium";
-// Preserve the mapped-drive path on Windows/VMware shared folders. If Rollup
+// Preserve the mapped-drive path on Windows/VMware shared folders. If Rolldown
 // realpaths back to `\\vmware-host\Shared Folders`, the space in the share
 // name can be mangled into an invalid `Y: Folders/...` HTML entry path.
 const htmlEntry = path.resolve(__dirname, "index.html").replace(/\\/g, "/");
@@ -70,15 +70,14 @@ export default defineConfig(async ({ command, mode }) => {
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
     chunkSizeWarningLimit: 4000, // Cesium ships a big bundle
-    rollupOptions: {
+    rolldownOptions: {
       input: htmlEntry,
       output: {
-        manualChunks(id: string) {
-          if (id.includes("node_modules/cesium")) return "cesium";
-          if (id.includes("node_modules/react") || id.includes("node_modules/scheduler")) {
-            return "react-vendor";
-          }
-          return undefined;
+        codeSplitting: {
+          groups: [
+            { name: "cesium", test: /node_modules\/cesium/ },
+            { name: "react-vendor", test: /node_modules\/(react|scheduler)/ },
+          ],
         },
       },
     },
