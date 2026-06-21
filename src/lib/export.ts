@@ -460,10 +460,11 @@ export function exportKml(
   const center = meta.initial?.center;
   const cavityR = meta.initial?.cavity_radius_m ?? 0;
 
-  const placemarks: string[] = [];
+  const sourcePlacemarks: string[] = [];
+  const runupPlacemarks: string[] = [];
 
   if (center) {
-    placemarks.push(`
+    sourcePlacemarks.push(`
     <Placemark>
       <name>${escapeXml(name)} — Source</name>
       <description>${escapeXml(ref)}\n${escapeXml(MODEL_LIMIT_NOTICE)}</description>
@@ -474,7 +475,7 @@ export function exportKml(
     if (cavityR > 500) {
       const ring = circlePolygon(center.lat_deg, center.lon_deg, cavityR, 64);
       const coords = ring.map(([lon, lat]) => `${lon},${lat},0`).join(" ");
-      placemarks.push(`
+      sourcePlacemarks.push(`
     <Placemark>
       <name>Source cavity (r=${Math.round(cavityR / 1000)} km)</name>
       <Style><LineStyle><color>ff4444ff</color><width>2</width></LineStyle>
@@ -488,7 +489,7 @@ export function exportKml(
 
   for (const p of runupPoints) {
     if (!Number.isFinite(p.runup_m) || p.runup_m <= 0) continue;
-    placemarks.push(`
+    runupPlacemarks.push(`
     <Placemark>
       <name>${escapeXml(p.name)}</name>
       <description>Runup: ${p.runup_m.toFixed(1)} m\nArrival: T+${Math.round(p.arrival_time_s / 60)} min\nInundation: ${Math.round(p.inundation_extent_m)} m</description>
@@ -497,7 +498,7 @@ export function exportKml(
     </Placemark>`);
   }
 
-  if (placemarks.length === 0) return false;
+  if (sourcePlacemarks.length === 0 && runupPlacemarks.length === 0) return false;
 
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -505,10 +506,10 @@ export function exportKml(
   <name>TsunamiSimulator — ${escapeXml(name)}</name>
   <description>${escapeXml(MODEL_LIMIT_NOTICE)}</description>
   <Folder>
-    <name>Source</name>${placemarks[0]}${placemarks.length > 1 && cavityR > 500 ? placemarks[1] : ""}
+    <name>Source</name>${sourcePlacemarks.join("")}
   </Folder>
   <Folder>
-    <name>Coastal runup points</name>${placemarks.slice(center ? (cavityR > 500 ? 2 : 1) : 0).join("")}
+    <name>Coastal runup points</name>${runupPlacemarks.join("")}
   </Folder>
 </Document>
 </kml>`;
