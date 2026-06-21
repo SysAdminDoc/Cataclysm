@@ -1,9 +1,31 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { exportGeoJson, suggestedFilename, type ScreenshotMeta } from "../export";
+import { exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+function mockDownload() {
+  let captured: Blob | null = null;
+  vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+    captured = blob as Blob;
+    return "blob:tsunamisim-test";
+  });
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  return () => captured;
+}
+
+const SAMPLE_POINT: RunupPoint = {
+  id: "tokyo",
+  name: "Tokyo Bay",
+  lat: 35.65,
+  lon: 139.77,
+  runup_m: 5.2,
+  arrival_time_s: 3600,
+  inundation_extent_m: 800,
+  offshore_amplitude_m: 1.5,
+};
 
 describe("suggestedFilename", () => {
   it("generates a filename with preset id", () => {
@@ -48,13 +70,7 @@ describe("suggestedFilename", () => {
   });
 
   it("keeps exported GeoJSON coordinates finite near the poles", async () => {
-    let captured: Blob | null = null;
-    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
-      captured = blob as Blob;
-      return "blob:tsunamisim-test";
-    });
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const getBlob = mockDownload();
 
     const ok = exportGeoJson(
       [{
@@ -71,6 +87,7 @@ describe("suggestedFilename", () => {
     );
 
     expect(ok).toBe(true);
+    const captured = getBlob();
     expect(captured).not.toBeNull();
     const fc = JSON.parse(await captured!.text()) as {
       features: Array<{ geometry: { coordinates: number[][][] }; properties: Record<string, number | string> }>;
@@ -87,5 +104,90 @@ describe("suggestedFilename", () => {
     }
     expect(fc.features[0].properties.runup_m).toBe(0);
     expect(fc.features[0].properties.arrival_time_s).toBe(0);
+  });
+});
+
+describe("exportKml", () => {
+  it("returns false when no source and no runup points", () => {
+    expect(exportKml({ timeS: 0 }, [])).toBe(false);
+  });
+
+  it("exports source placemark without cavity when radius is small", async () => {
+    const getBlob = mockDownload();
+    const meta: ScreenshotMeta = {
+      preset: { id: "test", name: "Test Event", reference: "Ref 2024" } as never,
+      initial: {
+        center: { lat_deg: 21.4, lon_deg: -89.5 },
+        cavity_radius_m: 200,
+        peak_amplitude_m: 10,
+      } as never,
+      timeS: 0,
+    };
+
+    const ok = exportKml(meta, []);
+    expect(ok).toBe(true);
+    const kml = await getBlob()!.text();
+    expect(kml).toContain("<?xml");
+    expect(kml).toContain("Test Event");
+    expect(kml).toContain("-89.5,21.4,0");
+    expect(kml).not.toContain("Source cavity");
+  });
+
+  it("includes cavity polygon when radius exceeds 500 m", async () => {
+    const getBlob = mockDownload();
+    const meta: ScreenshotMeta = {
+      preset: { id: "big", name: "Big Impact", reference: "" } as never,
+      initial: {
+        center: { lat_deg: 0, lon_deg: 0 },
+        cavity_radius_m: 5000,
+        peak_amplitude_m: 100,
+      } as never,
+      timeS: 0,
+    };
+
+    exportKml(meta, []);
+    const kml = await getBlob()!.text();
+    expect(kml).toContain("Source cavity");
+    expect(kml).toContain("r=5 km");
+  });
+
+  it("includes runup points and escapes XML special characters", async () => {
+    const getBlob = mockDownload();
+    const meta: ScreenshotMeta = {
+      preset: { id: "test", name: 'Test & "Quotes"', reference: "" } as never,
+      initial: {
+        center: { lat_deg: 0, lon_deg: 0 },
+        cavity_radius_m: 100,
+        peak_amplitude_m: 1,
+      } as never,
+      timeS: 600,
+    };
+
+    exportKml(meta, [SAMPLE_POINT]);
+    const kml = await getBlob()!.text();
+    expect(kml).toContain("Tokyo Bay");
+    expect(kml).toContain("Runup: 5.2 m");
+    expect(kml).toContain("Test &amp; &quot;Quotes&quot;");
+    expect(kml).not.toContain("&\"");
+  });
+
+  it("skips runup points with non-finite or zero runup", () => {
+    const getBlob = mockDownload();
+    const meta: ScreenshotMeta = {
+      initial: {
+        center: { lat_deg: 0, lon_deg: 0 },
+        cavity_radius_m: 100,
+        peak_amplitude_m: 1,
+      } as never,
+      timeS: 0,
+    };
+
+    exportKml(meta, [
+      { ...SAMPLE_POINT, runup_m: 0 },
+      { ...SAMPLE_POINT, id: "nan", name: "NaN", runup_m: NaN },
+      { ...SAMPLE_POINT, id: "inf", name: "Inf", runup_m: Infinity },
+    ]);
+    const blob = getBlob();
+    expect(blob).not.toBeNull();
   });
 });
