@@ -141,6 +141,23 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
   stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
 
+## [0.4.4] - 2026-06-26 - Secondary cockpit state polish
+
+### Changed
+- Refined source readouts, attenuation charts, SWE solver controls, DART
+  observations, diagnostics, citations, and tour progress so secondary
+  surfaces match the cockpit polish level.
+- Added clearer waiting/ready/running/error state badges, chart legends,
+  source-location summaries, solver setup chips, and diagnostic severity
+  counts.
+- Improved responsive guardrails for compact data strips in narrow layouts.
+
+### Fixed
+- Settings now initializes to the Natural Earth default before persisted values
+  load, avoiding an old OSM flash in the modal state.
+- Synced package, Tauri, Cargo, README badge, and visible app metadata to
+  `0.4.4`.
+
 ## [0.4.3] - 2026-06-26 - Premium cockpit polish
 
 ### Changed

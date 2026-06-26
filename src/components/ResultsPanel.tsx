@@ -31,18 +31,27 @@ function formatMagnitude(mw: number): string {
   return Number.isFinite(mw) ? mw.toFixed(2) : "—";
 }
 
+function formatCoord(lat: number, lon: number): string {
+  const ns = lat >= 0 ? "N" : "S";
+  const ew = lon >= 0 ? "E" : "W";
+  return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`;
+}
+
 export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
   if (!initial) {
     return (
       <div className="section">
-        <div className="section__title">Source Readout</div>
+        <div className="section__title">
+          <span>Source Readout</span>
+          <span className="section__badge" data-tone="muted">Waiting</span>
+        </div>
         <div className="empty-state">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>No source selected</strong>
+            <strong>Choose a source to unlock readouts</strong>
             <p>
-              Select a preset or simulate a custom source to see energy, cavity geometry,
-              peak amplitude, and equivalent moment magnitude.
+              Presets and custom scenarios populate energy, source geometry,
+              peak wave amplitude, and equivalent moment magnitude.
             </p>
           </div>
         </div>
@@ -54,6 +63,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
   const cavity = formatLength(initial.cavity_radius_m);
   const amp = formatLength(initial.peak_amplitude_m);
   const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m) : null;
+  const depth = formatLength(initial.center.depth_m ?? 0);
   const totalT = 6 * 3600;
   // Coerce a non-finite timeS to 0 so a bad upstream value can't apply
   // scaleX(NaN) (which collapses the fill bar) or render "NaN minutes".
@@ -63,9 +73,16 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
   return (
     <>
       <div className="section">
-        <div className="section__title">Source Readout</div>
+        <div className="section__title">
+          <span>Source Readout</span>
+          <span className="section__badge" data-tone="success">Ready</span>
+        </div>
+        <div className="source-summary" aria-label="Source center">
+          <span>{formatCoord(initial.center.lat_deg, initial.center.lon_deg)}</span>
+          <span>{depth.value} {depth.unit} depth</span>
+        </div>
         <div className="results">
-          <div className="results__cell">
+          <div className="results__cell" data-tone="primary">
             <div className="results__label">Energy</div>
             <div className="results__value">
               {energy.value}
@@ -73,7 +90,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
               <span className="results__unit">{energy.unit}</span>
             </div>
           </div>
-          <div className="results__cell" title="Equivalent moment magnitude (Hanks–Kanamori 1979)">
+          <div className="results__cell" data-tone="secondary" title="Equivalent moment magnitude (Hanks–Kanamori 1979)">
             <div className="results__label">M_w equivalent</div>
             <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
           </div>
@@ -107,7 +124,10 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
       </div>
 
       <div className="section">
-        <div className="section__title">Timeline (t = 0 → 6 h)</div>
+        <div className="section__title">
+          <span>Timeline</span>
+          <span className="section__badge">{(safeTimeS / 3600).toFixed(2)} h</span>
+        </div>
         <div className="timeline">
           <input
             type="range"
@@ -123,7 +143,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />
           </div>
           <div className="timeline__readout">
-            <span>t = {(safeTimeS / 60).toFixed(0)} min</span>
+            <span>{(safeTimeS / 60).toFixed(0)} min after source</span>
             <span>{(safeTimeS / 3600).toFixed(2)} h</span>
           </div>
         </div>

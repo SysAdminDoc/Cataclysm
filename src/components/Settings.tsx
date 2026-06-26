@@ -19,7 +19,7 @@ export function Settings({ onClose }: Props) {
   useFocusTrap(dialogRef);
   const [token, setTokenLocal] = useState("");
   const [theme, setThemeLocal] = useState<Theme>("mocha");
-  const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>("osm");
+  const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>(DEFAULT_STYLE);
   const [colormapId, setColormapId] = useState<ColormapId>("diverging");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);

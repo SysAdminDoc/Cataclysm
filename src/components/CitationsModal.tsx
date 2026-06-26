@@ -23,6 +23,7 @@ export function CitationsModal({ presets, onClose }: Props) {
   useEscapeKey(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
+  const speculativeCount = presets.filter((p) => p.is_speculative).length;
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
@@ -34,15 +35,20 @@ export function CitationsModal({ presets, onClose }: Props) {
         </header>
         <div className="modal__body">
           <p className="modal__intro">
-            Every preset cites a peer-reviewed paper. Click a reference to open
-            the publisher page in your browser.
+            Every preset keeps its citation visible. References open externally
+            so the model assumptions can be checked against the source material.
           </p>
+          <div className="citations__summary" aria-label="Citation summary">
+            <span><strong>{presets.length}</strong> preset references</span>
+            <span><strong>{speculativeCount}</strong> speculative cases flagged</span>
+          </div>
           <ul className="citations">
             {presets.map((p) => (
               <li key={p.id} className="citations__row">
                 <div className="citations__name">
                   {p.is_speculative && <span className="citations__tag">Speculative</span>}
-                  {p.name} <span className="citations__date">- {p.date}</span>
+                  <span>{p.name}</span>
+                  <span className="citations__date">{p.date}</span>
                 </div>
                 <div className="citations__ref">
                   {p.reference_url ? (
@@ -55,7 +61,8 @@ export function CitationsModal({ presets, onClose }: Props) {
                         openUrl(p.reference_url!);
                       }}
                     >
-                      {p.reference}
+                      <span>{p.reference}</span>
+                      <span className="citations__open">Open</span>
                     </a>
                   ) : (
                     p.reference

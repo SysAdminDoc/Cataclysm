@@ -373,7 +373,7 @@ export default function App() {
             TS
           </span>
           <h1 className="app__title">TsunamiSimulator</h1>
-          <span className="app__version">v0.4.3</span>
+          <span className="app__version">v0.4.4</span>
         </div>
         <div className="app__warning">
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.

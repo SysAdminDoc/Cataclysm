@@ -59,6 +59,12 @@ function modelArrivalS(buoy: DartBuoy, initial: InitialDisplacement | null | und
   return dist / c;
 }
 
+function formatOrigin(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toISOString().replace("T", " ").slice(0, 16);
+}
+
 /** Sparkline of a buoy's observation series — observed in red, current-time cursor in blue,
  *  with optional model/observed arrival-time comparison markers. */
 function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; initial?: InitialDisplacement | null }) {
@@ -80,7 +86,14 @@ function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; in
   const modArrX = modArr != null ? ((modArr - tMin) / (tMax - tMin || 1)) * w : null;
   const arrivalDeltaMin = obsArr != null && modArr != null ? ((modArr - obsArr) / 60) : null;
   return (
-    <svg width={w} height={h + 14} viewBox={`0 0 ${w} ${h + 14}`} className="dart__spark">
+    <svg
+      width={w}
+      height={h + 14}
+      viewBox={`0 0 ${w} ${h + 14}`}
+      className="dart__spark"
+      role="img"
+      aria-label={`${buoy.name} observed DART water level sparkline`}
+    >
       <line x1={0} x2={w} y1={h * 0.5} y2={h * 0.5} stroke="var(--surface2)" strokeDasharray="2 4" />
       <path d={d} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
       {Number.isFinite(cursorX) && cursorX >= 0 && cursorX <= w && (
@@ -132,14 +145,24 @@ export function DartOverlay({ presetId, timeS, initial }: Props) {
           <UiIcon name={expanded ? "chevronDown" : "chevronRight"} size={13} />
           DART buoy observations
         </button>
+        <span className="section__badge">{event.buoys.length} buoys</span>
       </div>
       {expanded && (
         <>
+          <div className="dart__source">
+            <span>Origin {formatOrigin(event.event_origin_utc)} UTC</span>
+            <span>{event.epicenter.lat.toFixed(2)}°, {event.epicenter.lon.toFixed(2)}°</span>
+          </div>
           <p className="swe__hint">
             Observed water-surface elevation from NOAA DART buoys for this
             event. Compare model vs. data: the blue cursor tracks the
             timeline scrubber.
           </p>
+          <div className="chart-legend chart-legend--dart" aria-hidden>
+            <span><i data-tone="observed" /> Observed</span>
+            <span><i data-tone="cursor" /> Timeline</span>
+            <span><i data-tone="coast" /> Arrival markers</span>
+          </div>
           {event.buoys.map((b) => (
             <div key={b.id} className="dart__buoy">
               <div className="dart__name">{b.name}</div>

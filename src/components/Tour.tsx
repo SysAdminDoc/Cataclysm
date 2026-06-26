@@ -80,8 +80,17 @@ export function Tour({ open, onClose }: Props) {
   return (
     <div className="tour-overlay" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       <div className={`tour-card tour-card--${step.pos}`} ref={dialogRef} tabIndex={-1}>
-        <div className="tour-card__step">
-          Step {idx + 1} of {STEPS.length}
+        <div className="tour-card__topline">
+          <span className="tour-card__step">Step {idx + 1} of {STEPS.length}</span>
+          <div className="tour-card__progress" aria-hidden>
+            {STEPS.map((item, stepIdx) => (
+              <span
+                key={item.title}
+                data-active={stepIdx === idx ? "true" : "false"}
+                data-complete={stepIdx < idx ? "true" : "false"}
+              />
+            ))}
+          </div>
         </div>
         <h3 id="tour-title" className="tour-card__title">
           {step.title}
@@ -89,7 +98,7 @@ export function Tour({ open, onClose }: Props) {
         <p className="tour-card__body">{step.body}</p>
         <div className="tour-card__actions">
           <button className="scenario-tab" onClick={onClose} type="button">
-            Skip
+            Close tour
           </button>
           <div className="tour-card__spacer" />
           <button

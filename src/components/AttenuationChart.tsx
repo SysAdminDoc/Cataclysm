@@ -65,12 +65,15 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
   if (!curve || !initial) {
     return (
       <div className="section">
-        <div className="section__title">Wave attenuation</div>
+        <div className="section__title">
+          <span>Wave attenuation</span>
+          <span className="section__badge" data-tone="muted">Waiting</span>
+        </div>
         <div className="empty-state empty-state--compact">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>No source selected</strong>
-            <p>Select a source to see how wave amplitude decays with distance.</p>
+            <strong>Amplitude curve appears after source selection</strong>
+            <p>The chart compares modeled decay, the active wavefront, and arrived coastal samples.</p>
           </div>
         </div>
       </div>
@@ -107,52 +110,62 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
 
   return (
     <div className="section">
-      <div className="section__title">Wave attenuation</div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label="Amplitude vs distance chart">
-        {yTicks.map((logV) => {
-          const y = toY(10 ** logV);
-          return (
-            <g key={`y-${logV}`}>
-              <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="var(--surface1)" strokeWidth={0.5} />
-              <text x={PAD_L - 4} y={y + 3} textAnchor="end" fill="var(--overlay0)" fontSize={8}>
-                {formatAxis(10 ** logV)} m
+      <div className="section__title">
+        <span>Wave attenuation</span>
+        <span className="section__badge">{arrivedPoints.length} arrived</span>
+      </div>
+      <div className="chart-shell">
+        <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label="Modeled wave amplitude decay by distance">
+          {yTicks.map((logV) => {
+            const y = toY(10 ** logV);
+            return (
+              <g key={`y-${logV}`}>
+                <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="var(--surface1)" strokeWidth={0.5} />
+                <text x={PAD_L - 4} y={y + 3} textAnchor="end" fill="var(--overlay0)" fontSize={8}>
+                  {formatAxis(10 ** logV)} m
+                </text>
+              </g>
+            );
+          })}
+          {xTicks.map((logV) => {
+            const x = toX(10 ** logV);
+            return (
+              <text key={`x-${logV}`} x={x} y={H - 4} textAnchor="middle" fill="var(--overlay0)" fontSize={8}>
+                {formatAxis(10 ** logV)} km
               </text>
-            </g>
-          );
-        })}
-        {xTicks.map((logV) => {
-          const x = toX(10 ** logV);
-          return (
-            <text key={`x-${logV}`} x={x} y={H - 4} textAnchor="middle" fill="var(--overlay0)" fontSize={8}>
-              {formatAxis(10 ** logV)} km
-            </text>
-          );
-        })}
-        <path d={pathD} fill="none" stroke="var(--accent)" strokeWidth={1.5} />
-        {wavefrontRange && wavefrontRange > minRange && wavefrontRange < maxRange && (
-          <line
-            x1={toX(wavefrontRange)}
-            x2={toX(wavefrontRange)}
-            y1={PAD_T}
-            y2={PAD_T + PLOT_H}
-            stroke="var(--peach)"
-            strokeWidth={1}
-            strokeDasharray="3,2"
-          />
-        )}
-        {arrivedPoints.slice(0, 12).map((p, i) => (
-          <circle
-            key={i}
-            cx={toX(p.range_km)}
-            cy={toY(p.amplitude_m)}
-            r={3}
-            fill="var(--teal)"
-            opacity={0.8}
-          >
-            <title>{p.name}: {p.amplitude_m.toFixed(2)} m @ {p.range_km.toFixed(0)} km</title>
-          </circle>
-        ))}
-      </svg>
+            );
+          })}
+          <path d={pathD} fill="none" stroke="var(--accent)" strokeWidth={1.5} />
+          {wavefrontRange && wavefrontRange > minRange && wavefrontRange < maxRange && (
+            <line
+              x1={toX(wavefrontRange)}
+              x2={toX(wavefrontRange)}
+              y1={PAD_T}
+              y2={PAD_T + PLOT_H}
+              stroke="var(--peach)"
+              strokeWidth={1}
+              strokeDasharray="3,2"
+            />
+          )}
+          {arrivedPoints.slice(0, 12).map((p, i) => (
+            <circle
+              key={i}
+              cx={toX(p.range_km)}
+              cy={toY(p.amplitude_m)}
+              r={3}
+              fill="var(--teal)"
+              opacity={0.8}
+            >
+              <title>{p.name}: {p.amplitude_m.toFixed(2)} m @ {p.range_km.toFixed(0)} km</title>
+            </circle>
+          ))}
+        </svg>
+        <div className="chart-legend" aria-hidden>
+          <span><i data-tone="curve" /> Modeled decay</span>
+          <span><i data-tone="front" /> Wavefront</span>
+          <span><i data-tone="coast" /> Coast samples</span>
+        </div>
+      </div>
     </div>
   );
 }

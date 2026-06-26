@@ -147,6 +147,14 @@ export function LogViewer({ open, onClose }: Props) {
 
   if (!open) return null;
 
+  const counts = entries.reduce(
+    (acc, entry) => {
+      acc[entry.level] += 1;
+      return acc;
+    },
+    { error: 0, info: 0, log: 0, warn: 0 } as Record<LogEntry["level"], number>,
+  );
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
@@ -162,6 +170,14 @@ export function LogViewer({ open, onClose }: Props) {
             <UiIcon name="close" size={16} />
           </button>
         </div>
+        <p className="log-viewer__intro">
+          Local session diagnostics for export, imagery, and solver errors. Copy this log when reporting a reproducible issue.
+        </p>
+        <div className="log-viewer__summary" aria-label="Log severity counts">
+          <span data-level="error">{counts.error} errors</span>
+          <span data-level="warn">{counts.warn} warnings</span>
+          <span data-level="info">{counts.info} info</span>
+        </div>
         <div className="log-viewer__toolbar">
           <span className="log-viewer__count">{entries.length} entries</span>
           <button
@@ -170,7 +186,8 @@ export function LogViewer({ open, onClose }: Props) {
             type="button"
             aria-describedby={copyStatus !== "idle" ? "log-copy-status" : undefined}
           >
-            Copy to clipboard
+            <UiIcon name="copy" size={14} />
+            Copy log
           </button>
           {copyStatus !== "idle" && (
             <span
@@ -183,12 +200,19 @@ export function LogViewer({ open, onClose }: Props) {
             </span>
           )}
           <button onClick={clearLog} className="log-viewer__btn" type="button">
+            <UiIcon name="trash" size={14} />
             Clear
           </button>
         </div>
         <div className="log-viewer__list" ref={listRef}>
           {entries.length === 0 && (
-            <div className="log-viewer__empty">No log entries yet.</div>
+            <div className="empty-state empty-state--compact log-viewer__empty">
+              <span className="empty-state__icon" aria-hidden />
+              <div>
+                <strong>No diagnostics yet</strong>
+                <p>Warnings and export or solver failures will appear here during this session.</p>
+              </div>
+            </div>
           )}
           {entries.map((e, i) => (
             <div key={i} className="log-viewer__entry" data-level={e.level}>

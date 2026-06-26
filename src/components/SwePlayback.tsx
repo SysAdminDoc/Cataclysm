@@ -163,48 +163,67 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
 
   if (!initial) return null;
 
+  const solverBadge =
+    status === "running"
+      ? "Running"
+      : status === "ready"
+        ? diag?.used_gpu
+          ? "GPU ready"
+          : "CPU ready"
+        : "Ready";
+  const fidelityLabel = cellsPerDeg <= 4 ? "fast preview" : cellsPerDeg >= 10 ? "high fidelity" : "balanced";
+
   return (
     <div className="section">
       <div className="section__title">
         <span>Live SWE Solver</span>
-        <span className="section__badge">{diag?.used_gpu ? "GPU" : "CPU"}</span>
+        <span className="section__badge" data-tone={status === "error" ? "danger" : status === "running" ? "active" : undefined}>
+          {solverBadge}
+        </span>
       </div>
       <p className="swe__hint">
-        Run a shallow-water-equation propagation around the source.
-        Offline-bathymetry toggle uses a coarse basin-mean + shelf-taper
-        approximation; browser preview uses deterministic demo frames.
+        Compute a one-hour shallow-water propagation around the active source.
+        Desktop builds use the backend solver; browser preview renders deterministic demo frames.
       </p>
-      <label className="swe__check">
-        <input
-          type="checkbox"
-          checked={useBathy}
-          onChange={(e) => setUseBathy(e.target.checked)}
-        />
-        <span>Use coarse offline bathymetry (basin-mean + shelf taper)</span>
-      </label>
-      <label className="swe__check">
-        <input
-          type="checkbox"
-          checked={includeLambWave}
-          onChange={(e) => setIncludeLambWave(e.target.checked)}
-        />
-        <span>
-          Include atmospheric Lamb-wave forcing (Hunga Tonga only — Carvajal 2022, Matoza 2022)
-        </span>
-      </label>
-      <label className="swe__check swe__resolution">
-        <span>Resolution: {cellsPerDeg} cells/° ({cellsPerDeg <= 4 ? "fast preview" : cellsPerDeg >= 10 ? "high fidelity" : "balanced"})</span>
-        <input
-          type="range"
-          min={3}
-          max={12}
-          step={1}
-          value={cellsPerDeg}
-          onChange={(e) => setCellsPerDeg(Number(e.target.value))}
-          aria-label="Grid resolution in cells per degree"
-          title="Higher resolution is more accurate but slower. Default is 6."
-        />
-      </label>
+      <div className="swe__meta-grid" aria-label="Solver setup">
+        <span><strong>{N_SNAPSHOTS}</strong> frames</span>
+        <span><strong>60</strong> min window</span>
+        <span><strong>{isTauri() ? "Backend" : "Preview"}</strong> mode</span>
+      </div>
+      <div className="swe__options" role="group" aria-label="Solver options">
+        <label className="swe__check">
+          <input
+            type="checkbox"
+            checked={useBathy}
+            onChange={(e) => setUseBathy(e.target.checked)}
+          />
+          <span>Coarse offline bathymetry</span>
+        </label>
+        <label className="swe__check">
+          <input
+            type="checkbox"
+            checked={includeLambWave}
+            onChange={(e) => setIncludeLambWave(e.target.checked)}
+          />
+          <span>Atmospheric Lamb wave (Hunga Tonga)</span>
+        </label>
+        <label className="swe__check swe__resolution">
+          <span>
+            Resolution <strong>{cellsPerDeg} cells/°</strong>
+            <em>{fidelityLabel}</em>
+          </span>
+          <input
+            type="range"
+            min={3}
+            max={12}
+            step={1}
+            value={cellsPerDeg}
+            onChange={(e) => setCellsPerDeg(Number(e.target.value))}
+            aria-label="Grid resolution in cells per degree"
+            title="Higher resolution is more accurate but slower. Default is 6."
+          />
+        </label>
+      </div>
       <div className="swe__row">
         <button
           className="primary"
@@ -212,7 +231,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
           disabled={status === "running"}
           type="button"
         >
-          {status === "running" ? "Computing..." : status === "ready" ? "Re-run" : "Run simulation"}
+          {status !== "running" && <UiIcon name={status === "ready" ? "refresh" : "play"} size={14} />}
+          {status === "running" ? "Computing..." : status === "ready" ? "Re-run solver" : "Run solver"}
         </button>
         {status === "running" && (
           <button
@@ -220,6 +240,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
             title="Cancel the in-flight simulation and return to idle."
             type="button"
           >
+            <UiIcon name="close" size={14} />
             Cancel
           </button>
         )}
@@ -227,14 +248,22 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">
           <span>Streaming frame {streamProgress} / {N_SNAPSHOTS}</span>
-          <div className="swe__progress" aria-hidden>
+          <div
+            className="swe__progress"
+            role="progressbar"
+            aria-label="SWE solver progress"
+            aria-valuemin={0}
+            aria-valuemax={N_SNAPSHOTS}
+            aria-valuenow={streamProgress}
+          >
             <span style={{ width: `${(streamProgress / N_SNAPSHOTS) * 100}%` }} />
           </div>
         </div>
       )}
       {status === "error" && (
-        <div className="swe__error" role="status" aria-live="polite">
-          {errMsg ?? "Simulation failed."}
+        <div className="swe__error" role="alert">
+          <strong>Simulation failed</strong>
+          <span>{errMsg ?? "The solver returned an error before producing frames."}</span>
         </div>
       )}
       {snapshots && snapshots.length > 1 && (
@@ -290,9 +319,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
             />
           </div>
           <div className="swe__readout">
-            <span>frame {activeIdx + 1}/{snapshots.length}</span>
-            <span>t = {(snapshots[activeIdx].time_s / 60).toFixed(1)} min</span>
-            <span>|η|max = {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
+            <span>Frame {activeIdx + 1}/{snapshots.length}</span>
+            <span>{(snapshots[activeIdx].time_s / 60).toFixed(1)} min</span>
+            <span>|η|max {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
           </div>
           {diag && (
             <div className="swe__readout swe__readout--muted">
@@ -305,7 +334,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
         </>
       )}
       {!isTauri() && (
-        <div className="swe__error">Browser preview: demo SWE frames, not backend physics.</div>
+        <div className="swe__notice">Browser preview uses demo SWE frames, not backend physics.</div>
       )}
     </div>
   );
