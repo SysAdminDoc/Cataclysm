@@ -820,21 +820,11 @@ function initControls() {
   $('save-btn').addEventListener('click', () => {
     if (!currentDets.length) return;
     const name = $('save-name').value.trim() || `Scenario ${new Date().toLocaleDateString()}`;
-    const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
-    if (saves.length >= 50) { $('saved-list').innerHTML = compactState('Maximum 50 saved scenarios. Delete old saves first.', 'warn'); return; }
-    saves.push({
+    _scenarioDB.add({
       name, date: Date.now(),
       dets: currentDets.map(d => ({lat:d.lat,lng:d.lng,yieldKt:d.yieldKt,burstType:d.burstType,weapon:d.weapon}))
-    });
-    try {
-      localStorage.setItem('nukemap-saves', JSON.stringify(saves));
-    } catch(e) {
-      saves.pop();
-      $('saved-list').innerHTML = compactState('Storage is full. Delete saved scenarios or clear browser data.', 'warn');
-      return;
-    }
-    $('save-name').value = '';
-    renderSavedList();
+    }).then(() => { $('save-name').value = ''; renderSavedList(); })
+    .catch(() => { $('saved-list').innerHTML = compactState('Storage is full. Delete saved scenarios or clear browser data.', 'warn'); });
   });
   renderSavedList();
   initEncyclopedia();
@@ -1587,18 +1577,82 @@ function exportPrintReport() {
   setTimeout(() => w.print(), 300);
 }
 
-// ---- SAVE/LOAD SCENARIOS ----
+// ---- SAVE/LOAD SCENARIOS (IndexedDB with localStorage fallback) ----
+const _scenarioDB = {
+  _db: null,
+  _storeName: 'scenarios',
+  open() {
+    if (this._db) return Promise.resolve(this._db);
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) { resolve(null); return; }
+      const req = indexedDB.open('nukemap-scenarios', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(this._storeName, {keyPath: 'id', autoIncrement: true}); };
+      req.onsuccess = () => { this._db = req.result; this._migrate(); resolve(this._db); };
+      req.onerror = () => resolve(null);
+    });
+  },
+  _migrate() {
+    const old = localStorage.getItem('nukemap-saves');
+    if (!old) return;
+    try {
+      const saves = JSON.parse(old);
+      if (saves.length) {
+        const tx = this._db.transaction(this._storeName, 'readwrite');
+        saves.forEach(s => tx.objectStore(this._storeName).add(s));
+        tx.oncomplete = () => localStorage.removeItem('nukemap-saves');
+      }
+    } catch(e) {}
+  },
+  getAll() {
+    if (!this._db) return Promise.resolve(JSON.parse(localStorage.getItem('nukemap-saves') || '[]'));
+    return new Promise(resolve => {
+      const tx = this._db.transaction(this._storeName, 'readonly');
+      const req = tx.objectStore(this._storeName).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  },
+  add(scenario) {
+    if (!this._db) {
+      const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
+      saves.push(scenario);
+      localStorage.setItem('nukemap-saves', JSON.stringify(saves));
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction(this._storeName, 'readwrite');
+      tx.objectStore(this._storeName).add(scenario);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+  delete(id) {
+    if (!this._db) {
+      const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
+      saves.splice(id, 1);
+      localStorage.setItem('nukemap-saves', JSON.stringify(saves));
+      return Promise.resolve();
+    }
+    return new Promise(resolve => {
+      const tx = this._db.transaction(this._storeName, 'readwrite');
+      tx.objectStore(this._storeName).delete(id);
+      tx.oncomplete = resolve;
+    });
+  }
+};
+
 function renderSavedList() {
   const list = $('saved-list'); if (!list) return;
-  const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
-  if (!saves.length) { list.innerHTML = compactState('No saved scenarios yet.'); return; }
-  list.innerHTML = '';
-  saves.forEach((s, i) => {
-    const el = document.createElement('div'); el.className = 'saved-item';
-    el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span><span class="si-meta">${s.dets.length} det${s.dets.length > 1 ? 's' : ''}</span><button class="si-del" data-i="${i}">&times;</button>`;
-    el.addEventListener('click', e => { if (!e.target.classList.contains('si-del')) loadScenario(s); });
-    el.querySelector('.si-del').addEventListener('click', e => { e.stopPropagation(); deleteSave(i); });
-    list.appendChild(el);
+  _scenarioDB.getAll().then(saves => {
+    if (!saves.length) { list.innerHTML = compactState('No saved scenarios yet.'); return; }
+    list.innerHTML = '';
+    saves.forEach((s, i) => {
+      const el = document.createElement('div'); el.className = 'saved-item';
+      el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span><span class="si-meta">${s.dets.length} det${s.dets.length > 1 ? 's' : ''}</span><button class="si-del" data-i="${s.id ?? i}">&times;</button>`;
+      el.addEventListener('click', e => { if (!e.target.classList.contains('si-del')) loadScenario(s); });
+      el.querySelector('.si-del').addEventListener('click', e => { e.stopPropagation(); deleteSave(s.id ?? i); });
+      list.appendChild(el);
+    });
   });
 }
 
@@ -1618,11 +1672,8 @@ function loadScenario(s) {
   }, 1200);
 }
 
-function deleteSave(i) {
-  const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
-  saves.splice(i, 1);
-  localStorage.setItem('nukemap-saves', JSON.stringify(saves));
-  renderSavedList();
+function deleteSave(id) {
+  _scenarioDB.delete(id).then(() => renderSavedList());
 }
 
 // ---- DETONATION TOAST ----
@@ -1657,6 +1708,7 @@ function init() {
   initMap();
   initControls();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  _scenarioDB.open().then(() => renderSavedList());
 
   // Lazy-load ZIP code database (1.5MB) after app is interactive
   // Skip if already loaded (e.g., inlined by build.py offline bundler)
