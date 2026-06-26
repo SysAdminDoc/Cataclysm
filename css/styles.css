@@ -420,6 +420,9 @@ button:disabled:hover,.is-disabled:hover{color:inherit;border-color:var(--contro
 .ds-card{padding:8px;border-radius:6px;background:var(--surface0);border:1px solid var(--surface1);text-align:center}
 .ds-val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
 .ds-label{font-size:8px;color:var(--overlay0);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+.ds-breakdown{margin-top:8px;padding:8px;background:var(--surface0);border:1px solid var(--surface1);border-radius:6px}
+.ds-bk-title{font-size:9px;font-weight:700;color:var(--overlay1);text-transform:uppercase;margin-bottom:4px}
+.ds-bk-row{display:flex;justify-content:space-between;font-size:11px;color:var(--subtext0);padding:2px 0;border-bottom:1px solid rgba(69,71,90,.2)}
 
 /* Weapon info card */
 .wi-card{background:var(--surface0);border-radius:var(--radius-sm);border:1px solid var(--surface1);padding:8px 10px;font-size:10px}

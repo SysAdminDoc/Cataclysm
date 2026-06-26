@@ -79,16 +79,22 @@ NM.EMPDetails = {
 // ---- DESTRUCTION AREA STATISTICS ----
 NM.DestructionStats = {
   generate(effects, casualties) {
-    const totalDestroyed = Math.PI * effects.psi5 * effects.psi5; // km^2, 5 psi = most buildings destroyed
+    const totalDestroyed = Math.PI * effects.psi5 * effects.psi5;
     const heavyDamage = Math.PI * effects.psi20 * effects.psi20;
     const moderateDamage = Math.PI * effects.psi1 * effects.psi1;
     const burnArea = Math.PI * effects.thermal3 * effects.thermal3;
     const totalAffected = Math.PI * Math.max(effects.psi1, effects.thermal1) ** 2;
 
-    // Rough estimates: urban area has ~2000 buildings/km2, 1 hospital per 30,000 people
     const buildingsDestroyed = Math.round(totalDestroyed * 2000);
     const buildingsDamaged = Math.round((moderateDamage - totalDestroyed) * 800);
     const hospitalsAffected = Math.round((casualties.deaths + casualties.injuries) / 30000);
+
+    const resDestroyed = Math.round(buildingsDestroyed * 0.65);
+    const comDestroyed = Math.round(buildingsDestroyed * 0.25);
+    const indDestroyed = Math.round(buildingsDestroyed * 0.10);
+    const avgFloors = casualties.density > 5000 ? 8 : casualties.density > 1000 ? 4 : 2;
+    const avgFloorArea = 0.0002; // km\u00B2 per floor (~200 m\u00B2)
+    const floorAreaDestroyed = buildingsDestroyed * avgFloors * avgFloorArea;
 
     return `<div class="ds-grid">
       <div class="ds-card"><div class="ds-val" style="color:var(--red)">${totalDestroyed.toFixed(1)} km\u00B2</div><div class="ds-label">Total destruction (5+ psi)</div></div>
@@ -98,7 +104,13 @@ NM.DestructionStats = {
       <div class="ds-card"><div class="ds-val" style="color:var(--blue)">${NM.fmtNum(buildingsDestroyed)}</div><div class="ds-label">Est. buildings destroyed</div></div>
       <div class="ds-card"><div class="ds-val" style="color:var(--mauve)">${NM.fmtNum(buildingsDamaged)}</div><div class="ds-label">Est. buildings damaged</div></div>
       <div class="ds-card"><div class="ds-val" style="color:var(--maroon)">${hospitalsAffected}</div><div class="ds-label">Hospitals overwhelmed</div></div>
-      <div class="ds-card"><div class="ds-val" style="color:var(--flamingo)">${(totalDestroyed * 0.386).toFixed(1)} mi\u00B2</div><div class="ds-label">Destruction (sq miles)</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--flamingo)">${floorAreaDestroyed.toFixed(1)} km\u00B2</div><div class="ds-label">Floor area destroyed</div></div>
+    </div>
+    <div class="ds-breakdown">
+      <div class="ds-bk-title">Building Type Breakdown (5+ psi zone)</div>
+      <div class="ds-bk-row"><span>Residential</span><span>${NM.fmtNum(resDestroyed)}</span></div>
+      <div class="ds-bk-row"><span>Commercial</span><span>${NM.fmtNum(comDestroyed)}</span></div>
+      <div class="ds-bk-row"><span>Industrial</span><span>${NM.fmtNum(indDestroyed)}</span></div>
     </div>`;
   }
 };
