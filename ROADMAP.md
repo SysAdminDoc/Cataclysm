@@ -6,80 +6,85 @@ Single source of truth for delivery. Blocked items live in
 
 ---
 
+Legacy actionable items were drained in the prior pass. New incomplete work
+from the current research pass follows.
+
 ## Research-Driven Additions
 
 ### P0
 
-- [ ] P0 — Complete Vite 8 migration: `rolldownOptions` + `codeSplitting`
-  Why: vite.config.ts still uses deprecated `build.rollupOptions` and `manualChunks` function — both produce deprecation warnings and may be removed in Vite 9
-  Evidence: Vite 8 migration guide (vite.dev/guide/migration); Rolldown codeSplitting docs
-  Touches: vite.config.ts — rename key, replace `manualChunks` function with `codeSplitting.groups` regex array, update stale "Rollup" comment on line 9
-  Acceptance: `npx vite build` produces no deprecation warnings; CesiumJS and React chunks are correctly split
+- [ ] P0 — Clear the active DOMPurify supply-chain advisory
+  Why: The current dependency tree has one moderate published advisory in a transitive dependency used by Cesium.
+  Evidence: `npm audit --json`; `package-lock.json` (`cesium@1.142.0 -> @cesium/engine@26.0.0 -> dompurify@3.4.10`); `GHSA-cmwh-pvxp-8882`
+  Touches: `package.json`, `package-lock.json`
+  Acceptance: `npm audit --json` reports zero vulnerabilities and Cesium still renders the globe in browser preview.
   Complexity: S
 
-- [ ] P0 — Add unit tests for recently shipped features
-  Why: AttenuationChart, TimelineView, exportKml, scenarioFromUrl/scenarioToUrlParams were shipped with zero test coverage
-  Evidence: No matching test imports found in src/**/__tests__/
-  Touches: src/lib/__tests__/export.test.ts (add KML tests), src/lib/__tests__/scenario-schema.test.ts (add URL encoding/decoding tests), new src/components/__tests__/TimelineView.test.tsx, new src/components/__tests__/AttenuationChart.test.tsx
-  Acceptance: `npm run test:unit` covers KML export edge cases (empty points, missing center), URL round-trip encoding, timeline date parsing for all preset date formats, attenuation chart log-scale axis computation
+- [ ] P0 — Fix SWE playback label drift in tests and manuals
+  Why: The component now renders "Run solver" while the focused component test and manual still expect/document "Run simulation", weakening both CI signal and user guidance.
+  Evidence: `src/components/SwePlayback.tsx`; `src/components/__tests__/SwePlayback.test.tsx`; `docs/manual/getting-started.md`; `docs/manual/custom-scenarios.md`
+  Touches: `src/components/__tests__/SwePlayback.test.tsx`, `docs/manual/getting-started.md`, `docs/manual/custom-scenarios.md`
+  Acceptance: The SWE Playback component test queries the current accessible name, the manuals use the same label as the UI, and the focused Vitest file completes in CI or a documented local runner.
+  Complexity: S
+
+- [ ] P0 — Sync public version, release, and screenshot truth to v0.4.4
+  Why: Trust cues are split across v0.4.0 GitHub Releases, v0.4.1/v0.4.2 screenshot assets, a v0.4.2 completed-work summary, and v0.4.4 app metadata.
+  Evidence: `rtk gh release list`; `COMPLETED.md`; `assets/screenshots/*.png`; `CONTRIBUTING.md`; `README.md`
+  Touches: `COMPLETED.md`, `CONTRIBUTING.md`, `README.md`, `assets/screenshots/*`, release workflow or GitHub release notes as applicable
+  Acceptance: Public docs and bundled screenshots describe the current Natural Earth default and v0.4.4 cockpit; the latest GitHub release state is either v0.4.4 or explicitly documented as intentionally held.
   Complexity: M
-
-- [ ] P0 — Fix TimelineView hardcoded year 2026
-  Why: `parseDateToYearsAgo` on line 30 of TimelineView.tsx uses `2026 - parseInt(...)` — will show wrong "years ago" values starting January 2027
-  Evidence: src/components/TimelineView.tsx:30
-  Touches: src/components/TimelineView.tsx — replace `2026` with `new Date().getFullYear()`
-  Acceptance: Timeline labels show correct relative ages regardless of the current year
-  Complexity: S
 
 ### P1
 
-- [ ] P1 — Update Playwright smoke test for new toolbar buttons
-  Why: The "export buttons are present" test (smoke.spec.ts lines 46-53) doesn't verify the new KML or Link buttons
-  Evidence: tests/smoke.spec.ts — only checks PNG, Share, Video, Text, Citations, Settings
-  Touches: tests/smoke.spec.ts — add assertions for KML and Link buttons
-  Acceptance: Playwright test verifies all toolbar buttons including KML and Link are rendered
+- [ ] P1 — Harden citation and external-link capability handling
+  Why: Citation links cross the Tauri shell boundary, and the current allowlist includes broad publisher domains plus legacy `http://` hosts.
+  Evidence: `src-tauri/capabilities/default.json`; `src/components/CitationsModal.tsx`; `SECURITY.md`; Tauri shell/security docs
+  Touches: `src-tauri/capabilities/default.json`, `src/components/CitationsModal.tsx`, `src-tauri/src/presets.rs`, citation/reference tests
+  Acceptance: Citation URLs are validated against a centralized HTTPS-first allowlist, unavoidable legacy HTTP links are documented/tested as explicit exceptions, and blocked hosts fail closed with user-visible feedback.
   Complexity: S
 
-- [ ] P1 — Fix KML export fragile placemark-to-folder indexing
-  Why: Lines 508-511 of export.ts use conditional array indexing (`placemarks[1]` when `cavityR > 500`) duplicated between placemark building and folder slotting — divergence would misattribute placemarks
-  Evidence: src/lib/export.ts:508-511
-  Touches: src/lib/export.ts — build separate source/runup arrays instead of indexing a flat placemarks list
-  Acceptance: KML export produces correct folder structure for sources with and without cavity polygons; existing KML test covers both cases
-  Complexity: S
+- [ ] P1 — Add a shared provenance payload to all results and exports
+  Why: Operational and education tsunami tools make model limits, source data, and citations visible in outputs; TsunamiSimulator exports currently carry this unevenly.
+  Evidence: `src/lib/export.ts`; `src/lib/text-export.ts`; `src/components/ResultsPanel.tsx`; GeoClaw/NOAA MOST output conventions
+  Touches: `src/lib/model-provenance.ts` or equivalent, `src/lib/export.ts`, `src/lib/text-export.ts`, `src/components/ResultsPanel.tsx`, export tests
+  Acceptance: PNG/share-card/text/CZML/GeoJSON/KML outputs include scenario type, solver mode, bathymetry source, citation URL/ref, timestamp, app version, and "educational, not warning" limitation text.
+  Complexity: M
 
-- [ ] P1 — Wire custom scenario URL sharing
-  Why: scenarioToUrlParams supports base64 custom scenario encoding but App.tsx line 432 passes null; scenarioFromUrl restores presets but ignores ?scenario= path
-  Evidence: src/App.tsx:432 (passes null), src/App.tsx:231-233 (only handles preset type), src/lib/scenario-schema.ts:378-388 (encoding exists)
-  Touches: src/App.tsx — pass current custom scenario input to scenarioToUrlParams; handle scenario type in URL restore effect
-  Acceptance: Custom scenario Link button copies a ?scenario= URL that another user can paste to restore the full scenario
-  Complexity: S
+- [ ] P1 — Refresh bathymetry strategy to GEBCO_2026 and expose data confidence
+  Why: The repo still targets GEBCO 2024 while GEBCO_2026 is current and includes TID metadata that can improve transparency even before the blocked local-data loader exists.
+  Evidence: GEBCO gridded-data docs; `data/bathymetry/README.md`; `src/data/coastal_points.json`; `src-tauri/src/data/bathymetry.rs`
+  Touches: `data/bathymetry/README.md`, `src/data/coastal_points.json`, `src-tauri/src/data/bathymetry.rs`, `src/components/SwePlayback.tsx`, export provenance
+  Acceptance: Docs/comments/data provenance target GEBCO_2026, UI/export copy labels the current coarse basin/shelf approximation honestly, and the future TID-backed bathymetry path is named without claiming it ships.
+  Complexity: M
 
-- [ ] P1 — Upgrade Rust edition 2021 → 2024
-  Why: Edition 2024 (stable since Rust 1.85, Feb 2025) enables new Cargo resolver, async closures, cfg_select!, updated Rustfmt
-  Evidence: Rust 1.85 announcement; Cargo.toml edition = "2021"
-  Touches: src-tauri/Cargo.toml — change `edition = "2021"` to `edition = "2024"`
-  Acceptance: `cargo check` passes with edition 2024; CI Rust jobs remain green
+- [ ] P1 — Add a local toolchain and verification doctor
+  Why: Local verification is currently fragile: MSVC `link.exe` is missing from this PowerShell PATH, `cargo audit` is not installed, and Vitest 4 worker runs can hang on the VMware shared folder.
+  Evidence: `CLAUDE.md`; local `cargo audit` result; focused Vitest run; `package.json` scripts
+  Touches: `package.json`, `scripts/doctor.mjs` or equivalent, optional CI smoke step
+  Acceptance: `npm run doctor` reports Node/Rust/Tauri, MSVC linker, cargo-audit, workspace path, and recommended Vitest flags with actionable pass/fail messages.
   Complexity: S
 
 ### P2
 
-- [ ] P2 — Bump tsconfig target to ES2025
-  Why: TypeScript 6 defaults to ES2025; vite.config.ts build target already includes es2022/chrome105; ES2025 unlocks Set operations, Array.fromAsync, and other modern syntax without downleveling
-  Evidence: tsconfig.json target = "ES2022"; TS 6 announcement defaults to ES2025
-  Touches: tsconfig.json — change target and lib from ES2022 to ES2025
-  Acceptance: `npx tsc --noEmit` passes; no new runtime errors in browser preview or Playwright tests
-  Complexity: S
+- [ ] P2 — Version and migrate the app settings store
+  Why: Scenario payloads are versioned, but persisted app settings are only normalized key-by-key, making future preference changes harder to migrate safely.
+  Evidence: `src/lib/settings.ts`; `src/lib/scenario-schema.ts`; settings tests
+  Touches: `src/lib/settings.ts`, `src/lib/__tests__/settings-scenarios.test.ts`, `src/components/Settings.tsx`
+  Acceptance: Settings writes include a schema version, legacy settings migrate deterministically, unknown values fall back with diagnostics, and tests cover at least one legacy-to-current migration.
+  Complexity: M
 
-- [ ] P2 — Pass busyId to TimelineView for loading feedback
-  Why: Selecting a preset from the timeline shows no loading indicator because TimelineView doesn't accept or use busyId
-  Evidence: src/components/TimelineView.tsx props lack busyId; src/components/PresetSelector.tsx passes busyId to card list but not timeline
-  Touches: src/components/TimelineView.tsx (add busyId prop, show loading state on active marker), src/components/PresetSelector.tsx (pass busyId through)
-  Acceptance: Clicking a timeline marker shows a visual loading indicator matching the card view's behavior
-  Complexity: S
+- [ ] P2 — Add screenshot-backed visual and accessibility regression coverage for the current cockpit
+  Why: Existing Playwright checks cover smoke paths and axe scans, but the committed screenshots are stale and there is no automated guard for toolbar density, modal clipping, or light/dark cockpit regressions.
+  Evidence: `tests/smoke.spec.ts`; `assets/screenshots/*.png`; `src/styles.css`; Playwright screenshot tooling
+  Touches: `tests/smoke.spec.ts`, `playwright.config.ts`, `assets/screenshots/*`, CI artifacts
+  Acceptance: Playwright captures current v0.4.4 desktop and narrow-layout states for first-run, active preset, SWE running/ready, Settings, citations, and log viewer with no axe violations or obvious overflow.
+  Complexity: M
 
-- [ ] P2 — Document AttenuationChart JS physics as architecture carve-out
-  Why: computeDecayCurve in AttenuationChart.tsx violates the "physics in Rust only" rule (CLAUDE.md); it should either be migrated to a Rust IPC call (blocked on MSVC) or explicitly documented as a sanctioned carve-out like demo.ts
-  Evidence: src/components/AttenuationChart.tsx:23-40 — JS wave decay computation; CLAUDE.md architecture rule
-  Touches: CLAUDE.md — add AttenuationChart to Known residuals as a sanctioned carve-out alongside demo.ts, or add a BROWSER PREVIEW label
-  Acceptance: Architecture violation is either resolved (Rust IPC) or explicitly sanctioned with the same treatment as demo.ts
-  Complexity: S
+### P3
+
+- [ ] P3 — Design a teacher-friendly guided scenario path
+  Why: Comparable public education tools win by making complex models legible quickly; TsunamiSimulator has strong science but no structured lesson flow beyond the first-run tour.
+  Evidence: README personas and "NukeMap for tsunamis" positioning; NOAA Science On a Sphere / Impact: Earth / NUKEMAP education patterns; `src/components/Tour.tsx`
+  Touches: `src/components/Tour.tsx`, `src/components/PresetSelector.tsx`, `docs/manual/getting-started.md`, optional preset metadata
+  Acceptance: Users can launch 3-5 guided scenarios that explain source choice, model limitations, expected readouts, and export/share next steps without adding new physics.
+  Complexity: M
