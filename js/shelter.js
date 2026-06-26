@@ -8,7 +8,7 @@ NM.Shelter = {
     // Get overpressure at distance (rough interpolation)
     const psiAtDist = this.estimatePsi(effects, distanceKm);
     const thermalAtDist = this.estimateThermalCal(effects, distanceKm);
-    const radAtDist = distanceKm <= effects.radiation ? 1 : 0;
+    const radAtDist = distanceKm <= 0.001 ? 1 : Math.max(0, Math.min(1, Math.pow(effects.radiation / Math.max(distanceKm, 0.01), 2)));
 
     for (const shelter of NM.SHELTER_TYPES) {
       const blastSurvival = psiAtDist <= shelter.psi ? 1 : Math.max(0, 1 - (psiAtDist - shelter.psi) / (shelter.psi * 2));

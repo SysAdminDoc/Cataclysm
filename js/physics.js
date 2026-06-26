@@ -60,9 +60,9 @@ NM.calcEffects = function(Y, burstType, heightM, fissionFrac) {
     psi5:      hf * bm.psi5 * Math.pow(Y, 1/3),
     psi3:      hf * bm.psi3 * Math.pow(Y, 1/3),
     psi1:      hf * bm.psi1 * Math.pow(Y, 1/3),
-    thermal3:  0.67 * Math.pow(Y, 0.41),  // NWFAQ §5.3: 8 cal/cm²
-    thermal2:  0.87 * Math.pow(Y, 0.40),  // NWFAQ §5.3: 5 cal/cm²
-    thermal1:  1.20 * Math.pow(Y, 0.38),  // NWFAQ §5.3: 2.5 cal/cm²
+    thermal3:  0.67 * Math.pow(Y, 0.41) * (Y > 1000 ? Math.max(0.7, 1 - (Math.log10(Y) - 3) * 0.15) : 1),  // NWFAQ §5.3 + G&D Ch.7 attenuation
+    thermal2:  0.87 * Math.pow(Y, 0.40) * (Y > 1000 ? Math.max(0.7, 1 - (Math.log10(Y) - 3) * 0.15) : 1),
+    thermal1:  1.20 * Math.pow(Y, 0.38) * (Y > 1000 ? Math.max(0.7, 1 - (Math.log10(Y) - 3) * 0.15) : 1),
     radiation: 1.15 * Math.pow(Y, 0.19),  // NWFAQ §5.4: 500 rem
     neutronRad: Math.min(2.5, 0.7 * Math.pow(Y, 0.19)),  // NWFAQ §5.4
     gammaRad: Math.min(3.0, 1.0 * Math.pow(Y, 0.19)),  // NWFAQ §5.4

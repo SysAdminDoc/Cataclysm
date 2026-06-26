@@ -22,7 +22,8 @@
 <link rel="stylesheet" href="css/styles.css"/>
 </head>
 <body>
-
+<a href="#map" class="skip-link">Skip to map</a>
+<main>
 <div id="map"></div>
 <div id="loading-overlay"><div class="loading-spinner"></div><div class="loading-text">Preparing simulator...</div></div>
 <div id="welcome-overlay">
@@ -89,7 +90,7 @@
       </div>
 
       <!-- ===== WEAPON TAB ===== -->
-      <div class="tab-content active" id="tab-weapon" role="tabpanel">
+      <div class="tab-content active" id="tab-weapon" role="tabpanel" tabindex="0">
         <div class="section">
           <div class="section-title">Warhead</div>
           <input type="text" id="weapon-filter" class="weapon-filter" placeholder="Filter weapons..." autocomplete="off" spellcheck="false" aria-label="Filter weapon presets"/>
@@ -122,12 +123,12 @@
 
         <div class="section">
           <div class="section-title">Detonation</div>
-          <div class="burst-options">
-            <button class="burst-btn active" data-burst="airburst">Airburst</button>
-            <button class="burst-btn" data-burst="surface">Surface</button>
-            <button class="burst-btn" data-burst="custom">Custom</button>
-            <button class="burst-btn" data-burst="hemp">HEMP</button>
-            <button class="burst-btn" data-burst="water">Water</button>
+          <div class="burst-options" role="radiogroup" aria-label="Burst type">
+            <button class="burst-btn active" data-burst="airburst" role="radio" aria-checked="true">Airburst</button>
+            <button class="burst-btn" data-burst="surface" role="radio" aria-checked="false">Surface</button>
+            <button class="burst-btn" data-burst="custom" role="radio" aria-checked="false">Custom</button>
+            <button class="burst-btn" data-burst="hemp" role="radio" aria-checked="false">HEMP</button>
+            <button class="burst-btn" data-burst="water" role="radio" aria-checked="false">Water</button>
           </div>
           <div class="hemp-info" id="hemp-info" style="display:none">
             <div class="info-title">High-Altitude EMP (HEMP)</div>
@@ -316,9 +317,9 @@
         <div class="section">
           <div class="section-title">Weapon Comparison</div>
           <div class="compare-selects">
-            <select id="compare-a"></select>
+            <select id="compare-a" aria-label="Weapon A for comparison"></select>
             <span class="compare-vs">vs</span>
-            <select id="compare-b"></select>
+            <select id="compare-b" aria-label="Weapon B for comparison"></select>
           </div>
           <div class="btn-row mt-0">
             <button class="btn-secondary" id="compare-go">Compare</button>
@@ -357,7 +358,7 @@
           <div id="ww3-scenario-desc" class="section-hint mb-6"></div>
           <div class="compact-row mb-4">
             <label>Speed</label>
-            <select class="compact-input select-sm text-left" id="ww3-speed">
+            <select class="compact-input select-sm text-left" id="ww3-speed" aria-label="Simulation speed">
               <option value="1">1x</option>
               <option value="2">2x</option>
               <option value="5" selected>5x</option>
@@ -366,7 +367,7 @@
           </div>
           <div class="compact-row mb-4">
             <label>Targeting</label>
-            <select class="compact-input select-lg text-left" id="ww3-targeting">
+            <select class="compact-input select-lg text-left" id="ww3-targeting" aria-label="Targeting strategy">
               <option value="all">All targets</option>
               <option value="counterforce">Counterforce only</option>
               <option value="countervalue">Countervalue only</option>
@@ -392,7 +393,7 @@
           <div class="section-title">Missile Flight Time</div>
           <div class="compact-row">
             <label>Type</label>
-            <select class="compact-input select-md text-left" id="missile-type">
+            <select class="compact-input select-md text-left" id="missile-type" aria-label="Missile type">
               <option value="icbm">ICBM</option>
               <option value="slbm">SLBM</option>
               <option value="irbm">IRBM</option>
@@ -664,6 +665,7 @@
 <div id="fact-banner"><div class="fact-label">Did You Know?</div><span id="fact-text"></span></div>
 
 <!-- Libraries -->
+</main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 <!-- Three.js removed - mushroom cloud now uses SVG Leaflet overlay -->
 

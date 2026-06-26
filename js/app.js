@@ -348,8 +348,19 @@ function syncYieldInput(kt) {
 
 // ---- CONTROLS INIT ----
 function initControls() {
-  // Tabs
-  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  // Tabs (WAI-ARIA tabs pattern: click + arrow keys)
+  const tabs = [...document.querySelectorAll('.tab')];
+  tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  document.querySelector('.tabs').addEventListener('keydown', e => {
+    const idx = tabs.indexOf(document.activeElement);
+    if (idx < 0) return;
+    let next = -1;
+    if (e.key === 'ArrowRight') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') next = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    if (next >= 0) { e.preventDefault(); tabs[next].focus(); switchTab(tabs[next].dataset.tab); }
+  });
 
   // Weapon select (grouped by country)
   const sel = $('weapon-select');
@@ -408,8 +419,8 @@ function initControls() {
 
   // Burst buttons
   document.querySelectorAll('.burst-btn').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.burst-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
+    document.querySelectorAll('.burst-btn').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-checked', 'false'); });
+    b.classList.add('active'); b.setAttribute('aria-checked', 'true');
     $('height-row').style.display = b.dataset.burst === 'custom' ? '' : 'none';
     $('wind-wrap').style.display = (b.dataset.burst === 'surface' || b.dataset.burst === 'water') ? '' : 'none';
     $('hemp-info').style.display = b.dataset.burst === 'hemp' ? '' : 'none';
@@ -948,7 +959,9 @@ function initWindCompass() {
       return;
     }
     $('realwind-label').textContent = 'Fetching wind...';
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${center.lat.toFixed(4)}&longitude=${center.lng.toFixed(4)}&current=wind_speed_10m,wind_direction_10m`)
+    const _windAbort = new AbortController();
+    setTimeout(() => _windAbort.abort(), 8000);
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${center.lat.toFixed(4)}&longitude=${center.lng.toFixed(4)}&current=wind_speed_10m,wind_direction_10m`, {signal: _windAbort.signal})
       .then(r => r.json())
       .then(data => {
         if (data.current) {
