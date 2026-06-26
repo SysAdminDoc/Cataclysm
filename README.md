@@ -1,7 +1,7 @@
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/SysAdminDoc/AsteroidSimulator/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/SysAdminDoc/AsteroidSimulator/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Web-lightgrey.svg)]()
-[![Tests](https://img.shields.io/badge/tests-43%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-59%20passing-brightgreen.svg)]()
 
 # AsteroidSimulator
 
@@ -17,7 +17,12 @@ The first open-source implementation of the complete Collins et al. 2005 impact 
 - **Blast & Thermal** — Overpressure damage rings, thermal burn radii, fireball visualization
 - **Seismic** — Richter magnitude + Mercalli intensity at observer distance
 - **Ocean Impacts** — Ward & Asphaug 2000 tsunami model with dispersive attenuation + Synolakis runup
-- **NASA NEO Database** — Search real asteroids (Apophis, Bennu, 2024 YR4) via JPL SBDB API
+- **NASA NEO Database** — Search real asteroids (Apophis, Bennu, 2024 YR4) via JPL SBDB API with orbital velocity
+- **Close Approach Table** — Upcoming asteroid flybys from CNEOS with "what if it hit?" simulation
+- **Atmospheric Absorption** — Thermal radiation reduced by realistic atmospheric transmittance
+- **Ground Reflection** — Mach stem amplification for surface burst overpressure (1.0-1.8x)
+- **Global Effects** — Extinction-level impact consequences (impact winter, wildfires, acid rain)
+- **Export** — Download simulation as JSON or copy shareable link
 - **Interactive 3D Globe** — CesiumJS with damage ring overlays, trajectory arc, animated blast wave
 - **6 Historical Presets** — Chelyabinsk, Tunguska, Meteor Crater, Ries, Chesapeake Bay, Chicxulub
 - **Observer Marker** — Right-click to place observer, auto-computes great-circle distance

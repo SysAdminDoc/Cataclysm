@@ -56,7 +56,7 @@ export default function App() {
             AsteroidSimulator
           </span>
           <span style={{ color: catppuccinMocha.overlay0, fontSize: 12, marginLeft: 10 }}>
-            v0.1.0
+            v0.2.0
           </span>
         </div>
 

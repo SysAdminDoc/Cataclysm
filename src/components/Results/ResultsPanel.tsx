@@ -205,6 +205,50 @@ export function ResultsPanel({ results }: ResultsPanelProps) {
         </Section>
       )}
 
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <button
+          style={{
+            flex: 1,
+            padding: '5px 8px',
+            background: catppuccinMocha.surface0,
+            color: catppuccinMocha.subtext1,
+            border: `1px solid ${catppuccinMocha.surface1}`,
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 11,
+          }}
+          onClick={() => {
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'asteroid-simulation.json';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Export JSON
+        </button>
+        <button
+          style={{
+            flex: 1,
+            padding: '5px 8px',
+            background: catppuccinMocha.surface0,
+            color: catppuccinMocha.subtext1,
+            border: `1px solid ${catppuccinMocha.surface1}`,
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 11,
+          }}
+          onClick={() => {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url);
+          }}
+        >
+          Copy Link
+        </button>
+      </div>
+
       <Section title="At Your Location">
         <div style={{
           background: catppuccinMocha.surface0,

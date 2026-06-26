@@ -3,6 +3,7 @@ import { COMPOSITION_DENSITY } from '../../physics/constants';
 import type { ImpactParams, TargetType } from '../../physics/types';
 import { PRESETS } from '../../presets/historical';
 import { NeoSearch } from './NeoSearch';
+import { CloseApproach } from './CloseApproach';
 
 interface InputPanelProps {
   params: ImpactParams;
@@ -21,6 +22,7 @@ function SliderRow({
   unit,
   onChange,
   format,
+  tooltip,
 }: {
   label: string;
   value: number;
@@ -30,12 +32,13 @@ function SliderRow({
   unit: string;
   onChange: (v: number) => void;
   format?: (v: number) => string;
+  tooltip?: string;
 }) {
   const display = format ? format(value) : value.toLocaleString();
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 12 }} title={tooltip}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ color: catppuccinMocha.subtext1, fontSize: 12 }}>{label}</span>
+        <span style={{ color: catppuccinMocha.subtext1, fontSize: 12, cursor: tooltip ? 'help' : undefined }}>{label}</span>
         <span style={{ color: catppuccinMocha.text, fontSize: 12, fontWeight: 600 }}>
           {display} {unit}
         </span>
@@ -139,6 +142,7 @@ export function InputPanel({ params, onUpdate, onLoadPreset, lat, lon }: InputPa
         unit="m"
         onChange={v => onUpdate('diameter', v)}
         format={v => (v >= 1000 ? `${(v / 1000).toFixed(1)} km` : `${v}`)}
+        tooltip="Impactor diameter. Chelyabinsk was ~19m, Chicxulub ~12km."
       />
 
       <div style={{ marginBottom: 12 }}>
@@ -167,6 +171,7 @@ export function InputPanel({ params, onUpdate, onLoadPreset, lat, lon }: InputPa
         unit="km/s"
         onChange={v => onUpdate('velocity', v * 1000)}
         format={v => v.toFixed(1)}
+        tooltip="Impact velocity. Min 11.2 km/s (Earth escape), max 72 km/s (head-on comet)."
       />
 
       <SliderRow
@@ -177,6 +182,7 @@ export function InputPanel({ params, onUpdate, onLoadPreset, lat, lon }: InputPa
         step={1}
         unit="deg"
         onChange={v => onUpdate('angle', v)}
+        tooltip="Angle from horizontal. 90° = vertical impact. Most probable angle is 45°."
       />
 
       <div style={s.subheading}>Target</div>
@@ -229,9 +235,18 @@ export function InputPanel({ params, onUpdate, onLoadPreset, lat, lon }: InputPa
         unit="km"
         onChange={v => onUpdate('distance', v * 1000)}
         format={v => v.toLocaleString()}
+        tooltip="Your distance from ground zero. Effects are calculated at this distance. Right-click globe to set visually."
       />
 
       <NeoSearch
+        onSelect={neo => {
+          onUpdate('diameter', neo.diameter);
+          onUpdate('density', neo.density);
+          onUpdate('velocity', neo.velocity);
+        }}
+      />
+
+      <CloseApproach
         onSelect={neo => {
           onUpdate('diameter', neo.diameter);
           onUpdate('density', neo.density);
