@@ -34,10 +34,10 @@ export default defineConfig(async ({ command, mode }) => {
     react(),
     viteStaticCopy({
       targets: [
-        { src: `${cesiumSource}/Workers`, dest: "cesium" },
-        { src: `${cesiumSource}/ThirdParty`, dest: "cesium" },
-        { src: `${cesiumSource}/Assets`, dest: "cesium" },
-        { src: `${cesiumSource}/Widgets`, dest: "cesium" },
+        { src: `${cesiumSource}/Workers`, dest: "cesium", rename: { stripBase: 4 } },
+        { src: `${cesiumSource}/ThirdParty`, dest: "cesium", rename: { stripBase: 4 } },
+        { src: `${cesiumSource}/Assets`, dest: "cesium", rename: { stripBase: 4 } },
+        { src: `${cesiumSource}/Widgets`, dest: "cesium", rename: { stripBase: 4 } },
       ],
     }),
   ],

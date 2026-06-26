@@ -1,6 +1,6 @@
 # TsunamiSimulator
 
-[![Version](https://img.shields.io/badge/version-0.4.2-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.3-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -89,8 +89,8 @@ Existing tools each do one piece:
 
 ### UX
 
-- **5 globe styles**: OpenStreetMap (default, no token), Esri World Imagery,
-  Natural Earth II (offline), Cesium World Imagery, Cesium World Bathymetry.
+- **5 globe styles**: Natural Earth II (default, local-first), OpenStreetMap,
+  Esri World Imagery, Cesium World Imagery, Cesium World Bathymetry.
 - **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
   forms; click-globe-to-pick location.
 - **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
@@ -111,11 +111,12 @@ Prebuilt installers for the latest release are on the
 Windows (`.msi`, `.exe`), macOS universal (`.dmg`), and Linux
 (`.AppImage`, `.deb`, `.rpm`).
 
-The app launches on the no-token **OpenStreetMap** globe by default and is
-fully usable out of the box. A free Cesium ion token (optional) unlocks
-high-resolution satellite imagery and visual bathymetric terrain from the
-Settings dialog. Solver bathymetry remains the app's coarse offline
-basin/shelf approximation until the blocked GEBCO data path is resolved.
+The app launches on the bundled **Natural Earth II** globe by default and is
+fully usable without network tiles or a token. OpenStreetMap and Esri imagery
+remain no-token online options, and a free Cesium ion token unlocks
+high-resolution satellite imagery and visual bathymetric terrain from Settings.
+Solver bathymetry remains the app's coarse offline basin/shelf approximation
+until the blocked GEBCO data path is resolved.
 
 ### Build from source
 

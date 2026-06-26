@@ -142,6 +142,7 @@ function ToolbarButton({
   active,
   disabled,
   disabledReason,
+  variant = "export",
   title,
   onClick,
   onUnavailable,
@@ -151,6 +152,7 @@ function ToolbarButton({
   active?: boolean;
   disabled?: boolean;
   disabledReason?: string;
+  variant?: "mode" | "export" | "utility";
   title: string;
   onClick: () => void;
   onUnavailable?: (reason: string) => void;
@@ -164,6 +166,7 @@ function ToolbarButton({
       className="icon-button"
       data-active={active ? "true" : "false"}
       data-disabled={unavailable ? "true" : "false"}
+      data-variant={variant}
       aria-disabled={unavailable}
       onClick={() => {
         if (unavailable) {
@@ -341,8 +344,8 @@ export default function App() {
             <UiIcon name="info" size={14} />
           </span>
           <span>
-            <strong>Optional imagery token.</strong> Add a free Cesium ion token for
-            satellite imagery and bathymetry. The default OSM globe works without setup.
+            <strong>Optional imagery token.</strong> The default Natural Earth globe
+            works locally. Add a free Cesium ion token for satellite imagery and bathymetry.
           </span>
           <button
             className="token-banner__action"
@@ -370,197 +373,205 @@ export default function App() {
             TS
           </span>
           <h1 className="app__title">TsunamiSimulator</h1>
-          <span className="app__version">v0.4.2</span>
+          <span className="app__version">v0.4.3</span>
         </div>
         <div className="app__warning">
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
         </div>
-        <div className="app__header-actions">
-          <ToolbarButton
-            icon="inspect"
-            active={inspectMode}
-            onClick={() => {
-              setInspectMode((v) => !v);
-              if (!inspectMode) setPickMode(false);
-            }}
-            title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
-            disabled={!slotA.initial}
-            disabledReason={sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            Inspect
-          </ToolbarButton>
-          <ToolbarButton
-            icon="compare"
-            active={compareMode}
-            onClick={() => setCompareMode((v) => !v)}
-            title="Toggle side-by-side comparison mode"
-          >
-            Compare
-          </ToolbarButton>
-          <ToolbarButton
-            icon="image"
-            onClick={() => {
-              const ok = exportGlobePng({ preset: activePresetA, initial: slotA.initial, timeS });
-              showToast(ok ? "Saved globe PNG." : "No globe view to export yet.", ok ? "info" : "error");
-            }}
-            title="Save the current globe view as PNG"
-            disabled={!slotA.initial}
-            disabledReason={sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            PNG
-          </ToolbarButton>
-          <ToolbarButton
-            icon="share"
-            onClick={() => {
-              const ok = exportGlobeShareCard({
-                preset: activePresetA,
-                initial: slotA.initial,
-                timeS,
-              });
-              showToast(ok ? "Saved share card." : "No globe view to export yet.", ok ? "info" : "error");
-            }}
-            title="Save a branded share-card with scenario metadata + citation overlay"
-            disabled={!slotA.initial}
-            disabledReason={sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            Share
-          </ToolbarButton>
-          <ToolbarButton
-            icon="link"
-            onClick={() => {
-              const params = scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario);
-              if (!params) {
-                showToast("Select a preset or run a custom scenario to share as a link.", "info");
-                return;
-              }
-              const url = `${window.location.origin}${window.location.pathname}${params}`;
-              navigator.clipboard.writeText(url).then(
-                () => showToast("Scenario link copied to clipboard.", "info"),
-                () => showToast("Failed to copy link to clipboard.", "error"),
-              );
-            }}
-            title="Copy a shareable URL for the current scenario"
-            disabled={!slotA.activePresetId && !slotA.lastCustomScenario}
-            disabledReason={sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            Link
-          </ToolbarButton>
-          <ToolbarButton
-            icon="video"
-            onClick={async () => {
-              if (recording) return;
-              setRecording(true);
-              try {
-                const result = await exportGlobeVideo(
-                  { preset: activePresetA, initial: slotA.initial, timeS },
-                  { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
+        <div className="app__header-actions" aria-label="Application actions">
+          <div className="app__command-group app__command-group--modes" role="group" aria-label="Analysis modes">
+            <ToolbarButton
+              icon="inspect"
+              active={inspectMode}
+              variant="mode"
+              onClick={() => {
+                setInspectMode((v) => !v);
+                if (!inspectMode) setPickMode(false);
+              }}
+              title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
+              disabled={!slotA.initial}
+              disabledReason={sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              Inspect
+            </ToolbarButton>
+            <ToolbarButton
+              icon="compare"
+              active={compareMode}
+              variant="mode"
+              onClick={() => setCompareMode((v) => !v)}
+              title="Toggle side-by-side comparison mode"
+            >
+              Compare
+            </ToolbarButton>
+          </div>
+          <div className="app__command-group app__command-group--exports" role="group" aria-label="Export current scenario">
+            <ToolbarButton
+              icon="image"
+              onClick={() => {
+                const ok = exportGlobePng({ preset: activePresetA, initial: slotA.initial, timeS });
+                showToast(ok ? "Saved globe PNG." : "No globe view to export yet.", ok ? "info" : "error");
+              }}
+              title="Save the current globe view as PNG"
+              disabled={!slotA.initial}
+              disabledReason={sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              PNG
+            </ToolbarButton>
+            <ToolbarButton
+              icon="share"
+              onClick={() => {
+                const ok = exportGlobeShareCard({
+                  preset: activePresetA,
+                  initial: slotA.initial,
+                  timeS,
+                });
+                showToast(ok ? "Saved share card." : "No globe view to export yet.", ok ? "info" : "error");
+              }}
+              title="Save a branded share-card with scenario metadata + citation overlay"
+              disabled={!slotA.initial}
+              disabledReason={sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              Share
+            </ToolbarButton>
+            <ToolbarButton
+              icon="link"
+              onClick={() => {
+                const params = scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario);
+                if (!params) {
+                  showToast("Select a preset or run a custom scenario to share as a link.", "info");
+                  return;
+                }
+                const url = `${window.location.origin}${window.location.pathname}${params}`;
+                navigator.clipboard.writeText(url).then(
+                  () => showToast("Scenario link copied to clipboard.", "info"),
+                  () => showToast("Failed to copy link to clipboard.", "error"),
                 );
-                showToast(
-                  result.ok ? "Saved globe recording." : `Video export failed: ${result.reason}`,
-                  result.ok ? "info" : "error",
-                );
-              } finally {
-                setRecording(false);
-              }
-            }}
-            title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
-            disabled={!slotA.initial || recording}
-            disabledReason={recording ? "Recording is already in progress." : sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            {recording ? "Recording" : "Video"}
-          </ToolbarButton>
-          <ToolbarButton
-            icon="text"
-            onClick={() => {
-              downloadTextExport({
-                preset: activePresetA,
-                initial: slotA.initial,
-                timeS,
-                runupResults: slotA.runupResults,
-              });
-              showToast("Saved text results.", "info");
-            }}
-            title="Export scenario parameters and runup results as a screen-reader-friendly text file"
-            disabled={!slotA.initial}
-            disabledReason={sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            Text
-          </ToolbarButton>
-          <ToolbarButton
-            icon="czml"
-            onClick={() => {
-              if (sweSnapshots && sweSnapshots.length > 0) {
-                const ok = exportCzml({ preset: activePresetA, initial: slotA.initial, timeS }, sweSnapshots);
-                showToast(ok ? "Saved CZML playback file." : "No snapshots to export.", ok ? "info" : "error");
-              } else {
-                showToast("Run SWE simulation first to export CZML.", "error");
-              }
-            }}
-            title="Export SWE simulation as a CZML file for playback in any Cesium viewer"
-            disabled={!sweSnapshots || sweSnapshots.length === 0}
-            disabledReason={snapshotsRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            CZML
-          </ToolbarButton>
-          <ToolbarButton
-            icon="geojson"
-            onClick={() => {
-              const points: RunupPoint[] = slotA.runupResults.map((r) => ({
-                id: r.id,
-                name: r.name,
-                lat: r.lat,
-                lon: r.lon,
-                runup_m: r.runup_m,
-                arrival_time_s: r.arrival_time_s,
-                inundation_extent_m: r.inundation_extent_m,
-                offshore_amplitude_m: r.offshore_amplitude_m,
-              }));
-              const ok = exportGeoJson(points, { preset: activePresetA, initial: slotA.initial, timeS });
-              showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
-            }}
-            title="Export inundation polygons as GeoJSON"
-            disabled={slotA.runupResults.length === 0}
-            disabledReason={runupRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            GeoJSON
-          </ToolbarButton>
-          <ToolbarButton
-            icon="kml"
-            onClick={() => {
-              const points: RunupPoint[] = slotA.runupResults.map((r) => ({
-                id: r.id,
-                name: r.name,
-                lat: r.lat,
-                lon: r.lon,
-                runup_m: r.runup_m,
-                arrival_time_s: r.arrival_time_s,
-                inundation_extent_m: r.inundation_extent_m,
-                offshore_amplitude_m: r.offshore_amplitude_m,
-              }));
-              const ok = exportKml({ preset: activePresetA, initial: slotA.initial, timeS }, points);
-              showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
-            }}
-            title="Export source and runup data as KML for Google Earth"
-            disabled={!slotA.initial}
-            disabledReason={sourceRequiredReason}
-            onUnavailable={(reason) => showToast(reason, "info")}
-          >
-            KML
-          </ToolbarButton>
-          <ToolbarButton icon="citations" onClick={() => setShowCitations(true)} title="View citations">
-            Citations
-          </ToolbarButton>
-          <ToolbarButton icon="settings" onClick={() => setShowSettings(true)} title="Settings">
-            Settings
-          </ToolbarButton>
+              }}
+              title="Copy a shareable URL for the current scenario"
+              disabled={!slotA.activePresetId && !slotA.lastCustomScenario}
+              disabledReason={sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              Link
+            </ToolbarButton>
+            <ToolbarButton
+              icon="video"
+              onClick={async () => {
+                if (recording) return;
+                setRecording(true);
+                try {
+                  const result = await exportGlobeVideo(
+                    { preset: activePresetA, initial: slotA.initial, timeS },
+                    { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
+                  );
+                  showToast(
+                    result.ok ? "Saved globe recording." : `Video export failed: ${result.reason}`,
+                    result.ok ? "info" : "error",
+                  );
+                } finally {
+                  setRecording(false);
+                }
+              }}
+              title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
+              disabled={!slotA.initial || recording}
+              disabledReason={recording ? "Recording is already in progress." : sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              {recording ? "Recording" : "Video"}
+            </ToolbarButton>
+            <ToolbarButton
+              icon="text"
+              onClick={() => {
+                downloadTextExport({
+                  preset: activePresetA,
+                  initial: slotA.initial,
+                  timeS,
+                  runupResults: slotA.runupResults,
+                });
+                showToast("Saved text results.", "info");
+              }}
+              title="Export scenario parameters and runup results as a screen-reader-friendly text file"
+              disabled={!slotA.initial}
+              disabledReason={sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              Text
+            </ToolbarButton>
+            <ToolbarButton
+              icon="czml"
+              onClick={() => {
+                if (sweSnapshots && sweSnapshots.length > 0) {
+                  const ok = exportCzml({ preset: activePresetA, initial: slotA.initial, timeS }, sweSnapshots);
+                  showToast(ok ? "Saved CZML playback file." : "No snapshots to export.", ok ? "info" : "error");
+                } else {
+                  showToast("Run SWE simulation first to export CZML.", "error");
+                }
+              }}
+              title="Export SWE simulation as a CZML file for playback in any Cesium viewer"
+              disabled={!sweSnapshots || sweSnapshots.length === 0}
+              disabledReason={snapshotsRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              CZML
+            </ToolbarButton>
+            <ToolbarButton
+              icon="geojson"
+              onClick={() => {
+                const points: RunupPoint[] = slotA.runupResults.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  lat: r.lat,
+                  lon: r.lon,
+                  runup_m: r.runup_m,
+                  arrival_time_s: r.arrival_time_s,
+                  inundation_extent_m: r.inundation_extent_m,
+                  offshore_amplitude_m: r.offshore_amplitude_m,
+                }));
+                const ok = exportGeoJson(points, { preset: activePresetA, initial: slotA.initial, timeS });
+                showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
+              }}
+              title="Export inundation polygons as GeoJSON"
+              disabled={slotA.runupResults.length === 0}
+              disabledReason={runupRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              GeoJSON
+            </ToolbarButton>
+            <ToolbarButton
+              icon="kml"
+              onClick={() => {
+                const points: RunupPoint[] = slotA.runupResults.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  lat: r.lat,
+                  lon: r.lon,
+                  runup_m: r.runup_m,
+                  arrival_time_s: r.arrival_time_s,
+                  inundation_extent_m: r.inundation_extent_m,
+                  offshore_amplitude_m: r.offshore_amplitude_m,
+                }));
+                const ok = exportKml({ preset: activePresetA, initial: slotA.initial, timeS }, points);
+                showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
+              }}
+              title="Export source and runup data as KML for Google Earth"
+              disabled={!slotA.initial}
+              disabledReason={sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              KML
+            </ToolbarButton>
+          </div>
+          <div className="app__command-group app__command-group--utility" role="group" aria-label="References and preferences">
+            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="View citations">
+              Citations
+            </ToolbarButton>
+            <ToolbarButton icon="settings" variant="utility" onClick={() => setShowSettings(true)} title="Settings">
+              Settings
+            </ToolbarButton>
+          </div>
         </div>
       </header>
 
@@ -600,9 +611,8 @@ export default function App() {
           </div>
         )}
         <div className="footer-note">
-          Each preset cites a peer-reviewed paper.{" "}
+          <span>Peer-reviewed parameters and local diagnostics.</span>
           <button type="button" onClick={() => setShowCitations(true)}>View all citations</button>
-          {" | "}
           <button type="button" onClick={() => setShowLog(true)}>Diagnostics log</button>
         </div>
       </aside>

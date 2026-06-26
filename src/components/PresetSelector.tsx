@@ -51,7 +51,7 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
     <div className="section">
       <div className="section__title">
         <span>Historical presets</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="section__title-actions">
           <div className="preset-view-toggle" role="group" aria-label="View mode">
             <button
               type="button"
@@ -76,15 +76,26 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
         <TimelineView presets={sorted} activeId={activeId} onSelect={onSelect} busyId={busyId} />
       ) : (
         <>
-          <label className="preset-search">
-            <span className="sr-only">Search presets</span>
+          <div className="preset-search">
+            <UiIcon name="search" size={14} className="preset-search__icon" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search events, dates, or source type"
+              aria-label="Search presets"
               type="search"
             />
-          </label>
+            {query && (
+              <button
+                className="preset-search__clear"
+                type="button"
+                aria-label="Clear preset search"
+                onClick={() => setQuery("")}
+              >
+                <UiIcon name="close" size={13} />
+              </button>
+            )}
+          </div>
           <div className="preset-list">
             {visible.length === 0 && (
               <div className="empty-state empty-state--compact" role="status">
@@ -92,6 +103,9 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
                 <div>
                   <strong>No matching presets</strong>
                   <p>Try a source type, date, event name, or citation keyword.</p>
+                  <button className="empty-state__action" type="button" onClick={() => setQuery("")}>
+                    Clear search
+                  </button>
                 </div>
               </div>
             )}
@@ -104,6 +118,7 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
                   data-active={activeId === p.id ? "true" : "false"}
                   data-speculative={p.is_speculative ? "true" : "false"}
                   aria-pressed={activeId === p.id}
+                  aria-busy={isBusy}
                   onClick={() => onSelect(p.id)}
                   disabled={isBusy}
                   title={p.controversy_note ?? p.reference}
@@ -119,11 +134,11 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
                         <UiIcon name="check" size={13} />
                       </span>
                     )}
-                    {isBusy && <span className="preset-card__busy" aria-label="Loading">...</span>}
+                    {isBusy && <span className="preset-card__busy" aria-label="Loading">Loading</span>}
                   </div>
                   <div className="preset-card__meta">
-                    <span>{p.date}</span>
-                    <span>{p.source.kind}</span>
+                    <span className="preset-card__date">{p.date}</span>
+                    <span className="preset-card__source" data-kind={p.source.kind}>{p.source.kind}</span>
                   </div>
                   <div className="preset-card__blurb">{p.blurb}</div>
                   {p.is_speculative && p.controversy_note && (

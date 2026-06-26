@@ -7,7 +7,7 @@
  */
 
 import { isTauri } from "./tauri";
-import type { GlobeStyleId } from "./globe-styles";
+import { DEFAULT_STYLE, type GlobeStyleId } from "./globe-styles";
 import { parseScenarioPayload } from "./scenario-schema";
 
 export type Theme = "mocha" | "latte";
@@ -30,7 +30,7 @@ export type Settings = {
 const DEFAULTS: Settings = {
   cesium_token: "",
   theme: "mocha",
-  globe_style: "osm",
+  globe_style: DEFAULT_STYLE,
   colormap: "diverging",
   disclaimer_acknowledged_at: null,
   tour_completed_at: null,

@@ -40,25 +40,25 @@ export function FirstRunDisclaimer() {
         </header>
         <div className="modal__body">
           <p className="notice-lede">
-            TsunamiSimulator helps explore peer-reviewed source models and
-            first-order coastal effects. It must not guide evacuation,
-            routing, hazard forecasting, insurance, or operational decisions.
+            TsunamiSimulator is an exploratory model for peer-reviewed source
+            physics, wave propagation, and first-order coastal effects. It must
+            not guide evacuation, routing, forecasting, insurance, or operations.
           </p>
           <div className="notice-grid" aria-label="Use guidance">
             <div className="notice-grid__item">
-              <strong>Use for</strong>
-              <span>Scenario exploration, classroom demos, and model intuition.</span>
+              <strong>Good for</strong>
+              <span>Scenario exploration, classroom demonstrations, and model intuition.</span>
             </div>
             <div className="notice-grid__item" data-tone="warning">
-              <strong>Do not use for</strong>
+              <strong>Not for</strong>
               <span>Forecasts, evacuation timing, route choice, or emergency decisions.</span>
             </div>
             <div className="notice-grid__item">
-              <strong>Official warnings</strong>
+              <strong>Official sources</strong>
               <span>Use NOAA NTWC/PTWC, JMA, IOC/UNESCO systems, or your local authority.</span>
             </div>
             <div className="notice-grid__item" data-tone="warning">
-              <strong>Known limits</strong>
+              <strong>Limits to expect</strong>
               <span>Coarse bathymetry, simplified runup, and approximate export geometry.</span>
             </div>
           </div>

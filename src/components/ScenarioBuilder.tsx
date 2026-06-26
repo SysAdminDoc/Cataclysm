@@ -16,6 +16,7 @@ import type {
   LandslideInput,
   NuclearBurstInput,
 } from "../types/scenario";
+import { UiIcon } from "./UiIcon";
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
@@ -125,13 +126,13 @@ function NumField({
         {help && (
           <button
             type="button"
-            className="scenario-field__help-btn"
+          className="scenario-field__help-btn"
             aria-label={`Help: ${label}`}
             aria-expanded={helpOpen}
-            onClick={(e) => { e.preventDefault(); setHelpOpen((v) => !v); }}
-          >
-            ?
-          </button>
+          onClick={(e) => { e.preventDefault(); setHelpOpen((v) => !v); }}
+        >
+            <UiIcon name="info" size={13} />
+        </button>
         )}
       </span>
       {helpOpen && help && (
@@ -431,6 +432,7 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
             onClick={onTogglePick}
             type="button"
           >
+            <UiIcon name="mapPin" size={14} />
             {pickActive ? "Picking location" : "Pick on globe"}
           </button>
           <button className="primary" onClick={submit} type="button">
@@ -439,15 +441,19 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
         </div>
         <div className="scenario-actions__row">
           <button onClick={saveCurrentScenario} type="button" title="Save current scenario for later">
+            <UiIcon name="save" size={14} />
             Save
           </button>
           <button onClick={() => setShowSaved((v) => !v)} type="button" title="Load a saved scenario">
+            <UiIcon name="folder" size={14} />
             Load{savedScenarios.length > 0 ? ` (${savedScenarios.length})` : ""}
           </button>
           <button onClick={copyScenario} type="button" title="Copy scenario parameters to clipboard">
+            <UiIcon name="copy" size={14} />
             Copy
           </button>
           <button onClick={pasteScenario} type="button" title="Paste scenario parameters from clipboard">
+            <UiIcon name="clipboard" size={14} />
             Paste
           </button>
           {clipMsg && (
@@ -478,14 +484,20 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
                   type="button"
                   aria-label={`Delete ${s.name}`}
                 >
-                  ×
+                  <UiIcon name="trash" size={13} />
                 </button>
               </div>
             ))}
           </div>
         )}
         {showSaved && savedScenarios.length === 0 && (
-          <div className="scenario-saved__empty">No saved scenarios yet.</div>
+          <div className="empty-state empty-state--compact scenario-saved__empty">
+            <span className="empty-state__icon" aria-hidden />
+            <div>
+              <strong>No saved scenarios yet.</strong>
+              <p>Save the current parameters to reuse them later.</p>
+            </div>
+          </div>
         )}
       </div>
     </div>

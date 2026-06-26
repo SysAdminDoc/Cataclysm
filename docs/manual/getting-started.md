@@ -8,7 +8,7 @@ Download the latest installer from the [Releases page](https://github.com/SysAdm
 - **macOS**: Universal `.dmg` (Intel + Apple Silicon)
 - **Linux**: `.AppImage`, `.deb`, or `.rpm`
 
-The app launches immediately with the **OpenStreetMap** globe — no account or token required.
+The app launches immediately with the bundled **Natural Earth II** globe — no account, token, or network tiles required.
 
 ## Optional: Cesium ion token
 
@@ -19,7 +19,7 @@ For high-resolution satellite imagery and bathymetric terrain, you can add a fre
 3. In TsunamiSimulator, click **Settings** in the toolbar
 4. Paste the token and click **Save**
 
-Without a token, the app uses OpenStreetMap tiles, which are perfectly functional for all simulation features.
+Without a token, the app uses the local Natural Earth globe by default. OpenStreetMap and Esri imagery are also available as no-token online styles.
 
 ## Your first simulation
 

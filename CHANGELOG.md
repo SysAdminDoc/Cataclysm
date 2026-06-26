@@ -141,6 +141,26 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
   stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
 
+## [0.4.3] - 2026-06-26 - Premium cockpit polish
+
+### Changed
+- Made Natural Earth II the local-first default globe style so first launch no
+  longer depends on network tiles; token-gated imagery failures now fall back
+  to Natural Earth instead of OSM.
+- Rebuilt the header into grouped analysis, export, and utility command zones
+  with a desktop density rule that prevents toolbar clipping at 1280px.
+- Refined preset cards, search, empty states, source badges, scenario utility
+  actions, saved-scenario states, modal surfaces, tour cards, and diagnostics
+  styling for a more cohesive premium cockpit.
+- Tightened Settings and first-run microcopy around local-first imagery,
+  official warnings, model limits, and privacy of optional Cesium ion tokens.
+
+### Fixed
+- Fixed the clipped first/last toolbar controls that could hide Inspect or
+  Settings in the 1280px browser preview.
+- Synced package, Tauri, Cargo, README badge, manual, and visible app metadata
+  to `0.4.3`.
+
 ## [0.4.2] - 2026-06-19 - Premium interaction-state polish
 
 ### Changed

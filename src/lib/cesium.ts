@@ -37,7 +37,7 @@ export function tokenConfigured(): boolean {
  * Prime the Cesium default token. Called by the Settings UI when the user
  * pastes a token, and during app boot from persisted settings. Passing
  * null/empty clears the cached token (so ion-backed styles fail-fast back
- * to OSM rather than retrying with a stale value).
+ * to the bundled Natural Earth globe rather than retrying with a stale value).
  */
 export function primeCesiumToken(token: string | null | undefined): void {
   const trimmed = (token ?? "").trim();
@@ -48,7 +48,7 @@ export function primeCesiumToken(token: string | null | undefined): void {
       cachedToken = envTok;
     } else {
       // Explicit clear — Cesium ion APIs will now reject and the Globe
-      // fallback path will choose OSM.
+      // fallback path will choose Natural Earth.
       Cesium.Ion.defaultAccessToken = "";
       cachedToken = null;
     }

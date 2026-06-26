@@ -10,17 +10,17 @@ describe("findStyle", () => {
 
   it("returns default for unknown id", () => {
     const style = findStyle("nonexistent");
-    expect(style.id).toBe(GLOBE_STYLES[0].id);
+    expect(style.id).toBe(DEFAULT_STYLE);
   });
 
   it("returns default for null", () => {
     const style = findStyle(null);
-    expect(style.id).toBe(GLOBE_STYLES[0].id);
+    expect(style.id).toBe(DEFAULT_STYLE);
   });
 
   it("returns default for undefined", () => {
     const style = findStyle(undefined);
-    expect(style.id).toBe(GLOBE_STYLES[0].id);
+    expect(style.id).toBe(DEFAULT_STYLE);
   });
 
   it("marks token-requiring styles", () => {
@@ -44,8 +44,8 @@ describe("findStyle", () => {
 });
 
 describe("DEFAULT_STYLE", () => {
-  it("is osm", () => {
-    expect(DEFAULT_STYLE).toBe("osm");
+  it("is local-first Natural Earth", () => {
+    expect(DEFAULT_STYLE).toBe("natural-earth-2");
   });
 });
 

@@ -3,13 +3,18 @@ type UiIconName =
   | "check"
   | "chevronDown"
   | "chevronRight"
+  | "clipboard"
   | "close"
   | "copy"
+  | "folder"
   | "info"
+  | "mapPin"
   | "pause"
   | "play"
   | "refresh"
   | "reset"
+  | "save"
+  | "search"
   | "trash";
 
 type Props = {
@@ -62,6 +67,15 @@ export function UiIcon({ name, size = 16, className }: Props) {
       </svg>
     );
   }
+  if (name === "clipboard") {
+    return (
+      <svg {...common}>
+        <rect x="6" y="4" width="12" height="17" rx="2" />
+        <path d="M9 4a3 3 0 0 1 6 0" />
+        <path d="M9 9h6M9 13h6M9 17h4" />
+      </svg>
+    );
+  }
   if (name === "close") {
     return (
       <svg {...common}>
@@ -78,12 +92,28 @@ export function UiIcon({ name, size = 16, className }: Props) {
       </svg>
     );
   }
+  if (name === "folder") {
+    return (
+      <svg {...common}>
+        <path d="M4 6h6l2 2h8v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
+        <path d="M4 10h16" />
+      </svg>
+    );
+  }
   if (name === "info") {
     return (
       <svg {...common}>
         <path d="M12 17v-6" />
         <path d="M12 7h.01" />
         <rect x="3" y="3" width="18" height="18" rx="4" />
+      </svg>
+    );
+  }
+  if (name === "mapPin") {
+    return (
+      <svg {...common}>
+        <path d="M12 21s7-5.1 7-12a7 7 0 0 0-14 0c0 6.9 7 12 7 12Z" />
+        <circle cx="12" cy="9" r="2.2" />
       </svg>
     );
   }
@@ -118,6 +148,23 @@ export function UiIcon({ name, size = 16, className }: Props) {
         <path d="M4 7h10a6 6 0 1 1-4.2 10.2" />
         <path d="M4 7l4-4" />
         <path d="M4 7l4 4" />
+      </svg>
+    );
+  }
+  if (name === "save") {
+    return (
+      <svg {...common}>
+        <path d="M5 3h12l2 2v16H5Z" />
+        <path d="M8 3v6h8V3" />
+        <path d="M8 21v-7h8v7" />
+      </svg>
+    );
+  }
+  if (name === "search") {
+    return (
+      <svg {...common}>
+        <circle cx="10.5" cy="10.5" r="5.5" />
+        <path d="m15 15 5 5" />
       </svg>
     );
   }

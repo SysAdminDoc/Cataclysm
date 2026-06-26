@@ -153,7 +153,8 @@ export function Globe({
     const viewer = new Cesium.Viewer(containerRef.current, {
       terrain: undefined,
       // Don't auto-pick a default base layer — we install our own below
-      // (OSM by default) so the globe always renders without a token.
+      // (Natural Earth by default) so first launch does not depend on
+      // network tiles or a token.
       baseLayer: false as unknown as Cesium.ImageryLayer,
       baseLayerPicker: false,
       geocoder: false,
@@ -198,7 +199,7 @@ export function Globe({
   }, [primary]);
 
   // Resolve which globe style we should be using — prop override, persisted
-  // setting, or DEFAULT_STYLE (OSM). Listens for `tsunamisim:settings-saved`
+  // setting, or DEFAULT_STYLE. Listens for `tsunamisim:settings-saved`
   // so the user sees the change without having to restart.
   useEffect(() => {
     if (styleId) {
@@ -279,9 +280,9 @@ export function Globe({
         setImageryStatus("ready");
       } catch (err) {
         if (isStale()) return;
-        console.warn("[globe] imagery/terrain load failed; falling back to OSM.", err);
+        console.warn("[globe] imagery/terrain load failed; falling back to Natural Earth.", err);
         try {
-          const fallback = await buildImagery("osm");
+          const fallback = await buildImagery(DEFAULT_STYLE);
           if (isStale()) return;
           if (imageryLayerRef.current) {
             viewer.imageryLayers.remove(imageryLayerRef.current, true);
@@ -291,14 +292,12 @@ export function Globe({
           imageryLayerRef.current = fallbackLayer;
           // Only surface the toast when the user explicitly chose a
           // token-gated style (i.e. they pasted a token but it 401'd
-          // or upstream is down). For style swaps to OSM-default no
-          // toast is needed — the fallback path engages routinely on
-          // missing-token cases via buildImagery's short-circuit.
+          // or upstream is down). For free style swaps no toast is needed.
           const styleMeta = (await import("../lib/globe-styles")).findStyle(resolvedStyle);
           setImageryStatus(styleMeta.requires_token ? "fallback" : "ready");
         } catch (innerErr) {
           if (isStale()) return;
-          console.error("[globe] OSM fallback also failed", innerErr);
+          console.error("[globe] Natural Earth fallback also failed", innerErr);
           setImageryStatus("error");
         }
       }
@@ -1048,7 +1047,7 @@ export function Globe({
       )}
       {imageryStatus === "fallback" && (
         <div className="app__globe-status" data-status="fallback" role="status" aria-live="polite">
-          Cesium ion imagery unavailable (invalid token or upstream error) — fell back to OSM.
+          Cesium ion imagery unavailable (invalid token or upstream error) — fell back to Natural Earth.
         </div>
       )}
       {imageryStatus === "offline" && (

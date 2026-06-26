@@ -8,8 +8,8 @@ import "./styles.css";
 
 // Prime the Cesium token from persisted settings before React renders the
 // Globe. We mount the React tree immediately and let the token settle in
-// the background — the globe defaults to OSM (no token required) so it's
-// usable even before the token arrives. When the token write completes, a
+// the background — the globe defaults to bundled Natural Earth, so it is
+// usable before any token or network tile request. When the token write completes, a
 // later Globe re-render picks it up via primeCesiumToken().
 settings
   .getCesiumToken()

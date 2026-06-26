@@ -1,7 +1,8 @@
 /**
  * Globe imagery / terrain style options. Each entry says how to construct
- * a Cesium imagery provider + optional terrain. The OSM default works with
- * no token, so the app is usable on first launch.
+ * a Cesium imagery provider + optional terrain. The Natural Earth default is
+ * bundled with Cesium, so the app is usable on first launch without network
+ * tiles or a token.
  */
 
 import * as Cesium from "cesium";
@@ -21,23 +22,25 @@ export type GlobeStyleMeta = {
   requires_token: boolean;
 };
 
+export const DEFAULT_STYLE: GlobeStyleId = "natural-earth-2";
+
 export const GLOBE_STYLES: GlobeStyleMeta[] = [
+  {
+    id: "natural-earth-2",
+    label: "Natural Earth II (offline-friendly)",
+    description: "Local Natural Earth raster. Default — fast, stable, and usable without network tiles.",
+    requires_token: false,
+  },
   {
     id: "osm",
     label: "OpenStreetMap (no token)",
-    description: "Free OSM raster tiles. Default — works without any setup.",
+    description: "Free OSM raster tiles. More detailed online map context; no token required.",
     requires_token: false,
   },
   {
     id: "esri-world-imagery",
     label: "Esri World Imagery (satellite, no token)",
     description: "Free public Esri satellite imagery tiles. No token required.",
-    requires_token: false,
-  },
-  {
-    id: "natural-earth-2",
-    label: "Natural Earth II (offline-friendly)",
-    description: "Generalised world raster from Natural Earth. Lightweight.",
     requires_token: false,
   },
   {
@@ -54,15 +57,24 @@ export const GLOBE_STYLES: GlobeStyleMeta[] = [
   },
 ];
 
-export const DEFAULT_STYLE: GlobeStyleId = "osm";
-
 export function findStyle(id: GlobeStyleId | string | undefined | null): GlobeStyleMeta {
-  return GLOBE_STYLES.find((s) => s.id === id) ?? GLOBE_STYLES[0];
+  return GLOBE_STYLES.find((s) => s.id === id)
+    ?? GLOBE_STYLES.find((s) => s.id === DEFAULT_STYLE)
+    ?? GLOBE_STYLES[0];
+}
+
+function naturalEarthImagery(): Cesium.ImageryProvider {
+  return new Cesium.UrlTemplateImageryProvider({
+    url: `${CESIUM_BASE_URL}/Assets/Textures/NaturalEarthII/{z}/{x}/{reverseY}.jpg`,
+    tilingScheme: new Cesium.GeographicTilingScheme(),
+    credit: "Natural Earth II — public domain (https://www.naturalearthdata.com/)",
+    maximumLevel: 2,
+  });
 }
 
 /**
  * Build a Cesium imagery provider for the given style id. Falls back to the
- * default OSM provider if the requested style isn't constructable (e.g.
+ * default Natural Earth provider if the requested style isn't constructable (e.g.
  * token-gated provider but no token). Token presence is preflighted before
  * hitting the network so a misconfigured request doesn't waste a Cesium ion
  * quota point.
@@ -73,12 +85,9 @@ export async function buildImagery(id: GlobeStyleId): Promise<Cesium.ImageryProv
   const meta = findStyle(id);
   if (meta.requires_token && !tokenConfigured()) {
     console.info(
-      `[globe] '${id}' requires a Cesium ion token; falling back to OSM. Paste a token in Settings to enable.`,
+      `[globe] '${id}' requires a Cesium ion token; falling back to Natural Earth. Paste a token in Settings to enable.`,
     );
-    return new Cesium.OpenStreetMapImageryProvider({
-      url: "https://tile.openstreetmap.org/",
-      credit: "© OpenStreetMap contributors",
-    });
+    return naturalEarthImagery();
   }
 
   switch (id) {
@@ -96,28 +105,16 @@ export async function buildImagery(id: GlobeStyleId): Promise<Cesium.ImageryProv
     case "natural-earth-2":
       // Cesium ships a tiny Natural Earth II tileset locally in its Assets.
       // No network or token needed.
-      return await Cesium.TileMapServiceImageryProvider.fromUrl(
-        Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII"),
-        {
-          credit: "Natural Earth II — public domain (https://www.naturalearthdata.com/)",
-          maximumLevel: 5,
-        },
-      );
+      return naturalEarthImagery();
     case "cesium-world-imagery":
       return Cesium.IonImageryProvider.fromAssetId(2);
     case "cesium-bathymetry":
       // Bathymetry is a terrain layer, not imagery — the caller pairs it
       // with one of the imagery options above. Return Natural Earth as the
       // matching imagery default.
-      return await Cesium.TileMapServiceImageryProvider.fromUrl(
-        Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII"),
-        { credit: "Natural Earth II — public domain", maximumLevel: 5 },
-      );
+      return naturalEarthImagery();
     default:
-      return new Cesium.OpenStreetMapImageryProvider({
-        url: "https://tile.openstreetmap.org/",
-        credit: "© OpenStreetMap contributors",
-      });
+      return naturalEarthImagery();
   }
 }
 

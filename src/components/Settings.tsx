@@ -5,7 +5,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { settings, type Theme, type ColormapId } from "../lib/settings";
 import { setTheme } from "../lib/theme";
-import { GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
+import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
 
@@ -99,9 +99,9 @@ export function Settings({ onClose }: Props) {
             <h3 className="settings__h3">Globe imagery</h3>
             <p className="modal__intro">
               Pick how the globe is rendered. The default
-              (<strong>OpenStreetMap</strong>) works out of the box — no token,
-              no setup. Higher-fidelity Cesium ion layers (bathymetry, satellite)
-              require a free token (Section below).
+              (<strong>Natural Earth II</strong>) is local-first and reliable
+              without network tiles. Online street, satellite, bathymetry, and
+              terrain layers remain available when you want more context.
             </p>
             <select
               value={globeStyle}
@@ -149,13 +149,16 @@ export function Settings({ onClose }: Props) {
               </a>
               .
             </p>
-            <input
-              type="password"
-              autoComplete="off"
-              placeholder={needsToken ? "Required for this globe style..." : "Paste your token here (optional)..."}
-              value={token}
-              onChange={(e) => setTokenLocal(e.target.value)}
-            />
+            <label className="settings__field">
+              <span>Access token</span>
+              <input
+                type="password"
+                autoComplete="off"
+                placeholder={needsToken ? "Required for this globe style..." : "Paste your token here (optional)..."}
+                value={token}
+                onChange={(e) => setTokenLocal(e.target.value)}
+              />
+            </label>
           </section>
 
           <section className="settings__section">
@@ -269,6 +272,7 @@ export function Settings({ onClose }: Props) {
                 }}
                 type="button"
               >
+                <UiIcon name="info" size={14} />
                 Show first-run again
               </button>
               <button
@@ -283,6 +287,7 @@ export function Settings({ onClose }: Props) {
                 }}
                 type="button"
               >
+                <UiIcon name="refresh" size={14} />
                 Replay tour
               </button>
               <button
@@ -296,15 +301,17 @@ export function Settings({ onClose }: Props) {
                 }}
                 type="button"
               >
+                <UiIcon name="alert" size={14} />
                 Show token banner again
               </button>
               <button
                 className="scenario-tab"
+                data-tone="danger"
                 onClick={async () => {
                   await settings.resetAll();
                   setTokenLocal("");
                   setThemeLocal("mocha");
-                  setGlobeStyle("osm");
+                  setGlobeStyle(DEFAULT_STYLE);
                   setColormapId("diverging");
                   primeCesiumToken(null);
                   if (typeof window !== "undefined") {
@@ -314,6 +321,7 @@ export function Settings({ onClose }: Props) {
                 }}
                 type="button"
               >
+                <UiIcon name="reset" size={14} />
                 Reset to defaults
               </button>
             </div>
