@@ -33,6 +33,12 @@ NM.CITATIONS = {
   mortality: {ref:'Harney 2009; Nuclear Radius Pro', note:'Bayesian combined mortality: P(death)=1-(1-Pb)(1-Pt)(1-Pr). Indoor PF=0.4, indoor fraction=80%.'},
 };
 
+NM._physicsModel = 'nwfaq';
+NM.BLAST_MODELS = {
+  nwfaq:   {psi200: 0.13, psi20: 0.28, psi5: 0.71, psi3: 0.95, psi1: 2.2, label: 'NWFAQ Optimum Burst'},
+  freeair: {psi200: 0.11, psi20: 0.24, psi5: 0.59, psi3: 0.79, psi1: 1.93, label: 'G&D Free-Air'},
+};
+
 NM.calcEffects = function(Y, burstType, heightM, fissionFrac) {
   Y = Math.max(Y, 0.001);
   fissionFrac = (fissionFrac ?? 50) / 100;
@@ -41,14 +47,15 @@ NM.calcEffects = function(Y, burstType, heightM, fissionFrac) {
   const optH = 0.22 * Math.pow(Y, 1/3) * 1000;  // G&D Ch.3 §3.73
   const h = burstType === 'airburst' ? optH : (heightM || 0);
   const hf = isSurface ? 0.8 : 1.0;  // NWFAQ §5.2: surface burst factor
+  const bm = NM.BLAST_MODELS[NM._physicsModel] || NM.BLAST_MODELS.nwfaq;
 
   return {
     fireball:  isSurface ? 0.05*Math.pow(Y,0.4) : 0.066*Math.pow(Y,0.4),  // G&D Ch.2
-    psi200:    hf * 0.13 * Math.pow(Y, 1/3),  // NWFAQ §5.2
-    psi20:     hf * 0.28 * Math.pow(Y, 1/3),  // NWFAQ §5.2
-    psi5:      hf * 0.71 * Math.pow(Y, 1/3),  // NWFAQ §5.2
-    psi3:      hf * 0.95 * Math.pow(Y, 1/3),  // NWFAQ §5.2
-    psi1:      hf * 2.2 * Math.pow(Y, 1/3),   // NWFAQ §5.2
+    psi200:    hf * bm.psi200 * Math.pow(Y, 1/3),
+    psi20:     hf * bm.psi20 * Math.pow(Y, 1/3),
+    psi5:      hf * bm.psi5 * Math.pow(Y, 1/3),
+    psi3:      hf * bm.psi3 * Math.pow(Y, 1/3),
+    psi1:      hf * bm.psi1 * Math.pow(Y, 1/3),
     thermal3:  0.67 * Math.pow(Y, 0.41),  // NWFAQ §5.3: 8 cal/cm²
     thermal2:  0.87 * Math.pow(Y, 0.40),  // NWFAQ §5.3: 5 cal/cm²
     thermal1:  1.20 * Math.pow(Y, 0.38),  // NWFAQ §5.3: 2.5 cal/cm²

@@ -109,6 +109,18 @@
         </div>
 
         <div class="section">
+          <div class="section-title">Physics Model</div>
+          <div class="select-wrap compact">
+            <select class="custom-select" id="physics-model" aria-label="Blast physics model">
+              <option value="nwfaq">NWFAQ Optimum Burst (default)</option>
+              <option value="freeair">G&D Free-Air Blast</option>
+            </select>
+            <span class="select-arrow"><svg viewBox="0 0 10 6"><path d="M0 0l5 6 5-6z" fill="currentColor"/></svg></span>
+          </div>
+          <div class="section-hint" id="model-hint">Mach stem enhancement at optimal burst height. Validated against HSAJ 10kT.</div>
+        </div>
+
+        <div class="section">
           <div class="section-title">Detonation</div>
           <div class="burst-options">
             <button class="burst-btn active" data-burst="airburst">Airburst</button>
@@ -263,6 +275,10 @@
             <div class="stat-card"><div class="stat-label">Total Yield</div><div class="stat-value yield-total" id="stat-yield">--</div></div>
             <div class="stat-card wide"><div class="stat-sub" id="stat-note">Detonate a weapon to see estimates</div></div>
           </div>
+        </div>
+        <div class="section" id="cumulative-section" style="display:none">
+          <div class="section-title collapsible" role="button" tabindex="0" aria-expanded="true">Cumulative Impact</div>
+          <div id="cumulative-content"></div>
         </div>
         <div class="section" id="dets-section" style="display:none">
           <div class="section-title">Active Detonations</div>

@@ -7,6 +7,35 @@ window.NM = window.NM || {};
 let map, currentDets = [], windAngle = 0, multiMode = false, mirvMode = false, currentMirvPreset = null;
 NM._nightMode = false;
 
+function _genCumulative(dets) {
+  const totalY = dets.reduce((s,d) => s + d.yieldKt, 0);
+  const hiro = totalY / 15;
+  const areas = {};
+  const zoneNames = ['fireball','psi20','psi5','psi1','thermal3','thermal1','emp'];
+  const zoneLabels = {fireball:'Fireball',psi20:'20 psi',psi5:'5 psi',psi1:'1 psi',thermal3:'3rd° Burns',thermal1:'1st° Burns',emp:'EMP'};
+  for (const d of dets) { for (const z of zoneNames) { const r = d.effects[z]; if (r > 0.001) areas[z] = (areas[z]||0) + Math.PI * r * r; } }
+  const totalFallout = dets.filter(d => d.effects.fallout).reduce((s,d) => {
+    const f = d.effects.fallout; return s + Math.PI * f.heavy.length * f.heavy.width / 4 + Math.PI * f.light.length * f.light.width / 4;
+  }, 0);
+  let html = '<div class="cum-grid">';
+  html += `<div class="cum-stat"><span class="cum-val">${dets.length}</span><span class="cum-lbl">Detonations</span></div>`;
+  html += `<div class="cum-stat"><span class="cum-val">${NM.fmtYield(totalY)}</span><span class="cum-lbl">Total Yield</span></div>`;
+  html += `<div class="cum-stat"><span class="cum-val">${hiro >= 10 ? hiro.toFixed(0) : hiro.toFixed(1)}x</span><span class="cum-lbl">Hiroshima Equiv.</span></div>`;
+  if (totalFallout > 0.01) html += `<div class="cum-stat"><span class="cum-val">${NM.fmtArea(Math.sqrt(totalFallout/Math.PI))}</span><span class="cum-lbl">Fallout Area</span></div>`;
+  html += '</div>';
+  html += '<div class="cum-zones"><div class="cum-zones-title">Area by Damage Zone</div>';
+  for (const z of zoneNames) {
+    if (!areas[z] || areas[z] < 0.01) continue;
+    html += `<div class="cum-zone-row"><span class="cum-zone-name">${zoneLabels[z]}</span><span class="cum-zone-area">${(areas[z]).toFixed(1)} km²</span></div>`;
+  }
+  html += '</div>';
+  if (totalY > 10) {
+    const sootTg = totalY > 50000 ? 150 : totalY > 5000 ? 47 : totalY > 500 ? 15 : 5;
+    html += `<div class="cum-nw"><span class="cum-nw-label">Est. Nuclear Winter Soot</span><span class="cum-nw-val">${sootTg} Tg</span></div>`;
+  }
+  return html;
+}
+
 const _panelDefs = [
   {s:'altitude-section', c:'altitude-profile', fn:(d)=>NM.AltitudeProfile.generate(d.effects,d.yieldKt)},
   {s:'zonecas-section', c:'zonecas-content', fn:(d)=>NM.ZoneCasualties.generate(d.effects,d.casualties.density)},
@@ -28,19 +57,23 @@ const _panelDefs = [
   {s:'dosecalc-section', show:(d)=>d.effects.isSurface},
   {s:'fallout-timelapse', show:(d)=>!!d.effects.fallout},
   {s:'nw-section', c:'nw-result', show:(_d,all)=>all.reduce((s,x)=>s+x.yieldKt,0)>10, fn:(_d,all)=>{const ty=all.reduce((s,x)=>s+x.yieldKt,0);return NM.NuclearWinter.generateHTML(ty,all.length)}},
+  {s:'cumulative-section', c:'cumulative-content', show:(_d,all)=>all.length>0, fn:(_d,all)=>_genCumulative(all)},
   {s:'dets-section'}, {s:'cloud-section'}, {s:'timeline-section'}, {s:'crater-section'},
   {s:'shelter-section'}, {s:'nearby-section'},
 ];
 
 function _updatePanels(det, allDets) {
-  for (const p of _panelDefs) {
+  for (let i = 0; i < _panelDefs.length; i++) {
+    const p = _panelDefs[i];
     if (!p.fn && !p.show) continue;
     const el = $(p.s); if (!el) continue;
     if (p.show && !p.show(det, allDets)) continue;
     if (p.fn) {
-      const html = p.fn(det, allDets);
-      if (p.hideIfEmpty && !html) { el.style.display = 'none'; continue; }
-      if (p.c) $(p.c).innerHTML = html;
+      try {
+        const html = p.fn(det, allDets);
+        if (p.hideIfEmpty && !html) { el.style.display = 'none'; continue; }
+        if (p.c) $(p.c).innerHTML = html;
+      } catch(e) { continue; }
     }
     el.style.display = '';
   }
@@ -348,7 +381,7 @@ function initControls() {
     updateYieldUI(kt); syncYieldInput(kt);
     // Show preview circle at map center
     const c = map.getCenter();
-    const previewR = 0.71 * Math.pow(kt, 1/3); // 5 psi radius (NWFAQ optimum burst)
+    const previewR = (NM.BLAST_MODELS[NM._physicsModel] || NM.BLAST_MODELS.nwfaq).psi5 * Math.pow(kt, 1/3);
     if (yieldPreviewRing) map.removeLayer(yieldPreviewRing);
     yieldPreviewRing = L.circle([c.lat, c.lng], {
       radius: previewR * 1000, color: '#cba6f7', weight: 1.5, opacity: 0.4,
@@ -792,6 +825,17 @@ function initControls() {
     const panAmount = 100;
     const dirs = {up:[0,-panAmount], down:[0,panAmount], left:[-panAmount,0], right:[panAmount,0]};
     btn.addEventListener('click', () => { const d = dirs[btn.dataset.dir]; if (d) map.panBy(d, {animate: true}); });
+  });
+
+  // Physics model selector
+  const modelSel = $('physics-model');
+  const modelHints = {
+    nwfaq: 'Mach stem enhancement at optimal burst height. Validated against HSAJ 10kT.',
+    freeair: 'Free-air blast without Mach stem. ~17% smaller blast radii. G&D Ch.3.',
+  };
+  if (modelSel) modelSel.addEventListener('change', () => {
+    NM._physicsModel = modelSel.value;
+    $('model-hint').textContent = modelHints[modelSel.value] || '';
   });
 
   // Rotating facts banner
