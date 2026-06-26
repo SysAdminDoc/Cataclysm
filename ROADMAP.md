@@ -13,6 +13,13 @@ from the current research pass follows.
 
 ### P0
 
+- [ ] P0 — Reconcile the local-only verification and release contract
+  Why: GitHub Actions workflows were removed, but docs, templates, and comments still claim CI/release automation exists and no single local command replaces the former gates.
+  Evidence: `250c4cd`; missing `.github/workflows`; `CONTRIBUTING.md`; `.github/PULL_REQUEST_TEMPLATE.md`; `docs/release/CODESIGNING.md`; `src-tauri/deny.toml`; `package.json`
+  Touches: `package.json`, `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/release/CODESIGNING.md`, `src-tauri/deny.toml`, `vite.config.ts`, `tests/smoke.spec.ts`, `Roadmap_Blocked.md`
+  Acceptance: Docs/templates stop claiming CI exists; `npm run verify` or equivalent covers typecheck, lint, unit/e2e, build, `npm audit`, and Rust advisory/license checks where available; release/signing docs describe the current local-only path or explicitly name the replacement automation.
+  Complexity: M
+
 - [ ] P0 — Clear the active DOMPurify supply-chain advisory
   Why: The current dependency tree has one moderate published advisory in a transitive dependency used by Cesium.
   Evidence: `npm audit --json`; `package-lock.json` (`cesium@1.142.0 -> @cesium/engine@26.0.0 -> dompurify@3.4.10`); `GHSA-cmwh-pvxp-8882`
