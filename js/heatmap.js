@@ -22,44 +22,54 @@ NM.Heatmap = {
         L.DomUtil.remove(this._canvas);
         map.off('moveend zoomend resize', this._update, this);
       },
+      _pendingRender: 0,
       _update() {
+        if (this._pendingRender) cancelAnimationFrame(this._pendingRender);
+        this._pendingRender = requestAnimationFrame(() => this._render());
+      },
+      _render() {
+        this._pendingRender = 0;
         const map = this._map;
         const size = map.getSize();
         const canvas = this._canvas;
         canvas.width = size.x;
         canvas.height = size.y;
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, size.x, size.y);
 
         const bounds = map.getBounds();
         const zoom = map.getZoom();
-
-        // Only show at certain zoom levels
         if (zoom < 3) return;
 
-        // Draw population circles
+        const cities = [];
         for (const city of NM.CITIES) {
           const pop = city[4];
           if (pop < 1000) continue;
-          const lat = city[2], lng = city[3];
-          if (!bounds.contains([lat, lng])) continue;
-
-          const pt = map.latLngToContainerPoint([lat, lng]);
-          const intensity = Math.min(1, Math.log10(pop) / 7.5);
-          const baseRadius = Math.max(3, Math.min(80, Math.pow(pop, 0.25) * (zoom / 10)));
-
-          const gradient = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, baseRadius);
-          gradient.addColorStop(0, `rgba(243, 139, 168, ${intensity * 0.6})`);
-          gradient.addColorStop(0.4, `rgba(250, 179, 135, ${intensity * 0.3})`);
-          gradient.addColorStop(1, 'rgba(250, 179, 135, 0)');
-
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, baseRadius, 0, Math.PI * 2);
-          ctx.fillStyle = gradient;
-          ctx.fill();
+          if (!bounds.contains([city[2], city[3]])) continue;
+          cities.push(city);
         }
 
-        // Position canvas
+        let i = 0;
+        const batchSize = 50;
+        const drawBatch = () => {
+          const end = Math.min(i + batchSize, cities.length);
+          for (; i < end; i++) {
+            const city = cities[i];
+            const pt = map.latLngToContainerPoint([city[2], city[3]]);
+            const intensity = Math.min(1, Math.log10(city[4]) / 7.5);
+            const baseRadius = Math.max(3, Math.min(80, Math.pow(city[4], 0.25) * (zoom / 10)));
+            const gradient = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, baseRadius);
+            gradient.addColorStop(0, `rgba(243, 139, 168, ${intensity * 0.6})`);
+            gradient.addColorStop(0.4, `rgba(250, 179, 135, ${intensity * 0.3})`);
+            gradient.addColorStop(1, 'rgba(250, 179, 135, 0)');
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, baseRadius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+          }
+          if (i < cities.length) requestAnimationFrame(drawBatch);
+        };
+        drawBatch();
+
         const topLeft = map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(canvas, topLeft);
       }
