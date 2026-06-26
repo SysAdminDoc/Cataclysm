@@ -923,10 +923,19 @@ function initWindCompass() {
   comp.addEventListener('click', e => { const r = comp.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; windAngle = (Math.atan2(e.clientX - cx, -(e.clientY - cy)) * 180 / Math.PI + 360) % 360; upd(); });
   upd();
 
-  // Real wind from Open-Meteo (free, no auth, 10K calls/day)
+  // Real wind from Open-Meteo (free, no auth, 10K calls/day) with debounce + cache
+  let _windCache = null, _windCacheTime = 0, _windDebounce = 0;
   $('realwind-check').addEventListener('change', () => {
     if (!$('realwind-check').checked) { $('realwind-label').textContent = 'Use real wind (Open-Meteo)'; return; }
+    const now = Date.now();
+    if (now - _windDebounce < 5000) { $('realwind-label').textContent = 'Please wait...'; return; }
+    _windDebounce = now;
     const center = map.getCenter();
+    if (_windCache && now - _windCacheTime < 300000 && NM.haversine(_windCache.lat, _windCache.lng, center.lat, center.lng) < 10) {
+      windAngle = _windCache.dir; $('wind-speed').value = Math.round(_windCache.spd); upd();
+      $('realwind-label').textContent = `Real wind: ${Math.round(_windCache.spd)} km/h from ${dirs[Math.round(windAngle / 45) % 8]} (cached)`;
+      return;
+    }
     $('realwind-label').textContent = 'Fetching wind...';
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${center.lat.toFixed(4)}&longitude=${center.lng.toFixed(4)}&current=wind_speed_10m,wind_direction_10m`)
       .then(r => r.json())
@@ -934,6 +943,8 @@ function initWindCompass() {
         if (data.current) {
           windAngle = data.current.wind_direction_10m;
           const speed = data.current.wind_speed_10m;
+          _windCache = {lat: center.lat, lng: center.lng, dir: windAngle, spd: speed};
+          _windCacheTime = Date.now();
           $('wind-speed').value = Math.round(speed);
           upd();
           $('realwind-label').textContent = `Real wind: ${Math.round(speed)} km/h from ${dirs[Math.round(windAngle / 45) % 8]}`;
@@ -1236,8 +1247,15 @@ function updateURL() {
     return;
   }
   if (!currentDets.length) { history.replaceState(null, '', location.pathname); return; }
-  const params = currentDets.map(d => `${d.lat.toFixed(4)},${d.lng.toFixed(4)},${d.yieldKt},${d.burstType[0]}`).join(';');
-  history.replaceState(null, '', `?d=${params}`);
+  const params = currentDets.map(d => {
+    let seg = `${d.lat.toFixed(4)},${d.lng.toFixed(4)},${d.yieldKt},${d.burstType[0]}`;
+    if (d.heightM || d.fission !== 50) seg += `,${d.heightM || 0},${d.fission || 50}`;
+    return seg;
+  }).join(';');
+  let qs = `?d=${params}`;
+  if (windAngle !== 0) qs += `&w=${Math.round(windAngle)}`;
+  if (NM._physicsModel !== 'nwfaq') qs += `&pm=${NM._physicsModel}`;
+  history.replaceState(null, '', qs);
 }
 
 function loadFromURL() {
@@ -1259,17 +1277,27 @@ function loadFromURL() {
     }, 1500);
     return;
   }
+  // Restore physics model and wind from URL
+  const pm = p.get('pm');
+  if (pm && NM.BLAST_MODELS[pm]) { NM._physicsModel = pm; const sel = $('physics-model'); if (sel) sel.value = pm; }
+  const w = p.get('w');
+  if (w && isFinite(+w)) { windAngle = +w; const compass = $('wind-compass'); if (compass) compass.value = windAngle; }
+
   const d = p.get('d');
   if (!d) return;
   multiMode = true; $('multi-check').checked = true;
   d.split(';').forEach(seg => {
-    const [lat, lng, y, bt] = seg.split(',');
-    const la = +lat, ln = +lng, yk = +y;
+    const parts = seg.split(',');
+    const la = +parts[0], ln = +parts[1], yk = +parts[2], bt = parts[3];
+    const hm = parts[4] ? +parts[4] : 0;
+    const ff = parts[5] ? +parts[5] : 50;
     if (!isFinite(la) || !isFinite(ln) || !isFinite(yk)) return;
     if (la < -90 || la > 90 || ln < -180 || ln > 180) return;
     if (yk < 0.001 || yk > 100000) return;
-    const burst = bt === 's' ? 'surface' : bt === 'c' ? 'custom' : 'airburst';
+    const burst = bt === 's' ? 'surface' : bt === 'c' ? 'custom' : bt === 'h' ? 'hemp' : bt === 'w' ? 'water' : 'airburst';
     setYield(yk);
+    if (hm) $('burst-height').value = hm;
+    $('fission-pct').value = ff;
     document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === burst));
     triggerDetonation(la, ln);
   });

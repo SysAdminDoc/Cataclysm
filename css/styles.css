@@ -369,6 +369,10 @@ button:disabled:hover,.is-disabled:hover{color:inherit;border-color:var(--contro
 .nw-temp{font-size:15px;font-weight:800;color:var(--sky)}
 .nw-severity{text-align:center;font-size:12px;font-weight:800;padding:6px;margin-top:6px;text-transform:uppercase;letter-spacing:1px}
 .nw-note{font-size:9px;color:var(--overlay0);margin-top:4px;font-style:italic;text-align:center}
+.nw-scenarios{margin-top:6px;border-top:1px solid var(--surface1);padding-top:6px}
+.nw-sc-title{font-size:9px;font-weight:700;color:var(--overlay1);text-transform:uppercase;margin-bottom:4px}
+.nw-sc{display:flex;justify-content:space-between;font-size:10px;color:var(--overlay0);padding:2px 0;opacity:.5}
+.nw-sc.nw-sc-active{color:var(--red);opacity:1;font-weight:600}
 
 /* Scenario chips */
 .scenario-chip{padding:9px 10px;border-radius:var(--radius-sm);background:var(--control-bg);border:1px solid var(--control-border);cursor:pointer;transition:background .15s,border-color .15s,transform .15s;margin-bottom:5px}

@@ -465,8 +465,16 @@ NM.NuclearWinter = {
       <div class="nw-row"><span class="nw-label">UV increase</span><span class="nw-val">+${est.uvIncreasePct.toFixed(0)}%</span></div>
       <div class="nw-row"><span class="nw-label">Ozone depletion</span><span class="nw-val">${est.ozoneDepletionPct.toFixed(0)}%</span></div>
       ${est.famineDeaths > 0 ? `<div class="nw-row"><span class="nw-label">Famine deaths (est.)</span><span class="nw-val" style="color:var(--red)">${NM.fmtNum(est.famineDeaths)}</span></div>` : ''}
+      <div class="nw-row"><span class="nw-label">Crop loss (global avg.)</span><span class="nw-val">${Math.min(90, Math.round(est.sootTg < 5 ? est.sootTg * 3 : est.sootTg < 47 ? 15 + (est.sootTg-5)*0.95 : est.sootTg < 150 ? 55 + (est.sootTg-47)*0.34 : 90))}%</span></div>
       <div class="nw-row"><span class="nw-label">Recovery time</span><span class="nw-val">~${est.recoveryYears} years</span></div>
       <div class="nw-severity" style="color:${est.sootTg > 50 ? 'var(--red)' : est.sootTg > 20 ? 'var(--peach)' : 'var(--green)'}">${est.severity}</div>
+      <div class="nw-scenarios">
+        <div class="nw-sc-title">Xia et al. (2022) reference scenarios:</div>
+        <div class="nw-sc ${est.sootTg >= 5 ? 'nw-sc-active' : ''}"><span>5 Tg</span><span>India-Pakistan (100 weapons)</span><span>~250M famine deaths</span></div>
+        <div class="nw-sc ${est.sootTg >= 27 ? 'nw-sc-active' : ''}"><span>27 Tg</span><span>Regional exchange (250 weapons)</span><span>~1B famine deaths</span></div>
+        <div class="nw-sc ${est.sootTg >= 47 ? 'nw-sc-active' : ''}"><span>47 Tg</span><span>Limited exchange (500 weapons)</span><span>~2B famine deaths</span></div>
+        <div class="nw-sc ${est.sootTg >= 150 ? 'nw-sc-active' : ''}"><span>150 Tg</span><span>US-Russia full exchange</span><span>~5B famine deaths</span></div>
+      </div>
       <div class="nw-note">Robock & Toon (2007/2022); Xia et al. (2022, Nature Food). Famine from global crop failure.</div>
     </div>`;
   }
