@@ -1,9 +1,13 @@
 // NukeMap - Nuclear Physics Module (Glasstone & Dolan + Brode)
+// Standalone: works in browser (<script>) and Node.js (require/import)
 // Sources: G&D = "The Effects of Nuclear Weapons" 3rd ed. (1977)
 //          NWFAQ = Nuclear Weapon Archive FAQ Section 5
 //          HSAJ = Homeland Security Affairs Journal (peer-reviewed)
 //          OTA = Office of Technology Assessment "Effects of Nuclear War" (1979)
-window.NM = window.NM || {};
+var _g = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : this;
+_g.NM = _g.NM || {};
+var NM = _g.NM;
+if (typeof module !== 'undefined' && module.exports) module.exports = NM;
 
 // Physics citation database — every constant linked to its source
 NM.CITATIONS = {
@@ -175,4 +179,4 @@ NM.fmtDist = function(km){const mi=km*0.621371;return NM.fmtR(km)+' ('+(mi<1?(mi
 NM.fmtTime = function(s){if(s<1)return(s*1000).toFixed(0)+' ms';if(s<60)return s.toFixed(1)+' sec';return(s/60).toFixed(1)+' min'};
 NM.sliderToYield = function(v){return Math.pow(10,-3+(v/1000)*8)};
 NM.yieldToSlider = function(kt){return((Math.log10(Math.max(kt,0.001))+3)/8)*1000};
-NM.esc = function(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+NM.esc = function(s){if(typeof document!=='undefined'){const d=document.createElement('div');d.textContent=s;return d.innerHTML}return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
