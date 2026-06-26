@@ -61,6 +61,55 @@ for (const [yKt, burst, field, expected, tol, source] of TESTS) {
   }
 }
 
+// Edge case tests
+function assertEdge(name, cond) { if (cond) passed++; else { console.log('FAIL: ' + name); failed++; failures.push(name); } }
+
+// Minimum yield boundary
+const eMin = NM.calcEffects(0.001, 'airburst');
+assertEdge('min yield psi5 > 0', eMin.psi5 > 0);
+assertEdge('min yield fireball > 0', eMin.fireball > 0);
+
+// Maximum yield boundary
+const eMax = NM.calcEffects(100000, 'airburst');
+assertEdge('max yield psi5 finite', isFinite(eMax.psi5));
+assertEdge('max yield thermal3 finite', isFinite(eMax.thermal3));
+assertEdge('max yield thermal attenuation applied', eMax.thermal3 < 0.67 * Math.pow(100000, 0.41));
+
+// Surface burst factor
+const eSurf = NM.calcEffects(100, 'surface');
+const eAir = NM.calcEffects(100, 'airburst');
+assertEdge('surface psi5 < airburst psi5', eSurf.psi5 < eAir.psi5);
+assertEdge('surface psi5 ≈ 0.8x airburst', Math.abs(eSurf.psi5 / eAir.psi5 - 0.8) < 0.01);
+assertEdge('surface has crater', eSurf.craterR > 0);
+assertEdge('airburst no crater', eAir.craterR === 0);
+assertEdge('surface has fallout', eSurf.fallout !== null);
+
+// Water burst
+const eWater = NM.calcEffects(100, 'water');
+assertEdge('water has baseSurge', eWater.baseSurge > 0);
+assertEdge('water isSurface=true', eWater.isSurface === true);
+assertEdge('water has surface crater (zeroed in triggerDetonation)', eWater.craterR > 0);
+
+// Custom burst height
+const eCust = NM.calcEffects(100, 'airburst', 5000);
+assertEdge('custom height psi5 finite', isFinite(eCust.psi5));
+
+// EMP cap for non-HEMP
+assertEdge('EMP capped at 40km', eAir.emp <= 40);
+assertEdge('EMP > 0 for 100kT', eAir.emp > 0);
+
+// Haversine edge cases
+assertEdge('haversine same point = 0', NM.haversine(0, 0, 0, 0) === 0);
+assertEdge('haversine antipodal ≈ 20000km', Math.abs(NM.haversine(0, 0, 0, 180) - 20015) < 100);
+assertEdge('haversine pole to pole ≈ 20000km', Math.abs(NM.haversine(90, 0, -90, 0) - 20015) < 100);
+assertEdge('haversine short distance > 0', NM.haversine(40.7, -74.0, 40.8, -74.0) > 0);
+
+// Blast model switching
+NM._physicsModel = 'freeair';
+const eFreeAir = NM.calcEffects(100, 'airburst');
+assertEdge('free-air psi5 < nwfaq psi5', eFreeAir.psi5 < eAir.psi5);
+NM._physicsModel = 'nwfaq';
+
 // Shared mortality function tests
 const mortResult = NM.calcZoneMortality(NM.calcEffects(100, 'airburst'), 5000);
 if (mortResult.deaths <= 0) { console.log('FAIL: calcZoneMortality returned 0 deaths for 100kT urban'); failed++; } else passed++;

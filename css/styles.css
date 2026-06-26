@@ -853,3 +853,9 @@ body.has-results #quick-weapons{bottom:104px}
   .compare-selects{flex-direction:column;gap:4px}
   .compare-selects span{display:none}
 }
+@media(max-width:768px) and (orientation:landscape) and (max-height:500px){
+  #panel{height:35vh}
+  #panel.collapsed{transform:translateY(calc(100% - 38px))}
+  #quick-weapons{bottom:calc(35vh + 36px)}
+  .det-toast{bottom:calc(35vh + 50px)}
+}
