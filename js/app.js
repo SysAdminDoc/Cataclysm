@@ -102,7 +102,7 @@ function initMap() {
     createTile(coords) {
       const key = `${coords.x},${coords.y},${coords.z}`;
       const cached = _tileCache.get(key);
-      if (cached) { const clone = document.createElement('canvas'); clone.width = cached.width; clone.height = cached.height; clone.getContext('2d').drawImage(cached, 0, 0); return clone; }
+      if (cached) { _tileCache.delete(key); _tileCache.set(key, cached); const clone = document.createElement('canvas'); clone.width = cached.width; clone.height = cached.height; clone.getContext('2d').drawImage(cached, 0, 0); return clone; }
       const c = document.createElement('canvas'), s = this.getTileSize(); c.width = s.x; c.height = s.y;
       const ctx = c.getContext('2d'), z = coords.z;
       ctx.fillStyle = '#11111b'; ctx.fillRect(0, 0, s.x, s.y);

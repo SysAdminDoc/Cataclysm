@@ -710,14 +710,29 @@ NM.WW3 = {
     if (!toasts) { toasts = document.createElement('div'); toasts.id = 'ww3-toasts'; document.body.appendChild(toasts); }
     toasts.innerHTML = '';
 
-    // Pre-compute effects for all target yields during siren (avoids main-thread jank during detonation)
+    // Pre-compute effects for all target yields via WebWorker (avoids main-thread jank)
     this._effectsCache = new Map();
+    const uniqueYields = new Set();
     for (const [, targets] of Object.entries(scenario.targetSets)) {
-      for (const t of targets) {
-        if (!this._effectsCache.has(t.yieldKt)) {
-          this._effectsCache.set(t.yieldKt, NM.calcEffects(t.yieldKt, 'airburst', 0, 50));
-        }
+      for (const t of targets) uniqueYields.add(t.yieldKt);
+    }
+    if (typeof Worker !== 'undefined') {
+      try {
+        const w = new Worker('js/physics-worker.js');
+        const batch = [...uniqueYields].map((y, i) => ({idx: i, yieldKt: y, burstType: 'airburst', heightM: 0, fission: 50}));
+        w.postMessage({type: 'calcBatch', batch, id: 1});
+        w.onmessage = (e) => {
+          if (e.data.type === 'batchResult') {
+            for (const r of e.data.results) this._effectsCache.set(batch[r.idx].yieldKt, r.effects);
+            w.terminate();
+          }
+        };
+        w.onerror = () => { w.terminate(); for (const y of uniqueYields) { if (!this._effectsCache.has(y)) this._effectsCache.set(y, NM.calcEffects(y, 'airburst', 0, 50)); } };
+      } catch(e) {
+        for (const y of uniqueYields) this._effectsCache.set(y, NM.calcEffects(y, 'airburst', 0, 50));
       }
+    } else {
+      for (const y of uniqueYields) this._effectsCache.set(y, NM.calcEffects(y, 'airburst', 0, 50));
     }
 
     // Air raid siren
