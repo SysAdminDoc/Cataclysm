@@ -71,7 +71,22 @@ NM.EMPDetails = {
         <div class="emp-range">Within ${NM.fmtR(r)} <span style="color:${statusColor};font-weight:700">${status}</span></div>
       </div>`;
     }
-    html += `<div class="emp-note">Total EMP radius: ${NM.fmtDist(empRadius)}. Faraday cages protect electronics.</div></div>`;
+    // IEC 61000-2-9 (2025) E1 waveform parameters
+    const isHEMP = empRadius > 100;
+    const peakField = isHEMP ? 50 : Math.min(50, 25 * (empRadius / 40));
+    html += '<div class="emp-waveform">';
+    html += '<div class="emp-wf-title">E1 Pulse (IEC 61000-2-9:2025)</div>';
+    html += `<div class="cloud-row"><span class="cl">Peak field</span><span class="cv">${peakField.toFixed(0)} kV/m</span></div>`;
+    html += '<div class="cloud-row"><span class="cl">Rise time</span><span class="cv">2.5 ns</span></div>';
+    html += '<div class="cloud-row"><span class="cl">Pulse width</span><span class="cv">23 ns (FWHM)</span></div>';
+    html += `<div class="cloud-row"><span class="cl">Waveform</span><span class="cv">E₀·(e<sup>−αt</sup> − e<sup>−βt</sup>)</span></div>`;
+    html += '<div class="cloud-row"><span class="cl">α / β</span><span class="cv">4×10⁷ / 6×10⁸ s⁻¹</span></div>';
+    if (isHEMP) {
+      html += '<div class="cloud-row"><span class="cl">E3 (late-time)</span><span class="cv">~10–80 V/km for minutes</span></div>';
+      html += '<div class="cloud-row"><span class="cl">Grid effect</span><span class="cv">GIC-induced transformer damage</span></div>';
+    }
+    html += '</div>';
+    html += `<div class="emp-note">Total EMP radius: ${NM.fmtDist(empRadius)}.${isHEMP ? ' HEMP burst — continent-scale coverage.' : ''} Faraday cages protect electronics.</div></div>`;
     return html;
   }
 };

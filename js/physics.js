@@ -23,7 +23,7 @@ NM.CITATIONS = {
   radiation: {ref:'NWFAQ §5.4; G&D Ch.8', note:'500 rem lethal dose radius. Coefficient 1.15, exponent 0.19. Attenuated by atmosphere.'},
   neutronRad:{ref:'NWFAQ §5.4', note:'Neutron radiation radius. Coefficient 0.7, capped at 2.5 km. Dominant for low yields.'},
   gammaRad:  {ref:'NWFAQ §5.4', note:'Initial gamma radiation radius. Coefficient 1.0, capped at 3.0 km.'},
-  emp:       {ref:'G&D Ch.11 §11.01–11.71', note:'EMP radius ≈ 2.5·Y^0.33 km, capped at 500 km for low-altitude. HEMP extends to 2200 km.'},
+  emp:       {ref:'G&D Ch.11 §11.01–11.71; IEC 61000-2-9:2025', note:'EMP radius ≈ 2.5·Y^0.33 km, capped at 500 km for low-altitude. HEMP extends to 2200 km. E1 pulse: 50 kV/m peak, 2.5 ns rise, 23 ns FWHM.'},
   craterR:   {ref:'G&D Ch.6 §6.63–6.65', note:'Apparent crater radius. Surface burst only. 0.038·Y^(1/3.4) km.'},
   craterD:   {ref:'G&D Ch.6 §6.63–6.65', note:'Apparent crater depth. Surface burst only. 0.013·Y^(1/3.4) km.'},
   cloudTop:  {ref:'G&D Ch.2 §2.16', note:'Cloud top height. Air: 0.29·Y^0.42 km. Surface: 0.24·Y^0.42 km.'},
