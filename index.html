@@ -303,7 +303,11 @@
           <div class="section-hint">Save current detonations to browser storage for later.</div>
           <div class="save-row">
             <input type="text" id="save-name" class="compact-input save-input text-left" placeholder="Scenario name..." aria-label="Scenario name"/>
+            <input type="text" id="save-folder" class="compact-input save-input text-left" placeholder="Folder (optional)" aria-label="Folder name" style="max-width:120px"/>
             <button class="btn-secondary flex-none nowrap" id="save-btn">Save</button>
+          </div>
+          <div style="margin-top:6px">
+            <input type="text" id="save-search" class="compact-input save-input text-left" placeholder="Search saved..." aria-label="Search saved scenarios" style="width:100%"/>
           </div>
           <div id="saved-list" class="mt-6"></div>
         </div>

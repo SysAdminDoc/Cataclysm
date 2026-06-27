@@ -837,13 +837,15 @@ function initControls() {
   $('save-btn').addEventListener('click', () => {
     if (!currentDets.length) return;
     const name = $('save-name').value.trim() || `Scenario ${new Date().toLocaleDateString()}`;
+    const folder = $('save-folder') ? $('save-folder').value.trim() : '';
     _scenarioDB.add({
-      name, date: Date.now(),
+      name, folder, date: Date.now(),
       dets: currentDets.map(d => ({lat:d.lat,lng:d.lng,yieldKt:d.yieldKt,burstType:d.burstType,weapon:d.weapon}))
     }).then(() => { $('save-name').value = ''; renderSavedList(); })
     .catch(() => { $('saved-list').innerHTML = compactState('Storage is full. Delete saved scenarios or clear browser data.', 'warn'); });
   });
   renderSavedList();
+  if ($('save-search')) $('save-search').addEventListener('input', () => renderSavedList($('save-search').value));
   initEncyclopedia();
   initHistoricTests();
   initMethodology();
@@ -1702,18 +1704,33 @@ const _scenarioDB = {
   }
 };
 
-function renderSavedList() {
+function renderSavedList(filter) {
   const list = $('saved-list'); if (!list) return;
   _scenarioDB.getAll().then(saves => {
     if (!saves.length) { list.innerHTML = compactState('No saved scenarios yet.'); return; }
+    const q = (filter || '').toLowerCase();
+    const filtered = q ? saves.filter(s => (s.name||'').toLowerCase().includes(q) || (s.folder||'').toLowerCase().includes(q)) : saves;
+    if (!filtered.length) { list.innerHTML = compactState('No matches.'); return; }
     list.innerHTML = '';
-    saves.forEach((s, i) => {
-      const el = document.createElement('div'); el.className = 'saved-item';
-      el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span><span class="si-meta">${s.dets.length} det${s.dets.length > 1 ? 's' : ''}</span><button class="si-del" data-i="${s.id ?? i}">&times;</button>`;
-      el.addEventListener('click', e => { if (!e.target.classList.contains('si-del')) loadScenario(s); });
-      el.querySelector('.si-del').addEventListener('click', e => { e.stopPropagation(); deleteSave(s.id ?? i); });
-      list.appendChild(el);
-    });
+    const folders = {};
+    for (const s of filtered) { const f = s.folder || ''; (folders[f] = folders[f] || []).push(s); }
+    const sortedFolders = Object.keys(folders).sort((a, b) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b));
+    for (const f of sortedFolders) {
+      if (f && sortedFolders.length > 1) {
+        const hdr = document.createElement('div');
+        hdr.className = 'si-folder';
+        hdr.textContent = f;
+        list.appendChild(hdr);
+      }
+      for (const s of folders[f]) {
+        const el = document.createElement('div'); el.className = 'saved-item';
+        const folderTag = s.folder ? `<span class="si-folder-tag">${NM.esc(s.folder)}</span>` : '';
+        el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span>${folderTag}<span class="si-meta">${s.dets.length} det${s.dets.length > 1 ? 's' : ''}</span><button class="si-del" data-i="${s.id ?? filtered.indexOf(s)}">&times;</button>`;
+        el.addEventListener('click', e => { if (!e.target.classList.contains('si-del')) loadScenario(s); });
+        el.querySelector('.si-del').addEventListener('click', e => { e.stopPropagation(); deleteSave(s.id ?? filtered.indexOf(s)); });
+        list.appendChild(el);
+      }
+    }
   });
 }
 
