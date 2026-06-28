@@ -16,7 +16,7 @@ const MOCK_INITIAL: InitialDisplacement = {
 describe("ResultsPanel", () => {
   it("shows empty state when no initial data", () => {
     render(<ResultsPanel initial={null} timeS={900} onTimeChange={() => {}} />);
-    expect(screen.getByText("No source selected")).toBeInTheDocument();
+    expect(screen.getByText("Choose a source to unlock readouts")).toBeInTheDocument();
   });
 
   it("renders source readout for a given initial displacement", () => {

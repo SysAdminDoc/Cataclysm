@@ -17,8 +17,8 @@ export default defineConfig(async ({ command, mode }) => {
   // every VITE_-prefixed var into the client bundle, so a token left in .env
   // during `tauri build` would be baked into the installer handed to end users
   // (leaking the credential + burning its free-tier quota). The desktop app
-  // reads the token from the in-app Settings store instead. CI sets
-  // VITE_CESIUM_TOKEN="" so release builds are unaffected.
+  // reads the token from the in-app Settings store instead. Local release
+  // builds should leave VITE_CESIUM_TOKEN unset or explicitly empty.
   if (command === "build") {
     const env = loadEnv(mode, process.cwd(), "");
     if (env.VITE_CESIUM_TOKEN && env.VITE_CESIUM_TOKEN.trim() && !process.env.ALLOW_TOKEN_IN_BUNDLE) {

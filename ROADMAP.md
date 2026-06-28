@@ -13,27 +13,6 @@ from the current research pass follows.
 
 ### P0
 
-- [ ] P0 — Reconcile the local-only verification and release contract
-  Why: GitHub Actions workflows were removed, but docs, templates, and comments still claim CI/release automation exists and no single local command replaces the former gates.
-  Evidence: `250c4cd`; missing `.github/workflows`; `CONTRIBUTING.md`; `.github/PULL_REQUEST_TEMPLATE.md`; `docs/release/CODESIGNING.md`; `src-tauri/deny.toml`; `package.json`
-  Touches: `package.json`, `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/release/CODESIGNING.md`, `src-tauri/deny.toml`, `vite.config.ts`, `tests/smoke.spec.ts`, `Roadmap_Blocked.md`
-  Acceptance: Docs/templates stop claiming CI exists; `npm run verify` or equivalent covers typecheck, lint, unit/e2e, build, `npm audit`, and Rust advisory/license checks where available; release/signing docs describe the current local-only path or explicitly name the replacement automation.
-  Complexity: M
-
-- [ ] P0 — Clear the active DOMPurify supply-chain advisory
-  Why: The current dependency tree has one moderate published advisory in a transitive dependency used by Cesium.
-  Evidence: `npm audit --json`; `package-lock.json` (`cesium@1.142.0 -> @cesium/engine@26.0.0 -> dompurify@3.4.10`); `GHSA-cmwh-pvxp-8882`
-  Touches: `package.json`, `package-lock.json`
-  Acceptance: `npm audit --json` reports zero vulnerabilities and Cesium still renders the globe in browser preview.
-  Complexity: S
-
-- [ ] P0 — Fix SWE playback label drift in tests and manuals
-  Why: The component now renders "Run solver" while the focused component test and manual still expect/document "Run simulation", weakening both CI signal and user guidance.
-  Evidence: `src/components/SwePlayback.tsx`; `src/components/__tests__/SwePlayback.test.tsx`; `docs/manual/getting-started.md`; `docs/manual/custom-scenarios.md`
-  Touches: `src/components/__tests__/SwePlayback.test.tsx`, `docs/manual/getting-started.md`, `docs/manual/custom-scenarios.md`
-  Acceptance: The SWE Playback component test queries the current accessible name, the manuals use the same label as the UI, and the focused Vitest file completes in CI or a documented local runner.
-  Complexity: S
-
 - [ ] P0 — Sync public version, release, and screenshot truth to v0.4.4
   Why: Trust cues are split across v0.4.0 GitHub Releases, v0.4.1/v0.4.2 screenshot assets, a v0.4.2 completed-work summary, and v0.4.4 app metadata.
   Evidence: `rtk gh release list`; `COMPLETED.md`; `assets/screenshots/*.png`; `CONTRIBUTING.md`; `README.md`

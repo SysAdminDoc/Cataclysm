@@ -27,7 +27,7 @@ Without a token, the app uses the local Natural Earth globe by default. OpenStre
 
 1. **Choose a preset** from the left panel. Each card shows a historical or hypothetical tsunami event with its source paper citation.
 2. The globe flies to the event location and displays the source parameters in the **Results panel** on the right.
-3. Click **Run simulation** in the **SWE Playback** section (right panel) to start the shallow-water solver.
+3. Click **Run solver** in the **SWE Playback** section (right panel) to start the shallow-water solver.
 4. Use the **timeline scrubber** to step through 24 snapshots of the propagating wave.
 5. Press **Play** to animate the sequence automatically.
 

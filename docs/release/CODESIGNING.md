@@ -1,83 +1,101 @@
-# Code signing + auto-updater secrets
+# Code signing and local release packaging
 
-This document describes the GitHub Actions secrets that unlock the
-conditional signing + auto-updater paths added to
-[`release.yml`](../../.github/workflows/release.yml) in v0.4.0. Until
-the maintainer adds these secrets, the release workflow ships
-**unsigned** installers (which prompt SmartScreen on Windows and
-Gatekeeper on macOS) and does **not** publish a Tauri update manifest.
+TsunamiSimulator uses local release builds. GitHub Actions release workflows
+were intentionally removed, so signing secrets are not configured in GitHub and
+there is no remote release job to trigger.
 
-All secret slots are documented here so the next person to land the
-maintainer-side work has everything in one place.
+Before packaging a release, run the local gate from the repo root:
 
-## Windows Authenticode (F-V04)
-
-| Secret name | What it holds | How to produce |
-|-------------|---------------|----------------|
-| `WIN_SIGN_CERT_BASE64` | Base64-encoded PKCS#12 (`.pfx`) bundle containing the cert + private key. | Obtain a Code Signing Cert from DigiCert / Sectigo / SSL.com. Export as PFX with key (`certutil -p <password> -export ...`). Encode: `base64 -w0 cert.pfx`. Paste the single-line output into the secret. |
-| `WIN_SIGN_PASSWORD` | Password unlocking the PFX. | The password you set during PFX export. |
-
-The release workflow signs every `.msi` and `.exe` produced by the
-Windows bundle with `signtool sign /fd SHA256 /tr
-http://timestamp.digicert.com /td SHA256`. The timestamp server is
-documented by Microsoft; alternative timestamp URLs (Sectigo, GlobalSign,
-Apple) work too.
-
-Verify post-release: `signtool verify /pa /v <path-to-msi>`.
-
-## macOS Notarisation (F-V04)
-
-| Secret name | What it holds | How to produce |
-|-------------|---------------|----------------|
-| `APPLE_CERTIFICATE_BASE64` | Base64-encoded Developer ID Application `.p12`. | Export the Developer ID Application cert from Keychain Access as a `.p12` (with private key). `base64 -i cert.p12 -o cert.p12.b64` and paste. |
-| `APPLE_CERTIFICATE_PASSWORD` | Password unlocking the `.p12`. | Set during export. |
-| `APPLE_SIGNING_IDENTITY` | Identity string `codesign` recognises, e.g. `Developer ID Application: SysAdminDoc (TEAM12345)`. | Run `security find-identity -v -p codesigning` on a Mac with the cert installed. |
-| `APPLE_ID` | Apple ID that owns the Developer Account. | Maintainer's Apple ID email. |
-| `APPLE_PASSWORD` | App-specific password (not the Apple ID password). | Generate at https://appleid.apple.com → Sign-In → App-Specific Passwords. |
-| `APPLE_TEAM_ID` | Apple Developer Team ID. | https://developer.apple.com/account → Membership → Team ID. |
-
-The release workflow:
-1. Imports the cert into a temporary keychain.
-2. `codesign --force --options runtime --timestamp` each `.dmg`.
-3. `xcrun notarytool submit ... --wait` (typically completes in 2–10 min).
-4. `xcrun stapler staple` the notarisation ticket.
-5. Deletes the temporary keychain.
-
-Verify post-release: `spctl --assess --type execute --verbose <path-to-app>`.
-
-## Tauri auto-updater Ed25519 signing (F-V07)
-
-| Secret name | What it holds | How to produce |
-|-------------|---------------|----------------|
-| `TAURI_SIGNING_PRIVATE_KEY` | Tauri 2 update-manifest signer's private key. | `npx tauri signer generate -w ~/.tauri/myapp.key`. Paste the contents of `~/.tauri/myapp.key` into the secret. |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password protecting the private key. | Set during `tauri signer generate`. |
-
-After generating the keypair, the **public** key (from
-`~/.tauri/myapp.key.pub`) must be pasted into `tauri.conf.json` at
-`plugins.updater.pubkey` and the plugin must be registered in
-`src-tauri/src/lib.rs`:
-
-```rust
-.plugin(tauri_plugin_updater::Builder::new().build())
+```bash
+npm run verify
 ```
 
-…with `tauri-plugin-updater` in `src-tauri/Cargo.toml`. The
-`release.yml` `TAURI_SIGNING_PRIVATE_KEY` env-var is consumed
-automatically by `tauri build` when set, which then emits a `.sig`
-file alongside each installer. A separate post-release step builds
-`latest.json` referencing the signatures + the release URLs — see
-the Tauri 2 docs: https://v2.tauri.app/plugin/updater/
+Then build the platform bundle locally:
 
-## Operational notes
+```bash
+npm run tauri:build
+```
 
-- **None of these secrets are required** for the release workflow to
-  complete. Each signing block is gated by `if: env.X != ''` so the
-  unsigned path keeps working until the secrets land.
-- **Test on a feature branch first.** Sign a v0.4.0-test release,
-  install on a clean Win 11 + macOS 13 VM, confirm no warnings.
-- **Rotation cadence**: EV cert renews annually. Apple Developer
-  membership renews annually. Tauri Ed25519 key can stay indefinite
-  (rotate only on compromise).
-- **Secret leak response**: revoke the cert with the issuer; generate
-  a new Tauri Ed25519 keypair + bump the `pubkey` in
-  `tauri.conf.json`; cut a new patch release.
+Unsigned bundles remain valid for testing, but Windows SmartScreen and macOS
+Gatekeeper may warn. Public release assets should be signed when the maintainer
+has the platform credentials available.
+
+## Windows Authenticode
+
+Required local inputs:
+
+| Name | What it holds | How to produce |
+|------|---------------|----------------|
+| `WIN_SIGN_CERT_BASE64` | Base64-encoded PKCS#12 (`.pfx`) bundle containing the cert and private key. | Obtain a code-signing cert from DigiCert, Sectigo, SSL.com, or equivalent. Export as PFX with key, then encode it as one line. |
+| `WIN_SIGN_PASSWORD` | Password unlocking the PFX. | The password set during PFX export. |
+
+After `npm run tauri:build`, sign each generated `.msi` and `.exe` with
+`signtool`:
+
+```powershell
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a path\to\TsunamiSimulator.msi
+signtool verify /pa /v path\to\TsunamiSimulator.msi
+```
+
+## macOS notarization
+
+Required local inputs:
+
+| Name | What it holds | How to produce |
+|------|---------------|----------------|
+| `APPLE_CERTIFICATE_BASE64` | Base64-encoded Developer ID Application `.p12`. | Export the Developer ID Application cert from Keychain Access as a `.p12`, then base64 encode it. |
+| `APPLE_CERTIFICATE_PASSWORD` | Password unlocking the `.p12`. | Set during export. |
+| `APPLE_SIGNING_IDENTITY` | Identity string recognized by `codesign`, such as `Developer ID Application: SysAdminDoc (TEAM12345)`. | Run `security find-identity -v -p codesigning` on the signing Mac. |
+| `APPLE_ID` | Apple ID that owns the Developer Account. | Maintainer's Apple ID email. |
+| `APPLE_PASSWORD` | App-specific password. | Generate at https://appleid.apple.com. |
+| `APPLE_TEAM_ID` | Apple Developer Team ID. | Apple Developer account membership page. |
+
+Local macOS release flow:
+
+1. Import the certificate into a temporary keychain.
+2. Run `npm run tauri:build`.
+3. `codesign --force --options runtime --timestamp` each `.app` / `.dmg`.
+4. `xcrun notarytool submit ... --wait`.
+5. `xcrun stapler staple` the notarized artifact.
+6. Delete the temporary keychain.
+
+Verify the result:
+
+```bash
+spctl --assess --type execute --verbose path/to/TsunamiSimulator.app
+```
+
+## Tauri auto-updater signing
+
+Auto-updater support is not currently shipped. If it is reintroduced, generate a
+Tauri 2 Ed25519 signing key locally:
+
+```bash
+npx tauri signer generate -w ~/.tauri/tsunami-simulator.key
+```
+
+The public key must be committed in `tauri.conf.json` under the updater plugin
+configuration, and the private key/password must stay outside the repo. A
+release packager can then pass `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the local environment so `tauri build`
+emits `.sig` files beside installers.
+
+## Release checklist
+
+1. Confirm version strings match across `package.json`, `src-tauri/Cargo.toml`,
+   `src-tauri/tauri.conf.json`, README badge, app chrome, and CHANGELOG.
+2. Run `npm run verify`.
+3. Delete stale bundle outputs under `src-tauri/target/release/bundle/`.
+4. Run `npm run tauri:build`.
+5. Sign the generated platform artifacts when certificates are available.
+6. Verify signatures on a clean machine or VM.
+7. Create the GitHub Release manually with `gh release create` and attach the
+   local artifacts.
+
+## Secret leak response
+
+- Revoke the affected platform certificate with the issuer.
+- Generate a new Tauri Ed25519 keypair if updater signing is affected.
+- Remove leaked material from the local machine, shell history, and release
+  assets.
+- Cut a new patch release with replacement signatures.

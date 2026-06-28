@@ -58,7 +58,7 @@ test.describe("TsunamiSimulator browser preview", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
 
-    await expect(page.getByText("Custom scenario")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Custom scenario", { exact: true })).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved scenario." })).toBeVisible();
 
@@ -76,10 +76,9 @@ test.describe("TsunamiSimulator browser preview", () => {
 // ---------------------------------------------------------------------------
 // Automated accessibility regression checks (axe-core)
 // ---------------------------------------------------------------------------
-// Scoped to WCAG 2.x A/AA conformance rules — the standard CI gate for
-// interactive web apps. Best-practice and AAA rules run as advisory outside
-// CI. Cesium's WebGL canvas and internal widgets are excluded (GPU-rendered
-// 3D scene with no DOM semantics).
+// Scoped to WCAG 2.x A/AA conformance rules for the local verification gate.
+// Best-practice and AAA rules remain advisory. Cesium's WebGL canvas and
+// internal widgets are excluded (GPU-rendered 3D scene with no DOM semantics).
 const AXE_EXCLUDE = [".cesium-widget", ".cesium-viewer-toolbar"];
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 

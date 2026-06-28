@@ -6,8 +6,8 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ### Changed — accessibility & rendering
 - **Automated WCAG A/AA regression checks.** Five axe-core Playwright tests
-  now gate CI across the first-run dialog, main cockpit, Settings, LogViewer,
-  and a preset-active cockpit. Violations fail the build.
+  now gate local verification across the first-run dialog, main cockpit,
+  Settings, LogViewer, and a preset-active cockpit. Violations fail the build.
 - **Runup overlays migrated to Cesium Primitive API.** Cylinder bars and
   inundation discs now render as batched `CylinderGeometry` /
   `EllipseGeometry` primitives instead of per-point entities. Labels remain
@@ -84,6 +84,12 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `find_preset` no longer rebuilds the whole registry on each lookup.
 
 ### Fixed — UX & accessibility
+- **SWE action label drift fixed.** Manuals and component tests now use the
+  current **Run solver** button label, and stale component/e2e assertions were
+  refreshed to match the polished empty, chart, diagnostics, Settings, and
+  saved-scenario UI states.
+- **Muted cockpit contrast fixed.** Waiting badges and footer helper text now
+  meet the WCAG AA contrast gate covered by the Playwright axe checks.
 - **Bathymetry confidence wording corrected.** README, first-run copy, globe
   style text, and export metadata now state that the solver uses a coarse
   offline bathymetry approximation and that inundation overlays are first-order
@@ -117,9 +123,15 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   button shows a saving state; the timeline tolerates a non-finite time.
 
 ### Fixed — security & DX
-- **npm audit is clean at low severity.** Updated the lockfile to
-  `@babel/core` 7.29.7 and added a direct/overridden `esbuild` 0.28.1 dev
-  dependency while keeping the known-good Vite 7.3.5 build line.
+- **Local verification contract restored.** Added `npm run verify` as the
+  single local gate for typecheck, lint, Vitest, production build, `npm audit`,
+  Playwright smoke/a11y coverage, Rust check/test/clippy, and optional
+  `cargo-audit` / `cargo-deny` checks when those tools are installed.
+- **DOMPurify advisory cleared.** Added an npm override so Cesium's transitive
+  DOMPurify dependency resolves to the patched `3.4.11` line.
+- **npm audit is clean at low severity.** Lockfile and npm overrides now keep
+  the current Cesium/Vite toolchain on patched DOMPurify, Babel, and esbuild
+  lines.
 - **High-risk frontend workflows now have regression coverage.** Added tests
   for ScenarioBuilder save/load/delete/copy/paste errors, Settings token/reset
   controls, SWE streaming progress/cancel/snapshot handoff, and a Playwright

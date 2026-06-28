@@ -2328,7 +2328,7 @@ a {
   display: grid;
   gap: 7px;
   font-size: 11px;
-  color: var(--overlay);
+  color: var(--subtext);
   text-align: left;
   padding: 10px;
   line-height: 1.5;

@@ -12,7 +12,7 @@ describe("Settings", () => {
     render(<Settings onClose={() => {}} />);
 
     expect(await screen.findByText("Globe imagery")).toBeInTheDocument();
-    expect(screen.getByText(/works out of the box/i)).toBeInTheDocument();
+    expect(screen.getByText(/local-first and reliable/i)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "OpenStreetMap (no token)" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Natural Earth II (offline-friendly)" })).toBeInTheDocument();
     expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();

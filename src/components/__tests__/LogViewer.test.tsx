@@ -51,10 +51,10 @@ describe("LogViewer", () => {
     });
     expect(await screen.findByText(/copy-failure-entry/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Copy to clipboard" }));
+    await user.click(screen.getByRole("button", { name: "Copy log" }));
 
     await waitFor(() => expect(clipboard.writeText).toHaveBeenCalled());
     expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed.");
-    expect(screen.getByRole("button", { name: "Copy to clipboard" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy log" })).toBeInTheDocument();
   });
 });

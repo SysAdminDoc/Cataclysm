@@ -1,6 +1,6 @@
 # cargo-deny configuration — license auditing, duplicate dep detection, advisory DB.
 # Run locally: cargo deny check
-# CI runs this automatically on every push/PR.
+# `npm run verify` runs this when cargo-deny is installed.
 
 [advisories]
 db-path = "~/.cargo/advisory-db"

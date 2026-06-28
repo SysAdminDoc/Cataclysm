@@ -15,12 +15,12 @@ const INITIAL: InitialDisplacement = {
 describe("AttenuationChart", () => {
   it("renders empty state when no initial displacement", () => {
     render(<AttenuationChart initial={null} isImpact={true} timeS={0} runupResults={[]} />);
-    expect(screen.getByText("No source selected")).toBeInTheDocument();
+    expect(screen.getByText("Amplitude curve appears after source selection")).toBeInTheDocument();
   });
 
   it("renders the chart SVG with axis labels when initial is provided", () => {
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={0} runupResults={[]} />);
-    const svg = screen.getByRole("img", { name: /amplitude vs distance/i });
+    const svg = screen.getByRole("img", { name: /modeled wave amplitude decay by distance/i });
     expect(svg).toBeInTheDocument();
     expect(svg.querySelectorAll("text").length).toBeGreaterThan(0);
   });

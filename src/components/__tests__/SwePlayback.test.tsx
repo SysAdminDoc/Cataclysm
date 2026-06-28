@@ -70,7 +70,7 @@ describe("SwePlayback", () => {
     const user = userEvent.setup();
     render(<SwePlayback initial={INITIAL} onSnapshot={onSnapshot} onSnapshotsReady={onSnapshotsReady} />);
 
-    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+    await user.click(screen.getByRole("button", { name: "Run solver" }));
     await screen.findByRole("button", { name: "Cancel" });
 
     act(() => {
@@ -84,8 +84,8 @@ describe("SwePlayback", () => {
       finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2 });
     });
 
-    expect(await screen.findByText("frame 1/2")).toBeInTheDocument();
-    expect(screen.getByText("grid 2×2")).toBeInTheDocument();
+    expect(await screen.findByText(/Frame\s+1\/2/i)).toBeInTheDocument();
+    expect(screen.getByText(/grid\s+2.2/i)).toBeInTheDocument();
     await waitFor(() => expect(onSnapshotsReady).toHaveBeenCalledWith(SNAPSHOTS));
   });
 
@@ -99,11 +99,11 @@ describe("SwePlayback", () => {
     const user = userEvent.setup();
     render(<SwePlayback initial={INITIAL} onSnapshot={onSnapshot} />);
 
-    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+    await user.click(screen.getByRole("button", { name: "Run solver" }));
     await user.click(await screen.findByRole("button", { name: "Cancel" }));
 
     expect(tauriApi.cancelSimulation).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Run simulation" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run solver" })).toBeInTheDocument();
 
     act(() => {
       pushSnapshot?.(SNAPSHOTS[0]);

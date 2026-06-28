@@ -484,7 +484,7 @@ impl TimeStepper {
         cancel: Option<&AtomicBool>,
     ) -> bool {
         for _ in 0..n_steps {
-            if cancel.map_or(false, |c| c.load(Ordering::Relaxed)) {
+            if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
                 return false;
             }
             self.step_one(grid);
@@ -783,7 +783,7 @@ pub fn run_simulation(
     };
 
     for k in 1..n {
-        if cancel.map_or(false, |c| c.load(Ordering::Relaxed)) {
+        if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
             break;
         }
         let target_step = (k * total_steps) / (n - 1);

@@ -139,6 +139,7 @@ cd TsunamiSimulator
 npm install
 npm run dev                # browser preview with deterministic demo data
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
+npm run verify             # local type/lint/test/audit/build verification gate
 npm run tauri build        # platform installer(s) in src-tauri/target/release/bundle/
 ```
 
