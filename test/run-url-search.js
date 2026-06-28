@@ -39,6 +39,20 @@ assert('Metadata: welcome weapon count matches presets', welcomeWeaponCount === 
 assert('Metadata: JSON export uses shared app version', /version\s*:\s*NM\.APP_VERSION/.test(appJs) && !/version\s*:\s*['"]3\./.test(appJs));
 assert('Metadata: welcome weapon count is runtime-synced', /weapon-count-tag/.test(indexHtml) && /weaponCountTag\.textContent/.test(appJs));
 
+// ---- CSV IMPORT VALIDATION TESTS ----
+const validCsv = 'lat,lng,yield_kt,burst_type,weapon\n40.7128,-74.0060,455,airburst,"W88, Trident"\n33,-118,50,water,Imported';
+const validImport = NM.validateCSVImport(validCsv, validCsv.length);
+assert('CSV: valid rows accepted', validImport.ok && validImport.validRows.length === 2 && validImport.skippedRows.length === 0);
+assert('CSV: quoted weapon field parsed', validImport.validRows[0].weapon === 'W88, Trident');
+
+const mixedCsv = 'lat,lng,yield_kt,burst_type\n91,-74,455,airburst\n40,-181,455,surface\n40,-74,200000,airburst\n40,-74,10,bogus\n40,-74,10,hemp';
+const mixedImport = NM.validateCSVImport(mixedCsv, mixedCsv.length);
+assert('CSV: invalid rows skipped and valid rows retained', mixedImport.ok && mixedImport.validRows.length === 1 && mixedImport.skippedRows.length === 4);
+assert('CSV: oversize file rejected before import', NM.validateCSVImport(validCsv, NM.CSV_IMPORT_LIMITS.maxBytes + 1).ok === false);
+
+const tooManyRowsCsv = 'lat,lng,yield_kt,burst_type\n' + Array.from({length: NM.CSV_IMPORT_LIMITS.maxRows + 1}, () => '40,-74,10,airburst').join('\n');
+assert('CSV: row cap rejected', NM.validateCSVImport(tooManyRowsCsv, tooManyRowsCsv.length).ok === false);
+
 // ---- URL PARSING TESTS ----
 // Test the URL format: lat,lng,yield,burst[,height,fission]
 function parseDetParam(seg) {

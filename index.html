@@ -554,7 +554,8 @@
             <button class="export-btn warn" id="export-csv">Export Data as CSV</button>
             <button class="export-btn success" id="export-report">Generate Summary Report</button>
             <button class="export-btn" id="export-print">Print / PDF Report</button>
-            <label class="export-btn" id="import-csv-label">Import CSV<input type="file" id="import-csv" accept=".csv" style="display:none"/></label>
+            <label class="export-btn" id="import-csv-label">Preview CSV Import<input type="file" id="import-csv" accept=".csv" style="display:none"/></label>
+            <div class="csv-import-status" id="csv-import-status" aria-live="polite">CSV import limit: 500 rows, 256 KB. Required columns: lat, lng, yield_kt, burst_type.</div>
           </div>
         </div>
       </div>

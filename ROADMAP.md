@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P0 - Harden CSV import with schema validation and preview
-  Why: CSV import can process arbitrary file size, row count, coordinate ranges, yield ranges, and burst labels before triggering detonations.
-  Evidence: `js/app.js:1526-1547`, existing export/import workflow, OWASP DOM/data validation guidance.
-  Touches: `js/app.js`, `test/run-url-search.js`, `index.html`, `css/styles.css`.
-  Acceptance: Import shows a preview summary, rejects files above a documented size/row cap, validates lat/lng/yield/burst per row, reports skipped rows, and imports only confirmed valid rows.
-  Complexity: M
-
 - [ ] P1 - Add model provenance to every export and report
   Why: Analysts need exported files to preserve physics model, app version, citation keys, assumptions, and confidence labels.
   Evidence: `NM.CITATIONS` in `js/physics.js`, NukeBlastSimulator methodology page, Fourmilab calculator, NUKEMAP roadmap.

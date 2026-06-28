@@ -6,6 +6,7 @@ window.NM = window.NM || {};
 
 let map, currentDets = [], windAngle = 0, multiMode = false, mirvMode = false, currentMirvPreset = null;
 NM._nightMode = false;
+let pendingCSVImport = null;
 
 function syncAppMetadata() {
   const weaponCount = Math.max(0, (NM.WEAPONS || []).filter(w => w.name !== 'Custom').length);
@@ -662,6 +663,10 @@ function initControls() {
   $('export-csv').addEventListener('click', () => { if (currentDets.length) exportCSV(); });
   $('export-print').addEventListener('click', () => { if (currentDets.length) exportPrintReport(); });
   $('import-csv').addEventListener('change', (e) => { if (e.target.files[0]) { importCSV(e.target.files[0]); e.target.value = ''; } });
+  $('csv-import-status')?.addEventListener('click', e => {
+    if (e.target.id === 'csv-import-run' && pendingCSVImport) runCSVImport();
+    if (e.target.id === 'csv-import-cancel') resetCSVImportStatus();
+  });
 
   // GPS check
   $('gps-check').addEventListener('click', () => NM.GPSSafe.check(map));
@@ -1529,24 +1534,57 @@ function exportCSV() {
 }
 
 // ---- IMPORT CSV ----
+function resetCSVImportStatus() {
+  pendingCSVImport = null;
+  const el = $('csv-import-status');
+  if (el) el.textContent = 'CSV import limit: 500 rows, 256 KB. Required columns: lat, lng, yield_kt, burst_type.';
+}
+
+function renderCSVImportPreview(result) {
+  const el = $('csv-import-status');
+  if (!el) return;
+  if (!result.ok) {
+    pendingCSVImport = null;
+    el.innerHTML = `<div class="csv-preview warn"><strong>Import rejected.</strong><span>${NM.esc(result.error)}</span></div>`;
+    return;
+  }
+  pendingCSVImport = result.validRows;
+  const skipped = result.skippedRows.slice(0, 5).map(r => `<li>Row ${r.row}: ${NM.esc(r.reason)}</li>`).join('');
+  el.innerHTML = `<div class="csv-preview">
+    <strong>${result.validRows.length} valid row${result.validRows.length === 1 ? '' : 's'} ready to import</strong>
+    <span>${result.skippedRows.length} skipped of ${result.totalRows} data row${result.totalRows === 1 ? '' : 's'}.</span>
+    ${skipped ? `<ul class="csv-skip-list">${skipped}</ul>` : ''}
+    ${result.skippedRows.length > 5 ? `<span>Plus ${result.skippedRows.length - 5} more skipped row${result.skippedRows.length - 5 === 1 ? '' : 's'}.</span>` : ''}
+    <div class="csv-actions"><button class="btn-secondary" id="csv-import-run" type="button">Import Valid Rows</button><button class="btn-secondary" id="csv-import-cancel" type="button">Cancel</button></div>
+  </div>`;
+}
+
+function runCSVImport() {
+  if (!pendingCSVImport || !pendingCSVImport.length) return;
+  const rows = pendingCSVImport;
+  pendingCSVImport = null;
+  clearAll();
+  multiMode = true; $('multi-check').checked = true;
+  rows.forEach(row => {
+    setYield(row.yieldKt);
+    document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === row.burstType));
+    $('wind-wrap').style.display = row.burstType === 'surface' || row.burstType === 'water' ? '' : 'none';
+    triggerDetonation(row.lat, row.lng);
+  });
+  const el = $('csv-import-status');
+  if (el) el.innerHTML = `<div class="csv-preview success"><strong>Imported ${rows.length} valid row${rows.length === 1 ? '' : 's'}.</strong><span>Invalid rows were skipped before detonation.</span></div>`;
+}
+
 function importCSV(file) {
+  if (file.size > NM.CSV_IMPORT_LIMITS.maxBytes) {
+    renderCSVImportPreview(NM.validateCSVImport('', file.size));
+    return;
+  }
   const reader = new FileReader();
   reader.onload = function(e) {
-    const lines = e.target.result.trim().split('\n');
-    if (lines.length < 2) return;
-    clearAll();
-    multiMode = true; $('multi-check').checked = true;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].match(/(".*?"|[^,]+)/g);
-      if (!cols || cols.length < 4) continue;
-      const lat = +cols[0], lng = +cols[1], kt = +cols[2];
-      const burst = (cols[3] || 'airburst').replace(/"/g, '');
-      if (isNaN(lat) || isNaN(lng) || isNaN(kt)) continue;
-      setYield(kt);
-      document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === burst));
-      triggerDetonation(lat, lng);
-    }
+    renderCSVImportPreview(NM.validateCSVImport(e.target.result, file.size));
   };
+  reader.onerror = () => renderCSVImportPreview({ok:false, error:'Could not read CSV file.', validRows:[], skippedRows:[], totalRows:0});
   reader.readAsText(file);
 }
 
@@ -1828,8 +1866,13 @@ function init() {
       // Demo detonation on first visit
       if (!hasUrlDets && !currentDets.length) {
         setTimeout(() => {
+          if (currentDets.length) return;
           map.flyTo([40.7128, -74.006], 11, {duration: 1.2});
-          setTimeout(() => { setYield(455); triggerDetonation(40.7128, -74.006); }, 1400);
+          setTimeout(() => {
+            if (currentDets.length) return;
+            setYield(455);
+            triggerDetonation(40.7128, -74.006);
+          }, 1400);
         }, 300);
       }
     });

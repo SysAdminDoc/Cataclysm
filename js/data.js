@@ -2,6 +2,80 @@
 window.NM = window.NM || {};
 
 NM.APP_VERSION = '3.6.0';
+NM.CSV_IMPORT_LIMITS = {
+  maxBytes: 256 * 1024,
+  maxRows: 500,
+  validBursts: ['airburst', 'surface', 'custom', 'hemp', 'water'],
+};
+
+NM.parseCSVLine = function(line) {
+  const cols = [];
+  let cur = '', quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (quoted && line[i + 1] === '"') { cur += '"'; i++; }
+      else quoted = !quoted;
+    } else if (ch === ',' && !quoted) {
+      cols.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cols.push(cur);
+  return cols.map(c => c.trim());
+};
+
+NM.validateCSVImport = function(text, fileSize) {
+  const limits = NM.CSV_IMPORT_LIMITS;
+  const bytes = fileSize || new Blob([text || '']).size;
+  if (bytes > limits.maxBytes) {
+    return {ok:false, error:`CSV file is too large. Maximum size is ${Math.round(limits.maxBytes / 1024)} KB.`, validRows:[], skippedRows:[], totalRows:0};
+  }
+  const lines = (text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim());
+  if (lines.length < 2) return {ok:false, error:'CSV must include a header and at least one data row.', validRows:[], skippedRows:[], totalRows:0};
+  const totalRows = lines.length - 1;
+  if (totalRows > limits.maxRows) {
+    return {ok:false, error:`CSV has ${totalRows} rows. Maximum import is ${limits.maxRows} rows.`, validRows:[], skippedRows:[], totalRows};
+  }
+  const headers = NM.parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, '_'));
+  const idx = {
+    lat: headers.indexOf('lat'),
+    lng: headers.indexOf('lng'),
+    yieldKt: headers.indexOf('yield_kt'),
+    burst: headers.indexOf('burst_type'),
+    weapon: headers.indexOf('weapon'),
+  };
+  if (idx.lat < 0 || idx.lng < 0 || idx.yieldKt < 0 || idx.burst < 0) {
+    return {ok:false, error:'CSV header must include lat,lng,yield_kt,burst_type.', validRows:[], skippedRows:[], totalRows};
+  }
+  const validRows = [], skippedRows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = NM.parseCSVLine(lines[i]);
+    const rowNum = i + 1;
+    const lat = +cols[idx.lat], lng = +cols[idx.lng], yieldKt = +cols[idx.yieldKt];
+    const burstType = (cols[idx.burst] || '').toLowerCase();
+    const reason = [];
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) reason.push('lat must be -90 to 90');
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) reason.push('lng must be -180 to 180');
+    if (!Number.isFinite(yieldKt) || yieldKt < 0.001 || yieldKt > 100000) reason.push('yield_kt must be 0.001 to 100000');
+    if (!limits.validBursts.includes(burstType)) reason.push(`burst_type must be ${limits.validBursts.join('/')}`);
+    if (reason.length) {
+      skippedRows.push({row:rowNum, reason:reason.join('; ')});
+      continue;
+    }
+    validRows.push({
+      row: rowNum,
+      lat,
+      lng,
+      yieldKt,
+      burstType,
+      weapon: idx.weapon >= 0 ? (cols[idx.weapon] || 'Imported') : 'Imported',
+    });
+  }
+  return {ok:validRows.length > 0, error:validRows.length ? null : 'CSV contains no valid detonation rows.', validRows, skippedRows, totalRows};
+};
 
 NM.WEAPONS = [
   {name:'Custom',yield_kt:15,country:'',year:'',desc:'Set any yield'},
