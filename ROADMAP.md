@@ -10,13 +10,6 @@ Single source of truth for delivery. Blocked items live in
 
 ### P2
 
-- [ ] P2 — Add screenshot-backed visual and accessibility regression coverage for the current cockpit
-  Why: Existing Playwright checks cover smoke paths and axe scans, but the committed screenshots are stale and there is no automated guard for toolbar density, modal clipping, or light/dark cockpit regressions.
-  Evidence: `tests/smoke.spec.ts`; `assets/screenshots/*.png`; `src/styles.css`; Playwright screenshot tooling
-  Touches: `tests/smoke.spec.ts`, `playwright.config.ts`, `assets/screenshots/*`, CI artifacts
-  Acceptance: Playwright captures current v0.4.4 desktop and narrow-layout states for first-run, active preset, SWE running/ready, Settings, citations, and log viewer with no axe violations or obvious overflow.
-  Complexity: M
-
 - [ ] P2 - Add a manual dependency refresh cadence
   Why: Dependabot was removed, `npm outdated` already shows maintenance drift, and Rust advisory/license tools are optional skips when not installed.
   Evidence: `npm outdated --json`; `scripts/verify.mjs`; `package.json`; `src-tauri/deny.toml`; no `.github/dependabot.yml`

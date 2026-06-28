@@ -15,6 +15,14 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
   generation steps and an expanded release checklist.
 
+### Added — visual regression
+- **Screenshot-backed visual regression tests.** 11 Playwright tests capture
+  desktop (1440×900) and narrow (390×844) states for first-run disclaimer,
+  active preset cockpit, SWE solver ready/running, Settings modal, Citations
+  modal, and log viewer. Cesium WebGL canvas is masked; UI chrome is compared
+  against committed PNG baselines with `toHaveScreenshot()`. Axe WCAG A/AA
+  scans included for first-run, Settings, and narrow first-run states.
+
 ### Added — settings versioning
 - **Schema-versioned settings store.** Both the Tauri plugin-store and
   localStorage now carry a `_settings_schema_version` key. Legacy unversioned
