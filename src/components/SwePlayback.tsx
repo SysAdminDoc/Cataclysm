@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
-import { simulateDemoGrid } from "../lib/demo";
-import type { GridSnapshot, InitialDisplacement } from "../types/scenario";
+import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
+import { exportGaugeCsv } from "../lib/export";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 
 type Props = {
@@ -39,9 +40,15 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const [cellsPerDeg, setCellsPerDeg] = useState(6);
   const [streamProgress, setStreamProgress] = useState(0);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean } | null>(null);
+  const [gauges, setGauges] = useState<Gauge[]>([]);
+  const [gaugeSeries, setGaugeSeries] = useState<GaugeTimeSeries[]>([]);
+  const [gaugeLatInput, setGaugeLatInput] = useState("");
+  const [gaugeLonInput, setGaugeLonInput] = useState("");
+  const [gaugeNameInput, setGaugeNameInput] = useState("");
   const lastInitialRef = useRef<InitialDisplacement | null>(null);
   const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
+  const gaugeCounter = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -85,6 +92,43 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       setIsPlaying(false);
     }
   }, [isPlaying, snapshots, activeIdx]);
+
+  useEffect(() => {
+    if (!initial || gauges.length === 0 || !snapshots) {
+      setGaugeSeries([]);
+      return;
+    }
+    const tEndS = snapshots.length > 1 ? snapshots[snapshots.length - 1].time_s : 3600;
+    const series = sampleGaugesFromDemo(initial, gauges, snapshots.length, tEndS);
+    setGaugeSeries(series);
+  }, [initial, gauges, snapshots]);
+
+  const addGauge = useCallback(() => {
+    const lat = parseFloat(gaugeLatInput);
+    const lon = parseFloat(gaugeLonInput);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+    gaugeCounter.current += 1;
+    const name = gaugeNameInput.trim() || `Gauge ${gaugeCounter.current}`;
+    setGauges((prev) => [
+      ...prev,
+      { id: `gauge-${gaugeCounter.current}`, name, lat_deg: lat, lon_deg: lon },
+    ]);
+    setGaugeLatInput("");
+    setGaugeLonInput("");
+    setGaugeNameInput("");
+  }, [gaugeLatInput, gaugeLonInput, gaugeNameInput]);
+
+  const removeGauge = useCallback((id: string) => {
+    setGauges((prev) => prev.filter((g) => g.id !== id));
+  }, []);
+
+  const handleGaugeCsvExport = useCallback(() => {
+    if (gaugeSeries.length === 0) return;
+    const mode = isTauri() ? "Backend SWE solver" : "Browser preview (approximate)";
+    const bathy = useBathy ? "Coarse basin/shelf" : "Uniform depth";
+    exportGaugeCsv(gaugeSeries, mode, bathy);
+  }, [gaugeSeries, useBathy]);
 
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
@@ -339,6 +383,128 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       {!isTauri() && (
         <div className="swe__notice">Browser preview uses demo SWE frames, not backend physics.</div>
       )}
+
+      <div className="swe__gauges">
+        <div className="section__title">
+          <span>Gauges</span>
+          <span className="section__badge">{gauges.length}</span>
+        </div>
+        <div className="swe__gauge-add">
+          <input
+            type="text"
+            placeholder="Name"
+            value={gaugeNameInput}
+            onChange={(e) => setGaugeNameInput(e.target.value)}
+            aria-label="Gauge name"
+            className="swe__gauge-input swe__gauge-input--name"
+          />
+          <input
+            type="number"
+            placeholder="Lat"
+            value={gaugeLatInput}
+            onChange={(e) => setGaugeLatInput(e.target.value)}
+            aria-label="Gauge latitude"
+            min={-90}
+            max={90}
+            step="any"
+            className="swe__gauge-input"
+          />
+          <input
+            type="number"
+            placeholder="Lon"
+            value={gaugeLonInput}
+            onChange={(e) => setGaugeLonInput(e.target.value)}
+            aria-label="Gauge longitude"
+            min={-180}
+            max={180}
+            step="any"
+            className="swe__gauge-input"
+          />
+          <button
+            type="button"
+            onClick={addGauge}
+            disabled={!gaugeLatInput || !gaugeLonInput}
+            title="Add gauge at the specified coordinates"
+          >
+            Add
+          </button>
+        </div>
+        {gauges.length > 0 && (
+          <div className="swe__gauge-list" role="list">
+            {gauges.map((g) => {
+              const series = gaugeSeries.find((s) => s.gauge.id === g.id);
+              return (
+                <div key={g.id} className="swe__gauge-item" role="listitem">
+                  <div className="swe__gauge-header">
+                    <strong>{g.name}</strong>
+                    <span className="swe__gauge-coords">
+                      {g.lat_deg.toFixed(2)}°, {g.lon_deg.toFixed(2)}°
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeGauge(g.id)}
+                      className="swe__gauge-remove"
+                      aria-label={`Remove gauge ${g.name}`}
+                      title="Remove this gauge"
+                    >
+                      <UiIcon name="close" size={12} />
+                    </button>
+                  </div>
+                  {series && series.samples.length > 0 && (
+                    <GaugeSparkline samples={series.samples} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {gaugeSeries.length > 0 && (
+          <button
+            type="button"
+            onClick={handleGaugeCsvExport}
+            className="swe__gauge-export"
+            title="Export all gauge time series as CSV"
+          >
+            <UiIcon name="download" size={14} />
+            Export gauges CSV
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GaugeSparkline({ samples }: { samples: import("../types/scenario").GaugeSample[] }) {
+  if (samples.length < 2) return null;
+  const maxEta = Math.max(...samples.map((s) => Math.abs(s.eta_m)), 0.01);
+  const w = 200;
+  const h = 40;
+  const pad = 2;
+  const points = samples
+    .map((s, i) => {
+      const x = pad + (i / (samples.length - 1)) * (w - pad * 2);
+      const y = h / 2 - (s.eta_m / maxEta) * (h / 2 - pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const peakEta = Math.max(...samples.map((s) => s.eta_m));
+  return (
+    <div className="swe__gauge-spark">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="swe__gauge-svg"
+        aria-label="Gauge eta time series"
+      >
+        <line x1={pad} y1={h / 2} x2={w - pad} y2={h / 2} stroke="var(--surface1)" strokeWidth="1" />
+        <polyline
+          points={points}
+          fill="none"
+          stroke="var(--pink)"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="swe__gauge-peak">peak {peakEta.toFixed(2)} m</span>
     </div>
   );
 }

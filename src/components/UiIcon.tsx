@@ -6,6 +6,7 @@ type UiIconName =
   | "clipboard"
   | "close"
   | "copy"
+  | "download"
   | "folder"
   | "info"
   | "mapPin"
@@ -89,6 +90,15 @@ export function UiIcon({ name, size = 16, className }: Props) {
       <svg {...common}>
         <rect x="8" y="8" width="11" height="11" rx="2" />
         <path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+      </svg>
+    );
+  }
+  if (name === "download") {
+    return (
+      <svg {...common}>
+        <path d="M12 3v12" />
+        <path d="m7 10 5 5 5-5" />
+        <path d="M5 21h14" />
       </svg>
     );
   }

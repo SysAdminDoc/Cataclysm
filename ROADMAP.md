@@ -10,13 +10,6 @@ Single source of truth for delivery. Blocked items live in
 
 ### P2
 
-- [ ] P2 - Add user-placed gauges with CSV time-series export
-  Why: NOAA, GeoClaw, and Celeris workflows all make point time-series/gauges first-class outputs; TsunamiSimulator currently has DART sparklines and point inspect but no user-defined sampled series.
-  Evidence: NOAA MOST output conventions; GeoClaw gauge/fgout docs; Celeris-WebGPU time-series plots; `src-tauri/src/commands.rs`; `src/components/SwePlayback.tsx`
-  Touches: `src-tauri/src/commands.rs`, `src-tauri/src/physics/solver/*`, `src/lib/tauri.ts`, `src/components/SwePlayback.tsx`, export tests
-  Acceptance: Users can place at least three named gauges, run SWE playback, view eta-vs-time plots, and export a CSV with gauge name, lat/lon, time_s, eta_m, solver mode, and bathymetry source.
-  Complexity: L
-
 ### P3
 
 - [ ] P3 — Design a teacher-friendly guided scenario path

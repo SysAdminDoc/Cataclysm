@@ -124,6 +124,23 @@ export type SimulateGridResponse = {
   used_gpu?: boolean;
 };
 
+export type Gauge = {
+  id: string;
+  name: string;
+  lat_deg: number;
+  lon_deg: number;
+};
+
+export type GaugeSample = {
+  time_s: number;
+  eta_m: number;
+};
+
+export type GaugeTimeSeries = {
+  gauge: Gauge;
+  samples: GaugeSample[];
+};
+
 /** A named coastal point used for Synolakis runup sampling. */
 export type CoastalPoint = {
   id: string;

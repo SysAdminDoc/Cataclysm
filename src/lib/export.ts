@@ -609,6 +609,38 @@ function normaliseLon(lon: number): number {
   return wrapped === -180 && lon > 0 ? 180 : wrapped;
 }
 
+export function exportGaugeCsv(
+  series: import("../types/scenario").GaugeTimeSeries[],
+  solverMode: string,
+  bathymetrySource: string,
+): boolean {
+  if (series.length === 0) return false;
+
+  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source";
+  const rows: string[] = [header];
+  for (const ts of series) {
+    const name = csvEscape(ts.gauge.name);
+    const lat = round5(ts.gauge.lat_deg);
+    const lon = round5(ts.gauge.lon_deg);
+    const mode = csvEscape(solverMode);
+    const bathy = csvEscape(bathymetrySource);
+    for (const s of ts.samples) {
+      rows.push(`${name},${lat},${lon},${s.time_s.toFixed(1)},${s.eta_m.toFixed(4)},${mode},${bathy}`);
+    }
+  }
+
+  const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
+  downloadBlob(blob, `tsunamisim-gauges-${timestampSuffix()}.csv`);
+  return true;
+}
+
+function csvEscape(s: string): string {
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
 function circlePolygon(lat: number, lon: number, radius_m: number, n = 32): number[][] {
   const coords: number[][] = [];
   const R = 6_371_008.8;

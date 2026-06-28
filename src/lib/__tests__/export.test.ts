@@ -1,5 +1,6 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { exportCzml, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { exportCzml, exportGaugeCsv, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import type { GaugeTimeSeries } from "../../types/scenario";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -272,5 +273,78 @@ describe("exportKml", () => {
     ]);
     const blob = getBlob();
     expect(blob).not.toBeNull();
+  });
+});
+
+describe("exportGaugeCsv", () => {
+  it("exports CSV with correct headers and row format", async () => {
+    const getBlob = mockDownload();
+    const series: GaugeTimeSeries[] = [
+      {
+        gauge: { id: "g1", name: "Tokyo Bay", lat_deg: 35.65, lon_deg: 139.77 },
+        samples: [
+          { time_s: 0, eta_m: 0 },
+          { time_s: 150, eta_m: 1.234 },
+          { time_s: 300, eta_m: 0.5678 },
+        ],
+      },
+    ];
+
+    const ok = exportGaugeCsv(series, "Browser preview", "Coarse basin/shelf");
+    expect(ok).toBe(true);
+
+    const csv = await getBlob()!.text();
+    const lines = csv.trim().split("\n");
+    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source");
+    expect(lines).toHaveLength(4);
+    expect(lines[1]).toContain("Tokyo Bay");
+    expect(lines[1]).toContain("35.65");
+    expect(lines[1]).toContain("139.77");
+    expect(lines[2]).toContain("1.2340");
+  });
+
+  it("returns false for empty series", () => {
+    const ok = exportGaugeCsv([], "test", "test");
+    expect(ok).toBe(false);
+  });
+
+  it("escapes commas in gauge names", async () => {
+    const getBlob = mockDownload();
+    const series: GaugeTimeSeries[] = [
+      {
+        gauge: { id: "g1", name: "Port, East Side", lat_deg: 0, lon_deg: 0 },
+        samples: [{ time_s: 0, eta_m: 0 }],
+      },
+    ];
+
+    exportGaugeCsv(series, "test", "test");
+    const csv = await getBlob()!.text();
+    expect(csv).toContain('"Port, East Side"');
+  });
+
+  it("includes multiple gauges in a single CSV", async () => {
+    const getBlob = mockDownload();
+    const series: GaugeTimeSeries[] = [
+      {
+        gauge: { id: "g1", name: "Alpha", lat_deg: 10, lon_deg: 20 },
+        samples: [{ time_s: 0, eta_m: 1 }],
+      },
+      {
+        gauge: { id: "g2", name: "Bravo", lat_deg: 30, lon_deg: 40 },
+        samples: [{ time_s: 0, eta_m: 2 }],
+      },
+      {
+        gauge: { id: "g3", name: "Charlie", lat_deg: 50, lon_deg: 60 },
+        samples: [{ time_s: 0, eta_m: 3 }],
+      },
+    ];
+
+    exportGaugeCsv(series, "test", "test");
+    const csv = await getBlob()!.text();
+    const lines = csv.trim().split("\n");
+    expect(lines).toHaveLength(4);
+    expect(lines[1]).toContain("Alpha");
+    expect(lines[2]).toContain("Bravo");
+    expect(lines[3]).toContain("Charlie");
   });
 });

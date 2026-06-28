@@ -454,6 +454,44 @@ export function demoRunupAtPoints(req: {
   });
 }
 
+export function sampleGaugesFromDemo(
+  initial: InitialDisplacement,
+  gauges: import("../types/scenario").Gauge[],
+  nSnapshots: number,
+  tEndS: number,
+): import("../types/scenario").GaugeTimeSeries[] {
+  const isImpact = true;
+  const depth = initial.center.depth_m ?? 4000;
+  const c = Math.sqrt(G * Math.max(depth, 50));
+  const alpha = isImpact ? 5 / 6 : 0.5;
+
+  return gauges.map((gauge) => {
+    const range_m = Math.max(1, haversineM(
+      initial.center.lat_deg,
+      initial.center.lon_deg,
+      gauge.lat_deg,
+      gauge.lon_deg,
+    ));
+    const attenuation = Math.pow(
+      Math.max(initial.cavity_radius_m, 1000) / range_m,
+      alpha,
+    );
+    const arrivalS = range_m / c;
+    const samples: import("../types/scenario").GaugeSample[] = [];
+    for (let i = 0; i < nSnapshots; i++) {
+      const time_s = nSnapshots <= 1 ? 0 : (tEndS * i) / (nSnapshots - 1);
+      let eta_m = 0;
+      if (time_s >= arrivalS) {
+        const elapsed = time_s - arrivalS;
+        const decay = Math.exp(-elapsed / (tEndS * 0.4));
+        eta_m = initial.peak_amplitude_m * attenuation * 0.32 * decay;
+      }
+      samples.push({ time_s, eta_m });
+    }
+    return { gauge, samples };
+  });
+}
+
 export function demoInspectAtPoint(req: {
   source: GeoPoint;
   initial_amplitude_m: number;

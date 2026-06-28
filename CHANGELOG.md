@@ -15,6 +15,15 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
   generation steps and an expanded release checklist.
 
+### Added — user-placed gauges
+- **User-placed gauges with CSV time-series export.** Users can place named
+  gauges at arbitrary lat/lon coordinates in the SWE panel. Each gauge computes
+  an analytical eta time series from the demo source model and displays an
+  inline SVG sparkline. All gauge series can be exported as a single CSV with
+  columns: gauge_name, lat_deg, lon_deg, time_s, eta_m, solver_mode,
+  bathymetry_source. Four new tests cover CSV format, escaping, empty input,
+  and multi-gauge output.
+
 ### Added — dependency refresh cadence
 - **`npm run deps-check` command.** Reports npm outdated packages, npm audit
   results, and cargo-audit/cargo-deny install status with a recommended

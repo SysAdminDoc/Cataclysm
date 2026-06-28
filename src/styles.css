@@ -2238,6 +2238,108 @@ a {
   margin-top: 6px;
 }
 
+.swe__gauges {
+  margin-top: 12px;
+  border-top: 1px solid var(--surface1);
+  padding-top: 8px;
+}
+
+.swe__gauge-add {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.swe__gauge-input {
+  width: 70px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--surface1);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+  color: var(--text);
+}
+
+.swe__gauge-input--name {
+  width: 90px;
+}
+
+.swe__gauge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.swe__gauge-item {
+  background: var(--surface0);
+  border: 1px solid var(--surface1);
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+}
+
+.swe__gauge-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.swe__gauge-header strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.swe__gauge-coords {
+  color: var(--subtext0);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.swe__gauge-remove {
+  flex-shrink: 0;
+  padding: 2px;
+  background: none;
+  border: none;
+  color: var(--subtext0);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.swe__gauge-remove:hover {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+.swe__gauge-spark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.swe__gauge-svg {
+  width: 200px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.swe__gauge-peak {
+  font-size: 11px;
+  color: var(--subtext0);
+  font-family: "JetBrains Mono", monospace;
+  white-space: nowrap;
+}
+
+.swe__gauge-export {
+  margin-top: 8px;
+}
+
 .swe__readout {
   display: flex;
   justify-content: space-between;
