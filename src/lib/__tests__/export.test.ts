@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { exportCzml, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -25,6 +25,29 @@ const SAMPLE_POINT: RunupPoint = {
   arrival_time_s: 3600,
   inundation_extent_m: 800,
   offshore_amplitude_m: 1.5,
+};
+
+const PROVENANCE_META: ScreenshotMeta = {
+  generatedAt: "2026-06-28T00:00:00.000Z",
+  initial: {
+    center: { lat_deg: 21.4, lon_deg: -89.5, depth_m: 1500 },
+    cavity_radius_m: 50_000,
+    label: "Chicxulub",
+    peak_amplitude_m: 1500,
+    seismic_mw_equivalent: 12.5,
+    source_energy_j: 4.2e23,
+  },
+  preset: {
+    date: "66 Ma",
+    id: "chicxulub",
+    name: "Chicxulub Impact",
+    reference: "Range 2022",
+    reference_url: "https://doi.org/10.1029/2021AV000627",
+    source: { kind: "Asteroid", source: {} },
+  } as never,
+  scenarioKind: "Asteroid",
+  solverMode: "SWE snapshot playback",
+  timeS: 900,
 };
 
 describe("suggestedFilename", () => {
@@ -105,6 +128,52 @@ describe("suggestedFilename", () => {
     expect(fc.features[0].properties.runup_m).toBe(0);
     expect(fc.features[0].properties.arrival_time_s).toBe(0);
   });
+
+  it("writes shared provenance into GeoJSON feature collections", async () => {
+    const getBlob = mockDownload();
+
+    const ok = exportGeoJson([SAMPLE_POINT], PROVENANCE_META);
+
+    expect(ok).toBe(true);
+    const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, string | number | null> };
+    expect(fc.properties.app_version).toBe("0.4.4");
+    expect(fc.properties.generated_at).toBe("2026-06-28T00:00:00.000Z");
+    expect(fc.properties.scenario_type).toBe("Asteroid");
+    expect(fc.properties.solver_mode).toBe("SWE snapshot playback");
+    expect(fc.properties.citation_url).toBe("https://doi.org/10.1029/2021AV000627");
+    expect(fc.properties.bathymetry_source).toContain("Coarse offline basin/shelf approximation");
+    expect(fc.properties.model_notice).toContain("Educational model only");
+  });
+});
+
+describe("exportCzml", () => {
+  it("writes shared provenance into the document and wave-field packets", async () => {
+    const getBlob = mockDownload();
+
+    const ok = exportCzml(PROVENANCE_META, [
+      {
+        bbox: [-90, 20, -88, 22],
+        eta_abs_max_m: 1,
+        eta_max_m: 1,
+        eta_min_m: -1,
+        eta_png_b64: "abc",
+        nx: 2,
+        ny: 2,
+        time_s: 0,
+      },
+    ]);
+
+    expect(ok).toBe(true);
+    const czml = JSON.parse(await getBlob()!.text()) as Array<{
+      description?: string;
+      id: string;
+      properties?: Record<string, string | null>;
+    }>;
+    expect(czml[0].description).toContain("Scenario type: Asteroid");
+    expect(czml[1].properties?.appVersion).toBe("0.4.4");
+    expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
+    expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
+  });
 });
 
 describe("exportKml", () => {
@@ -169,6 +238,19 @@ describe("exportKml", () => {
     expect(kml).toContain("Runup: 5.2 m");
     expect(kml).toContain("Test &amp; &quot;Quotes&quot;");
     expect(kml).not.toContain("&\"");
+  });
+
+  it("writes shared provenance into KML descriptions", async () => {
+    const getBlob = mockDownload();
+
+    exportKml(PROVENANCE_META, [SAMPLE_POINT]);
+
+    const kml = await getBlob()!.text();
+    expect(kml).toContain("TsunamiSimulator v0.4.4");
+    expect(kml).toContain("Scenario type: Asteroid");
+    expect(kml).toContain("Solver mode: SWE snapshot playback");
+    expect(kml).toContain("https://doi.org/10.1029/2021AV000627");
+    expect(kml).toContain("Educational model only");
   });
 
   it("skips runup points with non-finite or zero runup", () => {

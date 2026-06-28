@@ -128,6 +128,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   citation HTTPS links must match the reviewed list, the two remaining HTTP
   papers are documented legacy exceptions, and blocked citation rows show a
   visible alert instead of attempting an unmanaged shell open.
+- **Exports now share a provenance payload.** PNG, share-card, text, CZML,
+  GeoJSON, and KML exports include app version, generated timestamp, scenario
+  type, solver mode, bathymetry source, citation reference/URL, and the
+  educational-only model limitation.
 - **Local verification contract restored.** Added `npm run verify` as the
   single local gate for typecheck, lint, Vitest, production build, `npm audit`,
   Playwright smoke/a11y coverage, Rust check/test/clippy, and optional

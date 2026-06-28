@@ -5,6 +5,11 @@
  */
 
 import type { InitialDisplacement, Preset } from "../types/scenario";
+import {
+  buildModelProvenance,
+  provenanceSummary,
+  type ModelProvenanceInput,
+} from "./model-provenance";
 import { isTauri } from "./tauri";
 
 /** Find the Cesium globe canvas. */
@@ -14,14 +19,11 @@ function findGlobeCanvas(): HTMLCanvasElement | null {
   return w;
 }
 
-export type ScreenshotMeta = {
+export type ScreenshotMeta = ModelProvenanceInput & {
   preset?: Preset | null;
   initial?: InitialDisplacement | null;
   timeS: number;
 };
-
-const MODEL_LIMIT_NOTICE =
-  "Educational only - approximate coarse bathymetry/runup model - not for evacuation.";
 
 function timestampSuffix(): string {
   const d = new Date();
@@ -103,7 +105,7 @@ function stampDemoWatermark(canvas: HTMLCanvasElement): void {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const x = canvas.width / 2;
-  const y = canvas.height - 30;
+  const y = Math.max(30, canvas.height - 86);
   ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
   const m = ctx.measureText(text);
   ctx.fillRect(x - m.width / 2 - 12, y - 14, m.width + 24, 28);
@@ -112,24 +114,62 @@ function stampDemoWatermark(canvas: HTMLCanvasElement): void {
   ctx.restore();
 }
 
+function ellipsize(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(`${text.slice(0, mid)}...`).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${text.slice(0, lo)}...`;
+}
+
+function stampProvenanceStrip(canvas: HTMLCanvasElement, meta: ScreenshotMeta): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const p = buildModelProvenance(meta);
+  const stripH = 58;
+  const pad = 16;
+  const maxWidth = Math.max(120, canvas.width - pad * 2);
+  const citation = p.citationUrl ? p.citationUrl : p.citationReference;
+  const line1 = `TsunamiSimulator v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
+  const line2 = `${p.bathymetrySource} | ${citation} | ${p.limitation}`;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(17, 17, 27, 0.86)";
+  ctx.fillRect(0, Math.max(0, canvas.height - stripH), canvas.width, stripH);
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  ctx.font = "bold 12px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "#cdd6f4";
+  ctx.fillText(ellipsize(ctx, line1, maxWidth), pad, canvas.height - stripH + 10);
+  ctx.font = "11px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "#fab387";
+  ctx.fillText(ellipsize(ctx, line2, maxWidth), pad, canvas.height - stripH + 31);
+  ctx.restore();
+}
+
+function copyGlobeWithProvenance(sourceCanvas: HTMLCanvasElement, meta: ScreenshotMeta): HTMLCanvasElement | null {
+  const offscreen = document.createElement("canvas");
+  offscreen.width = sourceCanvas.width;
+  offscreen.height = sourceCanvas.height;
+  const ctx = offscreen.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(sourceCanvas, 0, 0);
+  if (!isTauri()) stampDemoWatermark(offscreen);
+  stampProvenanceStrip(offscreen, meta);
+  return offscreen;
+}
+
 /** Full export flow — capture + download. Returns true if a screenshot was produced. */
 export function exportGlobePng(meta: ScreenshotMeta): boolean {
   const sourceCanvas = findGlobeCanvas();
   if (!sourceCanvas) return false;
-  if (!isTauri()) {
-    const offscreen = document.createElement("canvas");
-    offscreen.width = sourceCanvas.width;
-    offscreen.height = sourceCanvas.height;
-    const ctx = offscreen.getContext("2d");
-    if (!ctx) return false;
-    ctx.drawImage(sourceCanvas, 0, 0);
-    stampDemoWatermark(offscreen);
-    downloadDataUrl(offscreen.toDataURL("image/png"), suggestedFilename(meta, "png"));
-    return true;
-  }
-  const url = captureGlobePng();
-  if (!url) return false;
-  downloadDataUrl(url, suggestedFilename(meta, "png"));
+  const stamped = copyGlobeWithProvenance(sourceCanvas, meta);
+  if (!stamped) return false;
+  downloadDataUrl(stamped.toDataURL("image/png"), suggestedFilename(meta, "png"));
   return true;
 }
 
@@ -146,7 +186,8 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   const W = 1200;
   const H = 800;
   const HEADER_H = 100;
-  const FOOTER_H = 40;
+  const FOOTER_H = 58;
+  const provenance = buildModelProvenance(meta);
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -167,8 +208,8 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   ctx.fillStyle = "#181825";
   ctx.fillRect(0, 0, W, HEADER_H);
 
-  const presetName = meta.preset?.name ?? "Custom scenario";
-  const date = meta.preset?.date ?? "—";
+  const presetName = provenance.scenarioName;
+  const date = meta.preset?.date ?? "Custom";
   const ref = meta.preset?.reference ?? "";
   const initialAmp = meta.initial?.peak_amplitude_m;
   const energyJ = meta.initial?.source_energy_j;
@@ -203,7 +244,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
 
   ctx.fillStyle = "#a6adc8";
   ctx.font = "12px Inter, system-ui, sans-serif";
-  ctx.fillText(`t = ${(meta.timeS / 60).toFixed(0)} min`, W - 24, 52);
+  ctx.fillText(`${provenance.scenarioType} | t = ${(meta.timeS / 60).toFixed(0)} min`, W - 24, 52);
 
   if (ref) {
     ctx.fillStyle = "#6c7086";
@@ -218,11 +259,18 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   ctx.fillRect(0, H - FOOTER_H, W, FOOTER_H);
   ctx.fillStyle = "#fab387";
   ctx.font = "12px Inter, system-ui, sans-serif";
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = "top";
   ctx.fillText(
-    `TsunamiSimulator - ${MODEL_LIMIT_NOTICE} - github.com/SysAdminDoc/TsunamiSimulator`,
+    `TsunamiSimulator v${provenance.appVersion} | ${provenance.generatedAt} | ${provenance.solverMode}`,
     24,
-    H - FOOTER_H / 2,
+    H - FOOTER_H + 10,
+  );
+  ctx.fillStyle = "#a6adc8";
+  ctx.font = "11px Inter, system-ui, sans-serif";
+  ctx.fillText(
+    `${provenance.bathymetrySource} | ${provenance.citationUrl ?? provenance.citationReference} | ${provenance.limitation}`,
+    24,
+    H - FOOTER_H + 32,
   );
 
   if (!isTauri()) {
@@ -336,6 +384,10 @@ export function exportCzml(
   snapshots: import("../types/scenario").GridSnapshot[],
 ): boolean {
   if (!snapshots.length) return false;
+  const provenance = buildModelProvenance({
+    ...meta,
+    solverMode: meta.solverMode ?? "Shallow-water-equation snapshot playback",
+  });
 
   const epoch = "2024-01-01T00:00:00Z";
   const epochMs = new Date(epoch).getTime();
@@ -367,6 +419,7 @@ export function exportCzml(
       id: "document",
       name: meta.preset?.name ?? "TsunamiSimulator Export",
       version: "1.0",
+      description: provenanceSummary({ ...meta, solverMode: provenance.solverMode, generatedAt: provenance.generatedAt }),
       clock: {
         interval,
         currentTime: toIso(tStart),
@@ -379,7 +432,16 @@ export function exportCzml(
       id: "wave-field",
       name: "SWE wave field",
       availability: interval,
-      description: `TsunamiSimulator ${meta.preset?.name ?? "custom"} - ${snapshots.length} snapshots. ${MODEL_LIMIT_NOTICE}`,
+      description: `TsunamiSimulator ${provenance.scenarioName} - ${snapshots.length} snapshots. ${provenance.limitation}`,
+      properties: {
+        appVersion: provenance.appVersion,
+        bathymetrySource: provenance.bathymetrySource,
+        citationReference: provenance.citationReference,
+        citationUrl: provenance.citationUrl,
+        generatedAt: provenance.generatedAt,
+        scenarioType: provenance.scenarioType,
+        solverMode: provenance.solverMode,
+      },
       rectangle: {
         coordinates: { wsenDegrees: [west, south, east, north] },
         material: { image: { image: materialIntervals } },
@@ -411,6 +473,7 @@ export function exportGeoJson(
   meta: ScreenshotMeta,
 ): boolean {
   if (!points.length) return false;
+  const provenance = buildModelProvenance(meta);
 
   const features = points.map((p) => {
     const r = Math.max(p.inundation_extent_m, 50);
@@ -435,10 +498,16 @@ export function exportGeoJson(
   const fc = {
     type: "FeatureCollection" as const,
     properties: {
-      model_notice: MODEL_LIMIT_NOTICE,
-      bathymetry_source: "coarse offline basin/shelf approximation",
+      app_version: provenance.appVersion,
+      bathymetry_source: provenance.bathymetrySource,
+      citation_reference: provenance.citationReference,
+      citation_url: provenance.citationUrl,
+      generated_at: provenance.generatedAt,
       geometry_notice: "First-order circular inundation discs from runup and beach-slope estimates.",
-      scenario: meta.preset?.name ?? "Custom scenario",
+      model_notice: provenance.limitation,
+      scenario: provenance.scenarioName,
+      scenario_type: provenance.scenarioType,
+      solver_mode: provenance.solverMode,
       time_s: round5(meta.timeS),
     },
     features,
@@ -455,8 +524,9 @@ export function exportKml(
   meta: ScreenshotMeta,
   runupPoints: RunupPoint[],
 ): boolean {
-  const name = meta.preset?.name ?? "Custom scenario";
-  const ref = meta.preset?.reference ?? "";
+  const provenance = buildModelProvenance(meta);
+  const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
+  const name = provenance.scenarioName;
   const center = meta.initial?.center;
   const cavityR = meta.initial?.cavity_radius_m ?? 0;
 
@@ -467,7 +537,7 @@ export function exportKml(
     sourcePlacemarks.push(`
     <Placemark>
       <name>${escapeXml(name)} — Source</name>
-      <description>${escapeXml(ref)}\n${escapeXml(MODEL_LIMIT_NOTICE)}</description>
+      <description>${escapeXml(provenanceText)}</description>
       <Style><IconStyle><color>ff0000ff</color><scale>1.2</scale></IconStyle></Style>
       <Point><coordinates>${center.lon_deg},${center.lat_deg},0</coordinates></Point>
     </Placemark>`);
@@ -504,7 +574,7 @@ export function exportKml(
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
   <name>TsunamiSimulator — ${escapeXml(name)}</name>
-  <description>${escapeXml(MODEL_LIMIT_NOTICE)}</description>
+  <description>${escapeXml(provenanceText)}</description>
   <Folder>
     <name>Source</name>${sourcePlacemarks.join("")}
   </Folder>

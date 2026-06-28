@@ -17,7 +17,7 @@ import { api, isTauri } from "./lib/tauri";
 import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, type RunupPoint } from "./lib/export";
+import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
@@ -316,6 +316,16 @@ export default function App() {
   const sourceRequiredReason = "Select a preset or simulate a custom source first.";
   const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
+  const hasSwePlayback = (sweSnapshots?.length ?? 0) > 0;
+  const exportMetaA = (): ScreenshotMeta => ({
+    preset: activePresetA,
+    initial: slotA.initial,
+    timeS,
+    scenarioKind: activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? "Custom",
+    solverMode: hasSwePlayback
+      ? "Shallow-water-equation snapshot playback"
+      : "Analytical source geometry and coastal runup sampling",
+  });
 
   function handlePickGlobe(lat: number, lon: number) {
     setPickedLocation({ lat, lon });
@@ -409,7 +419,7 @@ export default function App() {
             <ToolbarButton
               icon="image"
               onClick={() => {
-                const ok = exportGlobePng({ preset: activePresetA, initial: slotA.initial, timeS });
+                const ok = exportGlobePng(exportMetaA());
                 showToast(ok ? "Saved globe PNG." : "No globe view to export yet.", ok ? "info" : "error");
               }}
               title="Save the current globe view as PNG"
@@ -422,11 +432,7 @@ export default function App() {
             <ToolbarButton
               icon="share"
               onClick={() => {
-                const ok = exportGlobeShareCard({
-                  preset: activePresetA,
-                  initial: slotA.initial,
-                  timeS,
-                });
+                const ok = exportGlobeShareCard(exportMetaA());
                 showToast(ok ? "Saved share card." : "No globe view to export yet.", ok ? "info" : "error");
               }}
               title="Save a branded share-card with scenario metadata + citation overlay"
@@ -464,7 +470,7 @@ export default function App() {
                 setRecording(true);
                 try {
                   const result = await exportGlobeVideo(
-                    { preset: activePresetA, initial: slotA.initial, timeS },
+                    exportMetaA(),
                     { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
                   );
                   showToast(
@@ -486,9 +492,7 @@ export default function App() {
               icon="text"
               onClick={() => {
                 downloadTextExport({
-                  preset: activePresetA,
-                  initial: slotA.initial,
-                  timeS,
+                  ...exportMetaA(),
                   runupResults: slotA.runupResults,
                 });
                 showToast("Saved text results.", "info");
@@ -504,7 +508,7 @@ export default function App() {
               icon="czml"
               onClick={() => {
                 if (sweSnapshots && sweSnapshots.length > 0) {
-                  const ok = exportCzml({ preset: activePresetA, initial: slotA.initial, timeS }, sweSnapshots);
+                  const ok = exportCzml(exportMetaA(), sweSnapshots);
                   showToast(ok ? "Saved CZML playback file." : "No snapshots to export.", ok ? "info" : "error");
                 } else {
                   showToast("Run SWE simulation first to export CZML.", "error");
@@ -530,7 +534,7 @@ export default function App() {
                   inundation_extent_m: r.inundation_extent_m,
                   offshore_amplitude_m: r.offshore_amplitude_m,
                 }));
-                const ok = exportGeoJson(points, { preset: activePresetA, initial: slotA.initial, timeS });
+                const ok = exportGeoJson(points, exportMetaA());
                 showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
               }}
               title="Export inundation polygons as GeoJSON"
@@ -553,7 +557,7 @@ export default function App() {
                   inundation_extent_m: r.inundation_extent_m,
                   offshore_amplitude_m: r.offshore_amplitude_m,
                 }));
-                const ok = exportKml({ preset: activePresetA, initial: slotA.initial, timeS }, points);
+                const ok = exportKml(exportMetaA(), points);
                 showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
               }}
               title="Export source and runup data as KML for Google Earth"

@@ -13,13 +13,6 @@ from the current research pass follows.
 
 ### P1
 
-- [ ] P1 — Add a shared provenance payload to all results and exports
-  Why: Operational and education tsunami tools make model limits, source data, and citations visible in outputs; TsunamiSimulator exports currently carry this unevenly.
-  Evidence: `src/lib/export.ts`; `src/lib/text-export.ts`; `src/components/ResultsPanel.tsx`; GeoClaw/NOAA MOST output conventions
-  Touches: `src/lib/model-provenance.ts` or equivalent, `src/lib/export.ts`, `src/lib/text-export.ts`, `src/components/ResultsPanel.tsx`, export tests
-  Acceptance: PNG/share-card/text/CZML/GeoJSON/KML outputs include scenario type, solver mode, bathymetry source, citation URL/ref, timestamp, app version, and "educational, not warning" limitation text.
-  Complexity: M
-
 - [ ] P1 — Refresh bathymetry strategy to GEBCO_2026 and expose data confidence
   Why: The repo still targets GEBCO 2024 while GEBCO_2026 is current and includes TID metadata that can improve transparency even before the blocked local-data loader exists.
   Evidence: GEBCO gridded-data docs; `data/bathymetry/README.md`; `src/data/coastal_points.json`; `src-tauri/src/data/bathymetry.rs`

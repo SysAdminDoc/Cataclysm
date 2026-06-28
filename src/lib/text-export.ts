@@ -1,7 +1,8 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
+import { buildModelProvenance, provenanceSummary, type ModelProvenanceInput } from "./model-provenance";
 import type { RunupAtPointResult } from "./tauri";
 
-export type TextExportData = {
+export type TextExportData = ModelProvenanceInput & {
   preset?: Preset | null;
   initial?: InitialDisplacement | null;
   timeS: number;
@@ -12,6 +13,12 @@ export function generateTextExport(data: TextExportData): string {
   const lines: string[] = [];
   lines.push("TsunamiSimulator — Scenario Results Export");
   lines.push("==========================================");
+  lines.push("");
+
+  const provenance = buildModelProvenance(data);
+  lines.push("Provenance");
+  lines.push("----------");
+  lines.push(provenanceSummary({ ...data, generatedAt: provenance.generatedAt }));
   lines.push("");
 
   if (data.preset) {
