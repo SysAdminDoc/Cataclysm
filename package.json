@@ -13,8 +13,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "doctor": "node scripts/doctor.mjs",
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",
+    "deps-check": "node scripts/deps-check.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test:unit": "vitest run",

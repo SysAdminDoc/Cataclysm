@@ -74,6 +74,7 @@ pnpm-debug.log*
 !CHANGELOG.md
 !docs/**/*.md
 !Roadmap_Blocked.md
+!CONTRIBUTING.md
 
 # AI config
 .ai/

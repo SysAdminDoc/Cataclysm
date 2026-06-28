@@ -10,13 +10,6 @@ Single source of truth for delivery. Blocked items live in
 
 ### P2
 
-- [ ] P2 - Add a manual dependency refresh cadence
-  Why: Dependabot was removed, `npm outdated` already shows maintenance drift, and Rust advisory/license tools are optional skips when not installed.
-  Evidence: `npm outdated --json`; `scripts/verify.mjs`; `package.json`; `src-tauri/deny.toml`; no `.github/dependabot.yml`
-  Touches: `package.json`, `scripts/verify.mjs`, `CONTRIBUTING.md`, optional `scripts/deps-check.mjs`
-  Acceptance: A local command reports npm outdated packages, Cargo update/audit/deny availability, and the maintainer docs define when to run and commit dependency refreshes without adding Dependabot.
-  Complexity: S
-
 - [ ] P2 - Add user-placed gauges with CSV time-series export
   Why: NOAA, GeoClaw, and Celeris workflows all make point time-series/gauges first-class outputs; TsunamiSimulator currently has DART sparklines and point inspect but no user-defined sampled series.
   Evidence: NOAA MOST output conventions; GeoClaw gauge/fgout docs; Celeris-WebGPU time-series plots; `src-tauri/src/commands.rs`; `src/components/SwePlayback.tsx`

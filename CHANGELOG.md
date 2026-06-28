@@ -15,6 +15,12 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
   generation steps and an expanded release checklist.
 
+### Added — dependency refresh cadence
+- **`npm run deps-check` command.** Reports npm outdated packages, npm audit
+  results, and cargo-audit/cargo-deny install status with a recommended
+  weekly/monthly/quarterly refresh cadence. CONTRIBUTING.md documents the
+  cadence and links to the command.
+
 ### Added — visual regression
 - **Screenshot-backed visual regression tests.** 11 Playwright tests capture
   desktop (1440×900) and narrow (390×844) states for first-run disclaimer,
