@@ -3,6 +3,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
+import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId } from "../lib/settings";
 import { setTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
@@ -85,6 +86,23 @@ export function Settings({ onClose }: Props) {
 
   const needsToken = GLOBE_STYLES.find((s) => s.id === globeStyle)?.requires_token ?? false;
 
+  function openCesiumSignup() {
+    const validation = validateTrustedExternalUrl(CESIUM_SIGNUP_URL);
+    if (!validation.ok) {
+      setStatusMsg(`Cesium signup link blocked: ${validation.reason}`);
+      return;
+    }
+
+    if (isTauri()) {
+      openExternal(validation.url).catch((err) => {
+        console.error("shell open failed", err);
+        setStatusMsg("Cesium signup link could not be opened by the desktop shell policy.");
+      });
+    } else {
+      window.open(validation.url, "_blank", "noopener,noreferrer");
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -131,18 +149,12 @@ export function Settings({ onClose }: Props) {
               It is never embedded in the binary or sent anywhere except{" "}
               <code>cesium.com</code>. Get a free token at{" "}
               <a
-                href="https://cesium.com/ion/signup"
+                href={CESIUM_SIGNUP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
                   e.preventDefault();
-                  if (isTauri()) {
-                    openExternal("https://cesium.com/ion/signup").catch((err) =>
-                      console.error("shell open failed", err),
-                    );
-                  } else {
-                    window.open("https://cesium.com/ion/signup", "_blank", "noopener,noreferrer");
-                  }
+                  openCesiumSignup();
                 }}
               >
                 cesium.com/ion/signup

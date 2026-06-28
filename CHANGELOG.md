@@ -123,6 +123,11 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   button shows a saving state; the timeline tolerates a non-finite time.
 
 ### Fixed — security & DX
+- **Citation and Settings external links now fail closed.** The desktop
+  `shell:allow-open` capability is synced to a centralized exact-URL policy:
+  citation HTTPS links must match the reviewed list, the two remaining HTTP
+  papers are documented legacy exceptions, and blocked citation rows show a
+  visible alert instead of attempting an unmanaged shell open.
 - **Local verification contract restored.** Added `npm run verify` as the
   single local gate for typecheck, lint, Vitest, production build, `npm audit`,
   Playwright smoke/a11y coverage, Rust check/test/clippy, and optional

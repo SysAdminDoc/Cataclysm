@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { validateCitationUrl, type ExternalUrlValidation } from "../lib/external-links";
 import { isTauri } from "../lib/tauri";
 import type { Preset } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
@@ -11,11 +12,24 @@ type Props = {
   onClose: () => void;
 };
 
-function openUrl(url: string) {
+function validationMessage(validation: ExternalUrlValidation) {
+  return validation.ok ? undefined : `Blocked citation link. ${validation.reason}`;
+}
+
+function openUrl(url: string, onBlocked: (message: string) => void) {
+  const validation = validateCitationUrl(url);
+  if (!validation.ok) {
+    onBlocked(validationMessage(validation) ?? "Blocked citation link.");
+    return;
+  }
+
   if (isTauri()) {
-    openExternal(url).catch((err) => console.error("shell open failed", err));
+    openExternal(validation.url).catch((err) => {
+      console.error("shell open failed", err);
+      onBlocked("Citation link could not be opened by the desktop shell policy.");
+    });
   } else {
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(validation.url, "_blank", "noopener,noreferrer");
   }
 }
 
@@ -23,6 +37,7 @@ export function CitationsModal({ presets, onClose }: Props) {
   useEscapeKey(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
+  const [linkAlert, setLinkAlert] = useState<string | null>(null);
   const speculativeCount = presets.filter((p) => p.is_speculative).length;
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -42,37 +57,55 @@ export function CitationsModal({ presets, onClose }: Props) {
             <span><strong>{presets.length}</strong> preset references</span>
             <span><strong>{speculativeCount}</strong> speculative cases flagged</span>
           </div>
+          {linkAlert && (
+            <div className="citations__alert" role="alert">
+              {linkAlert}
+            </div>
+          )}
           <ul className="citations">
-            {presets.map((p) => (
-              <li key={p.id} className="citations__row">
-                <div className="citations__name">
-                  {p.is_speculative && <span className="citations__tag">Speculative</span>}
-                  <span>{p.name}</span>
-                  <span className="citations__date">{p.date}</span>
-                </div>
-                <div className="citations__ref">
-                  {p.reference_url ? (
-                    <a
-                      href={p.reference_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openUrl(p.reference_url!);
-                      }}
-                    >
-                      <span>{p.reference}</span>
-                      <span className="citations__open">Open</span>
-                    </a>
-                  ) : (
-                    p.reference
+            {presets.map((p) => {
+              const validation = validateCitationUrl(p.reference_url);
+              return (
+                <li key={p.id} className="citations__row">
+                  <div className="citations__name">
+                    {p.is_speculative && <span className="citations__tag">Speculative</span>}
+                    <span>{p.name}</span>
+                    <span className="citations__date">{p.date}</span>
+                  </div>
+                  <div className="citations__ref">
+                    {p.reference_url && validation.ok ? (
+                      <a
+                        href={validation.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openUrl(validation.url, setLinkAlert);
+                        }}
+                      >
+                        <span>{p.reference}</span>
+                        {validation.legacyHttp && <span className="citations__legacy">Legacy HTTP</span>}
+                        <span className="citations__open">Open</span>
+                      </a>
+                    ) : p.reference_url ? (
+                      <button
+                        className="citations__blocked"
+                        type="button"
+                        onClick={() => setLinkAlert(validationMessage(validation) ?? "Blocked citation link.")}
+                      >
+                        <span>{p.reference}</span>
+                        <span className="citations__open" data-tone="blocked">Blocked</span>
+                      </button>
+                    ) : (
+                      p.reference
+                    )}
+                  </div>
+                  {p.controversy_note && (
+                    <div className="citations__note">{p.controversy_note}</div>
                   )}
-                </div>
-                {p.controversy_note && (
-                  <div className="citations__note">{p.controversy_note}</div>
-                )}
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           <hr className="modal__sep" />
           <p className="modal__footnote">

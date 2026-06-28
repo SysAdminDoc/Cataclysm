@@ -13,13 +13,6 @@ from the current research pass follows.
 
 ### P1
 
-- [ ] P1 — Harden citation and external-link capability handling
-  Why: Citation links cross the Tauri shell boundary, and the current allowlist includes broad publisher domains plus legacy `http://` hosts.
-  Evidence: `src-tauri/capabilities/default.json`; `src/components/CitationsModal.tsx`; `SECURITY.md`; Tauri shell/security docs
-  Touches: `src-tauri/capabilities/default.json`, `src/components/CitationsModal.tsx`, `src-tauri/src/presets.rs`, citation/reference tests
-  Acceptance: Citation URLs are validated against a centralized HTTPS-first allowlist, unavoidable legacy HTTP links are documented/tested as explicit exceptions, and blocked hosts fail closed with user-visible feedback.
-  Complexity: S
-
 - [ ] P1 — Add a shared provenance payload to all results and exports
   Why: Operational and education tsunami tools make model limits, source data, and citations visible in outputs; TsunamiSimulator exports currently carry this unevenly.
   Evidence: `src/lib/export.ts`; `src/lib/text-export.ts`; `src/components/ResultsPanel.tsx`; GeoClaw/NOAA MOST output conventions

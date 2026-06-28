@@ -1,0 +1,29 @@
+{
+  "settingsUrls": [
+    {
+      "id": "cesiumSignup",
+      "reason": "Settings token onboarding opens the official Cesium ion signup page.",
+      "url": "https://cesium.com/ion/signup"
+    }
+  ],
+  "citationHttpsUrls": [
+    "https://doi.org/10.1029/2021AV000627",
+    "https://www.nature.com/articles/37044",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2011GL049210",
+    "https://www.science.org/doi/10.1126/science.1112250",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018JC014893",
+    "https://www.science.org/doi/10.1126/science.abo4364",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2001GL013110",
+    "https://www.forbes.com/sites/davidhambling/2022/05/04/russias-poseidon-2km-tsunami-apocalypse-weapon-just-propaganda/"
+  ],
+  "legacyHttpExceptions": [
+    {
+      "reason": "LANL tsunami archive PDF for the 1958 Lituya Bay paper has no HTTPS mirror.",
+      "url": "http://library.lanl.gov/tsunami/ts193.pdf"
+    },
+    {
+      "reason": "Science of Tsunami Hazards PDF for the 1883 Krakatoa paper has no HTTPS mirror.",
+      "url": "http://www.tsunamisociety.org/213choi.pdf"
+    }
+  ]
+}

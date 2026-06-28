@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capability set: core window/event controls, persistent settings store, and shell-open restricted to peer-reviewed citation publishers.",
+  "description": "Default capability set: core window/event controls, persistent settings store, and shell-open restricted to vetted citation/settings URLs.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -18,28 +18,17 @@
     {
       "identifier": "shell:allow-open",
       "allow": [
-        { "url": "https://*.cesium.com" },
-        { "url": "https://cesium.com/*" },
-        { "url": "https://doi.org/*" },
-        { "url": "https://agupubs.onlinelibrary.wiley.com/*" },
-        { "url": "https://www.science.org/*" },
-        { "url": "https://www.nature.com/*" },
-        { "url": "https://www.researchgate.net/*" },
-        { "url": "https://www.sciencedirect.com/*" },
-        { "url": "https://www.forbes.com/sites/davidhambling/*" },
-        { "url": "http://www.tsunamisociety.org/*" },
-        { "url": "http://library.lanl.gov/*" },
-        { "url": "https://nuclearsecrecy.com/*" },
-        { "url": "https://impact.ese.ic.ac.uk/*" },
-        { "url": "https://www.ndbc.noaa.gov/*" },
-        { "url": "https://nctr.pmel.noaa.gov/*" },
-        { "url": "https://www.gebco.net/*" },
-        { "url": "https://www.ncei.noaa.gov/*" },
-        { "url": "https://portal.opentopography.org/*" },
-        { "url": "https://www.naturalearthdata.com/*" },
-        { "url": "https://www.clawpack.org/*" },
-        { "url": "https://github.com/SysAdminDoc/TsunamiSimulator" },
-      { "url": "https://github.com/SysAdminDoc/TsunamiSimulator/*" }
+        { "url": "https://cesium.com/ion/signup" },
+        { "url": "https://doi.org/10.1029/2021AV000627" },
+        { "url": "https://www.nature.com/articles/37044" },
+        { "url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2011GL049210" },
+        { "url": "https://www.science.org/doi/10.1126/science.1112250" },
+        { "url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018JC014893" },
+        { "url": "https://www.science.org/doi/10.1126/science.abo4364" },
+        { "url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2001GL013110" },
+        { "url": "https://www.forbes.com/sites/davidhambling/2022/05/04/russias-poseidon-2km-tsunami-apocalypse-weapon-just-propaganda/" },
+        { "url": "http://library.lanl.gov/tsunami/ts193.pdf" },
+        { "url": "http://www.tsunamisociety.org/213choi.pdf" }
       ]
     }
   ]
