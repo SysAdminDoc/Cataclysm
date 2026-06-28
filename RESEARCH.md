@@ -1,109 +1,89 @@
 # Research - TsunamiSimulator
 
 ## Executive Summary
-TsunamiSimulator is a Tauri 2 desktop tsunami education simulator whose strongest current shape is the separation of authoritative Rust physics from a polished React/Cesium globe cockpit: presets, custom scenarios, SWE playback, runup/DART overlays, diagnostics, citations, exports, first-run safety framing, and accessibility checks already exist. The highest-value direction is now trust and release discipline before adding new science: the repo intentionally removed GitHub Actions in `250c4cd`, but docs/templates/comments still claim CI and release workflows exist, while existing security, provenance, bathymetry, and documentation gaps remain the clearest user-facing risks.
-
-1. Reconcile the local-only verification and release contract after `.github/workflows/{ci,release}.yml` were deleted.
-2. Clear the active DOMPurify advisory in the Cesium dependency chain.
-3. Fix the "Run solver" / "Run simulation" label drift across tests and manuals.
-4. Sync public version, release, screenshot, and default-globe truth to v0.4.4.
-5. Harden citation/external-link handling across the Tauri shell boundary.
-6. Add a shared provenance payload to every result and export.
-7. Refresh the bathymetry plan and UI language from GEBCO 2024 to GEBCO_2026/TID-backed provenance.
-8. Add local verification diagnostics for Node/Rust/Tauri/MSVC/cargo audit/cargo deny/Vitest on shared folders.
-9. Version and migrate the app settings store before adding more persisted preferences.
-10. Keep larger science/data bets parked until the blocked GEBCO, validation, and distribution decisions are resolved.
+TsunamiSimulator is a Tauri 2 desktop education simulator with a strong current core: Rust-owned tsunami physics, React/Cesium globe visualization, historical presets, custom scenarios, streaming SWE playback, DART/runup overlays, exports, citations, diagnostics, first-run safety framing, and a local verification gate. The highest-value direction is trust and evidence discipline before larger science bets: keep shipped docs aligned with v0.4.4, finish citation/external-link hardening, make every result/export carry model provenance, refresh bathymetry language to GEBCO_2026, add settings migration, and add guided classroom workflows. New opportunities from this pass are: fix stale shipped-science docs, add unsigned-installer checksum guidance, introduce a manual dependency refresh cadence after removing Dependabot, and add user-placed gauges/time-series exports once the solver can return sampled values.
 
 ## Product Map
-- Core workflows: choose a historical/speculative preset; build a custom asteroid/nuclear/earthquake/landslide source; run/scrub SWE playback; inspect globe/runup/DART outputs; export/share PNG, share-card, video, text, CZML, GeoJSON, KML, and URLs.
-- User personas: educators and curious public users needing clear safety framing; technically literate hobbyists comparing scenarios; researchers/reviewers checking formulas, citations, and validation limits.
-- Platforms and distribution: Tauri desktop for Windows/macOS/Linux; deterministic browser preview; GitHub Releases still show v0.4.0 while repo/app metadata is v0.4.4; current repo has no GitHub Actions workflows.
-- Key integrations and data flows: React -> typed Tauri IPC -> Rust source/solver modules; CesiumJS globe with local Natural Earth default and optional Cesium ion imagery/bathymetry; local `tauri-plugin-store` settings; static coastal/DART data; citation links opened through Tauri shell allowlist.
+- Core workflows: select a preset; build an asteroid/nuclear/earthquake/landslide scenario; run or stream SWE snapshots; inspect globe/runup/DART outputs; export PNG, share-card, video, text, CZML, GeoJSON, KML, or scenario URL.
+- User personas: educators and curious public users needing strong model-limit framing; technically literate hobbyists comparing speculative scenarios; reviewers checking formulas, citations, validation, and release artifacts.
+- Platforms and distribution: Tauri desktop for Windows/macOS/Linux, deterministic browser preview, public GitHub repo with v0.4.4 release assets built locally and unsigned, plus source builds for non-Windows platforms.
+- Key integrations and data flows: React controls -> typed Tauri IPC -> Rust physics/solver modules; Cesium globe with local Natural Earth default and optional Cesium ion styles; `tauri-plugin-store` settings; static coastal/DART datasets; shell-open citation URLs gated by Tauri capabilities.
 
 ## Competitive Landscape
-- GeoClaw: excels at AMR, wetting/drying, topography workflows, Google Earth/KML tooling, and explicit research/teaching disclaimers. Learn from its validation/provenance posture and topo workflow; avoid exposing research-grade knobs without guardrails.
-- NOAA MOST/ComMIT/SIFT: excels at operational forecast workflows, precomputed scenario databases, DART-constrained source updates, tabular/graphical outputs, and high-resolution topo/bathy for inundation. Learn from arrival/height/current/inundation semantics; avoid implying operational suitability.
-- Celeris / Celeris-WebGPU: excels at interactive GPU Boussinesq/NLSW modeling, live bathymetry/topography edits, overlays, time-series probes, raw data output, and many examples. Learn from immediate experimentation and probe/export ergonomics; avoid its dense expert-only control surface.
-- FUNWAVE-TVD / JAGURS / tsunami-model lists: excel at dispersive/Boussinesq models, nesting/AMR, wetting-drying, parallel/HPC execution, benchmarks, and NetCDF-style model data. Learn from benchmark discipline and nested-resolution architecture; avoid trying to match HPC solvers inside a consumer desktop app before data and validation are ready.
-- NUKEMAP / Impact: Earth / Asteroid Launcher: excel at simple scenario setup, memorable visualization, explainable uncertainty, share/export behavior, and broad educational reach. Learn from concise controls, advanced export options, and transparent assumptions; avoid casualty overlays without an explicit ethics/product review.
-- TUFLOW FV / Delft3D FM: excel at flexible meshes, GPU/HPC/cloud execution, GIS integration, service packages, and professional support. Learn from GIS interoperability and supportability; avoid commercial-suite breadth that would dilute the focused "NukeMap for tsunamis" product.
-- CesiumJS platform: Cesium 1.142 adds GeoJsonPrimitive and MVTDataProvider for large-scale GeoJSON/vector rendering. Learn from this for future high-volume inundation/vector overlays; avoid churn while current overlays remain small.
+- GeoClaw: strong AMR, wetting/drying, topography workflows, KML/Google Earth tooling, gauges, and explicit research/teaching disclaimers. Learn from its validation/provenance posture and gauge outputs; avoid expert-only setup friction.
+- NOAA MOST/ComMIT/SIFT: strong operational forecast pattern: precomputed source databases, DART-constrained source refinement, arrival/height/inundation/current outputs, and high-resolution topo/bathy for inundation. Learn from output semantics and DART confidence loops; avoid implying evacuation suitability.
+- Celeris / Celeris-WebGPU: strong interactive GPU wave modeling, Boussinesq/NLSW experimentation, example loading, live controls, and built-in time-series plots. Learn from immediate gauges/probes and experiment ergonomics; avoid a dense coastal-engineering control surface.
+- FUNWAVE-TVD / JAGURS / ANUGA: strong dispersive models, nesting, wetting/drying, benchmark culture, and HPC-oriented file workflows. Learn from benchmark discipline and nested-resolution architecture; keep these as later science tracks until data and validation are ready.
+- NUKEMAP / Impact: Earth / Asteroid Launcher: strong simple setup, memorable visual scale, shareability, and uncertainty framing. Learn from guided scenario storytelling and fast comprehension; avoid casualty overlays without explicit ethics/product review.
+- TUFLOW FV / Delft3D FM: strong flexible meshes, GIS interoperability, professional support, and production hydrodynamics. Learn from GIS export/import expectations; avoid commercial-suite breadth that would dilute the focused education product.
+- CesiumJS platform: Cesium 1.142 adds large-vector paths such as `GeoJsonPrimitive` and MVT data support. Learn from this before future flood-vector rendering; avoid churn while current runup/inundation overlays remain modest.
 
 ## Security, Privacy, and Reliability
-- Verified: `.github/workflows/ci.yml` and `.github/workflows/release.yml` were deleted in `250c4cd`, but `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/release/CODESIGNING.md`, `src-tauri/deny.toml`, `vite.config.ts`, `tests/smoke.spec.ts`, and `[Unreleased]` in `CHANGELOG.md` still describe CI/release behavior.
-- Verified: `package.json` has separate `typecheck`, `lint`, `test:unit`, `test:e2e`, `build`, and `tauri:build` scripts but no single local verification command replacing the removed CI gates.
-- Verified: `npm audit --json` reports one moderate advisory, `GHSA-cmwh-pvxp-8882`, through `cesium@1.142.0 -> @cesium/engine@26.0.0 -> dompurify@3.4.10`; patched DOMPurify is 3.4.11.
-- Verified: `src-tauri/capabilities/default.json` allows citation links through `shell:allow-open`, including two `http://` hosts and broad publisher domains. Tauri documents capabilities as the WebView/system-resource boundary, so this allowlist needs tests and periodic review.
-- Verified: `SECURITY.md` already treats `shell:allow-open`, settings leakage, CSP, malicious deep links, and supply-chain risk as in scope; the advisory and allowlist findings map directly to the project's stated security policy.
-- Verified: `src/components/SwePlayback.tsx` renders "Run solver"; `src/components/__tests__/SwePlayback.test.tsx` and `docs/manual/*.md` still query/document "Run simulation." The focused Vitest run could not complete locally because the worker hung on the VMware share, so the label mismatch is source-verified and the test result needs local-runner validation.
-- Verified: accessibility coverage exists through Playwright/axe in `tests/smoke.spec.ts`, but that file still describes a CI gate after workflow removal; keep the existing visual/accessibility regression roadmap item and fold execution into the local verification contract.
-- Verified: release/docs truth is split: app/README/Cargo/Tauri show v0.4.4; GitHub Releases latest is v0.4.0; `COMPLETED.md` says v0.4.2; existing screenshot assets show v0.4.1/v0.4.2; `CONTRIBUTING.md` and `.env.example` still say OpenStreetMap is the default globe.
-- Verified: `data/bathymetry/README.md`, `src/data/coastal_points.json`, and `src-tauri/src/data/bathymetry.rs` still reference GEBCO 2024; GEBCO_2026 was published April 23, 2026 and includes TID source-data metadata.
-- Likely: token handling is materially improved because `settings.ts` no longer mirrors `cesium_token` to localStorage in desktop mode, but there is no settings-store schema version for future migrations.
+- Verified: GitHub release v0.4.4 is now public with SHA256 values and notes that MSI/NSIS installers are unsigned; README/CODESIGNING explain unsigned warnings, but users would benefit from local checksum verification steps beside the install instructions.
+- Verified: `npm audit --audit-level=moderate --json` is clean after the DOMPurify override; previous research claiming an active npm advisory is stale.
+- Verified: `cargo audit` and `cargo deny` are not installed in this environment, while `scripts/verify.mjs` only runs them when present. The existing doctor roadmap item remains valid.
+- Verified: `npm outdated --json` shows small patch/minor drift in Tauri, Vite, Playwright, axe, React types, and lint tooling. Dependabot was intentionally removed, so manual dependency review needs a lightweight cadence.
+- Verified: `src-tauri/capabilities/default.json` and `src/components/CitationsModal.tsx` are already being edited in the worktree toward exact citation URLs and explicit legacy HTTP exceptions. Keep the existing roadmap item until tests prove the policy and UI fail closed.
+- Verified: `src/lib/settings.ts` validates individual keys and avoids desktop `cesium_token` mirroring, but settings have no store-level schema version or migration history. The existing settings-migration item remains high value.
+- Verified: `src/lib/export.ts` and `src/lib/text-export.ts` carry model-limit text unevenly across output formats. The existing shared-provenance item remains high value.
+- Verified: `tests/smoke.spec.ts` provides smoke and axe coverage, but visual-regression coverage for screenshots, modal clipping, toolbar density, and light/dark states remains manual.
 
 ## Architecture Assessment
-- Verified: the strongest architecture choice remains Rust-only authoritative physics behind typed IPC (`src/lib/tauri.ts`, `src-tauri/src/commands.rs`, `src-tauri/src/physics/*`).
-- Verified: the repo now has a delivery-model mismatch: CI/release automation was removed, but security checking (`src-tauri/deny.toml`), Playwright axe comments, release/signing docs, and PR verification language still assume automation. This should be resolved as a local `npm run verify` contract, a documented replacement automation such as cargo-dist, or both.
-- Verified: `src/components/Globe.tsx` is 996 lines, `src-tauri/src/commands.rs` is 1635 lines, `src/styles.css` is 2637 lines, and `src/lib/demo.ts` is 642 lines; these are real refactor candidates, but `Roadmap_Blocked.md` correctly parks the highest-risk `Globe.tsx`/`commands.rs` splits until visual/Rust verification is available.
-- Verified: browser-preview physics remains a sanctioned carve-out in `src/lib/demo.ts`; `src/components/AttenuationChart.tsx::computeDecayCurve` is another frontend formula copy. Both should stay visibly non-authoritative and eventually move behind Rust/generated fixtures.
-- Verified: scenario sharing has a schema version in `src/lib/scenario-schema.ts`; app settings in `src/lib/settings.ts` normalize individual keys but do not have a store-level schema version or migration audit trail.
-- Verified: unit and e2e coverage is broad (component tests, export/schema/settings tests, Playwright smoke, axe checks), but local verification is brittle on this workspace: Vitest hung, `cargo audit` is not installed, and MSVC `link.exe` is missing from the current PowerShell PATH.
-- Verified: observability exists through `src/components/LogViewer.tsx`, `src/components/ErrorBoundary.tsx`, and `docs/ipc-api.md`; `Roadmap_Blocked.md` correctly parks the higher-value Rust diagnostics bundle until MSVC/Rust verification is available.
-- Likely: Cesium 1.142's GeoJsonPrimitive could reduce future overlay overhead, but it should wait for larger GeoJSON/flood-vector data; the current Primitive migration for runup bars already addressed the immediate rendering issue.
+- Verified: the primary architecture boundary is still correct: authoritative physics in Rust (`src-tauri/src/physics/*`, `src-tauri/src/commands.rs`) and rendering/control state in React/Cesium (`src/*`).
+- Verified: large files remain refactor candidates: `src/styles.css`, `src-tauri/src/commands.rs`, `src/components/Globe.tsx`, `src-tauri/src/physics/solver/mod.rs`, and `src/App.tsx`. The blocked roadmap correctly parks the riskiest splits behind visual/Rust verification.
+- Verified: docs drift is now the clearest low-risk quality gap: `README.md` still says Okada is planned and wgpu is planned, `data/bathymetry/README.md` still targets GEBCO 2024/v0.3.0, `src-tauri/src/presets.rs` says Hunga Tonga Lamb-wave coupling is planned even though the UI exposes it, and validation comments still mention a per-PR CI loop after local-only verification.
+- Verified: bathymetry documentation still references GEBCO 2024 in `data/bathymetry/README.md`, `src/data/coastal_points.json`, and `src-tauri/src/data/bathymetry.rs`; GEBCO_2026 is current, has a TID grid, and should anchor future confidence/provenance language.
+- Verified: user-placed gauge/time-series output is absent. This is a notable gap versus NOAA/GeoClaw/Celeris patterns and would strengthen DART comparison, classroom exercises, and exports once the solver exposes sampled eta series.
+- Verified: browser-preview physics remains a controlled carve-out in `src/lib/demo.ts`, and `AttenuationChart.tsx` duplicates far-field attenuation visually. Keep them visibly approximate until generated Rust fixtures or IPC-backed chart data are practical.
 
 ## Rejected Ideas
-- Restore the deleted GitHub Actions workflows exactly as they were: rejected for now because `250c4cd` intentionally moved the repo to local builds only; first define the desired local/release contract or replacement automation.
-- Full GEBCO local download/solver loader now: already blocked in `Roadmap_Blocked.md` by artifact/distribution decisions; update target/version/provenance first.
-- Boussinesq, AMR, NTHMP benchmark suite, and real flood polygons now: scientifically valuable but already blocked as research-grade or dependent on GEBCO/Rust verification.
-- NetCDF export now: interoperability is valid, but `Roadmap_Blocked.md` notes the `netcdf-sys`/C library burden; keep CZML/GeoJSON/KML/text strong first.
-- Casualty or population overlay: sourced from NUKEMAP-style demand but already flagged as ethically sensitive; not recommended without an explicit ethics/product review.
-- Plugin ecosystem: conflicts with the project's citation-verified physics boundary and would add maintenance/security surface before there is evidence of extension demand.
-- Mobile-native app: NUKEMAP's roadmap makes mobile important for websites, but this product is a desktop 3D globe with a 1200x800 minimum window and Tauri desktop distribution.
-- Multi-user/collaboration: commercial suites support professional workflows, but no repo evidence or comparable educational-tool evidence makes it higher value than trust, validation, exports, and docs.
-- Full i18n/l10n pass now: valuable for education, but `Roadmap_Blocked.md` already blocks it on a stable v1 UI string catalog.
-- Commercial-suite parity with TUFLOW/Delft3D: flexible meshes, 3D density, sediment, water quality, and cloud/HPC are useful references, not near-term product fit.
+- Restore GitHub Actions workflows as the default release path: rejected because the repo intentionally moved to local builds; improve local verification, checksum guidance, and manual release steps instead.
+- Full GEBCO local download/solver loader now: already blocked by artifact/distribution decisions; first update docs/provenance to GEBCO_2026/TID and keep coarse bathymetry honest.
+- Boussinesq, AMR, NTHMP benchmark suite, and real flood polygons now: scientifically valuable but already blocked by data, validation, and solver architecture dependencies.
+- NetCDF export now: useful for interoperability, but the existing blocked item correctly notes `netcdf-sys`/C-library packaging friction; strengthen CZML/GeoJSON/KML/text and gauge CSV first.
+- Casualty or population overlay: sourced from NUKEMAP-style demand but ethically sensitive and currently less valuable than trust, provenance, validation, and guided education.
+- Plugin ecosystem: contradicts the citation-verified physics boundary and adds security/maintenance surface before there is extension demand.
+- Mobile-native app: educational tools benefit from mobile reach, but this product currently depends on a desktop Tauri/Cesium cockpit with a 1200x800 minimum window.
+- Multi-user/collaboration: common in commercial suites, but no current repo or education-tool evidence puts it above local reliability, exports, data provenance, and lesson workflows.
+- Full i18n/l10n now: valuable later, especially for Japan/Tohoku education, but the blocked roadmap already parks it behind a stable UI string catalog.
 
 ## Sources
 ### Project
 - https://github.com/SysAdminDoc/TsunamiSimulator
+- https://github.com/SysAdminDoc/TsunamiSimulator/releases
 
 ### OSS / research models
 - https://www.clawpack.org/geoclaw.html
-- https://github.com/mandli/tsunami-models
-- https://github.com/jagurs-admin/jagurs
-- https://fengyanshi.github.io/build/html/index.html
-- https://github.com/fengyanshi/FUNWAVE-TVD
-- https://github.com/GeoscienceAustralia/anuga_core
-- https://plynett.github.io/
-
-### Operational / commercial / education tools
 - https://nctr.pmel.noaa.gov/model.html
 - https://nctr.pmel.noaa.gov/ComMIT/
-- https://nctr.pmel.noaa.gov/tsunami-forecast.html
-- https://nctr.pmel.noaa.gov/benchmark/
+- https://plynett.github.io/
+- https://www.celeria.org/
+- https://fengyanshi.github.io/build/html/index.html
+- https://github.com/jagurs-admin/jagurs
+- https://github.com/GeoscienceAustralia/anuga_core
+- https://github.com/mandli/tsunami-models
+
+### Operational / commercial / education tools
 - https://nuclearsecrecy.com/nukemap/
 - https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/
 - https://neal.fun/asteroid-launcher/
 - https://www.purdue.edu/impactearth/
 - https://www.tuflow.com/products/tuflow-fv/
-
-### Community / discovery
-- https://github.com/sacridini/Awesome-Geospatial
-- https://www.reddit.com/r/dataisbeautiful/comments/zdd566/i_made_a_website_that_lets_you_launch_an_asteroid/
+- https://www.deltares.nl/en/software-and-data/products/delft3d-flexible-mesh-suite
 
 ### Standards, data, dependencies, security
 - https://www.gebco.net/data-products/gridded-bathymetry-data
-- https://www.ogc.org/standard/geotiff/
-- https://www.ogc.org/standard/geopackage/
-- https://cfconventions.org/
+- https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/
 - https://v2.tauri.app/security/
 - https://v2.tauri.app/plugin/shell/
-- https://v2.tauri.app/plugin/updater/
-- https://opensource.axo.dev/cargo-dist/
-- https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/
+- https://v2.tauri.app/distribute/
+- https://www.ogc.org/standards/geotiff/
+- https://www.ogc.org/standards/geopackage/
+- https://cfconventions.org/
+- https://github.com/axodotdev/cargo-dist
 - https://github.com/advisories/GHSA-cmwh-pvxp-8882
 
 ## Open Questions
-- Needs maintainer decision: is local-only verification now permanent, or should release/signing/update work move to a smaller replacement automation such as cargo-dist?
-- Needs live validation: can CI-equivalent local runs pass `src/components/__tests__/SwePlayback.test.tsx` after updating its accessible-name queries, or is the Vitest hang masking an additional test-runtime issue?
-- Needs maintainer decision: should v0.4.4 be published as an unsigned GitHub Release now, or should public releases wait until signing/updater secrets are available?
+- Needs maintainer decision: should unsigned v0.4.x installers remain public with checksum guidance, or should public binaries pause until Authenticode/macOS signing is available?
+- Needs maintainer decision: is GEBCO_2026 via GitHub Releases acceptable despite large artifacts, or should the first-run bathymetry loader target external object storage?
+- Needs implementation validation: should user-placed gauges sample raw SWE eta values from Rust snapshots, or is a lower-fidelity analytical preview acceptable for browser-only lessons?
