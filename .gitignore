@@ -1,4 +1,5 @@
 __pycache__/
+node_modules/
 *.py[cod]
 *$py.class
 *.egg-info/
@@ -11,6 +12,7 @@ NukeMap-offline.html
 .venv/
 venv/
 *.bak
+test-artifacts/
 CLAUDE.md
 
 # Markdown files local-only (except README)

@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P1 - Add browser QA for mobile, PWA, offline, and accessibility states
-  Why: Node tests cover models, but no automated browser pass verifies installability, service-worker updates, mobile clipping, tab semantics, high contrast, or reduced motion.
-  Evidence: `package.json`, `test/`, WCAG 2.2, PWA manifest docs, recent mobile/a11y fixes in `git log`.
-  Touches: `package.json`, `test/`, `index.html`, `css/styles.css`, `sw.js`.
-  Acceptance: A local Playwright/Lighthouse script runs desktop and mobile smoke flows, checks no console errors, verifies PWA manifest/SW registration, captures screenshots, and is documented in repo notes.
-  Complexity: M
-
 - [ ] P2 - Add PWA screenshots, shortcuts, and native share support
   Why: The app is installable but does not expose screenshots, app shortcuts, or Web Share flows that improve mobile/install surfaces.
   Evidence: `manifest.json`, `js/app.js:443`, MDN Web Share API, MDN manifest screenshots.

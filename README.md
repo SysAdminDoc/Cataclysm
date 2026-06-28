@@ -126,6 +126,13 @@ python build.py    # Creates NukeMap-offline.html (fully self-contained)
 
 Or open `index.html` once online — the service worker caches everything. Installable as a PWA via browser "Add to Home Screen".
 
+## Local Verification
+
+```bash
+npm test             # Node regression suites
+npm run test:browser # Playwright desktop/mobile/PWA/offline smoke; screenshots in test-artifacts/browser-qa/
+```
+
 ## Architecture
 
 ```
