@@ -10,13 +10,6 @@ Single source of truth for delivery. Blocked items live in
 
 ### P2
 
-- [ ] P2 — Version and migrate the app settings store
-  Why: Scenario payloads are versioned, but persisted app settings are only normalized key-by-key, making future preference changes harder to migrate safely.
-  Evidence: `src/lib/settings.ts`; `src/lib/scenario-schema.ts`; settings tests
-  Touches: `src/lib/settings.ts`, `src/lib/__tests__/settings-scenarios.test.ts`, `src/components/Settings.tsx`
-  Acceptance: Settings writes include a schema version, legacy settings migrate deterministically, unknown values fall back with diagnostics, and tests cover at least one legacy-to-current migration.
-  Complexity: M
-
 - [ ] P2 — Add screenshot-backed visual and accessibility regression coverage for the current cockpit
   Why: Existing Playwright checks cover smoke paths and axe scans, but the committed screenshots are stale and there is no automated guard for toolbar density, modal clipping, or light/dark cockpit regressions.
   Evidence: `tests/smoke.spec.ts`; `assets/screenshots/*.png`; `src/styles.css`; Playwright screenshot tooling

@@ -27,6 +27,9 @@ export type Settings = {
   token_banner_dismissed_at: string | null;
 };
 
+export const SETTINGS_SCHEMA_VERSION = 1;
+const SCHEMA_VERSION_KEY = "_settings_schema_version";
+
 const DEFAULTS: Settings = {
   cesium_token: "",
   theme: "mocha",
@@ -36,6 +39,16 @@ const DEFAULTS: Settings = {
   tour_completed_at: null,
   token_banner_dismissed_at: null,
 };
+
+const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
+  "cesium_token",
+  "theme",
+  "globe_style",
+  "colormap",
+  "disclaimer_acknowledged_at",
+  "tour_completed_at",
+  "token_banner_dismissed_at",
+]);
 
 const STORE_FILE = "settings.json";
 const LS_PREFIX = "tsunamisim.";
@@ -63,12 +76,8 @@ function getStore(): Promise<LazyStore | null> {
       .then(async ({ load }) => {
         try {
           const store = (await load(STORE_FILE, { defaults: DEFAULTS, autoSave: false })) as LazyStore;
-          // Read-only smoke test: confirm the store opened and is readable. A
-          // read can't pollute the user's settings.json (the old write+delete
-          // probe left an `__init_probe` key behind whenever delete was
-          // unsupported or failed). If this throws, non-sensitive settings
-          // fall through to localStorage so the UI still works.
           await store.get("theme");
+          await migrateStore(store);
           return store;
         } catch (err) {
           console.warn("[settings] tauri-plugin-store probe failed; falling back to localStorage.", err);
@@ -81,6 +90,56 @@ function getStore(): Promise<LazyStore | null> {
       });
   }
   return storePromise;
+}
+
+async function migrateStore(store: LazyStore): Promise<void> {
+  try {
+    const version = await store.get<number>(SCHEMA_VERSION_KEY);
+    if (version === SETTINGS_SCHEMA_VERSION) return;
+
+    if (version === undefined || version === null) {
+      console.info(
+        `[settings] legacy unversioned store detected; stamping schema version ${SETTINGS_SCHEMA_VERSION}`,
+      );
+    } else if (typeof version === "number" && version > SETTINGS_SCHEMA_VERSION) {
+      console.warn(
+        `[settings] store version ${version} is newer than supported ${SETTINGS_SCHEMA_VERSION}; ` +
+          "unrecognised keys will be preserved, unknown values fall back to defaults",
+      );
+    }
+
+    await store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
+    await store.save();
+  } catch (err) {
+    console.warn("[settings] schema migration failed", err);
+  }
+}
+
+function migrateLocalStorage(): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const versionRaw = localStorage.getItem(LS_PREFIX + SCHEMA_VERSION_KEY);
+    const version = versionRaw !== null ? JSON.parse(versionRaw) : null;
+    if (version === SETTINGS_SCHEMA_VERSION) return;
+
+    if (version === null) {
+      console.info(
+        `[settings] legacy unversioned localStorage detected; stamping schema version ${SETTINGS_SCHEMA_VERSION}`,
+      );
+    } else if (typeof version === "number" && version > SETTINGS_SCHEMA_VERSION) {
+      console.warn(
+        `[settings] localStorage version ${version} is newer than supported ${SETTINGS_SCHEMA_VERSION}; ` +
+          "unknown values fall back to defaults",
+      );
+    }
+
+    localStorage.setItem(
+      LS_PREFIX + SCHEMA_VERSION_KEY,
+      JSON.stringify(SETTINGS_SCHEMA_VERSION),
+    );
+  } catch {
+    /* quota / private mode */
+  }
 }
 
 function removeLocalMirror(key: keyof Settings): void {
@@ -100,24 +159,40 @@ function shouldMirrorToLocalStorage(key: keyof Settings): boolean {
 }
 
 function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Settings[K] | undefined {
+  if (!SETTINGS_KEYS.has(key)) {
+    console.warn(`[settings] unknown key "${String(key)}" — ignoring, falling back to default`);
+    return undefined;
+  }
+  let result: Settings[K] | undefined;
   switch (key) {
     case "cesium_token":
-      return (typeof value === "string" ? value : undefined) as Settings[K] | undefined;
+      result = (typeof value === "string" ? value : undefined) as Settings[K] | undefined;
+      break;
     case "theme":
-      return (value === "mocha" || value === "latte" ? value : undefined) as Settings[K] | undefined;
+      result = (value === "mocha" || value === "latte" ? value : undefined) as Settings[K] | undefined;
+      break;
     case "globe_style":
-      return (typeof value === "string" && GLOBE_STYLE_IDS.includes(value as GlobeStyleId)
+      result = (typeof value === "string" && GLOBE_STYLE_IDS.includes(value as GlobeStyleId)
         ? value
         : undefined) as Settings[K] | undefined;
+      break;
     case "colormap":
-      return (value === "diverging" || value === "cividis" ? value : undefined) as Settings[K] | undefined;
+      result = (value === "diverging" || value === "cividis" ? value : undefined) as Settings[K] | undefined;
+      break;
     case "disclaimer_acknowledged_at":
     case "tour_completed_at":
     case "token_banner_dismissed_at":
-      return (typeof value === "string" || value === null ? value : undefined) as Settings[K] | undefined;
+      result = (typeof value === "string" || value === null ? value : undefined) as Settings[K] | undefined;
+      break;
     default:
-      return undefined;
+      result = undefined;
   }
+  if (result === undefined && value !== undefined && value !== null) {
+    console.warn(
+      `[settings] "${String(key)}" has unrecognised value ${JSON.stringify(value)} — falling back to default`,
+    );
+  }
+  return result;
 }
 
 function readLocalMirror<K extends keyof Settings>(key: K): Settings[K] | undefined {
@@ -134,6 +209,7 @@ function readLocalMirror<K extends keyof Settings>(key: K): Settings[K] | undefi
 }
 
 async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
+  migrateLocalStorage();
   const store = await getStore();
   if (store) {
     try {
@@ -174,6 +250,7 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
 }
 
 async function write<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
+  migrateLocalStorage();
   if (shouldMirrorToLocalStorage(key) && typeof localStorage !== "undefined") {
     try {
       localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
@@ -339,7 +416,8 @@ export const settings = {
     };
   },
   /** Clear every persisted key from both the Tauri store and any browser /
-   * legacy localStorage copies. Used by Settings → "Reset to defaults". */
+   * legacy localStorage copies. Used by Settings → "Reset to defaults".
+   * Preserves the schema version stamp. */
   async resetAll(): Promise<void> {
     const keys: (keyof Settings)[] = [
       "cesium_token",
@@ -358,6 +436,14 @@ export const settings = {
           /* ignore */
         }
       }
+      try {
+        localStorage.setItem(
+          LS_PREFIX + SCHEMA_VERSION_KEY,
+          JSON.stringify(SETTINGS_SCHEMA_VERSION),
+        );
+      } catch {
+        /* ignore */
+      }
     }
     const store = await getStore();
     if (store && typeof store.delete === "function") {
@@ -369,6 +455,7 @@ export const settings = {
         }
       }
       try {
+        await store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
         await store.save();
       } catch {
         /* ignore */

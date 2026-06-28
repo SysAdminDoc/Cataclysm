@@ -15,6 +15,13 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
   generation steps and an expanded release checklist.
 
+### Added — settings versioning
+- **Schema-versioned settings store.** Both the Tauri plugin-store and
+  localStorage now carry a `_settings_schema_version` key. Legacy unversioned
+  stores are migrated on first read, future/unknown versions log diagnostics
+  and fall back to defaults, and `resetAll` preserves the version stamp.
+  Five new tests cover migration, fallback, and round-trip scenarios.
+
 ### Changed — accessibility & rendering
 - **Automated WCAG A/AA regression checks.** Five axe-core Playwright tests
   now gate local verification across the first-run dialog, main cockpit,
