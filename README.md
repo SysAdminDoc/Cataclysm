@@ -95,6 +95,7 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 - **Export JSON** — Structured detonation data
 - **Export Provenance** — JSON, GeoJSON, CSV, KML, and reports include app version, physics model, citations, assumptions, and confidence notes
 - **CSV Import Preview** — Validates row count, file size, coordinates, yield, and burst type before importing
+- **Privacy-Safe Location Flows** — GPS checks stay local, live wind sends only map-center coordinates to Open-Meteo, and permission errors render as safe text
 - **Summary Report** — Formatted text report with all details
 - **Shareable URLs** — Detonation state encoded in URL parameters
 - **Fullscreen Mode** — For presentations

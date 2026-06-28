@@ -160,6 +160,9 @@ button:disabled:hover,.is-disabled:hover{color:inherit;border-color:var(--contro
 .wind-speed-row{display:flex;gap:5px;align-items:center}
 #wind-speed{width:55px;padding:4px 6px;border-radius:5px;background:var(--mantle);border:1px solid var(--surface1);color:var(--text);font-size:11px;outline:none;text-align:right}
 .wind-dir-label{color:var(--overlay0);font-size:9px;margin-top:2px}
+.privacy-note{margin:6px 0 8px;padding:6px 8px;border:1px solid rgba(148,226,213,.22);border-radius:var(--radius-sm);background:rgba(148,226,213,.07);color:var(--subtext0);font-size:9px;line-height:1.35}
+.gps-message{font-size:11px;line-height:1.35;color:var(--overlay0)}
+.gps-message.error{color:var(--red)}
 
 /* Legend */
 .legend-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(69,71,90,0.22);font-size:11px;transition:opacity .2s}

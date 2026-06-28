@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P1 - Add privacy notice and safe rendering for location/error flows
-  Why: GPS and live wind features touch location data, and one geolocation error path uses `innerHTML` with `err.message`.
-  Evidence: `js/immersive.js:219-231`, `js/app.js:957-989`, Open-Meteo terms/docs, OWASP DOM XSS guidance.
-  Touches: `js/immersive.js`, `js/app.js`, `index.html`, `css/styles.css`.
-  Acceptance: GPS and real-wind controls show concise pre-use privacy text, errors render via text-safe helpers, and no browser/API error message is inserted as raw HTML.
-  Complexity: S
-
 - [ ] P1 - Add browser QA for mobile, PWA, offline, and accessibility states
   Why: Node tests cover models, but no automated browser pass verifies installability, service-worker updates, mobile clipping, tab semantics, high contrast, or reduced motion.
   Evidence: `package.json`, `test/`, WCAG 2.2, PWA manifest docs, recent mobile/a11y fixes in `git log`.

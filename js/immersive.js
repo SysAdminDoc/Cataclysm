@@ -215,20 +215,30 @@ NM.EscapeTime = {
 NM.GPSSafe = {
   marker: null,
 
+  _setTextStatus(text, tone = 'muted') {
+    const el = document.getElementById('gps-result');
+    if (!el) return;
+    el.replaceChildren();
+    const msg = document.createElement('div');
+    msg.className = `gps-message ${tone}`;
+    msg.textContent = text;
+    el.appendChild(msg);
+  },
+
   check(map) {
     if (!navigator.geolocation) {
-      document.getElementById('gps-result').innerHTML = '<div style="color:var(--red);font-size:11px">Geolocation not available in this browser</div>';
+      this._setTextStatus('Geolocation is not available in this browser.', 'error');
       return;
     }
-    document.getElementById('gps-result').innerHTML = '<div style="color:var(--overlay0);font-size:11px">Getting your location...</div>';
+    this._setTextStatus('Getting your location...', 'muted');
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude, lng = pos.coords.longitude;
         this._analyze(map, lat, lng);
       },
-      (err) => {
-        document.getElementById('gps-result').innerHTML = `<div style="color:var(--red);font-size:11px">Location error: ${err.message}</div>`;
+      () => {
+        this._setTextStatus('Location permission failed or timed out. Your coordinates were not read.', 'error');
       },
       {enableHighAccuracy: true, timeout: 10000}
     );
@@ -237,7 +247,7 @@ NM.GPSSafe = {
   _analyze(map, lat, lng) {
     const det = NM._lastDet;
     if (!det) {
-      document.getElementById('gps-result').innerHTML = '<div style="color:var(--overlay0);font-size:11px">No detonation to check against. Detonate first.</div>';
+      this._setTextStatus('No detonation to check against. Detonate first.', 'muted');
       return;
     }
 

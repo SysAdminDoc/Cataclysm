@@ -44,6 +44,9 @@ assert('Exports: GeoJSON includes provenance', /type:'FeatureCollection',provena
 assert('Exports: CSV includes model provenance columns', /app_version,physics_model,fallout_model,citation_keys,assumptions/.test(appJs));
 assert('Exports: text and print reports include model provenance', /MODEL PROVENANCE/.test(appJs) && /Model Provenance/.test(appJs));
 assert('Exports: KML includes model provenance', /physicsModel/.test(immersiveJs) && /citationKeys/.test(immersiveJs));
+assert('Privacy: GPS and live wind controls show pre-use notices', /Your GPS coordinates stay in this browser/.test(indexHtml) && /map center coordinates to Open-Meteo/.test(indexHtml));
+assert('Privacy: GPS error path does not render browser error HTML', /_setTextStatus/.test(immersiveJs) && !/Location error:\s*\$\{err\.message\}/.test(immersiveJs));
+assert('Privacy: GPS status helper uses textContent', /msg\.textContent\s*=\s*text/.test(immersiveJs) && /replaceChildren\(\)/.test(immersiveJs));
 
 // ---- CSV IMPORT VALIDATION TESTS ----
 const validCsv = 'lat,lng,yield_kt,burst_type,weapon\n40.7128,-74.0060,455,airburst,"W88, Trident"\n33,-118,50,water,Imported';
