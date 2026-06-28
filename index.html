@@ -310,6 +310,8 @@
           <div style="margin-top:6px">
             <input type="text" id="save-search" class="compact-input save-input text-left" placeholder="Search saved..." aria-label="Search saved scenarios" style="width:100%"/>
           </div>
+          <label class="export-btn mt-6" id="import-scenario-label">Preview Scenario JSON<input type="file" id="import-scenario" accept=".json" style="display:none"/></label>
+          <div class="csv-import-status" id="scenario-import-status" aria-live="polite">Scenario saves use schema v1 with name, folder, updated time, and detonation rows.</div>
           <div id="saved-list" class="mt-6"></div>
         </div>
       </div>

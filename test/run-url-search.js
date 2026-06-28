@@ -60,6 +60,11 @@ assert('i18n: registry has no missing placeholder values', NM.i18n.missingKeys()
 assert('i18n: all DOM data-i18n keys exist', domI18nKeys.length > 20 && domI18nKeys.every(key => Object.prototype.hasOwnProperty.call(NM.STRINGS, key)));
 assert('i18n: core registry is applied at startup', /NM\.i18n\?\.apply\(\)/.test(appJs) && /js\/i18n\.js/.test(indexHtml) && /js\/i18n\.js/.test(swJs));
 assert('i18n: emergency guide resolves through registry', /const t = NM\.t/.test(advancedJs) && /guide\.immediate\.title/.test(advancedJs) && /guide\.fema\.title/.test(advancedJs));
+assert('Scenario: saves include schema version and updated timestamp', /SCENARIO_SCHEMA_VERSION\s*=\s*1/.test(appJs) && /schemaVersion:\s*SCENARIO_SCHEMA_VERSION/.test(appJs) && /updatedAt:\s*now/.test(appJs));
+assert('Scenario: JSON import preview supports merge and replace', /normalizeScenarioImport/.test(appJs) && /scenario-import-merge/.test(appJs) && /scenario-import-replace/.test(appJs) && /Import as Copy/.test(appJs));
+assert('Scenario: IndexedDB replace uses put', /put\(scenario\)/.test(appJs) && /objectStore\(this\._storeName\)\.put\(scenario\)/.test(appJs));
+assert('Scenario: saved loads normalize legacy and schema rows', /function scenarioDetRow/.test(appJs) && /const dets = \(s\.dets \|\| \[\]\)\.map\(scenarioDetRow\)/.test(appJs));
+assert('Scenario: import UI is present', /id="import-scenario"/.test(indexHtml) && /id="scenario-import-status"/.test(indexHtml));
 
 // ---- CSV IMPORT VALIDATION TESTS ----
 const validCsv = 'lat,lng,yield_kt,burst_type,weapon\n40.7128,-74.0060,455,airburst,"W88, Trident"\n33,-118,50,water,Imported';

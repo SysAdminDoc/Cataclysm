@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P2 - Add scenario schema versioning, diff, and merge tools
-  Why: Saved scenarios have folders/search but lack schema versions, import previews, or merge conflict handling for CSV/JSON round trips.
-  Evidence: `js/app.js:1643-1736`, Nuclear War Simulator scenario expectations, existing NukeMap save/load workflow.
-  Touches: `js/app.js`, `index.html`, `css/styles.css`, `test/run-url-search.js`.
-  Acceptance: Saved scenarios include a schema version and updated timestamp; import can preview, diff against existing names/folders, merge or replace, and report validation errors.
-  Complexity: M
-
 - [ ] P2 - Add in-app diagnostics for cache, data, and model versions
   Why: PWA users can retain stale service-worker/data caches, and troubleshooting needs a visible way to verify active versions.
   Evidence: `sw.js`, `js/app.js:1791-1801`, service-worker update flow, version drift found in `js/app.js:1467`.

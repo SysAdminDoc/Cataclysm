@@ -7,6 +7,8 @@ window.NM = window.NM || {};
 let map, currentDets = [], windAngle = 0, multiMode = false, mirvMode = false, currentMirvPreset = null;
 NM._nightMode = false;
 let pendingCSVImport = null;
+let pendingScenarioImport = null;
+const SCENARIO_SCHEMA_VERSION = 1;
 
 function syncAppMetadata() {
   const weaponCount = Math.max(0, (NM.WEAPONS || []).filter(w => w.name !== 'Custom').length);
@@ -849,14 +851,18 @@ function initControls() {
     if (!currentDets.length) return;
     const name = $('save-name').value.trim() || `Scenario ${new Date().toLocaleDateString()}`;
     const folder = $('save-folder') ? $('save-folder').value.trim() : '';
-    _scenarioDB.add({
-      name, folder, date: Date.now(),
-      dets: currentDets.map(d => ({lat:d.lat,lng:d.lng,yieldKt:d.yieldKt,burstType:d.burstType,weapon:d.weapon}))
-    }).then(() => { $('save-name').value = ''; renderSavedList(); })
+    _scenarioDB.add(createScenarioRecord(name, folder, currentDets))
+    .then(() => { $('save-name').value = ''; renderSavedList(); })
     .catch(() => { $('saved-list').innerHTML = compactState('Storage is full. Delete saved scenarios or clear browser data.', 'warn'); });
   });
   renderSavedList();
   if ($('save-search')) $('save-search').addEventListener('input', () => renderSavedList($('save-search').value));
+  $('import-scenario')?.addEventListener('change', e => { if (e.target.files[0]) readScenarioImportFile(e.target.files[0]); e.target.value = ''; });
+  $('scenario-import-status')?.addEventListener('click', e => {
+    if (e.target.id === 'scenario-import-merge' && pendingScenarioImport) runScenarioImport('merge');
+    if (e.target.id === 'scenario-import-replace' && pendingScenarioImport) runScenarioImport('replace');
+    if (e.target.id === 'scenario-import-cancel') resetScenarioImportStatus();
+  });
   initEncyclopedia();
   initHistoricTests();
   initMethodology();
@@ -1811,6 +1817,22 @@ const _scenarioDB = {
       tx.onerror = () => reject(tx.error);
     });
   },
+  put(scenario) {
+    if (!this._db) {
+      const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
+      const idx = Number.isInteger(scenario.id) ? scenario.id : saves.findIndex(s => s.name === scenario.name && (s.folder || '') === (scenario.folder || ''));
+      if (idx >= 0) saves[idx] = scenario;
+      else saves.push(scenario);
+      localStorage.setItem('nukemap-saves', JSON.stringify(saves));
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction(this._storeName, 'readwrite');
+      tx.objectStore(this._storeName).put(scenario);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  },
   delete(id) {
     if (!this._db) {
       const saves = JSON.parse(localStorage.getItem('nukemap-saves') || '[]');
@@ -1825,6 +1847,95 @@ const _scenarioDB = {
     });
   }
 };
+
+function scenarioDetRow(d) {
+  return {lat:+d.lat,lng:+d.lng,yieldKt:+(d.yieldKt ?? d.yield_kt ?? d.yield),burstType:d.burstType || d.burst_type || 'airburst',weapon:d.weapon || 'Saved'};
+}
+
+function createScenarioRecord(name, folder, dets, existing = {}) {
+  const now = new Date().toISOString();
+  return {
+    ...existing,
+    schemaVersion: SCENARIO_SCHEMA_VERSION,
+    name: (name || 'Imported Scenario').trim(),
+    folder: (folder || '').trim(),
+    date: existing.date || Date.now(),
+    updatedAt: now,
+    dets: dets.map(scenarioDetRow),
+  };
+}
+
+function normalizeScenarioImport(raw) {
+  const source = raw && Array.isArray(raw.detonations) ? raw.detonations : raw?.dets;
+  if (!Array.isArray(source) || !source.length) return {ok:false, error:'Scenario JSON must include dets or detonations.'};
+  const dets = [], skipped = [];
+  source.forEach((d, i) => {
+    const row = scenarioDetRow(d);
+    const reason = [];
+    if (!Number.isFinite(row.lat) || row.lat < -90 || row.lat > 90) reason.push('lat');
+    if (!Number.isFinite(row.lng) || row.lng < -180 || row.lng > 180) reason.push('lng');
+    if (!Number.isFinite(row.yieldKt) || row.yieldKt < 0.001 || row.yieldKt > 100000) reason.push('yield');
+    if (!NM.CSV_IMPORT_LIMITS.validBursts.includes(row.burstType)) reason.push('burst');
+    if (reason.length) skipped.push({row:i + 1, reason:reason.join('/')});
+    else dets.push(row);
+  });
+  if (!dets.length) return {ok:false, error:'Scenario JSON contains no valid detonation rows.', skipped};
+  const scenario = createScenarioRecord(raw.name || `Imported Scenario ${new Date().toLocaleDateString()}`, raw.folder || '', dets, {date: raw.date || Date.now()});
+  return {ok:true, scenario, skipped, sourceSchemaVersion: raw.schemaVersion || raw.version || 'legacy'};
+}
+
+function resetScenarioImportStatus() {
+  pendingScenarioImport = null;
+  const el = $('scenario-import-status');
+  if (el) el.textContent = 'Scenario saves use schema v1 with name, folder, updated time, and detonation rows.';
+}
+
+function renderScenarioImportPreview(result, saves = []) {
+  const el = $('scenario-import-status'); if (!el) return;
+  if (!result.ok) {
+    pendingScenarioImport = null;
+    el.innerHTML = `<div class="csv-preview warn"><strong>Import rejected:</strong> ${NM.esc(result.error)}</div>`;
+    return;
+  }
+  const match = saves.find(s => s.name === result.scenario.name && (s.folder || '') === (result.scenario.folder || ''));
+  pendingScenarioImport = {...result, match};
+  const diff = match ? `Existing "${NM.esc(match.name)}" has ${(match.dets || []).length} dets; import has ${result.scenario.dets.length} dets.` : `New scenario with ${result.scenario.dets.length} dets.`;
+  const skipped = result.skipped?.length ? `<div class="csv-skipped">${result.skipped.length} invalid row${result.skipped.length > 1 ? 's' : ''} skipped.</div>` : '';
+  el.innerHTML = `<div class="csv-preview"><strong>${NM.esc(result.scenario.name)}</strong><br>${diff}${skipped}<div class="csv-actions"><button class="btn-secondary" id="scenario-import-merge">${match ? 'Import as Copy' : 'Import Scenario'}</button>${match ? '<button class="btn-secondary" id="scenario-import-replace">Replace Existing</button>' : ''}<button class="btn-secondary" id="scenario-import-cancel">Cancel</button></div></div>`;
+}
+
+function readScenarioImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    let result;
+    try { result = normalizeScenarioImport(JSON.parse(e.target.result)); }
+    catch { result = {ok:false, error:'Scenario file is not valid JSON.'}; }
+    _scenarioDB.getAll().then(saves => renderScenarioImportPreview(result, saves));
+  };
+  reader.onerror = () => renderScenarioImportPreview({ok:false, error:'Could not read scenario file.'});
+  reader.readAsText(file);
+}
+
+function runScenarioImport(mode) {
+  const pending = pendingScenarioImport;
+  if (!pending?.scenario) return;
+  const scenario = {...pending.scenario};
+  let op;
+  if (mode === 'replace' && pending.match) {
+    scenario.id = pending.match.id;
+    scenario.date = pending.match.date || scenario.date;
+    op = _scenarioDB.put(scenario);
+  } else {
+    if (pending.match) scenario.name = `${scenario.name} (imported)`;
+    op = _scenarioDB.add(scenario);
+  }
+  op.then(() => {
+    pendingScenarioImport = null;
+    const el = $('scenario-import-status');
+    if (el) el.innerHTML = `<div class="csv-preview success"><strong>Scenario imported.</strong> ${NM.esc(scenario.name)}</div>`;
+    renderSavedList();
+  });
+}
 
 function renderSavedList(filter) {
   const list = $('saved-list'); if (!list) return;
@@ -1847,7 +1958,9 @@ function renderSavedList(filter) {
       for (const s of folders[f]) {
         const el = document.createElement('div'); el.className = 'saved-item';
         const folderTag = s.folder ? `<span class="si-folder-tag">${NM.esc(s.folder)}</span>` : '';
-        el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span>${folderTag}<span class="si-meta">${s.dets.length} det${s.dets.length > 1 ? 's' : ''}</span><button class="si-del" data-i="${s.id ?? filtered.indexOf(s)}">&times;</button>`;
+        const schema = s.schemaVersion ? `v${s.schemaVersion}` : 'legacy';
+        const stamp = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : (s.date ? new Date(s.date).toLocaleDateString() : '');
+        el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span>${folderTag}<span class="si-meta">${(s.dets || []).length} det${(s.dets || []).length > 1 ? 's' : ''} - ${schema}${stamp ? ` - ${NM.esc(stamp)}` : ''}</span><button class="si-del" data-i="${s.id ?? filtered.indexOf(s)}">&times;</button>`;
         el.addEventListener('click', e => { if (!e.target.classList.contains('si-del')) loadScenario(s); });
         el.querySelector('.si-del').addEventListener('click', e => { e.stopPropagation(); deleteSave(s.id ?? filtered.indexOf(s)); });
         list.appendChild(el);
@@ -1862,9 +1975,10 @@ function loadScenario(s) {
   _loadTimers = [];
   clearAll();
   multiMode = true; $('multi-check').checked = true;
-  if (s.dets.length) map.flyTo([s.dets[0].lat, s.dets[0].lng], s.dets.length > 2 ? 6 : 9, {duration: 1});
+  const dets = (s.dets || []).map(scenarioDetRow);
+  if (dets.length) map.flyTo([dets[0].lat, dets[0].lng], dets.length > 2 ? 6 : 9, {duration: 1});
   _loadTimers.push(setTimeout(() => {
-    s.dets.forEach((d, i) => {
+    dets.forEach((d, i) => {
       _loadTimers.push(setTimeout(() => {
         setYield(d.yieldKt);
         document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === d.burstType));

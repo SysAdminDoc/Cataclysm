@@ -90,6 +90,7 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 - **Floating Map Switcher** — Quick-access dropdown on the map
 - **Quick Weapon Bar** — 6 common weapons as floating chips
 - **Save/Load Scenarios** — Persist detonation sets to localStorage
+- **Scenario Schema + Import Preview** — Saved scenarios carry schema v1 metadata, updated timestamps, and JSON imports can merge as a copy or replace conflicts
 - **Export PNG** — Map screenshot capture
 - **Export KML** — Google Earth compatible
 - **Export JSON** — Structured detonation data
