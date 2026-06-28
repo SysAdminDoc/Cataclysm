@@ -71,6 +71,21 @@ test.describe("TsunamiSimulator browser preview", () => {
     await expect(page.getByRole("tab", { name: "Asteroid" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("status").filter({ hasText: "Loaded scenario." })).toBeVisible();
   });
+
+  test("cancelling globe pick mode does not trip the recovery boundary", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "Pick on globe" }).click();
+    const pickBanner = page.locator(".app__globe-pickbanner");
+    await expect(pickBanner).toBeVisible();
+    await pickBanner.getByRole("button", { name: "Cancel" }).click();
+
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await expect(page.locator(".app")).toHaveAttribute("data-compare", "true");
+    await expect(page.locator(".app__globe-tag", { hasText: "Slot B" })).toBeVisible();
+  });
 });
 
 // ---------------------------------------------------------------------------

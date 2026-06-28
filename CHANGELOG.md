@@ -153,7 +153,7 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
   stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
 
-## [0.4.4] - 2026-06-26 - Secondary cockpit state polish
+## [0.4.4] - 2026-06-28 - Secondary cockpit state polish
 
 ### Changed
 - Refined source readouts, attenuation charts, SWE solver controls, DART
@@ -163,12 +163,21 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   source-location summaries, solver setup chips, and diagnostic severity
   counts.
 - Improved responsive guardrails for compact data strips in narrow layouts.
+- Refreshed the README visual-tour screenshots against the current v0.4.4
+  Natural Earth cockpit, SWE playback, comparison mode, scenario builder, and
+  citations modal.
+- Published the v0.4.4 release contract around locally built Windows MSI/NSIS
+  installers; the current artifacts remain unsigned until a Windows
+  code-signing certificate is configured.
 
 ### Fixed
 - Settings now initializes to the Natural Earth default before persisted values
   load, avoiding an old OSM flash in the modal state.
 - Synced package, Tauri, Cargo, README badge, and visible app metadata to
   `0.4.4`.
+- Fixed Cesium pick/inspect handler cleanup so cancelling globe-pick mode and
+  entering comparison mode no longer trips the runtime recovery boundary with
+  a destroyed-object error.
 
 ## [0.4.3] - 2026-06-26 - Premium cockpit polish
 

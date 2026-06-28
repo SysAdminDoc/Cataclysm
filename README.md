@@ -106,10 +106,14 @@ Existing tools each do one piece:
 
 ## Install
 
-Prebuilt installers for the latest release are on the
-[Releases page](https://github.com/SysAdminDoc/TsunamiSimulator/releases) —
-Windows (`.msi`, `.exe`), macOS universal (`.dmg`), and Linux
-(`.AppImage`, `.deb`, `.rpm`).
+Prebuilt Windows installers for the latest release are on the
+[Releases page](https://github.com/SysAdminDoc/TsunamiSimulator/releases):
+an MSI package and an NSIS setup executable. The v0.4.4 Windows installers are
+locally built from this repository and are currently unsigned until a Windows
+code-signing certificate is configured, so Windows may show an unknown-publisher
+warning. macOS and Linux remain supported source-build targets; platform
+installers for those systems should be produced locally on those platforms when
+signing/build hosts are available.
 
 The app launches on the bundled **Natural Earth II** globe by default and is
 fully usable without network tiles or a token. OpenStreetMap and Esri imagery

@@ -93,6 +93,11 @@ function CoordEntryForm({
 
 const PICK_CURSOR_STYLE = "crosshair";
 
+function destroyScreenSpaceHandler(handler: Cesium.ScreenSpaceEventHandler | null) {
+  if (!handler || handler.isDestroyed()) return;
+  handler.destroy();
+}
+
 /**
  * Cesium globe with optional GEBCO bathymetry. Renders:
  *  - the source location as a 3D cavity cylinder (height = cavity depth, colored
@@ -180,9 +185,9 @@ export function Globe({
     setViewerEpoch((n) => n + 1);
 
     return () => {
-      pickHandlerRef.current?.destroy();
+      destroyScreenSpaceHandler(pickHandlerRef.current);
       pickHandlerRef.current = null;
-      inspectHandlerRef.current?.destroy();
+      destroyScreenSpaceHandler(inspectHandlerRef.current);
       inspectHandlerRef.current = null;
       inspectEntityRef.current = null;
       viewer.destroy();
@@ -314,7 +319,7 @@ export function Globe({
     if (!viewer) return;
 
     if (!pickMode) {
-      pickHandlerRef.current?.destroy();
+      destroyScreenSpaceHandler(pickHandlerRef.current);
       pickHandlerRef.current = null;
       viewer.canvas.style.cursor = "";
       return;
@@ -337,7 +342,8 @@ export function Globe({
     pickHandlerRef.current = handler;
 
     return () => {
-      handler.destroy();
+      if (pickHandlerRef.current === handler) pickHandlerRef.current = null;
+      destroyScreenSpaceHandler(handler);
       window.removeEventListener("keydown", onKey);
       viewer.canvas.style.cursor = "";
     };
@@ -351,7 +357,7 @@ export function Globe({
 
     // Clean up entity + handler when mode flips off.
     if (!inspectMode) {
-      inspectHandlerRef.current?.destroy();
+      destroyScreenSpaceHandler(inspectHandlerRef.current);
       inspectHandlerRef.current = null;
       if (inspectEntityRef.current) {
         viewer.entities.remove(inspectEntityRef.current);
@@ -457,7 +463,8 @@ export function Globe({
     inspectHandlerRef.current = handler;
 
     return () => {
-      handler.destroy();
+      if (inspectHandlerRef.current === handler) inspectHandlerRef.current = null;
+      destroyScreenSpaceHandler(handler);
       window.removeEventListener("keydown", onKey);
       viewer.canvas.style.cursor = "";
     };

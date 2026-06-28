@@ -11,15 +11,6 @@ from the current research pass follows.
 
 ## Research-Driven Additions
 
-### P0
-
-- [ ] P0 — Sync public version, release, and screenshot truth to v0.4.4
-  Why: Trust cues are split across v0.4.0 GitHub Releases, v0.4.1/v0.4.2 screenshot assets, a v0.4.2 completed-work summary, and v0.4.4 app metadata.
-  Evidence: `rtk gh release list`; `COMPLETED.md`; `assets/screenshots/*.png`; `CONTRIBUTING.md`; `README.md`
-  Touches: `COMPLETED.md`, `CONTRIBUTING.md`, `README.md`, `assets/screenshots/*`, release workflow or GitHub release notes as applicable
-  Acceptance: Public docs and bundled screenshots describe the current Natural Earth default and v0.4.4 cockpit; the latest GitHub release state is either v0.4.4 or explicitly documented as intentionally held.
-  Complexity: M
-
 ### P1
 
 - [ ] P1 — Harden citation and external-link capability handling
