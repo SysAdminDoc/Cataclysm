@@ -6,20 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P1 - Replace nearest-city casualty density with optional gridded population tiles
-  Why: Current casualty estimates use nearest-city heuristics, while credible blast tools and datasets use gridded population surfaces.
-  Evidence: `NM.estimateDensity()` in `js/physics.js`, WorldPop API, GHS-POP R2023A, NUKEMAP roadmap LandScan work.
-  Touches: `js/physics.js`, `js/heatmap.js`, `js/app.js`, `data/`, `build.py`, `test/run-physics.js`.
-  Acceptance: Density lookup can use versioned static population tiles with offline fallback to the current heuristic; UI/export identifies the density source; tests cover tile hit, tile miss, and fallback.
-  Complexity: XL
-
-- [ ] P1 - Add a WSEG-10 fallout comparison mode
-  Why: Current fallout ellipses are useful but simplified; WSEG-10 is the practical public next step and is called out by NUKEMAP and GOFAI/glasstone.
-  Evidence: `NM.calcEffects().fallout` in `js/physics.js`, GOFAI/glasstone, NUKEMAP roadmap.
-  Touches: `js/physics.js`, `js/effects.js`, `js/extras.js`, `js/app.js`, `test/run-physics.js`.
-  Acceptance: A selectable fallout model shows current simplified plume vs WSEG-10-derived dose zones, exports identify the chosen model, and regression tests pin known reference cases.
-  Complexity: L
-
 - [ ] P1 - Add privacy notice and safe rendering for location/error flows
   Why: GPS and live wind features touch location data, and one geolocation error path uses `innerHTML` with `err.message`.
   Evidence: `js/immersive.js:219-231`, `js/app.js:957-989`, Open-Meteo terms/docs, OWASP DOM XSS guidance.
