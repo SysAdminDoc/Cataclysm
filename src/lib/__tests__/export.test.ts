@@ -141,7 +141,8 @@ describe("suggestedFilename", () => {
     expect(fc.properties.scenario_type).toBe("Asteroid");
     expect(fc.properties.solver_mode).toBe("SWE snapshot playback");
     expect(fc.properties.citation_url).toBe("https://doi.org/10.1029/2021AV000627");
-    expect(fc.properties.bathymetry_source).toContain("Coarse offline basin/shelf approximation");
+    expect(fc.properties.bathymetry_source).toContain("Low-confidence coarse basin/shelf approximation");
+    expect(fc.properties.bathymetry_source).toContain("GEBCO_2026/TID raster sampling is not bundled");
     expect(fc.properties.model_notice).toContain("Educational model only");
   });
 });

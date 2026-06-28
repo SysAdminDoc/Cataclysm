@@ -70,6 +70,10 @@ describe("SwePlayback", () => {
     const user = userEvent.setup();
     render(<SwePlayback initial={INITIAL} onSnapshot={onSnapshot} onSnapshotsReady={onSnapshotsReady} />);
 
+    expect(screen.getByText("Coarse basin/shelf bathymetry")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(/Low confidence/i);
+    expect(screen.getByRole("note")).toHaveTextContent(/GEBCO_2026\/TID-backed terrain/i);
+
     await user.click(screen.getByRole("button", { name: "Run solver" }));
     await screen.findByRole("button", { name: "Cancel" });
 

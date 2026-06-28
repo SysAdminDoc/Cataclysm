@@ -2200,6 +2200,16 @@ a {
   cursor: pointer;
 }
 
+.swe__confidence {
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+  color: color-mix(in srgb, var(--warning) 82%, var(--text));
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .swe__error {
   display: flex;
   flex-direction: column;

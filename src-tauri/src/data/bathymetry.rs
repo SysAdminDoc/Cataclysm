@@ -1,17 +1,18 @@
-//! Coarse offline bathymetry approximation.
+//! Low-confidence coarse basin/shelf bathymetry approximation.
 //!
-//! This is **not** a substitute for real GEBCO 2024 / SRTM15+ /
-//! ETOPO 2022 data. It returns an approximate ocean depth for any
+//! This is **not** a substitute for GEBCO_2026, SRTM15+, or ETOPO
+//! raster data. It returns an approximate ocean depth for any
 //! lat/lon by classifying the point into an ocean basin and applying that
 //! basin's published mean depth, with adjustments for major continental
-//! shelves and trenches.
+//! shelves and trenches. Treat it as low-confidence context for educational
+//! wave propagation, not as a surveyed bathymetry product.
 //!
 //! Sources for basin means:
 //! - Charette & Smith (2010), "The volume of Earth's ocean," *Oceanography* 23:112.
-//! - GEBCO 2024 global compilation summary statistics.
 //!
-//! A future GEBCO/SRTM15+ raster sampler can replace this once data
-//! distribution, storage, and first-run download decisions are resolved.
+//! A future GEBCO_2026 raster sampler should load the matching Type Identifier
+//! (TID) grid and carry cell-source confidence through the UI and exports once
+//! data distribution, storage, and first-run download decisions are resolved.
 
 /// Approximate ocean depth at the given latitude/longitude (deg WGS84),
 /// in meters. Returns 0.0 for land. Coarse — accuracy is order-of-magnitude

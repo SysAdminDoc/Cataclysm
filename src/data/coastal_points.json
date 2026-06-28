@@ -4,7 +4,7 @@
     "description": "Coastal points for tsunami runup sampling. Each point has a name, lat/lon (WGS84), beach_slope_deg (slope at the shoreline in degrees), and offshore_depth_m at roughly the 50 m isobath. Used by `coastal_runup` Tauri command per Synolakis 1987 closed form.",
     "sources": [
       "Athanasiou 2019 — global coastal slopes dataset (PANGAEA 10.1594/PANGAEA.892993) for beach_slope_deg where available",
-      "GEBCO 2024 — for offshore_depth_m sampling at the 50 m isobath",
+      "GEBCO_2026 should replace these placeholder offshore_depth_m values once the blocked local bathymetry loader ships; current values are 50 m nominal sampling targets, not surveyed per-point depths",
       "Mori et al. 2011 — 2011 Tohoku post-event survey for Pacific runup point selection",
       "Synolakis et al. 2005 — 2004 Indian Ocean post-event survey for Indian Ocean point selection",
       "USGS / NOAA NCEI tsunami event database — historical reference"

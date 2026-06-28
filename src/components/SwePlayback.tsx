@@ -197,8 +197,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
             checked={useBathy}
             onChange={(e) => setUseBathy(e.target.checked)}
           />
-          <span>Coarse offline bathymetry</span>
+          <span>Coarse basin/shelf bathymetry</span>
         </label>
+        <div className="swe__confidence" role="note">
+          Low confidence: current solver depths are basin means with a shelf taper, not GEBCO_2026/TID-backed terrain.
+        </div>
         <label className="swe__check">
           <input
             type="checkbox"

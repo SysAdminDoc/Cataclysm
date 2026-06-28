@@ -94,6 +94,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   style text, and export metadata now state that the solver uses a coarse
   offline bathymetry approximation and that inundation overlays are first-order
   estimates, not operational GEBCO-backed flood products.
+- **GEBCO_2026/TID target documented.** Bathymetry docs, coastal-point
+  provenance, SWE solver UI, and shared export metadata now label the current
+  bathymetry as a low-confidence coarse basin/shelf approximation and name the
+  future GEBCO_2026 Type Identifier confidence path without claiming it ships.
 - **Colorblind-safe SWE overlays.** Settings now persist a SWE colormap choice:
   the classic blue→red ramp remains the default, with a CVD-safe Cividis
   option for playback PNG overlays.
@@ -551,7 +555,7 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **F-V04** Code signing — needs maintainer EV cert + Apple Developer enrollment.
 - **F-V07** `tauri-plugin-updater` — needs maintainer-generated Ed25519 keypair.
 - **I-V04** OS-keychain token — Tauri 2 keychain plugin ecosystem still emerging.
-- **F-V06** Real GEBCO 2024 — needs distribution-channel decision.
+- **F-V06** GEBCO_2026/TID-backed bathymetry — needs distribution-channel decision.
 
 ### Planned for v0.4.0+
 See `docs/history/RESEARCH_FEATURE_PLAN_v0.4.0.md` for the full v0.4.0 forward plan:

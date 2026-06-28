@@ -13,13 +13,6 @@ from the current research pass follows.
 
 ### P1
 
-- [ ] P1 — Refresh bathymetry strategy to GEBCO_2026 and expose data confidence
-  Why: The repo still targets GEBCO 2024 while GEBCO_2026 is current and includes TID metadata that can improve transparency even before the blocked local-data loader exists.
-  Evidence: GEBCO gridded-data docs; `data/bathymetry/README.md`; `src/data/coastal_points.json`; `src-tauri/src/data/bathymetry.rs`
-  Touches: `data/bathymetry/README.md`, `src/data/coastal_points.json`, `src-tauri/src/data/bathymetry.rs`, `src/components/SwePlayback.tsx`, export provenance
-  Acceptance: Docs/comments/data provenance target GEBCO_2026, UI/export copy labels the current coarse basin/shelf approximation honestly, and the future TID-backed bathymetry path is named without claiming it ships.
-  Complexity: M
-
 - [ ] P1 — Add a local toolchain and verification doctor
   Why: Local verification is currently fragile: MSVC `link.exe` is missing from this PowerShell PATH, `cargo audit` is not installed, and Vitest 4 worker runs can hang on the VMware shared folder.
   Evidence: local `cargo audit` result; focused Vitest run; `package.json` scripts

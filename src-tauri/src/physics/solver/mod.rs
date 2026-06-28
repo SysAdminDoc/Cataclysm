@@ -131,17 +131,17 @@ impl SwGrid {
         }
     }
 
-    /// Fill the bathymetry grid with a uniform depth. Used by the v0.2.0
-    /// "flat ocean basin" smoke test until F4 ships real bathymetry.
+    /// Fill the bathymetry grid with a uniform depth. Used by the "flat ocean
+    /// basin" smoke test and fallback mode.
     pub fn fill_uniform_depth(&mut self, depth_m: f64) {
         for v in self.h_m.iter_mut() {
             *v = depth_m;
         }
     }
 
-    /// Sample bathymetry from a closure (`lat, lon → depth_m`). Used by F4
-    /// to populate the grid from a real bathymetric source (ETOPO/GEBCO/
-    /// SRTM15+).
+    /// Sample bathymetry from a closure (`lat, lon → depth_m`). Used by the
+    /// coarse basin/shelf sampler today; future GEBCO_2026/TID sampling can
+    /// use the same grid-population path.
     pub fn fill_bathymetry_from<F: Fn(f64, f64) -> f64>(&mut self, sample: F) {
         for j in 0..self.ny {
             let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;

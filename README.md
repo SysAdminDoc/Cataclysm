@@ -35,7 +35,7 @@ Existing tools each do one piece:
 - **[Purdue "Impact: Earth!"](https://impact.ese.ic.ac.uk/ImpactEarth/)** — accurate formulas, single-point readout, no animation.
 - **[GeoClaw](http://depts.washington.edu/clawpack/geoclaw/)** / **[COMCOT](https://www.researchgate.net/publication/374553562)** / **[MOST](https://www.pmel.noaa.gov/news-story/first-global-tsunami-simulation-chicxulub-asteroid-impact-66-million-years-ago)** — operational accuracy, Fortran/Python, no consumer UI.
 
-`TsunamiSimulator` combines them: **peer-reviewed source physics + consumer-grade interactive globe**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the app's coarse offline bathymetry, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
+`TsunamiSimulator` combines them: **peer-reviewed source physics + consumer-grade interactive globe**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the app's low-confidence coarse basin/shelf bathymetry, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
 
 ---
 
@@ -119,8 +119,9 @@ The app launches on the bundled **Natural Earth II** globe by default and is
 fully usable without network tiles or a token. OpenStreetMap and Esri imagery
 remain no-token online options, and a free Cesium ion token unlocks
 high-resolution satellite imagery and visual bathymetric terrain from Settings.
-Solver bathymetry remains the app's coarse offline basin/shelf approximation
-until the blocked GEBCO data path is resolved.
+Solver bathymetry remains the app's low-confidence coarse basin/shelf
+approximation until the blocked GEBCO_2026/TID-backed local data path is
+resolved.
 
 ### Build from source
 
@@ -184,7 +185,7 @@ Heavy physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgp
 This is not a forecast tool. Compared to operational models like NOAA MOST:
 
 - **What's accurate** — initial conditions (cavity geometry from Ward–Asphaug, fault displacement from Okada), idealized open-ocean propagation in deep water, far-field arrival times.
-- **What's approximate** — solver bathymetry (coarse basin means with a shelf taper, not GEBCO/SRTM15+), coastal runup (we use Synolakis 1987 analytical instead of full wetting/drying), first-order inundation discs, dispersion (linear long-wave first, Boussinesq later).
+- **What's approximate** — solver bathymetry (coarse basin means with a shelf taper, not GEBCO_2026/TID-backed terrain), coastal runup (we use Synolakis 1987 analytical instead of full wetting/drying), first-order inundation discs, dispersion (linear long-wave first, Boussinesq later).
 - **What's wrong** — anything involving the atmosphere coupling (Hunga Tonga–style Lamb-wave coupling is a research frontier), tsunami earthquake source-time functions (we use static dislocation), submarine landslide rheology.
 - **The "Russia Poseidon" honest take** — Russian state media's 500-m-wave claim is propaganda. The 1996 Defense Nuclear Agency study put underwater-explosion wave-generation efficiency at ~5%. A 100-Mt warhead at 100 km open ocean produces a ~few-meter wave, not a city-killer. We model both the propaganda yield and a realistic one — the comparison is the point.
 

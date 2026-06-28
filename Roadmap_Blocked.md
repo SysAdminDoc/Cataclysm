@@ -21,8 +21,8 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 ## Phase 3 — Science-frontier
 
-- **F-V06 P1** — Real GEBCO 2024 bathymetry via first-run download wizard.
-  **Blocker:** Needs decision on distribution channel (GitHub Release vs Cloudflare R2) and a built `gebco_2024_30s.zstd` artifact (~440 MB).
+- **F-V06 P1** — GEBCO_2026/TID-backed bathymetry via first-run download wizard.
+  **Blocker:** Needs decision on distribution channel (GitHub Release vs Cloudflare R2) and a built GEBCO_2026 regional-tile artifact.
 
 ## Phase 4
 
@@ -49,7 +49,7 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 ## Research-Driven — P1 Reliability
 
-- **P1** — GEBCO 2024 progressive bathymetry loader (XL).
+- **P1** — GEBCO_2026/TID progressive bathymetry loader (XL).
   **Blocker:** Same as F-V06; needs distribution channel decision + artifact.
 
 ## Research-Driven — Needs visual verification

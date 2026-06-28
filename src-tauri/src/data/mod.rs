@@ -2,7 +2,7 @@
 //!
 //! The current SWE solver uses a coarse ocean-basin bathymetry approximation
 //! so it gets non-uniform depths without requiring a multi-hundred-MB
-//! download. Real GEBCO/SRTM15+ sampling remains blocked on distribution and
-//! storage decisions.
+//! download. GEBCO_2026/TID-backed sampling remains blocked on distribution,
+//! storage, and first-run download decisions.
 
 pub mod bathymetry;

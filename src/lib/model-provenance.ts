@@ -3,7 +3,7 @@ import type { InitialDisplacement, Preset } from "../types/scenario";
 export const APP_VERSION = "0.4.4";
 
 export const DEFAULT_BATHYMETRY_SOURCE =
-  "Coarse offline basin/shelf approximation; optional Cesium bathymetric terrain is visual context only.";
+  "Low-confidence coarse basin/shelf approximation; GEBCO_2026/TID raster sampling is not bundled; optional Cesium bathymetric terrain is visual context only.";
 
 export const DEFAULT_SOLVER_MODE =
   "Analytical source geometry with far-field/runup sampling; live SWE snapshots when provided.";

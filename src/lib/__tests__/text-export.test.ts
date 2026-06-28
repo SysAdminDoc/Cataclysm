@@ -35,7 +35,8 @@ describe("generateTextExport", () => {
     expect(report).toContain("Generated: 2026-06-28T00:00:00.000Z");
     expect(report).toContain("Scenario type: Asteroid");
     expect(report).toContain("Solver mode: SWE snapshot playback");
-    expect(report).toContain("Bathymetry source: Coarse offline basin/shelf approximation");
+    expect(report).toContain("Bathymetry source: Low-confidence coarse basin/shelf approximation");
+    expect(report).toContain("GEBCO_2026/TID raster sampling is not bundled");
     expect(report).toContain("Citation: Range 2022 (https://doi.org/10.1029/2021AV000627)");
     expect(report).toContain("Model limitation: Educational model only");
   });
