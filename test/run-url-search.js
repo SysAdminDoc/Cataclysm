@@ -17,6 +17,7 @@ eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'search.js'), 'utf8'));
 
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const appJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+const immersiveJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'immersive.js'), 'utf8');
 const swJs = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 
 let passed = 0, failed = 0;
@@ -38,6 +39,11 @@ assert('Metadata: service worker cache matches app version', cacheVersion === NM
 assert('Metadata: welcome weapon count matches presets', welcomeWeaponCount === presetWeaponCount);
 assert('Metadata: JSON export uses shared app version', /version\s*:\s*NM\.APP_VERSION/.test(appJs) && !/version\s*:\s*['"]3\./.test(appJs));
 assert('Metadata: welcome weapon count is runtime-synced', /weapon-count-tag/.test(indexHtml) && /weaponCountTag\.textContent/.test(appJs));
+assert('Exports: JSON includes provenance', /provenance/.test(appJs) && /NM\.getModelProvenance\(d\.effects\)/.test(appJs));
+assert('Exports: GeoJSON includes provenance', /type:'FeatureCollection',provenance,features/.test(appJs));
+assert('Exports: CSV includes model provenance columns', /app_version,physics_model,fallout_model,citation_keys,assumptions/.test(appJs));
+assert('Exports: text and print reports include model provenance', /MODEL PROVENANCE/.test(appJs) && /Model Provenance/.test(appJs));
+assert('Exports: KML includes model provenance', /physicsModel/.test(immersiveJs) && /citationKeys/.test(immersiveJs));
 
 // ---- CSV IMPORT VALIDATION TESTS ----
 const validCsv = 'lat,lng,yield_kt,burst_type,weapon\n40.7128,-74.0060,455,airburst,"W88, Trident"\n33,-118,50,water,Imported';

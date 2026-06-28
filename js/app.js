@@ -1459,11 +1459,13 @@ function initMethodology() {
 
 // ---- EXPORT JSON ----
 function exportJSON() {
+  const provenance = NM.getModelProvenance();
   const data = currentDets.map(d => {
     const nc = NM.findNearestCity(d.lat, d.lng);
     return {
       location: {lat: d.lat, lng: d.lng, nearestCity: nc && nc.dist < 50 ? nc.name : null},
       weapon: d.weapon, yieldKt: d.yieldKt, burstType: d.burstType,
+      provenance: NM.getModelProvenance(d.effects),
       effects: {
         fireball_km: +d.effects.fireball.toFixed(3), psi20_km: +d.effects.psi20.toFixed(3),
         psi5_km: +d.effects.psi5.toFixed(3), psi1_km: +d.effects.psi1.toFixed(3),
@@ -1475,7 +1477,7 @@ function exportJSON() {
       casualties: d.casualties, hiroshimaEquivalent: +(d.yieldKt / 15).toFixed(2)
     };
   });
-  const blob = new Blob([JSON.stringify({version:NM.APP_VERSION, generated: new Date().toISOString(), detonations: data}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({version:NM.APP_VERSION, generated: new Date().toISOString(), provenance, detonations: data}, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nukemap-data.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
@@ -1483,6 +1485,7 @@ function exportJSON() {
 
 // ---- EXPORT GEOJSON ----
 function exportGeoJSON() {
+  const provenance = NM.getModelProvenance();
   const features = [];
   const ringDefs = [
     {key:'fireball',label:'Fireball'},{key:'psi20',label:'20 psi'},{key:'psi5',label:'5 psi'},
@@ -1493,6 +1496,8 @@ function exportGeoJSON() {
     features.push({type:'Feature',geometry:{type:'Point',coordinates:[d.lng,d.lat]},properties:{
       detonation:i+1,weapon:d.weapon,yieldKt:d.yieldKt,burstType:d.burstType,
       deaths:d.casualties.deaths,injuries:d.casualties.injuries,
+      appVersion: provenance.appVersion, physicsModel: provenance.physicsModelLabel,
+      falloutModel: provenance.falloutModel, citationKeys: NM.getEffectCitationKeys(d.effects).join('|'),
     }});
     for (const rd of ringDefs) {
       const r = d.effects[rd.key];
@@ -1507,10 +1512,12 @@ function exportGeoJSON() {
       pts.push(pts[0]);
       features.push({type:'Feature',geometry:{type:'Polygon',coordinates:[pts]},properties:{
         detonation:i+1,effect:rd.label,radius_km:+r.toFixed(3),
+        appVersion: provenance.appVersion, physicsModel: provenance.physicsModelLabel,
+        falloutModel: provenance.falloutModel, citationKeys: NM.getEffectCitationKeys(d.effects).join('|'),
       }});
     }
   });
-  const geojson = {type:'FeatureCollection',features};
+  const geojson = {type:'FeatureCollection',provenance,features};
   const blob = new Blob([JSON.stringify(geojson, null, 2)], {type:'application/geo+json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nukemap-data.geojson';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1518,13 +1525,21 @@ function exportGeoJSON() {
 }
 
 // ---- EXPORT CSV ----
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
 function exportCSV() {
-  const header = 'lat,lng,yield_kt,burst_type,weapon,deaths,injuries,fireball_km,psi5_km,psi1_km,thermal3_km,emp_km';
+  const provenance = NM.getModelProvenance();
+  const header = 'lat,lng,yield_kt,burst_type,weapon,deaths,injuries,fireball_km,psi5_km,psi1_km,thermal3_km,emp_km,app_version,physics_model,fallout_model,citation_keys,assumptions';
   const rows = currentDets.map(d =>
-    [d.lat.toFixed(4), d.lng.toFixed(4), d.yieldKt, d.burstType, '"'+d.weapon.replace(/"/g,'""')+'"',
+    [d.lat.toFixed(4), d.lng.toFixed(4), d.yieldKt, d.burstType, csvCell(d.weapon),
      d.casualties.deaths, d.casualties.injuries,
      d.effects.fireball.toFixed(3), d.effects.psi5.toFixed(3), d.effects.psi1.toFixed(3),
-     d.effects.thermal3.toFixed(3), d.effects.emp.toFixed(3)].join(',')
+     d.effects.thermal3.toFixed(3), d.effects.emp.toFixed(3), provenance.appVersion,
+     csvCell(provenance.physicsModelLabel), csvCell(provenance.falloutModel),
+     csvCell(NM.getEffectCitationKeys(d.effects).join('|')), csvCell(provenance.assumptions.join(' '))].join(',')
   );
   const csv = header + '\n' + rows.join('\n');
   const blob = new Blob([csv], {type: 'text/csv'});
@@ -1593,10 +1608,19 @@ function exportReport() {
   let td = 0, ti = 0, ty = 0;
   currentDets.forEach(d => { td += d.casualties.deaths; ti += d.casualties.injuries; ty += d.yieldKt; });
   const hiro = ty / 15;
+  const provenance = NM.getModelProvenance();
 
   let report = `NUKEMAP DETONATION REPORT\n`;
   report += `Generated: ${new Date().toLocaleString()}\n`;
   report += `${'='.repeat(50)}\n\n`;
+  report += `MODEL PROVENANCE\n`;
+  report += `  App Version: ${provenance.appVersion}\n`;
+  report += `  Physics Model: ${provenance.physicsModelLabel}\n`;
+  report += `  Fallout Model: ${provenance.falloutModel}\n`;
+  report += `  Casualty Model: ${provenance.casualtyModel}\n`;
+  report += `  Confidence: ${provenance.confidence}\n`;
+  report += `  Citation Keys: ${provenance.citationKeys.join(', ')}\n`;
+  report += `  Assumptions: ${provenance.assumptions.join(' ')}\n\n`;
   report += `SUMMARY\n`;
   report += `  Detonations: ${currentDets.length}\n`;
   report += `  Total Yield: ${NM.fmtYield(ty)} (${hiro.toFixed(1)}x Hiroshima)\n`;
@@ -1631,8 +1655,8 @@ function exportReport() {
     report += `\n`;
   });
 
-  report += `\nPhysics: Glasstone & Dolan, "The Effects of Nuclear Weapons"\n`;
-  report += `Generated by NukeMap v3.6.0 - https://sysadmindoc.github.io/NukeMap/\n`;
+  report += `\nPhysics: Glasstone & Dolan, "The Effects of Nuclear Weapons"; NWFAQ; HSAJ; model-specific citations listed above.\n`;
+  report += `Generated by NukeMap v${provenance.appVersion} - https://sysadmindoc.github.io/NukeMap/\n`;
 
   const blob = new Blob([report], {type:'text/plain'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nukemap-report.txt';
@@ -1644,6 +1668,7 @@ function exportPrintReport() {
   let td = 0, ti = 0, ty = 0;
   currentDets.forEach(d => { td += d.casualties.deaths; ti += d.casualties.injuries; ty += d.yieldKt; });
   const hiro = ty / 15;
+  const provenance = NM.getModelProvenance();
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>NukeMap Report</title><style>
     body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:20px;color:#111;line-height:1.6}
     h1{font-size:22px;border-bottom:2px solid #333;padding-bottom:8px}
@@ -1655,6 +1680,12 @@ function exportPrintReport() {
   </style></head><body>`;
   html += `<h1>NukeMap Detonation Report</h1>`;
   html += `<p>Generated: ${new Date().toLocaleString()} | ${currentDets.length} detonation${currentDets.length>1?'s':''}</p>`;
+  html += `<h2>Model Provenance</h2><table><tr><th>App Version</th><td>${NM.esc(provenance.appVersion)}</td></tr>`;
+  html += `<tr><th>Physics Model</th><td>${NM.esc(provenance.physicsModelLabel)}</td></tr>`;
+  html += `<tr><th>Fallout Model</th><td>${NM.esc(provenance.falloutModel)}</td></tr>`;
+  html += `<tr><th>Casualty Model</th><td>${NM.esc(provenance.casualtyModel)}</td></tr>`;
+  html += `<tr><th>Confidence</th><td>${NM.esc(provenance.confidence)}</td></tr>`;
+  html += `<tr><th>Citation Keys</th><td>${NM.esc(provenance.citationKeys.join(', '))}</td></tr></table>`;
   html += `<h2>Summary</h2><table><tr><th>Total Yield</th><td class="val">${NM.fmtYield(ty)} (${hiro.toFixed(1)}x Hiroshima)</td></tr>`;
   html += `<tr><th>Est. Fatalities</th><td class="val">${NM.fmtNum(td)}</td></tr>`;
   html += `<tr><th>Est. Injuries</th><td class="val">${NM.fmtNum(ti)}</td></tr>`;
@@ -1674,9 +1705,9 @@ function exportPrintReport() {
     for (const [name, r] of rows) { if (r > 0.001) html += `<tr><td>${name}</td><td class="val">${NM.fmtDist(r)}</td><td class="val">${NM.fmtArea(r)}</td></tr>`; }
     html += `</table>`;
   });
-  html += `<div class="note">Physics: Glasstone & Dolan, "The Effects of Nuclear Weapons" (1977). NWFAQ optimum-burst coefficients.<br>`;
-  html += `Casualty model: Bayesian combined mortality (Harney 2009). Indoor/outdoor split with urban shielding.<br>`;
-  html += `Generated by NukeMap v3.6.0 — <a href="https://sysadmindoc.github.io/NukeMap/">sysadmindoc.github.io/NukeMap</a></div>`;
+  html += `<div class="note">Assumptions: ${NM.esc(provenance.assumptions.join(' '))}<br>`;
+  html += `Physics: Glasstone & Dolan, "The Effects of Nuclear Weapons" (1977), NWFAQ, HSAJ, and model-specific citations listed above.<br>`;
+  html += `Generated by NukeMap v${NM.esc(provenance.appVersion)} â€” <a href="https://sysadmindoc.github.io/NukeMap/">sysadmindoc.github.io/NukeMap</a></div>`;
   html += `</body></html>`;
   const w = window.open('', '_blank');
   if (!w) { alert('Please allow popups for this site to generate the report.'); return; }

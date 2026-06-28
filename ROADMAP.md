@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P1 - Add model provenance to every export and report
-  Why: Analysts need exported files to preserve physics model, app version, citation keys, assumptions, and confidence labels.
-  Evidence: `NM.CITATIONS` in `js/physics.js`, NukeBlastSimulator methodology page, Fourmilab calculator, NUKEMAP roadmap.
-  Touches: `js/physics.js`, `js/app.js`, `js/immersive.js`, `js/premium.js`, `test/run-physics.js`.
-  Acceptance: JSON/GeoJSON/CSV/KML/text/PDF exports include app version, selected blast model, citation keys for emitted effects, and a short assumptions block; tests assert required metadata.
-  Complexity: M
-
 - [ ] P1 - Replace nearest-city casualty density with optional gridded population tiles
   Why: Current casualty estimates use nearest-city heuristics, while credible blast tools and datasets use gridded population surfaces.
   Evidence: `NM.estimateDensity()` in `js/physics.js`, WorldPop API, GHS-POP R2023A, NUKEMAP roadmap LandScan work.

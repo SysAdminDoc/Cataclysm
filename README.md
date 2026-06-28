@@ -93,6 +93,7 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 - **Export PNG** — Map screenshot capture
 - **Export KML** — Google Earth compatible
 - **Export JSON** — Structured detonation data
+- **Export Provenance** — JSON, GeoJSON, CSV, KML, and reports include app version, physics model, citations, assumptions, and confidence notes
 - **CSV Import Preview** — Validates row count, file size, coordinates, yield, and burst type before importing
 - **Summary Report** — Formatted text report with all details
 - **Shareable URLs** — Detonation state encoded in URL parameters

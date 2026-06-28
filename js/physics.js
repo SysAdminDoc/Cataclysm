@@ -44,6 +44,45 @@ NM.BLAST_MODELS = {
   soviet:  {psi200: 0.14, psi20: 0.30, psi5: 0.76, psi3: 1.02, psi1: 2.4, label: 'Soviet Military Manual'},
 };
 
+NM.EXPORT_ASSUMPTIONS = [
+  'Educational estimates, not emergency-response guidance.',
+  'Open-terrain circular scaling unless noted; real terrain, weather, sheltering, and fuel load can change outcomes.',
+  'Casualties use Bayesian combined mortality with 80% indoor population and urban shielding heuristic.',
+  'Fallout uses simplified Miller SFSS scaling with wind direction/speed inputs.',
+];
+
+NM.getEffectCitationKeys = function(effects) {
+  if (!effects) return ['mortality'];
+  const keys = ['fireball', 'psi20', 'psi5', 'psi1', 'thermal3', 'thermal1', 'radiation', 'emp', 'mortality'];
+  if (effects.craterR > 0 || effects.craterDepth > 0) keys.push('craterR', 'craterD');
+  if (effects.cloudTopH > 0) keys.push('cloudTop');
+  if (effects.fallout) keys.push('fallout');
+  if (effects.flashBlindDay || effects.flashBlindNight) keys.push('flashBlind');
+  if (effects.firestormR > 0) keys.push('firestorm');
+  if (effects.isSurface) keys.push('surfaceFactor');
+  if (effects.isWater) keys.push('baseSurge', 'waveHeight');
+  return [...new Set(keys)].filter(k => NM.CITATIONS[k]);
+};
+
+NM.getModelProvenance = function(effects) {
+  const modelKey = NM._physicsModel || 'nwfaq';
+  const blastModel = NM.BLAST_MODELS[modelKey] || NM.BLAST_MODELS.nwfaq;
+  const citationKeys = NM.getEffectCitationKeys(effects);
+  const citations = {};
+  citationKeys.forEach(k => { citations[k] = NM.CITATIONS[k].ref; });
+  return {
+    appVersion: NM.APP_VERSION || 'unknown',
+    physicsModel: modelKey,
+    physicsModelLabel: blastModel.label,
+    falloutModel: 'Miller SFSS simplified plume',
+    casualtyModel: 'Bayesian combined mortality with urban shielding',
+    confidence: 'Educational estimate; medium confidence for blast/thermal radii, lower confidence for casualties/fallout without local population and weather grids.',
+    citationKeys,
+    citations,
+    assumptions: NM.EXPORT_ASSUMPTIONS.slice(),
+  };
+};
+
 NM.calcEffects = function(Y, burstType, heightM, fissionFrac, popDensity) {
   Y = Math.max(Y, 0.001);
   fissionFrac = (fissionFrac ?? 50) / 100;

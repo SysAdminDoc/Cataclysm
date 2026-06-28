@@ -8,6 +8,7 @@ const path = require('path');
 // Minimal DOM shim so physics.js can set window.NM
 global.window = global;
 global.NM = {};
+global.NM.APP_VERSION = '3.6.0';
 
 // Load physics module
 const physicsCode = fs.readFileSync(path.join(__dirname, '..', 'js', 'physics.js'), 'utf8');
@@ -108,6 +109,16 @@ assertEdge('haversine short distance > 0', NM.haversine(40.7, -74.0, 40.8, -74.0
 NM._physicsModel = 'freeair';
 const eFreeAir = NM.calcEffects(100, 'airburst');
 assertEdge('free-air psi5 < nwfaq psi5', eFreeAir.psi5 < eAir.psi5);
+NM._physicsModel = 'nwfaq';
+
+// Export provenance metadata
+const provenance = NM.getModelProvenance(NM.calcEffects(100, 'surface'));
+assertEdge('provenance app version set', provenance.appVersion === '3.6.0');
+assertEdge('provenance selected model label set', provenance.physicsModelLabel === 'NWFAQ Optimum Burst');
+assertEdge('provenance includes assumptions', Array.isArray(provenance.assumptions) && provenance.assumptions.length >= 3);
+assertEdge('provenance includes citation keys', provenance.citationKeys.includes('fallout') && provenance.citationKeys.includes('mortality'));
+NM._physicsModel = 'soviet';
+assertEdge('provenance follows selected blast model', NM.getModelProvenance().physicsModelLabel === 'Soviet Military Manual');
 NM._physicsModel = 'nwfaq';
 
 // Shared mortality function tests

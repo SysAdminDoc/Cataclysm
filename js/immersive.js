@@ -370,6 +370,7 @@ NM.FalloutContours = {
 // ---- KML EXPORT ----
 NM.KMLExport = {
   generate(dets) {
+    const provenance = NM.getModelProvenance();
     let placemarks = '';
     dets.forEach((det, i) => {
       const e = det.effects;
@@ -404,6 +405,12 @@ NM.KMLExport = {
       placemarks += `
     <Placemark>
       <name>Ground Zero ${i + 1} - ${NM.fmtYield(det.yieldKt)}</name>
+      <ExtendedData>
+        <Data name="appVersion"><value>${NM.esc(provenance.appVersion)}</value></Data>
+        <Data name="physicsModel"><value>${NM.esc(provenance.physicsModelLabel)}</value></Data>
+        <Data name="falloutModel"><value>${NM.esc(provenance.falloutModel)}</value></Data>
+        <Data name="citationKeys"><value>${NM.esc(NM.getEffectCitationKeys(det.effects).join('|'))}</value></Data>
+      </ExtendedData>
       <Point><coordinates>${det.lng},${det.lat},0</coordinates></Point>
     </Placemark>`;
     });
@@ -412,7 +419,7 @@ NM.KMLExport = {
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>NukeMap Export</name>
-    <description>Nuclear weapon effects simulation</description>
+    <description>Nuclear weapon effects simulation. App version: ${NM.esc(provenance.appVersion)}. Physics model: ${NM.esc(provenance.physicsModelLabel)}. Fallout model: ${NM.esc(provenance.falloutModel)}. Assumptions: ${NM.esc(provenance.assumptions.join(' '))}</description>
     ${placemarks}
   </Document>
 </kml>`;
