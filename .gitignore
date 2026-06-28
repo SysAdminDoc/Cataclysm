@@ -70,3 +70,8 @@ pnpm-debug.log*
 !CHANGELOG.md
 !docs/**/*.md
 !Roadmap_Blocked.md
+
+# AI config
+.ai/
+PROJECT_CONTEXT.md
+CONTINUATION_PROMPT.md
