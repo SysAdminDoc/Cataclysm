@@ -31,8 +31,8 @@ TsunamiSimulator is a Tauri 2 desktop education simulator with a strong current 
 ## Architecture Assessment
 - Verified: the primary architecture boundary is still correct: authoritative physics in Rust (`src-tauri/src/physics/*`, `src-tauri/src/commands.rs`) and rendering/control state in React/Cesium (`src/*`).
 - Verified: large files remain refactor candidates: `src/styles.css`, `src-tauri/src/commands.rs`, `src/components/Globe.tsx`, `src-tauri/src/physics/solver/mod.rs`, and `src/App.tsx`. The blocked roadmap correctly parks the riskiest splits behind visual/Rust verification.
-- Verified: docs drift is now the clearest low-risk quality gap: `README.md` still says Okada is planned and wgpu is planned, `data/bathymetry/README.md` still targets GEBCO 2024/v0.3.0, `src-tauri/src/presets.rs` says Hunga Tonga Lamb-wave coupling is planned even though the UI exposes it, and validation comments still mention a per-PR CI loop after local-only verification.
-- Verified: bathymetry documentation still references GEBCO 2024 in `data/bathymetry/README.md`, `src/data/coastal_points.json`, and `src-tauri/src/data/bathymetry.rs`; GEBCO_2026 is current, has a TID grid, and should anchor future confidence/provenance language.
+- Resolved: docs drift (stale "planned" / "v0.3.0" references for shipped Okada, wgpu, Lamb-wave coupling, and per-PR CI) was cleaned across README.md, presets.rs, solver, validation, and science docs. GEBCO references already point to GEBCO_2026.
+- Resolved: bathymetry documentation already references GEBCO_2026/TID; coarse basin/shelf approximation is clearly labelled as low-confidence.
 - Verified: user-placed gauge/time-series output is absent. This is a notable gap versus NOAA/GeoClaw/Celeris patterns and would strengthen DART comparison, classroom exercises, and exports once the solver exposes sampled eta series.
 - Verified: browser-preview physics remains a controlled carve-out in `src/lib/demo.ts`, and `AttenuationChart.tsx` duplicates far-field attenuation visually. Keep them visibly approximate until generated Rust fixtures or IPC-backed chart data are practical.
 

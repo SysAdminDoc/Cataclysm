@@ -13,13 +13,6 @@ from the current research pass follows.
 
 ### P1
 
-- [ ] P1 — Add a local toolchain and verification doctor
-  Why: Local verification is currently fragile: MSVC `link.exe` is missing from this PowerShell PATH, `cargo audit` is not installed, and Vitest 4 worker runs can hang on the VMware shared folder.
-  Evidence: local `cargo audit` result; focused Vitest run; `package.json` scripts
-  Touches: `package.json`, `scripts/doctor.mjs` or equivalent, optional CI smoke step
-  Acceptance: `npm run doctor` reports Node/Rust/Tauri, MSVC linker, cargo-audit, workspace path, and recommended Vitest flags with actionable pass/fail messages.
-  Complexity: S
-
 ### P2
 
 - [ ] P2 — Version and migrate the app settings store
@@ -48,13 +41,6 @@ from the current research pass follows.
 ## Research-Driven Additions
 
 ### P1
-
-- [ ] P1 - Sync shipped-science documentation against v0.4.4
-  Why: Public docs still describe shipped Okada, GPU SWE, Lamb-wave coupling, and GEBCO work as planned or v0.3-era.
-  Evidence: `README.md`; `data/bathymetry/README.md`; `src-tauri/src/presets.rs`; `src-tauri/Cargo.toml`; GeoClaw/NOAA disclaimer patterns
-  Touches: `README.md`, `data/bathymetry/README.md`, `docs/science/*.md`, `src-tauri/src/presets.rs`, `src-tauri/Cargo.toml`
-  Acceptance: Searches for stale "Okada planned", "wgpu planned", "GEBCO 2024", "planned for v0.3.0", and "per-PR CI" no longer contradict the shipped v0.4.4 behavior.
-  Complexity: S
 
 - [ ] P1 - Add unsigned-installer checksum verification guidance
   Why: v0.4.4 release assets are intentionally unsigned, so users need a clear trust path before running Windows installers.

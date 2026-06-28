@@ -844,8 +844,8 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
                 let d = crate::data::bathymetry::sample(lat, lon);
                 // Solver dislikes zero-depth (CFL = inf). Replace land cells
                 // with a tiny "wet" depth (1 m) so they effectively reflect
-                // the wave rather than acting as deep ocean. v0.3.0 will
-                // swap for proper wet/dry handling.
+                // the wave rather than acting as deep ocean. A future release
+                // will swap for proper wet/dry handling.
                 if d <= 0.0 {
                     1.0
                 } else {

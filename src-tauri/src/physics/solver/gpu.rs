@@ -15,10 +15,9 @@
 //!       each call and read back at the end, so successive calls
 //!       compose just like the CPU `TimeStepper::step`.
 //! - [ ] Manning friction + advection branch — current kernel matches
-//!       the v0.3.0 linear-SWE form; nonlinear advection (F4-02) is
-//!       CPU-only for now. Add to WGSL kernel in v0.5.0 once we have
-//!       a regression harness for GPU-vs-CPU agreement on a NSWE
-//!       scenario.
+//!       the linear-SWE form; nonlinear advection is CPU-only for now.
+//!       Add to WGSL kernel once we have a regression harness for
+//!       GPU-vs-CPU agreement on a NSWE scenario.
 //!
 //! ## Reference
 //!

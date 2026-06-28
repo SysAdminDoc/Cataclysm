@@ -19,8 +19,8 @@ number, relative slide thickness, relative slide mass, slide-impact
 angle, and basin slope; constants `a, b` are calibrated against ≈
 350 laboratory experiments. For Lituya Bay-class events the
 analytical formula returns the wave amplitude at the impact point;
-the v0.3.0 SWE solver then propagates it across the curated
-bathymetry (planned: see F4-07).
+the SWE solver then propagates it across the coarse basin/shelf
+bathymetry.
 
 For submarine landslides we cross-check against Watts et al. 2005's
 characteristic wavelength + amplitude scalings.

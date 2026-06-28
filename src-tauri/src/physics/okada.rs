@@ -282,9 +282,7 @@ mod tests {
 
     /// Shape-only smoke test. Asserts the field is finite, has both
     /// positive (uplift) and negative (subsidence) cells, and the peak
-    /// magnitude is bounded. Doesn't assert specific magnitudes — those
-    /// validation tests are `#[ignore]` until the full Okada I-term
-    /// implementation lands in v0.3.0.
+    /// magnitude is bounded.
     #[test]
     fn dip_slip_field_has_uplift_and_subsidence_lobes() {
         let f = OkadaFault {
@@ -308,9 +306,9 @@ mod tests {
     }
 
     /// Tōhoku 2011 sanity check. Fujii-Satake 2013 reports ~7 m peak
-    /// vertical uplift. With the full Okada 1985 I-term correction shipped
-    /// in v0.3.0 we expect the peak in the [1, 30] m band; the previous
-    /// leading-order form over-predicted ~10×.
+    /// vertical uplift. With the full Okada 1985 I-term correction the
+    /// peak lands in the [1, 30] m band; the earlier leading-order form
+    /// over-predicted ~10×.
     #[test]
     fn tohoku_peak_in_published_band() {
         let f = OkadaFault {

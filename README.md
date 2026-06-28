@@ -142,6 +142,7 @@ separate `cargo install` step.
 git clone https://github.com/SysAdminDoc/TsunamiSimulator
 cd TsunamiSimulator
 npm install
+npm run doctor             # local toolchain preflight with actionable fixes
 npm run dev                # browser preview with deterministic demo data
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run verify             # local type/lint/test/audit/build verification gate
@@ -168,7 +169,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 │ │  ─ physics::asteroid    Ward–Asphaug + Schmidt–Holsapple         │  │
 │ │  ─ physics::nuclear     Glasstone–Dolan + Le Méhauté             │  │
 │ │  ─ physics::landslide   Fritz–Hager + Slingerland–Voight         │  │
-│ │  ─ physics::earthquake  Okada 1985 (planned)                     │  │
+│ │  ─ physics::earthquake  Okada 1985 (full I-term)                  │  │
 │ │  ─ physics::shallow_water  NSWE + Synolakis runup                │  │
 │ │  ─ data::bathymetry     coarse basin/shelf depth sampler         │  │
 │ │  ─ presets              Chicxulub / Tōhoku / Lituya / …          │  │
@@ -176,7 +177,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-Heavy physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgpu` planned). The frontend only handles globe rendering, controls, and result visualization. The IPC boundary keeps the WebView from blocking on million-cell SWE solves.
+Heavy physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgpu` behind the `gpu` feature flag). The frontend only handles globe rendering, controls, and result visualization. The IPC boundary keeps the WebView from blocking on million-cell SWE solves.
 
 ---
 

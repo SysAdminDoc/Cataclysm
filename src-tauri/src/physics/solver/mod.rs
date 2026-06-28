@@ -24,7 +24,7 @@
 //! `recommended_dt_s()` (`Δt < 0.4 · min(Δx, Δy) / max √(g·h)`).
 //!
 //! Boundaries: zero-flux (`u = v = 0`) at the grid edges. This produces some
-//! mild reflection in long runs; the v0.3.0 work will swap for radiation
+//! mild reflection in long runs; a future release will swap for radiation
 //! conditions / sponge layers.
 //!
 //! ## Implementation
@@ -32,8 +32,8 @@
 //! - CPU-only with `rayon` parallel iteration over grid rows for the
 //!   continuity + momentum updates. Adequate for grids up to ~1024² at
 //!   interactive frame rates (~30 fps).
-//! - GPU compute via `wgpu` is the planned v0.3.0 perf upgrade — the WGSL
-//!   kernel source lives in [`kernels`] for that future work.
+//! - GPU compute via `wgpu` is available behind the `gpu` feature flag — the
+//!   WGSL kernel source lives in [`kernels`].
 //! - Snapshots are emitted at user-specified time stride; each snapshot is
 //!   serialised as a base64 PNG (selected SWE colormap) for cheap IPC +
 //!   Cesium `SingleTileImageryProvider` consumption.
@@ -423,9 +423,8 @@ impl SolverMode {
     }
 }
 
-/// Time-stepping driver. v0.2.0 ships a CPU leapfrog with `rayon` row-
-/// parallel updates. v0.3.0 will swap for a `wgpu` compute pipeline using
-/// [`kernels::SWE_LEAPFROG_WGSL`].
+/// Time-stepping driver. CPU leapfrog with `rayon` row-parallel updates;
+/// GPU path available behind the `gpu` feature flag.
 #[derive(Debug, Clone, Copy)]
 pub struct TimeStepper {
     pub dt_s: f64,

@@ -41,7 +41,7 @@ A rockslide-generated mega-tsunami in Lituya Bay, Alaska. The world's tallest re
 The volcanic caldera collapse generated tsunamis up to 42 m that killed ~36,000 people in the Sunda Strait.
 
 - **Source**: Choi et al. 2003; Maeno & Imamura 2011
-- **Note**: Uses a nuclear burst proxy; a dedicated volcanic source model is planned
+- **Note**: Uses a nuclear burst proxy; a dedicated volcanic caldera collapse source model is a future goal
 
 ### Storegga slide (~8150 BP)
 

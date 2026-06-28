@@ -197,11 +197,10 @@ mod tests {
         let eq = tohoku_2011();
         let d = eq.initial_displacement();
         // Tōhoku observed seafloor uplift was ~7 m peak (Fujii & Satake 2013).
-        // v0.3.0 wires the full Okada 1985 I-term solve in as the primary
-        // peak-amplitude source (with the Geist-Dmowska empirical kept as
-        // a fallback for slip-less / Mw-only sources). Acceptable band is
-        // intentionally wide because the underlying fault parameters are
-        // approximate.
+        // The full Okada 1985 I-term correction is the primary peak-amplitude
+        // source (with the Geist-Dmowska empirical kept as a fallback for
+        // slip-less / Mw-only sources). Acceptable band is intentionally wide
+        // because the underlying fault parameters are approximate.
         assert!(
             (1.0..=50.0).contains(&d.peak_amplitude_m),
             "Tōhoku uplift {} m off ballpark",

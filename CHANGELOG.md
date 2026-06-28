@@ -4,6 +4,13 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased] — Deep correctness, reliability & UX hardening
 
+### Changed — documentation
+- **Shipped-science docs synced to v0.4.4.** Cleared stale "planned" / "v0.3.0"
+  references for the now-shipped Okada I-term, wgpu GPU solver, Lamb-wave
+  coupling toggle, and local-only verification. Updated README architecture
+  diagram, presets.rs Hunga Tonga blurb, solver/validation doc-comments,
+  Cargo.toml comments, and science docs (earthquake, landslide, VALIDATION).
+
 ### Changed — accessibility & rendering
 - **Automated WCAG A/AA regression checks.** Five axe-core Playwright tests
   now gate local verification across the first-run dialog, main cockpit,
@@ -140,6 +147,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   single local gate for typecheck, lint, Vitest, production build, `npm audit`,
   Playwright smoke/a11y coverage, Rust check/test/clippy, and optional
   `cargo-audit` / `cargo-deny` checks when those tools are installed.
+- **Local toolchain doctor added.** `npm run doctor` now reports Node, npm,
+  Rust/Cargo, Tauri CLI, MSVC linker availability, optional `cargo-audit` /
+  `cargo-deny`, workspace path risk, and the Vitest shared-folder fallback
+  flags with actionable pass/warn/fail output.
 - **DOMPurify advisory cleared.** Added an npm override so Cesium's transitive
   DOMPurify dependency resolves to the patched `3.4.11` line.
 - **npm audit is clean at low severity.** Lockfile and npm overrides now keep

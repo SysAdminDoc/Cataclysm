@@ -216,7 +216,7 @@ pub fn all_presets() -> Vec<Preset> {
             id: "hunga_tonga_2022",
             name: "Hunga Tonga Volcanic Tsunami",
             date: "2022-01-15",
-            blurb: "VEI 5–6 submarine caldera collapse. 15 m local tsunami plus globally observed atmospheric Lamb wave – ocean coupling — novel for modern instrumented era. Note: this preset models only the submarine collapse, not the Lamb-wave coupling (planned for v0.3.0).",
+            blurb: "VEI 5–6 submarine caldera collapse. 15 m local tsunami plus globally observed atmospheric Lamb wave – ocean coupling — novel for modern instrumented era. Note: this preset models only the submarine collapse; atmospheric Lamb-wave coupling is available as an optional IC injection in the Live SWE Solver panel.",
             reference: "Carvajal et al. 2022, Science 377:91; Matoza et al. 2022 Science 377:95",
             reference_url: Some("https://www.science.org/doi/10.1126/science.abo4364"),
             is_speculative: false,

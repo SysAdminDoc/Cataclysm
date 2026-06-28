@@ -34,8 +34,8 @@ than letting the divisor approach zero (a frequent source of bugs in
   uplift, peak runup at Banda Aceh ≈ 30 m. Chlieh et al. 2007
   report 4–6 m. Within band.
 
-Both validation cases were `#[ignore]`-flagged before v0.3.0 because
-the leading-order form over-predicted by ~10×; the v0.3.0 I-term
+Both validation cases were initially `#[ignore]`-flagged because the
+leading-order form over-predicted by ~10×; the full Okada I-term
 correction unblocked them.
 
 ## Caveats

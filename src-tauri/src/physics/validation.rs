@@ -1,6 +1,6 @@
 //! Quantitative validation harness — compares the solver / closed-form
 //! physics against analytical benchmarks. Gated behind the `validation`
-//! cargo feature so the per-PR CI loop stays fast; run on demand with
+//! cargo feature so the local verification loop stays fast; run on demand with
 //!
 //! ```text
 //! cargo test --release --features validation -- validation::
