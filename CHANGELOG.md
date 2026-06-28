@@ -15,6 +15,14 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
   generation steps and an expanded release checklist.
 
+### Added — guided lessons
+- **Teacher-friendly guided scenario path.** Five annotated lessons
+  (Chicxulub extinction, Tōhoku 2011 megathrust, Lituya Bay record runup,
+  Poseidon propaganda vs physics, Hunga Tonga Lamb-wave coupling) launch from
+  a "Guided lessons" section in the preset selector. Each lesson auto-selects
+  its preset and walks through 3-4 educational steps explaining source choice,
+  propagation physics, model limitations, and next steps.
+
 ### Added — user-placed gauges
 - **User-placed gauges with CSV time-series export.** Users can place named
   gauges at arbitrary lat/lon coordinates in the SWE panel. Each gauge computes

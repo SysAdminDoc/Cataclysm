@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { UiIcon } from "./UiIcon";
 import { TimelineView } from "./TimelineView";
+import { GUIDED_LESSONS, type GuidedLesson } from "../lib/guided-lessons";
 import type { Preset } from "../types/scenario";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
   activeId: string | null;
   onSelect: (id: string) => void;
   busyId?: string | null;
+  onStartLesson?: (lesson: GuidedLesson) => void;
 };
 
 type ViewMode = "cards" | "timeline";
@@ -16,7 +18,7 @@ function sortKey(p: Preset): number {
   return p.is_speculative ? 1 : 0;
 }
 
-export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
+export function PresetSelector({ presets, activeId, onSelect, busyId, onStartLesson }: Props) {
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
@@ -71,6 +73,29 @@ export function PresetSelector({ presets, activeId, onSelect, busyId }: Props) {
           <span className="section__count">{visible.length}/{sorted.length}</span>
         </div>
       </div>
+
+      {onStartLesson && (
+        <div className="lesson-launcher">
+          <div className="lesson-launcher__title">Guided lessons</div>
+          <div className="lesson-launcher__list">
+            {GUIDED_LESSONS.map((lesson) => (
+              <button
+                key={lesson.id}
+                className="lesson-launcher__item"
+                type="button"
+                onClick={() => {
+                  onSelect(lesson.presetId);
+                  onStartLesson(lesson);
+                }}
+                title={lesson.summary}
+              >
+                <span className="lesson-launcher__name">{lesson.title}</span>
+                <UiIcon name="chevronRight" size={13} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {viewMode === "timeline" ? (
         <TimelineView presets={sorted} activeId={activeId} onSelect={onSelect} busyId={busyId} />

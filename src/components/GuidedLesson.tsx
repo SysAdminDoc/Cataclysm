@@ -1,0 +1,78 @@
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+import { UiIcon } from "./UiIcon";
+import type { GuidedLesson as LessonDef } from "../lib/guided-lessons";
+
+type Props = {
+  lesson: LessonDef;
+  onClose: () => void;
+};
+
+export function GuidedLesson({ lesson, onClose }: Props) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, true);
+
+  useEffect(() => {
+    setStepIdx(0);
+  }, [lesson.id]);
+
+  const step = lesson.steps[stepIdx];
+  const isLast = stepIdx === lesson.steps.length - 1;
+
+  return (
+    <div className="lesson-overlay" role="dialog" aria-modal="true" aria-labelledby="lesson-title">
+      <div className="lesson-card" ref={dialogRef} tabIndex={-1}>
+        <div className="lesson-card__topline">
+          <span className="lesson-card__badge">Guided lesson</span>
+          <span className="lesson-card__step">
+            Step {stepIdx + 1} of {lesson.steps.length}
+          </span>
+          <div className="lesson-card__progress" aria-hidden>
+            {lesson.steps.map((s, i) => (
+              <span
+                key={s.title}
+                data-active={i === stepIdx ? "true" : "false"}
+                data-complete={i < stepIdx ? "true" : "false"}
+              />
+            ))}
+          </div>
+        </div>
+        <h3 id="lesson-title" className="lesson-card__title">{step.title}</h3>
+        <p className="lesson-card__body">{step.body}</p>
+        <div className="lesson-card__actions">
+          <button className="scenario-tab" onClick={onClose} type="button">
+            Close lesson
+          </button>
+          <div className="lesson-card__spacer" />
+          <button
+            className="scenario-tab"
+            onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+            disabled={stepIdx === 0}
+            type="button"
+          >
+            <UiIcon name="chevronRight" size={14} className="icon--flip" />
+            Back
+          </button>
+          <button
+            className="primary"
+            onClick={() => {
+              if (isLast) onClose();
+              else setStepIdx((i) => i + 1);
+            }}
+            type="button"
+          >
+            {isLast ? (
+              "Done"
+            ) : (
+              <>
+                Next
+                <UiIcon name="chevronRight" size={14} />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

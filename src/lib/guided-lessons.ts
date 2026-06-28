@@ -1,0 +1,145 @@
+export type LessonStep = {
+  title: string;
+  body: string;
+};
+
+export type GuidedLesson = {
+  id: string;
+  title: string;
+  presetId: string;
+  summary: string;
+  steps: LessonStep[];
+};
+
+export const GUIDED_LESSONS: GuidedLesson[] = [
+  {
+    id: "chicxulub-extinction",
+    title: "Chicxulub: The extinction-level tsunami",
+    presetId: "chicxulub",
+    summary:
+      "Explore the largest asteroid impact in the geological record and understand how impact energy translates to ocean-scale wave generation.",
+    steps: [
+      {
+        title: "Source: why this matters",
+        body:
+          "A 14 km asteroid striking shallow water released ~10⁸ Mt of energy. Ward & Asphaug 2000 models this as a transient water cavity whose radius and depth set the initial wave amplitude. Notice the cavity radius in the readout — that is the starting point for everything that follows.",
+      },
+      {
+        title: "Propagation: what to watch",
+        body:
+          "Run the SWE solver and watch the ring wave expand. The amplitude decays as r^(−5/6) for impact sources — much faster than earthquake tsunamis (r^(−1/2)). By 1,000 km the wave is meters, not kilometres. Deep-ocean propagation speed (~200 m/s in 4 km depth) controls arrival times.",
+      },
+      {
+        title: "Model limitations",
+        body:
+          "This is a linear long-wave / shallow-water approximation. Chicxulub's short wavelengths violate the shallow-water assumption near the source. Operational models (GeoClaw, MOST) use Boussinesq dispersion and AMR meshes for this regime. Our far-field arrival times and coastal runup remain useful first-order estimates.",
+      },
+      {
+        title: "Next steps",
+        body:
+          "Export the results as KML to overlay in Google Earth, or save as CSV to compare arrival times. Try changing water depth or impact angle in the scenario builder to see how they affect the initial cavity and downstream propagation.",
+      },
+    ],
+  },
+  {
+    id: "tohoku-earthquake",
+    title: "Tōhoku 2011: Modern megathrust tsunami",
+    presetId: "tohoku_2011",
+    summary:
+      "Study how seafloor displacement from a M9.1 earthquake generates a tsunami, and compare model output against real DART buoy observations.",
+    steps: [
+      {
+        title: "Source: Okada fault model",
+        body:
+          "The Okada 1985 model computes vertical seafloor displacement from fault geometry (strike, dip, rake, slip). For Tōhoku, ~30 m of slip on a 500 km × 200 km fault produces ~7 m of uplift. This displacement is the initial condition for wave propagation — no explosion or cavity, just a large area of raised and lowered ocean floor.",
+      },
+      {
+        title: "DART buoy observations",
+        body:
+          "Real-world DART buoys recorded this event. When you load this preset, the DART observation sparklines appear alongside the model’s predicted arrival times. The agreement in arrival time is typically good; amplitude agreement depends on bathymetry resolution and source model fidelity.",
+      },
+      {
+        title: "Model limitations",
+        body:
+          "We use a static dislocation — the fault ruptures instantly in our model, but the real Tōhoku rupture propagated north over ~3 minutes. This affects near-field waveform shape but not far-field arrival times. Runup estimates use Synolakis 1987 analytical law, not full wetting/drying.",
+      },
+      {
+        title: "Next steps",
+        body:
+          "Place gauges at coastal cities around the Pacific to see arrival times. Export the gauge CSV and compare against published DART records. Try the Indian Ocean 2004 preset for a similar megathrust event with different fault geometry.",
+      },
+    ],
+  },
+  {
+    id: "lituya-bay",
+    title: "Lituya Bay 1958: Record runup in a fjord",
+    presetId: "lituya_bay_1958",
+    summary:
+      "Understand how a landslide in a confined fjord produced the highest recorded wave runup in history — 524 metres.",
+    steps: [
+      {
+        title: "Source: landslide mechanics",
+        body:
+          "A M7.8 earthquake triggered a 30 million m³ rockslide into the narrow inlet. Fritz & Hager 2001 showed this is a 2D impulse-wave problem: the slide volume, drop height, and impact angle determine the initial wave at the impact point. The Heller–Hager empirical formula calibrated against 350+ lab experiments is used here.",
+      },
+      {
+        title: "Why 524 m runup?",
+        body:
+          "Confined geometry is the key. In open ocean, the wave spreads in all directions and decays. In Lituya Bay, the wave was channelled by steep fjord walls, focusing energy into a narrow strip. The Synolakis runup law applied to this steep slope produces extreme heights that match the geological trim line.",
+      },
+      {
+        title: "Model limitations",
+        body:
+          "Our model uses the analytical Heller–Hager amplitude at the source, then propagates via SWE. Real fjord dynamics involve wave reflection, bore formation, and 3D bathymetry effects that our coarse grid cannot resolve. The 524 m figure is the observed trim line, not a model prediction.",
+      },
+    ],
+  },
+  {
+    id: "poseidon-debunk",
+    title: "Russia’s Poseidon: Propaganda vs physics",
+    presetId: "poseidon_realistic",
+    summary:
+      "Compare a 100 Mt underwater nuclear detonation at realistic physics efficiency against Russian state media claims, and understand why the “500 m wave” claim violates energy conservation.",
+    steps: [
+      {
+        title: "Source: what the physics says",
+        body:
+          "The 1996 Defense Nuclear Agency study measured underwater nuclear explosion wave-generation efficiency at ~5%. A 100 Mt warhead (4.184 × 10¹⁷ J) converts ~2 × 10¹⁶ J into wave energy. At 100 km in open ocean, this produces a wave of a few metres — significant for a harbour but not a city-killer.",
+      },
+      {
+        title: "Try the comparison",
+        body:
+          "Use Compare mode (toolbar) to view the “realistic” and “propaganda” presets side by side. The propaganda preset applies the full yield without the 5% efficiency cap. Notice the difference in cavity radius and peak amplitude — the propaganda version violates known energy partition from underwater nuclear tests.",
+      },
+      {
+        title: "Model limitations",
+        body:
+          "Our model uses Glasstone–Dolan + Le Méhauté formulas for underwater nuclear explosions, which are well-validated against actual nuclear test data. The main uncertainty is whether a 100 Mt device is even physically constructible at torpedo scale — we model the physics, not the engineering.",
+      },
+    ],
+  },
+  {
+    id: "hunga-tonga",
+    title: "Hunga Tonga 2022: Atmospheric Lamb-wave coupling",
+    presetId: "hunga_tonga_2022",
+    summary:
+      "Explore the novel phenomenon where an atmospheric pressure wave, not just the ocean surface, drove global tsunami signals thousands of kilometres from the eruption.",
+    steps: [
+      {
+        title: "Source: volcanic caldera collapse",
+        body:
+          "The VEI 5–6 eruption generated a 15 m local tsunami through submarine caldera collapse. But the globally significant signal came from a different mechanism: an atmospheric Lamb wave travelling at ~310 m/s coupled energy into the ocean surface worldwide. This was the first well-instrumented example of this phenomenon.",
+      },
+      {
+        title: "Lamb-wave toggle",
+        body:
+          "In the SWE solver panel, toggle “Atmospheric Lamb wave” on and off. With it off, only the submarine collapse drives the wave. With it on, a secondary wavefront appears at a characteristic velocity faster than the ocean surface wave. This is a first-order approximation of the atmospheric coupling.",
+      },
+      {
+        title: "Model limitations",
+        body:
+          "Full Lamb-wave–ocean coupling (Carvajal 2022, Matoza 2022) is a research frontier requiring coupled atmosphere–ocean models. Our implementation injects an additional IC pulse at the Lamb-wave speed — a pedagogical approximation, not a full atmospheric simulation. The volcanic source itself uses a nuclear-burst proxy, not a dedicated caldera collapse model.",
+      },
+    ],
+  },
+];

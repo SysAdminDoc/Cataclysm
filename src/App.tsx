@@ -6,6 +6,8 @@ import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { Tour } from "./components/Tour";
+import { GuidedLesson } from "./components/GuidedLesson";
+import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
 import { UiIcon } from "./components/UiIcon";
 import { settings } from "./lib/settings";
@@ -196,6 +198,7 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
+  const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [presetsError, setPresetsError] = useState<string | null>(null);
   const [showLog, setShowLog] = useState(false);
@@ -602,6 +605,7 @@ export default function App() {
           activeId={slotA.activePresetId}
           onSelect={slotA.setActivePresetId}
           busyId={slotA.busyPresetId}
+          onStartLesson={setActiveLesson}
         />
         {compareMode && (
           <div className="app__compare-rail">
@@ -720,6 +724,9 @@ export default function App() {
           settings.markTourCompleted().catch(() => {});
         }}
       />
+      {activeLesson && (
+        <GuidedLesson lesson={activeLesson} onClose={() => setActiveLesson(null)} />
+      )}
       <div className="app__statusbar" role="status" aria-live="polite">
         <div className="statusbar__item statusbar__item--ready">
           <span className="status-dot" aria-hidden />
