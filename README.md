@@ -101,6 +101,7 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 - **Shareable URLs** — Detonation state encoded in URL parameters
 - **Native Share + PWA Shortcuts** — Mobile share sheets for links/reports with clipboard fallback, plus install shortcuts for Detonate, WW3, Saved Scenarios, and Emergency Guide
 - **UI String Registry** — Core navigation, onboarding, controls, exports, and emergency-guide copy resolve through English default keys
+- **In-App Diagnostics** — Tools panel shows app/cache/SW/data/model/offline state and can refresh NukeMap caches
 - **Fullscreen Mode** — For presentations
 - **Click-to-Copy Coordinates** — Tap coords display to copy
 - **Auto-Geolocation** — Centers on your location on first load

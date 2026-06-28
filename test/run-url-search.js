@@ -65,6 +65,9 @@ assert('Scenario: JSON import preview supports merge and replace', /normalizeSce
 assert('Scenario: IndexedDB replace uses put', /put\(scenario\)/.test(appJs) && /objectStore\(this\._storeName\)\.put\(scenario\)/.test(appJs));
 assert('Scenario: saved loads normalize legacy and schema rows', /function scenarioDetRow/.test(appJs) && /const dets = \(s\.dets \|\| \[\]\)\.map\(scenarioDetRow\)/.test(appJs));
 assert('Scenario: import UI is present', /id="import-scenario"/.test(indexHtml) && /id="scenario-import-status"/.test(indexHtml));
+assert('Diagnostics: UI panel and controls are present', /id="diagnostics-panel"/.test(indexHtml) && /id="diag-refresh-cache"/.test(indexHtml));
+assert('Diagnostics: renderer reports version cache SW data and model state', /function collectDiagnostics/.test(appJs) && /App version/.test(appJs) && /Cache names/.test(appJs) && /SW controller/.test(appJs) && /Data counts/.test(appJs) && /Physics model/.test(appJs) && /Fallout model/.test(appJs) && /Offline status/.test(appJs));
+assert('Diagnostics: cache refresh deletes nukemap caches and shows feedback', /function refreshAppCache/.test(appJs) && /caches\.delete/.test(appJs) && /showDiagnosticToast\('Cache refreshed'\)/.test(appJs));
 
 // ---- CSV IMPORT VALIDATION TESTS ----
 const validCsv = 'lat,lng,yield_kt,burst_type,weapon\n40.7128,-74.0060,455,airburst,"W88, Trident"\n33,-118,50,water,Imported';

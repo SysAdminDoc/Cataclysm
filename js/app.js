@@ -863,6 +863,9 @@ function initControls() {
     if (e.target.id === 'scenario-import-replace' && pendingScenarioImport) runScenarioImport('replace');
     if (e.target.id === 'scenario-import-cancel') resetScenarioImportStatus();
   });
+  $('diag-refresh')?.addEventListener('click', renderDiagnostics);
+  $('diag-refresh-cache')?.addEventListener('click', refreshAppCache);
+  renderDiagnostics();
   initEncyclopedia();
   initHistoricTests();
   initMethodology();
@@ -1935,6 +1938,52 @@ function runScenarioImport(mode) {
     if (el) el.innerHTML = `<div class="csv-preview success"><strong>Scenario imported.</strong> ${NM.esc(scenario.name)}</div>`;
     renderSavedList();
   });
+}
+
+async function collectDiagnostics() {
+  const cacheNames = window.caches ? await caches.keys().catch(() => []) : [];
+  const swReg = navigator.serviceWorker ? await navigator.serviceWorker.getRegistration().catch(() => null) : null;
+  return [
+    ['App version', NM.APP_VERSION || 'unknown'],
+    ['Cache names', cacheNames.filter(n => n.includes('nukemap')).join(', ') || 'none'],
+    ['SW controller', navigator.serviceWorker?.controller ? 'controlled' : (swReg ? 'registered' : 'none')],
+    ['Data counts', `${(NM.WEAPONS || []).filter(w => w.name !== 'Custom').length} weapons, ${(NM.CITIES || []).length} cities, ${(NM.WW3_TARGETS || []).length || 427} targets`],
+    ['Physics model', NM.BLAST_MODELS?.[NM._physicsModel || 'nwfaq']?.label || (NM._physicsModel || 'nwfaq')],
+    ['Fallout model', 'Simplified ellipse'],
+    ['Offline status', navigator.onLine ? 'online' : 'offline'],
+  ];
+}
+
+async function renderDiagnostics() {
+  const panel = $('diagnostics-panel'); if (!panel) return;
+  panel.innerHTML = '<div class="diag-row"><span class="diag-key">Status</span><span class="diag-val">Checking...</span></div>';
+  const rows = await collectDiagnostics();
+  panel.innerHTML = rows.map(([k, v]) => `<div class="diag-row"><span class="diag-key">${NM.esc(k)}</span><span class="diag-val">${NM.esc(v)}</span></div>`).join('');
+}
+
+async function refreshAppCache() {
+  const btn = $('diag-refresh-cache');
+  if (btn) btn.textContent = 'Refreshing...';
+  const cacheNames = window.caches ? await caches.keys().catch(() => []) : [];
+  await Promise.all(cacheNames.filter(n => n.includes('nukemap')).map(n => caches.delete(n)));
+  const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations().catch(() => []) : [];
+  await Promise.all(regs.map(r => r.update().catch(() => null)));
+  if (btn) {
+    btn.textContent = 'Cache Refreshed';
+    setTimeout(() => { btn.textContent = 'Refresh Cache'; }, 2000);
+  }
+  showDiagnosticToast('Cache refreshed');
+  renderDiagnostics();
+}
+
+function showDiagnosticToast(text) {
+  const toast = document.createElement('div');
+  toast.className = 'det-toast';
+  toast.setAttribute('role', 'status');
+  toast.textContent = text;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 2400);
 }
 
 function renderSavedList(filter) {

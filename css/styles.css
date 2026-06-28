@@ -467,6 +467,10 @@ button:disabled:hover,.is-disabled:hover{color:inherit;border-color:var(--contro
 .csv-skip-list{margin:2px 0 0 14px;padding:0;color:var(--yellow)}
 .csv-actions{display:flex;gap:6px;margin-top:2px}
 .csv-actions .btn-secondary{min-height:30px;padding:6px 8px}
+.diagnostics-panel{display:grid;gap:5px;font-size:10px}
+.diag-row{display:flex;justify-content:space-between;gap:8px;padding:5px 7px;border:1px solid var(--surface1);border-radius:var(--radius-sm);background:rgba(49,50,68,.45)}
+.diag-key{color:var(--subtext0);font-weight:700}
+.diag-val{color:var(--text);text-align:right;overflow-wrap:anywhere}
 
 /* Size comparisons */
 .sc-list{display:flex;flex-direction:column;gap:4px}
