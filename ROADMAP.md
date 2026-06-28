@@ -36,7 +36,7 @@ from the current research pass follows.
 
 - [ ] P1 — Add a local toolchain and verification doctor
   Why: Local verification is currently fragile: MSVC `link.exe` is missing from this PowerShell PATH, `cargo audit` is not installed, and Vitest 4 worker runs can hang on the VMware shared folder.
-  Evidence: `CLAUDE.md`; local `cargo audit` result; focused Vitest run; `package.json` scripts
+  Evidence: local `cargo audit` result; focused Vitest run; `package.json` scripts
   Touches: `package.json`, `scripts/doctor.mjs` or equivalent, optional CI smoke step
   Acceptance: `npm run doctor` reports Node/Rust/Tauri, MSVC linker, cargo-audit, workspace path, and recommended Vitest flags with actionable pass/fail messages.
   Complexity: S
