@@ -1,6 +1,8 @@
 // NukeMap - Data Module (cities, weapons, effects definitions)
 window.NM = window.NM || {};
 
+NM.APP_VERSION = '3.6.0';
+
 NM.WEAPONS = [
   {name:'Custom',yield_kt:15,country:'',year:'',desc:'Set any yield'},
   {name:'Davy Crockett (M-28)',yield_kt:0.02,country:'US',year:'1961',desc:'Smallest US tactical weapon, man-portable'},

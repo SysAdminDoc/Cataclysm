@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P0 - Sync exported metadata and onboarding counts to v3.6.0
-  Why: Saved JSON currently reports `version:'3.5.0'`, and the welcome overlay still advertises 32 weapons despite the v3.6.0 data set.
-  Evidence: `js/app.js:1467`, `index.html:41`, `js/data.js`, `README.md`, `sw.js`.
-  Touches: `js/app.js`, `index.html`, `test/run-url-search.js`, `README.md`, `CLAUDE.md`, `CHANGELOG.md`.
-  Acceptance: JSON exports report the current app version from one shared source, onboarding weapon count matches `NM.WEAPONS.length - 1`, and a local test fails on future version/count drift.
-  Complexity: S
-
 - [ ] P0 - Harden CSV import with schema validation and preview
   Why: CSV import can process arbitrary file size, row count, coordinate ranges, yield ranges, and burst labels before triggering detonations.
   Evidence: `js/app.js:1526-1547`, existing export/import workflow, OWASP DOM/data validation guidance.

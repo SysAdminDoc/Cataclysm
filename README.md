@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-v3.6.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-Web%20%2F%20PWA-lightgrey)
 
-A premium nuclear weapon effects simulator with animated blast waves, SVG mushroom clouds, MIRV strikes, full WW3 simulation engine (418 verified targets, 708 warheads, 7 scenarios), HEMP continent-scale EMP, sound effects, shelter survival analysis, and comprehensive educational tools. Physics based on Glasstone & Dolan's *The Effects of Nuclear Weapons*.
+A premium nuclear weapon effects simulator with animated blast waves, SVG mushroom clouds, MIRV strikes, full WW3 simulation engine (427 verified targets, 708 warheads, 7 scenarios), HEMP continent-scale EMP, sound effects, shelter survival analysis, and comprehensive educational tools. Physics based on Glasstone & Dolan's *The Effects of Nuclear Weapons*.
 
 **[Live Demo](https://sysadmindoc.github.io/NukeMap/)** | Installable as PWA
 
@@ -10,13 +10,13 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 
 ### Core Simulation
 - **12 Effect Rings** — Fireball, crater, radiation, 200/20/5/1 psi blast, 3rd/1st degree burns, EMP, firestorm zone, flash blindness
-- **32 Weapon Presets** — US, Russian, Chinese, UK, French, Indian, Pakistani, North Korean, Israeli arsenals
-- **4 Burst Modes** — Airburst, Surface, Custom altitude, and HEMP (high-altitude EMP)
+- **38 Weapon Presets** — US, Russian, Chinese, UK, French, Indian, Pakistani, North Korean, Israeli arsenals
+- **5 Burst Modes** — Airburst, Surface, Custom altitude, HEMP (high-altitude EMP), and Water
 - **Fallout Modeling** — Elliptical plumes with adjustable wind direction, speed, and fission fraction
 - **Casualty Estimation** — Zone-based fatality/injury model with population density data
 
 ### WW3 Simulation Engine
-- **418 Verified Targets** — US (175), Russia (101), NATO Europe (74), China (66) from FAS/BAS/NNSA
+- **427 Verified Targets** — US (175), Russia (101), NATO Europe (74), China (66), plus infrastructure targets from FAS/BAS/NNSA and public infrastructure sources
 - **7 Scenarios** — US vs Russia, Russia vs NATO, US vs China, Counterforce Only, Global Thermonuclear War, Russian/US First Strike
 - **Animated Missile Arcs** — Great-circle trajectories color-coded by nation
 - **Phased Escalation** — Air raid siren, staggered launches, phase rumble, rocket whoosh, explosion boom
@@ -80,7 +80,7 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 
 ### Search & Data
 - **41,958 US ZIP Codes** — Every US ZIP resolves instantly (90210, 02134, 20500...)
-- **250+ US Cities**, **100+ World Cities**, **418 Strategic/Military Targets**
+- **250+ US Cities**, **100+ World Cities**, **427 Strategic/Military Targets**
 - **Fuzzy Search** — City, state, ZIP, partial ZIP, coordinates, or target name/type
 - **12 Quick Target Pills** — One-click fly to major cities
 
@@ -127,13 +127,14 @@ Or open `index.html` once online — the service worker caches everything. Insta
 
 ```
 NukeMap/
-  index.html          App shell (~530 lines)
+  index.html          App shell (~700 lines)
   manifest.json       PWA manifest
-  css/styles.css      All styling (~680 lines)
+  css/styles.css      All styling (~880 lines)
   js/
     zipcodes.js       41,958 US ZIP code database
     data.js           Cities, weapons, MIRV presets, shelter types
     physics.js        Glasstone & Dolan nuclear calculations
+    physics-worker.js WW3 batch physics worker
     search.js         Fuzzy search (cities + ZIPs + military targets)
     effects.js        Map ring drawing, fallout, markers, tooltips
     animation.js      Blast wave, fireball glow, camera shake
@@ -147,8 +148,8 @@ NukeMap/
     advanced.js       Experience mode, scenarios, missile flight, emergency guide
     premium.js        Altitude profile, zone casualties, weapon specs, export
     immersive.js      Geiger, seismic, escape, GPS, test timeline, ground report
-    ww3.js            WW3 simulation engine (1,135 lines)
-    app.js            Main controller (1,242 lines)
+    ww3.js            WW3 simulation engine (1,180 lines)
+    app.js            Main controller (1,835 lines)
   data/
     us_targets.json       175 US targets
     russia_targets.json   103 Russian targets
@@ -159,7 +160,7 @@ NukeMap/
   build_targets.py   Target DB compiler
 ```
 
-**~7,500 lines** of application code + 1.5 MB ZIP code database.
+**~8,600 lines** of application code + 1.5 MB ZIP code database.
 
 ## License
 

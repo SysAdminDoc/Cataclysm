@@ -7,6 +7,12 @@ window.NM = window.NM || {};
 let map, currentDets = [], windAngle = 0, multiMode = false, mirvMode = false, currentMirvPreset = null;
 NM._nightMode = false;
 
+function syncAppMetadata() {
+  const weaponCount = Math.max(0, (NM.WEAPONS || []).filter(w => w.name !== 'Custom').length);
+  const weaponCountTag = $('weapon-count-tag');
+  if (weaponCountTag) weaponCountTag.textContent = `${weaponCount} Weapons`;
+}
+
 function _genCumulative(dets) {
   const totalY = dets.reduce((s,d) => s + d.yieldKt, 0);
   const hiro = totalY / 15;
@@ -1464,7 +1470,7 @@ function exportJSON() {
       casualties: d.casualties, hiroshimaEquivalent: +(d.yieldKt / 15).toFixed(2)
     };
   });
-  const blob = new Blob([JSON.stringify({version:'3.5.0', generated: new Date().toISOString(), detonations: data}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({version:NM.APP_VERSION, generated: new Date().toISOString(), detonations: data}, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nukemap-data.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
@@ -1784,6 +1790,7 @@ function toggleFullscreen() {
 
 // ---- INIT ----
 function init() {
+  syncAppMetadata();
   NM.Sound.init();
   NM.Mushroom3D.init();
   initMap();

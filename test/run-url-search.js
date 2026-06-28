@@ -15,6 +15,10 @@ eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'physics.js'), 'utf8'));
 // Load search module
 eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'search.js'), 'utf8'));
 
+const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const appJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+const swJs = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+
 let passed = 0, failed = 0;
 const failures = [];
 
@@ -22,6 +26,18 @@ function assert(name, condition) {
   if (condition) { passed++; }
   else { console.log(`FAIL: ${name}`); failed++; failures.push(name); }
 }
+
+// ---- METADATA DRIFT TESTS ----
+const titleVersion = (indexHtml.match(/<title>NukeMap v([\d.]+)<\/title>/) || [])[1];
+const cacheVersion = (swJs.match(/nukemap-v([\d.]+)/) || [])[1];
+const welcomeWeaponCount = +(indexHtml.match(/id="weapon-count-tag"[^>]*>(\d+) Weapons/) || [])[1];
+const presetWeaponCount = NM.WEAPONS.filter(w => w.name !== 'Custom').length;
+
+assert('Metadata: app version constant matches title', NM.APP_VERSION === titleVersion);
+assert('Metadata: service worker cache matches app version', cacheVersion === NM.APP_VERSION);
+assert('Metadata: welcome weapon count matches presets', welcomeWeaponCount === presetWeaponCount);
+assert('Metadata: JSON export uses shared app version', /version\s*:\s*NM\.APP_VERSION/.test(appJs) && !/version\s*:\s*['"]3\./.test(appJs));
+assert('Metadata: welcome weapon count is runtime-synced', /weapon-count-tag/.test(indexHtml) && /weaponCountTag\.textContent/.test(appJs));
 
 // ---- URL PARSING TESTS ----
 // Test the URL format: lat,lng,yield,burst[,height,fission]
