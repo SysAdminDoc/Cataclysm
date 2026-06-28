@@ -10,6 +10,8 @@ global.document = { getElementById: () => null, querySelectorAll: () => [], crea
 
 // Load data module (cities, weapons)
 eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'data.js'), 'utf8'));
+// Load i18n module (UI string registry)
+eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8'));
 // Load physics (needed by search for findNearestCity)
 eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'physics.js'), 'utf8'));
 // Load search module
@@ -18,6 +20,7 @@ eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'search.js'), 'utf8'));
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const appJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const immersiveJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'immersive.js'), 'utf8');
+const advancedJs = fs.readFileSync(path.join(__dirname, '..', 'js', 'advanced.js'), 'utf8');
 const swJs = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
 
@@ -52,6 +55,11 @@ assert('PWA: manifest includes wide and narrow screenshots', manifest.screenshot
 assert('PWA: manifest includes launch shortcuts', ['detonate','ww3','saved','guide'].every(action => manifest.shortcuts?.some(s => s.url.includes(`action=${action}`))));
 assert('PWA: service worker precaches screenshot assets', /assets\/pwa-wide\.png/.test(swJs) && /assets\/pwa-mobile\.png/.test(swJs));
 assert('Share: links and reports use native share with clipboard fallback', /function shareOrCopy/.test(appJs) && /navigator\.share/.test(appJs) && /navigator\.clipboard\?\.writeText/.test(appJs) && /handleLaunchAction/.test(appJs));
+const domI18nKeys = [...indexHtml.matchAll(/data-i18n(?:-[a-z]+)?="([^"]+)"/g)].map(m => m[1]);
+assert('i18n: registry has no missing placeholder values', NM.i18n.missingKeys().length === 0);
+assert('i18n: all DOM data-i18n keys exist', domI18nKeys.length > 20 && domI18nKeys.every(key => Object.prototype.hasOwnProperty.call(NM.STRINGS, key)));
+assert('i18n: core registry is applied at startup', /NM\.i18n\?\.apply\(\)/.test(appJs) && /js\/i18n\.js/.test(indexHtml) && /js\/i18n\.js/.test(swJs));
+assert('i18n: emergency guide resolves through registry', /const t = NM\.t/.test(advancedJs) && /guide\.immediate\.title/.test(advancedJs) && /guide\.fema\.title/.test(advancedJs));
 
 // ---- CSV IMPORT VALIDATION TESTS ----
 const validCsv = 'lat,lng,yield_kt,burst_type,weapon\n40.7128,-74.0060,455,airburst,"W88, Trident"\n33,-118,50,water,Imported';

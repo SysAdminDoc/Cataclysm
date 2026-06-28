@@ -99,6 +99,7 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 - **Summary Report** — Formatted text report with all details
 - **Shareable URLs** — Detonation state encoded in URL parameters
 - **Native Share + PWA Shortcuts** — Mobile share sheets for links/reports with clipboard fallback, plus install shortcuts for Detonate, WW3, Saved Scenarios, and Emergency Guide
+- **UI String Registry** — Core navigation, onboarding, controls, exports, and emergency-guide copy resolve through English default keys
 - **Fullscreen Mode** — For presentations
 - **Click-to-Copy Coordinates** — Tap coords display to copy
 - **Auto-Geolocation** — Centers on your location on first load
@@ -146,6 +147,7 @@ NukeMap/
   js/
     zipcodes.js       41,958 US ZIP code database
     data.js           Cities, weapons, MIRV presets, shelter types
+    i18n.js           English UI string registry
     physics.js        Glasstone & Dolan nuclear calculations
     physics-worker.js WW3 batch physics worker
     search.js         Fuzzy search (cities + ZIPs + military targets)

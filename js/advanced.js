@@ -538,14 +538,15 @@ NM.EmergencyGuide = {
   generate(det) {
     const e = det.effects;
     const hasFallout = !!e.fallout;
+    const t = NM.t || (key => key);
     const items = [
-      {title:'Immediate: Flash', body:'DO NOT look toward the blast. The thermal flash causes temporary or permanent blindness. Duck behind any solid cover. Close your eyes and cover them.', color:'var(--red)', always:true},
-      {title:'0-10 seconds: Take Cover', body:'GET DOWN immediately. Lie flat face-down, away from windows. Cover head and neck. The blast wave arrives seconds after the flash \u2014 flying glass is the #1 cause of blast injuries.', color:'var(--peach)', always:true},
-      {title:'10 sec - 2 min: Stay Down', body:'Remain in cover until the blast wave passes and reverses. Debris continues falling. Do not move until shaking stops completely.', color:'var(--yellow)', always:true},
-      {title:'2 - 10 min: Assess & Move', body:'If your building is damaged, move to a more substantial structure. Go to a basement or interior room. Put as many walls between you and the outside as possible. Brick/concrete reduces radiation 10-100x.', color:'var(--teal)', always:true},
-      {title:'10 min - 1 hr: Shelter In Place', body:hasFallout ? `Fallout begins ~10 min after a surface burst. Visible as ash/dust. Do NOT go outside. Seal windows, turn off ventilation. The first hour is the most dangerous \u2014 radiation levels are 1000x higher than at 48 hours.` : 'Airburst produces minimal fallout. Primary danger is from fires and structural collapse. If safe to move, evacuate away from fires.', color:'var(--blue)', always:true},
-      {title:'1 - 48 hr: Stay Sheltered', body:hasFallout ? `7:10 Rule: Every 7x increase in time = 10x decrease in radiation. At 49 hours, radiation is 1/100th of the 1-hour level. Stay sheltered for at least 24 hours, ideally 48-72 hours. Ration water and food.` : 'Monitor emergency broadcasts. Assist injured if safe. Do not approach ground zero \u2014 fires may burn for days.', color:'var(--mauve)', always:hasFallout},
-      {title:'Supplies to Have Ready', body:'Water (1 gal/person/day for 3 days), non-perishable food, battery radio, flashlight, first aid kit, dust masks or cloth, plastic sheeting and duct tape, medications.', color:'var(--green)', always:true},
+      {title:t('guide.immediate.title'), body:t('guide.immediate.body'), color:'var(--red)', always:true},
+      {title:t('guide.cover.title'), body:t('guide.cover.body'), color:'var(--peach)', always:true},
+      {title:t('guide.down.title'), body:t('guide.down.body'), color:'var(--yellow)', always:true},
+      {title:t('guide.move.title'), body:t('guide.move.body'), color:'var(--teal)', always:true},
+      {title:t('guide.shelter.title'), body:hasFallout ? t('guide.shelter.fallout') : t('guide.shelter.airburst'), color:'var(--blue)', always:true},
+      {title:t('guide.stay.title'), body:hasFallout ? t('guide.stay.fallout') : t('guide.stay.airburst'), color:'var(--mauve)', always:hasFallout},
+      {title:t('guide.supplies.title'), body:t('guide.supplies.body'), color:'var(--green)', always:true},
     ];
 
     const femaTimeline = [
@@ -563,7 +564,7 @@ NM.EmergencyGuide = {
       html += `<div class="guide-item" style="border-left-color:${it.color}"><div class="gi-title" style="color:${it.color}">${it.title}</div><div class="gi-body">${it.body}</div></div>`;
     }
     if (hasFallout) {
-      html += '<div class="guide-item" style="border-left-color:var(--overlay0);margin-top:12px"><div class="gi-title" style="color:var(--overlay0)">FEMA 72-Hour Response Timeline</div><div class="gi-body" style="font-size:9px;color:var(--overlay0)">Based on FEMA OET Nuclear Detonation Response Guidance</div></div>';
+      html += `<div class="guide-item" style="border-left-color:var(--overlay0);margin-top:12px"><div class="gi-title" style="color:var(--overlay0)">${t('guide.fema.title')}</div><div class="gi-body" style="font-size:9px;color:var(--overlay0)">${t('guide.fema.body')}</div></div>`;
       for (const f of femaTimeline) {
         html += `<div class="guide-item" style="border-left-color:${f.color}"><div class="gi-title" style="color:${f.color}">${f.hr}</div><div class="gi-body">${f.action}</div></div>`;
       }

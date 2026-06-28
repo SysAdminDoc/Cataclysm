@@ -1907,6 +1907,7 @@ function toggleFullscreen() {
 // ---- INIT ----
 function init() {
   syncAppMetadata();
+  NM.i18n?.apply();
   NM.Sound.init();
   NM.Mushroom3D.init();
   initMap();

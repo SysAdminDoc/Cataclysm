@@ -6,13 +6,6 @@ Nuclear weapon effects simulator with 12 effect rings, 38 weapon presets, full W
 
 ## Research-Driven Additions
 
-- [ ] P2 - Introduce a UI string registry for localization
-  Why: NUKEMAP's 2026 roadmap prioritizes translation, while NukeMap hardcodes English strings across HTML and panel generators.
-  Evidence: `index.html`, `js/app.js`, `js/premium.js`, `js/advanced.js`, NUKEMAP roadmap.
-  Touches: `js/i18n.js`, `index.html`, `js/*.js`, `build.py`, `test/`.
-  Acceptance: Core navigation, onboarding, controls, exports, and emergency-guide strings resolve through a registry; English remains default; tests catch missing string keys.
-  Complexity: L
-
 - [ ] P2 - Add scenario schema versioning, diff, and merge tools
   Why: Saved scenarios have folders/search but lack schema versions, import previews, or merge conflict handling for CSV/JSON round trips.
   Evidence: `js/app.js:1643-1736`, Nuclear War Simulator scenario expectations, existing NukeMap save/load workflow.
