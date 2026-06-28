@@ -10,6 +10,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   coupling toggle, and local-only verification. Updated README architecture
   diagram, presets.rs Hunga Tonga blurb, solver/validation doc-comments,
   Cargo.toml comments, and science docs (earthquake, landslide, VALIDATION).
+- **Unsigned-installer checksum verification guidance.** README Install section
+  now shows PowerShell/CMD commands to verify SHA256 against the release-page
+  `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
+  generation steps and an expanded release checklist.
 
 ### Changed — accessibility & rendering
 - **Automated WCAG A/AA regression checks.** Five axe-core Playwright tests

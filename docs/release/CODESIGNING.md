@@ -80,6 +80,48 @@ release packager can then pass `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the local environment so `tauri build`
 emits `.sig` files beside installers.
 
+## Verifying unsigned installers (SHA256)
+
+Until code-signing certificates are configured, all release installers are
+unsigned. Users can verify download integrity against the SHA256 checksums
+published on the GitHub Release page.
+
+### Generating checksums (maintainer)
+
+After building, generate a checksum file alongside the installers:
+
+```powershell
+# Windows (PowerShell)
+Get-FileHash .\TsunamiSimulator_*_x64_en-US.msi, .\TsunamiSimulator_*_x64-setup.exe -Algorithm SHA256 |
+    ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } |
+    Set-Content checksums-sha256.txt
+```
+
+Attach `checksums-sha256.txt` to the GitHub Release alongside the installers.
+
+### Verifying checksums (user)
+
+**Windows (PowerShell):**
+```powershell
+(Get-FileHash .\TsunamiSimulator_0.4.4_x64_en-US.msi -Algorithm SHA256).Hash
+# Compare the output to the SHA256 value in checksums-sha256.txt on the release page
+```
+
+**Windows (Command Prompt):**
+```cmd
+certutil -hashfile TsunamiSimulator_0.4.4_x64_en-US.msi SHA256
+```
+
+**macOS / Linux:**
+```bash
+shasum -a 256 TsunamiSimulator_0.4.4_x64_en-US.msi
+```
+
+If the hash matches the value on the release page, the file was not tampered
+with in transit. This does not prove who built it — only that what you
+downloaded matches what the maintainer uploaded. Code signing (above) is the
+proper chain-of-trust mechanism once certificates are available.
+
 ## Release checklist
 
 1. Confirm version strings match across `package.json`, `src-tauri/Cargo.toml`,
@@ -87,10 +129,11 @@ emits `.sig` files beside installers.
 2. Run `npm run verify`.
 3. Delete stale bundle outputs under `src-tauri/target/release/bundle/`.
 4. Run `npm run tauri:build`.
-5. Sign the generated platform artifacts when certificates are available.
-6. Verify signatures on a clean machine or VM.
-7. Create the GitHub Release manually with `gh release create` and attach the
-   local artifacts.
+5. Generate SHA256 checksums for the platform artifacts (see above).
+6. Sign the generated platform artifacts when certificates are available.
+7. Verify signatures on a clean machine or VM.
+8. Create the GitHub Release manually with `gh release create` and attach the
+   local artifacts plus `checksums-sha256.txt`.
 
 ## Secret leak response
 

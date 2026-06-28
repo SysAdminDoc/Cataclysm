@@ -6,12 +6,7 @@ Single source of truth for delivery. Blocked items live in
 
 ---
 
-Legacy actionable items were drained in the prior pass. New incomplete work
-from the current research pass follows.
-
 ## Research-Driven Additions
-
-### P1
 
 ### P2
 
@@ -29,28 +24,6 @@ from the current research pass follows.
   Acceptance: Playwright captures current v0.4.4 desktop and narrow-layout states for first-run, active preset, SWE running/ready, Settings, citations, and log viewer with no axe violations or obvious overflow.
   Complexity: M
 
-### P3
-
-- [ ] P3 — Design a teacher-friendly guided scenario path
-  Why: Comparable public education tools win by making complex models legible quickly; TsunamiSimulator has strong science but no structured lesson flow beyond the first-run tour.
-  Evidence: README personas and "NukeMap for tsunamis" positioning; NOAA Science On a Sphere / Impact: Earth / NUKEMAP education patterns; `src/components/Tour.tsx`
-  Touches: `src/components/Tour.tsx`, `src/components/PresetSelector.tsx`, `docs/manual/getting-started.md`, optional preset metadata
-  Acceptance: Users can launch 3-5 guided scenarios that explain source choice, model limitations, expected readouts, and export/share next steps without adding new physics.
-  Complexity: M
-
-## Research-Driven Additions
-
-### P1
-
-- [ ] P1 - Add unsigned-installer checksum verification guidance
-  Why: v0.4.4 release assets are intentionally unsigned, so users need a clear trust path before running Windows installers.
-  Evidence: GitHub v0.4.4 release notes; `README.md`; `docs/release/CODESIGNING.md`; Tauri distribution docs
-  Touches: `README.md`, `docs/release/CODESIGNING.md`, release checklist/docs
-  Acceptance: Install docs show where to find SHA256 values and exact Windows commands to verify MSI/NSIS downloads, while keeping code-signing as a blocked credential item.
-  Complexity: S
-
-### P2
-
 - [ ] P2 - Add a manual dependency refresh cadence
   Why: Dependabot was removed, `npm outdated` already shows maintenance drift, and Rust advisory/license tools are optional skips when not installed.
   Evidence: `npm outdated --json`; `scripts/verify.mjs`; `package.json`; `src-tauri/deny.toml`; no `.github/dependabot.yml`
@@ -64,3 +37,12 @@ from the current research pass follows.
   Touches: `src-tauri/src/commands.rs`, `src-tauri/src/physics/solver/*`, `src/lib/tauri.ts`, `src/components/SwePlayback.tsx`, export tests
   Acceptance: Users can place at least three named gauges, run SWE playback, view eta-vs-time plots, and export a CSV with gauge name, lat/lon, time_s, eta_m, solver mode, and bathymetry source.
   Complexity: L
+
+### P3
+
+- [ ] P3 — Design a teacher-friendly guided scenario path
+  Why: Comparable public education tools win by making complex models legible quickly; TsunamiSimulator has strong science but no structured lesson flow beyond the first-run tour.
+  Evidence: README personas and "NukeMap for tsunamis" positioning; NOAA Science On a Sphere / Impact: Earth / NUKEMAP education patterns; `src/components/Tour.tsx`
+  Touches: `src/components/Tour.tsx`, `src/components/PresetSelector.tsx`, `docs/manual/getting-started.md`, optional preset metadata
+  Acceptance: Users can launch 3-5 guided scenarios that explain source choice, model limitations, expected readouts, and export/share next steps without adding new physics.
+  Complexity: M

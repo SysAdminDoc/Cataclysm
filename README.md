@@ -115,6 +115,22 @@ warning. macOS and Linux remain supported source-build targets; platform
 installers for those systems should be produced locally on those platforms when
 signing/build hosts are available.
 
+**Verify your download** — each release includes a `checksums-sha256.txt` file.
+Compare the SHA256 of the downloaded file to the published value:
+
+```powershell
+# PowerShell
+(Get-FileHash .\TsunamiSimulator_0.4.4_x64_en-US.msi -Algorithm SHA256).Hash
+```
+
+```cmd
+:: Command Prompt
+certutil -hashfile TsunamiSimulator_0.4.4_x64_en-US.msi SHA256
+```
+
+See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full
+verification details and the maintainer release checklist.
+
 The app launches on the bundled **Natural Earth II** globe by default and is
 fully usable without network tiles or a token. OpenStreetMap and Esri imagery
 remain no-token online options, and a free Cesium ion token unlocks
