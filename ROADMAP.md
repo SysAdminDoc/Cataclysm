@@ -130,6 +130,7 @@ Single source of truth for delivery. Blocked items live in
 - [ ] P1 — Repair public docs links to tracked support paths
   Why: Public docs currently send users to gitignored/local-only or absent markdown/templates, which undermines setup, support, and disclosure trust.
   Evidence: `README.md:230` links `COMPLETED.md` and `RESEARCH_REPORT.md`; `CONTRIBUTING.md:129` references absent `.github/ISSUE_TEMPLATE/` and gitignored `SECURITY.md`; `.gitignore` ignores most markdown except an explicit whitelist
+  Research note: Current live tree has tracked `.github/ISSUE_TEMPLATE/*.yml`; the remaining public-doc mismatch is local-only `COMPLETED.md`, `RESEARCH_REPORT.md`, and `SECURITY.md` references.
   Touches: `README.md`, `CONTRIBUTING.md`, `.gitignore`
   Acceptance: README and CONTRIBUTING only link tracked files or live URLs; `rtk rg -n "COMPLETED.md|RESEARCH_REPORT.md|SECURITY.md|ISSUE_TEMPLATE" README.md CONTRIBUTING.md .gitignore` returns no stale public-doc references except intentional ignore rules; no new markdown files are created.
   Complexity: S
@@ -142,3 +143,30 @@ Single source of truth for delivery. Blocked items live in
   Touches: `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/src/lib.rs`, `src/App.tsx`, scenario URL parser/tests
   Acceptance: Launching `tsunamisimulator://open?scenario=<encoded>` opens the existing app instance when possible, validates and imports the scenario into the active slot, rejects malformed links with a LogViewer warning/toast, and has parser coverage for valid, malformed, and oversized payloads.
   Complexity: M
+
+## Research-Driven Additions
+
+### P1
+
+- [ ] P1 — Enforce Rust advisory and license checks for release verification
+  Why: RustSec and cargo-deny checks are already configured, but `scripts/verify.mjs` skips them when binaries are missing, so release verification can pass without Rust advisory/license coverage.
+  Evidence: `scripts/verify.mjs:166-175`; `src-tauri/deny.toml`; RustSec cargo-audit; Embark cargo-deny
+  Touches: `scripts/verify.mjs`, `scripts/deps-check.mjs`, `package.json`, `README.md`, `docs/release/CODESIGNING.md`
+  Acceptance: Normal developer verification may warn when `cargo-audit` or `cargo-deny` are absent, but release/strict verification fails with actionable install text. With both tools installed, `npm run verify` runs `cargo audit` and `cargo deny check` and fails on advisories or denied licenses.
+  Complexity: S
+
+### P2
+
+- [ ] P2 — Add a docs/script truth gate to local verification
+  Why: The broken `npm run doctor` path proves README/CHANGELOG/package script drift is not currently caught before release.
+  Evidence: `README.md:161`; `CHANGELOG.md:192-194`; `package.json` script `"doctor": "node scripts/doctor.mjs"`; missing `scripts/doctor.mjs`
+  Touches: `scripts/verify.mjs`, `package.json`, `README.md`, `CONTRIBUTING.md`
+  Acceptance: A verification step scans public docs for `npm run <script>` and local markdown/file links, then fails when referenced npm scripts or tracked support paths are missing. The check ignores intentional external URLs and ignored local-only notes.
+  Complexity: S
+
+- [ ] P2 — Guard Tauri CSP exceptions with a documented allowlist
+  Why: Cesium currently requires `unsafe-eval` and inline styles, but future CSP broadening should not happen silently in a desktop app with remote imagery/terrain access.
+  Evidence: `src-tauri/tauri.conf.json:28`; Tauri security documentation; CesiumJS runtime constraints
+  Touches: `src-tauri/tauri.conf.json`, `scripts/verify.mjs`, `README.md`, `docs/ipc-api.md`
+  Acceptance: Local verification parses the configured CSP and fails if new wildcard origins, extra remote hosts, or additional unsafe directives are introduced without updating a small allowlist/rationale. Existing Cesium-required exceptions remain documented and unchanged.
+  Complexity: S
