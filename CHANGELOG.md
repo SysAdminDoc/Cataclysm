@@ -67,6 +67,40 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Settings import prototype pollution guard.** `importSettings` now skips
   `__proto__`, `constructor`, and `prototype` keys and rejects non-object JSON.
 
+### Fixed — deep audit pass 2
+- **GPU VRAM budget heuristic caused spurious CPU fallback.** The total-VRAM
+  check compared 10× per-buffer size against max_storage_buffer_binding_size,
+  rejecting medium grids that fit comfortably in VRAM. Removed in favor of the
+  correct per-buffer limit check.
+- **Lamb wave latitude correction used source latitude for all cells.** The
+  `apply_lamb_wave` function used source latitude for the longitude-to-meters
+  cosine correction instead of each cell's own latitude, causing range errors
+  on wide grids. Fixed to use cell latitude.
+- **CPU momentum gradient read unmasked η from dry-land neighbors.** The
+  pressure gradient terms in the CPU solver read raw eta from neighboring cells
+  without land-mask checks, producing spurious currents at coastlines. Now uses
+  the same land-aware sampling as the GPU kernel.
+- **Antarctica missing from shelf-taper bounding boxes.** The `nearest_land_deg`
+  function omitted Antarctica from its land boxes despite `is_land` including
+  it, preventing shelf tapering near the Antarctic coast.
+- **Loading spinner rendered as rounded square.** Used `var(--r-md)` (8px)
+  instead of `border-radius: 50%` for a proper circular spinner.
+- **Coordinate-entry inputs and Go button invisible in Latte theme.** Border
+  color matched background (both `--crust`), producing invisible borders. Fixed
+  to use `--surface1`.
+- **Undefined `--r-xs` CSS token.** Preset view toggle used an undefined
+  `--r-xs` token (fell back to hardcoded 4px). Replaced with `--r-sm`.
+- **GlossaryTip popup positions stuck after clamping.** Inline styles from
+  viewport-edge clamping persisted after popup close/reopen. Now reset on each
+  open.
+- **KML export missing single-quote XML entity escape.** `escapeXml` now
+  escapes `'` as `&apos;` for complete XML safety.
+- **Settings import success suppressed by prior save error.** `saveErr` was not
+  cleared on successful import, preventing the success message from appearing.
+- **Keyframe definitions scattered across files.** `pulse`, `spin`, and
+  `indeterminate` keyframes moved from `_globe.css` to `_animations.css`
+  alongside `modal-in`.
+
 ### Changed — maintenance
 - **npm dependencies refreshed.** 9 packages updated within semver ranges
   (Tauri CLI 2.11.4, Playwright 1.61.1, Vite 8.1.2, etc.).
