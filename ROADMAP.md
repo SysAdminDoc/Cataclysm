@@ -8,15 +8,6 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P1
-
-- [ ] P1 — Migrate runup/inundation overlays to CesiumJS Buffer*Collection APIs
-  Why: CesiumJS 1.140 (April 2026) added `BufferPointCollection`, `BufferPolylineCollection`, and `BufferPolygonCollection` — performance-focused vector primitive APIs. Current overlays use batched `CylinderGeometry`/`EllipseGeometry` primitives which create individual geometry objects for 60+ coastal points. Buffer APIs would reduce memory and draw-call overhead.
-  Evidence: https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (CesiumJS 1.140 release notes); `src/components/CoastalRunupOverlay.tsx` (current primitive-based approach)
-  Touches: `src/components/CoastalRunupOverlay.tsx`, `src/components/Globe.tsx` (entity/primitive lifecycle), package.json (if CesiumJS version bump needed)
-  Acceptance: Runup bars and inundation discs render using Buffer*Collection APIs. Visual output is unchanged. Performance profile shows reduced entity count and faster frame times when 60+ coastal points are active.
-  Complexity: M
-
 ### P2
 
 - [ ] P2 — Add physics glossary tooltip system

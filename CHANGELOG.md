@@ -8,6 +8,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Strict release verification now fails closed on missing Rust policy tools.**
   `npm run verify:release` requires `cargo-audit` and `cargo-deny`; normal
   developer verification still warns when optional Rust policy tools are absent.
+- **Runup/inundation overlays now use Cesium buffer collections.** The globe
+  renders coastal runup bars and inundation discs through CesiumJS
+  `BufferPolylineCollection` / `BufferPolygonCollection` payloads instead of
+  rebuilding per-point geometry instances.
 
 ### Changed — documentation
 - **Public support links repaired.** README now points shipped-feature readers to

@@ -42,6 +42,48 @@ type Props = {
   primary?: boolean;
 };
 
+const EARTH_RADIUS_M = 6_371_000;
+const INUNDATION_SEGMENTS = 40;
+
+function circlePositions(lonDeg: number, latDeg: number, radiusM: number): Float64Array {
+  const out = new Float64Array(INUNDATION_SEGMENTS * 3);
+  const lat1 = Cesium.Math.toRadians(latDeg);
+  const lon1 = Cesium.Math.toRadians(lonDeg);
+  const angular = radiusM / EARTH_RADIUS_M;
+
+  for (let i = 0; i < INUNDATION_SEGMENTS; i += 1) {
+    const bearing = (i / INUNDATION_SEGMENTS) * Cesium.Math.TWO_PI;
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angular) +
+        Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing),
+    );
+    const lon2 =
+      lon1 +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1),
+        Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2),
+      );
+    const cart = Cesium.Cartesian3.fromRadians(lon2, lat2, 0);
+    const offset = i * 3;
+    out[offset] = cart.x;
+    out[offset + 1] = cart.y;
+    out[offset + 2] = cart.z;
+  }
+
+  return out;
+}
+
+function circleTriangles(): Uint32Array {
+  const triangles = new Uint32Array((INUNDATION_SEGMENTS - 2) * 3);
+  for (let i = 1; i < INUNDATION_SEGMENTS - 1; i += 1) {
+    const offset = (i - 1) * 3;
+    triangles[offset] = 0;
+    triangles[offset + 1] = i;
+    triangles[offset + 2] = i + 1;
+  }
+  return triangles;
+}
+
 function CoordEntryForm({
   onSubmit,
   label,
@@ -130,9 +172,8 @@ export function Globe({
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const sourceEntityRef = useRef<Cesium.Entity | null>(null);
   const wavefrontEntitiesRef = useRef<Cesium.Entity[]>([]);
-  const runupPrimitiveRef = useRef<Cesium.Primitive | null>(null);
-  const inundationFillPrimitiveRef = useRef<Cesium.Primitive | null>(null);
-  const inundationOutlinePrimitiveRef = useRef<Cesium.Primitive | null>(null);
+  const runupPrimitiveRef = useRef<Cesium.BufferPolylineCollection | null>(null);
+  const inundationPrimitiveRef = useRef<Cesium.BufferPolygonCollection | null>(null);
   const runupLabelsRef = useRef<Map<string, Cesium.Entity>>(new Map());
   const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
@@ -195,8 +236,7 @@ export function Globe({
       sourceEntityRef.current = null;
       wavefrontEntitiesRef.current = [];
       runupPrimitiveRef.current = null;
-      inundationFillPrimitiveRef.current = null;
-      inundationOutlinePrimitiveRef.current = null;
+      inundationPrimitiveRef.current = null;
       runupLabelsRef.current = new Map();
       dartEntitiesRef.current = new Map();
       sweLayerRef.current = null;
@@ -691,8 +731,8 @@ export function Globe({
   }, [sweSnapshot, viewerEpoch]);
 
   // Runup bars + inundation discs at named coastal points.
-  // Uses Cesium Primitive API (batched geometry) instead of per-point entities
-  // so overlays scale to thousands of points without entity-system overhead.
+  // Uses Cesium Buffer*Collection APIs instead of per-point geometry instances
+  // so the overlay payload lives in typed buffers rather than entity objects.
   // Labels remain as entities (Cesium labels are entity-only).
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -704,13 +744,9 @@ export function Globe({
       prims.remove(runupPrimitiveRef.current);
       runupPrimitiveRef.current = null;
     }
-    if (inundationFillPrimitiveRef.current) {
-      prims.remove(inundationFillPrimitiveRef.current);
-      inundationFillPrimitiveRef.current = null;
-    }
-    if (inundationOutlinePrimitiveRef.current) {
-      prims.remove(inundationOutlinePrimitiveRef.current);
-      inundationOutlinePrimitiveRef.current = null;
+    if (inundationPrimitiveRef.current) {
+      prims.remove(inundationPrimitiveRef.current);
+      inundationPrimitiveRef.current = null;
     }
 
     const runupColor = (runup_m: number) =>
@@ -720,75 +756,94 @@ export function Globe({
           ? Cesium.Color.fromCssColorString("#f9e2af")
           : Cesium.Color.fromCssColorString("#f38ba8");
 
-    // --- Runup cylinder bars (single Primitive for all points) ---
-    const cylInstances: Cesium.GeometryInstance[] = [];
+    const arrivedRunup = (runupResults ?? []).filter(
+      (r) => r.has_arrived && Number.isFinite(r.runup_m) && r.runup_m >= 0.1,
+    );
+    const arrivedInundation = (runupResults ?? []).filter(
+      (r) =>
+        r.has_arrived &&
+        Number.isFinite(r.inundation_extent_m) &&
+        r.inundation_extent_m >= 100,
+    );
+
+    // --- Runup vertical bars (single BufferPolylineCollection for all points) ---
     const labelMap = runupLabelsRef.current;
     const labelSeen = new Set<string>();
 
-    for (const r of runupResults ?? []) {
-      if (!r.has_arrived || !Number.isFinite(r.runup_m) || r.runup_m < 0.1) continue;
+    if (arrivedRunup.length > 0) {
+      const runupCollection = new Cesium.BufferPolylineCollection({
+        primitiveCountMax: arrivedRunup.length,
+        vertexCountMax: arrivedRunup.length * 2,
+        allowPicking: false,
+        blendOption: Cesium.BlendOption.TRANSLUCENT,
+      });
+      const runupLine = new Cesium.BufferPolyline();
 
-      const heightM = Math.min(Math.max(r.runup_m * 500, 5000), 8e5);
-      const color = runupColor(r.runup_m);
-      const center = Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM / 2);
-      const mm = Cesium.Transforms.eastNorthUpToFixedFrame(center);
-
-      cylInstances.push(
-        new Cesium.GeometryInstance({
-          geometry: new Cesium.CylinderGeometry({
-            length: heightM,
-            topRadius: 6000,
-            bottomRadius: 9000,
-            slices: 24,
-          }),
-          modelMatrix: mm,
-          attributes: {
-            color: Cesium.ColorGeometryInstanceAttribute.fromColor(color.withAlpha(0.85)),
+      for (const r of arrivedRunup) {
+        const heightM = Math.min(Math.max(r.runup_m * 500, 5000), 8e5);
+        const color = runupColor(r.runup_m);
+        const ground = Cesium.Cartesian3.fromDegrees(r.lon, r.lat, 0);
+        const top = Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM);
+        runupCollection.add(
+          {
+            positions: new Float64Array([ground.x, ground.y, ground.z, top.x, top.y, top.z]),
+            material: new Cesium.BufferPolylineMaterial({
+              color: color.withAlpha(0.85),
+              outlineColor: Cesium.Color.fromCssColorString("#11111b").withAlpha(0.6),
+              outlineWidth: 1,
+              width: 8,
+            }),
+            featureId: 0,
+            pickObject: { id: r.id },
           },
-          id: r.id,
-        }),
-      );
-
-      // Label (entity) — update in place or create.
-      labelSeen.add(r.id);
-      const arrivalMin = r.arrival_time_s / 60;
-      const arrivalLabel = !Number.isFinite(arrivalMin)
-        ? "—"
-        : arrivalMin < 60
-          ? `T+${arrivalMin.toFixed(0)}m`
-          : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
-      const offshore = Number.isFinite(r.offshore_amplitude_m) ? r.offshore_amplitude_m.toFixed(2) : "—";
-      const hoverText = `${r.name}\n${arrivalLabel}  •  ${r.runup_m.toFixed(1)} m runup\n${offshore} m offshore`;
-
-      let lbl = labelMap.get(r.id);
-      if (!lbl) {
-        lbl = viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM),
-          label: {
-            text: hoverText,
-            font: "10px Inter, sans-serif",
-            fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
-            outlineColor: Cesium.Color.fromCssColorString("#11111b"),
-            outlineWidth: 2,
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            pixelOffset: new Cesium.Cartesian2(0, -10),
-            showBackground: true,
-            backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.9),
-            backgroundPadding: new Cesium.Cartesian2(6, 4),
-            scale: 0.9,
-            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3_000_000),
-          },
-        });
-        labelMap.set(r.id, lbl);
-      } else {
-        lbl.position = new Cesium.ConstantPositionProperty(
-          Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM),
+          runupLine,
         );
-        if (lbl.label) {
-          lbl.label.text = new Cesium.ConstantProperty(hoverText);
+
+        // Label (entity) - update in place or create.
+        labelSeen.add(r.id);
+        const arrivalMin = r.arrival_time_s / 60;
+        const arrivalLabel = !Number.isFinite(arrivalMin)
+          ? "-"
+          : arrivalMin < 60
+            ? `T+${arrivalMin.toFixed(0)}m`
+            : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
+        const offshore = Number.isFinite(r.offshore_amplitude_m) ? r.offshore_amplitude_m.toFixed(2) : "-";
+        const hoverText =
+          `${r.name}\n${arrivalLabel}  -  ${r.runup_m.toFixed(1)} m runup\n` +
+          `${offshore} m offshore`;
+
+        let lbl = labelMap.get(r.id);
+        if (!lbl) {
+          lbl = viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM),
+            label: {
+              text: hoverText,
+              font: "10px Inter, sans-serif",
+              fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
+              outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+              outlineWidth: 2,
+              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              pixelOffset: new Cesium.Cartesian2(0, -10),
+              showBackground: true,
+              backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.9),
+              backgroundPadding: new Cesium.Cartesian2(6, 4),
+              scale: 0.9,
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3_000_000),
+            },
+          });
+          labelMap.set(r.id, lbl);
+        } else {
+          lbl.position = new Cesium.ConstantPositionProperty(
+            Cesium.Cartesian3.fromDegrees(r.lon, r.lat, heightM),
+          );
+          if (lbl.label) {
+            lbl.label.text = new Cesium.ConstantProperty(hoverText);
+          }
         }
       }
+
+      runupPrimitiveRef.current = prims.add(runupCollection);
     }
 
     // Remove stale labels.
@@ -799,92 +854,39 @@ export function Globe({
       }
     }
 
-    if (cylInstances.length > 0) {
-      runupPrimitiveRef.current = prims.add(
-        new Cesium.Primitive({
-          geometryInstances: cylInstances,
-          appearance: new Cesium.PerInstanceColorAppearance({
-            flat: false,
-            translucent: true,
-          }),
-          asynchronous: false,
-        }),
-      );
-    }
+    // --- Inundation discs (single BufferPolygonCollection with fill + outline) ---
+    if (arrivedInundation.length > 0) {
+      const triangles = circleTriangles();
+      const inundationCollection = new Cesium.BufferPolygonCollection({
+        primitiveCountMax: arrivedInundation.length,
+        vertexCountMax: arrivedInundation.length * INUNDATION_SEGMENTS,
+        triangleCountMax: arrivedInundation.length * (INUNDATION_SEGMENTS - 2),
+        allowPicking: false,
+        blendOption: Cesium.BlendOption.TRANSLUCENT,
+      });
+      const polygon = new Cesium.BufferPolygon();
 
-    // --- Inundation discs (fill + outline as two Primitives) ---
-    const fillInstances: Cesium.GeometryInstance[] = [];
-    const outlineInstances: Cesium.GeometryInstance[] = [];
-
-    for (const r of runupResults ?? []) {
-      if (
-        !r.has_arrived ||
-        !Number.isFinite(r.inundation_extent_m) ||
-        r.inundation_extent_m < 100
-      )
-        continue;
-
-      const colour = runupColor(r.runup_m);
-      const radius = Math.min(Math.max(r.inundation_extent_m, 200), 50_000);
-      const center = Cesium.Cartesian3.fromDegrees(r.lon, r.lat, 0);
-
-      fillInstances.push(
-        new Cesium.GeometryInstance({
-          geometry: new Cesium.EllipseGeometry({
-            center,
-            semiMajorAxis: radius,
-            semiMinorAxis: radius,
-            height: 0,
-          }),
-          attributes: {
-            color: Cesium.ColorGeometryInstanceAttribute.fromColor(colour.withAlpha(0.25)),
+      for (const r of arrivedInundation) {
+        const colour = runupColor(r.runup_m);
+        const radius = Math.min(Math.max(r.inundation_extent_m, 200), 50_000);
+        inundationCollection.add(
+          {
+            positions: circlePositions(r.lon, r.lat, radius),
+            holes: new Uint32Array(),
+            triangles,
+            material: new Cesium.BufferPolygonMaterial({
+              color: colour.withAlpha(0.25),
+              outlineColor: colour.withAlpha(0.7),
+              outlineWidth: 2,
+            }),
+            featureId: 0,
+            pickObject: { id: `inundation-${r.id}` },
           },
-          id: `inundation-${r.id}`,
-        }),
-      );
+          polygon,
+        );
+      }
 
-      outlineInstances.push(
-        new Cesium.GeometryInstance({
-          geometry: new Cesium.EllipseOutlineGeometry({
-            center,
-            semiMajorAxis: radius,
-            semiMinorAxis: radius,
-            height: 0,
-          }),
-          attributes: {
-            color: Cesium.ColorGeometryInstanceAttribute.fromColor(colour.withAlpha(0.7)),
-          },
-          id: `inundation-outline-${r.id}`,
-        }),
-      );
-    }
-
-    if (fillInstances.length > 0) {
-      inundationFillPrimitiveRef.current = prims.add(
-        new Cesium.Primitive({
-          geometryInstances: fillInstances,
-          appearance: new Cesium.PerInstanceColorAppearance({
-            flat: true,
-            translucent: true,
-          }),
-          asynchronous: false,
-        }),
-      );
-    }
-
-    if (outlineInstances.length > 0) {
-      inundationOutlinePrimitiveRef.current = prims.add(
-        new Cesium.Primitive({
-          geometryInstances: outlineInstances,
-          appearance: new Cesium.PerInstanceColorAppearance({
-            flat: true,
-            renderState: {
-              lineWidth: Math.min(2.0, viewer.scene.maximumAliasedLineWidth),
-            },
-          }),
-          asynchronous: false,
-        }),
-      );
+      inundationPrimitiveRef.current = prims.add(inundationCollection);
     }
   }, [runupResults, viewerEpoch]);
 
