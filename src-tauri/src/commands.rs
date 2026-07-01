@@ -193,6 +193,7 @@ pub struct FarFieldRequest {
     pub range_m: f64,
     pub mean_depth_m: f64,
     pub decay_alpha: f64,
+    #[serde(default)]
     pub is_impact: bool,
 }
 

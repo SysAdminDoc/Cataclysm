@@ -251,7 +251,7 @@ impl SwGrid {
                 let lon = self.west_lon + (i as f64 + 0.5) * self.dlon_deg;
                 let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;
                 let dlat_m = (lat - source_lat) / lat_per_m;
-                let lon_per_m = lat_per_m / source_lat.to_radians().cos().abs().max(0.05);
+                let lon_per_m = lat_per_m / lat.to_radians().cos().abs().max(0.05);
                 let dlon_m = (lon - source_lon) / lon_per_m;
                 let range_m = (dlat_m * dlat_m + dlon_m * dlon_m).sqrt();
                 let depression = source.surface_depression_m(range_m, t_s);
@@ -719,10 +719,28 @@ impl TimeStepper {
                         v_row[i] = 0.0;
                         continue;
                     }
-                    let dnedx = (eta_ref[idx(i + 1, j, nx)] - eta_ref[idx(i - 1, j, nx)])
-                        / (2.0 * dx);
-                    let dnedy = (eta_ref[idx(i, j + 1, nx)] - eta_ref[idx(i, j - 1, nx)])
-                        / (2.0 * dy);
+                    let eta_e = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        eta_ref[idx(i + 1, j, nx)]
+                    } else {
+                        0.0
+                    };
+                    let eta_w = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        eta_ref[idx(i - 1, j, nx)]
+                    } else {
+                        0.0
+                    };
+                    let eta_n = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        eta_ref[idx(i, j + 1, nx)]
+                    } else {
+                        0.0
+                    };
+                    let eta_s = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        eta_ref[idx(i, j - 1, nx)]
+                    } else {
+                        0.0
+                    };
+                    let dnedx = (eta_e - eta_w) / (2.0 * dx);
+                    let dnedy = (eta_n - eta_s) / (2.0 * dy);
                     let h_total = (h[idx(i, j, nx)] + eta_ref[idx(i, j, nx)]).max(0.01);
                     let u = u_in[idx(i, j, nx)];
                     let v = v_in[idx(i, j, nx)];

@@ -175,17 +175,12 @@ impl GpuTimeStepper {
             );
             return None;
         }
-        let total_estimated = n_bytes * 10;
-        if total_estimated > (max_buf as f64 * 0.8) as u64 {
-            report_diagnostic(
-                diagnostics,
-                format!(
-                    "[gpu] estimated total VRAM {} exceeds 80% of max_buffer_binding_size {} — falling back to CPU",
-                    total_estimated, max_buf
-                ),
-            );
-            return None;
-        }
+        // Note: total VRAM usage is ~10× n_bytes. We don't check that
+        // against an aggregate VRAM budget because wgpu doesn't expose
+        // total device memory. The per-buffer limit check above catches
+        // the most common OOM vector (single buffer > adapter limit).
+        // If the device can't allocate, request_device / create_buffer
+        // will return an error and we fall back to CPU.
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
