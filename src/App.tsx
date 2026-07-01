@@ -20,6 +20,7 @@ import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { APP_VERSION } from "./lib/model-provenance";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
@@ -418,7 +419,7 @@ export default function App() {
             TS
           </span>
           <h1 className="app__title">TsunamiSimulator</h1>
-          <span className="app__version">v0.4.4</span>
+          <span className="app__version">v{APP_VERSION}</span>
         </div>
         <div className="app__warning">
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.

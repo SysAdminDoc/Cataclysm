@@ -39,7 +39,9 @@ export function generateTextExport(data: TextExportData): string {
     lines.push("Source Parameters");
     lines.push("-----------------");
     lines.push(`Label: ${i.label}`);
-    lines.push(`Location: ${i.center.lat_deg.toFixed(4)}° N, ${i.center.lon_deg.toFixed(4)}° E`);
+    const ns = i.center.lat_deg >= 0 ? "N" : "S";
+    const ew = i.center.lon_deg >= 0 ? "E" : "W";
+    lines.push(`Location: ${Math.abs(i.center.lat_deg).toFixed(4)}° ${ns}, ${Math.abs(i.center.lon_deg).toFixed(4)}° ${ew}`);
     if (i.center.depth_m !== undefined) {
       lines.push(`Water depth: ${i.center.depth_m.toFixed(0)} m`);
     }

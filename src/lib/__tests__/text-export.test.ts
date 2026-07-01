@@ -59,4 +59,18 @@ describe("generateTextExport", () => {
     const report = generateTextExport({ timeS: 0 });
     expect(report).toContain("Scenario Results Export");
   });
+
+  it("formats southern/western coordinates correctly", () => {
+    const report = generateTextExport({
+      initial: {
+        ...MOCK_INITIAL,
+        center: { lat_deg: -33.86, lon_deg: -151.2, depth_m: 2000 },
+      },
+      timeS: 0,
+    });
+    expect(report).toContain("33.8600° S");
+    expect(report).toContain("151.2000° W");
+    expect(report).not.toContain("-33");
+    expect(report).not.toContain("-151");
+  });
 });
