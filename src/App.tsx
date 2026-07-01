@@ -194,6 +194,7 @@ export default function App() {
   const [pickMode, setPickMode] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
@@ -702,6 +703,7 @@ export default function App() {
                 inspectIsImpact={activePresetA?.source.kind === "Asteroid"}
                 inspectTimeS={timeS}
                 onInspectCancel={() => setInspectMode(false)}
+                onAddGauge={(lat, lon) => setPendingGauge({ lat, lon })}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
@@ -736,7 +738,7 @@ export default function App() {
             <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} />
           </div>
         )}
-        <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} onSnapshotsReady={setSweSnapshots} />
+        <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} onSnapshotsReady={setSweSnapshots} pendingGauge={pendingGauge} />
         <Activity mode={compareMode ? "visible" : "hidden"}>
           <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />
         </Activity>

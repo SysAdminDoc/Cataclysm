@@ -11,6 +11,7 @@ type Props = {
   initial: InitialDisplacement | null;
   onSnapshot?: (snap: GridSnapshot | null) => void;
   onSnapshotsReady?: (snaps: GridSnapshot[] | null) => void;
+  pendingGauge?: { lat: number; lon: number } | null;
 };
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -43,7 +44,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -141,6 +142,23 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const removeGauge = useCallback((id: string) => {
     setGauges((prev) => prev.filter((g) => g.id !== id));
   }, []);
+
+  const lastPendingRef = useRef<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    if (!pendingGauge) return;
+    if (
+      lastPendingRef.current &&
+      lastPendingRef.current.lat === pendingGauge.lat &&
+      lastPendingRef.current.lon === pendingGauge.lon
+    ) return;
+    lastPendingRef.current = pendingGauge;
+    gaugeCounter.current += 1;
+    const name = `Inspect ${gaugeCounter.current}`;
+    setGauges((prev) => [
+      ...prev,
+      { id: `gauge-${gaugeCounter.current}`, name, lat_deg: pendingGauge.lat, lon_deg: pendingGauge.lon },
+    ]);
+  }, [pendingGauge]);
 
   const handleGaugeCsvExport = useCallback(() => {
     if (gaugeSeries.length === 0) return;

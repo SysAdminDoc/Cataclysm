@@ -1405,6 +1405,22 @@ a {
   font-size: 12px;
 }
 
+.app__globe-banner-action {
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app__globe-banner-action:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .coord-entry {
   display: flex;
   align-items: center;

@@ -36,6 +36,7 @@ type Props = {
   inspectIsImpact?: boolean;
   inspectTimeS?: number;
   onInspectCancel?: () => void;
+  onAddGauge?: (lat: number, lon: number) => void;
   /** Whether this is the primary (exportable) globe pane. Only the primary
    *  pane keeps the WebGL backbuffer alive for PNG/share/video export — the
    *  Slot B compare pane skips that per-frame cost. */
@@ -166,11 +167,13 @@ export function Globe({
   inspectIsImpact,
   inspectTimeS,
   onInspectCancel,
+  onAddGauge,
   primary = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const sourceEntityRef = useRef<Cesium.Entity | null>(null);
+  const [lastInspectCoord, setLastInspectCoord] = useState<{ lat: number; lon: number } | null>(null);
   const wavefrontEntitiesRef = useRef<Cesium.Entity[]>([]);
   const runupPrimitiveRef = useRef<Cesium.BufferPolylineCollection | null>(null);
   const inundationPrimitiveRef = useRef<Cesium.BufferPolygonCollection | null>(null);
@@ -395,7 +398,6 @@ export function Globe({
     const viewer = viewerRef.current;
     if (!viewer) return;
 
-    // Clean up entity + handler when mode flips off.
     if (!inspectMode) {
       destroyScreenSpaceHandler(inspectHandlerRef.current);
       inspectHandlerRef.current = null;
@@ -403,6 +405,7 @@ export function Globe({
         viewer.entities.remove(inspectEntityRef.current);
         inspectEntityRef.current = null;
       }
+      setLastInspectCoord(null);
       return;
     }
 
@@ -419,10 +422,8 @@ export function Globe({
       const carto = Cesium.Cartographic.fromCartesian(cartesian);
       const lat = Cesium.Math.toDegrees(carto.latitude);
       const lon = Cesium.Math.toDegrees(carto.longitude);
+      setLastInspectCoord({ lat, lon });
 
-      // Use the source's own water depth as the propagation depth so the
-      // inspect readout reconciles with run_preset / the results panel,
-      // instead of a hardcoded flat 4000 m that contradicts shelf/lake events.
       const sourceDepth = initial.center.depth_m ?? 0;
       const req = {
         source: initial.center,
@@ -957,6 +958,17 @@ export function Globe({
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">
             <span>Click anywhere on the globe to read amplitude, arrival, and runup.</span>
+            {lastInspectCoord && onAddGauge && (
+              <button
+                className="app__globe-banner-action"
+                onClick={() => {
+                  onAddGauge(lastInspectCoord.lat, lastInspectCoord.lon);
+                }}
+                type="button"
+              >
+                Add gauge at {lastInspectCoord.lat.toFixed(2)}°, {lastInspectCoord.lon.toFixed(2)}°
+              </button>
+            )}
             <button className="app__globe-banner-cancel" onClick={onInspectCancel} type="button">
               Cancel
             </button>
@@ -964,14 +976,7 @@ export function Globe({
           <CoordEntryForm
             onSubmit={(lat, lon) => {
               if (!viewerRef.current || !initial) return;
-              const viewer = viewerRef.current;
-              const fakeEvt = {
-                position: new Cesium.Cartesian2(
-                  viewer.canvas.width / 2,
-                  viewer.canvas.height / 2,
-                ),
-              };
-              void fakeEvt;
+              setLastInspectCoord({ lat, lon });
               const sourceDepth = initial.center.depth_m ?? 0;
               const req = {
                 source: initial.center,
