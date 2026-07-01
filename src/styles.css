@@ -3295,6 +3295,156 @@ a {
   }
 }
 
+/* Print stylesheet — clean white-background classroom handouts. */
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: #111 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-color: #ccc !important;
+  }
+
+  html, body, #root {
+    height: auto;
+    overflow: visible;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  .app {
+    display: block;
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  /* Hide interactive chrome that has no print value. */
+  .app__header,
+  .app__statusbar,
+  .app__globe,
+  .token-banner,
+  .app-toast,
+  .tour-card,
+  .tour-overlay,
+  .modal-overlay,
+  .swe__controls,
+  .swe__timeline,
+  .scenario-form__actions,
+  .icon-button,
+  .primary,
+  .scenario-tab,
+  .settings__actions,
+  .log-viewer__toolbar,
+  .log-viewer__list,
+  .first-run,
+  .first-run-overlay,
+  .cesium-widget,
+  button {
+    display: none !important;
+  }
+
+  .app__panel,
+  .app__panel--right {
+    border: none;
+    overflow: visible;
+    page-break-inside: avoid;
+  }
+
+  .section {
+    page-break-inside: avoid;
+    border: 1px solid #ccc;
+    padding: 12pt;
+    margin-bottom: 12pt;
+  }
+
+  .section__title {
+    font-size: 14pt;
+    font-weight: 700;
+    margin-bottom: 8pt;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4pt;
+  }
+
+  .results {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6pt;
+  }
+
+  .results__cell {
+    border: 1px solid #ddd;
+    padding: 6pt 8pt;
+    page-break-inside: avoid;
+  }
+
+  .results__label { font-size: 9pt; }
+  .results__value { font-size: 13pt; font-weight: 700; }
+  .results__unit { font-size: 9pt; }
+
+  .source-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4pt;
+  }
+
+  /* Guided lesson content — printable. */
+  .lesson-overlay {
+    position: static;
+    background: transparent;
+  }
+
+  .lesson-card {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    box-shadow: none;
+    border: 1px solid #ccc;
+    padding: 12pt;
+    page-break-inside: avoid;
+  }
+
+  .lesson-card__actions { display: none !important; }
+  .lesson-card__progress { display: none !important; }
+
+  .lesson-card__title {
+    font-size: 14pt;
+    margin-bottom: 6pt;
+  }
+
+  .lesson-card__body {
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+
+  /* Citations — always printable. */
+  .citations__row {
+    border: 1px solid #ddd;
+    padding: 6pt;
+    page-break-inside: avoid;
+  }
+
+  .citations__ref a { color: #111 !important; text-decoration: underline; }
+
+  /* Attenuation chart — show if rendered. */
+  .attenuation-chart canvas,
+  .attenuation-chart svg {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+
+  /* Footer credit for printed pages. */
+  @page {
+    margin: 1.5cm;
+    @bottom-center {
+      content: "TsunamiSimulator — educational use only, not for evacuation";
+      font-size: 8pt;
+      color: #999;
+    }
+  }
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;
