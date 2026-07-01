@@ -12,6 +12,12 @@ Return them to ROADMAP.md once the blocker is resolved.
   *Workflow scaffolded conditional on `WIN_SIGN_CERT_BASE64` / `APPLE_*` secrets being present (no-op when missing); `docs/release/CODESIGNING.md` documents the 8 secret slots.*
   **Blocker:** Needs maintainer EV cert + Apple Developer enrollment.
 
+- **P1** — Adopt Azure Artifact Signing for Windows code signing.
+  **Blocker:** Needs maintainer-controlled paid Azure subscription, Artifact Signing account, completed identity validation, active certificate profile, signing role assignment, and account endpoint/profile metadata before local `signtool` signing can succeed. Return to ROADMAP.md once those Azure resources exist.
+
+- **P1** — Publish winget manifest for Windows Package Manager distribution.
+  **Blocker:** Acceptance depends on external `microsoft/winget-pkgs` submission, validation, and merge before `winget search TsunamiSimulator` can find the package. Return to ROADMAP.md once a release URL and maintainer publication path are ready.
+
 - **F-V07 P1** — `tauri-plugin-updater` Ed25519-signed channel.
   *Release workflow now emits `latest.json` updater manifest conditional on `TAURI_SIGNING_PRIVATE_KEY` being present.*
   **Blocker:** Needs maintainer to run `npx tauri signer generate`, paste private key as GH secret, paste public key into `tauri.conf.json`, and register the plugin in `src-tauri/src/lib.rs` (steps documented in `docs/release/CODESIGNING.md`).

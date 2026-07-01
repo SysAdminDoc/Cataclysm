@@ -8,37 +8,7 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P0
-
-- [ ] P0 — Surface Rust-side diagnostics to the frontend LogViewer
-  Why: GPU solver failures, VRAM fallbacks, and PNG encode errors go to stderr via `eprintln!` and are invisible in the app's diagnostics panel. Users and support workflows miss critical solver state information.
-  Evidence: 9 `eprintln!` calls in `src-tauri/src/physics/solver/gpu.rs` (lines 150, 158, 415, 457) and `src-tauri/src/physics/solver/mod.rs` (lines 312, 317); frontend LogViewer only intercepts JS `console.warn`/`console.error`
-  Touches: `src-tauri/src/physics/solver/gpu.rs`, `src-tauri/src/physics/solver/mod.rs`, `src-tauri/src/lib.rs` (Tauri event emission), `src/components/LogViewer.tsx` (listen for Rust events)
-  Acceptance: GPU fallback, VRAM limit, poll failure, readback failure, and PNG encode errors appear as timestamped entries in the LogViewer panel. Existing `eprintln!` calls are replaced or supplemented with `app_handle.emit("solver-diagnostic", ...)` events.
-  Complexity: M
-
-- [ ] P0 — Replace silent .catch(() => {}) error swallowers with logged warnings
-  Why: 8 locations silently discard errors from settings reads, token fetches, tour completion, and simulation cancellation. These mask initialization and persistence failures that should appear in diagnostics.
-  Evidence: `src/App.tsx` (lines 255, 263, 304, 376, 724), `src/main.tsx` (line 22), `src/components/ScenarioBuilder.tsx` (line 199), `src/components/SwePlayback.tsx` (line 136)
-  Touches: `src/App.tsx`, `src/main.tsx`, `src/components/ScenarioBuilder.tsx`, `src/components/SwePlayback.tsx`
-  Acceptance: Every `.catch(() => {})` is replaced with `.catch((err) => console.warn("[context] operation failed", err))` so failures appear in the LogViewer. No user-facing UI changes — these are diagnostic-only.
-  Complexity: S
-
 ### P1
-
-- [ ] P1 — Adopt Azure Artifact Signing for Windows code signing
-  Why: Azure Artifact Signing (formerly Trusted Signing) offers code signing at ~$10/month without hardware tokens or EV certificates. This unblocks the existing F-V04 blocker in Roadmap_Blocked.md, which assumed $400-900/year EV certs were the only path. Unsigned installers trigger SmartScreen warnings and reduce user trust.
-  Evidence: https://azure.microsoft.com/en-us/products/artifact-signing; https://textslashplain.com/2025/03/12/authenticode-in-2025-azure-trusted-signing/; existing F-V04 blocker in `Roadmap_Blocked.md`
-  Touches: `docs/release/CODESIGNING.md`, `scripts/verify.mjs` (optional signtool step), build/release workflow, README install section
-  Acceptance: Windows MSI and NSIS installers are signed with an Azure Artifact Signing certificate. `signtool verify /pa` reports a valid signature. SmartScreen no longer shows unknown-publisher warnings. CODESIGNING.md documents the Azure setup.
-  Complexity: M
-
-- [ ] P1 — Publish winget manifest for Windows Package Manager distribution
-  Why: winget is the standard Windows package manager (ships with Windows 11). Publishing a manifest enables `winget install TsunamiSimulator` and improves discoverability. Unsigned installers are accepted on winget.
-  Evidence: https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/choose-distribution-path; winget supports MSI/EXE installers
-  Touches: New `winget/` directory with manifest YAML, README install section, release checklist in `docs/release/CODESIGNING.md`
-  Acceptance: `winget search TsunamiSimulator` finds the package. `winget install SysAdminDoc.TsunamiSimulator` installs from the GitHub Release MSI. Manifest passes `winget validate`.
-  Complexity: S
 
 - [ ] P1 — Persist guided-lesson completion state
   Why: The v0.4.4 guided lessons use ephemeral React state — lesson progress resets on page reload. Persisting completion timestamps (like tour/disclaimer) lets users track which lessons they've done and lets teachers verify student progress.
@@ -116,15 +86,6 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P0
-
-- [ ] P0 — Restore the tracked local toolchain doctor
-  Why: The README advertises `npm run doctor` and `package.json` wires it, but the target script is missing, so the documented preflight path fails before checking the user's machine.
-  Evidence: `package.json` script `"doctor": "node scripts/doctor.mjs"`; `README.md:161`; `scripts/doctor.mjs` absent; local `npm run doctor` fails with `MODULE_NOT_FOUND`
-  Touches: `scripts/doctor.mjs`, `package.json`, `README.md`, `scripts/verify.mjs`
-  Acceptance: `npm run doctor` runs without module-resolution failure, reports required vs optional tools (Node/npm, Rust/Cargo, Tauri CLI, Visual Studio Build Tools, cargo-audit, cargo-deny, signtool), gives actionable install/fix text, exits nonzero only for required missing tools, and has at least one unit or smoke test covering the command.
-  Complexity: S
-
 ### P1
 
 - [ ] P1 — Repair public docs links to tracked support paths
@@ -170,3 +131,14 @@ Single source of truth for delivery. Blocked items live in
   Touches: `src-tauri/tauri.conf.json`, `scripts/verify.mjs`, `README.md`, `docs/ipc-api.md`
   Acceptance: Local verification parses the configured CSP and fails if new wildcard origins, extra remote hosts, or additional unsafe directives are introduced without updating a small allowlist/rationale. Existing Cesium-required exceptions remain documented and unchanged.
   Complexity: S
+
+## Research-Driven Additions
+
+### P1
+
+- [ ] P1 — Sample user gauge CSVs from Rust SWE fields
+  Why: Desktop gauge CSVs are labeled as backend SWE output, but the current gauge series is generated by the browser demo sampler instead of raw Rust solver eta values.
+  Evidence: `src/components/SwePlayback.tsx:96-104`; `src/lib/demo.ts::sampleGaugesFromDemo`; `src/lib/export.ts`; GeoClaw gauge outputs; NOAA SIFT/DART time-series products; `Roadmap_Blocked.md` DART RMSE prerequisite.
+  Touches: `src-tauri/src/physics/solver/mod.rs`, `src-tauri/src/commands.rs`, `src/lib/tauri.ts`, `src/types/scenario.ts`, `src/components/SwePlayback.tsx`, `src/lib/export.ts`, `src/components/__tests__/SwePlayback.test.tsx`, Rust command tests.
+  Acceptance: `simulate_grid` and streaming simulation accept gauge sample points and return per-snapshot eta samples from the Rust grid; desktop gauge sparklines/CSV use those samples and label the solver mode accurately; browser preview keeps the demo sampler with the existing approximate provenance; tests cover backend sample interpolation/bounds and CSV output.
+  Complexity: M
