@@ -30,6 +30,29 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   configured CSP from `tauri.conf.json` and fails if new exceptions are
   introduced without updating the documented allowlist.
 
+### Fixed — audit pass
+- **5 undefined `--subtext0` CSS token references.** SWE gauge coordinates,
+  remove buttons, peak readout, and lesson step/icon text were resolving to
+  black in both themes. Fixed to `--subtext`.
+- **Hardcoded focus ring ignoring theme.** Input focus ring used Mocha-blue
+  `rgba(116, 199, 236, 0.25)` instead of theme-aware `var(--focus-ring)`.
+- **3 hardcoded `rgba(0,0,0)` shadows.** Globe status badge, hint card, and
+  preset hover shadows looked harsh in Latte theme. Replaced with theme tokens.
+- **Skip-link using undefined `--surface` token.** Fixed to `--surface0`.
+- **Text export showing wrong hemisphere labels.** Southern/western coordinates
+  displayed as `-33.86° N` instead of `33.86° S`. Fixed with absolute-value
+  formatting.
+- **App header version badge drift.** Hardcoded `v0.4.4` string replaced with
+  `APP_VERSION` import from model-provenance to prevent version drift.
+- **Settings import/reset not applying theme visually.** Import and Reset now
+  call `applyTheme()` so the change takes effect immediately.
+- **GlossaryTip clipped by overflow ancestors.** Added viewport-edge clamping
+  so tooltips reposition when they would render outside the viewport.
+- **Scenario URL size guard.** `scenarioFromUrl` now rejects payloads over
+  10 KB to prevent out-of-memory on crafted deep links.
+- **Settings import prototype pollution guard.** `importSettings` now skips
+  `__proto__`, `constructor`, and `prototype` keys and rejects non-object JSON.
+
 ### Changed — maintenance
 - **npm dependencies refreshed.** 9 packages updated within semver ranges
   (Tauri CLI 2.11.4, Playwright 1.61.1, Vite 8.1.2, etc.).
