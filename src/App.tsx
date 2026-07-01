@@ -19,7 +19,7 @@ import { api, isTauri } from "./lib/tauri";
 import { dartPinsForPreset } from "./lib/dart";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
@@ -349,6 +349,16 @@ export default function App() {
       : "Analytical source geometry and coastal runup sampling",
   });
 
+  const exportMetaB = (): ScreenshotMeta => ({
+    preset: activePresetB,
+    initial: slotB.initial,
+    timeS,
+    scenarioKind: activePresetB?.source.kind ?? "Custom",
+    solverMode: hasSwePlayback
+      ? "Shallow-water-equation snapshot playback"
+      : "Analytical source geometry and coastal runup sampling",
+  });
+
   function handlePickGlobe(lat: number, lon: number) {
     setPickedLocation({ lat, lon });
     setPickMode(false);
@@ -453,6 +463,26 @@ export default function App() {
             >
               PNG
             </ToolbarButton>
+            {compareMode && (
+              <ToolbarButton
+                icon="compare"
+                onClick={() => {
+                  const ok = exportComparisonPng({
+                    metaA: exportMetaA(),
+                    metaB: exportMetaB(),
+                    labelA: activePresetA?.name ?? "Slot A",
+                    labelB: activePresetB?.name ?? "Slot B",
+                  });
+                  showToast(ok ? "Saved comparison PNG." : "Both globe views must be visible.", ok ? "info" : "error");
+                }}
+                title="Export both comparison globes side-by-side as a single PNG"
+                disabled={!slotA.initial || !slotB.initial}
+                disabledReason="Select a source in both comparison slots first."
+                onUnavailable={(reason) => showToast(reason, "info")}
+              >
+                Compare
+              </ToolbarButton>
+            )}
             <ToolbarButton
               icon="share"
               onClick={() => {

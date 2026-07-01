@@ -14,9 +14,12 @@ import { isTauri } from "./tauri";
 
 /** Find the Cesium globe canvas. */
 function findGlobeCanvas(): HTMLCanvasElement | null {
-  // Cesium adds class `cesium-widget` to its container; the canvas lives inside.
   const w = document.querySelector(".cesium-widget canvas") as HTMLCanvasElement | null;
   return w;
+}
+
+function findAllGlobeCanvases(): HTMLCanvasElement[] {
+  return Array.from(document.querySelectorAll(".cesium-widget canvas")) as HTMLCanvasElement[];
 }
 
 export type ScreenshotMeta = ModelProvenanceInput & {
@@ -286,6 +289,83 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
 
   const dataUrl = canvas.toDataURL("image/png");
   downloadDataUrl(dataUrl, suggestedFilename(meta, "png").replace(".png", "-share.png"));
+  return true;
+}
+
+export type ComparisonExportMeta = {
+  metaA: ScreenshotMeta;
+  metaB: ScreenshotMeta;
+  labelA?: string;
+  labelB?: string;
+};
+
+export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
+  const canvases = findAllGlobeCanvases();
+  if (canvases.length < 2) return false;
+  const [srcA, srcB] = canvases;
+
+  const GAP = 4;
+  const LABEL_H = 36;
+  const FOOTER_H = 50;
+  const paneW = Math.max(srcA.width, srcB.width);
+  const paneH = Math.max(srcA.height, srcB.height);
+  const W = paneW * 2 + GAP;
+  const H = LABEL_H + paneH + FOOTER_H;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+
+  ctx.fillStyle = "#1e1e2e";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "#181825";
+  ctx.fillRect(0, 0, W, LABEL_H);
+  ctx.font = "bold 16px Inter, system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#89b4fa";
+  ctx.textAlign = "center";
+  ctx.fillText(opts.labelA ?? "Slot A", paneW / 2, LABEL_H / 2);
+  ctx.fillText(opts.labelB ?? "Slot B", paneW + GAP + paneW / 2, LABEL_H / 2);
+
+  ctx.drawImage(srcA, 0, LABEL_H, paneW, paneH);
+  ctx.fillStyle = "#313244";
+  ctx.fillRect(paneW, LABEL_H, GAP, paneH);
+  ctx.drawImage(srcB, paneW + GAP, LABEL_H, paneW, paneH);
+
+  if (!isTauri()) {
+    stampDemoWatermark(canvas);
+  }
+
+  const provA = buildModelProvenance(opts.metaA);
+  const provB = buildModelProvenance(opts.metaB);
+  ctx.fillStyle = "#11111b";
+  ctx.fillRect(0, H - FOOTER_H, W, FOOTER_H);
+  ctx.font = "11px Inter, system-ui, sans-serif";
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#cdd6f4";
+  ctx.fillText(
+    `A: ${provA.scenarioName} | ${provA.scenarioType}`,
+    12, H - FOOTER_H + 8,
+  );
+  ctx.fillText(
+    `B: ${provB.scenarioName} | ${provB.scenarioType}`,
+    12, H - FOOTER_H + 26,
+  );
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#fab387";
+  ctx.fillText(
+    `TsunamiSimulator v${provA.appVersion} | ${provA.limitation}`,
+    W - 12, H - FOOTER_H + 8,
+  );
+  ctx.fillStyle = "#a6adc8";
+  ctx.fillText(provA.generatedAt, W - 12, H - FOOTER_H + 26);
+
+  const dataUrl = canvas.toDataURL("image/png");
+  downloadDataUrl(dataUrl, `tsunamisim-compare-${timestampSuffix()}.png`);
   return true;
 }
 
