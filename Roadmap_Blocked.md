@@ -69,6 +69,11 @@ Return them to ROADMAP.md once the blocker is resolved.
 - **P3** — Structured error reporting with diagnostics bundle (S).
   **Blocker:** Full diagnostics (GPU adapter name/driver, wgpu version) requires a new Rust IPC command (`diagnostics_bundle`). Needs MSVC linker for Rust compilation. The frontend LogViewer could be enhanced independently, but the most valuable diagnostics come from the Rust side.
 
+## Research-Driven — Rust compilation + platform testing required
+
+- **P2** — Desktop deep-link import for shared scenario URLs (M).
+  **Blocker:** Requires `tauri-plugin-deep-link` Cargo dependency (needs MSVC linker to verify compilation), platform-specific URL protocol handler registration (Windows registry via MSI/NSIS installer), and integration testing (launching `tsunamisimulator://open?scenario=<encoded>` from outside the app). The existing `scenarioFromUrl` / `scenarioToUrlParams` infrastructure handles the URL parsing; the gap is the OS-level routing from custom scheme to app instance.
+
 ## Research-Driven — Rust compilation required
 
 - **P1** — Property-based tests for physics modules (M).
