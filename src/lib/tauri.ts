@@ -72,7 +72,7 @@ export const api = {
     range_m: number;
     mean_depth_m: number;
     decay_alpha: number;
-    is_impact: boolean;
+    is_impact?: boolean;
   }) {
     return invoke<{ amplitude_m: number; travel_time_s: number }>("far_field_amplitude", { req });
   },

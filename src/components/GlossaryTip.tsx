@@ -24,6 +24,11 @@ export function GlossaryTip({ term, children }: Props) {
   const clampPopup = useCallback(() => {
     const popup = popupRef.current;
     if (!popup) return;
+    popup.style.left = "";
+    popup.style.right = "";
+    popup.style.top = "";
+    popup.style.bottom = "";
+    popup.style.transform = "";
     const rect = popup.getBoundingClientRect();
     if (rect.left < 4) {
       popup.style.left = "0";

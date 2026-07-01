@@ -1,4 +1,18 @@
 
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-105%); }
+  100% { transform: translateX(240%); }
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;

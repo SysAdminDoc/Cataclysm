@@ -140,7 +140,7 @@
   height: 34px;
   border: 2px solid color-mix(in srgb, var(--sapphire) 16%, transparent);
   border-top-color: var(--sapphire);
-  border-radius: var(--r-md);
+  border-radius: 50%;
   animation: spin 780ms linear infinite;
 }
 
@@ -265,20 +265,6 @@
   color: var(--peach);
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes indeterminate {
-  0% { transform: translateX(-105%); }
-  100% { transform: translateX(240%); }
-}
-
 .icon--flip {
   transform: rotate(180deg);
 }
@@ -380,14 +366,14 @@
 }
 .coord-entry__label {
   font-size: 11px;
-  opacity: 0.9;
+  color: var(--subtext);
 }
 .coord-entry__input {
   width: 88px;
   padding: 3px 6px;
   font-size: 12px;
   border-radius: var(--r-sm);
-  border: 1px solid var(--crust);
+  border: 1px solid var(--surface1);
   background: var(--crust);
   color: var(--text);
 }

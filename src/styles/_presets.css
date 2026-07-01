@@ -304,7 +304,7 @@
   padding: 3px 8px;
   font-size: 11px;
   color: var(--subtext);
-  border-radius: var(--r-xs, 4px);
+  border-radius: var(--r-sm);
   cursor: pointer;
 }
 
