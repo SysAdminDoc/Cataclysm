@@ -6,7 +6,7 @@ import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId } from "../lib/settings";
 import { downloadBlob } from "../lib/export";
-import { setTheme } from "../lib/theme";
+import { applyTheme, setTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
@@ -355,6 +355,7 @@ export function Settings({ onClose }: Props) {
                       setThemeLocal(all.theme);
                       setGlobeStyle(all.globe_style);
                       setColormapId(all.colormap);
+                      applyTheme(all.theme);
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                       }
@@ -382,6 +383,7 @@ export function Settings({ onClose }: Props) {
                   setThemeLocal("mocha");
                   setGlobeStyle(DEFAULT_STYLE);
                   setColormapId("diverging");
+                  applyTheme("mocha");
                   primeCesiumToken(null);
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
