@@ -143,4 +143,23 @@ describe("settings schema versioning", () => {
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
+
+  it("import rejects non-object JSON", async () => {
+    await expect(settings.importSettings('"just a string"')).rejects.toThrow(
+      "Settings file must contain a JSON object.",
+    );
+    await expect(settings.importSettings("[1,2,3]")).rejects.toThrow(
+      "Settings file must contain a JSON object.",
+    );
+  });
+
+  it("import ignores prototype pollution keys", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await settings.importSettings(
+      JSON.stringify({ __proto__: { polluted: true }, theme: "latte" }),
+    );
+    expect(result.applied).toBe(1);
+    expect(Object.prototype).not.toHaveProperty("polluted");
+    warnSpy.mockRestore();
+  });
 });

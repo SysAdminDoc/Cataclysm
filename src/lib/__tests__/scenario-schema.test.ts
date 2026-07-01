@@ -151,4 +151,9 @@ describe("scenarioFromUrl", () => {
     expect(restored.scenario.kind).toBe("Asteroid");
     expect(restored.scenario.source).toEqual(INITIAL_ASTEROID);
   });
+
+  it("rejects oversized scenario URL params", () => {
+    const huge = "?scenario=" + "A".repeat(15_000);
+    expect(scenarioFromUrl(huge)).toEqual({ type: "none" });
+  });
 });

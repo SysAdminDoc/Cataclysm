@@ -8,10 +8,10 @@
   left: 8px;
   top: -40px;
   z-index: 1000;
-  background: var(--surface, #1e1e2e);
-  color: var(--text, #cdd6f4);
+  background: var(--surface0);
+  color: var(--text);
   padding: 6px 12px;
-  border: 1px solid var(--overlay, #6c7086);
+  border: 1px solid var(--overlay);
   border-radius: 6px;
   text-decoration: none;
   font-size: 13px;

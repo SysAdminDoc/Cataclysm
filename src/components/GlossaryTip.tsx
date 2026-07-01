@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { getGlossaryEntry } from "../lib/glossary";
 
 type Props = {
@@ -10,6 +10,7 @@ export function GlossaryTip({ term, children }: Props) {
   const entry = getGlossaryEntry(term);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const popupRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -20,6 +21,28 @@ export function GlossaryTip({ term, children }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const clampPopup = useCallback(() => {
+    const popup = popupRef.current;
+    if (!popup) return;
+    const rect = popup.getBoundingClientRect();
+    if (rect.left < 4) {
+      popup.style.left = "0";
+      popup.style.transform = "none";
+    } else if (rect.right > window.innerWidth - 4) {
+      popup.style.left = "auto";
+      popup.style.right = "0";
+      popup.style.transform = "none";
+    }
+    if (rect.top < 4) {
+      popup.style.bottom = "auto";
+      popup.style.top = "calc(100% + 6px)";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) clampPopup();
+  }, [open, clampPopup]);
+
   if (!entry) return <>{children}</>;
 
   return (
@@ -27,7 +50,6 @@ export function GlossaryTip({ term, children }: Props) {
       ref={ref}
       className="glossary-tip"
       tabIndex={0}
-      role="button"
       aria-describedby={open ? `glossary-${term}` : undefined}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -37,7 +59,7 @@ export function GlossaryTip({ term, children }: Props) {
       {children}
       <span className="glossary-tip__indicator" aria-hidden>?</span>
       {open && (
-        <span className="glossary-tip__popup" id={`glossary-${term}`} role="tooltip">
+        <span ref={popupRef} className="glossary-tip__popup" id={`glossary-${term}`} role="tooltip">
           <strong className="glossary-tip__term">{entry.term}</strong>
           <span className="glossary-tip__def">{entry.definition}</span>
           {entry.citation && (

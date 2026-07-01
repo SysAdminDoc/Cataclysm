@@ -61,7 +61,7 @@ input, select {
 input:focus, select:focus {
   outline: none;
   border-color: var(--sapphire);
-  box-shadow: 0 0 0 3px rgba(116, 199, 236, 0.25);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 input[type="checkbox"] {

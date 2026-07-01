@@ -238,7 +238,7 @@
 }
 
 .swe__gauge-coords {
-  color: var(--subtext0);
+  color: var(--subtext);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   flex-shrink: 0;
@@ -249,7 +249,7 @@
   padding: 2px;
   background: none;
   border: none;
-  color: var(--subtext0);
+  color: var(--subtext);
   cursor: pointer;
   border-radius: var(--r-sm);
 }
@@ -274,7 +274,7 @@
 
 .swe__gauge-peak {
   font-size: 11px;
-  color: var(--subtext0);
+  color: var(--subtext);
   font-family: "JetBrains Mono", monospace;
   white-space: nowrap;
 }

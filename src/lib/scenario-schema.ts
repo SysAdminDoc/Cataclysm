@@ -392,12 +392,14 @@ export type UrlScenarioResult =
   | { type: "scenario"; scenario: ScenarioInput }
   | { type: "none" };
 
+const MAX_SCENARIO_URL_LENGTH = 10_000;
+
 export function scenarioFromUrl(search: string): UrlScenarioResult {
   const params = new URLSearchParams(search);
   const presetId = params.get("preset");
   if (presetId) return { type: "preset", presetId };
   const encoded = params.get("scenario");
-  if (!encoded) return { type: "none" };
+  if (!encoded || encoded.length > MAX_SCENARIO_URL_LENGTH) return { type: "none" };
   try {
     const json = atob(decodeURIComponent(encoded));
     const parsed = parseScenarioPayload(JSON.parse(json));

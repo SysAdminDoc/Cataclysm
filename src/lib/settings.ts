@@ -545,15 +545,20 @@ export const settings = {
   },
   async importSettings(json: string): Promise<{ applied: number; skipped: string[] }> {
     const raw = JSON.parse(json) as Record<string, unknown>;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error("Settings file must contain a JSON object.");
+    }
     const skipped: string[] = [];
     let applied = 0;
-    for (const [key, value] of Object.entries(raw)) {
+    for (const key of Object.keys(raw)) {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
       if (key === "_schema_version" || key === "cesium_token") continue;
       if (!SETTINGS_KEYS.has(key)) {
         console.warn(`[settings] import: unknown key "${key}" — skipping`);
         skipped.push(key);
         continue;
       }
+      const value = raw[key];
       const normalised = normaliseSetting(key as keyof Settings, value);
       if (normalised !== undefined) {
         await write(key as keyof Settings, normalised);
