@@ -1,0 +1,61 @@
+
+/* Glossary tooltip */
+.glossary-tip {
+  position: relative;
+  display: inline;
+  cursor: help;
+  border-bottom: 1px dotted var(--overlay);
+}
+
+.glossary-tip__indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-left: 2px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  vertical-align: super;
+  line-height: 1;
+}
+
+.glossary-tip__popup {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  width: max-content;
+  max-width: 300px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface0);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.glossary-tip__term {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.glossary-tip__def {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.glossary-tip__cite {
+  font-size: 10px;
+  color: var(--subtext);
+  font-style: italic;
+}

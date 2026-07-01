@@ -1,0 +1,152 @@
+
+.citations {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.citations__summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.citations__summary span {
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 36%, transparent);
+  color: var(--subtext);
+  font-size: 12px;
+}
+
+.citations__summary strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.citations__row {
+  padding: 13px 14px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 56%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 54%, transparent);
+}
+
+.citations__name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.citations__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 5px;
+  margin-right: 7px;
+  border-radius: var(--r-sm);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.citations__date {
+  color: var(--subtext);
+  font-weight: 400;
+  margin-left: auto;
+  font-size: 11px;
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+}
+
+.citations__ref a,
+.citations__blocked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  color: var(--sapphire);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.citations__blocked {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.citations__ref a span:first-child,
+.citations__blocked span:first-child {
+  min-width: 0;
+}
+
+.citations__legacy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  color: var(--peach);
+  background: color-mix(in srgb, var(--peach) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--peach) 28%, transparent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.citations__open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  color: var(--crust);
+  background: var(--sapphire);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.citations__open[data-tone="blocked"] {
+  color: var(--crust);
+  background: var(--danger);
+}
+
+.citations__alert {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  font-size: 12px;
+}
+
+.citations__ref a:hover,
+.citations__blocked:hover {
+  text-decoration: underline;
+}
+
+.citations__note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--peach);
+}

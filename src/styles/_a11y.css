@@ -1,0 +1,24 @@
+
+/* WCAG 2.4.1 — Skip-to-content link for keyboard users. Hidden off-
+   screen until focused; first Tab from any page state surfaces it
+   above the header so screen-reader and keyboard users can jump past
+   the dense control bar straight to the globe canvas. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 1000;
+  background: var(--surface, #1e1e2e);
+  color: var(--text, #cdd6f4);
+  padding: 6px 12px;
+  border: 1px solid var(--overlay, #6c7086);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  transition: top 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 8px;
+  outline: 2px solid var(--accent, #89b4fa);
+}

@@ -1,0 +1,57 @@
+
+/* --- Attenuation chart --- */
+
+.chart-shell {
+  padding: 10px 10px 9px;
+  border-radius: var(--r-md);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sapphire) 6%, transparent), transparent 72px),
+    color-mix(in srgb, var(--surface0) 36%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 38%, transparent);
+}
+
+.attenuation-chart {
+  width: 100%;
+  height: auto;
+  max-height: 140px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  align-items: center;
+  margin-top: 4px;
+  color: var(--subtext);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chart-legend i {
+  width: 14px;
+  height: 3px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+}
+
+.chart-legend i[data-tone="front"] {
+  background: var(--peach);
+}
+
+.chart-legend i[data-tone="coast"] {
+  background: var(--teal);
+}
+
+.chart-legend i[data-tone="observed"] {
+  background: var(--maroon);
+}
+
+.chart-legend i[data-tone="cursor"] {
+  background: var(--sapphire);
+}

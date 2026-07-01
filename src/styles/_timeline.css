@@ -1,0 +1,29 @@
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline__bar {
+  height: 6px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface1) 66%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.timeline__fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--blue), var(--sapphire), var(--teal));
+  transform-origin: left;
+}
+
+.timeline__readout {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--subtext);
+  display: flex;
+  justify-content: space-between;
+}

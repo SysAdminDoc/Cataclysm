@@ -1,0 +1,110 @@
+
+/* Onboarding tour (F-V12) — lightweight in-house implementation. */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: color-mix(in srgb, var(--crust) 46%, transparent);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.tour-card {
+  position: absolute;
+  max-width: 420px;
+  background: color-mix(in srgb, var(--mantle) 94%, var(--surface0));
+  border: 1px solid color-mix(in srgb, var(--sapphire) 62%, var(--panel-border));
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.tour-card--center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tour-card--top-left {
+  top: 80px;
+  left: 32px;
+}
+
+.tour-card--top-center {
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tour-card--top-right {
+  top: 80px;
+  right: 32px;
+}
+
+.tour-card--bottom-left {
+  bottom: 32px;
+  left: 32px;
+}
+
+.tour-card--bottom-right {
+  bottom: 32px;
+  right: 32px;
+}
+
+.tour-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 5px;
+}
+
+.tour-card__step {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--sapphire);
+  font-weight: 700;
+}
+
+.tour-card__progress {
+  display: inline-grid;
+  grid-template-columns: repeat(6, 14px);
+  gap: 4px;
+}
+
+.tour-card__progress span {
+  height: 4px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface1) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface2) 34%, transparent);
+}
+
+.tour-card__progress span[data-complete="true"],
+.tour-card__progress span[data-active="true"] {
+  background: var(--sapphire);
+  border-color: var(--sapphire);
+}
+
+.tour-card__title {
+  font-size: 16px;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.tour-card__body {
+  font-size: 13px;
+  color: var(--subtext);
+  line-height: 1.55;
+  margin: 0 0 14px;
+}
+
+.tour-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tour-card__spacer {
+  flex: 1;
+}

@@ -1,0 +1,308 @@
+
+.swe__hint {
+  font-size: 12px;
+  color: var(--subtext);
+  line-height: 1.5;
+}
+
+.swe__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.swe__meta-grid span {
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface0) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 36%, transparent);
+  color: var(--subtext);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.swe__meta-grid strong {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.swe__options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 32%, transparent);
+}
+
+.swe__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.swe__row .primary {
+  flex: 1;
+}
+
+.swe__run-state {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  color: var(--sapphire);
+  background: color-mix(in srgb, var(--sapphire) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sapphire) 24%, transparent);
+  font-size: 12px;
+}
+
+.swe__progress {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface1) 55%, transparent);
+}
+
+.swe__progress span {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--blue), var(--sapphire));
+  transition: width 0.15s ease-out;
+}
+
+.swe__speed {
+  padding: 3px 6px;
+  border-radius: var(--r-sm);
+  background: var(--field-bg);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.swe__resolution {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.swe__resolution > span {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.swe__resolution strong {
+  color: var(--text);
+  font-weight: 720;
+}
+
+.swe__resolution em {
+  grid-column: 1 / -1;
+  color: var(--overlay);
+  font-style: normal;
+  font-size: 11px;
+}
+
+.swe__resolution input[type="range"] {
+  margin-top: 4px;
+}
+
+.swe__row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.swe__check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--subtext);
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.swe__check input {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.swe__confidence {
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+  color: color-mix(in srgb, var(--warning) 82%, var(--text));
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.swe__error {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.swe__error strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.swe__notice {
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.swe__gauges {
+  margin-top: 12px;
+  border-top: 1px solid var(--surface1);
+  padding-top: 8px;
+}
+
+.swe__gauge-add {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.swe__gauge-input {
+  width: 70px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--surface1);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+  color: var(--text);
+}
+
+.swe__gauge-input--name {
+  width: 90px;
+}
+
+.swe__gauge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.swe__gauge-item {
+  background: var(--surface0);
+  border: 1px solid var(--surface1);
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+}
+
+.swe__gauge-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.swe__gauge-header strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.swe__gauge-coords {
+  color: var(--subtext0);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.swe__gauge-remove {
+  flex-shrink: 0;
+  padding: 2px;
+  background: none;
+  border: none;
+  color: var(--subtext0);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.swe__gauge-remove:hover {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+.swe__gauge-spark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.swe__gauge-svg {
+  width: 200px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.swe__gauge-peak {
+  font-size: 11px;
+  color: var(--subtext0);
+  font-family: "JetBrains Mono", monospace;
+  white-space: nowrap;
+}
+
+.swe__gauge-export {
+  margin-top: 8px;
+}
+
+.swe__readout {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--subtext);
+  flex-wrap: wrap;
+}
+
+.swe__readout span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface0) 34%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 30%, transparent);
+}
+
+.swe__readout--muted {
+  color: var(--overlay);
+}

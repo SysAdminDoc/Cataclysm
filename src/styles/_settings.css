@@ -1,0 +1,96 @@
+
+.settings__h3 {
+  font-size: 13px;
+  font-weight: 750;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.settings__section {
+  margin-bottom: 22px;
+  padding-bottom: 2px;
+}
+
+.settings__actions,
+.settings__button-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.settings__theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.settings__field {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--subtext);
+}
+
+.settings__field > span {
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: color-mix(in srgb, var(--subtext) 88%, var(--sapphire));
+}
+
+.settings__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.scenario-tab[data-tone="danger"] {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--panel-border));
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+
+.settings__status[data-tone="success"] {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+}
+
+.settings__status[data-tone="warning"] {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+}
+
+.settings__status[data-tone="danger"] {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.settings__status[data-tone="muted"] {
+  color: var(--subtext);
+  background: color-mix(in srgb, var(--surface0) 42%, transparent);
+  border: 1px solid var(--panel-border);
+}
+
+.settings__row {
+  font-size: 12px;
+  color: var(--subtext);
+  line-height: 1.5;
+}
+.settings__row code {
+  background: var(--surface0);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.settings__description {
+  margin-top: 8px;
+}

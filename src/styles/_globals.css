@@ -1,0 +1,154 @@
+/* Catppuccin Mocha palette tokens (dark — default). */
+:root,
+html[data-theme="mocha"] {
+  --base: #1e1e2e;
+  --mantle: #181825;
+  --crust: #11111b;
+  --text: #cdd6f4;
+  --subtext: #a6adc8;
+  --overlay: #7f849c;
+  --overlay0: var(--overlay);
+  --surface0: #313244;
+  --surface1: #45475a;
+  --surface2: #585b70;
+  --blue: #89b4fa;
+  --lavender: #b4befe;
+  --sapphire: #74c7ec;
+  --sky: #89dceb;
+  --teal: #94e2d5;
+  --green: #a6e3a1;
+  --yellow: #f9e2af;
+  --peach: #fab387;
+  --maroon: #eba0ac;
+  --red: #f38ba8;
+  --pink: #f5c2e7;
+  --mauve: #cba6f7;
+  --accent: var(--sapphire);
+  --accent-strong: var(--blue);
+  --success: var(--green);
+  --warning: var(--peach);
+  --danger: var(--red);
+  --panel-bg: color-mix(in srgb, var(--mantle) 92%, var(--surface0));
+  --panel-bg-strong: color-mix(in srgb, var(--surface0) 74%, var(--mantle));
+  --panel-border: color-mix(in srgb, var(--surface1) 72%, transparent);
+  --field-bg: color-mix(in srgb, var(--crust) 58%, var(--mantle));
+  --focus-ring: color-mix(in srgb, var(--sapphire) 42%, transparent);
+  --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.48);
+  --shadow-md: 0 12px 36px rgba(0, 0, 0, 0.28);
+
+  /* Corner radii — global rule: no pills, no fully rounded. Allowed: 0/4/6/8/10/12. */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+
+  color-scheme: dark;
+}
+
+/* Catppuccin Latte palette tokens (light). */
+html[data-theme="latte"] {
+  --base: #eff1f5;
+  --mantle: #e6e9ef;
+  --crust: #dce0e8;
+  --text: #4c4f69;
+  --subtext: #5c5f77;
+  --overlay: #8c8fa1;
+  --overlay0: var(--overlay);
+  --surface0: #ccd0da;
+  --surface1: #bcc0cc;
+  --surface2: #acb0be;
+  --blue: #1e66f5;
+  --lavender: #7287fd;
+  --sapphire: #209fb5;
+  --sky: #04a5e5;
+  --teal: #179299;
+  --green: #40a02b;
+  --yellow: #df8e1d;
+  --peach: #fe640b;
+  --maroon: #e64553;
+  --red: #d20f39;
+  --pink: #ea76cb;
+  --mauve: #8839ef;
+  --accent: var(--sapphire);
+  --accent-strong: var(--blue);
+  --success: var(--green);
+  --warning: var(--peach);
+  --danger: var(--red);
+  --panel-bg: color-mix(in srgb, #ffffff 68%, var(--mantle));
+  --panel-bg-strong: color-mix(in srgb, #ffffff 76%, var(--surface0));
+  --panel-border: color-mix(in srgb, var(--surface1) 66%, transparent);
+  --field-bg: color-mix(in srgb, #ffffff 82%, var(--mantle));
+  --focus-ring: color-mix(in srgb, var(--sapphire) 34%, transparent);
+  --shadow-lg: 0 24px 80px rgba(76, 79, 105, 0.18);
+  --shadow-md: 0 12px 36px rgba(76, 79, 105, 0.12);
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--base);
+  color: var(--text);
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  background: var(--panel-bg-strong);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-md);
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 140ms ease, transform 100ms ease, border-color 140ms ease,
+    box-shadow 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface1);
+  border-color: var(--lavender);
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+}
+
+button svg {
+  flex: 0 0 auto;
+}
+
+/* Keyboard-only focus ring. Skips the ring on mouse clicks (matches
+   modern browser default behaviour); shows it for Tab navigation so the
+   app is usable without a mouse. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-color: var(--sapphire);
+}

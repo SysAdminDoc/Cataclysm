@@ -1,0 +1,65 @@
+
+/* First-launch dismissible Cesium-token banner. Sits above the header
+   until the user pastes a token (auto-dismiss) or clicks ✕. Persists
+   the dismissal via settings.dismissTokenBanner. */
+.token-banner {
+  grid-area: banner;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 7px 18px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--sapphire) 12%, transparent), transparent 42%),
+    color-mix(in srgb, var(--mantle) 94%, var(--crust));
+  border-bottom: 1px solid color-mix(in srgb, var(--sapphire) 30%, var(--panel-border));
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.token-banner__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--sapphire) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sapphire) 45%, transparent);
+  color: var(--sapphire);
+  font-size: 12px;
+  font-weight: 800;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+
+.token-banner > span:not(.token-banner__icon) {
+  flex: 1;
+}
+.token-banner__action {
+  min-height: 30px;
+  background: linear-gradient(135deg, var(--blue), var(--sapphire));
+  color: var(--crust);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.token-banner__dismiss {
+  background: transparent;
+  border: 0;
+  color: var(--overlay);
+  font-size: 15px;
+  cursor: pointer;
+  min-height: 30px;
+  width: 30px;
+  padding: 0;
+  border-radius: var(--r-sm);
+}
+.token-banner__dismiss:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface0) 74%, transparent);
+}

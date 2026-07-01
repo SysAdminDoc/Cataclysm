@@ -1,0 +1,153 @@
+
+.lesson-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 890;
+  pointer-events: none;
+}
+
+.lesson-card {
+  pointer-events: auto;
+  position: absolute;
+  bottom: 48px;
+  right: 32px;
+  max-width: 460px;
+  background: color-mix(in srgb, var(--mantle) 94%, var(--surface0));
+  border: 1px solid color-mix(in srgb, var(--green) 50%, var(--panel-border));
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.lesson-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.lesson-card__badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.lesson-card__step {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--subtext0);
+  font-weight: 700;
+}
+
+.lesson-card__progress {
+  display: inline-grid;
+  grid-template-columns: repeat(auto-fill, 14px);
+  gap: 4px;
+}
+
+.lesson-card__progress span {
+  height: 4px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface1) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface2) 34%, transparent);
+}
+
+.lesson-card__progress span[data-complete="true"],
+.lesson-card__progress span[data-active="true"] {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.lesson-card__title {
+  font-size: 15px;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.lesson-card__body {
+  font-size: 13px;
+  color: var(--subtext);
+  line-height: 1.55;
+  margin: 0 0 14px;
+}
+
+.lesson-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lesson-card__spacer {
+  flex: 1;
+}
+
+.lesson-launcher {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, var(--surface1));
+  border-radius: var(--r-md);
+  padding: 8px;
+  background: color-mix(in srgb, var(--green) 5%, transparent);
+}
+
+.lesson-launcher__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.lesson-launcher__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lesson-launcher__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lesson-launcher__item:hover {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+
+.lesson-launcher__item[data-complete="true"] {
+  background: color-mix(in srgb, var(--green) 7%, transparent);
+}
+
+.lesson-launcher__name {
+  flex: 1;
+}
+
+.lesson-launcher__complete {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--green) 42%, var(--panel-border));
+  border-radius: var(--r-sm);
+  padding: 2px 5px;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.lesson-launcher__item svg {
+  color: var(--subtext0);
+  flex-shrink: 0;
+}

@@ -1,0 +1,315 @@
+
+/* Screen-reader-only utility. Used by aria-live announcer regions whose
+   content should reach assistive tech but not be visible on screen.
+   Standard "visually-hidden" pattern (Tailwind / Bootstrap equivalent). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respect OS-level reduced-motion preference (WCAG 2.2 SC 2.3.3 — Animation
+   from Interactions). Drop transitions, hover lift, and the imagery-loading
+   pulse so the app stays usable for motion-sensitive users. The Cesium
+   `flyTo` duration is shortened in `Globe.tsx` via the same media query. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  button:hover:not(:disabled),
+  button:active:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+button.primary {
+  background: linear-gradient(135deg, var(--blue), var(--sapphire));
+  color: var(--crust);
+  border-color: transparent;
+  font-weight: 700;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--sapphire) 20%, transparent);
+}
+
+button.primary:hover {
+  background: linear-gradient(135deg, var(--lavender), var(--blue));
+}
+
+input, select {
+  font: inherit;
+  color: inherit;
+  background: var(--field-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-md);
+  min-height: 34px;
+  padding: 7px 10px;
+  width: 100%;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--sapphire);
+  box-shadow: 0 0 0 3px rgba(116, 199, 236, 0.25);
+}
+
+input[type="checkbox"] {
+  min-height: 0;
+  padding: 0;
+  width: auto;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.48px;
+}
+
+a {
+  color: var(--sapphire);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+* {
+  scrollbar-color: color-mix(in srgb, var(--surface2) 70%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(420px, 1fr) minmax(320px, 360px);
+  grid-template-rows: auto 56px minmax(0, 1fr) 34px;
+  grid-template-areas:
+    "banner banner banner"
+    "header header header"
+    "left   globe  right"
+    "status status status";
+  height: 100%;
+  width: 100%;
+  background: var(--base);
+}
+
+.app__statusbar {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--crust) 82%, var(--mantle));
+  border-top: 1px solid color-mix(in srgb, var(--surface1) 48%, transparent);
+  color: var(--subtext);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.statusbar__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 14px;
+  border-right: 1px solid color-mix(in srgb, var(--surface1) 38%, transparent);
+  white-space: nowrap;
+}
+
+.statusbar__item:first-child {
+  padding-left: 4px;
+}
+
+.statusbar__item strong {
+  color: var(--text);
+  font-weight: 720;
+}
+
+.statusbar__item--wide {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar__item--ready {
+  color: var(--success);
+}
+
+.statusbar__item--warning {
+  color: var(--warning);
+  border-right: none;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-sm);
+  background: currentColor;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--success) 45%, transparent);
+}
+
+.app__header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--mantle) 88%, var(--crust));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--surface2) 18%, transparent);
+}
+
+.app__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.app__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sapphire) 28%, transparent), color-mix(in srgb, var(--blue) 22%, transparent));
+  border: 1px solid color-mix(in srgb, var(--sapphire) 45%, transparent);
+  color: var(--sapphire);
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.app__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.app__version {
+  color: var(--subtext);
+  font-size: 12px;
+  margin-left: 2px;
+}
+
+.app__warning {
+  display: none;
+}
+
+.app__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 8px 2px 8px 0;
+  scrollbar-width: none;
+}
+
+.app__header-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.app__command-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 3px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--crust) 34%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 66%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.app__command-group--exports {
+  background: color-mix(in srgb, var(--surface0) 24%, transparent);
+}
+
+.icon-button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 6px 9px;
+  background: color-mix(in srgb, var(--surface0) 48%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 76%, transparent);
+  border-radius: var(--r-md);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.icon-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-button svg {
+  flex: 0 0 auto;
+  color: var(--subtext);
+}
+
+.icon-button[data-disabled="true"] {
+  cursor: help;
+  color: color-mix(in srgb, var(--subtext) 72%, var(--surface2));
+  background: color-mix(in srgb, var(--surface0) 38%, var(--mantle));
+  border-color: color-mix(in srgb, var(--panel-border) 74%, transparent);
+  box-shadow: none;
+}
+
+.icon-button[data-variant="mode"] {
+  background: color-mix(in srgb, var(--surface0) 70%, var(--mantle));
+  font-weight: 720;
+}
+
+.icon-button[data-variant="export"] {
+  color: color-mix(in srgb, var(--text) 84%, var(--subtext));
+}
+
+.icon-button[data-variant="utility"] {
+  background: color-mix(in srgb, var(--surface0) 58%, var(--mantle));
+}
+
+.icon-button[data-disabled="true"] svg {
+  color: color-mix(in srgb, var(--subtext) 60%, var(--surface2));
+}
+
+.icon-button:hover {
+  background: color-mix(in srgb, var(--surface1) 72%, var(--mantle));
+  border-color: var(--sapphire);
+}
+
+.icon-button[data-disabled="true"]:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--surface0) 48%, var(--mantle));
+  border-color: color-mix(in srgb, var(--sapphire) 32%, var(--panel-border));
+}
+
+.icon-button:hover svg {
+  color: var(--sapphire);
+}

@@ -1,0 +1,72 @@
+
+.dart__toggle {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+  min-height: auto;
+  justify-content: flex-start;
+}
+
+.dart__toggle:hover {
+  color: var(--text);
+}
+
+.dart__source {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 34%, transparent);
+  color: var(--subtext);
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.dart__source span:first-child {
+  color: var(--text);
+}
+
+.chart-legend--dart {
+  margin-top: -2px;
+}
+
+.dart__buoy {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--maroon) 5%, transparent), transparent 56px),
+    color-mix(in srgb, var(--surface0) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 48%, transparent);
+  border-radius: var(--r-md);
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dart__name {
+  font-size: 12px;
+  font-weight: 720;
+  color: var(--text);
+}
+
+.dart__meta {
+  font-size: 10px;
+  color: var(--subtext);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.dart__spark {
+  background: var(--mantle);
+  border: 1px solid color-mix(in srgb, var(--surface1) 38%, transparent);
+  border-radius: var(--r-sm);
+  margin-top: 4px;
+  max-width: 100%;
+}

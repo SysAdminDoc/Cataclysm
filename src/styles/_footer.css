@@ -1,0 +1,34 @@
+
+.footer-note {
+  display: grid;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--subtext);
+  text-align: left;
+  padding: 10px;
+  line-height: 1.5;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 30%, transparent);
+}
+
+.footer-note a {
+  color: var(--lavender);
+  text-decoration: none;
+}
+
+.footer-note a:hover {
+  text-decoration: underline;
+}
+
+.footer-note button {
+  justify-content: flex-start;
+  min-height: 26px;
+  background: color-mix(in srgb, var(--surface0) 42%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 62%, transparent);
+  color: var(--lavender);
+  text-decoration: none;
+  cursor: pointer;
+  padding: 4px 7px;
+  font-size: inherit;
+}
