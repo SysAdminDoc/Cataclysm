@@ -179,11 +179,14 @@ pub fn earthquake_initial_conditions(
         return Err("slip_m must be non-negative".into());
     }
     check_finite("water_depth_m", input.water_depth_m)?;
+    if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
+        return Err("water_depth_m must be in [0, 12 000]".into());
+    }
     check_lat_lon(&input.location)?;
     Ok(input.initial_displacement())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FarFieldRequest {
     pub initial_amplitude_m: f64,
     pub cavity_radius_m: f64,
@@ -215,10 +218,13 @@ pub fn far_field_amplitude(req: FarFieldRequest) -> Result<FarFieldResponse, Str
         return Err("mean_depth_m must be ≤ 12 000 m".into());
     }
     check_finite("decay_alpha", req.decay_alpha)?;
-    let amplitude_m = if req.is_impact {
-        impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, req.range_m)
+    if req.decay_alpha < 0.0 || req.decay_alpha > 3.0 {
+        return Err("decay_alpha must be in [0, 3]".into());
+    }
+    let amplitude_m = if req.range_m <= req.cavity_radius_m {
+        req.initial_amplitude_m
     } else {
-        nuclear_far_field(req.initial_amplitude_m, req.cavity_radius_m, req.range_m)
+        req.initial_amplitude_m * (req.cavity_radius_m / req.range_m).powf(req.decay_alpha)
     };
     let travel_time_s = long_wave_travel_time_s(req.range_m, req.mean_depth_m);
     Ok(FarFieldResponse {
@@ -1159,7 +1165,7 @@ pub fn cancel_simulation() {
     if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
         guard.retain(|token| Arc::strong_count(token) > 1);
         for token in guard.iter() {
-            token.store(true, Ordering::Relaxed);
+            token.store(true, Ordering::Release);
         }
     }
 }
@@ -1184,7 +1190,7 @@ fn stream_simulation_cpu(
 ) {
     let stepper = TimeStepper::new(dt_s);
     for k in 1..n {
-        if ctx.cancel.load(Ordering::Relaxed) {
+        if ctx.cancel.load(Ordering::Acquire) {
             break;
         }
         let target_step = (k * total_steps) / (n - 1);
@@ -1225,7 +1231,7 @@ fn stream_simulation_dispatch(
         let pristine = grid.clone();
         let mut ok = true;
         for k in 1..n {
-            if ctx.cancel.load(Ordering::Relaxed) {
+            if ctx.cancel.load(Ordering::Acquire) {
                 break;
             }
             let target_step = (k * total_steps) / (n - 1);
@@ -1376,14 +1382,14 @@ fn run_simulation_gpu(
         MAX_TOTAL_STEPS
     };
     for k in 1..n {
-        if cancel.load(Ordering::Relaxed) {
+        if cancel.load(Ordering::Acquire) {
             break;
         }
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let mut remaining = target_step.saturating_sub(current_step).max(1);
         while remaining > 0 {
-            if cancel.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Acquire) {
                 return Some(snaps);
             }
             let take = remaining.min(16);
@@ -1586,6 +1592,38 @@ mod tests {
             range_m: 10_000.0,
             mean_depth_m: 4_000.0,
             decay_alpha: 0.5,
+            is_impact: true,
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn far_field_uses_decay_alpha() {
+        let base = FarFieldRequest {
+            initial_amplitude_m: 10.0,
+            cavity_radius_m: 1_000.0,
+            range_m: 10_000.0,
+            mean_depth_m: 4_000.0,
+            decay_alpha: 5.0 / 6.0,
+            is_impact: true,
+        };
+        let resp_a = far_field_amplitude(base.clone()).unwrap();
+        let resp_b = far_field_amplitude(FarFieldRequest {
+            decay_alpha: 0.5,
+            ..base
+        })
+        .unwrap();
+        assert!(resp_a.amplitude_m < resp_b.amplitude_m);
+    }
+
+    #[test]
+    fn far_field_rejects_bad_decay_alpha() {
+        let res = far_field_amplitude(FarFieldRequest {
+            initial_amplitude_m: 10.0,
+            cavity_radius_m: 1_000.0,
+            range_m: 10_000.0,
+            mean_depth_m: 4_000.0,
+            decay_alpha: -1.0,
             is_impact: true,
         });
         assert!(res.is_err());

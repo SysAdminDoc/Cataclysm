@@ -594,7 +594,7 @@ impl TimeStepper {
         cancel: Option<&AtomicBool>,
     ) -> bool {
         for _ in 0..n_steps {
-            if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
+            if cancel.is_some_and(|c| c.load(Ordering::Acquire)) {
                 return false;
             }
             self.step_one(grid);
