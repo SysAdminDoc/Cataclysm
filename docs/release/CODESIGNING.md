@@ -7,7 +7,7 @@ there is no remote release job to trigger.
 Before packaging a release, run the local gate from the repo root:
 
 ```bash
-npm run verify
+npm run verify:release
 ```
 
 Then build the platform bundle locally:
@@ -126,7 +126,7 @@ proper chain-of-trust mechanism once certificates are available.
 
 1. Confirm version strings match across `package.json`, `src-tauri/Cargo.toml`,
    `src-tauri/tauri.conf.json`, README badge, app chrome, and CHANGELOG.
-2. Run `npm run verify`.
+2. Run `npm run verify:release`.
 3. Delete stale bundle outputs under `src-tauri/target/release/bundle/`.
 4. Run `npm run tauri:build`.
 5. Generate SHA256 checksums for the platform artifacts (see above).

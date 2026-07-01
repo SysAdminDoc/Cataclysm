@@ -4,6 +4,11 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased] — Deep correctness, reliability & UX hardening
 
+### Changed — verification
+- **Strict release verification now fails closed on missing Rust policy tools.**
+  `npm run verify:release` requires `cargo-audit` and `cargo-deny`; normal
+  developer verification still warns when optional Rust policy tools are absent.
+
 ### Changed — documentation
 - **Public support links repaired.** README now points shipped-feature readers to
   the tracked changelog, and CONTRIBUTING no longer references a missing

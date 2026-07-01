@@ -16,6 +16,7 @@
     "doctor": "node scripts/doctor.mjs",
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",
+    "verify:release": "node scripts/verify.mjs --strict",
     "deps-check": "node scripts/deps-check.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

@@ -90,15 +90,6 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P1
-
-- [ ] P1 — Enforce Rust advisory and license checks for release verification
-  Why: RustSec and cargo-deny checks are already configured, but `scripts/verify.mjs` skips them when binaries are missing, so release verification can pass without Rust advisory/license coverage.
-  Evidence: `scripts/verify.mjs:166-175`; `src-tauri/deny.toml`; RustSec cargo-audit; Embark cargo-deny
-  Touches: `scripts/verify.mjs`, `scripts/deps-check.mjs`, `package.json`, `README.md`, `docs/release/CODESIGNING.md`
-  Acceptance: Normal developer verification may warn when `cargo-audit` or `cargo-deny` are absent, but release/strict verification fails with actionable install text. With both tools installed, `npm run verify` runs `cargo audit` and `cargo deny check` and fails on advisories or denied licenses.
-  Complexity: S
-
 ### P2
 
 - [ ] P2 — Add a docs/script truth gate to local verification

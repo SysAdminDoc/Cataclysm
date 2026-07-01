@@ -31,7 +31,9 @@ function commandExists(command) {
 console.log(`\nDependency refresh check — ${new Date().toISOString()}`);
 console.log(`Platform: ${os.platform()} ${os.release()}\n`);
 
+const strictRustPolicy = process.argv.includes("--strict");
 let issues = 0;
+let missingRustPolicyTools = 0;
 
 // --- npm outdated ---
 console.log("==> npm outdated");
@@ -105,6 +107,7 @@ if (!cargoAvailable) {
   } else {
     console.log("  cargo-audit: NOT installed (install with: cargo install cargo-audit)");
     issues++;
+    missingRustPolicyTools++;
   }
 
   if (commandExists("cargo-deny") || commandExists("cargo-deny.exe")) {
@@ -112,6 +115,7 @@ if (!cargoAvailable) {
   } else {
     console.log("  cargo-deny: NOT installed (install with: cargo install cargo-deny)");
     issues++;
+    missingRustPolicyTools++;
   }
   console.log();
 }
@@ -133,3 +137,8 @@ Recommended refresh cadence (no Dependabot):
   Monthly : cargo update → cargo audit → cargo deny check (when tools installed)
   Quarterly: major version bumps (review changelogs before upgrading)
 `);
+
+if (strictRustPolicy && missingRustPolicyTools > 0) {
+  console.error("Strict dependency check failed: install cargo-audit and cargo-deny before release verification.");
+  process.exit(1);
+}

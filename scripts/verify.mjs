@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const srcTauriRoot = path.join(repoRoot, "src-tauri");
+const strictRustPolicy =
+  process.argv.includes("--strict") ||
+  process.env.TSUNAMI_VERIFY_STRICT === "1" ||
+  process.env.VERIFY_STRICT === "1";
 
 function formatCommand(command, args) {
   return [command, ...args].join(" ");
@@ -143,6 +147,9 @@ console.log(`TsunamiSimulator local verification on ${os.platform()} ${os.releas
 if (needsVsEnv) {
   console.log(`MSVC linker is not on PATH; using ${vsDevCmd ?? "no Visual Studio environment found"}.`);
 }
+if (strictRustPolicy) {
+  console.log("Strict release verification is enabled; Rust advisory and license tools are required.");
+}
 
 runNpm("TypeScript typecheck", ["run", "typecheck"]);
 runNpm("ESLint", ["run", "lint"]);
@@ -163,16 +170,25 @@ runCargo("Rust clippy", [
   "warnings",
 ]);
 
+function handleMissingRustPolicyTool(name, installCommand) {
+  const message = `${name} is not installed. Install with: ${installCommand}`;
+  if (strictRustPolicy) {
+    console.error(`\nStrict release verification failed: ${message}`);
+    process.exit(1);
+  }
+  console.warn(`\nSkipping ${name}: ${message}`);
+}
+
 if (commandExists("cargo-audit.exe") || commandExists("cargo-audit")) {
   runCargo("Rust advisory audit", ["audit"], { cwd: srcTauriRoot });
 } else {
-  console.warn("\nSkipping Rust advisory audit: cargo-audit is not installed.");
+  handleMissingRustPolicyTool("Rust advisory audit", "cargo install cargo-audit");
 }
 
 if (commandExists("cargo-deny.exe") || commandExists("cargo-deny")) {
   runCargo("Rust license/advisory policy", ["deny", "check"], { cwd: srcTauriRoot });
 } else {
-  console.warn("Skipping Rust license/advisory policy: cargo-deny is not installed.");
+  handleMissingRustPolicyTool("Rust license/advisory policy", "cargo install cargo-deny");
 }
 
 console.log("\nLocal verification completed.");
