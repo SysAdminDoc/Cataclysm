@@ -196,6 +196,7 @@ NM.RadDecay = {
 
   // Integrated dose from arrival to departure (G&D Ch.9 §9.16)
   integratedDose(rateAt1hr, arriveHr, stayHr) {
+    if (stayHr <= 0) return 0;
     if (arriveHr < 0.01) arriveHr = 0.01;
     const endHr = arriveHr + stayHr;
     // Integral of R1*t^(-1.2) from t1 to t2 = R1 * (t2^(-0.2) - t1^(-0.2)) / (-0.2)
@@ -261,19 +262,24 @@ NM.Screenshot = {
 
 // ---- CUSTOM OVERPRESSURE CALCULATOR ----
 NM.CustomPsi = {
-  // Given yield and target overpressure, calculate radius
   calcRadius(yieldKt, psi) {
-    // Inverse of: psi = k * Y^(1/3) / R^3 (simplified)
-    // Using known reference points to interpolate
     const Y = Math.max(yieldKt, 0.001);
-    // psi ~ coeff * Y^(1/3) where coeff varies
-    // At 20 psi: R = 0.24 * Y^(1/3), so 20 = k / 0.24, k = 4.8
-    // Rough: R = (k/psi)^(1/3) * Y^(1/3) but it's not that simple
-    // Use empirical fit: R = A * Y^(1/3) / psi^B
-    // Calibrated: at Y=1kT, psi=20 -> R=0.24, psi=5 -> R=0.59, psi=1 -> R=1.93
-    // Fit: R = 4.8 * Y^(1/3) * psi^(-0.93)
-    const R = 4.8 * Math.pow(Y, 1/3) * Math.pow(psi, -0.93) * 0.8;
-    return R; // km
+    const bm = NM.BLAST_MODELS[NM._physicsModel] || NM.BLAST_MODELS.nwfaq;
+    const hf = 1.0;
+    const refs = [
+      {psi: 200, coeff: bm.psi200}, {psi: 20, coeff: bm.psi20},
+      {psi: 5, coeff: bm.psi5}, {psi: 3, coeff: bm.psi3}, {psi: 1, coeff: bm.psi1},
+      {psi: 0.2, coeff: bm.psi1 * 2.1},
+    ];
+    for (let i = 0; i < refs.length - 1; i++) {
+      if (psi >= refs[i + 1].psi && psi <= refs[i].psi) {
+        const frac = Math.log(psi / refs[i + 1].psi) / Math.log(refs[i].psi / refs[i + 1].psi);
+        const coeff = refs[i + 1].coeff * Math.pow(refs[i].coeff / refs[i + 1].coeff, frac);
+        return hf * coeff * Math.pow(Y, 1/3);
+      }
+    }
+    if (psi > refs[0].psi) return hf * refs[0].coeff * Math.pow(refs[0].psi / psi, 1/3) * Math.pow(Y, 1/3);
+    return hf * refs[refs.length-1].coeff * Math.pow(refs[refs.length-1].psi / psi, 1/3) * Math.pow(Y, 1/3);
   },
 
   generateHTML(yieldKt) {

@@ -1543,7 +1543,7 @@ function exportGeoJSON() {
       for (let a = 0; a <= 360; a += 5) {
         const rad = a * Math.PI / 180;
         const dlat = (r / 6371) * Math.cos(rad) * (180 / Math.PI);
-        const dlng = (r / 6371) * Math.sin(rad) * (180 / Math.PI) / Math.cos(d.lat * Math.PI / 180);
+        const dlng = (r / 6371) * Math.sin(rad) * (180 / Math.PI) / (Math.cos(d.lat * Math.PI / 180) || 0.0001);
         pts.push([+(d.lng + dlng).toFixed(6), +(d.lat + dlat).toFixed(6)]);
       }
       pts.push(pts[0]);
@@ -1569,11 +1569,11 @@ function csvCell(value) {
 
 function exportCSV() {
   const provenance = NM.getModelProvenance();
-  const header = 'lat,lng,yield_kt,burst_type,weapon,deaths,injuries,fireball_km,psi5_km,psi1_km,thermal3_km,emp_km,app_version,physics_model,fallout_model,citation_keys,assumptions';
+  const header = 'lat,lng,yield_kt,burst_type,weapon,deaths,injuries,fireball_km,psi20_km,psi5_km,psi1_km,thermal3_km,emp_km,app_version,physics_model,fallout_model,citation_keys,assumptions';
   const rows = currentDets.map(d =>
-    [d.lat.toFixed(4), d.lng.toFixed(4), d.yieldKt, d.burstType, csvCell(d.weapon),
+    [d.lat.toFixed(4), d.lng.toFixed(4), d.yieldKt, csvCell(d.burstType), csvCell(d.weapon),
      d.casualties.deaths, d.casualties.injuries,
-     d.effects.fireball.toFixed(3), d.effects.psi5.toFixed(3), d.effects.psi1.toFixed(3),
+     d.effects.fireball.toFixed(3), d.effects.psi20.toFixed(3), d.effects.psi5.toFixed(3), d.effects.psi1.toFixed(3),
      d.effects.thermal3.toFixed(3), d.effects.emp.toFixed(3), provenance.appVersion,
      csvCell(provenance.physicsModelLabel), csvCell(provenance.falloutModel),
      csvCell(NM.getEffectCitationKeys(d.effects).join('|')), csvCell(provenance.assumptions.join(' '))].join(',')
@@ -1890,7 +1890,8 @@ function normalizeScenarioImport(raw) {
     else dets.push(row);
   });
   if (!dets.length) return {ok:false, error:'Scenario JSON contains no valid detonation rows.', skipped};
-  const scenario = createScenarioRecord(raw.name || `Imported Scenario ${new Date().toLocaleDateString()}`, raw.folder || '', dets, {date: raw.date || Date.now()});
+  const importDate = Number.isFinite(raw.date) && raw.date > 0 ? raw.date : Date.now();
+  const scenario = createScenarioRecord(raw.name || `Imported Scenario ${new Date().toLocaleDateString()}`, raw.folder || '', dets, {date: importDate});
   return {ok:true, scenario, skipped, sourceSchemaVersion: raw.schemaVersion || raw.version || 'legacy'};
 }
 
@@ -1954,7 +1955,7 @@ async function collectDiagnostics() {
     ['App version', NM.APP_VERSION || 'unknown'],
     ['Cache names', cacheNames.filter(n => n.includes('nukemap')).join(', ') || 'none'],
     ['SW controller', navigator.serviceWorker?.controller ? 'controlled' : (swReg ? 'registered' : 'none')],
-    ['Data counts', `${(NM.WEAPONS || []).filter(w => w.name !== 'Custom').length} weapons, ${(NM.CITIES || []).length} cities, ${(NM.WW3_TARGETS || []).length || 427} targets`],
+    ['Data counts', `${(NM.WEAPONS || []).filter(w => w.name !== 'Custom').length} weapons, ${(NM.CITIES || []).length} cities, ${[...(NM.WW3_TARGETS_US||[]),...(NM.WW3_TARGETS_RU||[]),...(NM.WW3_TARGETS_NATO||[]),...(NM.WW3_TARGETS_CN||[])].length} targets`],
     ['Physics model', NM.BLAST_MODELS?.[NM._physicsModel || 'nwfaq']?.label || (NM._physicsModel || 'nwfaq')],
     ['Fallout model', 'Simplified ellipse'],
     ['Offline status', navigator.onLine ? 'online' : 'offline'],
