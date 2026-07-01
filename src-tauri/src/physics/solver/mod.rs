@@ -374,6 +374,7 @@ impl SwGrid {
                     match self.colormap {
                         Colormap::Diverging => diverging_colormap(t),
                         Colormap::Cividis => cividis_colormap(t),
+                        Colormap::Viridis => viridis_colormap(t),
                     }
                 } else {
                     (0, 0, 0, 0)
@@ -412,6 +413,7 @@ pub enum Colormap {
     #[default]
     Diverging,
     Cividis,
+    Viridis,
 }
 
 /// Blue→transparent→red diverging colormap. `t ∈ [-1, 1]`. Returns
@@ -451,6 +453,31 @@ fn cividis_colormap(t: f64) -> (u8, u8, u8, u8) {
         let b = (37.0 * mag) as u8;
         (r, g, b, a)
     }
+}
+
+/// Perceptually uniform viridis colormap (van der Walt & Smith 2015).
+/// `t ∈ [-1, 1]`: maps |t| through a dark-purple → teal → yellow ramp.
+/// Negative and positive amplitudes share the same hue ramp (sequential,
+/// not diverging), differentiated only by the sign-aware label in the UI.
+fn viridis_colormap(t: f64) -> (u8, u8, u8, u8) {
+    let mag = t.abs();
+    let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
+    // 5-stop linear interpolation through the viridis anchor colours.
+    let anchors: [(f64, f64, f64); 5] = [
+        (68.0, 1.0, 84.0),     // 0.00 — dark purple
+        (59.0, 82.0, 139.0),   // 0.25
+        (33.0, 145.0, 140.0),  // 0.50 — teal
+        (94.0, 201.0, 98.0),   // 0.75
+        (253.0, 231.0, 37.0),  // 1.00 — yellow
+    ];
+    let idx_f = (mag * 4.0).min(3.9999);
+    let lo = idx_f as usize;
+    let hi = (lo + 1).min(4);
+    let frac = idx_f - lo as f64;
+    let r = (anchors[lo].0 + (anchors[hi].0 - anchors[lo].0) * frac) as u8;
+    let g = (anchors[lo].1 + (anchors[hi].1 - anchors[lo].1) * frac) as u8;
+    let b = (anchors[lo].2 + (anchors[hi].2 - anchors[lo].2) * frac) as u8;
+    (r, g, b, a)
 }
 
 /// Depth threshold (m) below which a cell is treated as dry land. The
@@ -964,6 +991,18 @@ mod tests {
         let cividis = cividis_colormap(1.0);
         assert_ne!(classic, cividis);
         assert!(cividis.0 > 200 && cividis.1 > 180 && cividis.2 < 80);
+    }
+
+    #[test]
+    fn viridis_colormap_is_distinct_and_sequential() {
+        let classic = diverging_colormap(1.0);
+        let viridis = viridis_colormap(1.0);
+        assert_ne!(classic, viridis);
+        // At t=1.0, viridis should be yellow (high R, high G, low B).
+        assert!(viridis.0 > 200 && viridis.1 > 200 && viridis.2 < 80);
+        // At t=0.0 (zero amplitude), alpha should be zero.
+        let zero = viridis_colormap(0.0);
+        assert_eq!(zero.3, 0);
     }
 
     #[test]

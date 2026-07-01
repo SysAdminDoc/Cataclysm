@@ -12,7 +12,7 @@ import { parseScenarioPayload } from "./scenario-schema";
 
 export type Theme = "mocha" | "latte";
 
-export type ColormapId = "diverging" | "cividis";
+export type ColormapId = "diverging" | "cividis" | "viridis";
 export type LessonCompletions = Record<string, string>;
 
 export type Settings = {
@@ -197,7 +197,7 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
         : undefined) as Settings[K] | undefined;
       break;
     case "colormap":
-      result = (value === "diverging" || value === "cividis" ? value : undefined) as Settings[K] | undefined;
+      result = (value === "diverging" || value === "cividis" || value === "viridis" ? value : undefined) as Settings[K] | undefined;
       break;
     case "disclaimer_acknowledged_at":
     case "tour_completed_at":

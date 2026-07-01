@@ -804,8 +804,12 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             return Err("lamb_wave_source_radius_m must be in (0, 10 000 km]".into());
         }
     }
-    if !(req.colormap.is_empty() || req.colormap == "diverging" || req.colormap == "cividis") {
-        return Err("colormap must be 'diverging' or 'cividis'".into());
+    if !(req.colormap.is_empty()
+        || req.colormap == "diverging"
+        || req.colormap == "cividis"
+        || req.colormap == "viridis")
+    {
+        return Err("colormap must be 'diverging', 'cividis', or 'viridis'".into());
     }
     if req.gauge_points.len() > SWE_MAX_GAUGES {
         return Err(format!(
@@ -879,6 +883,7 @@ pub async fn simulate_grid(
         let mut grid = SwGrid::new(west, south, east, north, cell, cell);
         grid.colormap = match req.colormap.as_str() {
             "cividis" => Colormap::Cividis,
+            "viridis" => Colormap::Viridis,
             _ => Colormap::Diverging,
         };
         let fallback_depth = req.mean_depth_m.max(50.0);
@@ -1031,6 +1036,7 @@ pub async fn simulate_grid_streaming(
             let mut grid = SwGrid::new(west, south, east, north, cell, cell);
             grid.colormap = match req.colormap.as_str() {
                 "cividis" => Colormap::Cividis,
+                "viridis" => Colormap::Viridis,
                 _ => Colormap::Diverging,
             };
             let fallback_depth = req.mean_depth_m.max(50.0);
@@ -1854,6 +1860,27 @@ mod tests {
             gauge_points: vec![],
         });
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn simulate_grid_accepts_viridis_colormap() {
+        let res = validate_simulate_grid(&SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 4_000.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "viridis".to_string(),
+            gauge_points: vec![],
+        });
+        assert!(res.is_ok());
     }
 
     #[test]

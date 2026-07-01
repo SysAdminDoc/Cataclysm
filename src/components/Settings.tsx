@@ -218,6 +218,15 @@ export function Settings({ onClose }: Props) {
               >
                 Cividis (CVD-safe)
               </button>
+              <button
+                className="scenario-tab"
+                data-active={colormapId === "viridis" ? "true" : "false"}
+                aria-pressed={colormapId === "viridis"}
+                onClick={() => setColormapId("viridis")}
+                type="button"
+              >
+                Viridis (sequential)
+              </button>
             </div>
           </section>
 
