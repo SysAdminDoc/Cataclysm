@@ -163,6 +163,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   readback, and PNG encode failures now flow from Rust into LogViewer via a
   Tauri event, and previously silent settings/tour/cancel Promise failures log
   contextual warnings.
+- **Visual regression gate stabilized.** Modal screenshots now hide the Cesium
+  canvas instead of masking over dialog content, and the desktop/narrow
+  baselines were refreshed from the current production render so the visual
+  suite passes repeatably.
 - **Scenario sharing clipboard guard.** Copy/Paste now reports when the
   Clipboard API is unavailable instead of throwing from the primary scenario
   workflow.

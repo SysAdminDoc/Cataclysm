@@ -25,6 +25,12 @@ async function seedAcknowledged(page: { addInitScript: (script: () => void) => P
 const DESKTOP = { width: 1440, height: 900 };
 const NARROW = { width: 390, height: 844 };
 
+async function hideCesiumCanvas(page: import("@playwright/test").Page) {
+  await page.addStyleTag({
+    content: `${CANVAS_MASK} { visibility: hidden !important; }`,
+  });
+}
+
 test.describe("Visual regression — desktop", () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(DESKTOP);
@@ -34,9 +40,9 @@ test.describe("Visual regression — desktop", () => {
     await page.goto("/");
     const dialog = page.getByRole("dialog", { name: /educational model/i });
     await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("desktop-first-run.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
 
@@ -106,9 +112,9 @@ test.describe("Visual regression — desktop", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("desktop-settings.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
 
@@ -121,9 +127,9 @@ test.describe("Visual regression — desktop", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Citations", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("desktop-citations.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
   });
@@ -133,9 +139,9 @@ test.describe("Visual regression — desktop", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Diagnostics log" }).click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("desktop-logviewer.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
   });
@@ -150,9 +156,9 @@ test.describe("Visual regression — narrow layout (390px)", () => {
     await page.goto("/");
     const dialog = page.getByRole("dialog", { name: /educational model/i });
     await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("narrow-first-run.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
 
@@ -181,9 +187,9 @@ test.describe("Visual regression — narrow layout (390px)", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("narrow-settings.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
   });
@@ -193,9 +199,9 @@ test.describe("Visual regression — narrow layout (390px)", () => {
     await page.goto("/");
     await page.locator('.icon-button[title="View citations"]').click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("narrow-citations.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
   });
