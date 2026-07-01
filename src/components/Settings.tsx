@@ -356,6 +356,7 @@ export function Settings({ onClose }: Props) {
                       setGlobeStyle(all.globe_style);
                       setColormapId(all.colormap);
                       applyTheme(all.theme);
+                      setSaveErr(null);
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                       }

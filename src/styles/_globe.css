@@ -382,7 +382,7 @@
   font-size: 12px;
   font-weight: 600;
   border-radius: var(--r-sm);
-  border: 1px solid var(--crust);
+  border: 1px solid var(--surface1);
   background: var(--crust);
   color: var(--text);
   cursor: pointer;
