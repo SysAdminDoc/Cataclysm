@@ -227,8 +227,7 @@ See [`docs/science/`](./docs/science) for formula derivations and citations.
 ## Roadmap & research
 
 - [`ROADMAP.md`](./ROADMAP.md) — phased delivery plan (v0.1.0 → v1.0.0).
-- [`COMPLETED.md`](./COMPLETED.md) — shipped feature summary.
-- [`RESEARCH_REPORT.md`](./RESEARCH_REPORT.md) — current research synthesis.
+- [`CHANGELOG.md`](./CHANGELOG.md) — shipped feature summary.
 - [`docs/history/`](./docs/history/) — archived research plans, including the v0.4.0 forward plan.
 
 ## License

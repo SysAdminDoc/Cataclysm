@@ -126,8 +126,8 @@ After updating, run `npm run verify` before pushing.
 
 ## Reporting bugs
 
-Use the issue templates in `.github/ISSUE_TEMPLATE/`. For security issues
-follow `SECURITY.md` (private disclosure).
+Use the issue templates in `.github/ISSUE_TEMPLATE/`. For security issues,
+open a private GitHub vulnerability report from the repository Security tab.
 
 ## License
 

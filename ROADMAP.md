@@ -79,16 +79,6 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P1
-
-- [ ] P1 — Repair public docs links to tracked support paths
-  Why: Public docs currently send users to gitignored/local-only or absent markdown/templates, which undermines setup, support, and disclosure trust.
-  Evidence: `README.md:230` links `COMPLETED.md` and `RESEARCH_REPORT.md`; `CONTRIBUTING.md:129` references absent `.github/ISSUE_TEMPLATE/` and gitignored `SECURITY.md`; `.gitignore` ignores most markdown except an explicit whitelist
-  Research note: Current live tree has tracked `.github/ISSUE_TEMPLATE/*.yml`; the remaining public-doc mismatch is local-only `COMPLETED.md`, `RESEARCH_REPORT.md`, and `SECURITY.md` references.
-  Touches: `README.md`, `CONTRIBUTING.md`, `.gitignore`
-  Acceptance: README and CONTRIBUTING only link tracked files or live URLs; `rtk rg -n "COMPLETED.md|RESEARCH_REPORT.md|SECURITY.md|ISSUE_TEMPLATE" README.md CONTRIBUTING.md .gitignore` returns no stale public-doc references except intentional ignore rules; no new markdown files are created.
-  Complexity: S
-
 ### P2
 
 - [ ] P2 — Add desktop deep-link import for shared scenario URLs

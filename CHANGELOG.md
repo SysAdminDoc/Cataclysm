@@ -5,6 +5,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 ## [Unreleased] — Deep correctness, reliability & UX hardening
 
 ### Changed — documentation
+- **Public support links repaired.** README now points shipped-feature readers to
+  the tracked changelog, and CONTRIBUTING no longer references a missing
+  `SECURITY.md` file for vulnerability reports.
 - **Shipped-science docs synced to v0.4.4.** Cleared stale "planned" / "v0.3.0"
   references for the now-shipped Okada I-term, wgpu GPU solver, Lamb-wave
   coupling toggle, and local-only verification. Updated README architecture
