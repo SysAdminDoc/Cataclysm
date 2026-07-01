@@ -25,6 +25,20 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   dark-purple → teal → yellow) alongside diverging and cividis. Passes
   protanopia and deuteranopia simulation.
 
+### Fixed — Rust solver and validation
+- **CPU/GPU solver eta divergence fixed.** CPU momentum step now uses pre-step
+  η for the pressure gradient, matching the GPU leapfrog kernel. Both paths
+  produce identical wavefronts for the same input. Sponge test updated to use
+  CFL 0.3 for stability with the explicit scheme.
+- **`far_field_amplitude` now uses caller-supplied `decay_alpha`.** Was accepted
+  and validated but silently ignored in favor of hardcoded exponents. Now wired
+  through with [0, 3] bounds.
+- **Earthquake `water_depth_m` validated.** `earthquake_initial_conditions` now
+  enforces [0, 12000] m range, consistent with asteroid and nuclear sources.
+- **Cancel token uses Release/Acquire ordering.** `Relaxed` was correct on x86
+  but could delay cancellation on ARM. All stores use `Release`, all loads use
+  `Acquire`.
+
 ### Changed — verification & security
 - **CSP allowlist verification gate.** `scripts/verify.mjs` now parses the
   configured CSP from `tauri.conf.json` and fails if new exceptions are
