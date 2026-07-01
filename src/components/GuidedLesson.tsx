@@ -6,9 +6,10 @@ import type { GuidedLesson as LessonDef } from "../lib/guided-lessons";
 type Props = {
   lesson: LessonDef;
   onClose: () => void;
+  onComplete?: (lessonId: string) => void;
 };
 
-export function GuidedLesson({ lesson, onClose }: Props) {
+export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true);
@@ -57,8 +58,12 @@ export function GuidedLesson({ lesson, onClose }: Props) {
           <button
             className="primary"
             onClick={() => {
-              if (isLast) onClose();
-              else setStepIdx((i) => i + 1);
+              if (isLast) {
+                onComplete?.(lesson.id);
+                onClose();
+              } else {
+                setStepIdx((i) => i + 1);
+              }
             }}
             type="button"
           >

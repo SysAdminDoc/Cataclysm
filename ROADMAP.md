@@ -10,13 +10,6 @@ Single source of truth for delivery. Blocked items live in
 
 ### P1
 
-- [ ] P1 — Persist guided-lesson completion state
-  Why: The v0.4.4 guided lessons use ephemeral React state — lesson progress resets on page reload. Persisting completion timestamps (like tour/disclaimer) lets users track which lessons they've done and lets teachers verify student progress.
-  Evidence: `src/components/GuidedLesson.tsx` uses `useState`; `src/lib/settings.ts` already persists `tour_completed_at` and `disclaimer_acknowledged_at` with the same pattern
-  Touches: `src/lib/settings.ts` (add `lessons_completed` key), `src/lib/guided-lessons.ts`, `src/components/GuidedLesson.tsx`, `src/components/PresetSelector.tsx` (show completion badge), `src/lib/__tests__/settings-scenarios.test.ts`
-  Acceptance: Completing a lesson persists its ID + timestamp. The lesson launcher in PresetSelector shows a visual indicator for completed lessons. Completion state survives app restart. At least one test covers the persistence round-trip.
-  Complexity: S
-
 - [ ] P1 — Migrate runup/inundation overlays to CesiumJS Buffer*Collection APIs
   Why: CesiumJS 1.140 (April 2026) added `BufferPointCollection`, `BufferPolylineCollection`, and `BufferPolygonCollection` — performance-focused vector primitive APIs. Current overlays use batched `CylinderGeometry`/`EllipseGeometry` primitives which create individual geometry objects for 60+ coastal points. Buffer APIs would reduce memory and draw-call overhead.
   Evidence: https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (CesiumJS 1.140 release notes); `src/components/CoastalRunupOverlay.tsx` (current primitive-based approach)

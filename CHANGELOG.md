@@ -22,6 +22,9 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   a "Guided lessons" section in the preset selector. Each lesson auto-selects
   its preset and walks through 3-4 educational steps explaining source choice,
   propagation physics, model limitations, and next steps.
+- **Guided lesson completion now persists.** Pressing Done on a lesson records
+  a completion timestamp in settings, and the preset rail shows completed
+  lesson badges across reloads.
 
 ### Added — user-placed gauges
 - **User-placed gauges with CSV time-series export.** Users can place named

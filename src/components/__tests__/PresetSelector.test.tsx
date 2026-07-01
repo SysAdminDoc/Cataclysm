@@ -85,4 +85,22 @@ describe("PresetSelector", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
     expect(screen.getByText("3/3")).toBeInTheDocument();
   });
+
+  it("shows completed guided lesson state", () => {
+    render(
+      <PresetSelector
+        presets={PRESETS}
+        activeId={null}
+        onSelect={() => {}}
+        onStartLesson={() => {}}
+        completedLessons={{ "chicxulub-extinction": "2026-07-01T00:00:00.000Z" }}
+      />,
+    );
+
+    const completedLesson = screen.getByRole("button", {
+      name: /Chicxulub: The extinction-level tsunami/i,
+    });
+    expect(completedLesson).toHaveAttribute("data-complete", "true");
+    expect(screen.getByLabelText("Lesson completed")).toHaveTextContent("Done");
+  });
 });

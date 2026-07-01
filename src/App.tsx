@@ -199,6 +199,7 @@ export default function App() {
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
+  const [lessonCompletions, setLessonCompletions] = useState<Record<string, string>>({});
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [presetsError, setPresetsError] = useState<string | null>(null);
   const [showLog, setShowLog] = useState(false);
@@ -217,6 +218,21 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 6000);
   }, []);
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    settings
+      .getLessonCompletions()
+      .then(setLessonCompletions)
+      .catch((err) => console.warn("[lessons] failed to load completion state", err));
+  }, []);
+
+  const markLessonComplete = useCallback((lessonId: string) => {
+    const completedAt = new Date().toISOString();
+    setLessonCompletions((current) => ({ ...current, [lessonId]: completedAt }));
+    settings
+      .markLessonCompleted(lessonId, completedAt)
+      .catch((err) => console.warn("[lessons] failed to persist lesson completion", err));
+  }, []);
 
   // Surface scenario/preset IPC failures (from either slot) to the user.
   useEffect(() => {
@@ -611,6 +627,7 @@ export default function App() {
           onSelect={slotA.setActivePresetId}
           busyId={slotA.busyPresetId}
           onStartLesson={setActiveLesson}
+          completedLessons={lessonCompletions}
         />
         {compareMode && (
           <div className="app__compare-rail">
@@ -732,7 +749,11 @@ export default function App() {
         }}
       />
       {activeLesson && (
-        <GuidedLesson lesson={activeLesson} onClose={() => setActiveLesson(null)} />
+        <GuidedLesson
+          lesson={activeLesson}
+          onClose={() => setActiveLesson(null)}
+          onComplete={markLessonComplete}
+        />
       )}
       <div className="app__statusbar" role="status" aria-live="polite">
         <div className="statusbar__item statusbar__item--ready">

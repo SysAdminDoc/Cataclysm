@@ -391,8 +391,24 @@ a:focus-visible,
   background: color-mix(in srgb, var(--green) 10%, transparent);
 }
 
+.lesson-launcher__item[data-complete="true"] {
+  background: color-mix(in srgb, var(--green) 7%, transparent);
+}
+
 .lesson-launcher__name {
   flex: 1;
+}
+
+.lesson-launcher__complete {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--green) 42%, var(--panel-border));
+  border-radius: var(--r-sm);
+  padding: 2px 5px;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .lesson-launcher__item svg {

@@ -10,6 +10,7 @@ type Props = {
   onSelect: (id: string) => void;
   busyId?: string | null;
   onStartLesson?: (lesson: GuidedLesson) => void;
+  completedLessons?: Record<string, string>;
 };
 
 type ViewMode = "cards" | "timeline";
@@ -18,7 +19,14 @@ function sortKey(p: Preset): number {
   return p.is_speculative ? 1 : 0;
 }
 
-export function PresetSelector({ presets, activeId, onSelect, busyId, onStartLesson }: Props) {
+export function PresetSelector({
+  presets,
+  activeId,
+  onSelect,
+  busyId,
+  onStartLesson,
+  completedLessons = {},
+}: Props) {
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
@@ -82,6 +90,7 @@ export function PresetSelector({ presets, activeId, onSelect, busyId, onStartLes
               <button
                 key={lesson.id}
                 className="lesson-launcher__item"
+                data-complete={completedLessons[lesson.id] ? "true" : "false"}
                 type="button"
                 onClick={() => {
                   onSelect(lesson.presetId);
@@ -90,6 +99,11 @@ export function PresetSelector({ presets, activeId, onSelect, busyId, onStartLes
                 title={lesson.summary}
               >
                 <span className="lesson-launcher__name">{lesson.title}</span>
+                {completedLessons[lesson.id] && (
+                  <span className="lesson-launcher__complete" aria-label="Lesson completed">
+                    Done
+                  </span>
+                )}
                 <UiIcon name="chevronRight" size={13} />
               </button>
             ))}

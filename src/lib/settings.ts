@@ -13,6 +13,7 @@ import { parseScenarioPayload } from "./scenario-schema";
 export type Theme = "mocha" | "latte";
 
 export type ColormapId = "diverging" | "cividis";
+export type LessonCompletions = Record<string, string>;
 
 export type Settings = {
   cesium_token: string;
@@ -21,6 +22,7 @@ export type Settings = {
   colormap: ColormapId;
   disclaimer_acknowledged_at: string | null;
   tour_completed_at: string | null;
+  lessons_completed: LessonCompletions;
   /** First-run dismissible banner suggesting the user paste a Cesium
    *  ion token for satellite imagery. Set when the user clicks
    *  Dismiss; absent / null means the banner should show. */
@@ -37,6 +39,7 @@ const DEFAULTS: Settings = {
   colormap: "diverging",
   disclaimer_acknowledged_at: null,
   tour_completed_at: null,
+  lessons_completed: {},
   token_banner_dismissed_at: null,
 };
 
@@ -47,6 +50,7 @@ const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
   "colormap",
   "disclaimer_acknowledged_at",
   "tour_completed_at",
+  "lessons_completed",
   "token_banner_dismissed_at",
 ]);
 
@@ -158,6 +162,22 @@ function shouldMirrorToLocalStorage(key: keyof Settings): boolean {
   return !isTauri() || !SENSITIVE_KEYS.has(key);
 }
 
+function normaliseLessonCompletions(value: unknown): LessonCompletions | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const result: LessonCompletions = {};
+  for (const [lessonId, completedAt] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      typeof lessonId === "string" &&
+      lessonId.trim() &&
+      typeof completedAt === "string" &&
+      completedAt.trim()
+    ) {
+      result[lessonId] = completedAt;
+    }
+  }
+  return result;
+}
+
 function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Settings[K] | undefined {
   if (!SETTINGS_KEYS.has(key)) {
     console.warn(`[settings] unknown key "${String(key)}" — ignoring, falling back to default`);
@@ -183,6 +203,9 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
     case "tour_completed_at":
     case "token_banner_dismissed_at":
       result = (typeof value === "string" || value === null ? value : undefined) as Settings[K] | undefined;
+      break;
+    case "lessons_completed":
+      result = normaliseLessonCompletions(value) as Settings[K] | undefined;
       break;
     default:
       result = undefined;
@@ -378,6 +401,15 @@ export const settings = {
       }
     }
   },
+  async getLessonCompletions(): Promise<LessonCompletions> {
+    return read("lessons_completed");
+  },
+  async markLessonCompleted(lessonId: string, completedAt = new Date().toISOString()): Promise<void> {
+    const key = lessonId.trim();
+    if (!key) throw new Error("Lesson ID is required");
+    const completions = await read("lessons_completed");
+    return write("lessons_completed", { ...completions, [key]: completedAt });
+  },
   async getTokenBannerDismissed(): Promise<string | null> {
     return read("token_banner_dismissed_at");
   },
@@ -412,6 +444,7 @@ export const settings = {
       colormap: await read("colormap"),
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
       tour_completed_at: await read("tour_completed_at"),
+      lessons_completed: await read("lessons_completed"),
       token_banner_dismissed_at: await read("token_banner_dismissed_at"),
     };
   },
@@ -426,6 +459,7 @@ export const settings = {
       "colormap",
       "disclaimer_acknowledged_at",
       "tour_completed_at",
+      "lessons_completed",
       "token_banner_dismissed_at",
     ];
     if (typeof localStorage !== "undefined") {

@@ -88,6 +88,17 @@ describe("settings schema versioning", () => {
     );
   });
 
+  it("persists guided lesson completion timestamps", async () => {
+    await settings.markLessonCompleted("chicxulub-extinction", "2026-07-01T00:00:00.000Z");
+
+    expect(await settings.getLessonCompletions()).toEqual({
+      "chicxulub-extinction": "2026-07-01T00:00:00.000Z",
+    });
+    expect(JSON.parse(localStorage.getItem(LS_PREFIX + "lessons_completed")!)).toEqual({
+      "chicxulub-extinction": "2026-07-01T00:00:00.000Z",
+    });
+  });
+
   it("does not re-migrate when version already matches", async () => {
     localStorage.setItem(
       LS_PREFIX + SCHEMA_VERSION_KEY,
