@@ -193,8 +193,6 @@ pub struct FarFieldRequest {
     pub range_m: f64,
     pub mean_depth_m: f64,
     pub decay_alpha: f64,
-    #[serde(default)]
-    pub is_impact: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -1593,7 +1591,6 @@ mod tests {
             range_m: 10_000.0,
             mean_depth_m: 4_000.0,
             decay_alpha: 0.5,
-            is_impact: true,
         });
         assert!(res.is_err());
     }
@@ -1606,7 +1603,6 @@ mod tests {
             range_m: 10_000.0,
             mean_depth_m: 4_000.0,
             decay_alpha: 5.0 / 6.0,
-            is_impact: true,
         };
         let resp_a = far_field_amplitude(base.clone()).unwrap();
         let resp_b = far_field_amplitude(FarFieldRequest {
@@ -1625,7 +1621,6 @@ mod tests {
             range_m: 10_000.0,
             mean_depth_m: 4_000.0,
             decay_alpha: -1.0,
-            is_impact: true,
         });
         assert!(res.is_err());
     }
