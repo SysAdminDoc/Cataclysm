@@ -694,10 +694,12 @@ impl TimeStepper {
             }
         });
 
-        // Momentum update: rows in parallel.
+        // Momentum update: rows in parallel. Use the PRE-STEP η (eta_old)
+        // for the pressure gradient so CPU matches the GPU leapfrog kernel
+        // (simultaneous update — Mader 1988, Kowalik & Murty 1993).
         let mut u_new = vec![0.0f64; nx * ny];
         let mut v_new = vec![0.0f64; nx * ny];
-        let eta_new_ref: &Vec<f64> = &eta_new;
+        let eta_ref: &Vec<f64> = &eta_old;
         let nonlinear = matches!(self.mode, SolverMode::Nonlinear);
         u_new
             .par_chunks_mut(nx)
@@ -717,11 +719,11 @@ impl TimeStepper {
                         v_row[i] = 0.0;
                         continue;
                     }
-                    let dnedx = (eta_new_ref[idx(i + 1, j, nx)] - eta_new_ref[idx(i - 1, j, nx)])
+                    let dnedx = (eta_ref[idx(i + 1, j, nx)] - eta_ref[idx(i - 1, j, nx)])
                         / (2.0 * dx);
-                    let dnedy = (eta_new_ref[idx(i, j + 1, nx)] - eta_new_ref[idx(i, j - 1, nx)])
+                    let dnedy = (eta_ref[idx(i, j + 1, nx)] - eta_ref[idx(i, j - 1, nx)])
                         / (2.0 * dy);
-                    let h_total = (h[idx(i, j, nx)] + eta_new_ref[idx(i, j, nx)]).max(0.01);
+                    let h_total = (h[idx(i, j, nx)] + eta_ref[idx(i, j, nx)]).max(0.01);
                     let u = u_in[idx(i, j, nx)];
                     let v = v_in[idx(i, j, nx)];
 
@@ -1109,8 +1111,10 @@ mod tests {
         let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.1, 0.1);
         g.fill_uniform_depth(4_000.0);
         g.inject_gaussian(0.0, 0.0, 1.0, 30_000.0);
-        let stepper = TimeStepper::new(g.recommended_dt_s(0.4));
-        stepper.step(&mut g, 600);
+        let dt = g.recommended_dt_s(0.3);
+        let stepper = TimeStepper::new(dt);
+        let steps = ((600.0 / dt).round() as usize).max(2);
+        stepper.step(&mut g, steps);
 
         // After a long-enough run the wave has reached the sponge zone.
         // Far-rim cells (corners, 1 cell from edge) should be damped to
