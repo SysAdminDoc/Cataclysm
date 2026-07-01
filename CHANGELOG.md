@@ -159,6 +159,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 - **Diagnostics feedback hardened.** The log viewer now tolerates circular
   console payloads, surfaces clipboard-copy failures, and Settings save/reset
   status is announced to assistive technology instead of being visual-only.
+- **Solver diagnostics now reach the app log.** GPU fallback, VRAM precheck,
+  readback, and PNG encode failures now flow from Rust into LogViewer via a
+  Tauri event, and previously silent settings/tour/cancel Promise failures log
+  contextual warnings.
 - **Scenario sharing clipboard guard.** Copy/Paste now reports when the
   Clipboard API is unavailable instead of throwing from the primary scenario
   workflow.

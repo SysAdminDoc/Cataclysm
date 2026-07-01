@@ -50,6 +50,20 @@ use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
 pub mod gpu;
 pub mod kernels;
 
+pub type DiagnosticSink<'a> = dyn Fn(&str) + Send + Sync + 'a;
+
+pub(crate) fn report_diagnostic(
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    message: impl Into<String>,
+) {
+    let message = message.into();
+    if let Some(diagnostics) = diagnostics {
+        diagnostics(&message);
+    } else {
+        eprintln!("{message}");
+    }
+}
+
 /// One snapshot of the propagation field, suitable for IPC transport.
 #[derive(Debug, Clone, Serialize)]
 pub struct GridSnapshot {
@@ -239,6 +253,13 @@ impl SwGrid {
     /// treated as zero for the colormap; their presence is reported via
     /// `eta_max_m` / `eta_abs_max_m` clamped to finite.
     pub fn snapshot(&self) -> GridSnapshot {
+        self.snapshot_with_diagnostics(None)
+    }
+
+    pub fn snapshot_with_diagnostics(
+        &self,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> GridSnapshot {
         let (mut lo, mut hi, mut absmax) = (f64::INFINITY, f64::NEG_INFINITY, 0.0_f64);
         for &v in &self.eta_m {
             if !v.is_finite() {
@@ -267,14 +288,14 @@ impl SwGrid {
             eta_min_m: if lo.is_finite() { lo } else { 0.0 },
             eta_max_m: if hi.is_finite() { hi } else { 0.0 },
             eta_abs_max_m: absmax,
-            eta_png_b64: self.encode_eta_png(absmax.max(1e-9)),
+            eta_png_b64: self.encode_eta_png(absmax.max(1e-9), diagnostics),
         }
     }
 
     /// Encode the current η field as a PNG, mapped to a diverging blue–
     /// white–red colormap scaled by `scale_m`. Returns base64 string ready
     /// to drop into a `data:image/png;base64,…` URI.
-    fn encode_eta_png(&self, scale_m: f64) -> String {
+    fn encode_eta_png(&self, scale_m: f64, diagnostics: Option<&DiagnosticSink<'_>>) -> String {
         let mut rgba = Vec::with_capacity(self.nx * self.ny * 4);
         let safe_scale = if scale_m.is_finite() && scale_m > 0.0 {
             scale_m
@@ -309,12 +330,15 @@ impl SwGrid {
             match encoder.write_header() {
                 Ok(mut writer) => {
                     if let Err(e) = writer.write_image_data(&rgba) {
-                        eprintln!("[solver] PNG encode failed: {e}");
+                        report_diagnostic(diagnostics, format!("[solver] PNG encode failed: {e}"));
                         return String::new();
                     }
                 }
                 Err(e) => {
-                    eprintln!("[solver] PNG header write failed: {e}");
+                    report_diagnostic(
+                        diagnostics,
+                        format!("[solver] PNG header write failed: {e}"),
+                    );
                     return String::new();
                 }
             }
@@ -763,9 +787,20 @@ pub fn run_simulation(
     n_snapshots: usize,
     cancel: Option<&AtomicBool>,
 ) -> Vec<GridSnapshot> {
+    run_simulation_with_diagnostics(grid, stepper, t_end_s, n_snapshots, cancel, None)
+}
+
+pub fn run_simulation_with_diagnostics(
+    grid: &mut SwGrid,
+    stepper: &TimeStepper,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: Option<&AtomicBool>,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+) -> Vec<GridSnapshot> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
-    snaps.push(grid.snapshot());
+    snaps.push(grid.snapshot_with_diagnostics(diagnostics));
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return snaps;
     }
@@ -791,7 +826,7 @@ pub fn run_simulation(
         if !stepper.step_cancellable(grid, take, cancel) {
             break;
         }
-        snaps.push(grid.snapshot());
+        snaps.push(grid.snapshot_with_diagnostics(diagnostics));
     }
     snaps
 }

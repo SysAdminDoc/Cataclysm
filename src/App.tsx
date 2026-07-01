@@ -228,7 +228,10 @@ export default function App() {
 
   // Apply persisted theme once at startup.
   useEffect(() => {
-    loadTheme().then(applyTheme).catch(() => applyTheme("mocha"));
+    loadTheme().then(applyTheme).catch((err) => {
+      console.warn("[theme] failed to load persisted theme", err);
+      applyTheme("mocha");
+    });
   }, []);
 
   // Restore scenario from URL query params (?preset=id or ?scenario=base64).
@@ -252,7 +255,7 @@ export default function App() {
         if (cancelled) return;
         if (disclaimer && !tour) setTourOpen(true);
       })
-      .catch(() => {});
+      .catch((err) => console.warn("[tour] failed to read first-run state", err));
     const onSaved = () => {
       // Re-evaluate after Settings save or first-run acknowledgement.
       Promise.all([settings.getDisclaimerAcknowledged(), settings.getTourCompleted()])
@@ -260,7 +263,7 @@ export default function App() {
           if (cancelled) return;
           if (disclaimer && !tour) setTourOpen(true);
         })
-        .catch(() => {});
+        .catch((err) => console.warn("[tour] failed to refresh first-run state", err));
     };
     window.addEventListener("tsunamisim:settings-saved", onSaved);
     window.addEventListener("tsunamisim:disclaimer-acknowledged", onSaved);
@@ -301,7 +304,7 @@ export default function App() {
           if (cancelled) return;
           setTokenBannerOpen(!tok && !dismissed);
         })
-        .catch(() => {});
+        .catch((err) => console.warn("[settings] failed to evaluate token banner state", err));
     };
     reeval();
     window.addEventListener("tsunamisim:settings-saved", reeval);
@@ -373,7 +376,9 @@ export default function App() {
             type="button"
             onClick={() => {
               setTokenBannerOpen(false);
-              settings.dismissTokenBanner().catch(() => {});
+              settings
+                .dismissTokenBanner()
+                .catch((err) => console.warn("[settings] failed to dismiss token banner", err));
             }}
           >
             <UiIcon name="close" size={14} />
@@ -721,7 +726,9 @@ export default function App() {
         open={tourOpen}
         onClose={() => {
           setTourOpen(false);
-          settings.markTourCompleted().catch(() => {});
+          settings
+            .markTourCompleted()
+            .catch((err) => console.warn("[tour] failed to persist tour completion", err));
         }}
       />
       {activeLesson && (

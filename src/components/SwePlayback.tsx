@@ -133,7 +133,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
     if (isTauri()) {
-      api.cancelSimulation().catch(() => {});
+      api
+        .cancelSimulation()
+        .catch((err) => console.warn("[solver] failed to cancel active simulation", err));
     }
     setStatus("idle");
     setErrMsg(null);

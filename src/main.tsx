@@ -14,12 +14,18 @@ import "./styles.css";
 settings
   .getCesiumToken()
   .then((tok) => primeCesiumToken(tok || null))
-  .catch(() => primeCesiumToken(null));
+  .catch((err) => {
+    console.warn("[settings] failed to load Cesium token", err);
+    primeCesiumToken(null);
+  });
 
 // Re-prime if the token changes via the Settings dialog.
 if (typeof window !== "undefined") {
   window.addEventListener("tsunamisim:settings-saved", () => {
-    settings.getCesiumToken().then((tok) => primeCesiumToken(tok || null)).catch(() => {});
+    settings
+      .getCesiumToken()
+      .then((tok) => primeCesiumToken(tok || null))
+      .catch((err) => console.warn("[settings] failed to refresh Cesium token", err));
   });
   window.addEventListener("error", (event) => {
     console.error("[app] Unhandled window error", event.error ?? event.message);

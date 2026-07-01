@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { pushExternalDiagnostic } from "../../lib/diagnosticsLog";
 import { LogViewer } from "../LogViewer";
 
 const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
@@ -56,5 +57,21 @@ describe("LogViewer", () => {
     await waitFor(() => expect(clipboard.writeText).toHaveBeenCalled());
     expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed.");
     expect(screen.getByRole("button", { name: "Copy log" })).toBeInTheDocument();
+  });
+
+  it("renders Rust solver diagnostic events in the session log", async () => {
+    const user = userEvent.setup();
+    render(<LogViewer open onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+
+    act(() => {
+      pushExternalDiagnostic({
+        level: "warn",
+        message: "[gpu] readback failed or produced non-finite field - aborting GPU step",
+      });
+    });
+
+    expect(await screen.findByText(/readback failed/)).toBeInTheDocument();
+    expect(screen.getByText("warn")).toBeInTheDocument();
   });
 });

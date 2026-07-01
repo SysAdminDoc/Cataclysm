@@ -196,7 +196,10 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
   const clipTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    settings.getSavedScenarios().then(setSavedScenarios).catch(() => {});
+    settings
+      .getSavedScenarios()
+      .then(setSavedScenarios)
+      .catch((err) => console.warn("[settings] failed to load saved scenarios", err));
   }, []);
   useEffect(() => () => window.clearTimeout(clipTimer.current), []);
 

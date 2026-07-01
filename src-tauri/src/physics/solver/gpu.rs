@@ -26,7 +26,7 @@
 //! 1901.06798 — reports 3.6–6.4× speedup vs. 16-core CPU on GeoClaw.
 
 use super::kernels::SWE_LEAPFROG_WGSL;
-use super::SwGrid;
+use super::{DiagnosticSink, SwGrid, report_diagnostic};
 use wgpu::util::DeviceExt;
 
 /// Outcome of an attempted GPU adapter acquisition. Allows the
@@ -115,7 +115,25 @@ impl GpuTimeStepper {
         sponge_width: u32,
         nonlinear: bool,
     ) -> Option<Self> {
-        pollster::block_on(Self::new_async(grid, dt_s, manning_n, sponge_width, nonlinear))
+        Self::new_with_diagnostics(grid, dt_s, manning_n, sponge_width, nonlinear, None)
+    }
+
+    pub fn new_with_diagnostics(
+        grid: &SwGrid,
+        dt_s: f64,
+        manning_n: f64,
+        sponge_width: u32,
+        nonlinear: bool,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> Option<Self> {
+        pollster::block_on(Self::new_async(
+            grid,
+            dt_s,
+            manning_n,
+            sponge_width,
+            nonlinear,
+            diagnostics,
+        ))
     }
 
     async fn new_async(
@@ -124,6 +142,7 @@ impl GpuTimeStepper {
         manning_n: f64,
         sponge_width: u32,
         nonlinear: bool,
+        diagnostics: Option<&DiagnosticSink<'_>>,
     ) -> Option<Self> {
         let instance = wgpu::Instance::default();
         let adapter = instance
@@ -145,19 +164,25 @@ impl GpuTimeStepper {
         // of max_buffer_binding_size (a rough heuristic since wgpu doesn't
         // expose total VRAM). This triggers CPU fallback before an OOM panic.
         let limits = adapter.limits();
-        let max_buf = limits.max_buffer_binding_size as u64;
+        let max_buf = limits.max_storage_buffer_binding_size;
         if n_bytes > max_buf {
-            eprintln!(
-                "[gpu] grid requires {} bytes per buffer but adapter max is {} — falling back to CPU",
-                n_bytes, max_buf
+            report_diagnostic(
+                diagnostics,
+                format!(
+                    "[gpu] grid requires {} bytes per buffer but adapter max is {} — falling back to CPU",
+                    n_bytes, max_buf
+                ),
             );
             return None;
         }
         let total_estimated = n_bytes * 10;
         if total_estimated > (max_buf as f64 * 0.8) as u64 {
-            eprintln!(
-                "[gpu] estimated total VRAM {} exceeds 80% of max_buffer_binding_size {} — falling back to CPU",
-                total_estimated, max_buf
+            report_diagnostic(
+                diagnostics,
+                format!(
+                    "[gpu] estimated total VRAM {} exceeds 80% of max_buffer_binding_size {} — falling back to CPU",
+                    total_estimated, max_buf
+                ),
             );
             return None;
         }
@@ -167,6 +192,7 @@ impl GpuTimeStepper {
                 label: Some("tsunamisim-swe"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::downlevel_defaults(),
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
                 trace: wgpu::Trace::Off,
             })
@@ -213,8 +239,9 @@ impl GpuTimeStepper {
             contents: bytemuck::cast_slice(&h_f32),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
-        let storage_usage =
-            wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST;
+        let storage_usage = wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST;
         let eta_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("eta_a"),
             contents: bytemuck::cast_slice(&eta_f32),
@@ -286,8 +313,8 @@ impl GpuTimeStepper {
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("swe-pl"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("swe-pipeline"),
@@ -332,10 +359,24 @@ impl GpuTimeStepper {
     /// field, which previously happened silently.
     #[must_use]
     pub fn step(&self, grid: &mut SwGrid, n_steps: usize) -> bool {
-        pollster::block_on(self.step_async(grid, n_steps))
+        self.step_with_diagnostics(grid, n_steps, None)
     }
 
-    async fn step_async(&self, grid: &mut SwGrid, n_steps: usize) -> bool {
+    pub fn step_with_diagnostics(
+        &self,
+        grid: &mut SwGrid,
+        n_steps: usize,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
+        pollster::block_on(self.step_async(grid, n_steps, diagnostics))
+    }
+
+    async fn step_async(
+        &self,
+        grid: &mut SwGrid,
+        n_steps: usize,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
         if n_steps == 0 {
             return true;
         }
@@ -362,9 +403,11 @@ impl GpuTimeStepper {
         let groups_x = self.nx.div_ceil(8);
         let groups_y = self.ny.div_ceil(8);
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("swe-encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("swe-encoder"),
+            });
         // After step k, output lives in B if (k+1) is odd, A if even.
         // Starting state is in A; after 1 step, output is in B → a_is_in=false next.
         let mut a_is_in = true;
@@ -411,8 +454,11 @@ impl GpuTimeStepper {
             .map_async(wgpu::MapMode::Read, move |r| {
                 let _ = tx_v.send(r);
             });
-        if self.device.poll(wgpu::PollType::Wait).is_err() {
-            eprintln!("[gpu] device.poll failed during readback — aborting GPU step");
+        if self.device.poll(wgpu::PollType::wait_indefinitely()).is_err() {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] device.poll failed during readback — aborting GPU step",
+            );
             return false;
         }
 
@@ -454,7 +500,10 @@ impl GpuTimeStepper {
                 true
             }
             _ => {
-                eprintln!("[gpu] readback failed or produced non-finite field — aborting GPU step");
+                report_diagnostic(
+                    diagnostics,
+                    "[gpu] readback failed or produced non-finite field — aborting GPU step",
+                );
                 false
             }
         }
@@ -462,9 +511,23 @@ impl GpuTimeStepper {
 
     fn make_bg(&self, a_is_in: bool) -> wgpu::BindGroup {
         let (eta_in, eta_out, u_in, u_out, v_in, v_out) = if a_is_in {
-            (&self.eta_a, &self.eta_b, &self.u_a, &self.u_b, &self.v_a, &self.v_b)
+            (
+                &self.eta_a,
+                &self.eta_b,
+                &self.u_a,
+                &self.u_b,
+                &self.v_a,
+                &self.v_b,
+            )
         } else {
-            (&self.eta_b, &self.eta_a, &self.u_b, &self.u_a, &self.v_b, &self.v_a)
+            (
+                &self.eta_b,
+                &self.eta_a,
+                &self.u_b,
+                &self.u_a,
+                &self.v_b,
+                &self.v_a,
+            )
         };
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("swe-bg"),
@@ -551,7 +614,7 @@ mod tests {
         let gpu = match GpuTimeStepper::new(&g_gpu, dt, 0.0, 0, false) {
             Some(g) => g,
             None => {
-                eprintln!("swe_gpu_matches_cpu: no adapter — skipping");
+                println!("swe_gpu_matches_cpu: no adapter — skipping");
                 return;
             }
         };
@@ -580,7 +643,7 @@ mod tests {
         let gpu = match GpuTimeStepper::new(&g, dt, 0.0, 5, false) {
             Some(g) => g,
             None => {
-                eprintln!("swe_gpu_sponge_damps_rim: no adapter — skipping");
+                println!("swe_gpu_sponge_damps_rim: no adapter — skipping");
                 return;
             }
         };
@@ -611,7 +674,7 @@ mod tests {
         let gpu = match GpuTimeStepper::new(&g, dt, 0.0, 0, false) {
             Some(g) => g,
             None => {
-                eprintln!("swe_gpu_land_stays_dry: no adapter — skipping");
+                println!("swe_gpu_land_stays_dry: no adapter — skipping");
                 return;
             }
         };

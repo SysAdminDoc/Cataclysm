@@ -7,21 +7,41 @@ use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 
 use crate::physics::{
-    asteroid::{far_field_amplitude_m as impact_far_field, AsteroidImpact},
+    GeoPoint, InitialDisplacement,
+    asteroid::{AsteroidImpact, far_field_amplitude_m as impact_far_field},
     constants::{G_EARTH, R_EARTH_M},
     earthquake::EarthquakeSource,
-    lamb_wave::{proudman_resonance_depth_m, LambWaveSource, LAMB_WAVE_SPEED_M_S},
+    lamb_wave::{LAMB_WAVE_SPEED_M_S, LambWaveSource, proudman_resonance_depth_m},
     landslide::LandslideSource,
-    nuclear::{far_field_amplitude_m as nuclear_far_field, NuclearBurst},
+    nuclear::{NuclearBurst, far_field_amplitude_m as nuclear_far_field},
     shallow_water::{
-        long_wave_travel_time_s, sample_wavefront, synolakis_runup_m, PropagationSnapshot,
+        PropagationSnapshot, long_wave_travel_time_s, sample_wavefront, synolakis_runup_m,
     },
-    solver::{run_simulation, Colormap, GridSnapshot, SwGrid, TimeStepper},
-    GeoPoint, InitialDisplacement,
+    solver::{
+        Colormap, DiagnosticSink, GridSnapshot, SwGrid, TimeStepper,
+        run_simulation_with_diagnostics,
+    },
 };
-use crate::presets::{all_presets, find_preset, Preset};
+use crate::presets::{Preset, all_presets, find_preset};
+use tauri::{AppHandle, Emitter};
 
 static SIM_CANCEL_TOKENS: Mutex<Vec<Arc<AtomicBool>>> = Mutex::new(Vec::new());
+
+#[derive(Clone, Serialize)]
+struct SolverDiagnosticPayload {
+    level: &'static str,
+    message: String,
+}
+
+fn emit_solver_diagnostic(app: &AppHandle, message: impl Into<String>) {
+    let _ = app.emit(
+        "solver-diagnostic",
+        SolverDiagnosticPayload {
+            level: "warn",
+            message: message.into(),
+        },
+    );
+}
 
 fn register_simulation_cancel(cancel: &Arc<AtomicBool>) {
     if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
@@ -795,13 +815,17 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
 /// simulation. The future awaits the join handle; if the worker panics or
 /// is cancelled, we surface a stringified error.
 #[tauri::command]
-pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridResponse, String> {
+pub async fn simulate_grid(
+    app: AppHandle,
+    req: SimulateGridRequest,
+) -> Result<SimulateGridResponse, String> {
     validate_simulate_grid(&req)?;
 
     let cancel = Arc::new(AtomicBool::new(false));
     register_simulation_cancel(&cancel);
 
     tauri::async_runtime::spawn_blocking(move || {
+        let diagnostics = |message: &str| emit_solver_diagnostic(&app, message);
         let result = (|| {
         // Keep the simulation-box centre off the poles so the lon/lat box is
         // always well-ordered (north > south). A source beyond ±80° would
@@ -914,8 +938,14 @@ pub async fn simulate_grid(req: SimulateGridRequest) -> Result<SimulateGridRespo
         // leapfrog kernel; nonlinear advection (F4-02) is CPU-only
         // for now, so when the user has selected a nonlinear-class
         // scenario we stay on CPU even with the feature flag on.
-        let (snapshots, used_gpu) =
-            run_simulation_dispatch(&mut grid, dt, req.t_end_s, req.n_snapshots, cancel.as_ref());
+        let (snapshots, used_gpu) = run_simulation_dispatch(
+            &mut grid,
+            dt,
+            req.t_end_s,
+            req.n_snapshots,
+            cancel.as_ref(),
+            Some(&diagnostics),
+        );
         Ok(SimulateGridResponse {
             snapshots,
             dt_s: dt,
@@ -946,6 +976,7 @@ pub struct SimulateGridStreamMeta {
 
 #[tauri::command]
 pub async fn simulate_grid_streaming(
+    app: AppHandle,
     req: SimulateGridRequest,
     on_snapshot: tauri::ipc::Channel<GridSnapshot>,
 ) -> Result<SimulateGridStreamMeta, String> {
@@ -955,6 +986,7 @@ pub async fn simulate_grid_streaming(
     register_simulation_cancel(&cancel);
 
     tauri::async_runtime::spawn_blocking(move || {
+        let diagnostics = |message: &str| emit_solver_diagnostic(&app, message);
         let result = (|| {
             let lat = req.source.lat_deg.clamp(-80.0, 80.0);
             let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
@@ -990,15 +1022,24 @@ pub async fn simulate_grid_streaming(
             } else {
                 grid.fill_uniform_depth(fallback_depth);
             }
-            grid.inject_gaussian(lat, lon, req.initial_amplitude_m, req.source_sigma_m.max(1000.0));
+            grid.inject_gaussian(
+                lat,
+                lon,
+                req.initial_amplitude_m,
+                req.source_sigma_m.max(1000.0),
+            );
 
             if req.include_lamb_wave {
                 let mut lamb = crate::physics::lamb_wave::LambWaveSource::hunga_tonga_2022();
                 if let Some(p) = req.lamb_wave_peak_pressure_pa {
-                    if p.is_finite() && p > 0.0 { lamb.peak_pressure_pa = p; }
+                    if p.is_finite() && p > 0.0 {
+                        lamb.peak_pressure_pa = p;
+                    }
                 }
                 if let Some(r) = req.lamb_wave_source_radius_m {
-                    if r.is_finite() && r > 0.0 { lamb.source_radius_m = r; }
+                    if r.is_finite() && r > 0.0 {
+                        lamb.source_radius_m = r;
+                    }
                 }
                 grid.apply_lamb_wave(&lamb, lat, lon, 0.0);
             }
@@ -1010,7 +1051,9 @@ pub async fn simulate_grid_streaming(
 
             let est_steps = if dt.is_finite() && dt > 0.0 {
                 (req.t_end_s / dt).clamp(1.0, 1.0e9)
-            } else { 1.0 };
+            } else {
+                1.0
+            };
             let work = (grid.nx as u64)
                 .saturating_mul(grid.ny as u64)
                 .saturating_mul(est_steps as u64);
@@ -1022,15 +1065,23 @@ pub async fn simulate_grid_streaming(
             }
 
             // Stream t=0 snapshot immediately
-            let _ = on_snapshot.send(grid.snapshot());
+            let _ = on_snapshot.send(grid.snapshot_with_diagnostics(Some(&diagnostics)));
 
             let total_raw = (req.t_end_s / dt).max(1.0);
             let total_steps = if total_raw.is_finite() && total_raw < 1_000_000.0 {
                 total_raw.round() as usize
-            } else { 1_000_000 };
+            } else {
+                1_000_000
+            };
 
             let used_gpu = stream_simulation_dispatch(
-                &mut grid, dt, n, total_steps, cancel.as_ref(), &on_snapshot,
+                &mut grid,
+                dt,
+                n,
+                total_steps,
+                cancel.as_ref(),
+                &on_snapshot,
+                Some(&diagnostics),
             );
 
             Ok(SimulateGridStreamMeta {
@@ -1064,7 +1115,7 @@ pub async fn simulate_grid_streaming(
 pub fn gpu_probe() -> String {
     #[cfg(feature = "gpu")]
     {
-        use crate::physics::solver::gpu::{probe_adapter, GpuAvailability};
+        use crate::physics::solver::gpu::{GpuAvailability, probe_adapter};
         match probe_adapter() {
             GpuAvailability::Available => "available".to_string(),
             GpuAvailability::NoAdapter | GpuAvailability::AdapterFailed(_) => {
@@ -1099,17 +1150,20 @@ fn stream_simulation_cpu(
     total_steps: usize,
     cancel: &AtomicBool,
     on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
+    diagnostics: Option<&DiagnosticSink<'_>>,
 ) {
     let stepper = TimeStepper::new(dt_s);
     for k in 1..n {
-        if cancel.load(Ordering::Relaxed) { break; }
+        if cancel.load(Ordering::Relaxed) {
+            break;
+        }
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let take = target_step.saturating_sub(current_step).max(1);
         if !stepper.step_cancellable(grid, take, Some(cancel)) {
             break;
         }
-        let _ = on_snapshot.send(grid.snapshot());
+        let _ = on_snapshot.send(grid.snapshot_with_diagnostics(diagnostics));
     }
 }
 
@@ -1121,40 +1175,44 @@ fn stream_simulation_dispatch(
     total_steps: usize,
     cancel: &AtomicBool,
     on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
+    diagnostics: Option<&DiagnosticSink<'_>>,
 ) -> bool {
-    use crate::physics::solver::gpu::GpuTimeStepper;
     use crate::physics::solver::BoundaryMode;
+    use crate::physics::solver::gpu::GpuTimeStepper;
 
     let sponge_width = match BoundaryMode::default_sponge() {
         BoundaryMode::Sponge { width_cells } => width_cells as u32,
         BoundaryMode::ZeroFlux => 0,
     };
-    if let Some(gpu) = GpuTimeStepper::new(
+    if let Some(gpu) = GpuTimeStepper::new_with_diagnostics(
         grid,
         dt_s,
         crate::physics::constants::MANNING_N_COASTAL,
         sponge_width,
         true,
+        diagnostics,
     ) {
         let pristine = grid.clone();
         let mut ok = true;
         for k in 1..n {
-            if cancel.load(Ordering::Relaxed) { break; }
+            if cancel.load(Ordering::Relaxed) {
+                break;
+            }
             let target_step = (k * total_steps) / (n - 1);
             let current_step = ((k - 1) * total_steps) / (n - 1);
             let take = target_step.saturating_sub(current_step).max(1);
-            if !gpu.step(grid, take) {
+            if !gpu.step_with_diagnostics(grid, take, diagnostics) {
                 ok = false;
                 break;
             }
-            let _ = on_snapshot.send(grid.snapshot());
+            let _ = on_snapshot.send(grid.snapshot_with_diagnostics(diagnostics));
         }
         if ok {
             return true;
         }
         *grid = pristine;
     }
-    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot);
+    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot, diagnostics);
     false
 }
 
@@ -1166,8 +1224,9 @@ fn stream_simulation_dispatch(
     total_steps: usize,
     cancel: &AtomicBool,
     on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
+    diagnostics: Option<&DiagnosticSink<'_>>,
 ) -> bool {
-    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot);
+    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot, diagnostics);
     false
 }
 
@@ -1178,23 +1237,26 @@ fn run_simulation_dispatch(
     t_end_s: f64,
     n_snapshots: usize,
     cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
 ) -> (Vec<GridSnapshot>, bool) {
-    use crate::physics::solver::gpu::GpuTimeStepper;
     use crate::physics::solver::BoundaryMode;
+    use crate::physics::solver::gpu::GpuTimeStepper;
 
     let sponge_width = match BoundaryMode::default_sponge() {
         BoundaryMode::Sponge { width_cells } => width_cells as u32,
         BoundaryMode::ZeroFlux => 0,
     };
-    if let Some(gpu) = GpuTimeStepper::new(
+    if let Some(gpu) = GpuTimeStepper::new_with_diagnostics(
         grid,
         dt_s,
         crate::physics::constants::MANNING_N_COASTAL,
         sponge_width,
         true,
+        diagnostics,
     ) {
         let pristine = grid.clone();
-        if let Some(snaps) = run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots, cancel)
+        if let Some(snaps) =
+            run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots, cancel, diagnostics)
         {
             return (snaps, true);
         }
@@ -1202,7 +1264,14 @@ fn run_simulation_dispatch(
     }
     let stepper = TimeStepper::new(dt_s);
     (
-        run_simulation(grid, &stepper, t_end_s, n_snapshots, Some(cancel)),
+        run_simulation_with_diagnostics(
+            grid,
+            &stepper,
+            t_end_s,
+            n_snapshots,
+            Some(cancel),
+            diagnostics,
+        ),
         false,
     )
 }
@@ -1214,10 +1283,18 @@ fn run_simulation_dispatch(
     t_end_s: f64,
     n_snapshots: usize,
     cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
 ) -> (Vec<GridSnapshot>, bool) {
     let stepper = TimeStepper::new(dt_s);
     (
-        run_simulation(grid, &stepper, t_end_s, n_snapshots, Some(cancel)),
+        run_simulation_with_diagnostics(
+            grid,
+            &stepper,
+            t_end_s,
+            n_snapshots,
+            Some(cancel),
+            diagnostics,
+        ),
         false,
     )
 }
@@ -1236,11 +1313,12 @@ fn run_simulation_gpu(
     t_end_s: f64,
     n_snapshots: usize,
     cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
 ) -> Option<Vec<GridSnapshot>> {
     const MAX_TOTAL_STEPS: usize = 1_000_000;
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
-    snaps.push(grid.snapshot());
+    snaps.push(grid.snapshot_with_diagnostics(diagnostics));
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return Some(snaps);
     }
@@ -1267,12 +1345,12 @@ fn run_simulation_gpu(
                 return Some(snaps);
             }
             let take = remaining.min(16);
-            if !gpu.step(grid, take) {
+            if !gpu.step_with_diagnostics(grid, take, diagnostics) {
                 return None;
             }
             remaining -= take;
         }
-        snaps.push(grid.snapshot());
+        snaps.push(grid.snapshot_with_diagnostics(diagnostics));
     }
     Some(snaps)
 }

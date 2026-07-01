@@ -1,77 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import {
+  clearDiagnosticsLog,
+  installConsoleLogInterception,
+  pushExternalDiagnostic,
+  readDiagnosticsLog,
+  subscribeDiagnostics,
+  type LogEntry,
+  type SolverDiagnosticPayload,
+} from "../lib/diagnosticsLog";
+import { isTauri } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
-
-type LogEntry = {
-  level: "log" | "warn" | "error" | "info";
-  timestamp: number;
-  message: string;
-};
 
 type CopyStatus = "idle" | "copied" | "error";
 
-const MAX_ENTRIES = 500;
-const logBuffer: LogEntry[] = [];
-let listeners: (() => void)[] = [];
+let tauriDiagnosticsListenerInstalled = false;
 
-function notify() {
-  for (const fn of listeners) fn();
-}
+installConsoleLogInterception();
 
-function formatLogArg(arg: unknown): string {
-  if (typeof arg === "string") return arg;
-  if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
-  if (arg === null) return "null";
-  if (typeof arg === "undefined") return "undefined";
-  if (typeof arg === "number" || typeof arg === "boolean" || typeof arg === "bigint") {
-    return String(arg);
-  }
-
-  const seen = new WeakSet<object>();
-  try {
-    const serialized = JSON.stringify(arg, (_key, value: unknown) => {
-      if (typeof value === "object" && value !== null) {
-        if (seen.has(value)) return "[Circular]";
-        seen.add(value);
-      }
-      return value;
+function installTauriDiagnosticsListener() {
+  if (tauriDiagnosticsListenerInstalled || !isTauri()) return;
+  tauriDiagnosticsListenerInstalled = true;
+  import("@tauri-apps/api/event")
+    .then(({ listen }) =>
+      listen<SolverDiagnosticPayload>("solver-diagnostic", (event) => {
+        pushExternalDiagnostic(event.payload);
+      }),
+    )
+    .catch((err) => {
+      console.warn("[diagnostics] failed to attach Rust solver diagnostics listener", err);
     });
-    return serialized ?? String(arg);
-  } catch {
-    return Object.prototype.toString.call(arg);
-  }
 }
 
-function installIntercepts() {
-  if ((console as unknown as Record<string, unknown>).__tsunamisim_patched) return;
-  const orig = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-    info: console.info.bind(console),
-  };
-  function push(level: LogEntry["level"], args: unknown[]) {
-    const message = args.map(formatLogArg).join(" ");
-    logBuffer.push({ level, timestamp: Date.now(), message });
-    if (logBuffer.length > MAX_ENTRIES) logBuffer.shift();
-    notify();
-  }
-  function safePush(level: LogEntry["level"], args: unknown[]) {
-    try {
-      push(level, args);
-    } catch {
-      // Logging should never become the reason the application fails.
-    }
-  }
-  console.log = (...args: unknown[]) => { orig.log(...args); safePush("log", args); };
-  console.warn = (...args: unknown[]) => { orig.warn(...args); safePush("warn", args); };
-  console.error = (...args: unknown[]) => { orig.error(...args); safePush("error", args); };
-  console.info = (...args: unknown[]) => { orig.info(...args); safePush("info", args); };
-  (console as unknown as Record<string, unknown>).__tsunamisim_patched = true;
-}
-
-installIntercepts();
+installTauriDiagnosticsListener();
 
 type Props = {
   open: boolean;
@@ -79,7 +41,7 @@ type Props = {
 };
 
 export function LogViewer({ open, onClose }: Props) {
-  const [entries, setEntries] = useState<LogEntry[]>([...logBuffer]);
+  const [entries, setEntries] = useState<LogEntry[]>(readDiagnosticsLog());
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const dialogRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -88,11 +50,8 @@ export function LogViewer({ open, onClose }: Props) {
   useFocusTrap(dialogRef, open);
 
   useEffect(() => {
-    const update = () => setEntries([...logBuffer]);
-    listeners.push(update);
-    return () => {
-      listeners = listeners.filter((fn) => fn !== update);
-    };
+    const update = () => setEntries(readDiagnosticsLog());
+    return subscribeDiagnostics(update);
   }, []);
 
   useEffect(() => {
@@ -141,8 +100,7 @@ export function LogViewer({ open, onClose }: Props) {
   }, [entries, setTransientCopyStatus]);
 
   const clearLog = useCallback(() => {
-    logBuffer.length = 0;
-    setEntries([]);
+    clearDiagnosticsLog();
   }, []);
 
   if (!open) return null;
