@@ -18,8 +18,8 @@ use crate::physics::{
         PropagationSnapshot, long_wave_travel_time_s, sample_wavefront, synolakis_runup_m,
     },
     solver::{
-        Colormap, DiagnosticSink, GridSnapshot, SwGrid, TimeStepper,
-        run_simulation_with_diagnostics,
+        Colormap, DiagnosticSink, GridGaugePoint, GridSnapshot, SwGrid, TimeStepper,
+        run_simulation_with_gauge_samples,
     },
 };
 use crate::presets::{Preset, all_presets, find_preset};
@@ -720,6 +720,8 @@ pub struct SimulateGridRequest {
     pub lamb_wave_source_radius_m: Option<f64>,
     #[serde(default)]
     pub colormap: String,
+    #[serde(default)]
+    pub gauge_points: Vec<GridGaugePoint>,
 }
 
 #[derive(Debug, Serialize)]
@@ -747,6 +749,7 @@ const SWE_MAX_CELLS: usize = 4_000_000;
 const SWE_MAX_CELL_STEPS: u64 = 50_000_000_000;
 /// Hard cap on number of snapshots per simulation.
 const SWE_MAX_SNAPSHOTS: usize = 240;
+const SWE_MAX_GAUGES: usize = 256;
 /// Hard cap on simulated time — runaway scrubs.
 const SWE_MAX_T_END_S: f64 = 24.0 * 3600.0;
 /// Hard cap on coastal-runup query batch size — protects against IPC flooding.
@@ -803,6 +806,22 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     }
     if !(req.colormap.is_empty() || req.colormap == "diverging" || req.colormap == "cividis") {
         return Err("colormap must be 'diverging' or 'cividis'".into());
+    }
+    if req.gauge_points.len() > SWE_MAX_GAUGES {
+        return Err(format!(
+            "gauge_points must contain at most {SWE_MAX_GAUGES} gauges"
+        ));
+    }
+    for g in &req.gauge_points {
+        if g.id.trim().is_empty() || g.id.len() > 128 {
+            return Err("gauge point id must be 1..128 characters".into());
+        }
+        if !g.lat_deg.is_finite() || g.lat_deg.abs() > 90.0 {
+            return Err(format!("gauge latitude {} out of range", g.lat_deg));
+        }
+        if !g.lon_deg.is_finite() || g.lon_deg.abs() > LON_ABS_MAX {
+            return Err(format!("gauge longitude {} out of range", g.lon_deg));
+        }
     }
     Ok(())
 }
@@ -945,6 +964,7 @@ pub async fn simulate_grid(
             req.n_snapshots,
             cancel.as_ref(),
             Some(&diagnostics),
+            &req.gauge_points,
         );
         Ok(SimulateGridResponse {
             snapshots,
@@ -1065,7 +1085,8 @@ pub async fn simulate_grid_streaming(
             }
 
             // Stream t=0 snapshot immediately
-            let _ = on_snapshot.send(grid.snapshot_with_diagnostics(Some(&diagnostics)));
+            let _ = on_snapshot
+                .send(grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics)));
 
             let total_raw = (req.t_end_s / dt).max(1.0);
             let total_steps = if total_raw.is_finite() && total_raw < 1_000_000.0 {
@@ -1074,15 +1095,13 @@ pub async fn simulate_grid_streaming(
                 1_000_000
             };
 
-            let used_gpu = stream_simulation_dispatch(
-                &mut grid,
-                dt,
-                n,
-                total_steps,
-                cancel.as_ref(),
-                &on_snapshot,
-                Some(&diagnostics),
-            );
+            let stream_ctx = StreamSimulationContext {
+                cancel: cancel.as_ref(),
+                on_snapshot: &on_snapshot,
+                diagnostics: Some(&diagnostics),
+                gauges: &req.gauge_points,
+            };
+            let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx);
 
             Ok(SimulateGridStreamMeta {
                 dt_s: dt,
@@ -1143,27 +1162,34 @@ pub fn cancel_simulation() {
 /// GPU path when the `gpu` feature is compiled in and an adapter is
 /// available, and falls back to the CPU `TimeStepper` otherwise.
 /// Returns `(snapshots, used_gpu)`.
+struct StreamSimulationContext<'a> {
+    cancel: &'a AtomicBool,
+    on_snapshot: &'a tauri::ipc::Channel<GridSnapshot>,
+    diagnostics: Option<&'a DiagnosticSink<'a>>,
+    gauges: &'a [GridGaugePoint],
+}
+
 fn stream_simulation_cpu(
     grid: &mut SwGrid,
     dt_s: f64,
     n: usize,
     total_steps: usize,
-    cancel: &AtomicBool,
-    on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
-    diagnostics: Option<&DiagnosticSink<'_>>,
+    ctx: &StreamSimulationContext<'_>,
 ) {
     let stepper = TimeStepper::new(dt_s);
     for k in 1..n {
-        if cancel.load(Ordering::Relaxed) {
+        if ctx.cancel.load(Ordering::Relaxed) {
             break;
         }
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let take = target_step.saturating_sub(current_step).max(1);
-        if !stepper.step_cancellable(grid, take, Some(cancel)) {
+        if !stepper.step_cancellable(grid, take, Some(ctx.cancel)) {
             break;
         }
-        let _ = on_snapshot.send(grid.snapshot_with_diagnostics(diagnostics));
+        let _ = ctx
+            .on_snapshot
+            .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
     }
 }
 
@@ -1173,9 +1199,7 @@ fn stream_simulation_dispatch(
     dt_s: f64,
     n: usize,
     total_steps: usize,
-    cancel: &AtomicBool,
-    on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
-    diagnostics: Option<&DiagnosticSink<'_>>,
+    ctx: &StreamSimulationContext<'_>,
 ) -> bool {
     use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
@@ -1190,29 +1214,31 @@ fn stream_simulation_dispatch(
         crate::physics::constants::MANNING_N_COASTAL,
         sponge_width,
         true,
-        diagnostics,
+        ctx.diagnostics,
     ) {
         let pristine = grid.clone();
         let mut ok = true;
         for k in 1..n {
-            if cancel.load(Ordering::Relaxed) {
+            if ctx.cancel.load(Ordering::Relaxed) {
                 break;
             }
             let target_step = (k * total_steps) / (n - 1);
             let current_step = ((k - 1) * total_steps) / (n - 1);
             let take = target_step.saturating_sub(current_step).max(1);
-            if !gpu.step_with_diagnostics(grid, take, diagnostics) {
+            if !gpu.step_with_diagnostics(grid, take, ctx.diagnostics) {
                 ok = false;
                 break;
             }
-            let _ = on_snapshot.send(grid.snapshot_with_diagnostics(diagnostics));
+            let _ = ctx
+                .on_snapshot
+                .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
         }
         if ok {
             return true;
         }
         *grid = pristine;
     }
-    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot, diagnostics);
+    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx);
     false
 }
 
@@ -1222,11 +1248,9 @@ fn stream_simulation_dispatch(
     dt_s: f64,
     n: usize,
     total_steps: usize,
-    cancel: &AtomicBool,
-    on_snapshot: &tauri::ipc::Channel<GridSnapshot>,
-    diagnostics: Option<&DiagnosticSink<'_>>,
+    ctx: &StreamSimulationContext<'_>,
 ) -> bool {
-    stream_simulation_cpu(grid, dt_s, n, total_steps, cancel, on_snapshot, diagnostics);
+    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx);
     false
 }
 
@@ -1238,6 +1262,7 @@ fn run_simulation_dispatch(
     n_snapshots: usize,
     cancel: &AtomicBool,
     diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
 ) -> (Vec<GridSnapshot>, bool) {
     use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
@@ -1255,22 +1280,30 @@ fn run_simulation_dispatch(
         diagnostics,
     ) {
         let pristine = grid.clone();
-        if let Some(snaps) =
-            run_simulation_gpu(grid, &gpu, dt_s, t_end_s, n_snapshots, cancel, diagnostics)
-        {
+        if let Some(snaps) = run_simulation_gpu(
+            grid,
+            &gpu,
+            dt_s,
+            t_end_s,
+            n_snapshots,
+            cancel,
+            diagnostics,
+            gauges,
+        ) {
             return (snaps, true);
         }
         *grid = pristine;
     }
     let stepper = TimeStepper::new(dt_s);
     (
-        run_simulation_with_diagnostics(
+        run_simulation_with_gauge_samples(
             grid,
             &stepper,
             t_end_s,
             n_snapshots,
             Some(cancel),
             diagnostics,
+            gauges,
         ),
         false,
     )
@@ -1284,16 +1317,18 @@ fn run_simulation_dispatch(
     n_snapshots: usize,
     cancel: &AtomicBool,
     diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
 ) -> (Vec<GridSnapshot>, bool) {
     let stepper = TimeStepper::new(dt_s);
     (
-        run_simulation_with_diagnostics(
+        run_simulation_with_gauge_samples(
             grid,
             &stepper,
             t_end_s,
             n_snapshots,
             Some(cancel),
             diagnostics,
+            gauges,
         ),
         false,
     )
@@ -1314,11 +1349,12 @@ fn run_simulation_gpu(
     n_snapshots: usize,
     cancel: &AtomicBool,
     diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
 ) -> Option<Vec<GridSnapshot>> {
     const MAX_TOTAL_STEPS: usize = 1_000_000;
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
-    snaps.push(grid.snapshot_with_diagnostics(diagnostics));
+    snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return Some(snaps);
     }
@@ -1350,7 +1386,7 @@ fn run_simulation_gpu(
             }
             remaining -= take;
         }
-        snaps.push(grid.snapshot_with_diagnostics(diagnostics));
+        snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     }
     Some(snaps)
 }
@@ -1794,6 +1830,7 @@ mod tests {
             lamb_wave_peak_pressure_pa: Some(-1.0),
             lamb_wave_source_radius_m: None,
             colormap: "diverging".to_string(),
+            gauge_points: vec![],
         });
         assert!(res.is_err());
     }
@@ -1814,6 +1851,32 @@ mod tests {
             lamb_wave_peak_pressure_pa: None,
             lamb_wave_source_radius_m: None,
             colormap: "rainbow".to_string(),
+            gauge_points: vec![],
+        });
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn simulate_grid_rejects_bad_gauge_coordinates() {
+        let res = validate_simulate_grid(&SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 4_000.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "diverging".to_string(),
+            gauge_points: vec![GridGaugePoint {
+                id: "bad".to_string(),
+                lat_deg: 91.0,
+                lon_deg: 0.0,
+            }],
         });
         assert!(res.is_err());
     }

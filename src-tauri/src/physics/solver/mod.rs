@@ -40,7 +40,7 @@
 
 use base64::Engine;
 use rayon::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -64,6 +64,19 @@ pub(crate) fn report_diagnostic(
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct GridGaugePoint {
+    pub id: String,
+    pub lat_deg: f64,
+    pub lon_deg: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GridGaugeSample {
+    pub id: String,
+    pub eta_m: Option<f64>,
+}
+
 /// One snapshot of the propagation field, suitable for IPC transport.
 #[derive(Debug, Clone, Serialize)]
 pub struct GridSnapshot {
@@ -83,6 +96,8 @@ pub struct GridSnapshot {
     /// diverging colormap. Suitable for `data:image/png;base64,…` URIs
     /// passed to Cesium's `SingleTileImageryProvider`.
     pub eta_png_b64: String,
+    #[serde(default)]
+    pub gauge_samples: Vec<GridGaugeSample>,
 }
 
 /// Mutable propagation state. Owns the η / u / v / h arrays.
@@ -260,6 +275,14 @@ impl SwGrid {
         &self,
         diagnostics: Option<&DiagnosticSink<'_>>,
     ) -> GridSnapshot {
+        self.snapshot_with_gauge_samples(&[], diagnostics)
+    }
+
+    pub fn snapshot_with_gauge_samples(
+        &self,
+        gauges: &[GridGaugePoint],
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> GridSnapshot {
         let (mut lo, mut hi, mut absmax) = (f64::INFINITY, f64::NEG_INFINITY, 0.0_f64);
         for &v in &self.eta_m {
             if !v.is_finite() {
@@ -289,7 +312,44 @@ impl SwGrid {
             eta_max_m: if hi.is_finite() { hi } else { 0.0 },
             eta_abs_max_m: absmax,
             eta_png_b64: self.encode_eta_png(absmax.max(1e-9), diagnostics),
+            gauge_samples: gauges
+                .iter()
+                .map(|g| GridGaugeSample {
+                    id: g.id.clone(),
+                    eta_m: self.sample_eta_at(g.lat_deg, g.lon_deg),
+                })
+                .collect(),
         }
+    }
+
+    pub fn sample_eta_at(&self, lat_deg: f64, lon_deg: f64) -> Option<f64> {
+        if !lat_deg.is_finite() || !lon_deg.is_finite() || self.nx < 2 || self.ny < 2 {
+            return None;
+        }
+        let x = ((lon_deg - self.west_lon) / self.dlon_deg) - 0.5;
+        let y = ((lat_deg - self.south_lat) / self.dlat_deg) - 0.5;
+        if !(x >= 0.0 && y >= 0.0 && x <= (self.nx - 1) as f64 && y <= (self.ny - 1) as f64) {
+            return None;
+        }
+        let i0 = x.floor().clamp(0.0, (self.nx - 1) as f64) as usize;
+        let j0 = y.floor().clamp(0.0, (self.ny - 1) as f64) as usize;
+        let i1 = (i0 + 1).min(self.nx - 1);
+        let j1 = (j0 + 1).min(self.ny - 1);
+        let tx = (x - i0 as f64).clamp(0.0, 1.0);
+        let ty = (y - j0 as f64).clamp(0.0, 1.0);
+        let v00 = self.eta_m[idx(i0, j0, self.nx)];
+        let v10 = self.eta_m[idx(i1, j0, self.nx)];
+        let v01 = self.eta_m[idx(i0, j1, self.nx)];
+        let v11 = self.eta_m[idx(i1, j1, self.nx)];
+        if ![v00, v10, v01, v11].iter().all(|v| v.is_finite()) {
+            return None;
+        }
+        Some(
+            v00 * (1.0 - tx) * (1.0 - ty)
+                + v10 * tx * (1.0 - ty)
+                + v01 * (1.0 - tx) * ty
+                + v11 * tx * ty,
+        )
     }
 
     /// Encode the current η field as a PNG, mapped to a diverging blue–
@@ -798,9 +858,29 @@ pub fn run_simulation_with_diagnostics(
     cancel: Option<&AtomicBool>,
     diagnostics: Option<&DiagnosticSink<'_>>,
 ) -> Vec<GridSnapshot> {
+    run_simulation_with_gauge_samples(
+        grid,
+        stepper,
+        t_end_s,
+        n_snapshots,
+        cancel,
+        diagnostics,
+        &[],
+    )
+}
+
+pub fn run_simulation_with_gauge_samples(
+    grid: &mut SwGrid,
+    stepper: &TimeStepper,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: Option<&AtomicBool>,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+) -> Vec<GridSnapshot> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
-    snaps.push(grid.snapshot_with_diagnostics(diagnostics));
+    snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return snaps;
     }
@@ -826,7 +906,7 @@ pub fn run_simulation_with_diagnostics(
         if !stepper.step_cancellable(grid, take, cancel) {
             break;
         }
-        snaps.push(grid.snapshot_with_diagnostics(diagnostics));
+        snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     }
     snaps
 }
@@ -851,6 +931,31 @@ mod tests {
             s.eta_png_b64.len() > 100,
             "snapshot PNG looks suspiciously small"
         );
+    }
+
+    #[test]
+    fn gauge_sampling_interpolates_eta_field() {
+        let mut g = SwGrid::new(0.0, 0.0, 2.0, 2.0, 1.0, 1.0);
+        g.eta_m = vec![1.0, 3.0, 5.0, 7.0];
+        let got = g.sample_eta_at(1.0, 1.0).expect("sample inside grid");
+        assert!((got - 4.0).abs() < 1e-9, "got {got}");
+    }
+
+    #[test]
+    fn gauge_snapshot_marks_out_of_bounds_samples_missing() {
+        let mut g = SwGrid::new(0.0, 0.0, 2.0, 2.0, 1.0, 1.0);
+        g.eta_m = vec![1.0, 2.0, 3.0, 4.0];
+        let snap = g.snapshot_with_gauge_samples(
+            &[GridGaugePoint {
+                id: "outside".to_string(),
+                lat_deg: 80.0,
+                lon_deg: 80.0,
+            }],
+            None,
+        );
+        assert_eq!(snap.gauge_samples.len(), 1);
+        assert_eq!(snap.gauge_samples[0].id, "outside");
+        assert_eq!(snap.gauge_samples[0].eta_m, None);
     }
 
     #[test]

@@ -112,6 +112,7 @@ export type GridSnapshot = {
   eta_max_m: number;
   eta_abs_max_m: number;
   eta_png_b64: string;
+  gauge_samples?: Array<{ id: string; eta_m: number | null }>;
 };
 
 export type SimulateGridResponse = {

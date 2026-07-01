@@ -28,6 +28,20 @@ const SPEED_OPTIONS = [
   { label: "4×", ms: 62 },
 ] as const;
 
+function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): GaugeTimeSeries[] {
+  return gauges
+    .map((gauge) => {
+      const samples = snapshots.flatMap((snap) => {
+        const sample = snap.gauge_samples?.find((s) => s.id === gauge.id);
+        return sample && Number.isFinite(sample.eta_m)
+          ? [{ time_s: snap.time_s, eta_m: sample.eta_m as number }]
+          : [];
+      });
+      return { gauge, samples };
+    })
+    .filter((series) => series.samples.length > 0);
+}
+
 export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
@@ -96,6 +110,10 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   useEffect(() => {
     if (!initial || gauges.length === 0 || !snapshots) {
       setGaugeSeries([]);
+      return;
+    }
+    if (isTauri()) {
+      setGaugeSeries(seriesFromBackendSamples(gauges, snapshots));
       return;
     }
     const tEndS = snapshots.length > 1 ? snapshots[snapshots.length - 1].time_s : 3600;
@@ -169,6 +187,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
         n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
         colormap,
+        gauge_points: gauges.map((g) => ({
+          id: g.id,
+          lat_deg: g.lat_deg,
+          lon_deg: g.lon_deg,
+        })),
       };
       if (isTauri()) {
         const streamSnaps: GridSnapshot[] = [];
@@ -205,7 +228,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, onSnapshot, onSnapshotsReady]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, onSnapshot, onSnapshotsReady]);
 
   if (!initial) return null;
 

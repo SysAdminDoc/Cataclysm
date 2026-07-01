@@ -152,6 +152,7 @@ export const api = {
     lamb_wave_peak_pressure_pa?: number;
     lamb_wave_source_radius_m?: number;
     colormap?: ColormapId;
+    gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
   }) {
     return invoke<SimulateGridResponse>("simulate_grid", { req });
   },
@@ -176,6 +177,7 @@ export const api = {
       lamb_wave_peak_pressure_pa?: number;
       lamb_wave_source_radius_m?: number;
       colormap?: ColormapId;
+      gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
     },
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
   ): Promise<{ dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number }> {

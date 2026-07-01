@@ -46,6 +46,10 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   columns: gauge_name, lat_deg, lon_deg, time_s, eta_m, solver_mode,
   bathymetry_source. Four new tests cover CSV format, escaping, empty input,
   and multi-gauge output.
+- **Desktop gauge CSVs now sample Rust SWE fields.** Tauri solver requests carry
+  bounded gauge coordinates, each returned `GridSnapshot` includes per-gauge
+  eta samples from the Rust grid, and desktop gauge sparklines/CSV exports use
+  those backend samples while browser preview keeps the approximate demo sampler.
 
 ### Added — dependency refresh cadence
 - **`npm run deps-check` command.** Reports npm outdated packages, npm audit
