@@ -35,6 +35,7 @@ NM.Geiger = {
     this.active = false;
     if (this._handler) map.off('mousemove', this._handler);
     if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+    if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
   },
 
   _setRate(intensity) {
@@ -404,12 +405,12 @@ NM.KMLExport = {
         for (let j = 0; j <= 72; j++) {
           const angle = (j / 72) * 2 * Math.PI;
           const lat2 = det.lat + (ring.r / 6371) * (180 / Math.PI) * Math.sin(angle);
-          const lng2 = det.lng + (ring.r / 6371) * (180 / Math.PI) * Math.cos(angle) / Math.cos(det.lat * Math.PI / 180);
+          const lng2 = det.lng + (ring.r / 6371) * (180 / Math.PI) * Math.cos(angle) / (Math.cos(det.lat * Math.PI / 180) || 0.0001);
           pts.push(`${lng2},${lat2},0`);
         }
         placemarks += `
     <Placemark>
-      <name>${ring.name} - Det ${i + 1} (${NM.fmtYield(det.yieldKt)})</name>
+      <name>${NM.esc(ring.name)} - Det ${i + 1} (${NM.esc(NM.fmtYield(det.yieldKt))})</name>
       <Style><LineStyle><color>${ring.color}</color><width>2</width></LineStyle><PolyStyle><color>40${ring.color.slice(2)}</color></PolyStyle></Style>
       <Polygon><outerBoundaryIs><LinearRing><coordinates>${pts.join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon>
     </Placemark>`;
@@ -418,7 +419,7 @@ NM.KMLExport = {
       // GZ marker
       placemarks += `
     <Placemark>
-      <name>Ground Zero ${i + 1} - ${NM.fmtYield(det.yieldKt)}</name>
+      <name>Ground Zero ${i + 1} - ${NM.esc(NM.fmtYield(det.yieldKt))}</name>
       <ExtendedData>
         <Data name="appVersion"><value>${NM.esc(provenance.appVersion)}</value></Data>
         <Data name="physicsModel"><value>${NM.esc(provenance.physicsModelLabel)}</value></Data>
@@ -685,12 +686,13 @@ NM.TestTimeline = {
     };
 
     map.flyTo([20, 0], 2, {duration: 1});
-    setTimeout(tick, 1200);
+    this._startId = setTimeout(tick, 1200);
   },
 
   stop(map) {
     this.active = false;
     if (this.animId) clearTimeout(this.animId);
+    if (this._startId) { clearTimeout(this._startId); this._startId = null; }
     this.layers.forEach(l => map.removeLayer(l));
     this.layers = [];
     const el = document.getElementById('tt-year');
