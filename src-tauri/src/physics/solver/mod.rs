@@ -587,43 +587,66 @@ impl TimeStepper {
 
     /// Advance the grid by up to `n_steps`, stopping early when `cancel`
     /// is set. Returns `false` if cancellation interrupted the batch.
+    ///
+    /// Reuses scratch buffers across steps to avoid per-step allocation
+    /// of three full-grid Vecs (~96 MB for a 4M-cell grid).
     pub fn step_cancellable(
         &self,
         grid: &mut SwGrid,
         n_steps: usize,
         cancel: Option<&AtomicBool>,
     ) -> bool {
+        let n = grid.nx * grid.ny;
+        let mut scratch = SolverScratch::new(n);
         for _ in 0..n_steps {
             if cancel.is_some_and(|c| c.load(Ordering::Acquire)) {
                 return false;
             }
-            self.step_one(grid);
+            self.step_one_with_scratch(grid, &mut scratch);
         }
         true
+    }
+
+    /// Single explicit leapfrog step with freshly allocated scratch buffers.
+    /// Prefer `step_cancellable` for multi-step runs — it reuses buffers.
+    pub fn step_one(&self, grid: &mut SwGrid) {
+        let n = grid.nx * grid.ny;
+        let mut scratch = SolverScratch::new(n);
+        self.step_one_with_scratch(grid, &mut scratch);
     }
 
     /// Single explicit leapfrog step. Continuity update first, then
     /// momentum. Rows updated in parallel via rayon — references into the
     /// existing Vecs are captured by the outer parallel closure.
-    pub fn step_one(&self, grid: &mut SwGrid) {
+    ///
+    /// Reads from `grid.eta_m / u_ms / v_ms` as the "old" state. Writes
+    /// into `scratch.{eta, u, v}` and swaps them into the grid at the end.
+    fn step_one_with_scratch(&self, grid: &mut SwGrid, scratch: &mut SolverScratch) {
         let nx = grid.nx;
         let ny = grid.ny;
+        let n = nx * ny;
         let (lon_m, lat_m) = grid.metres_per_deg();
         let dx = lon_m * grid.dlon_deg;
         let dy = lat_m * grid.dlat_deg;
         let dt = self.dt_s;
         let g = G_EARTH;
         let n2 = self.manning_n * self.manning_n;
+        let boundary = self.boundary;
+        let nonlinear = matches!(self.mode, SolverMode::Nonlinear);
 
-        // Snapshot of state before the step — momentum needs the OLD η + u + v.
-        let eta_old = grid.eta_m.clone();
-        let u_in = grid.u_ms.clone();
-        let v_in = grid.v_ms.clone();
-        let h: &Vec<f64> = &grid.h_m;
+        scratch.ensure_capacity(n);
+
+        // Compute into scratch buffers, reading the grid fields as "old" state.
+        // The borrows on grid.{eta_m, u_ms, v_ms, h_m} must end before the
+        // swap at the bottom, so we use a block scope.
+        {
+        let eta_old: &[f64] = &grid.eta_m;
+        let u_in: &[f64] = &grid.u_ms;
+        let v_in: &[f64] = &grid.v_ms;
+        let h: &[f64] = &grid.h_m;
 
         // Continuity update: rows in parallel.
-        let mut eta_new = vec![0.0f64; nx * ny];
-        eta_new.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
+        scratch.eta.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
             for i in 0..nx {
                 // Dry cells stay dry — η pinned to 0. Prevents the
                 // "slow spread halo" over continental interiors when
@@ -697,13 +720,10 @@ impl TimeStepper {
         // Momentum update: rows in parallel. Use the PRE-STEP η (eta_old)
         // for the pressure gradient so CPU matches the GPU leapfrog kernel
         // (simultaneous update — Mader 1988, Kowalik & Murty 1993).
-        let mut u_new = vec![0.0f64; nx * ny];
-        let mut v_new = vec![0.0f64; nx * ny];
-        let eta_ref: &Vec<f64> = &eta_old;
-        let nonlinear = matches!(self.mode, SolverMode::Nonlinear);
-        u_new
+        let eta_ref: &[f64] = eta_old;
+        scratch.u
             .par_chunks_mut(nx)
-            .zip(v_new.par_chunks_mut(nx))
+            .zip(scratch.v.par_chunks_mut(nx))
             .enumerate()
             .for_each(|(j, (u_row, v_row))| {
                 for i in 0..nx {
@@ -826,29 +846,53 @@ impl TimeStepper {
                     v_row[i] = v - dt * (adv_v + g * dnedy + fric * v);
                 }
             });
+        } // end borrow scope for grid.{eta_m, u_ms, v_ms, h_m}
 
         // Sponge-layer damping on the four rim cells. A cosine-tapered
         // mask `0.5 (1 - cos(π · d/w))` smoothly absorbs outgoing waves
         // so a long-running simulation doesn't reflect the wavefront
         // back into the source.
-        if let BoundaryMode::Sponge { width_cells } = self.boundary {
-            // Clamp the rim width to what the grid can hold (leaving at least
-            // one interior cell on each axis) rather than silently disabling
-            // the absorbing boundary on small grids — which used to revert them
-            // to reflective edges with no indication, bouncing the wavefront
-            // back into the source.
+        if let BoundaryMode::Sponge { width_cells } = boundary {
             let w = width_cells
                 .min(nx.saturating_sub(1) / 2)
                 .min(ny.saturating_sub(1) / 2);
             if w > 0 {
-                apply_sponge(&mut eta_new, &mut u_new, &mut v_new, nx, ny, w);
+                apply_sponge(&mut scratch.eta, &mut scratch.u, &mut scratch.v, nx, ny, w);
             }
         }
 
-        grid.eta_m = eta_new;
-        grid.u_ms = u_new;
-        grid.v_ms = v_new;
+        // Swap scratch buffers into the grid instead of cloning.
+        std::mem::swap(&mut grid.eta_m, &mut scratch.eta);
+        std::mem::swap(&mut grid.u_ms, &mut scratch.u);
+        std::mem::swap(&mut grid.v_ms, &mut scratch.v);
         grid.t_s += dt;
+    }
+}
+
+/// Reusable scratch buffers for the CPU solver, eliminating the per-step
+/// allocation of three full-grid `Vec<f64>`s. Created once per simulation
+/// batch and passed into each `step_one_with_scratch` call.
+struct SolverScratch {
+    eta: Vec<f64>,
+    u: Vec<f64>,
+    v: Vec<f64>,
+}
+
+impl SolverScratch {
+    fn new(n: usize) -> Self {
+        Self {
+            eta: vec![0.0; n],
+            u: vec![0.0; n],
+            v: vec![0.0; n],
+        }
+    }
+
+    fn ensure_capacity(&mut self, n: usize) {
+        if self.eta.len() != n {
+            self.eta.resize(n, 0.0);
+            self.u.resize(n, 0.0);
+            self.v.resize(n, 0.0);
+        }
     }
 }
 
