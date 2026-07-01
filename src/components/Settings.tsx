@@ -5,6 +5,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId } from "../lib/settings";
+import { downloadBlob } from "../lib/export";
 import { setTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
@@ -324,6 +325,53 @@ export function Settings({ onClose }: Props) {
               >
                 <UiIcon name="alert" size={14} />
                 Show token banner again
+              </button>
+              <button
+                className="scenario-tab"
+                onClick={async () => {
+                  const json = await settings.exportSettings();
+                  const blob = new Blob([json], { type: "application/json" });
+                  downloadBlob(blob, "tsunamisimulator-settings.json");
+                  setStatusMsg("Settings exported.");
+                }}
+                type="button"
+              >
+                <UiIcon name="download" size={14} />
+                Export settings
+              </button>
+              <button
+                className="scenario-tab"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = ".json,application/json";
+                  input.onchange = async () => {
+                    const file = input.files?.[0];
+                    if (!file) return;
+                    try {
+                      const text = await file.text();
+                      const result = await settings.importSettings(text);
+                      const all = await settings.loadAll();
+                      setThemeLocal(all.theme);
+                      setGlobeStyle(all.globe_style);
+                      setColormapId(all.colormap);
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                      }
+                      const msg = result.skipped.length > 0
+                        ? `Imported ${result.applied} settings (skipped: ${result.skipped.join(", ")}).`
+                        : `Imported ${result.applied} settings.`;
+                      setStatusMsg(msg);
+                    } catch (err) {
+                      setSaveErr(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+                    }
+                  };
+                  input.click();
+                }}
+                type="button"
+              >
+                <UiIcon name="folder" size={14} />
+                Import settings
               </button>
               <button
                 className="scenario-tab"

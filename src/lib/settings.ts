@@ -533,4 +533,35 @@ export const settings = {
       }
     }
   },
+  async exportSettings(): Promise<string> {
+    const all = await this.loadAll();
+    const exportable: Partial<Settings> = { ...all };
+    delete (exportable as Record<string, unknown>).cesium_token;
+    return JSON.stringify(
+      { _schema_version: SETTINGS_SCHEMA_VERSION, ...exportable },
+      null,
+      2,
+    );
+  },
+  async importSettings(json: string): Promise<{ applied: number; skipped: string[] }> {
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    const skipped: string[] = [];
+    let applied = 0;
+    for (const [key, value] of Object.entries(raw)) {
+      if (key === "_schema_version" || key === "cesium_token") continue;
+      if (!SETTINGS_KEYS.has(key)) {
+        console.warn(`[settings] import: unknown key "${key}" — skipping`);
+        skipped.push(key);
+        continue;
+      }
+      const normalised = normaliseSetting(key as keyof Settings, value);
+      if (normalised !== undefined) {
+        await write(key as keyof Settings, normalised);
+        applied++;
+      } else {
+        skipped.push(key);
+      }
+    }
+    return { applied, skipped };
+  },
 };

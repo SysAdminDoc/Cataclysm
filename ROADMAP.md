@@ -8,15 +8,6 @@ Single source of truth for delivery. Blocked items live in
 
 ## Research-Driven Additions
 
-### P2
-
-- [ ] P2 — Refresh npm dependencies to current minor/patch versions
-  Why: `npm run deps-check` reports 13 outdated packages including Tauri CLI (2.11.2→2.11.3), Playwright (1.61.0→1.61.1), axe-core (4.11.3→4.12.1), Vite (8.0.16→8.1.0), and React type definitions. Staying current reduces drift and picks up bug fixes.
-  Evidence: `npm run deps-check` output; `package.json`
-  Touches: `package.json`, `package-lock.json`
-  Acceptance: `npm run deps-check` reports 0 outdated packages within the current major version ranges. `npm run verify` passes (typecheck + lint + vitest + build + audit + playwright + rust).
-  Complexity: S
-
 ### P3
 
 - [ ] P3 — Add settings export/import for classroom deployment

@@ -110,4 +110,37 @@ describe("settings schema versioning", () => {
     expect(infoSpy).not.toHaveBeenCalled();
     infoSpy.mockRestore();
   });
+
+  it("round-trips settings through export/import", async () => {
+    await settings.setTheme("latte");
+    await settings.setColormap("viridis");
+    await settings.setGlobeStyle("osm");
+
+    const json = await settings.exportSettings();
+    const parsed = JSON.parse(json);
+    expect(parsed.theme).toBe("latte");
+    expect(parsed.colormap).toBe("viridis");
+    expect(parsed.globe_style).toBe("osm");
+    expect(parsed.cesium_token).toBeUndefined();
+
+    await settings.resetAll();
+    expect(await settings.getTheme()).toBe("mocha");
+
+    const result = await settings.importSettings(json);
+    expect(result.applied).toBeGreaterThanOrEqual(3);
+    expect(await settings.getTheme()).toBe("latte");
+    expect(await settings.getColormap()).toBe("viridis");
+    expect(await settings.getGlobeStyle()).toBe("osm");
+  });
+
+  it("import skips unknown keys with warning", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await settings.importSettings(
+      JSON.stringify({ _schema_version: 1, theme: "latte", unknown_key: "value" }),
+    );
+    expect(result.applied).toBe(1);
+    expect(result.skipped).toContain("unknown_key");
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
 });
