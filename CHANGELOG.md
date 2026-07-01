@@ -2,7 +2,42 @@
 
 All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Deep correctness, reliability & UX hardening
+## [Unreleased] — Research-driven feature batch
+
+### Added — educational features
+- **Physics glossary tooltip system.** 15 domain terms (Mw, SWE, Okada,
+  Synolakis, DART, CFL, runup, eta, cavity radius, attenuation, Boussinesq,
+  Manning friction, leapfrog, wavefront, inundation) show inline tooltips on
+  hover/focus with brief definitions and citations. Keyboard-accessible.
+- **Print stylesheet for classroom handouts.** `Ctrl+P` produces a clean
+  white-background page with readable results, source parameters, citations, and
+  model-limitation disclaimers. Interactive chrome and globe canvas are hidden.
+- **Settings export/import for classroom deployment.** Export saves a JSON file
+  (excludes cesium_token). Import validates and applies with unknown keys skipped.
+- **Gauge placement from globe inspect mode.** When inspect mode is active and a
+  point is clicked, an "Add gauge" button appears in the inspect banner. Clicking
+  it creates a gauge at that lat/lon.
+
+### Added — export & accessibility
+- **Comparison-mode export.** A "Compare" export button captures both globe
+  canvases side-by-side in a single PNG with scenario labels and provenance.
+- **Viridis colormap.** Third colormap option (perceptually uniform sequential,
+  dark-purple → teal → yellow) alongside diverging and cividis. Passes
+  protanopia and deuteranopia simulation.
+
+### Changed — verification & security
+- **CSP allowlist verification gate.** `scripts/verify.mjs` now parses the
+  configured CSP from `tauri.conf.json` and fails if new exceptions are
+  introduced without updating the documented allowlist.
+
+### Changed — maintenance
+- **npm dependencies refreshed.** 9 packages updated within semver ranges
+  (Tauri CLI 2.11.4, Playwright 1.61.1, Vite 8.1.2, etc.).
+- **styles.css split into 25 component-scoped partials.** Original 3534-line
+  monolith reorganized into `src/styles/*.css` with `@import` entry point.
+  Build output is functionally identical.
+
+## [0.4.4] — Deep correctness, reliability & UX hardening
 
 ### Changed — verification
 - **Strict release verification now fails closed on missing Rust policy tools.**
@@ -12,11 +47,16 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   renders coastal runup bars and inundation discs through CesiumJS
   `BufferPolylineCollection` / `BufferPolygonCollection` payloads instead of
   rebuilding per-point geometry instances.
+- **Local verification now guards docs/script drift.** `scripts/verify.mjs`
+  scans public docs for missing `npm run <script>` references and stale local
+  Markdown links before running the heavier build/test gate.
 
 ### Changed — documentation
 - **Public support links repaired.** README now points shipped-feature readers to
   the tracked changelog, and CONTRIBUTING no longer references a missing
   `SECURITY.md` file for vulnerability reports.
+- **Removed stale history-doc link.** README no longer points to the absent
+  `docs/history/` directory.
 - **Shipped-science docs synced to v0.4.4.** Cleared stale "planned" / "v0.3.0"
   references for the now-shipped Okada I-term, wgpu GPU solver, Lamb-wave
   coupling toggle, and local-only verification. Updated README architecture
