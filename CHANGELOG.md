@@ -101,7 +101,13 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   `indeterminate` keyframes moved from `_globe.css` to `_animations.css`
   alongside `modal-in`.
 
-### Changed — maintenance
+### Changed — performance & maintenance
+- **CPU solver eliminates per-step Vec clones.** `step_one()` no longer clones
+  eta_m, u_ms, v_ms (~96 MB for a 4M-cell grid) every time step. A reusable
+  `SolverScratch` buffer set persists across steps and is swapped into the grid
+  with `std::mem::swap` in O(1).
+- **Dead `is_impact` field removed from `FarFieldRequest`.** The field was
+  unused since `decay_alpha` now drives the far-field computation.
 - **npm dependencies refreshed.** 9 packages updated within semver ranges
   (Tauri CLI 2.11.4, Playwright 1.61.1, Vite 8.1.2, etc.).
 - **styles.css split into 25 component-scoped partials.** Original 3534-line
