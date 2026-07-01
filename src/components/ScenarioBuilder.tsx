@@ -17,6 +17,7 @@ import type {
   NuclearBurstInput,
 } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
+import { GlossaryTip } from "./GlossaryTip";
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
@@ -328,7 +329,13 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
           </button>
         ))}
       </div>
-      <p className="scenario-summary">{TAB_DESCRIPTIONS[tab]}</p>
+      <p className="scenario-summary">
+        {tab === "earthquake" ? (
+          <>Fault-source parameters for <GlossaryTip term="okada">Okada</GlossaryTip>-style seafloor displacement.</>
+        ) : (
+          TAB_DESCRIPTIONS[tab]
+        )}
+      </p>
 
       <div className="scenario-form">
         {tab === "asteroid" && (

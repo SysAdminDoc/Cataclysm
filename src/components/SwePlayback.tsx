@@ -5,6 +5,7 @@ import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportGaugeCsv } from "../lib/export";
 import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
+import { GlossaryTip } from "./GlossaryTip";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -245,7 +246,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
   return (
     <div className="section">
       <div className="section__title">
-        <span>Live SWE Solver</span>
+        <span>Live <GlossaryTip term="swe">SWE</GlossaryTip> Solver</span>
         <span className="section__badge" data-tone={status === "error" ? "danger" : status === "running" ? "active" : undefined}>
           {solverBadge}
         </span>
@@ -393,7 +394,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady }: Props) {
           <div className="swe__readout">
             <span>Frame {activeIdx + 1}/{snapshots.length}</span>
             <span>{(snapshots[activeIdx].time_s / 60).toFixed(1)} min</span>
-            <span>|η|max {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
+            <span>|<GlossaryTip term="eta">η</GlossaryTip>|max {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
           </div>
           {diag && (
             <div className="swe__readout swe__readout--muted">

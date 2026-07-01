@@ -1,4 +1,5 @@
 import type { InitialDisplacement } from "../types/scenario";
+import { GlossaryTip } from "./GlossaryTip";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -90,12 +91,12 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
               <span className="results__unit">{energy.unit}</span>
             </div>
           </div>
-          <div className="results__cell" data-tone="secondary" title="Equivalent moment magnitude (Hanks–Kanamori 1979)">
-            <div className="results__label">M_w equivalent</div>
+          <div className="results__cell" data-tone="secondary">
+            <div className="results__label"><GlossaryTip term="mw">M_w equivalent</GlossaryTip></div>
             <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
           </div>
           <div className="results__cell">
-            <div className="results__label">Cavity radius</div>
+            <div className="results__label"><GlossaryTip term="cavity_radius">Cavity radius</GlossaryTip></div>
             <div className="results__value">
               {cavity.value}
               {" "}
