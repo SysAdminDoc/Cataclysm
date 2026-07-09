@@ -70,3 +70,27 @@
   margin-top: 4px;
   max-width: 100%;
 }
+
+.dart__rmse {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--teal) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--teal) 24%, transparent);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--subtext);
+}
+
+.dart__rmse-value {
+  color: var(--text);
+  font-weight: 720;
+  font-size: 11px;
+}
+
+.dart__rmse--muted {
+  background: color-mix(in srgb, var(--surface0) 40%, transparent);
+  border-color: color-mix(in srgb, var(--surface1) 40%, transparent);
+}

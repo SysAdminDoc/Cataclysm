@@ -17,6 +17,20 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   dompurify in package-lock.json drops below 3.4.7 (CVE-2026-49978 floor), so
   a lockfile regression can't silently reopen the sanitizer bypass.
 
+### Added — model-vs-observed trust loop (2026-07-09)
+- **DART RMSE surfaced in the buoy overlay.** Running the SWE solver on a
+  preset with archived DART data (Tōhoku 2011, Indian Ocean 2004, Hunga Tonga
+  2022) now samples the model field at each buoy position (hidden `dart-<id>`
+  gauge points) and shows per-buoy RMSE, model-vs-observed peak amplitude, and
+  sample count under each sparkline via the `dart_buoy_rmse` IPC. Buoys whose
+  observations start after the 60-minute solver window show an explicit
+  "no overlap" note instead of failing silently.
+- **`attenuation_curve` Rust IPC.** The wave-attenuation chart now renders
+  decay samples computed by the backend (same amplitude branch as
+  `far_field_amplitude`) instead of reimplementing the r^(-5/6) / r^(-1/2)
+  power laws in JS — closing the last physics-in-JS carve-out outside the
+  browser-preview demo layer. Browser preview keeps a demo approximation.
+
 ### Added — educational features
 - **Physics glossary tooltip system.** 15 domain terms (Mw, SWE, Okada,
   Synolakis, DART, CFL, runup, eta, cavity radius, attenuation, Boussinesq,

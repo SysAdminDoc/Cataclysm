@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { InitialDisplacement } from "../types/scenario";
-import type { RunupAtPointResult } from "../lib/tauri";
+import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
+import { demoAttenuationCurve } from "../lib/demo";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -20,24 +21,8 @@ const PLOT_H = H - PAD_T - PAD_B;
 
 type Sample = { range_km: number; amplitude_m: number };
 
-function computeDecayCurve(
-  peakAmp: number,
-  cavityR: number,
-  isImpact: boolean,
-  nSamples: number,
-): Sample[] {
-  const alpha = isImpact ? 5 / 6 : 0.5;
-  const r0 = Math.max(cavityR, 1000);
-  const maxRange = 10_000_000;
-  const samples: Sample[] = [];
-  for (let i = 0; i < nSamples; i++) {
-    const frac = i / (nSamples - 1);
-    const range = r0 + frac * (maxRange - r0);
-    const att = Math.pow(r0 / range, alpha);
-    samples.push({ range_km: range / 1000, amplitude_m: peakAmp * att });
-  }
-  return samples;
-}
+const CURVE_SAMPLES = 80;
+const CURVE_MAX_RANGE_M = 10_000_000;
 
 function formatAxis(v: number): string {
   if (v >= 1000) return `${(v / 1000).toFixed(0)}k`;
@@ -46,14 +31,47 @@ function formatAxis(v: number): string {
 }
 
 export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Props) {
-  const curve = useMemo(() => {
-    if (!initial) return null;
-    return computeDecayCurve(
-      initial.peak_amplitude_m,
-      initial.cavity_radius_m,
-      isImpact,
-      80,
-    );
+  const [curve, setCurve] = useState<Sample[] | null>(null);
+
+  // Decay physics come from the Rust `attenuation_curve` command; the JS
+  // approximation in demo.ts only serves the watermarked browser preview.
+  useEffect(() => {
+    if (!initial) {
+      setCurve(null);
+      return;
+    }
+    const alpha = isImpact ? 5 / 6 : 0.5;
+    if (!isTauri()) {
+      setCurve(
+        demoAttenuationCurve(
+          initial.peak_amplitude_m,
+          initial.cavity_radius_m,
+          alpha,
+          CURVE_MAX_RANGE_M,
+          CURVE_SAMPLES,
+        ).map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m })),
+      );
+      return;
+    }
+    let cancelled = false;
+    api
+      .attenuationCurve({
+        initial_amplitude_m: initial.peak_amplitude_m,
+        cavity_radius_m: initial.cavity_radius_m,
+        decay_alpha: alpha,
+        max_range_m: CURVE_MAX_RANGE_M,
+        n_samples: CURVE_SAMPLES,
+      })
+      .then((samples) => {
+        if (cancelled) return;
+        setCurve(samples.map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m })));
+      })
+      .catch(() => {
+        if (!cancelled) setCurve(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [initial, isImpact]);
 
   const arrivedPoints = useMemo(() => {

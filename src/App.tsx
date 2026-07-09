@@ -17,6 +17,7 @@ import { SwePlayback } from "./components/SwePlayback";
 import { AttenuationChart } from "./components/AttenuationChart";
 import { api, isTauri } from "./lib/tauri";
 import { dartPinsForPreset } from "./lib/dart";
+import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type RunupPoint, type ScreenshotMeta } from "./lib/export";
@@ -739,11 +740,17 @@ export default function App() {
             <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} />
           </div>
         )}
-        <SwePlayback initial={slotA.initial} onSnapshot={slotA.setSweSnapshot} onSnapshotsReady={setSweSnapshots} pendingGauge={pendingGauge} />
+        <SwePlayback
+          initial={slotA.initial}
+          onSnapshot={slotA.setSweSnapshot}
+          onSnapshotsReady={setSweSnapshots}
+          pendingGauge={pendingGauge}
+          dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
+        />
         <Activity mode={compareMode ? "visible" : "hidden"}>
           <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />
         </Activity>
-        <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} />
+        <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />
         {!compareMode && (
           <ScenarioBuilder
             onSimulate={slotA.simulate}

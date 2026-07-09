@@ -29,8 +29,14 @@ Compute displacement from a subaerial or submarine landslide.
 
 ### `far_field_amplitude`
 Analytical far-field amplitude at a given range from the source.
-- **Input:** `initial_amplitude_m`, `cavity_radius_m`, `range_m`, `mean_depth_m`, `decay_alpha`, `is_impact`
+- **Input:** `initial_amplitude_m`, `cavity_radius_m`, `range_m`, `mean_depth_m`, `decay_alpha`
 - **Output:** `Result<{ amplitude_m, travel_time_s }, String>`
+
+### `attenuation_curve`
+Sampled far-field decay curve for the attenuation chart. Same amplitude
+branch as `far_field_amplitude`; sampling starts at `max(cavity_radius, 1 km)`.
+- **Input:** `initial_amplitude_m`, `cavity_radius_m`, `decay_alpha`, `max_range_m` (≤ 40 000 km), `n_samples` (2–2048)
+- **Output:** `Result<Vec<{ range_m, amplitude_m }>, String>`
 
 ### `coastal_runup`
 Synolakis 1987 closed-form runup at a single coastal point.

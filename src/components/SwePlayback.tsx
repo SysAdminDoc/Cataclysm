@@ -12,6 +12,9 @@ type Props = {
   onSnapshot?: (snap: GridSnapshot | null) => void;
   onSnapshotsReady?: (snaps: GridSnapshot[] | null) => void;
   pendingGauge?: { lat: number; lon: number } | null;
+  /** DART buoys for the active preset. Sampled as hidden `dart-<id>` gauge
+   *  points so the overlay can compute model-vs-observed RMSE. */
+  dartBuoys?: Array<{ id: string | number; lat: number; lon: number }>;
 };
 
 type Status = "idle" | "running" | "ready" | "error";
@@ -44,7 +47,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -206,11 +209,20 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
         colormap,
-        gauge_points: gauges.map((g) => ({
-          id: g.id,
-          lat_deg: g.lat_deg,
-          lon_deg: g.lon_deg,
-        })),
+        gauge_points: [
+          ...gauges.map((g) => ({
+            id: g.id,
+            lat_deg: g.lat_deg,
+            lon_deg: g.lon_deg,
+          })),
+          // Hidden sample points at DART buoy positions; consumed by
+          // DartOverlay for model-vs-observed RMSE, never shown as gauges.
+          ...(dartBuoys ?? []).map((b) => ({
+            id: `dart-${b.id}`,
+            lat_deg: b.lat,
+            lon_deg: b.lon,
+          })),
+        ],
       };
       if (isTauri()) {
         const streamSnaps: GridSnapshot[] = [];
@@ -247,7 +259,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, onSnapshot, onSnapshotsReady]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady]);
 
   if (!initial) return null;
 

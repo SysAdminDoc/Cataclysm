@@ -75,6 +75,15 @@ export const api = {
   }) {
     return invoke<{ amplitude_m: number; travel_time_s: number }>("far_field_amplitude", { req });
   },
+  attenuationCurve(req: {
+    initial_amplitude_m: number;
+    cavity_radius_m: number;
+    decay_alpha: number;
+    max_range_m: number;
+    n_samples: number;
+  }) {
+    return invoke<Array<{ range_m: number; amplitude_m: number }>>("attenuation_curve", { req });
+  },
   coastalRunup(req: {
     offshore_amplitude_m: number;
     offshore_depth_m: number;

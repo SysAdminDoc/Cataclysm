@@ -1,13 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getDartEvents, PRESET_TO_DART_EVENT } from "../lib/data";
-import type { DartBuoy, DartEvent, InitialDisplacement } from "../types/scenario";
+import { api, isTauri, type DartRmseResult } from "../lib/tauri";
+import type { DartBuoy, DartEvent, GridSnapshot, InitialDisplacement } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 
 type Props = {
   presetId: string | null;
   timeS: number;
   initial?: InitialDisplacement | null;
+  /** Completed SWE snapshots (slot A). When they carry `dart-<id>` gauge
+   *  samples, model-vs-observed RMSE is computed per buoy via Rust IPC. */
+  sweSnapshots?: GridSnapshot[] | null;
 };
+
+type BuoyFit = { kind: "ok"; result: DartRmseResult } | { kind: "no-overlap" };
+
+/** Model eta series at a buoy from the hidden `dart-<id>` gauge samples. */
+function modelSeriesForBuoy(buoyId: string | number, snapshots: GridSnapshot[]): [number, number][] {
+  const id = `dart-${buoyId}`;
+  return snapshots.flatMap((snap) => {
+    const sample = snap.gauge_samples?.find((s) => s.id === id);
+    return sample && Number.isFinite(sample.eta_m)
+      ? [[snap.time_s, sample.eta_m] as [number, number]]
+      : [];
+  });
+}
 
 const db = getDartEvents();
 
@@ -123,13 +140,49 @@ function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; in
   );
 }
 
-export function DartOverlay({ presetId, timeS, initial }: Props) {
+export function DartOverlay({ presetId, timeS, initial, sweSnapshots }: Props) {
   const [expanded, setExpanded] = useState(true);
+  const [fits, setFits] = useState<Record<string, BuoyFit>>({});
   const eventKey = presetId ? PRESET_TO_DART_EVENT[presetId] : null;
   const event: DartEvent | null = useMemo(
     () => (eventKey ? db.events[eventKey] ?? null : null),
     [eventKey],
   );
+
+  // RMSE per buoy from the Rust dart_buoy_rmse command whenever a completed
+  // SWE run carries model samples at the buoy positions. Desktop-only: the
+  // browser preview's demo frames are approximate by design.
+  useEffect(() => {
+    if (!event || !sweSnapshots || sweSnapshots.length < 2 || !isTauri()) {
+      setFits({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, BuoyFit> = {};
+      for (const buoy of event.buoys) {
+        const model = modelSeriesForBuoy(buoy.id, sweSnapshots);
+        if (model.length < 2) continue;
+        try {
+          const result = await api.dartBuoyRmse({
+            buoy_lat: buoy.lat,
+            buoy_lon: buoy.lon,
+            observations: buoy.observations,
+            model_samples: model,
+          });
+          next[buoy.id] = { kind: "ok", result };
+        } catch {
+          // The solver window (60 min) can end before the wave reaches a
+          // distant buoy — the IPC rejects series with no time overlap.
+          next[buoy.id] = { kind: "no-overlap" };
+        }
+      }
+      if (!cancelled) setFits(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [event, sweSnapshots]);
 
   if (!event) return null;
 
@@ -163,15 +216,34 @@ export function DartOverlay({ presetId, timeS, initial }: Props) {
             <span><i data-tone="cursor" /> Timeline</span>
             <span><i data-tone="coast" /> Arrival markers</span>
           </div>
-          {event.buoys.map((b) => (
-            <div key={b.id} className="dart__buoy">
-              <div className="dart__name">{b.name}</div>
-              <div className="dart__meta">
-                {b.lat.toFixed(2)}°, {b.lon.toFixed(2)}° · {b.depth_m} m deep
+          {event.buoys.map((b) => {
+            const fit = fits[b.id];
+            return (
+              <div key={b.id} className="dart__buoy">
+                <div className="dart__name">{b.name}</div>
+                <div className="dart__meta">
+                  {b.lat.toFixed(2)}°, {b.lon.toFixed(2)}° · {b.depth_m} m deep
+                </div>
+                <Sparkline buoy={b} timeS={timeS} initial={initial} />
+                {fit?.kind === "ok" && (
+                  <div className="dart__rmse" role="note">
+                    <span className="dart__rmse-value">
+                      RMSE {fit.result.rmse_m.toFixed(2)} m
+                    </span>
+                    <span>
+                      model peak {fit.result.model_peak_m.toFixed(2)} m vs observed{" "}
+                      {fit.result.observed_peak_m.toFixed(2)} m · {fit.result.n_samples} samples
+                    </span>
+                  </div>
+                )}
+                {fit?.kind === "no-overlap" && (
+                  <div className="dart__rmse dart__rmse--muted" role="note">
+                    Solver window ends before this buoy's observations — no RMSE.
+                  </div>
+                )}
               </div>
-              <Sparkline buoy={b} timeS={timeS} initial={initial} />
-            </div>
-          ))}
+            );
+          })}
         </>
       )}
     </div>

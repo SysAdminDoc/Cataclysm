@@ -454,6 +454,29 @@ export function demoRunupAtPoints(req: {
   });
 }
 
+/** Browser-preview approximation of the Rust `attenuation_curve` command.
+ *  Same shape (metres in, metres out); desktop builds never call this. */
+export function demoAttenuationCurve(
+  initialAmplitudeM: number,
+  cavityRadiusM: number,
+  decayAlpha: number,
+  maxRangeM: number,
+  nSamples: number,
+): Array<{ range_m: number; amplitude_m: number }> {
+  const startRangeM = Math.max(cavityRadiusM, 1000);
+  const samples: Array<{ range_m: number; amplitude_m: number }> = [];
+  for (let i = 0; i < nSamples; i++) {
+    const frac = i / (nSamples - 1);
+    const range_m = startRangeM + frac * (maxRangeM - startRangeM);
+    const amplitude_m =
+      range_m <= cavityRadiusM
+        ? initialAmplitudeM
+        : initialAmplitudeM * Math.pow(cavityRadiusM / range_m, decayAlpha);
+    samples.push({ range_m, amplitude_m });
+  }
+  return samples;
+}
+
 export function sampleGaugesFromDemo(
   initial: InitialDisplacement,
   gauges: import("../types/scenario").Gauge[],

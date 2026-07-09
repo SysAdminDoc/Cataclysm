@@ -15,20 +15,6 @@ tests locally.
 
 ### P1 — trust, validation, and returned blockers
 
-- [ ] P1 — Surface DART RMSE in the DART overlay UI
-  Why: the full backend shipped (`dart_buoy_rmse` IPC + 6 tests; `GridSnapshot.gauge_samples` raw eta) but `DartOverlay.tsx` never shows RMSE — the app's core simulated-vs-observed credibility loop is invisible. Returns from Roadmap_Blocked ("DART RMSE display"): the Rust half is done; only frontend work remains.
-  Evidence: src-tauri/src/commands.rs:459-525; src/types/scenario.ts:115; src/components/DartOverlay.tsx; HN Kamchatka thread (users organically compare DART readings) https://news.ycombinator.com/item?id=44729865.
-  Touches: src/components/DartOverlay.tsx, src/components/SwePlayback.tsx (route gauge samples at buoy coordinates to `dart_buoy_rmse`), src/lib/tauri.ts.
-  Acceptance: running the Tōhoku preset SWE solve shows an RMSE value (m) and peak-amplitude comparison per DART buoy alongside the existing sparkline; Vitest covers the wiring.
-  Complexity: M
-
-- [ ] P1 — `attenuation_curve` Rust IPC to replace AttenuationChart JS physics
-  Why: `AttenuationChart.tsx:23-40` (`computeDecayCurve`) reimplements r^(-5/6)/r^(-1/2) decay in JS, violating the "physics in Rust only" architecture rule; the CLAUDE-documented blocker (MSVC) is stale.
-  Evidence: src/components/AttenuationChart.tsx:23-40; `far_field_amplitude` already computes the same decay in Rust (src-tauri/src/commands.rs).
-  Touches: src-tauri/src/commands.rs (new command), src/lib/tauri.ts, src/components/AttenuationChart.tsx, docs/ipc-api.md.
-  Acceptance: chart data comes from `invoke("attenuation_curve")` in Tauri mode (demo fallback in browser preview); JS decay math deleted from the component; Rust unit test asserts curve endpoints match `far_field_amplitude`.
-  Complexity: M
-
 - [ ] P1 — Property-based tests for physics modules (proptest)
   Why: physics modules have no direct unit tests (validated only via preset benchmarks); property tests catch parameter-space regressions cheaply. Returns from Roadmap_Blocked (stale MSVC blocker).
   Evidence: internal recon — no `#[test]` in src-tauri/src/physics/{asteroid,nuclear,landslide,earthquake}.rs; proptest crate.

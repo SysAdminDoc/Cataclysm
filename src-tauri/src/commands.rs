@@ -232,6 +232,70 @@ pub fn far_field_amplitude(req: FarFieldRequest) -> Result<FarFieldResponse, Str
     })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttenuationCurveRequest {
+    pub initial_amplitude_m: f64,
+    pub cavity_radius_m: f64,
+    pub decay_alpha: f64,
+    /// Outer edge of the sampled curve, metres from the source.
+    pub max_range_m: f64,
+    pub n_samples: u32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AttenuationSample {
+    pub range_m: f64,
+    pub amplitude_m: f64,
+}
+
+/// Sample the far-field decay curve `A(r) = A0 * (r_cavity / r)^alpha` at
+/// `n_samples` evenly spaced ranges. Uses the same amplitude branch as
+/// `far_field_amplitude` so the attenuation chart renders exactly what the
+/// solver-side physics computes (chart sampling starts at a 1 km floor so the
+/// log-range axis stays readable for very small sources).
+#[tauri::command]
+pub fn attenuation_curve(req: AttenuationCurveRequest) -> Result<Vec<AttenuationSample>, String> {
+    check_finite("initial_amplitude_m", req.initial_amplitude_m)?;
+    if req.initial_amplitude_m.abs() > 1.0e5 {
+        return Err("initial_amplitude_m must be ≤ 100 km".into());
+    }
+    check_finite_positive("cavity_radius_m", req.cavity_radius_m)?;
+    if req.cavity_radius_m > 1.0e7 {
+        return Err("cavity_radius_m must be ≤ 10 000 km".into());
+    }
+    check_finite("decay_alpha", req.decay_alpha)?;
+    if req.decay_alpha < 0.0 || req.decay_alpha > 3.0 {
+        return Err("decay_alpha must be in [0, 3]".into());
+    }
+    check_finite_positive("max_range_m", req.max_range_m)?;
+    if req.max_range_m > 4.0e7 {
+        return Err("max_range_m must be ≤ 40 000 km".into());
+    }
+    if req.n_samples < 2 || req.n_samples > 2048 {
+        return Err("n_samples must be in [2, 2048]".into());
+    }
+    let start_range_m = req.cavity_radius_m.max(1_000.0);
+    if req.max_range_m <= start_range_m {
+        return Err("max_range_m must exceed the curve start range".into());
+    }
+    let n = req.n_samples as usize;
+    let mut samples = Vec::with_capacity(n);
+    for i in 0..n {
+        let frac = i as f64 / (n - 1) as f64;
+        let range_m = start_range_m + frac * (req.max_range_m - start_range_m);
+        let amplitude_m = if range_m <= req.cavity_radius_m {
+            req.initial_amplitude_m
+        } else {
+            req.initial_amplitude_m * (req.cavity_radius_m / range_m).powf(req.decay_alpha)
+        };
+        samples.push(AttenuationSample {
+            range_m,
+            amplitude_m,
+        });
+    }
+    Ok(samples)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunupRequest {
     pub offshore_amplitude_m: f64,
@@ -1623,6 +1687,78 @@ mod tests {
             decay_alpha: -1.0,
         });
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn attenuation_curve_endpoints_match_far_field() {
+        let curve = attenuation_curve(AttenuationCurveRequest {
+            initial_amplitude_m: 4_500.0,
+            cavity_radius_m: 50_000.0,
+            decay_alpha: 5.0 / 6.0,
+            max_range_m: 10_000_000.0,
+            n_samples: 80,
+        })
+        .unwrap();
+        assert_eq!(curve.len(), 80);
+        let last = curve.last().unwrap();
+        let reference = far_field_amplitude(FarFieldRequest {
+            initial_amplitude_m: 4_500.0,
+            cavity_radius_m: 50_000.0,
+            range_m: last.range_m,
+            mean_depth_m: 4_000.0,
+            decay_alpha: 5.0 / 6.0,
+        })
+        .unwrap();
+        assert!((last.amplitude_m - reference.amplitude_m).abs() < 1.0e-9);
+        // First sample sits at the cavity edge → full initial amplitude.
+        assert!((curve[0].amplitude_m - 4_500.0).abs() < 1.0e-9);
+    }
+
+    #[test]
+    fn attenuation_curve_is_monotonically_decreasing() {
+        let curve = attenuation_curve(AttenuationCurveRequest {
+            initial_amplitude_m: 10.0,
+            cavity_radius_m: 2_000.0,
+            decay_alpha: 0.5,
+            max_range_m: 1_000_000.0,
+            n_samples: 64,
+        })
+        .unwrap();
+        for pair in curve.windows(2) {
+            assert!(pair[1].amplitude_m <= pair[0].amplitude_m);
+        }
+    }
+
+    #[test]
+    fn attenuation_curve_rejects_bad_inputs() {
+        let base = AttenuationCurveRequest {
+            initial_amplitude_m: 10.0,
+            cavity_radius_m: 2_000.0,
+            decay_alpha: 0.5,
+            max_range_m: 1_000_000.0,
+            n_samples: 64,
+        };
+        assert!(
+            attenuation_curve(AttenuationCurveRequest {
+                n_samples: 1,
+                ..base.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            attenuation_curve(AttenuationCurveRequest {
+                max_range_m: 500.0,
+                ..base.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            attenuation_curve(AttenuationCurveRequest {
+                decay_alpha: f64::NAN,
+                ..base
+            })
+            .is_err()
+        );
     }
 
     #[test]
