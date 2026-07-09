@@ -23,6 +23,8 @@ pub mod okada;
 pub mod lamb_wave;
 pub mod shallow_water;
 pub mod solver;
+#[cfg(test)]
+mod property_tests;
 #[cfg(feature = "validation")]
 pub mod validation;
 

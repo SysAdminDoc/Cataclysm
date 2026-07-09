@@ -29,6 +29,11 @@ rayon = "1.12"
 base64 = "0.22"
 png = "0.17"
 
+[dev-dependencies]
+# Property-based tests over the physics parameter space
+# (tests/physics_properties.rs).
+proptest = "1"
+
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 # Enables the quantitative validation-harness test suite under

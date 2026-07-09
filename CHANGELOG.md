@@ -31,6 +31,37 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   power laws in JS — closing the last physics-in-JS carve-out outside the
   browser-preview demo layer. Browser preview keeps a demo approximation.
 
+### Added — max-field products and arrival isochrones (2026-07-09)
+- **fgmax-style max-field products.** The solver now accumulates per-cell
+  peak |η|, time-of-maximum, and a time-integrated η² energy proxy at
+  snapshot cadence (identical CPU/GPU semantics — both observe the read-back
+  field). A new Overlay selector in the playback panel switches the globe
+  between the live wave, "Peak", "T max" (viridis), and "Energy"
+  (qualitative directivity, explicitly not a calibrated PTWC product).
+- **First-arrival isochrones.** Marching-squares contours of the
+  first-arrival time (|η| ≥ max(1 cm, 1% of source amplitude)) at 5-minute
+  multiples, chained into labelled dashed polylines on the globe behind an
+  "Arrivals" toggle, and exported as MultiLineString features in the
+  GeoJSON export.
+
+### Added — property-based physics tests (2026-07-09)
+- **proptest suites over the physics parameter space** (`physics::property_tests`):
+  Ward–Asphaug cavity monotonicity in diameter and velocity, amplitude
+  saturation at water depth, Synolakis runup positivity/monotonicity (with
+  the H/d = 0.78 breaking-gate saturation), SWE closed-basin mass
+  conservation (zero-flux, linear, 1% tolerance), and Okada uplift
+  boundedness in the pure-thrust regime.
+
+### Known issue — Okada strike-slip vertical term (2026-07-09)
+- Property testing exposed non-physical growth of |u_z| with fault length
+  for strike-slip rakes (up to 7.4× slip on a 302 km rake-0° fault; ~9×
+  amplification of the strike-slip component at rake 70°). All shipped
+  presets are thrust-dominated and the Tōhoku validation band passes, but
+  custom strike-slip scenarios currently over-predict, and the Indian
+  Ocean 2004 preset (rake 110°) carries a partially affected component.
+  Tracked on the roadmap with a reference-anchored fix plan; the property
+  test pins rake = 90° until it lands.
+
 ### Added — educational features
 - **Physics glossary tooltip system.** 15 domain terms (Mw, SWE, Okada,
   Synolakis, DART, CFL, runup, eta, cavity radius, attenuation, Boussinesq,

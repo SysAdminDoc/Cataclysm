@@ -49,6 +49,7 @@ use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
 #[cfg(feature = "gpu")]
 pub mod gpu;
 pub mod kernels;
+pub mod max_field;
 
 pub type DiagnosticSink<'a> = dyn Fn(&str) + Send + Sync + 'a;
 
@@ -124,7 +125,7 @@ pub struct SwGrid {
 }
 
 #[inline]
-fn idx(i: usize, j: usize, nx: usize) -> usize {
+pub(super) fn idx(i: usize, j: usize, nx: usize) -> usize {
     j * nx + i
 }
 
@@ -382,30 +383,41 @@ impl SwGrid {
                 rgba.extend_from_slice(&[r, g, b, a]);
             }
         }
-        let mut buf = Vec::new();
-        {
-            let cursor = Cursor::new(&mut buf);
-            let mut encoder = png::Encoder::new(cursor, self.nx as u32, self.ny as u32);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-            match encoder.write_header() {
-                Ok(mut writer) => {
-                    if let Err(e) = writer.write_image_data(&rgba) {
-                        report_diagnostic(diagnostics, format!("[solver] PNG encode failed: {e}"));
-                        return String::new();
-                    }
-                }
-                Err(e) => {
-                    report_diagnostic(
-                        diagnostics,
-                        format!("[solver] PNG header write failed: {e}"),
-                    );
+        encode_rgba_png(self.nx as u32, self.ny as u32, &rgba, diagnostics)
+    }
+}
+
+/// Encode an RGBA byte buffer as a base64 PNG. Shared by the per-snapshot
+/// η renderer and the max-field product renderers.
+pub(super) fn encode_rgba_png(
+    nx: u32,
+    ny: u32,
+    rgba: &[u8],
+    diagnostics: Option<&DiagnosticSink<'_>>,
+) -> String {
+    let mut buf = Vec::new();
+    {
+        let cursor = Cursor::new(&mut buf);
+        let mut encoder = png::Encoder::new(cursor, nx, ny);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        match encoder.write_header() {
+            Ok(mut writer) => {
+                if let Err(e) = writer.write_image_data(rgba) {
+                    report_diagnostic(diagnostics, format!("[solver] PNG encode failed: {e}"));
                     return String::new();
                 }
             }
+            Err(e) => {
+                report_diagnostic(
+                    diagnostics,
+                    format!("[solver] PNG header write failed: {e}"),
+                );
+                return String::new();
+            }
         }
-        base64::engine::general_purpose::STANDARD.encode(&buf)
     }
+    base64::engine::general_purpose::STANDARD.encode(&buf)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -419,7 +431,7 @@ pub enum Colormap {
 /// Blue→transparent→red diverging colormap. `t ∈ [-1, 1]`. Returns
 /// premultiplied-alpha-friendly RGBA bytes — small amplitudes are nearly
 /// transparent so the underlying Cesium globe shows through.
-fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
+pub(super) fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
     let mag = t.abs();
     let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
     if t < 0.0 {
@@ -439,7 +451,7 @@ fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
 
 /// Diverging cividis colormap (Nunez et al. 2018, CVD-safe).
 /// `t ∈ [-1, 1]`: negative → dark blue-gray, positive → bright yellow.
-fn cividis_colormap(t: f64) -> (u8, u8, u8, u8) {
+pub(super) fn cividis_colormap(t: f64) -> (u8, u8, u8, u8) {
     let mag = t.abs();
     let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
     if t < 0.0 {
@@ -459,7 +471,7 @@ fn cividis_colormap(t: f64) -> (u8, u8, u8, u8) {
 /// `t ∈ [-1, 1]`: maps |t| through a dark-purple → teal → yellow ramp.
 /// Negative and positive amplitudes share the same hue ramp (sequential,
 /// not diverging), differentiated only by the sign-aware label in the UI.
-fn viridis_colormap(t: f64) -> (u8, u8, u8, u8) {
+pub(super) fn viridis_colormap(t: f64) -> (u8, u8, u8, u8) {
     let mag = t.abs();
     let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
     // 5-stop linear interpolation through the viridis anchor colours.
@@ -957,9 +969,11 @@ pub fn run_simulation_with_diagnostics(
         cancel,
         diagnostics,
         &[],
+        &mut |_| {},
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_simulation_with_gauge_samples(
     grid: &mut SwGrid,
     stepper: &TimeStepper,
@@ -968,10 +982,14 @@ pub fn run_simulation_with_gauge_samples(
     cancel: Option<&AtomicBool>,
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
+    // Called with the grid state at every emitted snapshot; the max-field
+    // accumulator hooks in here (snapshots only carry PNG, not raw η).
+    observe: &mut dyn FnMut(&SwGrid),
 ) -> Vec<GridSnapshot> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    observe(grid);
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return snaps;
     }
@@ -998,6 +1016,7 @@ pub fn run_simulation_with_gauge_samples(
             break;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+        observe(grid);
     }
     snaps
 }

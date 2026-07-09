@@ -188,7 +188,14 @@ export const api = {
       gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
     },
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
-  ): Promise<{ dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number }> {
+  ): Promise<{
+    dt_s: number;
+    nx: number;
+    ny: number;
+    used_gpu: boolean;
+    n_snapshots: number;
+    max_field?: import("../types/scenario").MaxFieldProduct | null;
+  }> {
     const channel = new Channel<import("../types/scenario").GridSnapshot>();
     channel.onmessage = onSnapshot;
     return invoke("simulate_grid_streaming", { req, onSnapshot: channel });

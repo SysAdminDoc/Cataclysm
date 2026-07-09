@@ -19,6 +19,7 @@ use crate::physics::{
     },
     solver::{
         Colormap, DiagnosticSink, GridGaugePoint, GridSnapshot, SwGrid, TimeStepper,
+        max_field::{MaxFieldAccumulator, MaxFieldProduct},
         run_simulation_with_gauge_samples,
     },
 };
@@ -805,6 +806,9 @@ pub struct SimulateGridResponse {
     /// to surface a "ran on GPU" badge in the playback header.
     #[serde(default)]
     pub used_gpu: bool,
+    /// Max-field products (peak |η|, time of maximum, energy proxy,
+    /// arrival isochrones) accumulated at snapshot cadence.
+    pub max_field: Option<MaxFieldProduct>,
 }
 
 /// Hard cap on the SWE grid size — protects us against runaway requests.
@@ -863,15 +867,15 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if req.n_snapshots == 0 || req.n_snapshots > SWE_MAX_SNAPSHOTS {
         return Err(format!("n_snapshots must be in [1, {}]", SWE_MAX_SNAPSHOTS));
     }
-    if let Some(p) = req.lamb_wave_peak_pressure_pa {
-        if !p.is_finite() || p <= 0.0 || p > 1.0e6 {
-            return Err("lamb_wave_peak_pressure_pa must be in (0, 1 000 000]".into());
-        }
+    if let Some(p) = req.lamb_wave_peak_pressure_pa
+        && (!p.is_finite() || p <= 0.0 || p > 1.0e6)
+    {
+        return Err("lamb_wave_peak_pressure_pa must be in (0, 1 000 000]".into());
     }
-    if let Some(r) = req.lamb_wave_source_radius_m {
-        if !r.is_finite() || r <= 0.0 || r > 1.0e7 {
-            return Err("lamb_wave_source_radius_m must be in (0, 10 000 km]".into());
-        }
+    if let Some(r) = req.lamb_wave_source_radius_m
+        && (!r.is_finite() || r <= 0.0 || r > 1.0e7)
+    {
+        return Err("lamb_wave_source_radius_m must be in (0, 10 000 km]".into());
     }
     if !(req.colormap.is_empty()
         || req.colormap == "diverging"
@@ -986,15 +990,17 @@ pub async fn simulate_grid(
         // step-by-step forcing lands in v0.5.0.
         if req.include_lamb_wave {
             let mut lamb = crate::physics::lamb_wave::LambWaveSource::hunga_tonga_2022();
-            if let Some(p) = req.lamb_wave_peak_pressure_pa {
-                if p.is_finite() && p > 0.0 {
-                    lamb.peak_pressure_pa = p;
-                }
+            if let Some(p) = req.lamb_wave_peak_pressure_pa
+                && p.is_finite()
+                && p > 0.0
+            {
+                lamb.peak_pressure_pa = p;
             }
-            if let Some(r) = req.lamb_wave_source_radius_m {
-                if r.is_finite() && r > 0.0 {
-                    lamb.source_radius_m = r;
-                }
+            if let Some(r) = req.lamb_wave_source_radius_m
+                && r.is_finite()
+                && r > 0.0
+            {
+                lamb.source_radius_m = r;
             }
             // Sample at the pulse-arrival time at the source — captures
             // the peak depression. Subsequent step-by-step propagation
@@ -1031,7 +1037,7 @@ pub async fn simulate_grid(
         // leapfrog kernel; nonlinear advection (F4-02) is CPU-only
         // for now, so when the user has selected a nonlinear-class
         // scenario we stay on CPU even with the feature flag on.
-        let (snapshots, used_gpu) = run_simulation_dispatch(
+        let (snapshots, used_gpu, max_field) = run_simulation_dispatch(
             &mut grid,
             dt,
             req.t_end_s,
@@ -1039,6 +1045,7 @@ pub async fn simulate_grid(
             cancel.as_ref(),
             Some(&diagnostics),
             &req.gauge_points,
+            MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m),
         );
         Ok(SimulateGridResponse {
             snapshots,
@@ -1046,6 +1053,7 @@ pub async fn simulate_grid(
             nx,
             ny,
             used_gpu,
+            max_field,
         })
         })();
         unregister_simulation_cancel(&cancel);
@@ -1066,6 +1074,9 @@ pub struct SimulateGridStreamMeta {
     pub ny: u32,
     pub used_gpu: bool,
     pub n_snapshots: u32,
+    /// Max-field products (peak |η|, time of maximum, energy proxy,
+    /// arrival isochrones) accumulated at snapshot cadence.
+    pub max_field: Option<MaxFieldProduct>,
 }
 
 #[tauri::command]
@@ -1126,15 +1137,17 @@ pub async fn simulate_grid_streaming(
 
             if req.include_lamb_wave {
                 let mut lamb = crate::physics::lamb_wave::LambWaveSource::hunga_tonga_2022();
-                if let Some(p) = req.lamb_wave_peak_pressure_pa {
-                    if p.is_finite() && p > 0.0 {
-                        lamb.peak_pressure_pa = p;
-                    }
+                if let Some(p) = req.lamb_wave_peak_pressure_pa
+                    && p.is_finite()
+                    && p > 0.0
+                {
+                    lamb.peak_pressure_pa = p;
                 }
-                if let Some(r) = req.lamb_wave_source_radius_m {
-                    if r.is_finite() && r > 0.0 {
-                        lamb.source_radius_m = r;
-                    }
+                if let Some(r) = req.lamb_wave_source_radius_m
+                    && r.is_finite()
+                    && r > 0.0
+                {
+                    lamb.source_radius_m = r;
                 }
                 grid.apply_lamb_wave(&lamb, lat, lon, 0.0);
             }
@@ -1163,6 +1176,14 @@ pub async fn simulate_grid_streaming(
             let _ = on_snapshot
                 .send(grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics)));
 
+            let max_field_threshold_m =
+                MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
+            let max_field_acc = std::cell::RefCell::new(MaxFieldAccumulator::new(
+                grid.nx * grid.ny,
+                max_field_threshold_m,
+            ));
+            max_field_acc.borrow_mut().observe(&grid);
+
             let total_raw = (req.t_end_s / dt).max(1.0);
             let total_steps = if total_raw.is_finite() && total_raw < 1_000_000.0 {
                 total_raw.round() as usize
@@ -1175,8 +1196,11 @@ pub async fn simulate_grid_streaming(
                 on_snapshot: &on_snapshot,
                 diagnostics: Some(&diagnostics),
                 gauges: &req.gauge_points,
+                max_field: &max_field_acc,
+                max_field_threshold_m,
             };
             let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx);
+            let max_field = max_field_acc.into_inner().into_product(&grid, Some(&diagnostics));
 
             Ok(SimulateGridStreamMeta {
                 dt_s: dt,
@@ -1184,6 +1208,7 @@ pub async fn simulate_grid_streaming(
                 ny,
                 used_gpu,
                 n_snapshots: n as u32,
+                max_field: Some(max_field),
             })
         })();
         unregister_simulation_cancel(&cancel);
@@ -1242,6 +1267,14 @@ struct StreamSimulationContext<'a> {
     on_snapshot: &'a tauri::ipc::Channel<GridSnapshot>,
     diagnostics: Option<&'a DiagnosticSink<'a>>,
     gauges: &'a [GridGaugePoint],
+    /// Max-field accumulator, observed at every streamed snapshot. RefCell
+    /// because the context is shared immutably down the dispatch fns.
+    max_field: &'a std::cell::RefCell<MaxFieldAccumulator>,
+    /// Arrival threshold, kept so the GPU→CPU fallback can rebuild a clean
+    /// accumulator (partial GPU observations must not leak into the rerun).
+    /// Only the gpu-feature dispatch path reads it.
+    #[cfg_attr(not(feature = "gpu"), allow(dead_code))]
+    max_field_threshold_m: f64,
 }
 
 fn stream_simulation_cpu(
@@ -1265,6 +1298,7 @@ fn stream_simulation_cpu(
         let _ = ctx
             .on_snapshot
             .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
+        ctx.max_field.borrow_mut().observe(grid);
     }
 }
 
@@ -1307,11 +1341,18 @@ fn stream_simulation_dispatch(
             let _ = ctx
                 .on_snapshot
                 .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
+            ctx.max_field.borrow_mut().observe(grid);
         }
         if ok {
             return true;
         }
         *grid = pristine;
+        // Discard partial-GPU observations; the CPU rerun re-observes from
+        // the pristine state (including its own t=0).
+        let mut fresh =
+            MaxFieldAccumulator::new(grid.nx * grid.ny, ctx.max_field_threshold_m);
+        fresh.observe(grid);
+        *ctx.max_field.borrow_mut() = fresh;
     }
     stream_simulation_cpu(grid, dt_s, n, total_steps, ctx);
     false
@@ -1330,6 +1371,7 @@ fn stream_simulation_dispatch(
 }
 
 #[cfg(feature = "gpu")]
+#[allow(clippy::too_many_arguments)]
 fn run_simulation_dispatch(
     grid: &mut SwGrid,
     dt_s: f64,
@@ -1338,7 +1380,8 @@ fn run_simulation_dispatch(
     cancel: &AtomicBool,
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
-) -> (Vec<GridSnapshot>, bool) {
+    max_field_threshold_m: f64,
+) -> (Vec<GridSnapshot>, bool, Option<MaxFieldProduct>) {
     use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
 
@@ -1355,6 +1398,7 @@ fn run_simulation_dispatch(
         diagnostics,
     ) {
         let pristine = grid.clone();
+        let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
         if let Some(snaps) = run_simulation_gpu(
             grid,
             &gpu,
@@ -1364,27 +1408,32 @@ fn run_simulation_dispatch(
             cancel,
             diagnostics,
             gauges,
+            &mut |g| acc.observe(g),
         ) {
-            return (snaps, true);
+            let product = acc.into_product(grid, diagnostics);
+            return (snaps, true, Some(product));
         }
+        // Discard partial-GPU observations; CPU rerun observes fresh below.
         *grid = pristine;
     }
     let stepper = TimeStepper::new(dt_s);
-    (
-        run_simulation_with_gauge_samples(
-            grid,
-            &stepper,
-            t_end_s,
-            n_snapshots,
-            Some(cancel),
-            diagnostics,
-            gauges,
-        ),
-        false,
-    )
+    let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
+    let snaps = run_simulation_with_gauge_samples(
+        grid,
+        &stepper,
+        t_end_s,
+        n_snapshots,
+        Some(cancel),
+        diagnostics,
+        gauges,
+        &mut |g| acc.observe(g),
+    );
+    let product = acc.into_product(grid, diagnostics);
+    (snaps, false, Some(product))
 }
 
 #[cfg(not(feature = "gpu"))]
+#[allow(clippy::too_many_arguments)]
 fn run_simulation_dispatch(
     grid: &mut SwGrid,
     dt_s: f64,
@@ -1393,20 +1442,22 @@ fn run_simulation_dispatch(
     cancel: &AtomicBool,
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
-) -> (Vec<GridSnapshot>, bool) {
+    max_field_threshold_m: f64,
+) -> (Vec<GridSnapshot>, bool, Option<MaxFieldProduct>) {
     let stepper = TimeStepper::new(dt_s);
-    (
-        run_simulation_with_gauge_samples(
-            grid,
-            &stepper,
-            t_end_s,
-            n_snapshots,
-            Some(cancel),
-            diagnostics,
-            gauges,
-        ),
-        false,
-    )
+    let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
+    let snaps = run_simulation_with_gauge_samples(
+        grid,
+        &stepper,
+        t_end_s,
+        n_snapshots,
+        Some(cancel),
+        diagnostics,
+        gauges,
+        &mut |g| acc.observe(g),
+    );
+    let product = acc.into_product(grid, diagnostics);
+    (snaps, false, Some(product))
 }
 
 /// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-
@@ -1416,6 +1467,7 @@ fn run_simulation_dispatch(
 /// Returns `None` if any GPU step fails (map/poll error or non-finite field),
 /// signalling the dispatcher to fall back to the CPU path.
 #[cfg(feature = "gpu")]
+#[allow(clippy::too_many_arguments)]
 fn run_simulation_gpu(
     grid: &mut SwGrid,
     gpu: &crate::physics::solver::gpu::GpuTimeStepper,
@@ -1425,11 +1477,13 @@ fn run_simulation_gpu(
     cancel: &AtomicBool,
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
+    observe: &mut dyn FnMut(&SwGrid),
 ) -> Option<Vec<GridSnapshot>> {
     const MAX_TOTAL_STEPS: usize = 1_000_000;
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    observe(grid);
     if !t_end_s.is_finite() || t_end_s <= 0.0 {
         return Some(snaps);
     }
@@ -1462,6 +1516,7 @@ fn run_simulation_gpu(
             remaining -= take;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+        observe(grid);
     }
     Some(snaps)
 }

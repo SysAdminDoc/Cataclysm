@@ -200,6 +200,8 @@ export default function App() {
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
+  const [sweMaxField, setSweMaxField] = useState<import("./types/scenario").MaxFieldProduct | null>(null);
+  const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
   const [lessonCompletions, setLessonCompletions] = useState<Record<string, string>>({});
@@ -591,7 +593,7 @@ export default function App() {
                   inundation_extent_m: r.inundation_extent_m,
                   offshore_amplitude_m: r.offshore_amplitude_m,
                 }));
-                const ok = exportGeoJson(points, exportMetaA());
+                const ok = exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null);
                 showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
               }}
               title="Export inundation polygons as GeoJSON"
@@ -706,6 +708,7 @@ export default function App() {
                 inspectTimeS={timeS}
                 onInspectCancel={() => setInspectMode(false)}
                 onAddGauge={(lat, lon) => setPendingGauge({ lat, lon })}
+                isochrones={sweIsochrones}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
@@ -746,6 +749,8 @@ export default function App() {
           onSnapshotsReady={setSweSnapshots}
           pendingGauge={pendingGauge}
           dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
+          onMaxField={setSweMaxField}
+          onIsochrones={setSweIsochrones}
         />
         <Activity mode={compareMode ? "visible" : "hidden"}>
           <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />

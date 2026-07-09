@@ -15,11 +15,11 @@ tests locally.
 
 ### P1 — trust, validation, and returned blockers
 
-- [ ] P1 — Property-based tests for physics modules (proptest)
-  Why: physics modules have no direct unit tests (validated only via preset benchmarks); property tests catch parameter-space regressions cheaply. Returns from Roadmap_Blocked (stale MSVC blocker).
-  Evidence: internal recon — no `#[test]` in src-tauri/src/physics/{asteroid,nuclear,landslide,earthquake}.rs; proptest crate.
-  Touches: src-tauri/Cargo.toml (dev-dep), src-tauri/src/physics/*.
-  Acceptance: proptest suites for asteroid cavity monotonicity in diameter/velocity, Okada displacement bounds vs slip, SWE mass conservation over N steps (closed basin, no sponge), runup positivity; all pass in `npm run verify`.
+- [ ] P1 — Fix the Okada strike-slip vertical-displacement term against a reference implementation
+  Why: property testing (2026-07-09) proved the strike-slip u_z path is broken, not merely imprecise — |uz| grows with fault length without bound (0.74 m surface displacement from 0.1 m slip on a 302 km strike-slip fault at 1 km depth; 3.6×slip even at 49 km burial, where attenuation is mandatory). A dislocation's surface displacement is bounded by ~slip regardless of fault size. Custom scenarios accept strike-slip rakes, so users can currently produce inflated tsunamis from strike-slip earthquakes. Code review against Okada 1985 flags two concrete suspects in `okada_uz_terms`: (a) the strike-slip vertical term uses `atan(ξη/qR)` where eqn. 26 has `q·sinδ/(R+η)` — the atan belongs to the strike-slip u_x and the dip-slip u_z; (b) the I4/I5 coefficient uses ALPHA = 2/3 = (λ+μ)/(λ+2μ) (the 1992 convention) where the 1985 I-terms use μ/(λ+μ) = 1/2 for ν = 0.25 (also inflates the thrust path ~33%: observed 2.07×slip at dip 76°, rake 106°). Impact is NOT limited to custom scenarios: proptest measured ~9× amplification of the strike-slip component at rake 70° on large faults, and the shipped Indian Ocean 2004 preset uses rake 110° (|cos 110°| = 0.34 strike-slip component on a 1,300 km fault) — its displacement field is plausibly inflated; only the Tōhoku band (rake 85°, |cos| = 0.09) is validated. Do NOT fix from memory: anchor on Okada 1985 Table 2 case 2 (x=2, y=3, d=4, δ=70°, L=3, W=2) or dc3d/okada_wrapper output, minding the centered-fault vs [0,L] and top-edge vs bottom-edge depth conventions.
+  Evidence: src-tauri/src/physics/okada.rs:186-257 (`okada_uz_terms`), ALPHA at okada.rs:63; property_tests.rs `okada_uplift_bounded_by_slip` doc (rake domain restricted to 70–110° until this lands).
+  Touches: src-tauri/src/physics/okada.rs, src-tauri/src/physics/property_tests.rs (widen rake domain after fix), docs/science/earthquake.md.
+  Acceptance: uz matches the reference for all three Table 2 modes within 1e-5; property-test rake domain restored to 0–180° with a verified ~1×slip-class bound; Tōhoku band still passes.
   Complexity: M
 
 - [ ] P1 — Kamchatka 2025-07-29 Mw 8.8 preset + DART validation pack
@@ -27,20 +27,6 @@ tests locally.
   Evidence: Ocean Engineering trans-Pacific propagation study (rupture ~390-600 km × 140-200 km, peak slip ~30-40 m, 52.512°N 160.324°E) https://www.sciencedirect.com/science/article/pii/S002980182601749X; NCTR event page https://nctr.pmel.noaa.gov/kamchatka20250729/; NCEI DART archive (netCDF/CSV via THREDDS).
   Touches: src-tauri/src/presets.rs (cited entry), src/data/dart_buoys.json (new event + 2-3 buoys, downsampled like existing events), docs/science/REFERENCES.bib, src/data/coastal_points.json (verify Kamchatka/Hawaii/California points exist).
   Acceptance: preset loads with citation; SWE run shows DART sparkline comparison for the new buoys; preset tests (id uniqueness, finite outputs) pass.
-  Complexity: M
-
-- [ ] P1 — Arrival-time isochrone layer (NOAA TTT-style)
-  Why: "when does it reach X" was the dominant lay question during Kamchatka; NOAA travel-time maps are the reference product; arrival times already exist per-point in `runup_at_points`.
-  Evidence: NCEI TTT maps https://www.ncei.noaa.gov/products/natural-hazards/tsunamis-earthquakes-volcanoes/tsunamis/travel-time-maps; HN thread https://news.ycombinator.com/item?id=44729865; existing arrival-time math in src-tauri/src/commands.rs (`runup_at_points`).
-  Touches: src-tauri/src/commands.rs or solver (gridded travel-time from first eta-threshold crossing per cell), src/components/Globe.tsx (contour/labelled-ring layer, toggleable), src/lib/export.ts (include in PNG/GeoJSON).
-  Acceptance: toggling "Arrival times" renders labelled isochrones (e.g., 1 h intervals) on the globe for a completed SWE run; exported GeoJSON contains the contours.
-  Complexity: M
-
-- [ ] P1 — Max-field products: peak-amplitude and time-of-maximum layers
-  Why: fgmax-style maximum fields are GeoClaw's most-used hazard product and SFINCS added a time-of-max flag in 2025; the solver currently discards per-cell history, so this is a cheap accumulator with high analysis value.
-  Evidence: GeoClaw fgmax usage + issue #691; SFINCS v2.3.0 release notes https://github.com/Deltares/SFINCS/releases; src-tauri/src/physics/solver/mod.rs (no max tracking today).
-  Touches: src-tauri/src/physics/solver/mod.rs and solver/gpu.rs (per-cell running max eta + t_of_max), GridSnapshot/final-result types, src/components/Globe.tsx (two new overlay choices), src/lib/export.ts (GeoJSON/CSV export).
-  Acceptance: after a run, "Peak amplitude" and "Time of maximum" layers render from Rust-computed fields on both CPU and GPU paths (parity-tested), and export to GeoJSON.
   Complexity: M
 
 - [ ] P1 — CPU/GPU kernel parity regression test
@@ -93,13 +79,6 @@ tests locally.
   Touches: src-tauri/src/presets.rs, src/lib/guided-lessons.ts, REFERENCES.bib.
   Acceptance: preset + 3-step myth-busting lesson ship; lesson states the airburst caveat explicitly.
   Complexity: S
-
-- [ ] P2 — Tsunami energy/directivity map layer (RIFT-style)
-  Why: PTWC energy maps are the standard visual in every event's news coverage; computable from existing SWE fields as an integrated eta² directivity product.
-  Evidence: NOAA energy map product https://noaa.hub.arcgis.com/content/9c4e79757d3b45f7a522fc7072d60c15.
-  Touches: src-tauri/src/physics/solver/mod.rs (time-integrated energy accumulator, builds on max-field plumbing), src/components/Globe.tsx, src/lib/export.ts.
-  Acceptance: "Energy" overlay renders a directivity-lobed field for a completed run; documented as qualitative (not PTWC-calibrated) in the glossary.
-  Complexity: M
 
 - [ ] P2 — Modularize commands.rs into submodules
   Why: 1,944 lines and growing with each new IPC; split into types/validators/simulation/source/query keeps the boundary reviewable. Returns from Roadmap_Blocked (stale MSVC blocker).
@@ -165,6 +144,7 @@ tests locally.
   Complexity: L
 
 ### P3 — education distribution and larger bets
+
 
 - [ ] P3 — Zarr v3 scientific output export via `zarrs` (pure Rust)
   Why: gives researchers a chunked, self-describing raw-field export without the C-library NetCDF burden that keeps the NetCDF item blocked; zarrs 0.23.x is spec-complete Zarr v3.1. Note: raises rust-version to 1.91 (schedule after the P0 1.87 bump).

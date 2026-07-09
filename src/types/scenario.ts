@@ -115,6 +115,27 @@ export type GridSnapshot = {
   gauge_samples?: Array<{ id: string; eta_m: number | null }>;
 };
 
+/** One first-arrival contour set at a fixed travel time. */
+export type Isochrone = {
+  time_s: number;
+  /** Polylines as [lon_deg, lat_deg] vertex lists. */
+  lines: Array<Array<[number, number]>>;
+};
+
+/** Max-field products (fgmax-style) accumulated across a solver run. */
+export type MaxFieldProduct = {
+  bbox: [number, number, number, number];
+  nx: number;
+  ny: number;
+  peak_abs_max_m: number;
+  t_end_s: number;
+  arrival_threshold_m: number;
+  peak_png_b64: string;
+  t_of_max_png_b64: string;
+  energy_png_b64: string;
+  isochrones: Isochrone[];
+};
+
 export type SimulateGridResponse = {
   snapshots: GridSnapshot[];
   dt_s: number;
@@ -123,6 +144,7 @@ export type SimulateGridResponse = {
   /** F4-01 — true when the SWE leapfrog ran on the wgpu GPU path.
    *  Always false on builds compiled without `--features gpu`. */
   used_gpu?: boolean;
+  max_field?: MaxFieldProduct | null;
 };
 
 export type Gauge = {

@@ -3,7 +3,7 @@ import { api, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportGaugeCsv } from "../lib/export";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import { GlossaryTip } from "./GlossaryTip";
 
@@ -15,7 +15,43 @@ type Props = {
   /** DART buoys for the active preset. Sampled as hidden `dart-<id>` gauge
    *  points so the overlay can compute model-vs-observed RMSE. */
   dartBuoys?: Array<{ id: string | number; lat: number; lon: number }>;
+  /** Fires when a completed run yields max-field products (or null on
+   *  reset). App uses this for GeoJSON export enrichment. */
+  onMaxField?: (product: MaxFieldProduct | null) => void;
+  /** Fires with the arrival-time contours when the "Arrivals" toggle is on
+   *  (null when off or reset). App routes these to the globe layer. */
+  onIsochrones?: (isochrones: import("../types/scenario").Isochrone[] | null) => void;
 };
+
+type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
+
+const OVERLAY_OPTIONS: Array<{ id: OverlayChoice; label: string; title: string }> = [
+  { id: "wave", label: "Wave", title: "Scrubbed η field for the current frame" },
+  { id: "peak", label: "Peak", title: "Maximum |η| reached per cell over the whole run (fgmax-style)" },
+  { id: "t_of_max", label: "T max", title: "Time at which each cell reached its maximum (viridis, 0 → end)" },
+  { id: "energy", label: "Energy", title: "Time-integrated η² — qualitative directivity, not a calibrated PTWC energy product" },
+];
+
+/** Wrap a max-field PNG as a snapshot-shaped object so the existing globe
+ *  imagery pipeline renders it unchanged. */
+function overlaySnapshot(product: MaxFieldProduct, choice: OverlayChoice): GridSnapshot {
+  const png =
+    choice === "peak"
+      ? product.peak_png_b64
+      : choice === "t_of_max"
+        ? product.t_of_max_png_b64
+        : product.energy_png_b64;
+  return {
+    time_s: product.t_end_s,
+    bbox: product.bbox,
+    nx: product.nx,
+    ny: product.ny,
+    eta_min_m: 0,
+    eta_max_m: product.peak_abs_max_m,
+    eta_abs_max_m: product.peak_abs_max_m,
+    eta_png_b64: png,
+  };
+}
 
 type Status = "idle" | "running" | "ready" | "error";
 
@@ -47,7 +83,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -59,6 +95,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [cellsPerDeg, setCellsPerDeg] = useState(6);
   const [streamProgress, setStreamProgress] = useState(0);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean } | null>(null);
+  const [maxField, setMaxField] = useState<MaxFieldProduct | null>(null);
+  const [overlay, setOverlay] = useState<OverlayChoice>("wave");
+  const [showArrivals, setShowArrivals] = useState(false);
   const [gauges, setGauges] = useState<Gauge[]>([]);
   const [gaugeSeries, setGaugeSeries] = useState<GaugeTimeSeries[]>([]);
   const [gaugeLatInput, setGaugeLatInput] = useState("");
@@ -85,17 +124,36 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setActiveIdx(0);
       setIsPlaying(false);
       setDiag(null);
+      setMaxField(null);
+      setOverlay("wave");
+      setShowArrivals(false);
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
+      onMaxField?.(null);
     }
-  }, [initial, onSnapshot, onSnapshotsReady]);
+  }, [initial, onSnapshot, onSnapshotsReady, onMaxField]);
 
-  // Push the currently-scrubbed snapshot up.
+  // Publish the arrival contours to the globe when toggled.
   useEffect(() => {
+    onIsochrones?.(showArrivals && maxField ? maxField.isochrones : null);
+  }, [showArrivals, maxField, onIsochrones]);
+
+  // Push the currently-scrubbed snapshot up — or, when a max-field overlay
+  // is selected, its PNG wrapped in a snapshot shell (same globe pipeline).
+  useEffect(() => {
+    if (overlay !== "wave" && maxField) {
+      onSnapshot?.(overlaySnapshot(maxField, overlay));
+      return;
+    }
     if (snapshots && snapshots[activeIdx]) {
       onSnapshot?.(snapshots[activeIdx]);
     }
-  }, [snapshots, activeIdx, onSnapshot]);
+  }, [snapshots, activeIdx, onSnapshot, overlay, maxField]);
+
+  // Scrubbing or playing always returns the view to the live wave field.
+  useEffect(() => {
+    if (isPlaying) setOverlay("wave");
+  }, [isPlaying]);
 
   useEffect(() => {
     if (!isPlaying || !snapshots || snapshots.length < 2) return;
@@ -239,6 +297,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(streamSnaps);
+        setMaxField(meta.max_field ?? null);
+        onMaxField?.(meta.max_field ?? null);
       } else {
         const resp = simulateDemoGrid(initial, {
           boxHalfSizeDeg: halfDeg,
@@ -259,7 +319,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField]);
 
   if (!initial) return null;
 
@@ -432,6 +492,47 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               <span>grid {diag.nx}×{diag.ny}</span>
               <span>{(diag.nx * diag.ny).toLocaleString()} cells</span>
               <span>{diag.used_gpu ? "GPU (wgpu)" : "CPU (rayon)"}</span>
+            </div>
+          )}
+          {maxField && (
+            <div className="swe__overlay-row" role="group" aria-label="Result overlay">
+              <span className="swe__overlay-label">Overlay</span>
+              {OVERLAY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="swe__overlay-btn"
+                  data-active={overlay === opt.id || undefined}
+                  aria-pressed={overlay === opt.id}
+                  title={opt.title}
+                  onClick={() => {
+                    setIsPlaying(false);
+                    setOverlay(opt.id);
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="swe__overlay-btn swe__overlay-btn--toggle"
+                data-active={showArrivals || undefined}
+                aria-pressed={showArrivals}
+                title="Draw labelled first-arrival time contours on the globe"
+                onClick={() => setShowArrivals((v) => !v)}
+                disabled={maxField.isochrones.length === 0}
+              >
+                Arrivals
+              </button>
+              {overlay !== "wave" && (
+                <span className="swe__overlay-hint">
+                  {overlay === "peak"
+                    ? `peak |η| ${maxField.peak_abs_max_m.toFixed(2)} m`
+                    : overlay === "t_of_max"
+                      ? "purple early → yellow late"
+                      : "qualitative ∫η²dt directivity"}
+                </span>
+              )}
             </div>
           )}
         </>

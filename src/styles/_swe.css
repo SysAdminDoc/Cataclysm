@@ -306,3 +306,57 @@
 .swe__readout--muted {
   color: var(--overlay);
 }
+
+.swe__overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.swe__overlay-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--subtext);
+}
+
+.swe__overlay-btn {
+  min-height: 24px;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface0) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 40%, transparent);
+  color: var(--subtext);
+  cursor: pointer;
+}
+
+.swe__overlay-btn:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.swe__overlay-btn[data-active] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--text);
+}
+
+.swe__overlay-btn--toggle[data-active] {
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  border-color: color-mix(in srgb, var(--yellow) 50%, transparent);
+}
+
+.swe__overlay-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.swe__overlay-hint {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--overlay);
+}

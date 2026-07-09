@@ -41,6 +41,9 @@ type Props = {
    *  pane keeps the WebGL backbuffer alive for PNG/share/video export — the
    *  Slot B compare pane skips that per-frame cost. */
   primary?: boolean;
+  /** First-arrival time contours from a completed SWE run; rendered as
+   *  labelled polylines when the playback panel's Arrivals toggle is on. */
+  isochrones?: import("../types/scenario").Isochrone[] | null;
 };
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -169,6 +172,7 @@ export function Globe({
   onInspectCancel,
   onAddGauge,
   primary = true,
+  isochrones,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -180,6 +184,7 @@ export function Globe({
   const runupLabelsRef = useRef<Map<string, Cesium.Entity>>(new Map());
   const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
+  const isochroneEntitiesRef = useRef<Cesium.Entity[]>([]);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryRequestIdRef = useRef(0);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
@@ -730,6 +735,82 @@ export function Globe({
       cancelled = true;
     };
   }, [sweSnapshot, viewerEpoch]);
+
+  // First-arrival isochrones from a completed SWE run: one labelled
+  // polyline set per contour time. Entity polylines are fine here —
+  // ≤ 12 levels with a handful of chained lines each, far below the
+  // Buffer*Collection payload sizes the runup overlay needed.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    for (const entity of isochroneEntitiesRef.current) {
+      viewer.entities.remove(entity);
+    }
+    isochroneEntitiesRef.current = [];
+
+    if (!isochrones || isochrones.length === 0) return;
+
+    const added: Cesium.Entity[] = [];
+    for (const iso of isochrones) {
+      const minutes = Math.round(iso.time_s / 60);
+      let labelled = false;
+      for (const line of iso.lines) {
+        if (line.length < 2) continue;
+        const degs: number[] = [];
+        for (const [lon, lat] of line) {
+          if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+          degs.push(Math.max(-180, Math.min(180, lon)), Math.max(-90, Math.min(90, lat)));
+        }
+        if (degs.length < 4) continue;
+        const entity = viewer.entities.add({
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArray(degs),
+            width: 1.6,
+            material: new Cesium.PolylineDashMaterialProperty({
+              color: Cesium.Color.fromCssColorString("#f9e2af").withAlpha(0.85),
+              dashLength: 12,
+            }),
+            clampToGround: false,
+          },
+        });
+        added.push(entity);
+        // Label the longest-first (lines arrive chained; first is fine) —
+        // one label per contour level keeps the globe readable.
+        if (!labelled) {
+          const mid = line[Math.floor(line.length / 2)];
+          const label = viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(
+              Math.max(-180, Math.min(180, mid[0])),
+              Math.max(-90, Math.min(90, mid[1])),
+            ),
+            label: {
+              text: `+${minutes} min`,
+              font: "11px 'JetBrains Mono', monospace",
+              fillColor: Cesium.Color.fromCssColorString("#f9e2af"),
+              outlineColor: Cesium.Color.BLACK.withAlpha(0.7),
+              outlineWidth: 2,
+              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+              scale: 1.0,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            },
+          });
+          added.push(label);
+          labelled = true;
+        }
+      }
+    }
+    isochroneEntitiesRef.current = added;
+
+    return () => {
+      const v = viewerRef.current;
+      if (!v) return;
+      for (const entity of isochroneEntitiesRef.current) {
+        v.entities.remove(entity);
+      }
+      isochroneEntitiesRef.current = [];
+    };
+  }, [isochrones, viewerEpoch]);
 
   // Runup bars + inundation discs at named coastal points.
   // Uses Cesium Buffer*Collection APIs instead of per-point geometry instances

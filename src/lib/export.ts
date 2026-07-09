@@ -551,9 +551,23 @@ export type RunupPoint = {
 export function exportGeoJson(
   points: RunupPoint[],
   meta: ScreenshotMeta,
+  isochrones?: import("../types/scenario").Isochrone[] | null,
 ): boolean {
-  if (!points.length) return false;
+  if (!points.length && !(isochrones && isochrones.length)) return false;
   const provenance = buildModelProvenance(meta);
+
+  const isochroneFeatures = (isochrones ?? []).map((iso) => ({
+    type: "Feature" as const,
+    properties: {
+      kind: "arrival_isochrone",
+      arrival_time_s: round5(iso.time_s),
+      arrival_time_min: round5(iso.time_s / 60),
+    },
+    geometry: {
+      type: "MultiLineString" as const,
+      coordinates: iso.lines.map((line) => line.map(([lon, lat]) => [round5(lon), round5(lat)])),
+    },
+  }));
 
   const features = points.map((p) => {
     const r = Math.max(p.inundation_extent_m, 50);
@@ -590,7 +604,7 @@ export function exportGeoJson(
       solver_mode: provenance.solverMode,
       time_s: round5(meta.timeS),
     },
-    features,
+    features: [...features, ...isochroneFeatures],
   };
 
   const json = JSON.stringify(fc, null, 2);
