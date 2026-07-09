@@ -6,7 +6,8 @@ authors = ["SysAdminDoc"]
 license = "MIT"
 repository = "https://github.com/SysAdminDoc/TsunamiSimulator"
 edition = "2024"
-rust-version = "1.85"
+# Floor set by wgpu/naga 29 (MSRV 1.87) and time-core 0.1.9 (MSRV 1.88).
+rust-version = "1.88"
 
 [lib]
 name = "tsunami_simulator_lib"

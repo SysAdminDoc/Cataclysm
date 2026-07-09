@@ -325,6 +325,47 @@ function cspAllowlistGate() {
   }
 }
 
+// -- DOMPurify floor gate --
+// Four sanitizer bypasses shipped in the 12 months before 2026-07; the
+// last (CVE-2026-49978, IN_PLACE shadow-root bypass) is fixed in 3.4.7.
+// The package.json override must never regress below this floor.
+const DOMPURIFY_FLOOR = [3, 4, 7];
+
+function dompurifyFloorGate() {
+  const lock = JSON.parse(readFileSync(path.join(repoRoot, "package-lock.json"), "utf8"));
+  const entries = Object.entries(lock.packages ?? {}).filter(([key]) =>
+    key === "node_modules/dompurify" || key.endsWith("/node_modules/dompurify"),
+  );
+  if (entries.length === 0) {
+    console.error("DOMPurify floor gate failed: dompurify not found in package-lock.json");
+    process.exit(1);
+  }
+  const failures = [];
+  for (const [key, meta] of entries) {
+    const version = meta.version ?? "";
+    const parts = version.split(".").map((n) => Number.parseInt(n, 10));
+    const belowFloor =
+      parts.length < 3 ||
+      parts.some((n) => Number.isNaN(n)) ||
+      parts[0] < DOMPURIFY_FLOOR[0] ||
+      (parts[0] === DOMPURIFY_FLOOR[0] &&
+        (parts[1] < DOMPURIFY_FLOOR[1] ||
+          (parts[1] === DOMPURIFY_FLOOR[1] && parts[2] < DOMPURIFY_FLOOR[2])));
+    if (belowFloor) {
+      failures.push(`${key}: resolved dompurify ${version} is below the ${DOMPURIFY_FLOOR.join(".")} security floor`);
+    }
+  }
+  if (failures.length > 0) {
+    console.error("\nDOMPurify floor gate failed (CVE-2026-49978 and older bypasses):");
+    for (const f of failures) console.error(`- ${f}`);
+    console.error('Fix the "overrides" entry in package.json and re-run npm install.');
+    process.exit(1);
+  }
+}
+
+console.log("\n==> DOMPurify floor gate");
+dompurifyFloorGate();
+
 console.log("\n==> CSP allowlist gate");
 cspAllowlistGate();
 

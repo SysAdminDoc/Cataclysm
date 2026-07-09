@@ -4,6 +4,19 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased] — Research-driven feature batch
 
+### Changed — toolchain and supply chain (2026-07-09)
+- **`rust-version` raised 1.85 → 1.88.** The declared floor was below the real
+  requirement: wgpu/naga 29 needs 1.87 and time-core 0.1.9 needs 1.88.
+- **Cargo dependency refresh.** tauri 2.11.2 → 2.11.5, wgpu 29.0.3 → 29.0.4,
+  plist pinned to 1.10.0 so quick-xml resolves to 0.41.0 — clears all three
+  open RustSec advisories (RUSTSEC-2026-0194/0195 quick-xml DoS,
+  RUSTSEC-2026-0204 crossbeam-epoch). `cargo audit` is clean again.
+- **CesiumJS 1.142 → 1.143.** Billboard crash fix plus
+  `PathGraphics.materialMode` groundwork for arrival-time-colored paths.
+- **DOMPurify floor gate.** `scripts/verify.mjs` now fails if any resolved
+  dompurify in package-lock.json drops below 3.4.7 (CVE-2026-49978 floor), so
+  a lockfile regression can't silently reopen the sanitizer bypass.
+
 ### Added — educational features
 - **Physics glossary tooltip system.** 15 domain terms (Mw, SWE, Okada,
   Synolakis, DART, CFL, runup, eta, cavity radius, attenuation, Boussinesq,
