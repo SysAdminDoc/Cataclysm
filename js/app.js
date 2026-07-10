@@ -145,7 +145,10 @@ function initMap() {
   map.on('click', e => onMapClick(e.latlng.lat, e.latlng.lng));
   map.on('contextmenu', e => { e.originalEvent.preventDefault(); onMapClick(e.latlng.lat, e.latlng.lng); });
   map.on('mousemove', e => { document.getElementById('coords').textContent = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`; });
-  map.on('moveend zoomend', () => { if (NM.Mushroom3D.active) NM.Mushroom3D.onMapMove(); });
+  map.on('moveend zoomend', () => {
+    if (NM.Mushroom3D.active) NM.Mushroom3D.onMapMove();
+    updateMapContext();
+  });
   map.getContainer().classList.add('crosshair');
 
   // Dismiss loading overlay once first tile loads
@@ -163,6 +166,9 @@ function initMap() {
 function showBadge(on) {
   const b = document.getElementById('offline-badge'), d = b.querySelector('.ob-dot'), l = b.querySelector('.ob-lbl');
   b.classList.add('show'); d.className = 'ob-dot ' + (on ? 'on' : 'off'); l.textContent = on ? 'Online' : 'Offline';
+  const topStatus = $('topbar-status'), topDot = $('topbar-status-dot');
+  if (topStatus) topStatus.textContent = on ? 'Online' : 'Offline';
+  if (topDot) topDot.classList.toggle('online', on);
   if (on) setTimeout(() => b.classList.remove('show'), 3000);
 }
 
@@ -311,10 +317,6 @@ function triggerDetonation(lat, lng) {
   // Detonation toast
   showDetToast(det);
 
-  // Focus management: move focus to results for screen reader users
-  const statsEl = $('stat-deaths');
-  if (statsEl) setTimeout(() => statsEl.focus(), 300);
-
   updateURL();
 }
 
@@ -333,14 +335,69 @@ function syncActionStates() {
   document.body.classList.toggle('has-results', hasDets);
   ['undo-btn','clear-btn','share-btn','save-btn','export-kml','export-json','export-geojson','export-csv','export-report','export-print','export-png','export-png-hd','export-svg'].forEach(id => setButtonDisabled(id, !hasDets));
   ['flight-us','flight-ru','flight-cn','raddecay-calc','dose-calc'].forEach(id => setButtonDisabled(id, !hasDets));
+  updateWorkspaceStatus();
+  updateMapContext();
 }
 function getYield() { return NM.sliderToYield(+$('yield-slider').value); }
 function getBurst() { return document.querySelector('.burst-btn.active')?.dataset.burst || 'airburst'; }
+
+function setBurstType(burst) {
+  const validBurst = ['airburst', 'surface', 'custom', 'hemp', 'water'].includes(burst) ? burst : 'airburst';
+  document.querySelectorAll('.burst-btn').forEach(btn => {
+    const active = btn.dataset.burst === validBurst;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-checked', active ? 'true' : 'false');
+    btn.tabIndex = active ? 0 : -1;
+  });
+  $('height-row').style.display = validBurst === 'custom' ? '' : 'none';
+  $('wind-wrap').style.display = (validBurst === 'surface' || validBurst === 'water') ? '' : 'none';
+  $('hemp-info').style.display = validBurst === 'hemp' ? '' : 'none';
+  $('water-info').style.display = validBurst === 'water' ? '' : 'none';
+  updateMapContext();
+  return validBurst;
+}
+
+function updateWorkspaceStatus() {
+  const model = $('physics-model'), topbarModel = $('topbar-model-select'), scenarioStatus = $('topbar-scenario');
+  if (model && topbarModel) topbarModel.value = model.value;
+  if (scenarioStatus) scenarioStatus.textContent = currentDets.length ? `${currentDets.length} modeled ${currentDets.length === 1 ? 'detonation' : 'detonations'}` : 'Unsaved analysis';
+}
+
+function updateMapContext() {
+  if (!map || !$('map-context-card')) return;
+  const center = map.getCenter();
+  const lat = Math.abs(center.lat).toFixed(4), lng = Math.abs(center.lng).toFixed(4);
+  $('map-context-coords').textContent = `${lat}° ${center.lat >= 0 ? 'N' : 'S'}, ${lng}° ${center.lng >= 0 ? 'E' : 'W'}`;
+  $('map-context-yield').textContent = NM.fmtYield(getYield());
+  const burstButton = document.querySelector('.burst-btn.active');
+  $('map-context-burst').textContent = burstButton?.textContent.trim() || 'Airburst';
+  const model = $('physics-model');
+  $('map-context-model').textContent = model?.options[model.selectedIndex]?.text.replace(' (default)', '') || 'NWFAQ Optimum Burst';
+}
+
+function syncQuickWeaponSelection(kt) {
+  document.querySelectorAll('.qw-chip').forEach(chip => {
+    const active = Math.abs(+chip.dataset.kt - kt) < 0.01;
+    chip.classList.toggle('qw-active', active);
+    chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function setPanelCollapsed(collapsed) {
+  const panel = $('panel'), content = $('panel-content'), toggle = $('panel-toggle');
+  panel.classList.toggle('collapsed', collapsed);
+  document.body.classList.toggle('panel-collapsed', collapsed);
+  toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  content.setAttribute('aria-hidden', collapsed ? 'true' : 'false');
+  content.inert = collapsed;
+}
 
 function setYield(kt) {
   $('yield-slider').value = NM.yieldToSlider(kt);
   updateYieldUI(kt);
   syncYieldInput(kt);
+  syncQuickWeaponSelection(kt);
+  updateMapContext();
 }
 
 function updateYieldUI(kt) {
@@ -361,13 +418,17 @@ function syncYieldInput(kt) {
 function initControls() {
   // Tabs (WAI-ARIA tabs pattern: click + arrow keys)
   const tabs = [...document.querySelectorAll('.tab')];
+  const tabList = $('main-tabs');
+  const syncTabOrientation = () => tabList.setAttribute('aria-orientation', matchMedia('(max-width: 768px), (max-width: 900px) and (max-height: 500px)').matches ? 'horizontal' : 'vertical');
+  syncTabOrientation();
+  window.addEventListener('resize', syncTabOrientation, {passive: true});
   tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
   document.querySelector('.tabs').addEventListener('keydown', e => {
     const idx = tabs.indexOf(document.activeElement);
     if (idx < 0) return;
     let next = -1;
-    if (e.key === 'ArrowRight') next = (idx + 1) % tabs.length;
-    else if (e.key === 'ArrowLeft') next = (idx - 1 + tabs.length) % tabs.length;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + tabs.length) % tabs.length;
     else if (e.key === 'Home') next = 0;
     else if (e.key === 'End') next = tabs.length - 1;
     if (next >= 0) { e.preventDefault(); tabs[next].focus(); switchTab(tabs[next].dataset.tab); }
@@ -383,6 +444,7 @@ function initControls() {
     sel.appendChild(og);
   }
   sel.addEventListener('change', () => setYield(NM.WEAPONS[sel.value].yield_kt));
+  setYield(NM.WEAPONS[sel.value]?.yield_kt || 15);
 
   // Weapon filter
   $('weapon-filter').addEventListener('input', () => {
@@ -424,6 +486,8 @@ function initControls() {
     $('yield-slider').value = NM.yieldToSlider(kt);
     updateYieldUI(kt);
     syncYieldInput(kt);
+    syncQuickWeaponSelection(kt);
+    updateMapContext();
   };
   $('yield-input').addEventListener('change', syncFromInput);
   $('yield-unit-select').addEventListener('change', syncFromInput);
@@ -432,19 +496,26 @@ function initControls() {
   syncYieldInput(NM.sliderToYield(+$('yield-slider').value));
 
   // Burst buttons
-  document.querySelectorAll('.burst-btn').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.burst-btn').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-checked', 'false'); });
-    b.classList.add('active'); b.setAttribute('aria-checked', 'true');
-    $('height-row').style.display = b.dataset.burst === 'custom' ? '' : 'none';
-    $('wind-wrap').style.display = (b.dataset.burst === 'surface' || b.dataset.burst === 'water') ? '' : 'none';
-    $('hemp-info').style.display = b.dataset.burst === 'hemp' ? '' : 'none';
-    $('water-info').style.display = b.dataset.burst === 'water' ? '' : 'none';
-  }));
+  const burstButtons = [...document.querySelectorAll('.burst-btn')];
+  burstButtons.forEach(b => b.addEventListener('click', () => setBurstType(b.dataset.burst)));
+  document.querySelector('.burst-options').addEventListener('keydown', e => {
+    const idx = burstButtons.indexOf(document.activeElement);
+    if (idx < 0 || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(e.key)) return;
+    e.preventDefault();
+    const delta = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+    const next = burstButtons[(idx + delta + burstButtons.length) % burstButtons.length];
+    setBurstType(next.dataset.burst);
+    next.focus();
+  });
 
   // Detonate / Undo / Clear / Share
   $('detonate-btn').addEventListener('click', () => { const c = map.getCenter(); onMapClick(c.lat, c.lng); });
   $('undo-btn').addEventListener('click', () => { if (currentDets.length) removeDet(currentDets.length - 1); });
-  $('clear-btn').addEventListener('click', clearAll);
+  $('clear-btn').addEventListener('click', () => {
+    const cleared = currentDets.map(scenarioDetRow);
+    clearAll();
+    if (cleared.length) showActionToast(`Cleared ${cleared.length} ${cleared.length === 1 ? 'detonation' : 'detonations'}.`, 'Undo', () => restoreDetonationRows(cleared));
+  });
   $('share-btn').addEventListener('click', showShareLink);
   $('share-copy').addEventListener('click', copyShareLink);
   $('share-text').addEventListener('click', () => {
@@ -475,7 +546,15 @@ function initControls() {
   });
 
   // Panel toggle
-  $('panel-toggle').addEventListener('click', () => $('panel').classList.toggle('collapsed'));
+  $('panel-toggle').addEventListener('click', () => setPanelCollapsed(!$('panel').classList.contains('collapsed')));
+  setPanelCollapsed(false);
+
+  document.querySelectorAll('[data-tab-target]').forEach(button => button.addEventListener('click', () => {
+    setPanelCollapsed(false);
+    switchTab(button.dataset.tabTarget);
+    const focusTarget = button.dataset.focusTarget && $(button.dataset.focusTarget);
+    if (focusTarget) setTimeout(() => { focusTarget.scrollIntoView({block: 'start', behavior: 'smooth'}); focusTarget.focus({preventScroll: true}); }, 40);
+  }));
 
   // Coords click-to-copy
   $('coords').addEventListener('click', () => {
@@ -825,12 +904,11 @@ function initControls() {
 
   // WW3 quick-launch button
   $('ww3-quick-btn').addEventListener('click', () => {
+    setPanelCollapsed(false);
     switchTab('tools');
     // Scroll WW3 section into view
     const ww3Sec = $('ww3-scenario')?.closest('.section');
     if (ww3Sec) ww3Sec.scrollIntoView({behavior: 'smooth', block: 'start'});
-    // If panel is collapsed, open it
-    $('panel').classList.remove('collapsed');
   });
 
   // Quick weapon bar
@@ -840,8 +918,8 @@ function initControls() {
       setYield(kt);
       const i = NM.WEAPONS.findIndex(w => Math.abs(w.yield_kt - kt) < 0.01);
       if (i >= 0) $('weapon-select').value = i;
-      document.querySelectorAll('.qw-chip').forEach(c => c.classList.remove('qw-active'));
-      chip.classList.add('qw-active');
+      syncQuickWeaponSelection(kt);
+      updateMapContext();
     });
   });
 
@@ -877,16 +955,24 @@ function initControls() {
   });
 
   // Physics model selector
-  const modelSel = $('physics-model');
+  const modelSel = $('physics-model'), topbarModelSel = $('topbar-model-select');
   const modelHints = {
     nwfaq: 'Mach stem enhancement at optimal burst height. Validated against HSAJ 10kT.',
     freeair: 'Free-air blast without Mach stem. ~17% smaller blast radii. G&D Ch.3.',
     soviet: 'Soviet military coefficients (HeWu). ~7% larger blast radii than NWFAQ.',
   };
-  if (modelSel) modelSel.addEventListener('change', () => {
-    NM._physicsModel = modelSel.value;
-    $('model-hint').textContent = modelHints[modelSel.value] || '';
-  });
+  const setPhysicsModel = value => {
+    const model = modelHints[value] ? value : 'nwfaq';
+    NM._physicsModel = model;
+    modelSel.value = model;
+    if (topbarModelSel) topbarModelSel.value = model;
+    $('model-hint').textContent = modelHints[model];
+    updateWorkspaceStatus();
+    updateMapContext();
+  };
+  modelSel?.addEventListener('change', () => setPhysicsModel(modelSel.value));
+  topbarModelSel?.addEventListener('change', () => setPhysicsModel(topbarModelSel.value));
+  setPhysicsModel(modelSel?.value || 'nwfaq');
 
   // Rotating facts banner
   let factIdx = Math.floor(Math.random() * NM.Facts.length);
@@ -1014,7 +1100,8 @@ function initWindCompass() {
 function initQuickTargets() {
   const c = $('target-pills');
   NM.QUICK_TARGETS.forEach(t => {
-    const p = document.createElement('div'); p.className = 'target-pill'; p.textContent = t.name;
+    const p = document.createElement('button'); p.type = 'button'; p.className = 'target-pill'; p.textContent = t.name;
+    p.setAttribute('aria-label', `Center map on ${t.name}`);
     p.addEventListener('click', () => map.flyTo([t.lat, t.lng], 12, {duration: 1}));
     c.appendChild(p);
   });
@@ -1023,7 +1110,7 @@ function initQuickTargets() {
 function initPresets() {
   const g = $('preset-grid');
   [{name: 'Davy Crockett', y: 0.02}, {name: 'Hiroshima', y: 15}, {name: 'W76-1', y: 100}, {name: 'W88', y: 455}, {name: 'B83', y: 1200}, {name: 'Castle Bravo', y: 15000}, {name: 'Tsar Bomba', y: 50000}, {name: '100 MT', y: 100000}].forEach(p => {
-    const ch = document.createElement('div'); ch.className = 'preset-chip';
+    const ch = document.createElement('button'); ch.type = 'button'; ch.className = 'preset-chip';
     ch.innerHTML = `${NM.esc(p.name)}<span class="chip-yield">${NM.fmtYield(p.y)}</span>`;
     ch.addEventListener('click', () => { setYield(p.y); const i = NM.WEAPONS.findIndex(w => Math.abs(w.yield_kt - p.y) < 0.01); if (i >= 0) $('weapon-select').value = i; });
     g.appendChild(ch);
@@ -1033,13 +1120,11 @@ function initPresets() {
 function initHistorical() {
   const g = $('historical-grid');
   NM.HISTORICAL.forEach(h => {
-    const ch = document.createElement('div'); ch.className = 'preset-chip';
+    const ch = document.createElement('button'); ch.type = 'button'; ch.className = 'preset-chip';
     ch.innerHTML = `${NM.esc(h.name)}<span class="chip-yield">${h.year} \u2014 ${NM.fmtYield(h.yield_kt)}</span>`;
     ch.addEventListener('click', () => {
       setYield(h.yield_kt);
-      document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === h.burst));
-      $('height-row').style.display = h.burst === 'custom' ? '' : 'none';
-      $('wind-wrap').style.display = h.burst === 'surface' ? '' : 'none';
+      setBurstType(h.burst);
       if (h.height) $('burst-height').value = h.height;
       map.flyTo([h.lat, h.lng], h.yield_kt > 5000 ? 8 : 11, {duration: 1.2});
       setTimeout(() => triggerDetonation(h.lat, h.lng), 1300);
@@ -1052,19 +1137,39 @@ function initSearch() {
   const inp = $('search'), res = $('search-results'); let si = -1;
   inp.addEventListener('input', () => {
     const items = NM.searchLocations(inp.value); si = -1;
-    if (!items.length) { res.classList.remove('active'); return; }
-    res.innerHTML = items.map((it, i) => `<div class="sr-item" data-idx="${i}" role="option"><div><div class="sr-name">${it.isTarget ? '<span class="sr-target-mark">&#9733;</span>' : ''}${NM.esc(it.name)}</div><div class="sr-detail">${NM.esc(it.detail)}</div></div>${it.pop ? `<div class="sr-pop">${NM.fmtNum(it.pop)}</div>` : ''}</div>`).join('');
+    inp.removeAttribute('aria-activedescendant');
+    if (!items.length) {
+      if (!inp.value.trim()) { res.classList.remove('active'); inp.setAttribute('aria-expanded', 'false'); return; }
+      res.innerHTML = '<div class="empty-state compact" role="option" aria-disabled="true">No locations found. Try a city, ZIP code, base, or coordinates.</div>';
+      res.classList.add('active');
+      inp.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    res.innerHTML = items.map((it, i) => `<div class="sr-item" id="search-result-${i}" data-idx="${i}" role="option" aria-selected="false"><div><div class="sr-name">${it.isTarget ? '<span class="sr-target-mark">&#9733;</span>' : ''}${NM.esc(it.name)}</div><div class="sr-detail">${NM.esc(it.detail)}</div></div>${it.pop ? `<div class="sr-pop">${NM.fmtNum(it.pop)}</div>` : ''}</div>`).join('');
     res.classList.add('active');
+    inp.setAttribute('aria-expanded', 'true');
     res.querySelectorAll('.sr-item').forEach(el => el.addEventListener('click', () => { const it = items[+el.dataset.idx]; selectResult(it); }));
   });
-  inp.addEventListener('keydown', e => { const items = res.querySelectorAll('.sr-item'); if (!items.length) return; if (e.key === 'ArrowDown') { e.preventDefault(); si = Math.min(si + 1, items.length - 1); items.forEach((el, i) => el.classList.toggle('selected', i === si)); } else if (e.key === 'ArrowUp') { e.preventDefault(); si = Math.max(si - 1, 0); items.forEach((el, i) => el.classList.toggle('selected', i === si)); } else if (e.key === 'Enter') { e.preventDefault(); (si >= 0 ? items[si] : items[0])?.click(); } });
-  inp.addEventListener('blur', () => setTimeout(() => res.classList.remove('active'), 200));
+  inp.addEventListener('keydown', e => {
+    const items = res.querySelectorAll('.sr-item');
+    if (e.key === 'Escape') { res.classList.remove('active'); inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant'); return; }
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); si = Math.min(si + 1, items.length - 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); si = Math.max(si - 1, 0); }
+    else if (e.key === 'Enter') { e.preventDefault(); (si >= 0 ? items[si] : items[0])?.click(); return; }
+    else return;
+    items.forEach((el, i) => { const selected = i === si; el.classList.toggle('selected', selected); el.setAttribute('aria-selected', selected ? 'true' : 'false'); });
+    inp.setAttribute('aria-activedescendant', items[si].id);
+  });
+  inp.addEventListener('blur', () => setTimeout(() => { res.classList.remove('active'); inp.setAttribute('aria-expanded', 'false'); }, 200));
   inp.addEventListener('focus', () => { if (inp.value.trim()) inp.dispatchEvent(new Event('input')); });
 }
 
 function selectResult(it) {
   $('search').value = it.name + (it.detail ? ', ' + it.detail : '');
   $('search-results').classList.remove('active');
+  $('search').setAttribute('aria-expanded', 'false');
+  $('search').removeAttribute('aria-activedescendant');
   map.flyTo([it.lat, it.lng], it.pop > 1e6 ? 11 : it.pop > 1e5 ? 12 : 10, {duration: 1});
 }
 
@@ -1103,11 +1208,14 @@ function updateLegend(det) {
     const def = NM.EFFECTS_DEF.find(d => d.id === it.id); if (!def) return;
     const div = document.createElement('div'); div.className = 'legend-item';
     const popEst = Math.round(Math.PI * it.r * it.r * (det.casualties.density || 40));
-    div.innerHTML = `<div class="legend-dot" style="background:${it.color}"></div><div class="legend-label">${def.label}<span class="legend-desc">${def.desc.split('.')[0]}</span><span class="legend-pop">~${NM.fmtNum(popEst)} people in zone</span></div><div class="legend-value">${NM.fmtR(it.r)}<span class="legend-area">${NM.fmtArea(it.r)}</span></div><button class="legend-eye on" data-eid="${it.id}">&#10003;</button>`;
+    div.innerHTML = `<div class="legend-dot" style="background:${it.color}"></div><div class="legend-label">${def.label}<span class="legend-desc">${def.desc.split('.')[0]}</span><span class="legend-pop">~${NM.fmtNum(popEst)} people in zone</span></div><div class="legend-value">${NM.fmtR(it.r)}<span class="legend-area">${NM.fmtArea(it.r)}</span></div><button class="legend-eye on" data-eid="${it.id}" type="button" aria-label="Hide ${NM.esc(def.label)} ring" aria-pressed="true">&#10003;</button>`;
     div.querySelector('.legend-eye').addEventListener('click', ev => {
       const btn = ev.currentTarget; btn.classList.toggle('on');
-      div.classList.toggle('dimmed', !btn.classList.contains('on'));
-      toggleEffect(it.id, btn.classList.contains('on'));
+      const active = btn.classList.contains('on');
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      btn.setAttribute('aria-label', `${active ? 'Hide' : 'Show'} ${def.label} ring`);
+      div.classList.toggle('dimmed', !active);
+      toggleEffect(it.id, active);
     });
     c.appendChild(div);
   });
@@ -1213,9 +1321,13 @@ function updateStats() {
   const dc = $('det-counter');
   if (currentDets.length) {
     $('det-counter-num').textContent = currentDets.length;
-    dc.querySelector('.dc-label').textContent = currentDets.length === 1 ? 'strike' : 'strikes';
+    dc.querySelector('.dc-label').textContent = currentDets.length === 1 ? 'modeled impact' : 'modeled impacts';
     dc.style.display = '';
-  } else dc.style.display = 'none';
+  } else {
+    $('det-counter-num').textContent = '0';
+    dc.querySelector('.dc-label').textContent = 'modeled impacts';
+    dc.style.display = 'none';
+  }
 
   // Info bar
   const bar = $('info-bar');
@@ -1994,6 +2106,38 @@ function showDiagnosticToast(text) {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 2400);
 }
 
+function showActionToast(text, actionLabel, action) {
+  const toast = document.createElement('div');
+  toast.className = 'det-toast action-toast';
+  toast.setAttribute('role', 'status');
+  const message = document.createElement('span');
+  message.textContent = text;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = actionLabel;
+  let dismissed = false;
+  const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 240);
+  };
+  button.addEventListener('click', () => {
+    dismiss();
+    action();
+  });
+  toast.append(message, button);
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(dismiss, 7000);
+}
+
+function restoreDetonationRows(rows) {
+  if (!rows?.length) return;
+  loadScenario({dets: rows});
+  showDiagnosticToast(`Restoring ${rows.length} ${rows.length === 1 ? 'detonation' : 'detonations'}...`);
+}
+
 function renderSavedList(filter) {
   const list = $('saved-list'); if (!list) return;
   _scenarioDB.getAll().then(saves => {
@@ -2039,8 +2183,7 @@ function loadScenario(s) {
     dets.forEach((d, i) => {
       _loadTimers.push(setTimeout(() => {
         setYield(d.yieldKt);
-        document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === d.burstType));
-        $('wind-wrap').style.display = d.burstType === 'surface' ? '' : 'none';
+        setBurstType(d.burstType);
         triggerDetonation(d.lat, d.lng);
       }, i * 400));
     });
@@ -2085,13 +2228,15 @@ function init() {
   initMap();
   initControls();
   if ('serviceWorker' in navigator) {
+    let hadController = Boolean(navigator.serviceWorker.controller);
     navigator.serviceWorker.register('./sw.js').catch(() => {});
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
       const toast = document.createElement('div');
       toast.className = 'det-toast';
       toast.setAttribute('role', 'alert');
-      toast.innerHTML = '<span class="dt-yield">Update available</span> <span class="dt-loc" style="cursor:pointer;text-decoration:underline">Reload to apply</span>';
-      toast.querySelector('.dt-loc').addEventListener('click', () => location.reload());
+      toast.innerHTML = '<span><strong>Update ready.</strong> Reload to use the latest simulator.</span><button type="button">Reload</button>';
+      toast.querySelector('button').addEventListener('click', () => location.reload());
       document.body.appendChild(toast);
       requestAnimationFrame(() => toast.classList.add('show'));
     });
@@ -2110,26 +2255,26 @@ function init() {
   const wo = $('welcome-overlay');
   const params = new URLSearchParams(location.search);
   const launchAction = params.get('action');
-  const hasUrlDets = params.get('d') || launchAction;
   handleLaunchAction(launchAction);
   if (wo && !localStorage.getItem('nukemap-welcomed')) {
     wo.style.display = '';
-    $('welcome-dismiss').addEventListener('click', () => {
+    const card = wo.querySelector('.welcome-card');
+    const dismissWelcome = () => {
       if ($('welcome-noshow').checked) localStorage.setItem('nukemap-welcomed', '1');
       wo.classList.add('hidden');
-      // Demo detonation on first visit
-      if (!hasUrlDets && !currentDets.length) {
-        setTimeout(() => {
-          if (currentDets.length) return;
-          map.flyTo([40.7128, -74.006], 11, {duration: 1.2});
-          setTimeout(() => {
-            if (currentDets.length) return;
-            setYield(455);
-            triggerDetonation(40.7128, -74.006);
-          }, 1400);
-        }, 300);
-      }
+      setTimeout(() => $('search')?.focus(), 180);
+    };
+    $('welcome-dismiss').addEventListener('click', dismissWelcome);
+    wo.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); dismissWelcome(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = [...wo.querySelectorAll('button,input,[tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
+    setTimeout(() => card?.focus(), 0);
   } else if (wo) wo.classList.add('hidden');
 }
 

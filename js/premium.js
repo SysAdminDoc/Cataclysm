@@ -202,7 +202,10 @@ NM.AltitudeProfile = {
 
     // Stem
     const stemW = Math.max(4, (stemR / maxW) * 140 * 2);
-    svg += `<rect x="${sx(0) - stemW/2}" y="${sy(cloudTop * 0.7)}" width="${stemW}" height="${sy(burstH) - sy(cloudTop * 0.7)}" fill="rgba(139,115,85,0.3)" rx="2"/>`;
+    const stemCapY = sy(cloudTop * 0.7), stemBaseY = sy(burstH);
+    const stemY = Math.min(stemCapY, stemBaseY);
+    const stemH = Math.max(0.5, Math.abs(stemBaseY - stemCapY));
+    svg += `<rect x="${sx(0) - stemW/2}" y="${stemY}" width="${stemW}" height="${stemH}" fill="rgba(139,115,85,0.3)" rx="2"/>`;
 
     // Mushroom cap
     const capCx = sx(0), capCy = sy(cloudTop);
