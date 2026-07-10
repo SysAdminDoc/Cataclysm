@@ -94,3 +94,28 @@
 .settings__description {
   margin-top: 8px;
 }
+
+.settings__classroom-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--yellow) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--yellow) 35%, transparent);
+  font-size: 12px;
+  color: var(--subtext);
+  margin-bottom: 12px;
+}
+
+.settings__classroom-note strong {
+  color: var(--text);
+}
+
+.settings__classroom-note button {
+  min-height: 26px;
+  padding: 3px 12px;
+  font-size: 12px;
+  margin-left: auto;
+}

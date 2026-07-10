@@ -67,13 +67,6 @@ tests locally.
   Acceptance: an exported store opens in Python (`zarr.open`) with correct dims/coords/units; documented in the manual.
   Complexity: M
 
-- [ ] P3 — Teacher mode: locked settings profiles + printable worksheet pack
-  Why: PhET monetized exactly this (PhET Studio, 2025) and TeachEngineering/TPT show worksheet demand; the settings export/import and print stylesheet shipped in v0.4.x are the natural base.
-  Evidence: https://phet-io.colorado.edu/io-solutions/; https://www.teachengineering.org/lessons/view/cub_natdis_lesson06; existing settings export/import (commit 816384e-era) and print stylesheet.
-  Touches: src/lib/settings.ts (locked-profile flag honored on import), src/components/Settings.tsx, docs/manual/ (2-3 printable worksheet pages per guided lesson using the print stylesheet).
-  Acceptance: importing a "classroom" profile hides token entry and pins presets/colormap; each of the 5 lessons has a printable worksheet reachable from the lesson UI.
-  Complexity: M
-
 - [ ] P3 — Humanitarian-impact layer: OSM schools/hospitals/critical facilities inside the runup zone
   Why: NUKEMAP's 2026 roadmap names this the top public-facing addition; it is the ethically softer alternative to the rejected casualty overlay — counts of facilities, not people.
   Evidence: https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/.

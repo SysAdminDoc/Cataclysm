@@ -18,11 +18,41 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
     setStepIdx(0);
   }, [lesson.id]);
 
+  // Classroom handout: flag the body so the print stylesheet swaps the
+  // whole app for the worksheet section below, then print.
+  const printWorksheet = () => {
+    document.body.setAttribute("data-print-worksheet", "true");
+    const cleanup = () => {
+      document.body.removeAttribute("data-print-worksheet");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    requestAnimationFrame(() => window.print());
+  };
+
   const step = lesson.steps[stepIdx];
   const isLast = stepIdx === lesson.steps.length - 1;
 
   return (
     <div className="lesson-overlay" role="dialog" aria-modal="true" aria-labelledby="lesson-title">
+      <div className="lesson-worksheet" aria-hidden>
+        <h1>{lesson.title}</h1>
+        <p className="lesson-worksheet__meta">
+          TsunamiSimulator classroom worksheet · Name: ______________________ · Date: ____________
+        </p>
+        <p>{lesson.summary}</p>
+        <ol>
+          {lesson.worksheet.map((q) => (
+            <li key={q}>
+              <p>{q}</p>
+              <div className="lesson-worksheet__lines" />
+            </li>
+          ))}
+        </ol>
+        <p className="lesson-worksheet__footer">
+          Educational model — first-order estimates, not an operational forecast.
+        </p>
+      </div>
       <div className="lesson-card" ref={dialogRef} tabIndex={-1}>
         <div className="lesson-card__topline">
           <span className="lesson-card__badge">Guided lesson</span>
@@ -45,6 +75,16 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
           <button className="scenario-tab" onClick={onClose} type="button">
             Close lesson
           </button>
+          {lesson.worksheet.length > 0 && (
+            <button
+              className="scenario-tab"
+              onClick={printWorksheet}
+              type="button"
+              title="Print a classroom worksheet with this lesson's questions"
+            >
+              Print worksheet
+            </button>
+          )}
           <div className="lesson-card__spacer" />
           <button
             className="scenario-tab"

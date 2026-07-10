@@ -13,6 +13,7 @@ const LESSON: LessonDef = {
     { title: "Step one", body: "First step body." },
     { title: "Step two", body: "Second step body." },
   ],
+  worksheet: ["Question one?", "Question two?"],
 };
 
 describe("GuidedLesson", () => {

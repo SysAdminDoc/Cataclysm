@@ -9,6 +9,9 @@ export type GuidedLesson = {
   presetId: string;
   summary: string;
   steps: LessonStep[];
+  /** Printable worksheet prompts (classroom handout). Rendered by the
+   *  lesson dialog's "Print worksheet" action via the print stylesheet. */
+  worksheet: string[];
 };
 
 export const GUIDED_LESSONS: GuidedLesson[] = [
@@ -40,6 +43,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
           "Export the results as KML to overlay in Google Earth, or save as CSV to compare arrival times. Try changing water depth or impact angle in the scenario builder to see how they affect the initial cavity and downstream propagation.",
       },
     ],
+    worksheet: [
+      "Record the cavity radius and peak amplitude from the source readout. How does the cavity radius compare with the 14 km impactor diameter?",
+      "Run the solver and watch the ring wave. Using the r^(−5/6) impact decay, estimate how much the amplitude drops between 100 km and 1,000 km from the source.",
+      "Pick two coastal points at different distances. Which one sees the wave first, and roughly how fast is the wavefront travelling between them?",
+      "The lesson notes this model has no Boussinesq dispersion. In one sentence, why does that matter more for impact tsunamis than for earthquake tsunamis?",
+    ],
   },
   {
     id: "tohoku-earthquake",
@@ -69,6 +78,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
           "Place gauges at coastal cities around the Pacific to see arrival times. Export the gauge CSV and compare against published DART records. Try the Indian Ocean 2004 preset for a similar megathrust event with different fault geometry.",
       },
     ],
+    worksheet: [
+      "Record the fault dimensions and slip from the source readout, then compute fault area × slip. Why is this product a better hazard indicator than magnitude alone?",
+      "Run the solver and open the DART overlay. For one buoy, compare the model arrival time against the observed arrival marker — how many minutes apart are they?",
+      "Compare the peak amplitude at the buoy with the runup value at the nearest coastal point. Why is the coastal value so much larger?",
+      "Name one assumption of the static Okada source (the lesson lists several) and describe how it could change the modelled wave.",
+    ],
   },
   {
     id: "lituya-bay",
@@ -92,6 +107,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
         body:
           "Our model uses the analytical Heller–Hager amplitude at the source, then propagates via SWE. Real fjord dynamics involve wave reflection, bore formation, and 3D bathymetry effects that our coarse grid cannot resolve. The 524 m figure is the observed trim line, not a model prediction.",
       },
+    ],
+    worksheet: [
+      "Record the slide volume and drop height. Using energy ≈ m·g·h, estimate the potential energy the rockslide delivered to the water.",
+      "The observed 1958 runup was 524 m. What does the simulator predict at the nearest coastal point, and what geometric effect explains the gap?",
+      "Why do impulse waves in a confined fjord decay so much faster with distance than ocean-basin tsunamis?",
+      "Sketch (or describe) the difference between this landslide source and an earthquake source of the same energy.",
     ],
   },
   {
@@ -117,6 +138,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
           "Our model uses Glasstone–Dolan + Le Méhauté formulas for underwater nuclear explosions, which are well-validated against actual nuclear test data. The main uncertainty is whether a 100 Mt device is even physically constructible at torpedo scale — we model the physics, not the engineering.",
       },
     ],
+    worksheet: [
+      "Run both Poseidon presets in Compare mode. Record the wave amplitude at 100 km for each. What is the ratio between the propaganda and realistic claims?",
+      "Only ~5% of a nuclear detonation's energy couples into water waves. Where does the rest of the energy go?",
+      "Using the attenuation chart, at what range does even the 100 Mt scenario fall below 1 m amplitude?",
+      "In two sentences: why does energy conservation rule out the '500 m wall of water' claim?",
+    ],
   },
   {
     id: "hunga-tonga",
@@ -140,6 +167,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
         body:
           "Full Lamb-wave–ocean coupling (Carvajal 2022, Matoza 2022) is a research frontier requiring coupled atmosphere–ocean models. Our implementation injects an additional IC pulse at the Lamb-wave speed — a pedagogical approximation, not a full atmospheric simulation. The volcanic source itself uses a nuclear-burst proxy, not a dedicated caldera collapse model.",
       },
+    ],
+    worksheet: [
+      "Run the solver twice — once with the Lamb wave toggle off, once on. Describe the difference you see in the wavefield.",
+      "The Lamb wave travels at ~310 m/s and the ocean wave at √(gh). For 4,000 m depth, which is faster and by how much?",
+      "Why did tide gauges on the far side of the Pacific record waves EARLIER than a pure ocean-wave model predicts for this event?",
+      "The lesson calls the Lamb-wave injection 'a pedagogical approximation'. What would a research-grade model have to couple that this one does not?",
     ],
   },
   {
@@ -165,6 +198,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
           "M 7.4 sounds close to M 7.7 (the JMA estimate for this event) or even M 9.1, but seafloor displacement — what actually makes a tsunami — scales with fault area × slip. Inspect the source readout: ~4.7 m of slip over ~70 × 65 km, versus Tōhoku's ~30 m over 500 × 200 km. That is why warnings quote expected wave heights, not just magnitudes.",
       },
     ],
+    worksheet: [
+      "Record magnitude, fault area, and slip for this event and for Tōhoku 2011. Compute fault area × slip for both — how many times larger was Tōhoku?",
+      "A tide gauge confirmed the tsunami 17 minutes after rupture. List two other observation systems in the warning chain and what each contributes.",
+      "Run the solver. What peak amplitude does the model give at the nearest coastal point, and would that justify an evacuation order?",
+      "Why do warning centres quote expected wave heights rather than earthquake magnitudes in public alerts?",
+    ],
   },
   {
     id: "yr4-myth-busting",
@@ -188,6 +227,12 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
         body:
           "Impact probability estimates легitimately fluctuate as orbits are refined — YR4's rose to ~3% before falling to zero, exactly as the process is designed to work. The lesson: check the object's size class first. Regional tsunami risk starts with impactors several hundred metres across; kilometre-class bodies are the global-hazard regime (see the Eltanin and Chicxulub presets).",
       },
+    ],
+    worksheet: [
+      "Record the impactor diameter, velocity, and cavity radius. How does this cavity compare with Chicxulub's?",
+      "NASA says an object this size would probably airburst. What happens to the impact energy in an airburst, and why does that suppress tsunami generation?",
+      "Even in this reached-the-surface upper bound, what amplitude does the model give 100 km from the impact point?",
+      "Write a two-sentence reply to a social-media post claiming this asteroid would cause '88 m waves'.",
     ],
   },
 ];

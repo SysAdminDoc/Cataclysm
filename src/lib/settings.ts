@@ -27,6 +27,10 @@ export type Settings = {
    *  ion token for satellite imagery. Set when the user clicks
    *  Dismiss; absent / null means the banner should show. */
   token_banner_dismissed_at: string | null;
+  /** Classroom profile lock (soft): imported teacher profiles set this to
+   *  pin the visual configuration and hide token entry. Deliberately not a
+   *  security boundary — Settings shows an explicit Unlock action. */
+  classroom_locked: boolean;
 };
 
 export const SETTINGS_SCHEMA_VERSION = 1;
@@ -41,6 +45,7 @@ const DEFAULTS: Settings = {
   tour_completed_at: null,
   lessons_completed: {},
   token_banner_dismissed_at: null,
+  classroom_locked: false,
 };
 
 const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
@@ -52,6 +57,7 @@ const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
   "tour_completed_at",
   "lessons_completed",
   "token_banner_dismissed_at",
+  "classroom_locked",
 ]);
 
 const STORE_FILE = "settings.json";
@@ -206,6 +212,9 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
       break;
     case "lessons_completed":
       result = normaliseLessonCompletions(value) as Settings[K] | undefined;
+      break;
+    case "classroom_locked":
+      result = (typeof value === "boolean" ? value : undefined) as Settings[K] | undefined;
       break;
     default:
       result = undefined;
@@ -481,6 +490,12 @@ export const settings = {
   async getTokenBannerDismissed(): Promise<string | null> {
     return read("token_banner_dismissed_at");
   },
+  async getClassroomLocked(): Promise<boolean> {
+    return read("classroom_locked");
+  },
+  async setClassroomLocked(locked: boolean): Promise<void> {
+    return write("classroom_locked", locked);
+  },
   async dismissTokenBanner(): Promise<void> {
     return write("token_banner_dismissed_at", new Date().toISOString());
   },
@@ -514,6 +529,7 @@ export const settings = {
       tour_completed_at: await read("tour_completed_at"),
       lessons_completed: await read("lessons_completed"),
       token_banner_dismissed_at: await read("token_banner_dismissed_at"),
+      classroom_locked: await read("classroom_locked"),
     };
   },
   /** Clear every persisted key from both the Tauri store and any browser /
@@ -529,6 +545,7 @@ export const settings = {
       "tour_completed_at",
       "lessons_completed",
       "token_banner_dismissed_at",
+      "classroom_locked",
     ];
     if (typeof localStorage !== "undefined") {
       for (const k of keys) {

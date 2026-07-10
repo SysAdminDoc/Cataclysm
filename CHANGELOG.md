@@ -83,6 +83,17 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   new full-physics parity test (nonlinear advection + sponge + Manning,
   |Δη| < 5 mm after 60 steps) locking the 2026-07-01 divergence fix.
 
+### Added — teacher mode (2026-07-09)
+- **Classroom profile lock.** Settings export/import now carries a
+  `classroom_locked` flag: an imported teacher profile pins globe imagery,
+  theme, and colormap and hides token entry, with an explicit Unlock action
+  (a convenience lock, deliberately not a security boundary).
+- **Printable lesson worksheets.** Every guided lesson (all 7) now carries
+  four worksheet prompts and a "Print worksheet" button that prints a clean
+  handout — title, summary, numbered questions with ruled answer space,
+  name/date line, and the educational-model disclaimer — via a dedicated
+  print-mode stylesheet.
+
 ### Added — keyboard-only e2e coverage (2026-07-09)
 - **Keyboard walkthrough Playwright spec.** The golden path (activate a
   preset card, run the solver, scrub the timeline with arrow keys, export

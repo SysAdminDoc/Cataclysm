@@ -148,3 +148,70 @@
     }
   }
 }
+
+/* --- Lesson worksheet print mode ------------------------------------- */
+/* Screen: the worksheet block is never shown. */
+.lesson-worksheet {
+  display: none;
+}
+
+/* Print with data-print-worksheet set: show ONLY the worksheet. */
+@media print {
+  body[data-print-worksheet] .app,
+  body[data-print-worksheet] .lesson-card,
+  body[data-print-worksheet] .modal-overlay,
+  body[data-print-worksheet] .toast {
+    display: none !important;
+  }
+
+  body[data-print-worksheet] .lesson-overlay {
+    position: static;
+    background: none;
+    display: block;
+  }
+
+  body[data-print-worksheet] .lesson-worksheet {
+    display: block;
+    color: #000;
+    background: #fff;
+    font-size: 12pt;
+    line-height: 1.5;
+    padding: 0.5in;
+  }
+
+  body[data-print-worksheet] .lesson-worksheet h1 {
+    font-size: 16pt;
+    margin-bottom: 4pt;
+  }
+
+  body[data-print-worksheet] .lesson-worksheet__meta {
+    font-size: 10pt;
+    color: #333;
+    border-bottom: 1pt solid #999;
+    padding-bottom: 6pt;
+    margin-bottom: 10pt;
+  }
+
+  body[data-print-worksheet] .lesson-worksheet ol li {
+    margin-bottom: 14pt;
+    break-inside: avoid;
+  }
+
+  body[data-print-worksheet] .lesson-worksheet__lines {
+    height: 60pt;
+    border-bottom: 1pt solid #bbb;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 19pt,
+      #bbb 19pt,
+      #bbb 20pt
+    );
+  }
+
+  body[data-print-worksheet] .lesson-worksheet__footer {
+    margin-top: 16pt;
+    font-size: 9pt;
+    color: #555;
+  }
+}

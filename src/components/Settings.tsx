@@ -27,6 +27,7 @@ export function Settings({ onClose }: Props) {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>(isTauri() ? "unknown" : "browser-preview");
+  const [classroomLocked, setClassroomLocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +37,7 @@ export function Settings({ onClose }: Props) {
       setThemeLocal(s.theme);
       setGlobeStyle(s.globe_style);
       setColormapId(s.colormap);
+      setClassroomLocked(s.classroom_locked);
     });
     if (isTauri()) {
       api
@@ -114,6 +116,24 @@ export function Settings({ onClose }: Props) {
           </button>
         </header>
         <div className="modal__body">
+          {classroomLocked && (
+            <div className="settings__classroom-note" role="note">
+              <strong>Classroom profile active.</strong> Imagery, theme, and
+              colormap are pinned by the imported teacher profile, and token
+              entry is hidden. This is a convenience lock, not a security
+              boundary.
+              <button
+                type="button"
+                onClick={async () => {
+                  await settings.setClassroomLocked(false);
+                  setClassroomLocked(false);
+                  setStatusMsg("Classroom profile unlocked.");
+                }}
+              >
+                Unlock
+              </button>
+            </div>
+          )}
           <section className="settings__section">
             <h3 className="settings__h3">Globe imagery</h3>
             <p className="modal__intro">
@@ -126,6 +146,7 @@ export function Settings({ onClose }: Props) {
               value={globeStyle}
               onChange={(e) => setGlobeStyle(e.target.value as GlobeStyleId)}
               aria-label="Globe imagery style"
+              disabled={classroomLocked}
             >
               {GLOBE_STYLES.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -138,6 +159,7 @@ export function Settings({ onClose }: Props) {
             </p>
           </section>
 
+          {!classroomLocked && (
           <section className="settings__section">
             <h3 className="settings__h3">
               Cesium ion access token{!needsToken && " (optional)"}
@@ -174,6 +196,7 @@ export function Settings({ onClose }: Props) {
               />
             </label>
           </section>
+          )}
 
           <section className="settings__section">
             <h3 className="settings__h3">Theme</h3>
@@ -184,6 +207,7 @@ export function Settings({ onClose }: Props) {
                 aria-pressed={theme === "mocha"}
                 onClick={() => setThemeLocal("mocha")}
                 type="button"
+                disabled={classroomLocked}
               >
                 Catppuccin Mocha (dark)
               </button>
@@ -193,6 +217,7 @@ export function Settings({ onClose }: Props) {
                 aria-pressed={theme === "latte"}
                 onClick={() => setThemeLocal("latte")}
                 type="button"
+                disabled={classroomLocked}
               >
                 Catppuccin Latte (light)
               </button>
@@ -208,6 +233,7 @@ export function Settings({ onClose }: Props) {
                 aria-pressed={colormapId === "diverging"}
                 onClick={() => setColormapId("diverging")}
                 type="button"
+                disabled={classroomLocked}
               >
                 Blue &rarr; Red (classic)
               </button>
@@ -217,6 +243,7 @@ export function Settings({ onClose }: Props) {
                 aria-pressed={colormapId === "cividis"}
                 onClick={() => setColormapId("cividis")}
                 type="button"
+                disabled={classroomLocked}
               >
                 Cividis (CVD-safe)
               </button>
@@ -226,6 +253,7 @@ export function Settings({ onClose }: Props) {
                 aria-pressed={colormapId === "viridis"}
                 onClick={() => setColormapId("viridis")}
                 type="button"
+                disabled={classroomLocked}
               >
                 Viridis (sequential)
               </button>
