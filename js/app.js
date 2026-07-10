@@ -592,24 +592,36 @@ function initControls() {
   });
 
   // Floating map switcher
+  const setMapSwitcherOpen = open => {
+    $('ms-toggle').classList.toggle('open', open);
+    $('ms-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('ms-panel').classList.toggle('open', open);
+  };
   $('ms-toggle').addEventListener('click', e => {
     e.stopPropagation();
     const isOpen = $('ms-panel').classList.contains('open');
-    $('ms-toggle').classList.toggle('open', !isOpen);
-    $('ms-panel').classList.toggle('open', !isOpen);
+    setMapSwitcherOpen(!isOpen);
+    if (!isOpen) $('ms-panel').querySelector('.ms-btn.active')?.focus();
   });
   $('ms-panel').addEventListener('click', e => e.stopPropagation());
   document.querySelectorAll('.ms-btn').forEach(btn => {
+    btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
     btn.addEventListener('click', e => {
       e.stopPropagation();
       NM.LayerSwitcher.switchTo(btn.dataset.layer);
-      $('ms-toggle').classList.remove('open');
-      $('ms-panel').classList.remove('open');
+      document.querySelectorAll('.ms-btn').forEach(item => item.setAttribute('aria-pressed', item === btn ? 'true' : 'false'));
+      setMapSwitcherOpen(false);
+      $('ms-toggle').focus();
     });
   });
   document.addEventListener('click', () => {
-    $('ms-toggle').classList.remove('open');
-    $('ms-panel').classList.remove('open');
+    setMapSwitcherOpen(false);
+  });
+  $('ms-panel').addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    setMapSwitcherOpen(false);
+    $('ms-toggle').focus();
   });
 
   // Ring labels toggle
@@ -683,25 +695,27 @@ function initControls() {
   // Attack scenarios
   const scenList = $('scenario-list');
   NM.Scenarios.forEach(sc => {
-    const div = document.createElement('div');
-    div.className = 'scenario-chip';
-    div.innerHTML = `<div class="sc-name">${NM.esc(sc.name)}</div><div class="sc-desc">${NM.esc(sc.desc)} (${sc.dets.length} warheads)</div>`;
-    div.addEventListener('click', () => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'scenario-chip';
+    button.innerHTML = `<span class="sc-name">${NM.esc(sc.name)}</span><span class="sc-desc">${NM.esc(sc.desc)} (${sc.dets.length} modeled warheads)</span>`;
+    button.addEventListener('click', () => {
+      const replaced = currentDets.map(scenarioDetRow);
       clearAll();
+      if (replaced.length) showActionToast(`Started ${sc.name} and replaced the current analysis.`, 'Undo', () => loadScenario({name: 'previous analysis', dets: replaced}, {offerUndo: false}));
       multiMode = true; $('multi-check').checked = true;
       map.flyTo([sc.dets[0].lat, sc.dets[0].lng], sc.dets.length > 2 ? 6 : 9, {duration: 1});
       _loadTimers.push(setTimeout(() => {
         sc.dets.forEach((d, i) => {
           _loadTimers.push(setTimeout(() => {
             setYield(d.yield_kt);
-            document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === d.burst));
-            $('wind-wrap').style.display = d.burst === 'surface' ? '' : 'none';
+            setBurstType(d.burst);
             triggerDetonation(d.lat, d.lng);
           }, i * 600));
         });
       }, 1200));
     });
-    scenList.appendChild(div);
+    scenList.appendChild(button);
   });
 
   // Missile flight time
@@ -863,7 +877,9 @@ function initControls() {
   setButtonDisabled('ww3-launch', !ww3Sel.value);
   $('ww3-launch').addEventListener('click', () => {
     if (!ww3Sel.value) return;
+    const replaced = currentDets.map(scenarioDetRow);
     clearAll();
+    if (replaced.length) showActionToast('Started a global scenario and replaced the current analysis.', 'Undo', () => loadScenario({name: 'previous analysis', dets: replaced}, {offerUndo: false}));
     NM.WW3.start(map, ww3Sel.value);
     $('ww3-pause').style.display = '';
     $('ww3-pause').textContent = 'Pause';
@@ -901,6 +917,21 @@ function initControls() {
     }
     title.setAttribute('aria-expanded', String(!sec.classList.contains('sec-collapsed')));
   });
+  const cumulativeSection = $('cumulative-section');
+  const cumulativeTitle = cumulativeSection?.querySelector('.section-title.collapsible');
+  if (cumulativeTitle) {
+    const toggleCumulative = () => {
+      cumulativeTitle.classList.toggle('collapsed');
+      cumulativeSection.classList.toggle('sec-collapsed');
+      cumulativeTitle.setAttribute('aria-expanded', String(!cumulativeSection.classList.contains('sec-collapsed')));
+    };
+    cumulativeTitle.addEventListener('click', toggleCumulative);
+    cumulativeTitle.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      toggleCumulative();
+    });
+  }
 
   // WW3 quick-launch button
   $('ww3-quick-btn').addEventListener('click', () => {
@@ -909,6 +940,10 @@ function initControls() {
     // Scroll WW3 section into view
     const ww3Sec = $('ww3-scenario')?.closest('.section');
     if (ww3Sec) ww3Sec.scrollIntoView({behavior: 'smooth', block: 'start'});
+  });
+  $('welcome-reset')?.addEventListener('click', () => {
+    localStorage.removeItem('nukemap-welcomed');
+    showDiagnosticToast('Introduction will appear on the next launch.');
   });
 
   // Quick weapon bar
@@ -1007,19 +1042,22 @@ function switchTab(id) {
 function initMIRV() {
   const grid = $('mirv-grid');
   NM.MIRV_PRESETS.forEach((p, i) => {
-    const chip = document.createElement('div');
+    const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = 'preset-chip';
+    chip.setAttribute('aria-pressed', 'false');
     chip.innerHTML = `${NM.esc(p.name)}<span class="chip-yield">${p.warheads}x ${NM.fmtYield(p.yield_kt)}</span>`;
     chip.addEventListener('click', () => {
-      document.querySelectorAll('#mirv-grid .preset-chip').forEach(c => c.classList.remove('mirv-active'));
+      document.querySelectorAll('#mirv-grid .preset-chip').forEach(c => { c.classList.remove('mirv-active'); c.setAttribute('aria-pressed', 'false'); });
       if (currentMirvPreset === p) {
         mirvMode = false; currentMirvPreset = null;
-        $('mirv-status').textContent = 'Select a MIRV preset, then click the map';
+        $('mirv-status').textContent = 'Select a MIRV preset, then choose a map location';
         NM.MIRV.clearPreview(map);
       } else {
         mirvMode = true; currentMirvPreset = p;
         chip.classList.add('mirv-active');
-        $('mirv-status').textContent = `${p.name} armed. Click map to deploy ${p.warheads} warheads.`;
+        chip.setAttribute('aria-pressed', 'true');
+        $('mirv-status').textContent = `${p.name} selected. Choose a map location to model ${p.warheads} warheads.`;
         multiMode = true; $('multi-check').checked = true;
         setYield(p.yield_kt);
       }
@@ -1182,7 +1220,12 @@ function updateDetsList() {
     const el = document.createElement('div'); el.className = 'det-item';
     const wShort = d.weapon ? d.weapon.split('(')[0].trim() : '';
     el.innerHTML = `<span class="det-idx">${i + 1}</span><div class="det-info"><span class="det-name">${NM.esc(nm)}</span><span class="det-weapon">${NM.esc(wShort)}</span></div>${d.isHEMP ? '<span class="det-badge">HEMP</span>' : ''}${d.isWater ? '<span class="det-badge water">WATER</span>' : ''}<span class="det-yield">${NM.fmtYield(d.yieldKt)}</span><button class="det-remove" data-i="${i}" aria-label="Remove detonation">&times;</button>`;
-    el.querySelector('.det-remove').addEventListener('click', e => { e.stopPropagation(); removeDet(i); });
+    el.querySelector('.det-remove').addEventListener('click', e => {
+      e.stopPropagation();
+      const snapshot = currentDets.map(scenarioDetRow);
+      removeDet(i);
+      showActionToast(`Removed the ${nm} detonation.`, 'Undo', () => loadScenario({name: 'previous analysis', dets: snapshot}, {offerUndo: false}));
+    });
     el.addEventListener('click', e => { if (!e.target.classList.contains('det-remove')) map.flyTo([d.lat, d.lng], map.getZoom(), {duration: 0.6}); });
     list.appendChild(el);
   });
@@ -1514,7 +1557,7 @@ function getShareText() {
   let text = `NukeMap: ${NM.fmtYield(ty)} (${hiro >= 10 ? hiro.toFixed(0) : hiro.toFixed(1)}x Hiroshima)`;
   if (currentDets.length === 1) text += ` on ${loc}`;
   else text += ` across ${currentDets.length} targets`;
-  text += ` | ${NM.fmtNum(td)} killed, ${NM.fmtNum(ti)} injured`;
+  text += ` | Estimated fatalities: ${NM.fmtNum(td)}; estimated injuries: ${NM.fmtNum(ti)}`;
   text += `\n${location.href}`;
   return text;
 }
@@ -1537,11 +1580,11 @@ function initEncyclopedia() {
     if (!ws) continue;
     html += `<div class="enc-country"><div class="enc-country-name">${countryNames[code] || code} (${ws.length})</div>`;
     for (const w of ws) {
-      html += `<div class="enc-weapon" data-idx="${w.idx}" data-yield="${w.yield_kt}">
+      html += `<button type="button" class="enc-weapon" data-idx="${w.idx}" data-yield="${w.yield_kt}">
         <span class="enc-w-name">${NM.esc(w.name)}</span>
         <span class="enc-w-year">${w.year || ''}</span>
         <span class="enc-w-yield">${NM.fmtYield(w.yield_kt)}</span>
-      </div>`;
+      </button>`;
     }
     html += '</div>';
   }
@@ -1564,13 +1607,13 @@ function initHistoricTests() {
   const el = $('historic-tests-list'); if (!el || !NM.HISTORICAL) return;
   let html = '';
   for (const h of NM.HISTORICAL) {
-    html += `<div class="hist-card" data-lat="${h.lat}" data-lng="${h.lng}" data-yield="${h.yield_kt}" data-burst="${h.burst}">
+    html += `<button type="button" class="hist-card" data-lat="${h.lat}" data-lng="${h.lng}" data-yield="${h.yield_kt}" data-burst="${h.burst}">
       <div class="hist-header"><span class="hist-name">${NM.esc(h.name)}</span><span class="hist-year">${h.year}</span><span class="hist-yield">${NM.fmtYield(h.yield_kt)}</span></div>
       <div class="hist-desc">${NM.esc(h.desc)}</div>
       ${h.context ? `<div class="hist-context">${NM.esc(h.context)}</div>` : ''}
       ${h.physics ? `<div class="hist-physics"><b>Physics:</b> ${NM.esc(h.physics)}</div>` : ''}
       ${h.source ? `<div class="hist-source">${NM.esc(h.source)}</div>` : ''}
-    </div>`;
+    </button>`;
   }
   el.innerHTML = html;
   el.querySelectorAll('.hist-card').forEach(card => {
@@ -1578,7 +1621,7 @@ function initHistoricTests() {
     card.addEventListener('click', () => {
       setYield(+card.dataset.yield);
       const burst = card.dataset.burst;
-      document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === burst));
+      setBurstType(burst);
       map.setView([+card.dataset.lat, +card.dataset.lng], 8);
       triggerDetonation(+card.dataset.lat, +card.dataset.lng);
       switchTab('effects');
@@ -1727,12 +1770,13 @@ function runCSVImport() {
   if (!pendingCSVImport || !pendingCSVImport.length) return;
   const rows = pendingCSVImport;
   pendingCSVImport = null;
+  const replaced = currentDets.map(scenarioDetRow);
   clearAll();
+  if (replaced.length) showActionToast(`Imported ${rows.length} rows and replaced the current analysis.`, 'Undo', () => loadScenario({name: 'previous analysis', dets: replaced}, {offerUndo: false}));
   multiMode = true; $('multi-check').checked = true;
   rows.forEach(row => {
     setYield(row.yieldKt);
-    document.querySelectorAll('.burst-btn').forEach(b => b.classList.toggle('active', b.dataset.burst === row.burstType));
-    $('wind-wrap').style.display = row.burstType === 'surface' || row.burstType === 'water' ? '' : 'none';
+    setBurstType(row.burstType);
     triggerDetonation(row.lat, row.lng);
   });
   const el = $('csv-import-status');
@@ -1823,6 +1867,10 @@ function downloadTextFile(text, filename) {
 
 function handleLaunchAction(action) {
   if (!action) return;
+  if (action === 'guide' && !currentDets.length) {
+    $('guide-section').style.display = '';
+    $('guide-content').innerHTML = compactState('Run a detonation model to generate location-specific emergency guidance.');
+  }
   const target = {
     detonate: {tab: 'weapon', selector: '#detonate-btn'},
     ww3: {tab: 'tools', selector: '#ww3-scenario'},
@@ -2010,7 +2058,7 @@ function normalizeScenarioImport(raw) {
 function resetScenarioImportStatus() {
   pendingScenarioImport = null;
   const el = $('scenario-import-status');
-  if (el) el.textContent = 'Scenario saves use schema v1 with name, folder, updated time, and detonation rows.';
+  if (el) el.textContent = 'Choose a NukeMap scenario file to preview changes before saving.';
 }
 
 function renderScenarioImportPreview(result, saves = []) {
@@ -2022,7 +2070,7 @@ function renderScenarioImportPreview(result, saves = []) {
   }
   const match = saves.find(s => s.name === result.scenario.name && (s.folder || '') === (result.scenario.folder || ''));
   pendingScenarioImport = {...result, match};
-  const diff = match ? `Existing "${NM.esc(match.name)}" has ${(match.dets || []).length} dets; import has ${result.scenario.dets.length} dets.` : `New scenario with ${result.scenario.dets.length} dets.`;
+  const diff = match ? `The saved analysis has ${(match.dets || []).length} modeled detonations; this file has ${result.scenario.dets.length}.` : `New analysis with ${result.scenario.dets.length} modeled detonations.`;
   const skipped = result.skipped?.length ? `<div class="csv-skipped">${result.skipped.length} invalid row${result.skipped.length > 1 ? 's' : ''} skipped.</div>` : '';
   el.innerHTML = `<div class="csv-preview"><strong>${NM.esc(result.scenario.name)}</strong><br>${diff}${skipped}<div class="csv-actions"><button class="btn-secondary" id="scenario-import-merge">${match ? 'Import as Copy' : 'Import Scenario'}</button>${match ? '<button class="btn-secondary" id="scenario-import-replace">Replace Existing</button>' : ''}<button class="btn-secondary" id="scenario-import-cancel">Cancel</button></div></div>`;
 }
@@ -2057,6 +2105,9 @@ function runScenarioImport(mode) {
     const el = $('scenario-import-status');
     if (el) el.innerHTML = `<div class="csv-preview success"><strong>Scenario imported.</strong> ${NM.esc(scenario.name)}</div>`;
     renderSavedList();
+  }).catch(() => {
+    const el = $('scenario-import-status');
+    if (el) el.innerHTML = '<div class="csv-preview warn"><strong>Could not save this analysis.</strong><span>Browser storage may be full or unavailable. Delete an older saved analysis and try again.</span></div>';
   });
 }
 
@@ -2134,17 +2185,17 @@ function showActionToast(text, actionLabel, action) {
 
 function restoreDetonationRows(rows) {
   if (!rows?.length) return;
-  loadScenario({dets: rows});
+  loadScenario({dets: rows}, {offerUndo: false});
   showDiagnosticToast(`Restoring ${rows.length} ${rows.length === 1 ? 'detonation' : 'detonations'}...`);
 }
 
 function renderSavedList(filter) {
   const list = $('saved-list'); if (!list) return;
   _scenarioDB.getAll().then(saves => {
-    if (!saves.length) { list.innerHTML = compactState('No saved scenarios yet.'); return; }
+    if (!saves.length) { list.innerHTML = compactState('No saved analyses yet. Model a detonation, name it, and choose Save.'); return; }
     const q = (filter || '').toLowerCase();
     const filtered = q ? saves.filter(s => (s.name||'').toLowerCase().includes(q) || (s.folder||'').toLowerCase().includes(q)) : saves;
-    if (!filtered.length) { list.innerHTML = compactState('No matches.'); return; }
+    if (!filtered.length) { list.innerHTML = compactState('No saved analyses match that search.'); return; }
     list.innerHTML = '';
     const folders = {};
     for (const s of filtered) { const f = s.folder || ''; (folders[f] = folders[f] || []).push(s); }
@@ -2157,14 +2208,14 @@ function renderSavedList(filter) {
         list.appendChild(hdr);
       }
       for (const s of folders[f]) {
-        const el = document.createElement('div'); el.className = 'saved-item';
+        const el = document.createElement('div'); el.className = 'saved-item'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', s.name);
         const folderTag = s.folder ? `<span class="si-folder-tag">${NM.esc(s.folder)}</span>` : '';
-        const schema = s.schemaVersion ? `v${s.schemaVersion}` : 'legacy';
         const stamp = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : (s.date ? new Date(s.date).toLocaleDateString() : '');
         const deleteId = s.id ?? saves.indexOf(s);
-        el.innerHTML = `<span class="si-name">${NM.esc(s.name)}</span>${folderTag}<span class="si-meta">${(s.dets || []).length} det${(s.dets || []).length > 1 ? 's' : ''} - ${schema}${stamp ? ` - ${NM.esc(stamp)}` : ''}</span><button class="si-del" data-i="${deleteId}">&times;</button>`;
-        el.addEventListener('click', e => { if (!e.target.classList.contains('si-del')) loadScenario(s); });
-        el.querySelector('.si-del').addEventListener('click', e => { e.stopPropagation(); deleteSave(deleteId); });
+        const detCount = (s.dets || []).length;
+        el.innerHTML = `<button class="si-open" type="button"><span class="si-name">${NM.esc(s.name)}</span>${folderTag}<span class="si-meta">${detCount} modeled detonation${detCount === 1 ? '' : 's'}${stamp ? ` - saved ${NM.esc(stamp)}` : ''}</span></button><button class="si-del" type="button" data-i="${deleteId}" aria-label="Delete ${NM.esc(s.name)}">&times;</button>`;
+        el.querySelector('.si-open').addEventListener('click', () => loadScenario(s));
+        el.querySelector('.si-del').addEventListener('click', () => deleteSave(deleteId, s));
         list.appendChild(el);
       }
     }
@@ -2172,10 +2223,12 @@ function renderSavedList(filter) {
 }
 
 let _loadTimers = [];
-function loadScenario(s) {
+function loadScenario(s, {offerUndo = true} = {}) {
   _loadTimers.forEach(t => clearTimeout(t));
   _loadTimers = [];
+  const replaced = currentDets.map(scenarioDetRow);
   clearAll();
+  if (offerUndo && replaced.length) showActionToast(`Opened ${s.name || 'saved analysis'} and replaced ${replaced.length} modeled ${replaced.length === 1 ? 'detonation' : 'detonations'}.`, 'Undo', () => loadScenario({name: 'previous analysis', dets: replaced}, {offerUndo: false}));
   multiMode = true; $('multi-check').checked = true;
   const dets = (s.dets || []).map(scenarioDetRow);
   if (dets.length) map.flyTo([dets[0].lat, dets[0].lng], dets.length > 2 ? 6 : 9, {duration: 1});
@@ -2190,8 +2243,11 @@ function loadScenario(s) {
   }, 1200));
 }
 
-function deleteSave(id) {
-  _scenarioDB.delete(id).then(() => renderSavedList());
+function deleteSave(id, scenario) {
+  _scenarioDB.delete(id).then(() => {
+    renderSavedList();
+    showActionToast(`Deleted ${scenario.name}.`, 'Undo', () => _scenarioDB.put(scenario).then(() => renderSavedList()));
+  });
 }
 
 // ---- DETONATION TOAST ----

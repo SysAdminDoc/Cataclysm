@@ -78,7 +78,7 @@ async function runViewport(browser, baseUrl, name, viewport) {
       activePanelVisible: visible(activePanel),
       detonateHeight: detonate?.getBoundingClientRect().height || 0,
       topbarFits: !visible(topbar) || (topbarRect.left >= panel.getBoundingClientRect().right - 1 && topbarRect.right <= innerWidth + 1),
-      overflowSources: [...document.querySelectorAll('body *')].filter(el => {
+      overflowSources: document.documentElement.scrollWidth <= innerWidth + 1 ? [] : [...document.querySelectorAll('body *')].filter(el => {
         const rect = el.getBoundingClientRect(), style = getComputedStyle(el);
         return style.display !== 'none' && rect.width > 0 && (rect.right > innerWidth + 1 || rect.left < -1 || el.scrollWidth > el.clientWidth + 1);
       }).slice(0, 12).map(el => el.id ? `#${el.id}` : `.${String(el.className).trim().split(/\\s+/).join('.')}`),
@@ -134,6 +134,10 @@ async function runInteractionChecks(browser, baseUrl) {
 
   const initialYield = await page.locator('#yield-input').inputValue();
   const initialWeapon = await page.locator('#weapon-select option:checked').textContent();
+  await page.locator('#ms-toggle').click();
+  const mapSwitcherOpened = await page.locator('#ms-toggle').getAttribute('aria-expanded');
+  await page.keyboard.press('Escape');
+  const mapSwitcherClosed = await page.locator('#ms-toggle').getAttribute('aria-expanded');
   await page.locator('#topbar-model-select').selectOption('freeair');
   const syncedModel = await page.locator('#physics-model').inputValue();
   await page.locator('#detonate-btn').click();
@@ -150,7 +154,29 @@ async function runInteractionChecks(browser, baseUrl) {
   const restoredCount = await page.locator('#det-counter-num').textContent();
   const mapContext = await page.locator('#map-context-card').isVisible();
   await context.close();
-  return {initialYield, initialWeapon, syncedModel, clearedCount, undoVisible, restoredCount, mapContext, consoleMessages};
+  return {initialYield, initialWeapon, mapSwitcherOpened, mapSwitcherClosed, syncedModel, clearedCount, undoVisible, restoredCount, mapContext, consoleMessages};
+}
+
+async function runOnboardingChecks(browser, baseUrl) {
+  const context = await browser.newContext({viewport: {width: 1280, height: 800}});
+  const page = await context.newPage();
+  page.setDefaultTimeout(12000);
+  await page.goto(baseUrl, {waitUntil: 'networkidle'});
+  const welcomeVisible = await page.locator('#welcome-overlay').isVisible();
+  await page.waitForTimeout(50);
+  const initialFocus = await page.evaluate(() => document.activeElement?.classList.contains('welcome-card'));
+  await page.keyboard.press('Escape');
+  await page.locator('#welcome-overlay').waitFor({state: 'hidden'});
+  await page.waitForTimeout(220);
+  const focusReturned = await page.evaluate(() => document.activeElement?.id === 'search');
+
+  const guidePage = await context.newPage();
+  await guidePage.goto(`${baseUrl}?action=guide`, {waitUntil: 'networkidle'});
+  await dismissWelcome(guidePage);
+  const guideVisible = await guidePage.locator('#guide-section').isVisible();
+  const guideCopy = await guidePage.locator('#guide-content').textContent();
+  await context.close();
+  return {welcomeVisible, initialFocus, focusReturned, guideVisible, guideCopy};
 }
 
 async function runPwaChecks(browser, baseUrl) {
@@ -209,6 +235,7 @@ async function runPwaChecks(browser, baseUrl) {
     const mobile = await runViewport(browser, baseUrl, 'mobile', { width: 390, height: 844 });
     const landscape = await runViewport(browser, baseUrl, 'mobile-landscape', { width: 844, height: 390 });
     const interactions = await runInteractionChecks(browser, baseUrl);
+    const onboarding = await runOnboardingChecks(browser, baseUrl);
     const pwa = await runPwaChecks(browser, baseUrl);
 
     for (const result of [desktop, tablet, mobile, landscape]) {
@@ -221,15 +248,19 @@ async function runPwaChecks(browser, baseUrl) {
       if (!result.shellLayout.topbarFits) failures.push(`${result.name}: topbar overlaps or clips the workspace`);
       if (result.activeTab !== 'true' || result.effectsSelected !== 'true') failures.push(`${result.name}: tab aria state failed`);
       if (!result.highContrast) failures.push(`${result.name}: high contrast toggle did not update body class`);
+      if (result.highContrastShell.brand.top < 0 || result.highContrastShell.activePanel.top < 0) failures.push(`${result.name}: high-contrast workspace scrolled offscreen`);
       if (!result.reducedMotion) failures.push(`${result.name}: educator mode did not enable reduced motion`);
       if (result.consoleMessages.length) failures.push(`${result.name}: console messages: ${result.consoleMessages.join(' | ')}`);
     }
 
     if (!/^15(?:\.0+)?$/.test(interactions.initialYield) || !/15(?:\.0)? kT/i.test(interactions.initialWeapon)) failures.push('interaction: initial weapon and yield are inconsistent');
+    if (interactions.mapSwitcherOpened !== 'true' || interactions.mapSwitcherClosed !== 'false') failures.push('interaction: map style menu state or Escape handling failed');
     if (interactions.syncedModel !== 'freeair') failures.push('interaction: topbar model selector did not sync the workspace model');
     if (interactions.clearedCount !== '0' || !interactions.undoVisible || interactions.restoredCount !== '1') failures.push('interaction: Clear All undo did not restore the detonation');
     if (!interactions.mapContext) failures.push('interaction: map context card is not visible on desktop');
     if (interactions.consoleMessages.length) failures.push(`interaction: console messages: ${interactions.consoleMessages.join(' | ')}`);
+    if (!onboarding.welcomeVisible || !onboarding.initialFocus || !onboarding.focusReturned) failures.push('onboarding: dialog focus or Escape recovery failed');
+    if (!onboarding.guideVisible || !/Run a detonation model/i.test(onboarding.guideCopy || '')) failures.push('onboarding: emergency guide shortcut has no empty state');
 
     if (!pwa.manifest || pwa.manifest.name !== 'NukeMap') failures.push('pwa: manifest missing or wrong name');
     if (!pwa.manifest?.icons?.length) failures.push('pwa: manifest icons missing');
@@ -241,7 +272,7 @@ async function runPwaChecks(browser, baseUrl) {
     if (pwa.offlineTitle !== 'NukeMap v3.7.0' || !pwa.offlineBodyHasApp) failures.push('pwa: offline reload did not serve app shell');
     if (pwa.consoleMessages.length) failures.push(`pwa: console messages: ${pwa.consoleMessages.join(' | ')}`);
 
-    const results = { baseUrl, screenshots: ARTIFACT_DIR, desktop, tablet, mobile, landscape, interactions, pwa, failures };
+    const results = { baseUrl, screenshots: ARTIFACT_DIR, desktop, tablet, mobile, landscape, interactions, onboarding, pwa, failures };
     console.log(JSON.stringify(results, null, 2));
     if (failures.length) process.exitCode = 1;
   } finally {

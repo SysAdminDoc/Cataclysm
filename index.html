@@ -53,7 +53,7 @@
 <div id="flash"></div>
 <div id="coords">--</div>
 <div id="offline-badge"><span class="ob-dot"></span><span class="ob-lbl">Online</span></div>
-<div id="det-counter" role="status" aria-live="polite"><span id="det-counter-num">0</span><span class="dc-label">strikes</span></div>
+<div id="det-counter" role="status" aria-live="polite"><span id="det-counter-num">0</span><span class="dc-label">modeled impacts</span></div>
 <header id="app-topbar" aria-label="Simulation workspace status">
   <div class="topbar-status-group">
     <div class="topbar-status-item">
@@ -347,8 +347,8 @@
           <div style="margin-top:6px">
             <input type="text" id="save-search" class="compact-input save-input text-left" placeholder="Search saved..." aria-label="Search saved scenarios" style="width:100%"/>
           </div>
-          <label class="export-btn mt-6" id="import-scenario-label">Preview Scenario JSON<input type="file" id="import-scenario" accept=".json" style="display:none"/></label>
-          <div class="csv-import-status" id="scenario-import-status" aria-live="polite">Scenario saves use schema v1 with name, folder, updated time, and detonation rows.</div>
+          <label class="export-btn mt-6" id="import-scenario-label">Preview Scenario File<input class="file-input" type="file" id="import-scenario" accept=".json"/></label>
+          <div class="csv-import-status" id="scenario-import-status" aria-live="polite">Choose a NukeMap scenario file to preview changes before saving.</div>
           <div id="saved-list" class="mt-6"></div>
         </div>
       </div>
@@ -547,8 +547,8 @@
 
         <!-- GPS Am I Safe -->
         <div class="section">
-          <div class="section-title">Am I Safe? (GPS)</div>
-          <div class="section-hint">Uses your browser location to check against the last detonation.</div>
+          <div class="section-title">Location Zone Check (GPS)</div>
+          <div class="section-hint">Compares your browser location with the latest modeled detonation and its immediate-effect zones.</div>
           <div class="privacy-note">Your GPS coordinates stay in this browser and are never uploaded by NukeMap.</div>
           <button class="btn-secondary full-width" id="gps-check">Check My Location</button>
           <div id="gps-result" class="mt-6"></div>
@@ -557,7 +557,8 @@
         <div class="section" id="display-settings" tabindex="-1">
           <div class="section-title">Display</div>
           <label class="toggle-row"><input type="checkbox" id="hc-check"/><span class="tg-slider"></span><span class="tg-label">High contrast (WCAG AAA)</span></label>
-          <label class="toggle-row"><input type="checkbox" id="educator-check"/><span class="tg-slider"></span><span class="tg-label">Educator mode (no animations)</span></label>
+          <label class="toggle-row"><input type="checkbox" id="educator-check"/><span class="tg-slider"></span><span class="tg-label">Reduced motion and muted sound</span></label>
+          <button class="btn-secondary mt-6" id="welcome-reset" type="button">Show Introduction on Next Launch</button>
         </div>
 
         <!-- Extra toggles -->
@@ -595,7 +596,7 @@
             <button class="export-btn warn" id="export-csv" data-i18n="export.csv">Export Data as CSV</button>
             <button class="export-btn success" id="export-report" data-i18n="export.report">Generate Summary Report</button>
             <button class="export-btn" id="export-print" data-i18n="export.print">Print / PDF Report</button>
-            <label class="export-btn" id="import-csv-label"><span data-i18n="export.importCsv">Preview CSV Import</span><input type="file" id="import-csv" accept=".csv" style="display:none"/></label>
+            <label class="export-btn" id="import-csv-label"><span data-i18n="export.importCsv">Preview CSV Import</span><input class="file-input" type="file" id="import-csv" accept=".csv"/></label>
             <div class="csv-import-status" id="csv-import-status" aria-live="polite">CSV import limit: 500 rows, 256 KB. Required columns: lat, lng, yield_kt, burst_type.</div>
           </div>
         </div>
@@ -716,7 +717,7 @@
 </div>
 <button id="fullscreen-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen mode"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1h4v1.5h-2.793l3.147 3.146-1.061 1.061L1.5 3.414V6.5H0V1.5A.5.5 0 01.5 1h1zm13 0h-4v1.5h2.793L10.146 5.646l1.061 1.061L14.5 3.414V6.5H16V1.5a.5.5 0 00-.5-.5h-1zM1.5 15h4v-1.5H2.707l3.147-3.146-1.061-1.061L1.5 12.586V9.5H0v5a.5.5 0 00.5.5h1zm13 0h-4v-1.5h2.793l-3.147-3.146 1.061-1.061L14.5 12.586V9.5H16v5a.5.5 0 01-.5.5h-1z"/></svg></button>
 <div id="map-switcher">
-  <button class="ms-toggle" id="ms-toggle" title="Change map style" aria-label="Change map style"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0L1 4v8l7 4 7-4V4L8 0zm0 1.25L13.5 4.5 8 7.75 2.5 4.5 8 1.25zM2 5.5l5.5 3v5.75L2 11V5.5zm6.5 8.75V8.5L14 5.5V11l-5.5 3.25z"/></svg></button>
+  <button class="ms-toggle" id="ms-toggle" title="Change map style" aria-label="Change map style" aria-expanded="false" aria-controls="ms-panel"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0L1 4v8l7 4 7-4V4L8 0zm0 1.25L13.5 4.5 8 7.75 2.5 4.5 8 1.25zM2 5.5l5.5 3v5.75L2 11V5.5zm6.5 8.75V8.5L14 5.5V11l-5.5 3.25z"/></svg></button>
   <div class="ms-panel" id="ms-panel">
     <button class="ms-btn active" data-layer="dark">Dark</button>
     <button class="ms-btn" data-layer="darkClean">Dark Clean</button>
