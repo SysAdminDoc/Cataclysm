@@ -29,13 +29,6 @@ tests locally.
   Acceptance: inundation discs and gauge markers render via primitives with no visual regression (Playwright visual baselines updated deliberately); frame rate on a 500-point run measurably improves or holds.
   Complexity: M
 
-- [ ] P2 — Keyboard navigation and SVG icon accessibility audit
-  Why: recon found `UiIcon.tsx` SVGs without aria-labels and no systematic tab-order/arrow-key coverage beyond modal focus traps; the axe suite checks static WCAG rules, not keyboard operability.
-  Evidence: internal recon 2026-07-09 (src/components/UiIcon.tsx; useFocusTrap.ts covers modals only).
-  Touches: src/components/UiIcon.tsx (aria-label/aria-hidden discipline), preset rail/timeline/gauge list keyboard handlers, tests/ (Playwright keyboard-only walkthrough spec).
-  Acceptance: a keyboard-only Playwright spec completes the core flow (pick preset → run solver → scrub → export) without pointer events; axe suite stays green.
-  Complexity: M
-
 - [ ] P2 — NCEI HazEL historical tsunami event browser
   Why: the NCEI Natural Hazards REST API serves 2,200+ tsunami sources and 26,000+ runup records as free JSON — a one-click "load a real historical event" picker built on it dwarfs the 12-preset registry without bloating the binary.
   Evidence: https://www.ngdc.noaa.gov/hazel/ (public REST API backing).

@@ -83,6 +83,15 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   new full-physics parity test (nonlinear advection + sponge + Manning,
   |Δη| < 5 mm after 60 steps) locking the 2026-07-01 divergence fix.
 
+### Added — keyboard-only e2e coverage (2026-07-09)
+- **Keyboard walkthrough Playwright spec.** The golden path (activate a
+  preset card, run the solver, scrub the timeline with arrow keys, export
+  the text report) now runs entirely without pointer events, plus a
+  focus-trap check that Tab cycles stay inside the Settings dialog and
+  Escape closes it. Audit note: decorative `UiIcon` SVGs were already
+  correctly `aria-hidden` with labelled host buttons — the earlier research
+  claim of missing icon labels was wrong.
+
 ### Changed — Cesium ion token moved to the OS keychain (2026-07-09)
 - **The ion token no longer lives in settings.json.** Desktop builds store
   it in the OS keychain (Windows Credential Manager / macOS Keychain /
