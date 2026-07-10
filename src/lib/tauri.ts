@@ -170,6 +170,14 @@ export const api = {
   gpuProbe(): Promise<"available" | "no-adapter" | "feature-off"> {
     return invoke<"available" | "no-adapter" | "feature-off">("gpu_probe");
   },
+  /** Cesium ion token in the OS keychain. `null` = no token stored. */
+  keychainGetToken(): Promise<string | null> {
+    return invoke<string | null>("keychain_get_token");
+  },
+  /** Empty string deletes the keychain entry. */
+  keychainSetToken(token: string): Promise<void> {
+    return invoke<void>("keychain_set_token", { token });
+  },
   diagnosticsBundle(): Promise<{
     app_version: string;
     os: string;

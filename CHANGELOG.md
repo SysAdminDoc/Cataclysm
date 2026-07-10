@@ -83,6 +83,16 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   new full-physics parity test (nonlinear advection + sponge + Manning,
   |Δη| < 5 mm after 60 steps) locking the 2026-07-01 divergence fix.
 
+### Changed — Cesium ion token moved to the OS keychain (2026-07-09)
+- **The ion token no longer lives in settings.json.** Desktop builds store
+  it in the OS keychain (Windows Credential Manager / macOS Keychain /
+  Linux Secret Service) via the `keyring` crate called directly from two
+  new IPC commands — no thin community plugin wrappers, and
+  tauri-plugin-stronghold is deprecated for Tauri v3. Legacy plugin-store
+  tokens migrate to the keychain on first read and the store copy is
+  blanked; a broken secret service falls back to the store path so users
+  aren't locked out. Browser preview keeps localStorage (unchanged).
+
 ### Added — support diagnostics bundle (2026-07-09)
 - **`diagnostics_bundle` IPC + "Copy diagnostics" in the log viewer.** One
   click copies a JSON support bundle: app version, OS/arch, GPU status and

@@ -145,7 +145,8 @@ export function Settings({ onClose }: Props) {
             <p className="modal__intro">
               Optional. Only needed if you select a Cesium ion-backed globe
               style above (terrain, bathymetry, satellite imagery). Token is
-              stored locally in your app data settings store in the desktop
+              stored in your operating system's keychain (Windows Credential
+              Manager / macOS Keychain / Linux Secret Service) in the desktop
               build, and in <code>localStorage</code> only for browser preview.
               It is never embedded in the binary or sent anywhere except{" "}
               <code>cesium.com</code>. Get a free token at{" "}

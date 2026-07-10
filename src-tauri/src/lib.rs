@@ -33,6 +33,8 @@ pub fn run() {
             dart_buoy_rmse,
             gpu_probe,
             diagnostics_bundle,
+            keychain_get_token,
+            keychain_set_token,
             cancel_simulation,
         ])
         .run(tauri::generate_context!())

@@ -1248,6 +1248,47 @@ pub fn gpu_probe() -> String {
     }
 }
 
+/// OS-keychain slot for the Cesium ion token (Windows Credential Manager /
+/// macOS Keychain / Linux Secret Service). The token never belongs in
+/// settings.json — it is a bearer credential for the user's ion account.
+const KEYCHAIN_SERVICE: &str = "TsunamiSimulator";
+const KEYCHAIN_USER: &str = "cesium_ion_token";
+
+fn keychain_entry() -> Result<keyring::Entry, String> {
+    keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_USER)
+        .map_err(|e| format!("keychain unavailable: {e}"))
+}
+
+/// Read the ion token from the OS keychain. `Ok(None)` when no token is
+/// stored — callers fall back to the legacy settings-store copy.
+#[tauri::command]
+pub fn keychain_get_token() -> Result<Option<String>, String> {
+    match keychain_entry()?.get_password() {
+        Ok(token) => Ok(Some(token)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("keychain read failed: {e}")),
+    }
+}
+
+/// Store (or, for an empty string, delete) the ion token in the OS keychain.
+#[tauri::command]
+pub fn keychain_set_token(token: String) -> Result<(), String> {
+    if token.len() > 4096 {
+        return Err("token too long".into());
+    }
+    let entry = keychain_entry()?;
+    if token.is_empty() {
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(format!("keychain delete failed: {e}")),
+        }
+    } else {
+        entry
+            .set_password(&token)
+            .map_err(|e| format!("keychain write failed: {e}"))
+    }
+}
+
 /// Support-ready diagnostics for the LogViewer "Copy diagnostics" button.
 /// Deliberately PII-free: no paths, no tokens, no settings values.
 #[derive(Debug, Serialize)]

@@ -231,8 +231,68 @@ function readLocalMirror<K extends keyof Settings>(key: K): Settings[K] | undefi
   }
 }
 
+/** Desktop-only: the ion token lives in the OS keychain (Windows
+ *  Credential Manager / macOS Keychain / Linux Secret Service), never in
+ *  settings.json. Legacy plugin-store copies are migrated in on first read
+ *  and blanked. Keychain failures fall back to the store path so a broken
+ *  secret service doesn't lock users out of their token. */
+async function readTokenFromKeychain(): Promise<string | undefined> {
+  try {
+    const { api } = await import("./tauri");
+    const token = await api.keychainGetToken();
+    return token ?? undefined;
+  } catch (err) {
+    console.warn("[settings] keychain read failed — falling back to store", err);
+    return undefined;
+  }
+}
+
+async function writeTokenToKeychain(token: string): Promise<boolean> {
+  try {
+    const { api } = await import("./tauri");
+    await api.keychainSetToken(token);
+    return true;
+  } catch (err) {
+    console.warn("[settings] keychain write failed — falling back to store", err);
+    return false;
+  }
+}
+
+async function blankStoreToken(): Promise<void> {
+  const store = await getStore();
+  if (!store) return;
+  try {
+    await store.set("cesium_token", "");
+    await store.save();
+  } catch (err) {
+    console.warn("[settings] failed to blank legacy store token", err);
+  }
+}
+
 async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
   migrateLocalStorage();
+  if (isTauri() && key === "cesium_token") {
+    const fromKeychain = await readTokenFromKeychain();
+    if (fromKeychain !== undefined && fromKeychain !== "") {
+      return fromKeychain as Settings[K];
+    }
+    // One-time migration: older builds kept the token in plugin-store.
+    const legacyStore = await getStore();
+    if (legacyStore) {
+      try {
+        const legacy = await legacyStore.get<string>("cesium_token");
+        if (typeof legacy === "string" && legacy !== "") {
+          if (await writeTokenToKeychain(legacy)) {
+            await blankStoreToken();
+          }
+          return legacy as Settings[K];
+        }
+      } catch (err) {
+        console.warn("[settings] legacy token migration read failed", err);
+      }
+    }
+    return DEFAULTS[key];
+  }
   const store = await getStore();
   if (store) {
     try {
@@ -274,6 +334,14 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
 
 async function write<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
   migrateLocalStorage();
+  if (isTauri() && key === "cesium_token") {
+    removeLocalMirror(key);
+    if (await writeTokenToKeychain(value as string)) {
+      await blankStoreToken();
+      return;
+    }
+    // Keychain unavailable — fall through to the plugin-store path below.
+  }
   if (shouldMirrorToLocalStorage(key) && typeof localStorage !== "undefined") {
     try {
       localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));

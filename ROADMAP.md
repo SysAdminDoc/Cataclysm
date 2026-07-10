@@ -29,13 +29,6 @@ tests locally.
   Acceptance: inundation discs and gauge markers render via primitives with no visual regression (Playwright visual baselines updated deliberately); frame rate on a 500-point run measurably improves or holds.
   Complexity: M
 
-- [ ] P2 — Store the Cesium ion token in the OS keychain via the `keyring` crate
-  Why: the token sits in plain settings.json today; the old blocker ("tauri-plugin-keyring ecosystem still emerging") is resolvable by calling the mature `keyring` crate directly from a Tauri command — lower supply-chain risk than thin wrapper plugins, and stronghold is deprecated. Unblocks I-V04 from Roadmap_Blocked.
-  Evidence: keyring crate; tauri-plugin-stronghold deprecation https://v2.tauri.app/plugin/stronghold/.
-  Touches: src-tauri/Cargo.toml (keyring dep), src-tauri/src/commands.rs (get/set/delete token commands), src/components/Settings.tsx, src/lib/settings.ts (migration: move existing token, blank the store copy).
-  Acceptance: token round-trips through Windows Credential Manager (and Keychain/Secret Service on other OSes); settings.json no longer contains it; migration preserves an existing token.
-  Complexity: M
-
 - [ ] P2 — Keyboard navigation and SVG icon accessibility audit
   Why: recon found `UiIcon.tsx` SVGs without aria-labels and no systematic tab-order/arrow-key coverage beyond modal focus traps; the axe suite checks static WCAG rules, not keyboard operability.
   Evidence: internal recon 2026-07-09 (src/components/UiIcon.tsx; useFocusTrap.ts covers modals only).
