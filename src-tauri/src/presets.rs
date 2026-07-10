@@ -257,6 +257,184 @@ pub fn all_presets() -> Vec<Preset> {
             }),
         },
         Preset {
+            id: "kamchatka_2025",
+            name: "Kamchatka Earthquake & Tsunami",
+            date: "2025-07-29",
+            blurb: "M_w 8.8 megathrust off SE Kamchatka — sixth-largest instrumentally recorded earthquake and the most DART-instrumented tsunami in history (40+ buoys). Pacific-wide propagation; 3–5 m local waves, ~1.3 m water-column at nearby DART stations.",
+            // USGS event us6000qw60: epicenter 52.4948°N 160.2395°E, hypocentre
+            // depth 35 km, Mww 8.8. Finite-fault model: strike 217° (all three
+            // segments), middle-segment dip 17°, peak slip 39.3 m over a
+            // 620 km model extent; literature width estimate 140–200 km.
+            // Single-plane approximation follows the Tōhoku preset convention
+            // (uniform slip between the finite-fault peak and the
+            // M0-consistent mean; thrust rake). Fault-top depth 20 km places
+            // the plane's centroid near the 35 km hypocentre at dip 17°.
+            // Water depth at the epicentral forearc is approximate (~4 km).
+            reference: "USGS event us6000qw60 (W-phase + finite fault); NOAA NCTR kamchatka20250729",
+            reference_url: Some("https://earthquake.usgs.gov/earthquakes/eventpage/us6000qw60"),
+            is_speculative: false,
+            controversy_note: None,
+            // Kuril-Kamchatka trench + NW Pacific framing.
+            camera_view: Some(CameraView { heading_deg: 30.0, pitch_deg: -45.0, range_m: 2_500_000.0 }),
+            source: PresetSource::Earthquake(EarthquakeSource {
+                mw: 8.8,
+                depth_m: 20_000.0,
+                strike_deg: 217.0,
+                dip_deg: 17.0,
+                rake_deg: 90.0,
+                slip_m: 20.0,
+                fault_length_m: 620_000.0,
+                fault_width_m: 150_000.0,
+                water_depth_m: 4_000.0,
+                location: GeoPoint { lat_deg: 52.4948, lon_deg: 160.2395, depth_m: 4_000.0 },
+            }),
+        },
+        Preset {
+            id: "sanriku_2026",
+            name: "Sanriku (Miyako) Earthquake & Tsunami",
+            date: "2026-04-20",
+            blurb: "M_w 7.4 (M_JMA 7.7) thrust off the Sanriku coast. Modest tsunami detected at a coastal tide gauge 17 minutes after rupture — a modern example of the Pacific warning system working as designed.",
+            // USGS event us6000sri7: epicenter 39.971°N 143.0592°E, depth
+            // 25 km, Mww 7.4 (JMA magnitude 7.7). Finite-fault plane:
+            // strike 193°, dip 16° (matches Mww nodal plane 2 at
+            // 192.9°/15.9°/rake 93.9°); maximum slip 4.73 m over a
+            // ~70 × 65 km rupture area. Uniform slip set to the finite-fault
+            // maximum (single-plane convention). Forearc water depth ~1.5 km
+            // as for the Tōhoku preset.
+            reference: "USGS event us6000sri7 (W-phase + finite fault); NOAA NCTR miyako20260420",
+            reference_url: Some("https://earthquake.usgs.gov/earthquakes/eventpage/us6000sri7"),
+            is_speculative: false,
+            controversy_note: Some("Recent event — peer-reviewed source models are still in review; parameters follow the USGS finite-fault product."),
+            camera_view: Some(CameraView { heading_deg: 280.0, pitch_deg: -45.0, range_m: 1_500_000.0 }),
+            source: PresetSource::Earthquake(EarthquakeSource {
+                mw: 7.4,
+                depth_m: 25_000.0,
+                strike_deg: 193.0,
+                dip_deg: 16.0,
+                rake_deg: 93.9,
+                slip_m: 4.7,
+                fault_length_m: 70_000.0,
+                fault_width_m: 65_000.0,
+                water_depth_m: 1_500.0,
+                location: GeoPoint { lat_deg: 39.971, lon_deg: 143.0592, depth_m: 1_500.0 },
+            }),
+        },
+        Preset {
+            id: "lisbon_1755",
+            name: "Lisbon Earthquake & Tsunami",
+            date: "1755-11-01",
+            blurb: "M_w ~8.7 thrust west of Gibraltar. Destroyed Lisbon, waves across the Atlantic to the Caribbean; shaped European Enlightenment thought. Source remains debated — this preset uses Barkan et al.'s best-fitting far-field source (Horseshoe Plain).",
+            // Barkan, ten Brink & Lin 2009 (Marine Geology 264:109) Source 5,
+            // Table 4 verbatim: 36.042°N −10.753°E (Horseshoe Plain), fault
+            // 200 × 80 km, average slip 13.1 m, strike ~345°, dip 40°,
+            // rake 90°, fault-top depth 5 km, M0 = 1.26e22 N·m (Mw ≈ 8.7).
+            // Water depth at the Horseshoe Abyssal Plain is approximate (~4.8 km).
+            reference: "Barkan, ten Brink & Lin 2009, Marine Geology 264:109, doi:10.1016/j.margeo.2009.04.020",
+            reference_url: Some("https://pubs.usgs.gov/publication/70036556"),
+            is_speculative: false,
+            controversy_note: Some("The 1755 source fault is still debated; parameters are Barkan et al. 2009's preferred far-field source (their Source 5), not a consensus mechanism."),
+            // Atlantic framing: Iberia + Morocco + open ocean to the WSW.
+            camera_view: Some(CameraView { heading_deg: 320.0, pitch_deg: -50.0, range_m: 3_000_000.0 }),
+            source: PresetSource::Earthquake(EarthquakeSource {
+                mw: 8.7,
+                depth_m: 5_000.0,
+                strike_deg: 345.0,
+                dip_deg: 40.0,
+                rake_deg: 90.0,
+                slip_m: 13.1,
+                fault_length_m: 200_000.0,
+                fault_width_m: 80_000.0,
+                water_depth_m: 4_800.0,
+                location: GeoPoint { lat_deg: 36.042, lon_deg: -10.753, depth_m: 4_800.0 },
+            }),
+        },
+        Preset {
+            id: "amorgos_1956",
+            name: "Amorgos Earthquake & Tsunami",
+            date: "1956-07-09",
+            blurb: "M_w 7.7 normal-faulting event in the Santorini–Amorgos zone — the largest 20th-century Aegean earthquake. Up to 30 m local runup on Amorgos; Okal et al. attribute most of it to triggered submarine landslides, so this coseismic-only preset under-predicts the extreme local values.",
+            // Okal et al. 2009 (GJI 178:1533): relocated epicenter
+            // 36.72°N 25.76°E, M0 = 3.9e20 N·m (Mw 7.7), preferred
+            // SE-dipping normal plane strike 39°, dip 25°, rake 246°
+            // (represented here as −114°), moment-consistent slip 2.46 m,
+            // 81 × 41 km fault, hypocentral depth ~30 km (relocation
+            // constraint; Kalligeris et al. 2025 argue a steeper/shallower
+            // 5–8 m-slip rupture). Aegean basin water depth approximate (~800 m).
+            reference: "Okal et al. 2009, GJI 178:1533, doi:10.1111/j.1365-246X.2009.04237.x",
+            reference_url: Some("https://academic.oup.com/gji/article/178/3/1533/595801"),
+            is_speculative: false,
+            controversy_note: Some("Okal 2009 concludes triggered submarine landslides — not the fault itself — drove the observed 30 m local runup; the coseismic source here under-predicts near-field extremes. Kalligeris 2025 proposes a steeper, shallower, larger-slip rupture."),
+            // South-Aegean framing: Cyclades + Crete.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -50.0, range_m: 900_000.0 }),
+            source: PresetSource::Earthquake(EarthquakeSource {
+                mw: 7.7,
+                depth_m: 30_000.0,
+                strike_deg: 39.0,
+                dip_deg: 25.0,
+                rake_deg: -114.0,
+                slip_m: 2.46,
+                fault_length_m: 81_000.0,
+                fault_width_m: 41_000.0,
+                water_depth_m: 800.0,
+                location: GeoPoint { lat_deg: 36.72, lon_deg: 25.76, depth_m: 800.0 },
+            }),
+        },
+        Preset {
+            id: "anak_krakatau_2018",
+            name: "Anak Krakatau Flank Collapse",
+            date: "2018-12-22",
+            blurb: "0.27 km³ SW flank collapse of Anak Krakatau during eruption — no earthquake, no warning. ~50 m wave near the volcano, 400+ killed on Java and Sumatra coasts 35–45 minutes later. The defining modern argument for non-seismic tsunami monitoring.",
+            // Grilli et al. 2019 (Sci Rep 9:11946): best-estimate collapse
+            // volume 0.27 km³ (bounds 0.22–0.30), granular slide with solid
+            // density 1900 kg/m³ at 40% porosity (bulk ≈ 1550 kg/m³),
+            // pre-collapse edifice ~335 m ASL, discharge SW into the ~250 m
+            // deep Krakatau caldera basin. The slope angle is derived, not
+            // quoted: ~335 m + 250 m relief over the ~2 km subaerial-to-
+            // caldera run gives ≈ 16°.
+            reference: "Grilli et al. 2019, Scientific Reports 9:11946, doi:10.1038/s41598-019-48327-6",
+            reference_url: Some("https://www.nature.com/articles/s41598-019-48327-6"),
+            is_speculative: false,
+            controversy_note: None,
+            // Same Sunda Strait framing as the 1883 preset.
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -45.0, range_m: 1_000_000.0 }),
+            source: PresetSource::Landslide(LandslideSource {
+                kind: crate::physics::landslide::LandslideKind::Subaerial,
+                volume_m3: 2.7e8,
+                density_kg_m3: 1_550.0,
+                drop_height_m: 335.0,
+                slope_deg: 16.0,
+                water_depth_m: 250.0,
+                water_body_width_m: 5_000.0,
+                location: GeoPoint { lat_deg: -6.102, lon_deg: 105.423, depth_m: 250.0 },
+            }),
+        },
+        Preset {
+            id: "yr4_2032_whatif",
+            name: "2024 YR4 Ocean Impact (What-If — Impact Ruled Out)",
+            date: "—",
+            blurb: "The asteroid behind the February 2025 news cycle (impact odds briefly ~3%, since ruled out). Viral posts claimed \"88 m waves\"; NASA's models say an airbursting ~60 m stony object is unlikely to cause a significant tsunami at all. This preset shows the UPPER BOUND if the intact body somehow reached the surface — compare its modest far-field wave with the viral claims.",
+            // NASA 2024 YR4 facts page + JWST: diameter 60 ± 7 m; predicted
+            // 2032 encounter velocity ~17.3 km/s; S-type spectral class →
+            // stony density assumption 2600 kg/m³; 45° is the most probable
+            // impact angle for any impactor (Shoemaker 1962). The location is
+            // a representative point in the eastern equatorial Pacific
+            // segment of the published (retired) risk corridor — no impact
+            // point was ever predicted. Earth impact is RULED OUT.
+            reference: "NASA Science: Asteroid 2024 YR4 facts (JWST size 60±7 m); JPL CNEOS Sentry (retired)",
+            reference_url: Some("https://science.nasa.gov/solar-system/asteroids/2024-yr4-facts/"),
+            is_speculative: true,
+            controversy_note: Some("Myth-busting scenario: NASA states an airbursting object of this size is \"unlikely to cause significant tsunami\". Ward–Asphaug assumes the body reaches the water intact, so even this is an over-estimate — and Earth impact has been ruled out entirely."),
+            camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -55.0, range_m: 4_000_000.0 }),
+            source: PresetSource::Asteroid(AsteroidImpact {
+                diameter_m: 60.0,
+                density_kg_m3: 2_600.0,
+                velocity_m_s: 17_300.0,
+                angle_deg: 45.0,
+                water_depth_m: 3_500.0,
+                location: GeoPoint { lat_deg: 5.0, lon_deg: -95.0, depth_m: 3_500.0 },
+            }),
+        },
+        Preset {
             id: "poseidon_realistic",
             name: "Poseidon Torpedo (Realistic Yield)",
             date: "—",

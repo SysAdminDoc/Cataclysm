@@ -32,6 +32,7 @@ pub fn run() {
             lamb_wave_sample,
             dart_buoy_rmse,
             gpu_probe,
+            diagnostics_bundle,
             cancel_simulation,
         ])
         .run(tauri::generate_context!())

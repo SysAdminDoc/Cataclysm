@@ -142,4 +142,52 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
       },
     ],
   },
+  {
+    id: "sanriku-warning-worked",
+    title: "Sanriku 2026: The warning worked",
+    presetId: "sanriku_2026",
+    summary:
+      "A modest tsunami off the same coast Tōhoku devastated in 2011 — and this time the story is about a warning system doing its job.",
+    steps: [
+      {
+        title: "A familiar coastline",
+        body:
+          "The 2026-04-20 M_w 7.4 thrust ruptured the Japan Trench interface off Sanriku — the same subduction zone as Tōhoku 2011, at roughly 1/300th the energy (magnitude is logarithmic: each whole step is ~32× the energy). Run the solver and compare the wave heights with the Tōhoku preset at the same coastal points.",
+      },
+      {
+        title: "Seventeen minutes",
+        body:
+          "NOAA's forecast system detected the tsunami on a coastal tide gauge 17 minutes after rupture and had already produced propagation forecasts from pre-computed models. Deep-ocean DART pressure sensors, coastal gauges, and rapid seismic solutions (the same W-phase mechanism this preset uses) form a chain designed in large part from the lessons of 2004 and 2011.",
+      },
+      {
+        title: "Why magnitude alone misleads",
+        body:
+          "M 7.4 sounds close to M 7.7 (the JMA estimate for this event) or even M 9.1, but seafloor displacement — what actually makes a tsunami — scales with fault area × slip. Inspect the source readout: ~4.7 m of slip over ~70 × 65 km, versus Tōhoku's ~30 m over 500 × 200 km. That is why warnings quote expected wave heights, not just magnitudes.",
+      },
+    ],
+  },
+  {
+    id: "yr4-myth-busting",
+    title: "2024 YR4: Anatomy of a viral tsunami myth",
+    presetId: "yr4_2032_whatif",
+    summary:
+      "When impact odds briefly hit ~3% in February 2025, posts claimed 88 m waves. The physics says an object this size probably never touches the water.",
+    steps: [
+      {
+        title: "What the models actually say",
+        body:
+          "NASA's assessment of the (since retired) 2032 scenario: an airbursting object of this size would be \"unlikely to cause significant tsunami, either from the middle of the ocean or even nearer shore.\" A ~60 m stony body deposits most of its energy in the atmosphere — like Tunguska 1908, which flattened forest but generated no tsunami-scale wave.",
+      },
+      {
+        title: "Even the upper bound is modest",
+        body:
+          "This preset feeds Ward–Asphaug the impossible best case: the intact 60 m body reaching the surface at 17.3 km/s. Check the readout — the cavity is small, and the r^(−5/6) impact decay shreds the amplitude within tens of kilometres. Compare that with the viral \"88 m wave\" claims, which confused near-cavity amplitude with coastal wave height.",
+      },
+      {
+        title: "How to read asteroid headlines",
+        body:
+          "Impact probability estimates легitimately fluctuate as orbits are refined — YR4's rose to ~3% before falling to zero, exactly as the process is designed to work. The lesson: check the object's size class first. Regional tsunami risk starts with impactors several hundred metres across; kilometre-class bodies are the global-hazard regime (see the Eltanin and Chicxulub presets).",
+      },
+    ],
+  },
 ];

@@ -13,85 +13,13 @@ Roadmap_Blocked" had "Needs MSVC linker / Rust compilation" blockers that are
 stale: the VsDevCmd wrapper works and `npm run verify` runs 67 Rust release
 tests locally.
 
-### P1 — trust, validation, and returned blockers
-
-- [ ] P1 — Fix the Okada strike-slip vertical-displacement term against a reference implementation
-  Why: property testing (2026-07-09) proved the strike-slip u_z path is broken, not merely imprecise — |uz| grows with fault length without bound (0.74 m surface displacement from 0.1 m slip on a 302 km strike-slip fault at 1 km depth; 3.6×slip even at 49 km burial, where attenuation is mandatory). A dislocation's surface displacement is bounded by ~slip regardless of fault size. Custom scenarios accept strike-slip rakes, so users can currently produce inflated tsunamis from strike-slip earthquakes. Code review against Okada 1985 flags two concrete suspects in `okada_uz_terms`: (a) the strike-slip vertical term uses `atan(ξη/qR)` where eqn. 26 has `q·sinδ/(R+η)` — the atan belongs to the strike-slip u_x and the dip-slip u_z; (b) the I4/I5 coefficient uses ALPHA = 2/3 = (λ+μ)/(λ+2μ) (the 1992 convention) where the 1985 I-terms use μ/(λ+μ) = 1/2 for ν = 0.25 (also inflates the thrust path ~33%: observed 2.07×slip at dip 76°, rake 106°). Impact is NOT limited to custom scenarios: proptest measured ~9× amplification of the strike-slip component at rake 70° on large faults, and the shipped Indian Ocean 2004 preset uses rake 110° (|cos 110°| = 0.34 strike-slip component on a 1,300 km fault) — its displacement field is plausibly inflated; only the Tōhoku band (rake 85°, |cos| = 0.09) is validated. Do NOT fix from memory: anchor on Okada 1985 Table 2 case 2 (x=2, y=3, d=4, δ=70°, L=3, W=2) or dc3d/okada_wrapper output, minding the centered-fault vs [0,L] and top-edge vs bottom-edge depth conventions.
-  Evidence: src-tauri/src/physics/okada.rs:186-257 (`okada_uz_terms`), ALPHA at okada.rs:63; property_tests.rs `okada_uplift_bounded_by_slip` doc (rake domain restricted to 70–110° until this lands).
-  Touches: src-tauri/src/physics/okada.rs, src-tauri/src/physics/property_tests.rs (widen rake domain after fix), docs/science/earthquake.md.
-  Acceptance: uz matches the reference for all three Table 2 modes within 1e-5; property-test rake domain restored to 0–180° with a verified ~1×slip-class bound; Tōhoku band still passes.
-  Complexity: M
-
-- [ ] P1 — Kamchatka 2025-07-29 Mw 8.8 preset + DART validation pack
-  Why: the most-instrumented tsunami in history — USGS finite-fault parameters and 40-buoy validation data are published; it converts the app into a checkable credibility showcase and answers the exact event laypeople searched for.
-  Evidence: Ocean Engineering trans-Pacific propagation study (rupture ~390-600 km × 140-200 km, peak slip ~30-40 m, 52.512°N 160.324°E) https://www.sciencedirect.com/science/article/pii/S002980182601749X; NCTR event page https://nctr.pmel.noaa.gov/kamchatka20250729/; NCEI DART archive (netCDF/CSV via THREDDS).
-  Touches: src-tauri/src/presets.rs (cited entry), src/data/dart_buoys.json (new event + 2-3 buoys, downsampled like existing events), docs/science/REFERENCES.bib, src/data/coastal_points.json (verify Kamchatka/Hawaii/California points exist).
-  Acceptance: preset loads with citation; SWE run shows DART sparkline comparison for the new buoys; preset tests (id uniqueness, finite outputs) pass.
-  Complexity: M
-
-- [ ] P1 — CPU/GPU kernel parity regression test
-  Why: CPU/GPU eta divergence was a real shipped bug (fixed 2026-07-01, commit 8626470) and the WGSL kernel has zero automated coverage; a parity test locks the fix.
-  Evidence: CHANGELOG "[Unreleased] CPU/GPU solver eta divergence fixed"; internal recon — no GPU tests.
-  Touches: src-tauri/src/physics/solver/ (feature-gated `#[cfg(feature = "gpu")]` test comparing CPU vs GPU eta fields after N steps on a small grid; skip cleanly when no adapter).
-  Acceptance: `cargo test --release --features gpu` asserts max |eta_cpu − eta_gpu| under a documented tolerance on a 64×64 grid; test skips (not fails) when no adapter is present.
-  Complexity: M
-
 ### P2 — cited presets, products, and architecture
-
-- [ ] P2 — Krakatau 1883 caldera-collapse preset (Choi 2003 "hole and ring" source)
-  Why: fills the volcanic-source gap with the most iconic caldera event; Choi 2003 gives a simple citable initial displacement (~6 km diameter ring, 270 m depth) implementable with existing initial-displacement machinery — a lighter path than the blocked Maeno & Imamura model.
-  Evidence: Choi et al. 2003, NHESS https://nhess.copernicus.org/articles/3/321/2003/; cross-ref Roadmap_Blocked "Volcanic caldera collapse source model" (P3) — this item partially supersedes it.
-  Touches: src-tauri/src/physics/ (hole-and-ring IC helper), src-tauri/src/presets.rs, docs/science/, REFERENCES.bib.
-  Acceptance: Krakatau 1883 preset runs end-to-end with citation; Sunda Strait coastal points show runup; preset tests pass.
-  Complexity: M
-
-- [ ] P2 — Anak Krakatau 2018 flank-collapse preset
-  Why: modern, well-studied landslide tsunami (Grilli et al. 2019 parameters) that exercises the existing Fritz–Hager landslide module with zero new physics.
-  Evidence: Grilli et al. 2019 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6697749/.
-  Touches: src-tauri/src/presets.rs, REFERENCES.bib, src/data/coastal_points.json (Sunda Strait points if missing).
-  Acceptance: preset loads with cited volume/drop-height/slope parameters; finite-output preset test passes.
-  Complexity: S
-
-- [ ] P2 — Lisbon 1755 earthquake preset
-  Why: 270th anniversary (2025-11) drove institutional attention; Barkan's USGS far-field study provides citable fault parameters; strong Atlantic coverage gap in the current Pacific-heavy preset list.
-  Evidence: Barkan et al., USGS https://pubs.usgs.gov/publication/70036556; IOC anniversary events.
-  Touches: src-tauri/src/presets.rs, REFERENCES.bib, src/data/coastal_points.json (Lisbon/Cádiz/Madeira/Caribbean points).
-  Acceptance: preset runs with citation; Atlantic coastal points show arrivals; preset tests pass.
-  Complexity: S
-
-- [ ] P2 — Santorini–Amorgos scenario preset (2025 swarm context)
-  Why: the 2025 swarm (20,000+ quakes) made Aegean tsunami risk front-page news and JMSE published deterministic scenario fault parameters in 2025-10.
-  Evidence: JMSE 13(10):2005 https://doi.org/10.3390/jmse13102005; 1956 Amorgos analog.
-  Touches: src-tauri/src/presets.rs, REFERENCES.bib, src/data/coastal_points.json (Aegean points).
-  Acceptance: preset runs with cited fault geometry; preset tests pass.
-  Complexity: S
-
-- [ ] P2 — Sanriku (Miyako) 2026-04-20 Mw 7.7 preset + "the warning worked" lesson
-  Why: recent NCTR-modeled Japan event; pairs with a guided lesson about detection 17 minutes post-rupture — a positive warning-system story complementing Tōhoku.
-  Evidence: NCTR event page https://nctr.pmel.noaa.gov/miyako20260420/; peer-reviewed source parameters may still be in review — use USGS finite-fault, flag confidence in the preset comment.
-  Touches: src-tauri/src/presets.rs, src/lib/guided-lessons.ts, REFERENCES.bib.
-  Acceptance: preset runs; new 3-step lesson persists completion like existing lessons.
-  Complexity: S
-
-- [ ] P2 — 2024 YR4 "what-if" asteroid preset with airburst myth-busting lesson
-  Why: the Feb 2025 news cycle spawned viral "88 m wave" misinformation; NASA's counter-explanation (a ~60 m airbursting object is unlikely to produce a significant tsunami) is a perfect Poseidon-debunk-pattern lesson exercising the Ward–Asphaug module.
-  Evidence: NASA 2024 YR4 facts https://science.nasa.gov/solar-system/asteroids/2024-yr4-facts/; existing poseidon-debunk lesson pattern (src/lib/guided-lessons.ts).
-  Touches: src-tauri/src/presets.rs, src/lib/guided-lessons.ts, REFERENCES.bib.
-  Acceptance: preset + 3-step myth-busting lesson ship; lesson states the airburst caveat explicitly.
-  Complexity: S
 
 - [ ] P2 — Modularize commands.rs into submodules
   Why: 1,944 lines and growing with each new IPC; split into types/validators/simulation/source/query keeps the boundary reviewable. Returns from Roadmap_Blocked (stale MSVC blocker).
   Evidence: src-tauri/src/commands.rs line count; Roadmap_Blocked "Modularize commands.rs".
   Touches: src-tauri/src/commands/ (new module tree), src-tauri/src/lib.rs.
   Acceptance: no behavior change; all 67+ Rust tests pass; no file exceeds ~600 lines.
-  Complexity: M
-
-- [ ] P2 — `diagnostics_bundle` IPC + copyable support bundle in LogViewer
-  Why: support-ready diagnostics (GPU adapter name/driver, wgpu version, solver mode, settings schema version, OS) cut triage time; the Rust-side blocker was stale MSVC. Returns from Roadmap_Blocked.
-  Evidence: Roadmap_Blocked "Structured error reporting with diagnostics bundle"; src/components/LogViewer.tsx severity counts already exist.
-  Touches: src-tauri/src/commands.rs (new command), src/components/LogViewer.tsx ("Copy diagnostics" button), src/lib/tauri.ts.
-  Acceptance: one click copies a JSON bundle (app version, OS, GPU adapter, solver mode, recent log entries) to the clipboard; no PII/token included.
   Complexity: M
 
 - [ ] P2 — Port inundation/gauge overlays to Cesium `GeoJsonPrimitive` + arrival-colored paths via `PathGraphics.materialMode`

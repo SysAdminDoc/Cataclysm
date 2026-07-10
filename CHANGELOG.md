@@ -52,15 +52,65 @@ All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keep
   conservation (zero-flux, linear, 1% tolerance), and Okada uplift
   boundedness in the pure-thrust regime.
 
-### Known issue — Okada strike-slip vertical term (2026-07-09)
-- Property testing exposed non-physical growth of |u_z| with fault length
-  for strike-slip rakes (up to 7.4× slip on a 302 km rake-0° fault; ~9×
-  amplification of the strike-slip component at rake 70°). All shipped
-  presets are thrust-dominated and the Tōhoku validation band passes, but
-  custom strike-slip scenarios currently over-predict, and the Indian
-  Ocean 2004 preset (rake 110°) carries a partially affected component.
-  Tracked on the roadmap with a reference-anchored fix plan; the property
-  test pins rake = 90° until it lands.
+### Fixed — Okada vertical-displacement kernel (2026-07-09)
+- **Strike-slip u_z term corrected against Okada 1985.** Property testing
+  exposed non-physical growth of |u_z| with fault length for strike-slip
+  rakes (up to 7.4×slip on a 302 km rake-0° fault, even at 49 km burial).
+  Root causes, confirmed against the reference okada85.m
+  (IPGP/deformation-lib): (a) the eqn.-25 strike-slip vertical term used
+  `atan(ξη/qR)` where `q·sinδ/(R+η)` belongs; (b) the I4/I5 elastic factor
+  used α = 2/3 (DC3D's (λ+μ)/(λ+2μ) convention) where the 1985 I-terms
+  take μ/(λ+μ) = 1−2ν = 0.5; (c) the Chinnery substitution used the
+  fault-top depth where Okada's `d` is the DOWN-DIP edge depth. The kernel
+  is rewritten 1:1 against the reference and now validated to 4 significant
+  figures against Okada 1985 Table 2 cases 2 and 3 (strike/dip/tensile),
+  plus a boundedness regression on the case that exposed the bug. The
+  Tōhoku thrust band still passes; oblique-rake presets (Indian Ocean 2004,
+  rake 110°) now compute slightly different — correct — fields. The
+  property test runs the full 0–180° rake domain again.
+
+### Fixed — GPU solver path actually runs (2026-07-09)
+- **The `gpu` feature could never execute before.** Three stacked latent
+  bugs, found the first time the feature was run rather than merely
+  compiled: (1) wgpu was built with no platform backend, so
+  `Instance::default()` panicked at the first probe — Vulkan/Metal now
+  enabled (dx12 excluded: wgpu-hal 29.0.x's dx12 suballocator does not
+  compile against gpu-allocator 0.28 + windows-core 0.61/0.62 upstream);
+  (2) the device was requested with downlevel limits (4 storage buffers)
+  while the kernel binds 7 — now requests 8 clamped to adapter limits;
+  (3) the GPU sponge test used CFL 0.4 where the explicit scheme needs 0.3.
+  The CPU/GPU parity suite now actually executes on hardware, including a
+  new full-physics parity test (nonlinear advection + sponge + Manning,
+  |Δη| < 5 mm after 60 steps) locking the 2026-07-01 divergence fix.
+
+### Added — support diagnostics bundle (2026-07-09)
+- **`diagnostics_bundle` IPC + "Copy diagnostics" in the log viewer.** One
+  click copies a JSON support bundle: app version, OS/arch, GPU status and
+  adapter name, solver backend, settings schema version, and the last 50
+  log entries. PII-free by construction — no paths, tokens, or settings
+  values.
+
+### Added — new cited presets (2026-07-09)
+- **Kamchatka 2025-07-29 M_w 8.8** — USGS finite-fault parameters
+  (us6000qw60), the most DART-instrumented tsunami in history — with a
+  bundled DART validation pack: stations 21416, 21419, 21415 from the NDBC
+  historical archive, harmonically de-tided (residual RMS < 0.5 cm; the
+  0.84 m peak at 21416 matches NCTR's published 0.85 m — the second-largest
+  DART amplitude ever recorded). Model-vs-observed RMSE works out of the box.
+- **Sanriku (Miyako) 2026-04-20 M_w 7.4** (USGS us6000sri7) with a
+  "the warning worked" guided lesson: tide-gauge detection 17 minutes
+  after rupture, and why magnitude alone misleads.
+- **Lisbon 1755** — Barkan, ten Brink & Lin 2009 preferred far-field source
+  (Horseshoe Plain, Table 4 verbatim), with source-debate caveat.
+- **Amorgos 1956** — Okal et al. 2009 relocated normal-faulting source,
+  with the explicit caveat that triggered submarine landslides (not the
+  fault) drove the 30 m local runup.
+- **Anak Krakatau 2018** — Grilli et al. 2019 flank-collapse parameters
+  (0.27 km³, bulk density 1550 kg/m³, caldera depth 250 m).
+- **2024 YR4 what-if** (speculative-flagged) with an "anatomy of a viral
+  tsunami myth" guided lesson quoting NASA's airburst assessment; Earth
+  impact is ruled out and the preset explains why even the upper bound
+  is modest.
 
 ### Added — educational features
 - **Physics glossary tooltip system.** 15 domain terms (Mw, SWE, Okada,

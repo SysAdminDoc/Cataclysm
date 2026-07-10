@@ -55,6 +55,20 @@ pub fn probe_adapter() -> GpuAvailability {
     }
 }
 
+/// Human-readable adapter description ("NVIDIA GeForce RTX 4070 (Vulkan)")
+/// for the diagnostics bundle. `None` when no adapter is available.
+pub fn adapter_summary() -> Option<String> {
+    let instance = wgpu::Instance::default();
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+    }))
+    .ok()?;
+    let info = adapter.get_info();
+    Some(format!("{} ({:?})", info.name, info.backend))
+}
+
 /// 48-byte Params struct matching the WGSL `struct Params` layout in
 /// [`SWE_LEAPFROG_WGSL`].
 #[repr(C)]
@@ -182,11 +196,21 @@ impl GpuTimeStepper {
         // If the device can't allocate, request_device / create_buffer
         // will return an error and we fall back to CPU.
 
+        // The kernel binds 7 storage buffers (h, eta/u/v in, eta/u/v out);
+        // downlevel_defaults() caps max_storage_buffers_per_shader_stage at
+        // 4, which fails bind-group-layout validation on every adapter.
+        // Request the WebGPU default (8), clamped to what the adapter
+        // actually supports so weak adapters still fall back to CPU cleanly.
+        let required_limits = wgpu::Limits {
+            max_storage_buffers_per_shader_stage: 8,
+            ..wgpu::Limits::downlevel_defaults()
+        }
+        .using_resolution(adapter.limits());
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("tsunamisim-swe"),
                 required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::downlevel_defaults(),
+                required_limits,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
                 trace: wgpu::Trace::Off,
@@ -626,6 +650,51 @@ mod tests {
         );
     }
 
+    /// Full-physics parity: nonlinear advection + sponge boundary +
+    /// Manning friction — the exact configuration `simulate_grid`
+    /// dispatches. Locks the 2026-07-01 CPU/GPU eta-divergence fix
+    /// (CPU momentum now uses pre-step η like the GPU leapfrog). The
+    /// tolerance is looser than the linear test because the GPU stores
+    /// state in f32 and the upwind advection branch amplifies rounding.
+    #[test]
+    fn swe_gpu_matches_cpu_full_physics() {
+        let mut g_cpu = SwGrid::new(-4.0, -4.0, 4.0, 4.0, 0.125, 0.125);
+        g_cpu.fill_uniform_depth(4_000.0);
+        g_cpu.inject_gaussian(0.0, 0.0, 2.0, 60_000.0);
+        let mut g_gpu = g_cpu.clone();
+
+        let dt = g_cpu.recommended_dt_s(0.3);
+        let cpu = TimeStepper::new(dt); // default: nonlinear + sponge + Manning
+        cpu.step(&mut g_cpu, 60);
+
+        let sponge = super::super::BoundaryMode::DEFAULT_SPONGE_WIDTH as u32;
+        let gpu = match GpuTimeStepper::new(
+            &g_gpu,
+            dt,
+            crate::physics::constants::MANNING_N_COASTAL,
+            sponge,
+            true,
+        ) {
+            Some(g) => g,
+            None => {
+                println!("swe_gpu_matches_cpu_full_physics: no adapter — skipping");
+                return;
+            }
+        };
+        assert!(gpu.step(&mut g_gpu, 60), "GPU step reported failure");
+
+        let mut max_diff = 0.0_f64;
+        for (a, b) in g_cpu.eta_m.iter().zip(g_gpu.eta_m.iter()) {
+            assert!(b.is_finite(), "GPU produced non-finite eta");
+            max_diff = max_diff.max((a - b).abs());
+        }
+        assert!(
+            max_diff < 5.0e-3,
+            "full-physics GPU η disagrees with CPU η by {} m (> 5e-3, IC amplitude 2 m)",
+            max_diff
+        );
+    }
+
     /// GPU kernel with sponge boundary should produce damped rim
     /// cells, matching the CPU sponge behavior.
     #[test]
@@ -634,7 +703,10 @@ mod tests {
         g.fill_uniform_depth(4_000.0);
         g.inject_gaussian(0.0, 0.0, 1.0, 60_000.0);
 
-        let dt = g.recommended_dt_s(0.4);
+        // CFL 0.3, matching the CPU sponge test: at 0.4 the explicit
+        // A-grid scheme is marginally unstable over 200 steps and the
+        // f32 GPU field goes non-finite before the f64 CPU one would.
+        let dt = g.recommended_dt_s(0.3);
         let gpu = match GpuTimeStepper::new(&g, dt, 0.0, 5, false) {
             Some(g) => g,
             None => {

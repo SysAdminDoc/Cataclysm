@@ -1248,6 +1248,50 @@ pub fn gpu_probe() -> String {
     }
 }
 
+/// Support-ready diagnostics for the LogViewer "Copy diagnostics" button.
+/// Deliberately PII-free: no paths, no tokens, no settings values.
+#[derive(Debug, Serialize)]
+pub struct DiagnosticsBundle {
+    pub app_version: String,
+    pub os: String,
+    pub arch: String,
+    /// "available" / "no-adapter" / "feature-off" — same vocabulary as
+    /// `gpu_probe`.
+    pub gpu_status: String,
+    /// Adapter name + backend when the gpu feature found one.
+    pub gpu_adapter: Option<String>,
+    pub solver: String,
+}
+
+#[tauri::command]
+pub fn diagnostics_bundle() -> DiagnosticsBundle {
+    #[cfg(feature = "gpu")]
+    let (gpu_status, gpu_adapter) = {
+        use crate::physics::solver::gpu::{GpuAvailability, adapter_summary, probe_adapter};
+        match probe_adapter() {
+            GpuAvailability::Available => ("available".to_string(), adapter_summary()),
+            GpuAvailability::NoAdapter | GpuAvailability::AdapterFailed(_) => {
+                ("no-adapter".to_string(), None)
+            }
+        }
+    };
+    #[cfg(not(feature = "gpu"))]
+    let (gpu_status, gpu_adapter) = ("feature-off".to_string(), None);
+
+    DiagnosticsBundle {
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
+        os: std::env::consts::OS.to_string(),
+        arch: std::env::consts::ARCH.to_string(),
+        solver: if gpu_status == "available" {
+            "GPU (wgpu) with CPU fallback".to_string()
+        } else {
+            "CPU (rayon)".to_string()
+        },
+        gpu_status,
+        gpu_adapter,
+    }
+}
+
 #[tauri::command]
 pub fn cancel_simulation() {
     if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {

@@ -76,27 +76,18 @@ proptest! {
         prop_assert!(amp <= 0.5 * depth + 1e-9, "amplitude {amp} exceeds depth saturation for depth {depth}");
     }
 
-    /// Okada surface uplift is finite everywhere and bounded by 3×slip in
-    /// the thrust regime (rake 70–110°) that every shipped preset
-    /// (rake 85–110°) and the Tōhoku band validation exercise.
-    ///
-    /// Any strike-slip component is EXCLUDED (rake pinned to 90°): proptest
-    /// surveying (2026-07-09) showed the strike-slip vertical term is
-    /// broken — |uz| grows with fault length without bound (0.74 m from
-    /// 0.1 m slip on a 302 km rake-0 fault; ~9× amplification of the
-    /// strike-slip component even at rake 70°/41 km depth). A dislocation's
-    /// surface displacement is bounded by ~slip regardless of size, so this
-    /// is non-physical. Code review against Okada 1985 flags the eqn.-26
-    /// strike-slip vertical term (atan where q·sinδ/(R+η) belongs) and the
-    /// I-term coefficient (ALPHA = 2/3 vs the 1985 μ/(λ+μ) = 1/2); the
-    /// roadmap tracks the reference-anchored fix. At rake = 90° the term is
-    /// inert (u_ss = 0), so this test cleanly guards the dip-slip path
-    /// against the v0.2.x-class ~10× over-prediction failure plus NaN/Inf.
+    /// Okada surface uplift is finite everywhere and bounded by 2× the
+    /// slip magnitude across the full rake domain. The kernel was fixed
+    /// against Okada 1985 Table 2 on 2026-07-09 (the previous strike-slip
+    /// vertical term grew without bound with fault length); near-edge
+    /// values for shallow faults can legitimately exceed 1×slip, so 2×
+    /// is the guard band above the physical envelope.
     #[test]
     fn okada_uplift_bounded_by_slip(
         slip in 0.1_f64..60.0,
         depth_km in 1.0_f64..60.0,
         dip in 5.0_f64..90.0,
+        rake in 0.0_f64..180.0,
         strike in 0.0_f64..360.0,
         length_km in 10.0_f64..500.0,
         aspect in 0.2_f64..1.0,
@@ -109,14 +100,14 @@ proptest! {
             width_m: length_km * 1000.0 * aspect,
             strike_deg: strike,
             dip_deg: dip,
-            rake_deg: 90.0,
+            rake_deg: rake,
             slip_m: slip,
         };
         let field = fault.vertical_displacement_field(24, 24, length_km * 1000.0 / 8.0);
         for &uz in &field.uz_m {
             prop_assert!(uz.is_finite());
-            prop_assert!(uz.abs() <= slip * 3.0 + 1e-9,
-                "|uz| = {} exceeds 3×slip in the thrust regime", uz.abs());
+            prop_assert!(uz.abs() <= slip * 2.0 + 1e-9,
+                "|uz| = {} exceeds 2×slip", uz.abs());
         }
         let peak = fault.peak_uplift_m();
         prop_assert!(peak.is_finite());

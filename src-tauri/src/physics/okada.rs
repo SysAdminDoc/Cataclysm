@@ -58,10 +58,6 @@ pub struct OkadaDisplacementField {
     pub uz_m: Vec<f64>,
 }
 
-/// Poisson's ratio. Used by Okada through the lame-parameter ratio
-/// `α = (λ + μ) / (λ + 2μ)`. For ν = 0.25 (standard crustal value) α = 2/3.
-const ALPHA: f64 = 2.0 / 3.0;
-
 impl OkadaFault {
     /// Compute the surface vertical-displacement field over an `nx × ny`
     /// grid of square cells with spacing `dx_m`, centred on the fault.
@@ -139,12 +135,30 @@ impl OkadaFault {
     }
 }
 
+/// Poisson's ratio for the half-space. Okada 1985's I-terms carry the
+/// elastic factor μ/(λ+μ), which for a Poisson solid equals 1 − 2ν; the
+/// reference implementation (Beauducel's okada85.m) bakes it in exactly
+/// that way with ν = 0.25 → factor 0.5. (Distinct from DC3D's
+/// α = (λ+μ)/(λ+2μ) = 2/3 — using that here inflates every I-term by
+/// 4/3, which was the pre-2026-07-09 bug.)
+const NU: f64 = 0.25;
+
+#[inline]
+fn elastic_factor() -> f64 {
+    1.0 - 2.0 * NU
+}
+
 /// Vertical surface displacement at (x, y, z=0) from a rectangular fault of
-/// length L (along x), width W (down dip), top-edge depth d, dip angle δ.
-/// Slip is decomposed into strike-slip U_ss, dip-slip U_ds, tensile U_ts.
-/// Implements the Chinnery-notation surface integral
-/// `f(x,y) |_{ξ=−L/2..L/2, η=−W..0}` evaluated via finite differences
-/// over the four fault corners.
+/// length L (along x, centred), width W (down dip), top-edge depth d, dip
+/// angle δ. Slip is decomposed into strike-slip U_ss, dip-slip U_ds,
+/// tensile U_ts.
+///
+/// Follows Okada 1985 eqns. (24)–(30) exactly as implemented by the
+/// reference okada85.m (Beauducel, IPGP/deformation-lib): Chinnery corners
+/// f(x', p) − f(x', p−W) − f(x'−L, p) + f(x'−L, p−W) with
+/// p = y·cosδ + d_bottom·sinδ and q = y·sinδ − d_bottom·cosδ, where
+/// d_bottom = d_top + W·sinδ is the depth of the fault's DOWN-DIP edge —
+/// the paper's `d`. Validated against Okada 1985 Table 2 (see tests).
 #[allow(clippy::too_many_arguments)]
 fn okada_uz_chinnery(
     x: f64,
@@ -157,102 +171,99 @@ fn okada_uz_chinnery(
     u_ds: f64,
     u_ts: f64,
 ) -> f64 {
-    // Chinnery: f(ξ, η) |_{a..b, c..d} = f(b, d) − f(b, c) − f(a, d) + f(a, c).
-    // For a fault of length L (centred along strike) and width W (top edge at
-    // depth d, down-dip to depth d + W sin δ), the corners are
-    // (ξ = ±L/2, η = 0 .. W).
-    let xi_a = x + l * 0.5;
-    let xi_b = x - l * 0.5;
-    let eta_a = y * dip.cos() + d * dip.sin();
-    let eta_b = eta_a - w;
-
-    let f = |xi: f64, eta: f64| -> f64 {
-        okada_uz_terms(xi, eta, x, y, d, dip, u_ss, u_ds, u_ts)
-    };
-
-    f(xi_a, eta_a) - f(xi_a, eta_b) - f(xi_b, eta_a) + f(xi_b, eta_b)
-}
-
-/// Per-corner term for the vertical-displacement Chinnery sum. Combines
-/// Okada 1985 eqns. (26)–(28) (strike-slip + dip-slip + tensile vertical
-/// components) into a single sum, **including** the half-space I-term
-/// correction (I3, I4, I5) from Okada 1985 Appendix A. The earlier
-/// v0.2.x leading-order form omitted these, which is why Tōhoku peak
-/// vertical magnitudes over-predicted by ~10×.
-///
-/// Reference: Okada 1985, *BSSA* 75:1135, eqns. (26)–(28) for u_z and
-/// eqn. (28) for I3/I4/I5 (the half-space free-surface correction).
-#[allow(clippy::too_many_arguments)]
-fn okada_uz_terms(
-    xi: f64,
-    eta: f64,
-    _x: f64,
-    y: f64,
-    depth: f64,
-    dip: f64,
-    u_ss: f64,
-    u_ds: f64,
-    u_ts: f64,
-) -> f64 {
     let sin_d = dip.sin();
     let cos_d = dip.cos();
+    // Okada's d is the bottom-edge depth; this API takes the top edge.
+    let d_bottom = d + w * sin_d;
+    let p = y * cos_d + d_bottom * sin_d;
+    let q = y * sin_d - d_bottom * cos_d;
+    // Centre the fault along strike: ξ ∈ [−L/2, L/2] ≡ f(x+L/2) − f(x−L/2).
+    let x_a = x + l * 0.5;
+    let x_b = x - l * 0.5;
 
-    // Okada's auxiliary substitutions.
-    //   p̃ =  η cos δ + q sin δ   (we don't need p̃ for u_z but document the
-    //                              full set for future shear-stress work)
-    //   q  =  y sin δ − depth cos δ
-    //   d̃ =  η sin δ − q cos δ   (down-dip depth coordinate)
-    //   ỹ =  η cos δ + q sin δ
-    //   X  =  √(ξ² + q²)
-    //   R  =  √(ξ² + η² + q²)
-    let q = y * sin_d - depth * cos_d;
-    let d_tilde = eta * sin_d - q * cos_d;
-    let y_tilde = eta * cos_d + q * sin_d;
-    let r = (xi * xi + eta * eta + q * q).sqrt().max(1e-9);
-    let x_term = (xi * xi + q * q).sqrt().max(1e-9);
-    let r_eta = (r + eta).max(1e-9);
-    let r_xi = (r + xi).max(1e-9);
-    let r_d = (r + d_tilde).max(1e-9);
-
-    // I-terms. Okada 1985 eqn. (28). Branch on cos δ to avoid the
-    // (cos δ)⁻¹ singularity for vertical faults. The cos δ → 0 limits
-    // are documented in Okada's Appendix A.
-    let (i4, i5) = if cos_d.abs() < 1.0e-6 {
-        // Vertical-fault limit: cos δ → 0.
-        let i4 = -ALPHA * q / r_d;
-        let i5 = -ALPHA * xi * sin_d / r_d;
-        (i4, i5)
-    } else {
-        let i4 = (ALPHA / cos_d) * (r_d.ln() - sin_d * r_eta.ln());
-        // I5 uses the canonical atan2 of (η(X + q cos δ) + X(R+X) sin δ)
-        // / (ξ (R+X) cos δ). Guard the denominators against ξ = 0 by
-        // letting atan2 pick the correct quadrant.
-        let i5_num = eta * (x_term + q * cos_d) + x_term * (r + x_term) * sin_d;
-        let i5_den = xi * (r + x_term) * cos_d;
-        let i5 = (2.0 * ALPHA / cos_d) * i5_num.atan2(i5_den);
-        (i4, i5)
+    let chinnery = |f: &dyn Fn(f64, f64, f64, f64) -> f64| -> f64 {
+        f(x_a, p, q, dip) - f(x_a, p - w, q, dip) - f(x_b, p, q, dip) + f(x_b, p - w, q, dip)
     };
 
-    // Strike-slip vertical (Okada eqn. 26):
-    //   u_z = -(U_ss / 2π) [ d̃ q / (R(R+η)) + arctan(ξη/(qR)) - I4 sin δ ]
-    // The arctan term uses (xi * eta).atan2(q * r) which is the canonical
-    // four-quadrant arctan and matches the formula sign.
-    let f_ss = -u_ss / (2.0 * std::f64::consts::PI)
-        * (d_tilde * q / (r * r_eta) + (xi * eta).atan2(q * r) - i4 * sin_d);
+    let two_pi = 2.0 * std::f64::consts::PI;
+    -u_ss / two_pi * chinnery(&uz_ss)
+        - u_ds / two_pi * chinnery(&uz_ds)
+        + u_ts / two_pi * chinnery(&uz_tf)
+}
 
-    // Dip-slip vertical (Okada eqn. 27):
-    //   u_z = -(U_ds / 2π) [ d̃ q / (R(R+ξ)) - sin δ · arctan(ξη/(qR)) + I5 sin δ cos δ ]
-    let f_ds = -u_ds / (2.0 * std::f64::consts::PI)
-        * (d_tilde * q / (r * r_xi) - sin_d * (xi * eta).atan2(q * r) + i5 * sin_d * cos_d);
+/// `tan⁻¹(ξη / qR)`, defined as zero when q = 0 (Okada 1985 p. 1144
+/// convention). Plain single-branch atan — NOT atan2, whose extra
+/// half-turns break the Chinnery telescoping.
+#[inline]
+fn atan_term(xi: f64, eta: f64, q: f64, r: f64) -> f64 {
+    if q == 0.0 {
+        0.0
+    } else {
+        (xi * eta / (q * r)).atan()
+    }
+}
 
-    // Tensile vertical (Okada eqn. 28):
-    //   u_z =  (U_ts / 2π) [ ỹ q / (R(R+ξ)) + cos δ ( ξ q / (R(R+η)) - arctan(ξη/(qR)) ) - I5 sin²δ ]
-    let f_ts = u_ts / (2.0 * std::f64::consts::PI)
-        * (y_tilde * q / (r * r_xi)
-            + cos_d * (xi * q / (r * r_eta) - (xi * eta).atan2(q * r))
-            - i5 * sin_d * sin_d);
+/// Okada 1985 eqn. (28)/(29) I4, with the cos δ → 0 vertical-fault limit.
+fn i4(db: f64, eta: f64, q: f64, dip: f64, r: f64) -> f64 {
+    let cos_d = dip.cos();
+    if cos_d.abs() > f64::EPSILON {
+        elastic_factor() / cos_d * ((r + db).ln() - dip.sin() * (r + eta).ln())
+    } else {
+        -elastic_factor() * q / (r + db)
+    }
+}
 
-    f_ss + f_ds + f_ts
+/// Okada 1985 eqn. (28)/(29) I5, with the cos δ → 0 limit and the ξ = 0
+/// special case (the atan argument degenerates there; okada85.m sets 0).
+fn i5(xi: f64, eta: f64, q: f64, dip: f64, r: f64, db: f64) -> f64 {
+    let sin_d = dip.sin();
+    let cos_d = dip.cos();
+    if cos_d.abs() > f64::EPSILON {
+        if xi == 0.0 {
+            return 0.0;
+        }
+        let x_term = (xi * xi + q * q).sqrt();
+        elastic_factor() * 2.0 / cos_d
+            * ((eta * (x_term + q * cos_d) + x_term * (r + x_term) * sin_d)
+                / (xi * (r + x_term) * cos_d))
+                .atan()
+    } else {
+        -elastic_factor() * xi * sin_d / (r + db)
+    }
+}
+
+/// Strike-slip u_z corner term — Okada 1985 eqn. (25):
+///   d̃·q/(R(R+η)) + q·sinδ/(R+η) + I4·sinδ
+fn uz_ss(xi: f64, eta: f64, q: f64, dip: f64) -> f64 {
+    let sin_d = dip.sin();
+    let cos_d = dip.cos();
+    let r = (xi * xi + eta * eta + q * q).sqrt();
+    let db = eta * sin_d - q * cos_d;
+    db * q / (r * (r + eta)) + q * sin_d / (r + eta) + i4(db, eta, q, dip, r) * sin_d
+}
+
+/// Dip-slip u_z corner term — Okada 1985 eqn. (26):
+///   d̃·q/(R(R+ξ)) + sinδ·tan⁻¹(ξη/qR) − I5·sinδ·cosδ
+fn uz_ds(xi: f64, eta: f64, q: f64, dip: f64) -> f64 {
+    let sin_d = dip.sin();
+    let cos_d = dip.cos();
+    let r = (xi * xi + eta * eta + q * q).sqrt();
+    let db = eta * sin_d - q * cos_d;
+    db * q / (r * (r + xi)) + sin_d * atan_term(xi, eta, q, r)
+        - i5(xi, eta, q, dip, r, db) * sin_d * cos_d
+}
+
+/// Tensile u_z corner term — Okada 1985 eqn. (27):
+///   ỹ·q/(R(R+ξ)) + cosδ·(ξ·q/(R(R+η)) − tan⁻¹(ξη/qR)) − I5·sin²δ
+fn uz_tf(xi: f64, eta: f64, q: f64, dip: f64) -> f64 {
+    let sin_d = dip.sin();
+    let cos_d = dip.cos();
+    let r = (xi * xi + eta * eta + q * q).sqrt();
+    let db = eta * sin_d - q * cos_d;
+    let yb = eta * cos_d + q * sin_d;
+    yb * q / (r * (r + xi)) + cos_d * xi * q / (r * (r + eta))
+        - cos_d * atan_term(xi, eta, q, r)
+        - i5(xi, eta, q, dip, r, db) * sin_d * sin_d
 }
 
 /// Adapter: turn an [`super::earthquake::EarthquakeSource`] into an
@@ -359,5 +370,89 @@ mod tests {
             peak,
             f.slip_m
         );
+    }
+
+    /// Okada 1985 Table 2 case 2 (p. 1149): x=2, y=3, d=4, δ=70°, L=3,
+    /// W=2, U=1, ν=0.25. The paper's frame puts the origin at the fault's
+    /// bottom-edge corner with ξ ∈ [0, L] and d = BOTTOM-edge depth; this
+    /// implementation is centred with a TOP-edge depth, so the mapping is
+    ///   x_centred = x − L/2,  y = y,  d_top = d − W·sinδ.
+    /// Expected u_z (4 significant figures, per the okada85.m checklist):
+    ///   strike-slip −2.747e-3, dip-slip −3.564e-2, tensile +3.214e-3.
+    #[test]
+    fn table2_case2_uz_matches_paper() {
+        let dip = 70.0_f64.to_radians();
+        let x_c = 2.0 - 1.5; // x − L/2
+        let y = 3.0;
+        let d_top = 4.0 - 2.0 * dip.sin();
+        let (l, w) = (3.0, 2.0);
+
+        let uz_strike = okada_uz_chinnery(x_c, y, d_top, l, w, dip, 1.0, 0.0, 0.0);
+        let uz_dip = okada_uz_chinnery(x_c, y, d_top, l, w, dip, 0.0, 1.0, 0.0);
+        let uz_tens = okada_uz_chinnery(x_c, y, d_top, l, w, dip, 0.0, 0.0, 1.0);
+
+        assert!(
+            (uz_strike - (-2.747e-3)).abs() < 1.0e-6,
+            "strike-slip uz {uz_strike} != -2.747e-3"
+        );
+        assert!(
+            (uz_dip - (-3.564e-2)).abs() < 1.0e-5,
+            "dip-slip uz {uz_dip} != -3.564e-2"
+        );
+        assert!(
+            (uz_tens - 3.214e-3).abs() < 1.0e-6,
+            "tensile uz {uz_tens} != +3.214e-3"
+        );
+    }
+
+    /// Okada 1985 Table 2 case 3: x=0, y=0, d=4, δ=90°, L=3, W=2 —
+    /// exercises the vertical-fault (cos δ → 0) I-term branches.
+    /// Expected u_z: strike-slip 0, dip-slip 0, tensile −1.606e-2.
+    #[test]
+    fn table2_case3_vertical_fault_uz_matches_paper() {
+        let dip = 90.0_f64.to_radians();
+        let x_c = 0.0 - 1.5;
+        let y = 0.0;
+        let d_top = 4.0 - 2.0 * dip.sin();
+        let (l, w) = (3.0, 2.0);
+
+        let uz_strike = okada_uz_chinnery(x_c, y, d_top, l, w, dip, 1.0, 0.0, 0.0);
+        let uz_dip = okada_uz_chinnery(x_c, y, d_top, l, w, dip, 0.0, 1.0, 0.0);
+        let uz_tens = okada_uz_chinnery(x_c, y, d_top, l, w, dip, 0.0, 0.0, 1.0);
+
+        assert!(uz_strike.abs() < 1.0e-6, "case-3 strike uz {uz_strike} != 0");
+        assert!(uz_dip.abs() < 1.0e-6, "case-3 dip uz {uz_dip} != 0");
+        assert!(
+            (uz_tens - (-1.606e-2)).abs() < 1.0e-5,
+            "case-3 tensile uz {uz_tens} != -1.606e-2"
+        );
+    }
+
+    /// The 2026-07-09 regression that exposed the old broken strike-slip
+    /// term: a 302 km strike-slip fault at 1 km depth produced |uz| =
+    /// 7.4×slip. With the corrected eqn.-25 term the field must stay
+    /// bounded by the slip itself.
+    #[test]
+    fn strike_slip_field_stays_bounded_on_large_shallow_fault() {
+        let f = OkadaFault {
+            center_lat: 0.0,
+            center_lon: 0.0,
+            depth_m: 1_000.0,
+            length_m: 302_000.0,
+            width_m: 250_000.0,
+            strike_deg: 154.0,
+            dip_deg: 80.0,
+            rake_deg: 0.0,
+            slip_m: 0.1,
+        };
+        let field = f.vertical_displacement_field(24, 24, 302_000.0 / 8.0);
+        for &uz in &field.uz_m {
+            assert!(uz.is_finite());
+            assert!(
+                uz.abs() <= f.slip_m * 1.5,
+                "|uz| = {} exceeds 1.5×slip after the eqn.-25 fix",
+                uz.abs()
+            );
+        }
     }
 }

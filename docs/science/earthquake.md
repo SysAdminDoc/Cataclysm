@@ -24,6 +24,28 @@ faults) are handled explicitly with the alternate closed form rather
 than letting the divisor approach zero (a frequent source of bugs in
 3rd-party Okada ports).
 
+### 2026-07-09 kernel correction
+
+Property-based testing exposed non-physical growth of the strike-slip
+vertical displacement with fault length. Three defects were fixed
+against the reference implementation (Beauducel's `okada85.m`,
+IPGP/deformation-lib) and Okada 1985 Table 2:
+
+1. The eqn.-25 strike-slip u_z used `tan⁻¹(ξη/qR)` where
+   `q·sinδ/(R+η)` belongs (the arctangent term appears in the
+   strike-slip u_x and the dip-slip u_z, not here).
+2. The I4/I5 elastic factor used DC3D's `α = (λ+μ)/(λ+2μ) = 2/3`;
+   Okada 1985's I-terms take `μ/(λ+μ) = 1 − 2ν = 0.5` for ν = 0.25.
+3. The Chinnery substitution used the fault-top depth where Okada's
+   `d` is the depth of the DOWN-DIP (bottom) edge.
+
+The kernel now reproduces Okada 1985 Table 2 cases 2 and 3
+(strike-slip, dip-slip, tensile) to 4 significant figures — see
+`table2_case2_uz_matches_paper` / `table2_case3_vertical_fault_uz_matches_paper`
+in `okada.rs`. Note the arctangent is the single-branch `atan`, not
+`atan2`: the extra half-turns of `atan2` break the four-corner
+Chinnery telescoping.
+
 ## Validation
 
 - **Tōhoku 2011 M9.0** (`tohoku_2011`): Okada returns 6 m vertical

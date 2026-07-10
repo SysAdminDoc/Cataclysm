@@ -32,6 +32,11 @@ Analytical far-field amplitude at a given range from the source.
 - **Input:** `initial_amplitude_m`, `cavity_radius_m`, `range_m`, `mean_depth_m`, `decay_alpha`
 - **Output:** `Result<{ amplitude_m, travel_time_s }, String>`
 
+### `diagnostics_bundle`
+PII-free support facts for the LogViewer "Copy diagnostics" button.
+- **Input:** none
+- **Output:** `{ app_version, os, arch, gpu_status, gpu_adapter?, solver }`
+
 ### `attenuation_curve`
 Sampled far-field decay curve for the attenuation chart. Same amplitude
 branch as `far_field_amplitude`; sampling starts at `max(cavity_radius, 1 km)`.

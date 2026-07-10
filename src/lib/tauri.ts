@@ -170,6 +170,16 @@ export const api = {
   gpuProbe(): Promise<"available" | "no-adapter" | "feature-off"> {
     return invoke<"available" | "no-adapter" | "feature-off">("gpu_probe");
   },
+  diagnosticsBundle(): Promise<{
+    app_version: string;
+    os: string;
+    arch: string;
+    gpu_status: string;
+    gpu_adapter: string | null;
+    solver: string;
+  }> {
+    return invoke("diagnostics_bundle");
+  },
   simulateGridStreaming(
     req: {
       source: GeoPoint;

@@ -10,7 +10,9 @@ import {
   type LogEntry,
   type SolverDiagnosticPayload,
 } from "../lib/diagnosticsLog";
-import { isTauri } from "../lib/tauri";
+import { api, isTauri } from "../lib/tauri";
+import { APP_VERSION } from "../lib/model-provenance";
+import { SETTINGS_SCHEMA_VERSION } from "../lib/settings";
 import { UiIcon } from "./UiIcon";
 
 type CopyStatus = "idle" | "copied" | "error";
@@ -99,6 +101,41 @@ export function LogViewer({ open, onClose }: Props) {
     );
   }, [entries, setTransientCopyStatus]);
 
+  // Support bundle: backend facts (versions, GPU adapter, solver) from the
+  // diagnostics_bundle IPC + the recent log tail. PII-free by construction —
+  // no paths, no tokens, no settings values.
+  const copyBundle = useCallback(async () => {
+    const writeText = navigator.clipboard?.writeText;
+    if (!writeText) {
+      setTransientCopyStatus("error");
+      return;
+    }
+    let backend: Record<string, unknown> = { mode: "browser preview" };
+    if (isTauri()) {
+      try {
+        backend = await api.diagnosticsBundle();
+      } catch (err) {
+        backend = { mode: "desktop", diagnostics_bundle_error: String(err) };
+      }
+    }
+    const bundle = {
+      captured_at: new Date().toISOString(),
+      frontend_version: APP_VERSION,
+      settings_schema_version: SETTINGS_SCHEMA_VERSION,
+      user_agent: navigator.userAgent,
+      backend,
+      recent_log: entries.slice(-50).map((e) => ({
+        t: new Date(e.timestamp).toISOString(),
+        level: e.level,
+        message: e.message,
+      })),
+    };
+    writeText.call(navigator.clipboard, JSON.stringify(bundle, null, 2)).then(
+      () => setTransientCopyStatus("copied"),
+      () => setTransientCopyStatus("error"),
+    );
+  }, [entries, setTransientCopyStatus]);
+
   const clearLog = useCallback(() => {
     clearDiagnosticsLog();
   }, []);
@@ -146,6 +183,15 @@ export function LogViewer({ open, onClose }: Props) {
           >
             <UiIcon name="copy" size={14} />
             Copy log
+          </button>
+          <button
+            onClick={copyBundle}
+            className="log-viewer__btn"
+            type="button"
+            title="Copy a JSON support bundle: app/OS/GPU facts plus the last 50 log entries. Contains no paths, tokens, or settings values."
+          >
+            <UiIcon name="copy" size={14} />
+            Copy diagnostics
           </button>
           {copyStatus !== "idle" && (
             <span

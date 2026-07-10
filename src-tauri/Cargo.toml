@@ -52,7 +52,16 @@ gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
 version = "29.0"
 optional = true
 default-features = false
-features = ["wgsl"]
+# "wgsl" alone compiles but leaves NO platform backend enabled, so
+# wgpu::Instance::default() panics at the first adapter probe ("No wgpu
+# backend feature that is implemented for the target platform was
+# enabled") — the gpu feature had only ever been cargo-checked, never
+# executed, before 2026-07-09. Backend features are platform-gated
+# internally by wgpu. "dx12" is deliberately absent: wgpu-hal 29.0.x's
+# dx12 suballocator does not compile against gpu-allocator 0.28 +
+# windows-core 0.61/0.62 (upstream incompatibility, checked 2026-07-09);
+# Vulkan covers Windows GPUs via standard drivers.
+features = ["wgsl", "metal", "vulkan"]
 
 [dependencies.pollster]
 version = "0.4"
