@@ -53,9 +53,8 @@ button:disabled:hover,.is-disabled:hover{color:inherit;border-color:var(--contro
 /* Header */
 .panel-header{padding:16px 18px 14px;border-bottom:1px solid var(--glass-border);flex-shrink:0;background:linear-gradient(180deg,rgba(49,50,68,.28),rgba(49,50,68,0))}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.brand-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--peach));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(243,139,168,0.25);position:relative;overflow:hidden}
-.brand-icon::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.15))}
-.brand-icon svg{width:18px;height:18px;fill:var(--crust)}
+.brand-icon{width:36px;height:36px;border-radius:8px;background:var(--crust);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px color-mix(in srgb,var(--red) 24%,transparent);position:relative;overflow:hidden}
+.brand-icon img{width:100%;height:100%;object-fit:cover}
 .brand-text{font-size:20px;font-weight:760;letter-spacing:0}
 .brand-text span{color:var(--red)}
 .brand-ver{font-size:10px;color:var(--overlay1);margin-left:auto;font-weight:650;padding:3px 7px;background:rgba(49,50,68,.72);border:1px solid var(--glass-border);border-radius:var(--radius-sm)}
@@ -649,8 +648,8 @@ body.has-results #quick-weapons{bottom:104px}
 .welcome-card{max-width:430px;width:90%;background:linear-gradient(180deg,rgba(30,30,46,.98),rgba(24,24,37,.98));border:1px solid var(--glass-border);border-radius:var(--radius);padding:26px 24px 20px;box-shadow:0 28px 74px rgba(0,0,0,0.62);animation:welcomeSlide .34s ease-out}
 @keyframes welcomeSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .welcome-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-.welcome-icon{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--peach));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(243,139,168,0.28)}
-.welcome-icon svg{width:22px;height:22px;color:var(--crust)}
+.welcome-icon{width:44px;height:44px;border-radius:10px;background:var(--crust);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px color-mix(in srgb,var(--red) 24%,transparent);overflow:hidden}
+.welcome-icon img{width:100%;height:100%;object-fit:cover}
 .welcome-title{font-size:24px;font-weight:820;letter-spacing:0}
 .welcome-title span{color:var(--red)}
 .welcome-body{margin-bottom:18px}
@@ -848,7 +847,6 @@ html,body{font-size:15px}
 .panel-header{padding:18px 20px 16px;background:linear-gradient(180deg,color-mix(in srgb,var(--surface0) 52%,transparent),transparent)}
 .brand{gap:12px;margin-bottom:16px}
 .brand-icon{width:44px;height:44px;border-radius:10px;box-shadow:0 8px 24px color-mix(in srgb,var(--red) 30%,transparent)}
-.brand-icon svg{width:22px;height:22px}
 .brand-copy{min-width:0}.brand-text{font-size:23px;line-height:1.05}.brand-subtitle{margin-top:4px;color:var(--overlay0);font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.08em}
 .brand-ver{font-size:10px;padding:5px 8px;background:var(--surface0)}
 #search{min-height:46px;padding:11px 14px 11px 42px;border-radius:8px;font-size:13px;background:var(--mantle)}
@@ -919,6 +917,7 @@ html,body{font-size:15px}
 .preset-chip:hover,.scenario-chip:hover,.hist-card:hover,.enc-weapon:hover,.target-pill:hover,.qw-chip:hover{background:var(--surface0);border-color:var(--surface2);color:var(--text);transform:none}
 .qw-chip.qw-active,.qw-chip[aria-pressed="true"]{border-color:var(--blue);background:color-mix(in srgb,var(--blue) 10%,var(--mantle));color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 25%,transparent)}
 .legend-label,.stat-value,.cum-val,.dt-yield{font-variant-numeric:tabular-nums}.legend-label{font-size:12px}.legend-desc,.legend-pop,.legend-area,.stat-label,.stat-note,.si-meta{font-size:11px;line-height:1.4}
+.gps-status{font-size:14px;line-height:1.35;letter-spacing:.02em}.gps-limit{margin-top:8px;color:var(--overlay0);font-size:10px;line-height:1.4}
 .legend-item{min-height:58px;padding-block:8px}.legend-eye{min-width:34px;min-height:34px;border-radius:6px}
 .empty-state{border-radius:var(--radius-sm);border-color:var(--control-border);background:color-mix(in srgb,var(--surface0) 60%,transparent);color:var(--subtext0)}
 .file-label{min-height:var(--control-h-compact);display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm)}

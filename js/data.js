@@ -1,7 +1,7 @@
 // NukeMap - Data Module (cities, weapons, effects definitions)
 window.NM = window.NM || {};
 
-NM.APP_VERSION = '3.7.0';
+NM.APP_VERSION = '3.8.0';
 NM.CSV_IMPORT_LIMITS = {
   maxBytes: 256 * 1024,
   maxRows: 500,

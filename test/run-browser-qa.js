@@ -184,8 +184,11 @@ async function runPwaChecks(browser, baseUrl) {
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const consoleMessages = [];
+  let expectedOffline = false;
   page.on('console', msg => {
-    if (['error', 'warning'].includes(msg.type())) consoleMessages.push(`${msg.type()}: ${msg.text()}`);
+    if (!['error', 'warning'].includes(msg.type())) return;
+    if (expectedOffline && /Failed to load resource.*503/i.test(msg.text())) return;
+    consoleMessages.push(`${msg.type()}: ${msg.text()}`);
   });
   page.on('pageerror', err => consoleMessages.push(`pageerror: ${err.message}`));
 
@@ -203,6 +206,7 @@ async function runPwaChecks(browser, baseUrl) {
     return navigator.serviceWorker.getRegistrations().then(regs => regs.length > 0);
   });
   await page.reload({ waitUntil: 'networkidle' });
+  expectedOffline = true;
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
   const offlineTitle = await page.title();
@@ -239,7 +243,7 @@ async function runPwaChecks(browser, baseUrl) {
     const pwa = await runPwaChecks(browser, baseUrl);
 
     for (const result of [desktop, tablet, mobile, landscape]) {
-      if (result.title !== 'NukeMap v3.7.0') failures.push(`${result.name}: page title mismatch`);
+      if (result.title !== 'NukeMap v3.8.0') failures.push(`${result.name}: page title mismatch`);
       if (!result.bodyHasApp) failures.push(`${result.name}: app content missing`);
       if (result.overlayVisible) failures.push(`${result.name}: framework/error overlay text visible`);
       if (result.horizontalOverflow) failures.push(`${result.name}: horizontal overflow detected`);
@@ -264,12 +268,13 @@ async function runPwaChecks(browser, baseUrl) {
 
     if (!pwa.manifest || pwa.manifest.name !== 'NukeMap') failures.push('pwa: manifest missing or wrong name');
     if (!pwa.manifest?.icons?.length) failures.push('pwa: manifest icons missing');
+    if (pwa.manifest?.background_color !== '#080d14' || pwa.manifest?.theme_color !== '#111925') failures.push('pwa: manifest palette is stale');
     if (!pwa.screenshotForms.includes('wide') || !pwa.screenshotForms.includes('narrow')) failures.push('pwa: manifest screenshots missing wide/narrow forms');
     for (const action of ['detonate', 'guide', 'saved', 'ww3']) {
       if (!pwa.shortcutActions.includes(action)) failures.push(`pwa: shortcut action missing ${action}`);
     }
     if (!pwa.swReady) failures.push('pwa: service worker registration not ready');
-    if (pwa.offlineTitle !== 'NukeMap v3.7.0' || !pwa.offlineBodyHasApp) failures.push('pwa: offline reload did not serve app shell');
+    if (pwa.offlineTitle !== 'NukeMap v3.8.0' || !pwa.offlineBodyHasApp) failures.push('pwa: offline reload did not serve app shell');
     if (pwa.consoleMessages.length) failures.push(`pwa: console messages: ${pwa.consoleMessages.join(' | ')}`);
 
     const results = { baseUrl, screenshots: ARTIFACT_DIR, desktop, tablet, mobile, landscape, interactions, onboarding, pwa, failures };

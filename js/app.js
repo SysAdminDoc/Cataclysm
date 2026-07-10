@@ -1,4 +1,4 @@
-// NukeMap v3.7.0 - Main Application Controller
+// NukeMap v3.8.0 - Main Application Controller
 window.NM = window.NM || {};
 
 (function() {

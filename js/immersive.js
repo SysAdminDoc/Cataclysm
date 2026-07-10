@@ -268,16 +268,16 @@ NM.GPSSafe = {
     this.marker = L.marker([lat, lng], {icon}).addTo(map);
 
     let status, statusColor, advice;
-    if (dist <= e.fireball) { status = 'VAPORIZED'; statusColor = 'var(--red)'; advice = 'You are inside the fireball. Instant death.'; }
-    else if (dist <= e.psi20) { status = 'FATAL'; statusColor = 'var(--red)'; advice = 'Near-certain death. No survivable shelter at this distance.'; }
-    else if (dist <= e.psi5) { status = 'CRITICAL'; statusColor = 'var(--red)'; advice = 'Seek reinforced concrete basement immediately. ~50% fatality rate.'; }
-    else if (dist <= e.psi1) { status = 'DANGER'; statusColor = 'var(--peach)'; advice = 'Get away from windows NOW. Interior room, below window level. Flying glass is lethal.'; }
-    else if (dist <= e.thermal1) { status = 'CAUTION'; statusColor = 'var(--yellow)'; advice = 'Do NOT look toward the flash. Take cover behind solid objects. Flash burns possible.'; }
-    else if (dist <= e.emp) { status = 'EMP ZONE'; statusColor = 'var(--teal)'; advice = 'Electronics may be disrupted. Expect power outages. Monitor emergency broadcasts.'; }
-    else { status = 'SAFE'; statusColor = 'var(--green)'; advice = 'You are outside the immediate blast effects. Monitor for fallout if surface burst.'; }
+    if (dist <= e.fireball) { status = 'Inside modeled fireball'; statusColor = 'var(--red)'; advice = 'This location is within the model\'s fireball radius.'; }
+    else if (dist <= e.psi20) { status = 'Inside 20 psi zone'; statusColor = 'var(--red)'; advice = 'This location is within the modeled severe structural-damage zone.'; }
+    else if (dist <= e.psi5) { status = 'Inside 5 psi zone'; statusColor = 'var(--red)'; advice = 'Move to the strongest available interior or below-ground shelter and follow local emergency guidance.'; }
+    else if (dist <= e.psi1) { status = 'Inside 1 psi zone'; statusColor = 'var(--peach)'; advice = 'Move away from windows and exterior walls. Use an interior room below window level.'; }
+    else if (dist <= e.thermal1) { status = 'Inside thermal-effects zone'; statusColor = 'var(--yellow)'; advice = 'Avoid looking toward the flash and use solid cover. Modeled thermal injury remains possible.'; }
+    else if (dist <= e.emp) { status = 'Inside modeled EMP zone'; statusColor = 'var(--teal)'; advice = 'Power and communications may be disrupted. Monitor official emergency information when available.'; }
+    else { status = 'Outside modeled immediate-effect zones'; statusColor = 'var(--green)'; advice = 'This does not establish safety. Fallout, fires, infrastructure failure, and other hazards may extend beyond these zones.'; }
 
     if (e.fallout && dist <= e.fallout.light.length * 1.5) {
-      advice += ' FALLOUT WARNING: You may be in the fallout path. Shelter in place for 24-48 hours.';
+      advice += ' The simplified fallout model also reaches this distance; follow official shelter guidance.';
     }
 
     document.getElementById('gps-result').innerHTML = `<div class="gps-report">
@@ -285,6 +285,7 @@ NM.GPSSafe = {
       <div class="gps-dist">${NM.fmtDist(dist)} from ground zero</div>
       <div class="gps-advice">${advice}</div>
       <div class="gps-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
+      <div class="gps-limit">Educational estimate only; not real-time emergency guidance.</div>
     </div>`;
   }
 };

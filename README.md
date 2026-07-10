@@ -1,6 +1,6 @@
-# NukeMap v3.7.0
+# NukeMap v3.8.0
 
-![Version](https://img.shields.io/badge/version-v3.7.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-Web%20%2F%20PWA-lightgrey)
+![Version](https://img.shields.io/badge/version-v3.8.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-Web%20%2F%20PWA-lightgrey)
 
 A premium nuclear weapon effects simulator with animated blast waves, SVG mushroom clouds, MIRV strikes, full WW3 simulation engine (427 verified targets, 708 warheads, 7 scenarios), HEMP continent-scale EMP, sound effects, shelter survival analysis, and comprehensive educational tools. Physics based on Glasstone & Dolan's *The Effects of Nuclear Weapons*.
 
@@ -85,7 +85,9 @@ A premium nuclear weapon effects simulator with animated blast waves, SVG mushro
 - **12 Quick Target Pills** — One-click fly to major cities
 
 ### UX & Export
-- **Premium Control Surface** — Refined glass panel, accessible tabs/collapsibles, coherent buttons, disabled states, and responsive floating controls
+- **Premium Analysis Workspace** — Map-first desktop dock with icon navigation, editable model/status bar, contextual ground-zero readout, focused work panes, and a restrained navy/coral visual system
+- **Responsive Expert Workflow** — Dedicated tablet geometry, mobile bottom sheet, short-landscape support, 44px touch actions, visible focus states, and high-contrast verification
+- **Recoverable Analysis Actions** — Undo after clearing, removing, replacing, importing, or deleting saved work; saved analyses and imports expose calm, human-readable state
 - **12 Map Styles** — Dark, Alidade, Satellite, Sat+Labels, Terrain, OSM, Voyager, Light, Toner, Watercolor, Outdoors, Dark Clean
 - **Floating Map Switcher** — Quick-access dropdown on the map
 - **Quick Weapon Bar** — 6 common weapons as floating chips
@@ -136,7 +138,7 @@ The manifest includes desktop/mobile screenshots and shortcuts for Detonate, WW3
 
 ```bash
 npm test             # Node regression suites
-npm run test:browser # Playwright desktop/mobile/PWA/offline smoke; screenshots in test-artifacts/browser-qa/
+npm run test:browser # Playwright desktop/tablet/mobile/landscape/PWA/offline and interaction QA; screenshots in test-artifacts/browser-qa/
 ```
 
 ## Architecture
