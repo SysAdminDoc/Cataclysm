@@ -2,7 +2,7 @@
 
 All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Research-driven feature batch
+## [0.5.0] — 2026-07-09 — Validation, corrected physics, classroom tooling
 
 ### Changed — toolchain and supply chain (2026-07-09)
 - **`rust-version` raised 1.85 → 1.88.** The declared floor was below the real

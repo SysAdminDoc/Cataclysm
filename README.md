@@ -1,6 +1,6 @@
 # TsunamiSimulator
 
-[![Version](https://img.shields.io/badge/version-0.4.4-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -86,6 +86,12 @@ Existing tools each do one piece:
 | **Eltanin** | 2.51 Ma | Asteroid, ~1 km dia | South Pacific | Globally significant | Gersonde et al. 1997 |
 | **Hypothetical Cumbre Vieja** | — | Flank collapse (La Palma) | 500 km³ scenario | Disputed; 5–25 m E coast US | Ward & Day 2001 (controversial) |
 | **"Poseidon" deployment** | — | 100 Mt underwater | — | ~1–5 m at 100 km (realistic) | DNA 1996, Glasstone 1977 |
+| **Kamchatka** | 2025-07-29 | M 8.8 megathrust | — | 0.85 m at DART 21416 (2nd-largest ever recorded) | USGS us6000qw60; NCTR |
+| **Sanriku (Miyako)** | 2026-04-20 | M 7.4 thrust | — | modest; warning in 17 min | USGS us6000sri7; NCTR |
+| **Lisbon** | 1755-11-01 | M ~8.7 thrust | — | trans-Atlantic | Barkan et al. 2009 |
+| **Amorgos** | 1956-07-09 | M 7.7 normal fault | — | 30 m local (landslide-driven) | Okal et al. 2009 |
+| **Anak Krakatau** | 2018-12-22 | Flank collapse, 0.27 km³ | — | ~50 m near volcano | Grilli et al. 2019 |
+| **2024 YR4 what-if** | — | Asteroid, 60 m (impact ruled out) | ~7.7 Mt | myth-busting upper bound | NASA/JWST |
 
 ### UX
 
@@ -97,8 +103,14 @@ Existing tools each do one piece:
   through the live shallow-water solver, with classic or colorblind-safe
   overlay colormaps.
 - **Effect overlays** — wavefront ring, coastal runup bars at 60+ named
-  coastal points, DART buoy historical observations for the three modern
-  presets.
+  coastal points, DART buoy historical observations with per-buoy
+  model-vs-observed RMSE for the four instrumented presets.
+- **Max-field products** — fgmax-style peak-amplitude, time-of-maximum, and
+  energy-directivity overlays for every solver run, plus labelled
+  first-arrival isochrones (NOAA travel-time-map style) exportable as
+  GeoJSON.
+- **Teacher mode** — lockable classroom settings profiles (via settings
+  export/import) and a printable worksheet for each of the 7 guided lessons.
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.
 - **Catppuccin Mocha** dark theme default + **Latte** light theme toggle.
 
@@ -108,7 +120,7 @@ Existing tools each do one piece:
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/TsunamiSimulator/releases):
-an MSI package and an NSIS setup executable. The v0.4.4 Windows installers are
+an MSI package and an NSIS setup executable. The v0.5.0 Windows installers are
 locally built from this repository and are currently unsigned until a Windows
 code-signing certificate is configured, so Windows may show an unknown-publisher
 warning. macOS and Linux remain supported source-build targets; platform
@@ -120,12 +132,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\TsunamiSimulator_0.4.4_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\TsunamiSimulator_0.5.0_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile TsunamiSimulator_0.4.4_x64_en-US.msi SHA256
+certutil -hashfile TsunamiSimulator_0.5.0_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full

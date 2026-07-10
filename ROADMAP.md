@@ -13,6 +13,15 @@ Roadmap_Blocked" had "Needs MSVC linker / Rust compilation" blockers that are
 stale: the VsDevCmd wrapper works and `npm run verify` runs 67 Rust release
 tests locally.
 
+### P1 — solver fidelity (from the 2026-07-09 second research pass)
+
+- [ ] P1 — Preserve source geometry in the SWE initial field
+  Why: `simulate_grid` reduces every source to one circular Gaussian (`grid.inject_gaussian(lat, lon, initial_amplitude_m, source_sigma_m)`) — the Okada dipole uplift/subsidence field, landslide directionality, and cavity ring structure the UI presents are all discarded before propagation, so the solver contradicts the source readouts. RESEARCH.md (2026-07-09 second pass) ranks this the top solver-fidelity gap; see its Architecture Assessment for companion items (per-row spherical metrics, step-cadence maxima, unified attenuation model).
+  Evidence: src-tauri/src/commands.rs (`inject_gaussian` call in both simulate paths); `OkadaFault::vertical_displacement_field` already computes the full uz grid and is unused by the solver.
+  Touches: src-tauri/src/commands.rs (source-aware IC injection), src-tauri/src/physics/solver/mod.rs (`inject_field` from a sampled displacement grid), SwePlayback request plumbing.
+  Acceptance: an earthquake preset run shows the characteristic uplift/subsidence dipole in frame 0 (not a symmetric bump); asteroid/nuclear keep the cavity ring; landslide keeps directionality; CPU/GPU parity holds.
+  Complexity: L
+
 ### P2 — cited presets, products, and architecture
 
 - [ ] P2 — Modularize commands.rs into submodules
@@ -73,13 +82,6 @@ tests locally.
   Touches: src/lib/ (Overpass API client, online-only, cached), Globe.tsx (facility pins within inundation discs), CSP allowlist, disclaimer copy (first-order estimate framing).
   Acceptance: for a completed run, an opt-in layer lists/pins OSM-tagged schools+hospitals inside inundation extents with an explicit limitations note; degrades gracefully offline.
   Complexity: L
-
-- [ ] P3 — SWOT satellite swath overlay for the Kamchatka preset
-  Why: June 2026 SWOT coverage is the first detailed satellite imaging of a tsunami in motion — an observed-vs-simulated visual no competitor has; depends on the Kamchatka preset and a PO.DAAC licensing check (see RESEARCH.md Open Questions).
-  Evidence: https://www.sciencedaily.com/releases/2026/06/260623011002.htm; HN https://news.ycombinator.com/item?id=46133555.
-  Touches: src/data/ (processed swath GeoJSON), Globe.tsx (toggleable overlay on the Kamchatka preset), docs/science/.
-  Acceptance: Kamchatka preset offers a "SWOT observed" overlay with timestamp and attribution; simulated wavefront at the same epoch renders alongside.
-  Complexity: M
 
 - [ ] P3 — i18n foundation + Spanish/Japanese/Bahasa Indonesia
   Why: IOC/ITIC distributes tsunami education in exactly these languages and PhET's translated+offline model proves distribution value; do the string-catalog extraction first, translations second. Cross-ref Roadmap_Blocked "Multi-language UI" — this refines its language order with evidence.

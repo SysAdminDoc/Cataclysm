@@ -109,3 +109,17 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 - **Multi-language UI** (en/ja first — Tōhoku audience).
   **Blocker:** Requires i18n infrastructure (react-intl or similar), extraction of all user-facing strings, and Japanese translation.
+
+## Research-Driven — External data licensing
+
+- **P3 — SWOT satellite swath overlay for the Kamchatka 2025 preset.**
+    Why: June 2026 SWOT coverage is the first detailed satellite imaging of a tsunami in motion — an observed-vs-simulated visual no competitor has; depends on the Kamchatka preset and a PO.DAAC licensing check (see RESEARCH.md Open Questions).
+    Evidence: https://www.sciencedaily.com/releases/2026/06/260623011002.htm; HN https://news.ycombinator.com/item?id=46133555.
+    Touches: src/data/ (processed swath GeoJSON), Globe.tsx (toggleable overlay on the Kamchatka preset), docs/science/.
+    Acceptance: Kamchatka preset offers a "SWOT observed" overlay with timestamp and attribution; simulated wavefront at the same epoch renders alongside.
+    Complexity: M
+  **Blocker:** NASA PO.DAAC redistribution/attribution terms for the June 2026
+  SWOT Kamchatka swath product need a live check before any processed subset
+  can be bundled with the app (flagged in RESEARCH.md Open Questions,
+  2026-07-09). Return once the licensing question is answered and a processed
+  GeoJSON swath exists.

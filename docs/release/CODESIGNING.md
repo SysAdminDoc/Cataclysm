@@ -103,18 +103,18 @@ Attach `checksums-sha256.txt` to the GitHub Release alongside the installers.
 
 **Windows (PowerShell):**
 ```powershell
-(Get-FileHash .\TsunamiSimulator_0.4.4_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\TsunamiSimulator_0.5.0_x64_en-US.msi -Algorithm SHA256).Hash
 # Compare the output to the SHA256 value in checksums-sha256.txt on the release page
 ```
 
 **Windows (Command Prompt):**
 ```cmd
-certutil -hashfile TsunamiSimulator_0.4.4_x64_en-US.msi SHA256
+certutil -hashfile TsunamiSimulator_0.5.0_x64_en-US.msi SHA256
 ```
 
 **macOS / Linux:**
 ```bash
-shasum -a 256 TsunamiSimulator_0.4.4_x64_en-US.msi
+shasum -a 256 TsunamiSimulator_0.5.0_x64_en-US.msi
 ```
 
 If the hash matches the value on the release page, the file was not tampered
