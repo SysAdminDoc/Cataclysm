@@ -463,3 +463,150 @@ tests locally.
   Touches: all user-facing strings (extraction to catalog), src/lib/ (locale plumbing), Settings.tsx (language picker), glossary/lesson content.
   Acceptance: language switch swaps full UI including lessons/glossary; en remains canonical; missing keys fall back to en with a dev warning.
   Complexity: XL
+
+## Research-Driven Additions (2026-07-11 — living Earth data stack)
+
+Grounded in `RESEARCH.md` (2026-07-11). These are prerequisites and data/render
+contracts not already covered by HR-00 through HR-53; they do not replace the
+existing Earth, ocean, hazard, or Unreal milestones.
+
+### P0 — physical and legal foundations
+
+- [ ] P0 — Earth asset provenance, provider capability, and license gate
+  Why: a visible online dataset is not necessarily cacheable, redistributable,
+  derivable, or permitted in a commercial/offline build. Hyper-real Earth assets
+  need one enforced contract before additional providers are integrated.
+  Evidence: Google Map Tiles policies prohibit unauthorized caching/extraction;
+  Cesium ion content is quota/terms-bound; NASA/NOAA sources have different
+  attribution and derived-work requirements.
+  Touches: new `assets/earth/manifest.schema.json`, provider registry, cache and
+  diagnostics services, Settings attribution/source panel, export provenance.
+  Acceptance: every terrain, imagery, building, ocean, cloud, and VFX asset
+  declares source URL, license, attribution, bounds, resolution, datum, timestamp,
+  checksum, cache/redistribution/derivative permissions, and quality tiers;
+  unknown or incompatible rights fail closed; the diagnostics bundle lists every
+  active provider and asset version.
+  Complexity: L
+
+- [ ] P0 — Geodesy, vertical datum, and shared surface-classification contract
+  Why: WGS84 ellipsoid height, orthometric/geoid height, bathymetric depth, tide
+  datum, and renderer-local coordinates are not interchangeable. A datum mismatch
+  of even a few metres invalidates coastal water placement, while separate land
+  masks can make visuals, solver wet cells, and target classification disagree.
+  Evidence: Cesium uses WGS84/ECEF ellipsoid height; NOAA inundation guidance
+  requires consistent high-resolution topographic and bathymetric DEMs.
+  Touches: Rust geodesy/data modules, render-frame schema, terrain/bathymetry
+  importers, shared land/ocean/inland-water/ice/coast mask, probe diagnostics.
+  Acceptance: every height/depth field carries horizontal and vertical CRS/datum;
+  conversions have fixtures at three coastal benchmarks; Rust, Cesium, and Unreal
+  agree within the declared error budget; one mask drives water shading, wet/dry
+  initialization, impact target classification, and collision.
+  Complexity: L
+
+- [ ] P0 — Consolidate asteroid and nuclear physics under Rust authority
+  Why: live asteroid/nuclear runs still call TypeScript engines from `App.tsx`,
+  which conflicts with the roadmap's Rust-only scientific authority and would
+  make HR-01's renderer-neutral frame protocol encode two physics truths.
+  Evidence: `src/App.tsx` calls `asteroidEngine.run` and `nuclearEngine.run` from
+  `src/hazards/`; the Rust-authority rule is explicit in the North Star.
+  Touches: Rust hazard commands/types/tests, Tauri bindings, `src/hazards/`
+  reduced to presentation adapters, scenario/replay fixtures.
+  Acceptance: all asteroid and nuclear result/timeline values originate in Rust;
+  TypeScript contains no authoritative formulas; parity fixtures preserve or
+  deliberately correct existing outputs before HR-01 schema freeze.
+  Complexity: L
+
+### P1 — deterministic living-planet inputs
+
+- [ ] P1 — Open offline base-Earth pack and deterministic asset build pipeline
+  Why: the default Esri imagery plus ellipsoid terrain is network-dependent and
+  cannot provide a reproducible planet, while raw source assets are too large and
+  inconsistent for direct release packaging.
+  Evidence: NOAA ETOPO 2022 provides 15 arc-second global topobathymetric relief;
+  NASA Blue Marble NG provides a stable global visual base; MSFS, Outerra, and
+  Cesium all use tiled LOD rather than one maximum-detail model.
+  Touches: local asset-build scripts, ETOPO terrain/bathymetry tiling, Blue Marble
+  imagery tiling, land/water mask, GLB/KTX2/3D Tiles optimization where applicable,
+  versioned downloadable packs, checksum/resume/rollback UI.
+  Acceptance: a clean offline install renders a complete orbit-to-regional Earth
+  from approved local assets; builds are byte-reproducible from pinned inputs;
+  missing/corrupt packs fall back visibly rather than showing a blank globe;
+  installer and on-disk budgets are measured and documented.
+  Complexity: XL
+
+- [ ] P1 — Versioned environmental state and temporal Earth-observation service
+  Why: scenario UTC must drive the terminator, ocean, clouds, ice, and hazards
+  coherently. Adding individual live layers without a shared state would create a
+  visually plausible but temporally contradictory planet.
+  Evidence: NASA GIBS exposes date-indexed WMTS browse layers; OpenSpace separates
+  temporal globe layers; GIBS warns browse imagery is not a science-analysis input.
+  Touches: render-frame/environment schema (UTC, wind, pressure, humidity,
+  visibility, clouds, precipitation, sea state, tide, current, ice, provenance),
+  GIBS client/cache, renderer clock, offline climatology and manual overrides.
+  Acceptance: one scenario date deterministically controls sun, night emissions,
+  selected visual observations, cloud/ocean inputs, and exports; each value states
+  source time/resolution/interpolation; missing data uses a labelled fallback;
+  browse imagery cannot enter numerical forcing code.
+  Complexity: L
+
+- [ ] P1 — Ambient ocean-state adapter with strict tsunami separation
+  Why: HR-11 defines the water material and HR-12 defines solver displacement,
+  but neither defines how real wind sea, multidirectional swell, tide, currents,
+  and ice enter rendering without contaminating scientific tsunami output.
+  Evidence: NOAA GFS-Wave/WAVEWATCH III and Copernicus Marine expose wave height,
+  period/direction and ocean-state products; Tessendorf spectral synthesis and
+  Unreal Gerstner waves provide complementary quality tiers.
+  Touches: shared ocean-input schema, NOAA/Copernicus adapters, deterministic
+  offline presets, Cesium FFT/Gerstner bands, Unreal Water inputs, provenance UI.
+  Acceptance: changing wind, swell, current, or sea-ice state visibly changes the
+  ambient surface while eta/u/v probes, arrival times, maximum fields, wet/dry
+  cells, and exports remain bit-identical; absent network data replays from the
+  recorded environmental state.
+  Complexity: L
+
+- [ ] P1 — Datum-correct coastal hero-zone pack builder
+  Why: global relief cannot resolve shoreline structures, bathymetric channels,
+  run-up, building interaction, or debris. HR-13/40/41 need a repeatable way to
+  convert permitted local data into one renderer-neutral high-detail scene.
+  Evidence: NOAA tsunami models use nested grids and site-specific DEMs down to
+  roughly 1/3 arc-second; Cesium for Unreal uses local georeferenced sublevels.
+  Touches: import/bake CLI, local ENU pack schema, terrain+bathymetry fusion,
+  coastline distance field, buildings/vegetation, material masks, simplified
+  collision proxies, Cesium tiles, Unreal sublevel output.
+  Acceptance: one reference coast builds from a pinned manifest into matching
+  Cesium and Unreal packs; waterline/terrain alignment meets the datum error
+  budget; wet/dry and collision surfaces share stable IDs; a rebuild produces
+  identical checksums and attribution.
+  Complexity: XL
+
+- [ ] P1 — Antimeridian/polar tiled field transport
+  Why: the current SWE imagery rectangle clamps longitudes rather than splitting
+  wrapped fields, so waves near ±180 degrees can be cropped; polar convergence
+  also makes a single geographic rectangle increasingly distorted.
+  Evidence: `Globe.tsx` clamps SWE rectangle bounds; serious globe engines use
+  quadtree/tiled fields and geocentric positioning rather than one global quad.
+  Touches: frame-field tile schema, Rust snapshot encoder, Cesium texture/mesh
+  addressing, Unreal field upload, dateline/polar fixtures.
+  Acceptance: identical scenarios centered at 179.5°E and 179.5°W join without a
+  seam or crop; high-latitude fields retain orientation and sampling accuracy;
+  tiled transport preserves eta/u/v within renderer precision.
+  Complexity: L
+
+### P2 — visual truth and delivery controls
+
+- [ ] P2 — HDR/color-management and temporal visual-quality gate
+  Why: physically based atmosphere, ocean glint, asteroid entry, and nuclear
+  flash cannot share a convincing scene without declared luminance/exposure and
+  export color rules. Still screenshots also miss shimmer, LOD popping, texture
+  swimming, foam drift, ghosting, and frame-interpolation failures.
+  Evidence: Unreal atmosphere/cloud guidance treats sky, sun, clouds, reflections,
+  and exposure as one environment; Cataclysm's visual tests currently mask or hide
+  the Cesium canvas.
+  Touches: scene-linear/HDR pipeline, tone mapping and bloom limits, SDR/HDR export
+  metadata, photosensitivity-safe flash preset, deterministic video captures,
+  temporal metrics and full-canvas visual tests.
+  Acceptance: fixed luminance/exposure fixtures cover day, night, entry, impact,
+  and nuclear flash; safe mode limits rapid luminance change without changing
+  physics; automated sequences detect tile popping, shimmer, swimming, field
+  discontinuity, and resource growth; exported media declares its color space.
+  Complexity: L

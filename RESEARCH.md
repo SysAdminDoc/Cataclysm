@@ -1,109 +1,358 @@
-# Research — TsunamiSimulator
+# Research — Hyper-real living Earth rendering
 
-Date: 2026-07-09 — replaces all prior research.
+**Research date:** 2026-07-11
 
-## Executive Summary
-Verified: TsunamiSimulator v0.4.4 is a local-first Tauri 2/React 19/Cesium 1.143 desktop simulator with cited Rust source models, CPU and optional wgpu propagation, model-vs-observation tools, provenance-bearing exports, and unusually strong educational guardrails. Its strongest shape is an approachable, transparent alternative to expert-only tsunami codes. The highest-value direction is to make the solver honor the source geometry and numerical assumptions already presented by the UI before adding more events. The current dirty worktree contains unfinished implementations of existing roadmap items (Okada correction, GPU parity, Kamchatka/Lisbon/Amorgos/Sanriku/YR4 content); they are not counted as complete here.
+**Decision horizon:** next hyper-real rendering milestones
 
-Top opportunities, in priority order:
+**Product constraint:** desktop only; scientific results remain authoritative
 
-1. Preserve earthquake, landslide, impact, and nuclear source geometry in the SWE initial field instead of reducing every source to one circular Gaussian.
-2. Use one explicit attenuation model across the chart, globe inspection, coastal runup, and exports.
-3. Add an authoritative Rust preflight and cells×steps×snapshots/output-byte budget before accepting a simulation.
-4. Make settings and saved-scenario persistence transactional, verifiable, and honest about failures.
-5. Replace the single center-latitude Cartesian metric with spherical row metrics for basin-scale runs.
-6. Accumulate maxima/arrivals at solver-step cadence and add maximum-current products from the momentum fields already computed.
-7. Give comparison runs independent cancellation ownership and configurable horizons long enough for distant observations.
-8. Exercise optional Rust features in the local verification gate and harden Tauri capabilities against remote IPC authority.
-9. Add portable project bundles plus standards-based local raster import/export.
-10. Replace misleading empty states, stale documentation, and canvas-masked visual tests with explicit failures and deterministic evidence.
+## Executive summary
 
-## Product Map
-- Core workflows: select a cited preset or build an asteroid/nuclear/earthquake/landslide source; run CPU or optional GPU SWE propagation; scrub live/max/arrival products on a Cesium globe; compare scenarios; inspect runup, gauges, DART observations, and attenuation; export visual, vector, video, text, and time-series artifacts.
-- Personas: educators and students; technically curious public users; scientific reviewers checking model provenance and validation; maintainers diagnosing local desktop/GPU behavior.
-- Platforms and distribution: Windows/macOS/Linux source targets; locally built Windows MSI/NSIS artifacts are the only current installers. Browser preview is a watermarked deterministic approximation, not the Rust solver.
-- Integrations and data flows: React → typed Tauri IPC → Rust physics/solver; tauri-plugin-store persistence; bundled coastal/DART JSON; optional Cesium imagery; local Natural Earth fallback; coarse synthetic basin/shelf bathymetry pending real-grid work.
+There is no practical, licensable, monolithic “real Earth 3D model” that can be
+downloaded and dropped into Cataclysm. Google Earth, Microsoft Flight Simulator,
+Outerra, Cesium, ArcGIS, OpenSpace, and UNIGINE all converge on the same design:
+a precision ellipsoid and coordinate system, streamed multiresolution terrain and
+imagery, optional city meshes, and separate atmosphere, cloud, ocean, lighting,
+and local-detail systems.
 
-## Competitive Landscape
-- GeoClaw/Clawpack: strongest transparent reference for moving-topography inputs, gauges, spherical terms, AMR, and per-step fgmax products. Learn source-shaped initial conditions, controlled boundaries, and measurable convergence. Avoid its expert-only configuration burden.
-- TsunAWI, Tsunami-HySEA, and JAGURS: mature basin-scale codes with finite faults, spherical grids, nested domains, ensembles, and production outputs. Learn geometry/kinematics and result completeness. Avoid HPC-first operational complexity in the default UX.
-- Celeris-WebGPU: the closest interactive competitor, with browser reach, nesting, probes, and editable coastal structures. Learn fast experimentation and clear field diagnostics. Avoid creating a second browser-authoritative physics implementation; the existing Rust-to-WASM roadmap item is safer.
-- NOAA MOST/NCTR and UNESCO TsuCAT: define checkable public vocabulary around arrival, maximum height/current, gauges, scenario databases, and offline continuity. Learn product completeness and evidence presentation. Avoid any operational forecast or alert implication.
-- ANUGA and SFINCS: demonstrate explicit boundaries, restartability, local raster inputs, variable roughness, and fast hazard products. Learn interoperable inputs and preflight diagnostics. Avoid expanding into general river/rain/storm modeling.
-- ArcGIS Pro, TUFLOW, OpenFlows, and Delft3D: paid value concentrates on scenario matrices, data import/export, support, reproducibility, current/velocity products, and collaboration. Learn portable projects and sensitivity workflows. Avoid vendor-cloud dependence and engineering-grade claims.
-- PhET/NUKEMAP-style educational tools: validate guided explanations, shareable scenarios, and accessibility. Preserve TsunamiSimulator's stronger citation/limitations posture; avoid casualty estimates and authoritative-looking alerts.
+Cataclysm should gather that architecture, not a giant mesh. The recommended
+system is:
 
-## Security, Privacy, and Reliability
-- Verified: npm audit reported zero vulnerabilities on 2026-07-09. cargo audit reported no vulnerabilities but 17 allowed warnings, including the Tauri Linux GTK3 chain and glib RUSTSEC-2024-0429; monitor upstream rather than forcing an unsupported toolkit migration.
-- Verified: Tauri 2.11.5 is above the GHSA-7gmj-67g7-phm9 fix floor. src-tauri/capabilities/default.json still lacks an explicit local-only assertion, and scripts/verify.mjs does not reject remote capability URLs or wildcard authority.
-- Verified: src/lib/settings.ts write/writeScenarios swallow persistence failures; Settings can display a save timestamp after failure, and scenario deletion has neither failure feedback nor undo.
-- Verified: src-tauri/src/commands.rs independently permits up to 4,000,000 cells and 240 full-grid PNG snapshots. The non-streaming path retains snapshots, so a valid request can exhaust memory despite passing individual limits.
-- Verified: comparison mode mounts two solvers, but cancel_simulation uses global tokens; cancelling one slot can cancel the other.
-- Verified: attenuation, coastal-runup, DART-fit, inspect, and globe-layer failures are commonly converted into empty/no-overlap states or console-only errors, weakening diagnosis.
-- Existing keychain token storage, signing, notarization, and updater activation remain covered by prior roadmap/blocked items and were not duplicated.
+1. **CesiumJS analytical Earth:** the current Tauri/React client remains the
+   inspectable, measurable renderer and gains an open, offline-capable Earth data
+   pyramid, physical lighting, temporal Earth layers, and a real ocean surface.
+2. **Cesium for Unreal cinematic Earth:** the already-roadmapped cinematic client
+   uses the same ECEF/geodetic frame protocol and Rust simulation fields for
+   street-level water, volumetric clouds, fire, smoke, debris, and capture.
+3. **One renderer-neutral Earth asset contract:** every terrain, imagery, ocean,
+   building, and weather source declares datum, resolution, timestamp, license,
+   attribution, cache permission, checksum, and quality-tier availability.
 
-## Architecture Assessment
-- Root boundary: SwePlayback.tsx sends center/amplitude/sigma only; commands.rs injects a Gaussian for every source. Earthquake Okada geometry and landslide directionality never reach solver cells. Mature codes use spatial or time-dependent displacement grids.
-- Physics consistency: presets.rs assigns non-impact decay exponent 1/2, while coastal and inspect paths call the nuclear r^-1 branch for every non-impact source. Introduce one Rust AttenuationModel selected by source and reused everywhere.
-- Numerical geometry: solver/mod.rs computes one longitude scale at the box center for domains allowed to span ±60 degrees. GeoClaw documents latitude-dependent spherical mass terms as material for tropical-to-polar propagation.
-- Analysis products: solver/max_field.rs explicitly samples only at snapshot cadence, making peak time, arrival, and integrated energy depend on the requested frame count.
-- Validation boundary: scripts/verify.mjs compiles/tests/clippies only default Rust features. The validation and GPU paths can regress without entering the normal gate; the dirty GPU parity work does not fix that policy gap.
-- UI/test correction: UiIcon.tsx and toolbar icons already use aria-hidden, so the existing accessibility item should target actual tab semantics, timeline button roles, Escape behavior, and keyboard traversal. tests/visual-regression.spec.ts masks/hides the Cesium canvas, so it cannot validate primitive/overlay rendering.
-- Documentation drift: README.md and CONTRIBUTING.md advertise older Rust floors; CLAUDE.md names Vite 5 and wgpu as planned; science/manual pages disagree on nuclear coupling and GPU advection; docs/ipc-api.md omits shipped max-field response data.
-- Modularity: commands.rs and Globe.tsx remain large, but their existing roadmap items take precedence. New work should first establish typed source fields, run plans, error states, and per-run identity so later splits follow real boundaries.
+The ocean must be built as three visually continuous but scientifically separate
+systems:
 
-## Rejected Ideas
-- CAP export, live-alert ingestion, automatic evacuation routes/maps — NOAA/UNESCO reserve operational products for authoritative systems; this would contradict the educational-only contract.
-- Casualty estimates or population exposure — no public evidence resolves the existing ethical and data-quality objections; facility-count work is already tracked separately.
-- Full 3D hydrodynamics, river/rain/storm coupling, sediment, morphology, or ecology — Delft3D shows the maintenance burden; these would dilute the focused tsunami product.
-- Directly embedding GPL tsunami solvers — licensing and dual-model maintenance conflict with the MIT Rust-authoritative architecture.
-- General plugin ecosystem — unreviewed physics/data plugins would weaken citation, validation, and support guarantees; prefer vetted import formats.
-- Native mobile and multi-user collaboration — no strong demand overcame Cesium/compute constraints; the existing browser-WASM path covers lightweight reach more coherently.
-- Coastal-defense drawing and spatial roughness maps now — Celeris/ANUGA support them, but credible results depend on real nearshore bathymetry and wetting/drying already tracked elsewhere.
-- Checkpoint/restart now — production solvers support it, but current runs are short; reconsider after configurable long horizons, AMR, or real high-resolution grids make interruption recovery material.
-- TypeScript 7.0 upgrade — the 2026-07-08 release omits the compiler API used by current tooling; wait for the planned compatible line.
-- GitHub Actions or Dependabot restoration — repository policy and commit history deliberately moved verification, builds, releases, and dependency maintenance local.
+- a planet-scale Fresnel/absorption/sun-glitter surface;
+- regional spectral wind waves driven by wind, significant wave height, period,
+  and direction;
+- solver-driven tsunami elevation and velocity, transformed near shore into
+  shoaling, breaking, foam, turbidity, run-up, drawdown, and wetting/drying.
 
-## Sources
-### Project
-- https://github.com/SysAdminDoc/TsunamiSimulator
+Ambient waves may add sub-grid visual detail, but they must never change tsunami
+arrival, elevation, current, or inundation. NASA GIBS browse imagery may make the
+Earth look current, but it must never be treated as a numerical physics input.
 
-### OSS and Research Models
-- https://www.clawpack.org/geoclaw.html
-- https://www.clawpack.org/dtopotools_module.html
-- https://www.clawpack.org/v5.13.x/sphere_source.html
-- https://www.clawpack.org/fgmax.html
-- https://plynett.github.io/
-- https://tsunami.awi.de/
-- https://github.com/edanya-uma/Tsunami-HySEA
-- https://github.com/jagurs-admin/jagurs
-- https://anuga.readthedocs.io/en/stable/
-- https://sfincs.readthedocs.io/en/stable/
+## Current Cataclysm baseline
 
-### Commercial and Community
-- https://pro.arcgis.com/en/arcgis-pro/latest/help/mapping/simulation/simulation-in-arcgis-pro.htm
-- https://tuflow.com/
-- https://www.bentley.com/software/openflows-flood/
-- https://www.researchgate.net/post/Is_there_any_user_friendly_and_open_source_software_for_tsunami_modelling
+| Surface | Current implementation | Realism gap |
+|---|---|---|
+| Earth | Cesium globe with Esri World Imagery; ellipsoid unless token-gated terrain is enabled | No controlled offline global relief pack, night emissions, time-varying surface, provider provenance, or close-range detail pipeline |
+| Atmosphere | Cesium lighting, `SkyAtmosphere`, and fog enabled in `Globe.tsx` | No scenario-time sun tuning, exposure strategy, cloud volume/parallax, cloud shadows, night transition, or reference-calibrated scattering |
+| Ocean | Imagery plus an 8-bit RGBA SWE image through `SingleTileImageryProvider` | The sea is flat; no water BRDF, displacement, wind state, whitecaps, depth response, or shoreline interaction |
+| Asteroid | Canvas billboard, glow polyline, ellipses, cylinders, and rings | No geometric body, PBR regolith, ablation, fragmentation, volumetric entry wake, physical splash, terrain lighting, or persistent aftermath |
+| Nuclear | Short expanding ellipse effect | No staged flash/fireball/blast/cloud/fallout sequence, volumetric persistence, shared scene lighting, or distance-aware arrival |
+| Renderer ownership | `Globe.tsx` is about 1,576 lines and owns viewer, resources, overlays, effects, and animation loops | Physical render systems cannot be tested, budgeted, replayed, or torn down independently |
+| Assets | No tracked glTF/GLB, KTX, HDR/EXR, 3D Tiles, or Unreal project assets | No asset pipeline, material calibration library, LOD policy, or redistributable cinematic pack |
 
-### Standards, Data, and Science
-- https://nctr.pmel.noaa.gov/model.html
-- https://tsunami.ioc.unesco.org/en/tsucat
-- https://www.ncei.noaa.gov/products/natural-hazards/tsunamis-earthquakes-volcanoes/tsunamis/dart-ocean-bottom-pressure
-- https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid
-- https://docs.ogc.org/is/21-026/21-026.html
-- https://github.com/radiantearth/stac-spec
-- https://cfconventions.org/conventions.html
-- https://arxiv.org/abs/2508.20596
-- https://pubs.usgs.gov/publication/70274101
-- https://www.tsunami.gov/?page=help
+The existing HR-00 through HR-53 roadmap correctly identifies the major render
+features. The net-new gaps are the data/provenance pipeline, an open offline base
+planet, temporal Earth observations, an ambient ocean-state contract, and a
+vertical-datum-aware coastal hero-zone builder.
 
-### Dependencies and Security
-- https://github.com/tauri-apps/tauri/security/advisories/GHSA-7gmj-67g7-phm9
-- https://v2.tauri.app/reference/javascript/store/
-- https://v2.tauri.app/security/capabilities/
-- https://github.com/CesiumGS/cesium/blob/main/CHANGES.md
-- https://github.com/gfx-rs/wgpu/releases
+## What existing Earth systems teach us
 
-## Open Questions
-- None. Public sources and live repository evidence were sufficient for prioritization; maintainer signing credentials remain explicit blockers in Roadmap_Blocked.md, not research questions.
+### Renderer and product survey
+
+| System | What Cataclysm can gather | Decision |
+|---|---|---|
+| CesiumJS | WGS84/ECEF precision, terrain/imagery quadtree, screen-space-error LOD, water masks, atmosphere controls, 3D Tiles, time-dynamic layers, explicit GPU resource lifecycle | **Adopt now.** It already fits the product stack. Built-in water is only a starting material, not the living ocean. |
+| Cesium for Unreal | ECEF-to-local frames, globe anchors, origin shifting, georeferenced sublevels, streamed real-world tiles combined with Unreal rendering | **Keep as the cinematic tier.** Every hazard, cloud, water, and debris actor must remain globe-anchored through rebases. |
+| Google Photorealistic 3D Tiles | Rapidly streamed textured city/terrain mesh and standard 3D Tiles interoperability | **Optional online enhancement only.** Billing, attribution, no unauthorized caching, no extraction, and incomplete geographic coverage prevent use as the canonical/offline Earth. |
+| Cesium ion | Mature tiling pipeline for terrain, imagery, buildings, point clouds, and reality mesh | Useful provider and build reference. SaaS data is quota/terms-bound; self-host only content whose rights allow it. |
+| ArcGIS SceneView/Earth | Mature global/local scene model, elevation, integrated mesh, daylight, shadows, weather, voxels, and GIS analysis | Strong reference and optional provider; less direct control over cinematic hazards and potentially service/licensing constrained. |
+| NASA WorldWind | Open layer/terrain separation, elevation/imagery streaming, WMS, and public-data orientation | Architecture reference, not the preferred renderer; current web stack and visual ceiling trail Cesium. |
+| OpenSpace | Separate height, color, overlay, night, and water-mask layers; time-varying NASA data; scientific time and globe handling | **Adopt its layer taxonomy.** It is a better scientific presentation reference than a hazard VFX engine. |
+| osgEarth | Self-hosted/offline composition of GDAL terrain, imagery, vector, sky, and a simple bathymetry-aware ocean | Valuable native/offline reference; a separate C++ renderer and its ocean is deliberately simple. |
+| Outerra / SpaceEngine | Seamless orbit-to-ground transitions by combining sparse source data with procedural detail | **Adopt the principle, not assets/code.** Both show why satellite imagery alone becomes blurred and flat near the ground. |
+| Microsoft Flight Simulator | Cloud-streamed tiles, photogrammetry where available, procedural/AI reconstruction elsewhere, caching, LOD, and separate live weather | Best large-scale architecture lesson; proprietary product and data cannot be redistributed. |
+| UNIGINE Sim | 64-bit geospatial worlds, GIS ingestion, dynamic terrain, geometry water, weather/clouds, ephemeris, sensors, headless operation | Best turnkey professional-simulator benchmark, but proprietary pricing makes it an evaluation path rather than the default architecture. |
+| Unreal native rendering | Physically based sky/atmosphere, ray-marched volumetric clouds, unified water mesh/materials, GPU Gerstner waves, Niagara, sparse volumes, LWC | Use for cinematic rendering. These systems solve visuals, not global geodata or tsunami physics. |
+
+### The reusable Earth data pyramid
+
+A convincing Earth should be composed from independent, swappable layers:
+
+1. WGS84 ellipsoid, ECEF positions, geodetic interchange, and camera-local ENU
+   or Unreal ESU frames.
+2. Geoid/vertical-datum transformation; mean sea level is not the WGS84
+   ellipsoid and datum mismatch can invalidate near-shore water placement.
+3. Global terrain and bathymetry height pyramid.
+4. Day albedo/imagery, surface material classification, land/water mask,
+   coastline distance field, and local normal/detail synthesis.
+5. Night emissions, cloud field, aerosol/haze, snow/ice, fire, and other
+   time-indexed visual layers.
+6. Optional buildings, photogrammetry, vegetation, and local collision proxies.
+7. Authoritative simulation fields: eta, velocity, wet/dry state, pressure,
+   thermal flux, fallout, crater/ejecta state, and event phases.
+
+Each layer requires its own LOD, timestamp, cache, attribution, fallback, and GPU
+budget. Terrain and imagery should never be fused into one irreversible asset.
+
+## Recommended living-Earth stack
+
+### 1. Open, deterministic base planet
+
+- Use NOAA ETOPO 2022 (15 arc-second global topography and bathymetry) as the
+  reproducible global relief source, processed into terrain/bathymetry tiles.
+- Use NASA Blue Marble Next Generation as a permitted, stable fallback albedo.
+- Derive land/water and coastline-distance products only from sources whose
+  derivative and redistribution terms are recorded in the manifest.
+- Package bounded low/medium-detail tiers; higher-resolution regional packs are
+  downloadable and checksum-addressed rather than making the installer enormous.
+- Preserve a clearly labelled ellipsoid/minimal fallback if a pack is missing or
+  corrupt. The application must never open to a blank globe.
+
+ETOPO is appropriate for orbit/regional appearance and deep-water context. It is
+not detailed enough for credible local inundation. NOAA site-specific tsunami
+work uses nested grids down to roughly 1/3 arc-second near shore; Cataclysm needs
+equivalent local topobathymetric quality for hero locations.
+
+### 2. Time-varying Earth without confusing visuals with science
+
+NASA GIBS can provide scenario-date WMTS layers such as true color, clouds,
+fires, snow/ice, and night observations. Those layers should be cached by layer,
+date, projection, and tile coordinates, with an explicit acquisition timestamp.
+
+GIBS documentation describes these as visualization/browse products. They improve
+context and historical appearance but do not replace calibrated meteorological,
+oceanographic, or hazard inputs. Missing dates use a labelled nearest-date or
+climatology fallback, never a silent current-day substitution.
+
+### 3. One physical lighting system
+
+The sun, atmosphere, clouds, ocean, terrain, asteroid plasma, fireballs, nuclear
+flash, smoke, and dust must share:
+
+- scenario UTC and geolocation;
+- physically coherent solar direction and angular size;
+- Rayleigh/Mie scattering and aerial perspective;
+- HDR scene-referred light and exposure adaptation;
+- cloud transmittance, shadows, and reflection contribution;
+- day/night color response and night emissions.
+
+Cesium can deliver a materially better analytical milestone by using its globe
+atmosphere parameters, lighting from the sun, terrain shadows, water masks, and
+custom shaders. Unreal remains the route to ray-marched volumetric weather and
+cinematic interaction. A high-resolution texture under inconsistent lighting
+will still look composited and artificial.
+
+### 4. A genuinely alive ocean
+
+**Planet scale — optical body**
+
+- curvature-correct horizon and atmospheric extinction;
+- Fresnel reflection, depth absorption, sky/cloud reflection, sun glitter, and
+  distance-dependent roughness;
+- bathymetry-informed water color without revealing bathymetry as a painted map;
+- multi-band normal detail that remains stable under camera movement.
+
+**Regional scale — ambient wind sea**
+
+- GPU FFT/JONSWAP or validated multi-band spectral waves;
+- input contract for wind vector, significant wave height, peak/mean period,
+  directional spread, currents, and sea ice;
+- NOAA GFS-Wave/WAVEWATCH III or Copernicus Marine as optional time/location
+  sources, with deterministic scenario overrides and an offline climatology;
+- scale-aware whitecaps, foam lifetime, spray, and cloud reflections.
+
+Tessendorf-style spectral synthesis is the appropriate graphics foundation;
+Gerstner waves are a cheaper quality tier. Neither is the tsunami model.
+
+**Hazard scale — authoritative displacement**
+
+- Rust eta/u/v snapshots displace adaptive ocean tiles and drive flow normals;
+- render interpolation may smooth frames but may not move arrival time or peaks;
+- the tsunami remains broad and low in deep water;
+- nested, high-resolution topobathymetry drives shoaling, refraction, drawdown,
+  breaking thresholds, bores, wetting/drying, debris, turbidity, and run-up;
+- ambient waves are added visually after sampling the solver field and never feed
+  back into exported scientific water level or current.
+
+NOAA benchmark and inundation guidance should define validation scenes. A global
+FLIP ocean would consume extreme compute while being less scientifically useful
+than shallow-water propagation plus local high-detail visual coupling.
+
+### 5. Local hero zones
+
+Orbit-to-ground realism requires selective density. For every curated coastal or
+impact location, build a versioned local ENU asset pack containing:
+
+- best-permitted terrain and bathymetry with datum metadata;
+- shoreline mesh/distance field and wet/dry collision surface;
+- buildings/vegetation with stable IDs and simplified collision proxies;
+- local material classification and procedural detail masks;
+- provider attribution, license, source date, bounds, checksum, and error budget.
+
+The global renderer streams the broad Earth; the hero pack supplies the detail
+needed for wave interaction, debris, crater/ejecta, fire, and ground cameras.
+This is how MSFS/Outerra-style systems avoid storing maximum detail everywhere.
+
+## Data and licensing decisions
+
+| Need | Preferred baseline | Optional enhancement | Guardrail |
+|---|---|---|---|
+| Global relief/bathymetry | NOAA ETOPO 2022 | Local NOAA coastal DEMs and other licensed regional surveys | Record horizontal/vertical datum and source resolution; never infer inundation quality from global relief |
+| Stable global albedo | NASA Blue Marble NG | User-configured or licensed regional imagery | Preserve attribution and redistribution terms in the asset manifest |
+| Temporal visual Earth | NASA GIBS WMTS | Provider-specific satellite products | Mark browse imagery as visual context; cache by date and layer |
+| Ambient ocean state | NOAA GFS-Wave/WAVEWATCH III | Copernicus Marine wave/current products | Store product time, resolution, variables, units, interpolation, and license; deterministic offline override |
+| City/building detail | Open/self-hosted permitted data | Google Photorealistic 3D Tiles or Cesium ion | Optional online mode only when terms, billing, authentication, attribution, and cache rules are satisfied |
+| Cinematic scene | CesiumJS fallback plus local packs | Cesium for Unreal | Same render-frame protocol and asset provenance; no duplicated hazard physics |
+
+An asset is not “available” merely because it can be viewed online. The importer
+must reject unknown licenses and incompatible datum/units, and the runtime must
+distinguish streamable, cacheable, redistributable, derived-work-permitted, and
+attribution-required content.
+
+## Implementation implications
+
+### Recommended sequence
+
+1. Ship the asset/provider manifest and vertical-datum rules before adding more
+   providers or visual assets.
+2. Produce the open offline base planet and deterministic scenario-time sun/night
+   captures.
+3. Split the Cesium renderer lifecycle, then implement physical ocean optics and
+   an ambient-ocean input contract.
+4. Add NASA GIBS temporal visual layers with provenance and graceful offline
+   behavior.
+5. Stream solver eta/u/v into the Cesium ocean; validate separation between
+   ambient wind waves and authoritative hazard fields.
+6. Build one datum-correct coastal hero pack and demonstrate continuous
+   deep-water propagation, shoaling, breaking, and run-up.
+7. Use the same fixtures to validate the Unreal cinematic client, origin shifts,
+   effects, and deterministic capture.
+
+### Measurable acceptance
+
+- Orbit-to-10 km transition has no tile cracks, coordinate jitter, hard exposure
+  step, or visible imagery/material seam.
+- Scenario UTC drives terminator, atmosphere, clouds, night emissions, glint, and
+  every environmental dataset lookup.
+- Ocean is identifiable as water with analytical eta color fully disabled.
+- Ambient-wave changes do not alter scientific probes, arrival time, maximum eta,
+  wet/dry state, or exported fields.
+- One coastal fixture places mean water level and terrain within a documented
+  vertical error budget and passes NOAA-compatible propagation/run-up benchmarks.
+- One asteroid and one nuclear fixture illuminate terrain, ocean, and clouds in
+  the same HDR lighting space and retain deterministic geometry/timing.
+- Low/Medium/High/Cinematic tiers log GPU time separately for terrain, imagery,
+  ocean, atmosphere/clouds, hazard effects, and post-processing.
+- Offline mode renders the approved base planet and environmental fallback with
+  no hidden network dependency.
+
+## Cross-cutting audit
+
+- **Security/privacy:** remote tile URLs, credentials, cache paths, archive
+  extraction, and asset decoders are trust boundaries. Keep provider hosts
+  allowlisted, secrets outside scenario exports, checksums mandatory, and cache
+  sizes bounded. No location telemetry is required.
+- **Accessibility:** reduced motion must suppress camera shake/aggressive cuts but
+  not scientific animation; flashes need a photosensitivity-safe mode; all
+  color-coded physical layers retain legends, numeric probes, and contrast-safe
+  analytical alternatives.
+- **Internationalization:** geospatial provenance, units, UTC/local time, datum,
+  layer titles, and attribution need catalog-ready strings. Proper names and
+  required legal attribution must not be machine-translated silently.
+- **Observability:** log provider latency/errors, cache hit rate, active LOD,
+  terrain/imagery source, scenario time, vertical datum, texture memory, shader
+  tier, and per-system GPU time in the diagnostics bundle.
+- **Testing:** add schema fixtures, provider mocks, license-policy tests, datum
+  conversion tests, visual references, GPU resource-leak loops, offline tests,
+  field-to-surface numerical comparisons, and origin-shift tests.
+- **Documentation:** user-facing source/attribution and realism-limit panels must
+  explain which layers are measurements, browse imagery, simulation, or
+  procedural visuals. Scientific uncertainty must remain visible.
+- **Distribution/upgrades:** base assets need versioned manifests, resumable
+  downloads, checksums, disk-budget controls, migrations, and rollback. Provider
+  API/terms changes cannot break the packaged offline Earth.
+- **Plugins/providers:** use a narrow provider interface and capability matrix;
+  do not expose arbitrary runtime shader or code plugins.
+- **Multi-user:** no collaboration/server mode is needed for rendering realism;
+  deterministic replay files are the correct sharing primitive.
+- **Mobile:** explicitly rejected. The product is desktop-only and quality tiers
+  should target desktop GPUs rather than diluting the design for phones.
+
+## Rejected or deferred ideas
+
+- **One downloadable high-polygon Earth mesh:** cannot provide orbit-to-ground
+  detail, temporal layers, or manageable distribution and would still need every
+  dynamic system described above.
+- **Google/photogrammetry as the mandatory base:** licensing, billing, attribution,
+  cache restrictions, authentication, and coverage make it an enhancement only.
+- **A sharper sphere texture as the realism program:** resolution does not add
+  terrain relief, parallax, material response, weather, scale detail, or motion.
+- **A looping normal map as the living ocean:** useful only as one capillary band;
+  it cannot express wind state, glint, whitecaps, tsunami displacement, breaking,
+  or shoreline interaction.
+- **Rendering a tsunami as a tall traveling wall in deep water:** physically
+  misleading; dramatic height belongs to shoaling, breaking, and run-up.
+- **Using GIBS browse imagery as weather/ocean physics:** it is visual context,
+  not a calibrated simulation forcing product.
+- **Global FLIP/Navier–Stokes water:** prohibitively expensive and less accurate
+  for basin-scale tsunami propagation than the authoritative SWE solver with
+  targeted local visual coupling.
+- **Migrating entirely to Unreal now:** it would delay the scientific renderer,
+  duplicate working desktop infrastructure, and does not remove the need for
+  geodata, licensing, precision, datum, or shared-state engineering.
+
+## Source set
+
+The survey covered more than 50 distinct primary, official, academic, and
+community sources. These are the 30 sources most directly useful to decisions.
+
+### Engines and rendering systems
+
+1. [CesiumJS platform](https://cesium.com/platform/cesiumjs/)
+2. [CesiumJS Globe API](https://cesium.com/learn/cesiumjs/ref-doc/Globe.html)
+3. [CesiumJS CustomShader API](https://cesium.com/learn/cesiumjs/ref-doc/CustomShader.html)
+4. [Cesium for Unreal: placing objects and origin shifting](https://cesium.com/learn/unreal/unreal-placing-objects/)
+5. [Cesium for Unreal georeference API](https://cesium.com/learn/cesium-unreal/ref-doc/classACesiumGeoreference.html)
+6. [Cesium for Unreal georeferenced sublevels](https://cesium.com/learn/unreal/unreal-sublevels/)
+7. [Google Photorealistic 3D Tiles](https://developers.google.com/maps/documentation/tile/3d-tiles)
+8. [Google Map Tiles API policies](https://developers.google.com/maps/documentation/tile/policies)
+9. [ArcGIS SceneView](https://developers.arcgis.com/javascript/latest/references/core/views/SceneView/)
+10. [NASA WorldWind](https://worldwind.arc.nasa.gov/)
+11. [OpenSpace globe layer architecture](https://docs.openspaceproject.com/latest/building-content/globebrowsing/working-with-layers.html)
+12. [osgEarth layer catalog](https://docs.osgearth.org/en/latest/layers.html)
+13. [Outerra full-world engine](https://outerra.com/)
+14. [Microsoft Flight Simulator technical overview](https://developer.microsoft.com/en-us/games/articles/2021/07/microsoft-flight-simulator-the-future-of-game-development/)
+15. [UNIGINE Sim capabilities](https://unigine.com/products/sim/overview/)
+16. [Unreal Sky Atmosphere](https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere-component-in-unreal-engine)
+17. [Unreal Volumetric Clouds](https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine)
+18. [Unreal Water System](https://dev.epicgames.com/documentation/unreal-engine/water-system-in-unreal-engine)
+19. [Unreal Large World Coordinates](https://dev.epicgames.com/documentation/unreal-engine/large-world-coordinates-in-unreal-engine-5)
+
+### Earth, ocean, and hazard data/science
+
+20. [NOAA ETOPO 2022 global relief](https://www.ncei.noaa.gov/products/etopo-global-relief-model)
+21. [NOAA coastal elevation models](https://www.ncei.noaa.gov/products/coastal-elevation-models)
+22. [NASA Blue Marble Next Generation](https://neo.gsfc.nasa.gov/view.php?datasetId=BlueMarbleNG)
+23. [NASA GIBS access basics](https://nasa-gibs.github.io/gibs-api-docs/access-basics/)
+24. [NASA GIBS Python/browse-product guidance](https://nasa-gibs.github.io/gibs-api-docs/python-usage/)
+25. [NOAA WAVEWATCH III](https://polar.ncep.noaa.gov/waves/wavewatch.shtml)
+26. [Copernicus Marine data catalog](https://data.marine.copernicus.eu/)
+27. [NOAA tsunami inundation modeling guidelines](https://vlab.noaa.gov/documents/27521613/29089376/1inundationmodelingguidelines.pdf/fdcfc0ea-f797-74e5-c760-45ea75215920)
+28. [NOAA tsunami analytical benchmarks](https://nctr.pmel.noaa.gov/benchmark/Analytical/index.html)
+29. [Tessendorf, Simulating Ocean Water](https://people.computing.clemson.edu/~jtessen/reports/papers_files/coursenotes2002.pdf)
+30. [Bruneton and Neyret, Precomputed Atmospheric Scattering](https://onlinelibrary.wiley.com/doi/10.1111/j.1467-8659.2008.01245.x)
+
+## Open decisions to resolve through prototypes
+
+1. Whether Cesium custom ocean displacement can meet the analytical High-tier
+   frame budget before the Unreal client is available.
+2. Which redistributable high-resolution terrain/building sources cover the first
+   three hero coastal zones and what vertical transformations they require.
+3. Whether FFT/JONSWAP is necessary for High, or whether a deterministic
+   multi-band Gerstner implementation is sufficient below Cinematic.
+4. The asset-pack disk budgets for bundled, downloadable, and user-supplied data.
+5. The smallest shared GPU field format that preserves eta/u/v precision across
+   Cesium/WebGL and Unreal without duplicating interpolation logic.
