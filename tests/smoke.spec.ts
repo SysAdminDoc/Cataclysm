@@ -99,7 +99,7 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   });
 
-  test("nuclear hazard mode reveals the client-side detonation controls", async ({ page }) => {
+  test("nuclear hazard mode reveals desktop-backed detonation controls", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
 

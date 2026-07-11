@@ -119,6 +119,25 @@ pub fn surface_probe(
         .ok_or_else(|| "surface probe coordinates are not finite or normalized".to_string())
 }
 
+/// Produce the complete renderer-facing asteroid product in Rust. The
+/// frontend passes inputs and renders this response; no scientific formulas
+/// are duplicated across the IPC boundary.
+#[tauri::command]
+pub fn simulate_asteroid_hazard(
+    req: crate::physics::direct_hazard::AsteroidHazardRequest,
+) -> Result<crate::physics::direct_hazard::HazardResult, String> {
+    crate::physics::direct_hazard::simulate_asteroid_hazard(req)
+}
+
+/// Produce the complete renderer-facing nuclear product in Rust, including
+/// effect rings, casualty estimates, fallout dimensions, and timeline.
+#[tauri::command]
+pub fn simulate_nuclear_hazard(
+    req: crate::physics::direct_hazard::NuclearHazardRequest,
+) -> Result<crate::physics::direct_hazard::HazardResult, String> {
+    crate::physics::direct_hazard::simulate_nuclear_hazard(req)
+}
+
 #[tauri::command]
 pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDisplacement, String> {
     check_finite_positive("diameter_m", input.diameter_m)?;

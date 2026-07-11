@@ -15,6 +15,7 @@
 //! evaluated so the math is auditable without consulting the citations file.
 
 pub mod constants;
+pub mod direct_hazard;
 pub mod asteroid;
 pub mod nuclear;
 pub mod landslide;

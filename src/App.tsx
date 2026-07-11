@@ -30,9 +30,13 @@ import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
 import { LayerInspector } from "./components/LayerInspector";
 import { SourceModelSummary } from "./components/SourceModelSummary";
-import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
+import {
+  type AsteroidInput,
+  type HazardResult,
+  type NuclearDetail,
+  type NuclearInput,
+} from "./hazards";
 import { falloutRings } from "./hazards/nuclear/fallout";
-import type { NuclearEffects } from "./hazards/nuclear/physics";
 import {
   asteroidTargetFromSurface,
   probeSurfaceLocal,
@@ -226,6 +230,9 @@ export default function App() {
   // (a 100 m stony airbursts) without continental-scale blast radii, so the
   // default "Impact" is dramatic but the effects still frame nicely.
   const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 300, densityKgM3: 4000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
+  const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [hazardPending, setHazardPending] = useState(false);
+  const hazardRequestId = useRef(0);
   const [windFromDeg, setWindFromDeg] = useState(270);
   const [detonateNonces, setDetonateNonces] = useState<Record<DirectHazardMode, number>>({
     asteroid: 0,
@@ -396,19 +403,67 @@ export default function App() {
   const hazardCenter = directHazardMode ? hazardCenters[directHazardMode] : null;
   const detonateNonce = directHazardMode ? detonateNonces[directHazardMode] : 0;
 
-  // Client-side hazard result (nuclear/asteroid). Recomputed when inputs or the
-  // picked center change; drives both the globe rings and the results readout.
-  const hazardResult = useMemo(() => {
-    if (hazardMode === "tsunami" || !hazardCenter) return null;
+  // Rust is the sole authority for direct-hazard products. Each change starts
+  // a versioned request and clears the previous product, preventing a slower
+  // response from an earlier slider value from replacing the current one.
+  useEffect(() => {
+    const requestId = ++hazardRequestId.current;
+    if (hazardMode === "tsunami" || !hazardCenter || !inTauri) {
+      setHazardResult(null);
+      setHazardPending(false);
+      return;
+    }
+
+    let cancelled = false;
+    setHazardResult(null);
+    setHazardPending(true);
     const center = { lat: hazardCenter.lat, lon: hazardCenter.lon };
-    return hazardMode === "nuclear"
-      ? nuclearEngine.run(nuclearInput, center)
-      : asteroidEngine.run(asteroidInput, center);
-  }, [hazardMode, hazardCenter, nuclearInput, asteroidInput]);
+    const request = hazardMode === "nuclear"
+      ? api.simulateNuclearHazard({
+          center,
+          yield_kt: nuclearInput.yieldKt,
+          burst_type: nuclearInput.burstType,
+          height_m: nuclearInput.heightM,
+          fission_pct: nuclearInput.fissionPct ?? 50,
+          population_density: nuclearInput.populationDensity ?? 0,
+        })
+      : api.simulateAsteroidHazard({
+          center,
+          diameter_m: asteroidInput.diameterM,
+          density_kg_m3: asteroidInput.densityKgM3,
+          velocity_km_s: asteroidInput.velocityKmS,
+          angle_deg: asteroidInput.angleDeg,
+          target_type: asteroidInput.targetType,
+          water_depth_m: asteroidInput.waterDepthM ?? 0,
+          beach_slope_rad: asteroidInput.beachSlopeRad ?? 0.02,
+        });
+
+    void request
+      .then((result) => {
+        if (cancelled || requestId !== hazardRequestId.current) return;
+        if (result.authority !== "rust" || result.kind !== hazardMode) {
+          throw new Error("backend returned an invalid direct-hazard authority contract");
+        }
+        setHazardResult(result);
+      })
+      .catch((error) => {
+        if (cancelled || requestId !== hazardRequestId.current) return;
+        console.error("direct hazard simulation failed", error);
+        setHazardResult(null);
+        showToast(`Direct hazard simulation failed: ${String(error)}`, "error");
+      })
+      .finally(() => {
+        if (!cancelled && requestId === hazardRequestId.current) setHazardPending(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hazardMode, hazardCenter, inTauri, nuclearInput, asteroidInput, showToast]);
   // Nuclear fallout plume polygons (surface bursts only), driven by wind.
   const hazardPolygons = useMemo(() => {
     if (hazardMode !== "nuclear" || !hazardCenter || !hazardResult) return null;
-    const eff = hazardResult.detail as NuclearEffects | undefined;
+    const eff = hazardResult.detail as NuclearDetail | undefined;
     if (!eff?.fallout) return null;
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
@@ -425,7 +480,11 @@ export default function App() {
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
   const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
   const modelStatus = inHazardMode
-    ? hazardResult
+    ? !inTauri && hazardCenter
+      ? "Desktop physics required"
+      : hazardPending
+      ? "Computing effects"
+      : hazardResult
       ? "Effects ready"
       : "Awaiting target"
     : recording
@@ -1032,6 +1091,7 @@ export default function App() {
               detonateActiveHazard();
               setInspectorTab("results");
             }}
+            backendAvailable={inTauri}
             display="setup"
           />
         )}
@@ -1082,6 +1142,7 @@ export default function App() {
           windFromDeg={windFromDeg}
           onWindChange={setWindFromDeg}
           onDetonate={detonateActiveHazard}
+          backendAvailable={inTauri}
           display="results"
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}

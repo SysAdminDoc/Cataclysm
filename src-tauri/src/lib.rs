@@ -33,6 +33,8 @@ pub fn run() {
             dart_buoy_rmse,
             gpu_probe,
             surface_probe,
+            simulate_asteroid_hazard,
+            simulate_nuclear_hazard,
             diagnostics_bundle,
             keychain_get_token,
             keychain_set_token,

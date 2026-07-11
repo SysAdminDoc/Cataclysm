@@ -1,57 +1,128 @@
-// Cataclysm — unified multi-hazard type layer.
-//
-// Every hazard (asteroid impact, nuclear detonation, earthquake, landslide,
-// tsunami source) resolves to a common `HazardResult` the Cesium globe can
-// render as concentric effect rings plus a structured readout. Individual
-// engines keep their rich domain-specific result types; this layer is the
-// lowest common denominator the UI depends on so new hazards can be added
-// without touching the renderer.
+// Renderer contracts for Rust-authoritative direct hazard products. This
+// module intentionally contains no formulas or engine interface: browser code
+// can describe inputs and render backend responses, but cannot run physics.
 
 export type HazardKind = "asteroid" | "nuclear" | "earthquake" | "landslide" | "tsunami";
+export type BurstType = "airburst" | "surface" | "custom" | "hemp" | "water";
+export type TargetType = "sedimentary_rock" | "crystalline_rock" | "water";
 
 export interface GeoPoint {
-  lat: number; // degrees
-  lon: number; // degrees
+  lat: number;
+  lon: number;
 }
 
-/** A single concentric effect zone drawn on the globe, radius in METERS. */
+export interface AsteroidInput {
+  diameterM: number;
+  densityKgM3: number;
+  velocityKmS: number;
+  angleDeg: number;
+  targetType: TargetType;
+  waterDepthM?: number;
+  beachSlopeRad?: number;
+}
+
+export interface NuclearInput {
+  yieldKt: number;
+  burstType: BurstType;
+  heightM?: number;
+  fissionPct?: number;
+  populationDensity?: number;
+}
+
 export interface EffectRing {
   label: string;
   radiusM: number;
-  color: string; // hex or rgba the Cesium layer applies with its own alpha
-  category: string; // grouping key: "blast" | "thermal" | "radiation" | "crater" | ...
+  color: string;
+  category: string;
   description?: string;
 }
 
-/** A labelled scalar for the results readout. */
 export interface ReadoutItem {
   label: string;
-  value: string; // already formatted for display
+  value: string;
   hint?: string;
 }
 
-/** Optional casualty estimate (nuclear/impact over populated areas). */
 export interface CasualtyEstimate {
   deaths: number;
   injuries: number;
-  populationDensity: number; // people/km^2 assumed
+  populationDensity: number;
 }
 
-/** The renderer-facing product of running any hazard. */
+export interface FalloutZone {
+  length: number;
+  width: number;
+}
+
+export interface FalloutPlume {
+  heavy: FalloutZone;
+  light: FalloutZone;
+}
+
+export interface TimelineEvent {
+  time: string;
+  description: string;
+  category: string;
+}
+
+export interface NuclearDetail {
+  yieldKt: number;
+  isSurface: boolean;
+  isWater: boolean;
+  fireball: number;
+  psi20: number;
+  psi5: number;
+  psi1: number;
+  thermal3: number;
+  thermal1: number;
+  radiation: number;
+  neutronRad: number;
+  gammaRad: number;
+  craterR: number;
+  cloudTopH: number;
+  optimalHeight: number;
+  waveHeight: number;
+  fallout: FalloutPlume | null;
+  timeline: TimelineEvent[];
+}
+
+export interface AsteroidDetail {
+  kineticEnergyJ: number;
+  megatons: number;
+  impactorMassKg: number;
+  atmosphericEntry: {
+    reachesGround: boolean;
+    airburstAltitude: number;
+    airburstEnergy: number;
+    impactVelocity: number;
+    breakupAltitude: number;
+  };
+  crater: { finalDiameter: number; craterDepth: number; isComplex: boolean } | null;
+  seismicMagnitude: number;
+  fireballRadiusM: number;
+  radiusWindowBreakageM: number;
+  radiusSevereDamageM: number;
+  radiusTotalDestructionM: number;
+  thermalRadiusFirstDegreeM: number;
+  thermalRadiusThirdDegreeM: number;
+  tsunami: {
+    applies: boolean;
+    cavityDiameter: number;
+    cavityDepth: number;
+    initialAmplitude: number;
+    amplitudeAtDistance: number;
+    runupHeight: number;
+    arrivalTime: number;
+  };
+}
+
 export interface HazardResult {
   kind: HazardKind;
   center: GeoPoint;
-  rings: EffectRing[]; // sorted largest-first by the engine
+  rings: EffectRing[];
   readout: ReadoutItem[];
-  casualties?: CasualtyEstimate;
-  /** Engine-specific rich result, retained for panels/exports. */
-  detail?: unknown;
-}
-
-/** A hazard engine: pure input -> HazardResult. No DOM, no Cesium. */
-export interface HazardEngine<TInput> {
-  kind: HazardKind;
-  label: string;
-  /** Compute effects for the given input at a location. Pure. */
-  run(input: TInput, center: GeoPoint): HazardResult;
+  casualties?: CasualtyEstimate | null;
+  detail: AsteroidDetail | NuclearDetail;
+  authority: "rust";
+  modelVersion: string;
 }

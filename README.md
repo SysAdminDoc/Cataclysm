@@ -10,7 +10,7 @@
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
 
-> **Migration status (v0.8.0):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. The desktop shell now uses a source-first inspector, grouped reference-event library, instrumented Earth viewport, and solver-aware transport derived from the v2 visual target. Impact and nuclear modes render effect geometry on the Cesium globe; the remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
+> **Migration status (v0.8.0):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Rust is the sole authority for direct asteroid and nuclear results, including effect geometry, casualties, fallout dimensions, and event timelines. The remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -203,6 +203,10 @@ npm run verify:release     # strict default/GPU/validation Rust matrix + policy 
 npm run tauri:build        # verified GPU-enabled installer(s) + signed artifact manifest
 ```
 
+The browser preview is for deterministic shell and globe development. Direct
+asteroid and nuclear calculations require the desktop app so the frontend
+cannot diverge from the Rust scientific authority.
+
 `tauri:build` runs the strict gate, deletes stale bundles, compiles the desktop
 binary with GPU support, performs a non-visual capability smoke, and writes
 `src-tauri/target/release/bundle/cataclysm-build-manifest.json` with the enabled
@@ -238,7 +242,11 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-Heavy physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgpu` behind the `gpu` feature flag). The frontend only handles globe rendering, controls, and result visualization. The IPC boundary keeps the WebView from blocking on million-cell SWE solves.
+Physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgpu`
+behind the `gpu` feature flag). Asteroid and nuclear commands return complete,
+versioned renderer products; the frontend only accepts inputs and renders those
+results. The IPC boundary also keeps the WebView from blocking on million-cell
+SWE solves.
 
 ---
 

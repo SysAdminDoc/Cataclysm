@@ -1,10 +1,39 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { HazardControls } from "../HazardControls";
-import { nuclearEngine, type AsteroidInput, type NuclearInput } from "../../hazards";
+import type { AsteroidInput, HazardResult, NuclearInput } from "../../hazards";
 
 const nuclear: NuclearInput = { yieldKt: 100, burstType: "airburst", populationDensity: 5000 };
 const asteroid: AsteroidInput = { diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 };
+const nuclearResult: HazardResult = {
+  kind: "nuclear",
+  authority: "rust",
+  modelVersion: "nuclear-direct-1.0.0",
+  center: { lat: 40, lon: -74 },
+  rings: [{ label: "Fireball", radiusM: 300, color: "#f5e0dc", category: "fireball" }],
+  readout: [{ label: "Fireball radius", value: "300 m" }],
+  casualties: { deaths: 120, injuries: 240, populationDensity: 5000 },
+  detail: {
+    yieldKt: 100,
+    isSurface: false,
+    isWater: false,
+    fireball: 0.3,
+    psi20: 1,
+    psi5: 3,
+    psi1: 8,
+    thermal3: 4,
+    thermal1: 6,
+    radiation: 2,
+    neutronRad: 1,
+    gammaRad: 1,
+    craterR: 0,
+    cloudTopH: 12,
+    optimalHeight: 1000,
+    waveHeight: 0,
+    fallout: null,
+    timeline: [{ time: "0 ms", description: "Detonation.", category: "radiation" }],
+  },
+};
 
 function noop() {}
 
@@ -31,7 +60,6 @@ describe("HazardControls", () => {
   });
 
   it("renders the nuclear readout, casualties and ring legend from a result", () => {
-    const result = nuclearEngine.run(nuclear, { lat: 40, lon: -74 });
     render(
       <HazardControls
         mode="nuclear"
@@ -42,13 +70,13 @@ describe("HazardControls", () => {
         center={{ lat: 40, lon: -74 }}
         onTogglePick={noop}
         pickActive={false}
-        result={result}
+        result={nuclearResult}
         windFromDeg={270}
         onWindChange={noop}
         onDetonate={noop}
       />,
     );
-    // readout label from the engine
+    // Backend fixture values are presented without client-side recomputation.
     expect(screen.getByText("Fireball radius")).toBeInTheDocument();
     // casualties block renders fatalities
     expect(screen.getByText(/fatalities/i)).toBeInTheDocument();
@@ -76,5 +104,26 @@ describe("HazardControls", () => {
     );
     screen.getByRole("button", { name: /pick location on globe/i }).click();
     expect(onTogglePick).toHaveBeenCalledOnce();
+  });
+
+  it("explains that direct physics is desktop-only in browser preview", () => {
+    render(
+      <HazardControls
+        mode="asteroid"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+        backendAvailable={false}
+      />,
+    );
+    expect(screen.getByText(/requires the desktop app/i)).toBeInTheDocument();
   });
 });

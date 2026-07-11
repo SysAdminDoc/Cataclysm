@@ -15,6 +15,7 @@ import type {
 } from "../types/scenario";
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
+import type { BurstType, HazardResult, TargetType } from "../hazards";
 
 export type InspectAtPointResult = {
   range_m: number;
@@ -55,6 +56,28 @@ export type RunupAtPointResult = {
 };
 
 export const api = {
+  simulateAsteroidHazard(req: {
+    center: { lat: number; lon: number };
+    diameter_m: number;
+    density_kg_m3: number;
+    velocity_km_s: number;
+    angle_deg: number;
+    target_type: TargetType;
+    water_depth_m: number;
+    beach_slope_rad: number;
+  }) {
+    return invoke<HazardResult>("simulate_asteroid_hazard", { req });
+  },
+  simulateNuclearHazard(req: {
+    center: { lat: number; lon: number };
+    yield_kt: number;
+    burst_type: BurstType;
+    height_m?: number;
+    fission_pct: number;
+    population_density: number;
+  }) {
+    return invoke<HazardResult>("simulate_nuclear_hazard", { req });
+  },
   asteroidInitialConditions(input: AsteroidImpactInput) {
     return invoke<InitialDisplacement>("asteroid_initial_conditions", { input });
   },

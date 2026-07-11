@@ -102,7 +102,8 @@ for (const theme of THEMES) {
         await coordinates.getByLabel("Longitude").fill("139.76");
         await coordinates.getByRole("button", { name: "Go" }).click();
         await page.getByRole("tab", { name: "Results" }).click();
-        await expect(page.locator(".hazard__results")).toBeVisible();
+        await expect(page.getByText(/direct hazard physics requires the desktop app/i)).toBeVisible();
+        await expect(page.locator(".hazard__results")).toHaveCount(0);
         await assertAccessiblePage(page);
       });
     }

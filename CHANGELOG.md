@@ -5,6 +5,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 ## [Unreleased]
 
 ### Changed — trustworthy accelerated releases
+- Asteroid and nuclear direct-effect products now come exclusively from Rust
+  commands, including rings, readouts, casualties, fallout dimensions, and the
+  detonation timeline. Frozen parity fixtures cover the former TypeScript
+  outputs, invalid non-finite inputs fail closed, and browser preview labels
+  direct calculations as desktop-only instead of inventing substitute results.
 - Added versioned geodesy and shared surface-mask contracts. Rust and Cesium
   validate WGS84 geodetic/ECEF coordinates against three official NOAA GEOID18
   coastal fixtures, and the declared Unreal local frame uses ENU centimetres;

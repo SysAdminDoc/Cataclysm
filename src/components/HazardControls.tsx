@@ -1,12 +1,15 @@
-// Cataclysm — client-side hazard controls (nuclear / asteroid). Renders the
-// input form for the active standalone hazard plus its result readout. Physics
-// runs through the ported src/hazards engines; the parent draws the rings on
-// the shared Cesium globe.
+// Direct-hazard controls are presentation-only. Rust supplies every result,
+// including the detonation timeline and fallout dimensions.
 
-import { WEAPON_PRESETS, type AsteroidInput, type HazardResult, type NuclearInput } from "../hazards";
-import type { BurstType, NuclearEffects } from "../hazards/nuclear/physics";
-import { calcTimeline } from "../hazards/nuclear/timeline";
-import type { TargetType } from "../hazards/asteroid/physics/types";
+import {
+  WEAPON_PRESETS,
+  type AsteroidInput,
+  type BurstType,
+  type HazardResult,
+  type NuclearDetail,
+  type NuclearInput,
+  type TargetType,
+} from "../hazards";
 
 type HazardMode = "nuclear" | "asteroid";
 
@@ -57,6 +60,7 @@ export function HazardControls({
   windFromDeg,
   onWindChange,
   onDetonate,
+  backendAvailable = true,
   display = "all",
 }: {
   mode: HazardMode;
@@ -71,10 +75,11 @@ export function HazardControls({
   windFromDeg: number;
   onWindChange: (deg: number) => void;
   onDetonate: () => void;
+  backendAvailable?: boolean;
   display?: "all" | "setup" | "results";
 }) {
-  const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearEffects | undefined) : undefined;
-  const timeline = nuclearEffects ? calcTimeline(nuclearEffects) : [];
+  const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
+  const timeline = nuclearEffects?.timeline ?? [];
   const hasFallout = Boolean(nuclearEffects?.fallout);
   const showSetup = display !== "results";
   const showResults = display !== "setup";
@@ -269,7 +274,13 @@ export function HazardControls({
           )}
         </div>
       ) : (
-        <p className="hazard__hint">Pick a location on the globe to model effects.</p>
+        <p className="hazard__hint">
+          {!backendAvailable && center
+            ? "Direct hazard physics requires the desktop app; browser preview cannot calculate effects."
+            : center
+              ? "Computing authoritative effects…"
+              : "Pick a location on the globe to model effects."}
+        </p>
       ))}
     </div>
   );

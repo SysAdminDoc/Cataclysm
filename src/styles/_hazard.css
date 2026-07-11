@@ -1,4 +1,4 @@
-/* Cataclysm — hazard-mode switch + client-side hazard controls (nuclear/impact). */
+/* Cataclysm — hazard-mode switch + direct-hazard controls (nuclear/impact). */
 
 .app__command-group--hazard {
   display: inline-flex;

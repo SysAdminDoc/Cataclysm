@@ -2,8 +2,7 @@
 // (js/effects.js). Pure: turns the {heavy,light} plume dimensions + wind
 // bearing into downwind "teardrop" polygons (lon/lat rings) the globe draws.
 
-import type { GeoPoint } from "../types";
-import type { FalloutPlume } from "./physics";
+import type { FalloutPlume, GeoPoint } from "../types";
 
 const EARTH_R_KM = 6371;
 const SEGMENTS = 48;
