@@ -26,6 +26,10 @@ import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
 import type { Preset } from "./types/scenario";
+import { HazardControls } from "./components/HazardControls";
+import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
+
+type HazardMode = "tsunami" | "nuclear" | "asteroid";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
@@ -196,6 +200,10 @@ export default function App() {
   const [pickMode, setPickMode] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [hazardMode, setHazardMode] = useState<HazardMode>("tsunami");
+  const [hazardCenter, setHazardCenter] = useState<{ lat: number; lon: number } | null>(null);
+  const [nuclearInput, setNuclearInput] = useState<NuclearInput>({ yieldKt: 100, burstType: "airburst", populationDensity: 5000 });
+  const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
   const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -337,6 +345,17 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+
+  // Client-side hazard result (nuclear/asteroid). Recomputed when inputs or the
+  // picked center change; drives both the globe rings and the results readout.
+  const hazardResult = useMemo(() => {
+    if (hazardMode === "tsunami" || !hazardCenter) return null;
+    const center = { lat: hazardCenter.lat, lon: hazardCenter.lon };
+    return hazardMode === "nuclear"
+      ? nuclearEngine.run(nuclearInput, center)
+      : asteroidEngine.run(asteroidInput, center);
+  }, [hazardMode, hazardCenter, nuclearInput, asteroidInput]);
+  const inHazardMode = hazardMode !== "tsunami";
   const cockpitMode = compareMode ? "Compare" : inspectMode ? "Inspect" : pickMode ? "Pick location" : "Explore";
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
   const timelineLabel = `${Math.round(timeS / 60)} min`;
@@ -365,8 +384,19 @@ export default function App() {
   });
 
   function handlePickGlobe(lat: number, lon: number) {
-    setPickedLocation({ lat, lon });
+    if (inHazardMode) {
+      setHazardCenter({ lat, lon });
+    } else {
+      setPickedLocation({ lat, lon });
+    }
     setPickMode(false);
+  }
+
+  function selectHazardMode(mode: HazardMode) {
+    setHazardMode(mode);
+    setPickMode(false);
+    setInspectMode(false);
+    if (mode !== "tsunami") setCompareMode(false);
   }
 
   return (
@@ -428,6 +458,26 @@ export default function App() {
           Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
         </div>
         <div className="app__header-actions" aria-label="Application actions">
+          <div className="app__command-group app__command-group--hazard" role="group" aria-label="Hazard type">
+            {(["tsunami", "asteroid", "nuclear"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className="hazard-switch"
+                data-active={hazardMode === m ? "true" : "false"}
+                onClick={() => selectHazardMode(m)}
+                title={
+                  m === "tsunami"
+                    ? "Tsunami mode — source models with the shallow-water solver"
+                    : m === "asteroid"
+                      ? "Asteroid impact mode — entry, crater, thermal and blast rings"
+                      : "Nuclear mode — blast, thermal, radiation and fallout rings"
+                }
+              >
+                {m === "tsunami" ? "Tsunami" : m === "asteroid" ? "Impact" : "Nuclear"}
+              </button>
+            ))}
+          </div>
           <div className="app__command-group app__command-group--modes" role="group" aria-label="Analysis modes">
             <ToolbarButton
               icon="inspect"
@@ -709,6 +759,8 @@ export default function App() {
                 onInspectCancel={() => setInspectMode(false)}
                 onAddGauge={(lat, lon) => setPendingGauge({ lat, lon })}
                 isochrones={sweIsochrones}
+                hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
+                hazardCenter={inHazardMode ? hazardCenter : null}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
@@ -730,6 +782,19 @@ export default function App() {
       </main>
 
       <aside className="app__panel app__panel--right" aria-label="Simulation controls and results">
+        {inHazardMode && (
+          <HazardControls
+            mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
+            nuclear={nuclearInput}
+            asteroid={asteroidInput}
+            onNuclearChange={setNuclearInput}
+            onAsteroidChange={setAsteroidInput}
+            center={hazardCenter}
+            onTogglePick={() => setPickMode((p) => !p)}
+            pickActive={pickMode}
+            result={hazardResult}
+          />
+        )}
         <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} />
         <AttenuationChart
           initial={slotA.initial}

@@ -19,7 +19,7 @@ test.describe("TsunamiSimulator browser preview", () => {
   test("loads the app shell and renders a globe canvas", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".app__brand")).toBeVisible();
-    await expect(page.locator(".app__title")).toHaveText("TsunamiSimulator");
+    await expect(page.locator(".app__title")).toHaveText("Cataclysm");
 
     const canvas = page.locator(".cesium-widget canvas");
     await expect(canvas).toBeVisible({ timeout: 15_000 });
@@ -52,6 +52,22 @@ test.describe("TsunamiSimulator browser preview", () => {
     await expect(page.getByRole("button", { name: "Link", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Citations", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  });
+
+  test("nuclear hazard mode reveals the client-side detonation controls", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    // Hazard-mode switch lives in the header, distinct from the scenario
+    // source tabs (which are role=tab).
+    await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+
+    const panel = page.locator(".hazard");
+    await expect(panel).toBeVisible({ timeout: 10_000 });
+    await expect(panel.getByText("Nuclear detonation")).toBeVisible();
+    await expect(panel.getByRole("button", { name: /pick location on globe/i })).toBeVisible();
+    // Weapon preset picker from the ported NukeMap table.
+    await expect(panel.getByRole("option", { name: /Little Boy \(Hiroshima\)/ })).toBeAttached();
   });
 
   test("saves and reloads a custom scenario round trip", async ({ page }) => {

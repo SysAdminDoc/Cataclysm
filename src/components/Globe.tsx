@@ -11,6 +11,7 @@ import type {
   InitialDisplacement,
   PropagationSnapshot,
 } from "../types/scenario";
+import type { EffectRing, GeoPoint } from "../hazards/types";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -44,6 +45,10 @@ type Props = {
   /** First-arrival time contours from a completed SWE run; rendered as
    *  labelled polylines when the playback panel's Arrivals toggle is on. */
   isochrones?: import("../types/scenario").Isochrone[] | null;
+  /** Non-tsunami hazard effect rings (nuclear/asteroid), drawn as concentric
+   *  ground ellipses at hazardCenter. Radii are in meters, largest-first. */
+  hazardRings?: EffectRing[] | null;
+  hazardCenter?: GeoPoint | null;
 };
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -173,6 +178,8 @@ export function Globe({
   onAddGauge,
   primary = true,
   isochrones,
+  hazardRings,
+  hazardCenter,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -185,6 +192,7 @@ export function Globe({
   const dartEntitiesRef = useRef<Map<number, Cesium.Entity>>(new Map());
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const isochroneEntitiesRef = useRef<Cesium.Entity[]>([]);
+  const hazardRingEntitiesRef = useRef<Cesium.Entity[]>([]);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryRequestIdRef = useRef(0);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
@@ -618,6 +626,78 @@ export function Globe({
       }
     }
   }, [initial, viewerEpoch]);
+
+  // Non-tsunami hazard effect rings (nuclear/asteroid). Drawn as filled,
+  // outlined ground ellipses, largest-first so smaller inner zones stay
+  // visible. Rebuilt whenever the rings or center change. Flies to frame the
+  // outermost ring the first time a center appears.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    for (const e of hazardRingEntitiesRef.current) viewer.entities.remove(e);
+    hazardRingEntitiesRef.current = [];
+    if (!hazardRings || hazardRings.length === 0 || !hazardCenter) return;
+
+    const { lat, lon } = hazardCenter;
+    // Largest first: base alpha low so overlapping fills stack readably.
+    const sorted = [...hazardRings].sort((a, b) => b.radiusM - a.radiusM);
+    let outerRadius = 0;
+    for (const ring of sorted) {
+      const r = Math.max(ring.radiusM, 1);
+      outerRadius = Math.max(outerRadius, r);
+      const color = Cesium.Color.fromCssColorString(ring.color);
+      hazardRingEntitiesRef.current.push(
+        viewer.entities.add({
+          name: ring.label,
+          position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+          description: ring.description ?? ring.label,
+          ellipse: {
+            semiMajorAxis: r,
+            semiMinorAxis: r,
+            material: color.withAlpha(0.16),
+            outline: true,
+            outlineColor: color.withAlpha(0.9),
+            outlineWidth: 2,
+            height: 0,
+          },
+        }),
+      );
+    }
+    // Ground-zero marker + label.
+    hazardRingEntitiesRef.current.push(
+      viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+        point: {
+          pixelSize: 9,
+          color: Cesium.Color.fromCssColorString("#f38ba8"),
+          outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+          outlineWidth: 2,
+        },
+        label: {
+          text: sorted[0]?.label ? "Ground zero" : "",
+          font: "11px Inter, sans-serif",
+          fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
+          outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+          outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -14),
+          showBackground: true,
+          backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.85),
+          backgroundPadding: new Cesium.Cartesian2(6, 4),
+        },
+      }),
+    );
+
+    // Frame the outermost ring: pull the camera back to ~3× its radius.
+    const flyResult = viewer.flyTo(hazardRingEntitiesRef.current, {
+      duration: 1.2,
+      offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-55), Math.max(outerRadius * 3.2, 20000)),
+    });
+    if (flyResult && typeof (flyResult as Promise<unknown>).then === "function") {
+      (flyResult as Promise<unknown>).catch(() => {});
+    }
+  }, [hazardRings, hazardCenter, viewerEpoch]);
 
   // React to a new wavefront snapshot — update existing entities in place.
   useEffect(() => {

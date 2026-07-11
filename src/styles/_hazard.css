@@ -1,0 +1,187 @@
+/* Cataclysm — hazard-mode switch + client-side hazard controls (nuclear/impact). */
+
+.app__command-group--hazard {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface0);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-md);
+}
+
+.hazard-switch {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--subtext);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.hazard-switch:hover {
+  color: var(--text);
+  background: var(--surface1);
+}
+
+.hazard-switch[data-active="true"] {
+  background: var(--accent);
+  color: var(--base);
+  font-weight: 600;
+}
+
+/* Controls panel */
+.hazard__location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.hazard__pick {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.hazard__pick[data-active="true"] {
+  background: var(--accent);
+  color: var(--base);
+}
+
+.hazard__coord {
+  font-size: 0.78rem;
+  color: var(--subtext);
+}
+
+.hazard__row {
+  display: grid;
+  grid-template-columns: 88px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0;
+}
+
+.hazard__row-label {
+  font-size: 0.78rem;
+  color: var(--subtext);
+}
+
+.hazard__row-value {
+  font-size: 0.78rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 62px;
+}
+
+.hazard__slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.hazard__select {
+  grid-column: 2 / 4;
+  width: 100%;
+  background: var(--surface0);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.hazard__results {
+  margin-top: 12px;
+  border-top: 1px solid var(--panel-border);
+  padding-top: 10px;
+}
+
+.hazard__readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.hazard__stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.hazard__stat-label {
+  font-size: 0.7rem;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hazard__stat-value {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.hazard__casualties {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--surface0);
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.hazard__casualties strong {
+  color: var(--peach);
+}
+
+.hazard__casualties-note {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.72rem;
+  color: var(--subtext);
+}
+
+.hazard__ring-legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.hazard__ring-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text);
+  padding: 2px 0;
+}
+
+.hazard__ring-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--r-sm);
+  flex: none;
+}
+
+.hazard__ring-radius {
+  margin-left: auto;
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+}
+
+.hazard__hint {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--subtext);
+}

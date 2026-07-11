@@ -31,11 +31,27 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   reference radii and casualty monotonicity; asteroid calibration (Chelyabinsk
   airburst, Chicxulub cratering, ocean-impact tsunami). Full unit suite: 135 tests.
 
+### Added — hazard-mode UI (UNI-01/02/03/04/07)
+- **Hazard-mode switch** in the header (Tsunami / Impact / Nuclear). Tsunami keeps
+  the Rust scenario path; Impact and Nuclear use the client-side `src/hazards`
+  engines.
+- **Cesium ring renderer** (`Globe` `hazardRings`/`hazardCenter` props): draws
+  `HazardResult` effect zones as concentric, outlined ground ellipses (largest
+  first) with a ground-zero marker, and frames the outermost ring. Shared by both
+  nuclear and asteroid modes — replaces NukeMap's Leaflet `js/effects.js`.
+- **`HazardControls`** panel: weapon-preset picker + log-scale yield slider +
+  burst-type + population-density (nuclear); diameter/velocity/angle/density/target
+  (asteroid); pick-location-on-globe; live readout, casualty estimate, and ring
+  legend bound to the engine result.
+- **Tests**: `HazardControls` component suite (+3) and a Playwright smoke test
+  that switches to Nuclear mode and asserts the controls + weapon table render.
+  Unit suite 138; browser-preview smoke 7/7.
+
 ### Notes
-- Nuclear/impact **UI modes** (blast overlays on the globe, WW3 exchange,
-  fallout plume, immersive + mushroom-cloud views) are not yet wired — the
-  engines are complete and tested; the Cesium rendering/UI is the next phase.
-  See `ROADMAP.md`.
+- Remaining NukeMap breadth (fallout plume, shelter advisor, WW3 exchange, MIRV,
+  immersive + mushroom-cloud, location/ZIP search, target datasets) is scoped as
+  `UNI-05/06/08..14` in `ROADMAP.md`. The standalone NukeMap and AsteroidSimulator
+  apps stay live until those land and Cataclysm deploys with parity.
 
 ## [0.5.0] — 2026-07-09 — Validation, corrected physics, classroom tooling
 

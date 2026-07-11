@@ -15,24 +15,23 @@ AsteroidSimulator repos stay live until this section is drained and Cataclysm
 deploys with parity — only then are they retired (code is already safe in-tree).
 
 ### P1 — Nuclear mode (core NukeMap experience)
-- **UNI-01** Hazard-mode switch in the top bar (Tsunami / Impact / Nuclear); routes
-  the left panel + globe overlay to the selected hazard. Tsunami keeps the Rust
-  scenario path; impact/nuclear use the client-side `src/hazards` engines.
-- **UNI-02** Nuclear input panel: weapon preset picker (`WEAPON_PRESETS`), yield
-  slider (log 0.001–100,000 kt), burst-type selector, fission %, pick-on-globe.
-- **UNI-03** Cesium ring renderer for `HazardResult.rings` (concentric ground
-  ellipses, category colors, hover tooltip → `EffectRing.description`). Reused by
-  both nuclear and asteroid modes. Replaces NukeMap `js/effects.js` (Leaflet).
-- **UNI-04** Results panel binding `HazardResult.readout` + casualty estimate;
-  detonation timeline (port `NM.calcTimeline`).
+- ✅ **UNI-01** Hazard-mode switch in the top bar (Tsunami / Impact / Nuclear). *(v0.6.0)*
+- ✅ **UNI-02** Nuclear input panel: weapon preset picker (`WEAPON_PRESETS`), log
+  yield slider, burst-type selector, population density, pick-on-globe. *(v0.6.0)*
+- ✅ **UNI-03** Cesium ring renderer for `HazardResult.rings` (concentric ground
+  ellipses + ground-zero marker + auto-frame). Shared by nuclear and asteroid
+  modes. Replaces NukeMap `js/effects.js`. *(v0.6.0)*
+- ✅ **UNI-04** Results readout + casualty estimate + ring legend. *(v0.6.0)*
+  Remaining sub-item: detonation timeline (port `NM.calcTimeline`).
 - **UNI-05** Fallout plume overlay (wind angle/speed) as a Cesium polygon —
   port `NM.Effects.drawFallout`.
 - **UNI-06** Shelter advisor (port `js/shelter.js`, already pure) + latent-cancer
   readout (`estimateLatentCancer`).
 
 ### P2 — Impact mode + data
-- **UNI-07** Asteroid input panel + `TrajectoryChart`/`CraterDiagram` (port the
-  SVG components from `legacy/asteroid/src/components/Results`).
+- ✅ **UNI-07** Asteroid input panel (diameter/velocity/angle/density/target) wired
+  to the ported engine. *(v0.6.0)* Remaining: `TrajectoryChart`/`CraterDiagram`
+  SVG components from `legacy/asteroid/src/components/Results`.
 - **UNI-08** NEO/fireball database integration (port `services/jplApi.ts`,
   `useFireballs`, fallback datasets) with the app's CSP allowlist.
 - **UNI-09** Port NukeMap target/weapon/city/ZIP datasets (`data/*.json`,
