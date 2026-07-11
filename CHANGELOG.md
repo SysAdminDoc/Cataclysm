@@ -2,6 +2,15 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed — trustworthy accelerated releases
+- Desktop packaging now runs the strict release gate, builds with the Rust
+  `gpu` feature, smokes the packaged binary's compiled capabilities without
+  opening the UI, and emits a SHA-256 artifact manifest with enabled features.
+- Strict release verification now checks, tests, and lints the default, GPU,
+  validation, and combined GPU-plus-validation Rust feature configurations.
+
 ## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
 
 ### Changed — professional desktop workflow

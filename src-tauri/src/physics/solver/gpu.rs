@@ -9,15 +9,13 @@
 //! - [x] `GpuTimeStepper` exposing `step` matching the CPU surface.
 //! - [x] WGSL kernel reused verbatim from [`super::kernels::SWE_LEAPFROG_WGSL`].
 //! - [x] Buffer-binding plumbing (ping-pong storage buffers for
-//!       `h`, `eta`, `u`, `v`) + dispatch loop + result readback.
+//!   `h`, `eta`, `u`, `v`) + dispatch loop + result readback.
 //! - [x] Restartable across multiple `step` calls: the eta/u/v fields
-//!       are re-uploaded from the host-side `grid` at the start of
-//!       each call and read back at the end, so successive calls
-//!       compose just like the CPU `TimeStepper::step`.
-//! - [ ] Manning friction + advection branch — current kernel matches
-//!       the linear-SWE form; nonlinear advection is CPU-only for now.
-//!       Add to WGSL kernel once we have a regression harness for
-//!       GPU-vs-CPU agreement on a NSWE scenario.
+//!   are re-uploaded from the host-side `grid` at the start of each call and
+//!   read back at the end, so successive calls compose just like the CPU
+//!   `TimeStepper::step`.
+//! - [x] Manning friction and nonlinear advection, covered by the
+//!   `swe_gpu_matches_cpu_full_physics` parity regression.
 //!
 //! ## Reference
 //!

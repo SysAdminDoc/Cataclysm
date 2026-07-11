@@ -3,6 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  RELEASE_CARGO_FEATURES,
+  RUST_RELEASE_FEATURE_MATRIX,
+  cargoFeatureArgs,
+} from "./release-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const srcTauriRoot = path.join(repoRoot, "src-tauri");
@@ -221,7 +226,9 @@ if (needsVsEnv) {
   console.log(`MSVC linker is not on PATH; using ${vsDevCmd ?? "no Visual Studio environment found"}.`);
 }
 if (strictRustPolicy) {
-  console.log("Strict release verification is enabled; Rust advisory and license tools are required.");
+  console.log(
+    "Strict release verification is enabled; the Rust feature matrix and policy tools are required.",
+  );
 }
 
 // -- CSP allowlist gate --
@@ -382,17 +389,41 @@ runNpm("Production web build", ["run", "build"]);
 runNpm("npm audit", ["audit", "--audit-level=moderate"]);
 runNpm("Playwright browser preview suite", ["run", "test:e2e"]);
 
-runCargo("Rust cargo check", ["check", "--manifest-path", "src-tauri/Cargo.toml"]);
-runCargo("Rust release tests", ["test", "--release", "--manifest-path", "src-tauri/Cargo.toml"]);
-runCargo("Rust clippy", [
-  "clippy",
-  "--manifest-path",
-  "src-tauri/Cargo.toml",
-  "--all-targets",
-  "--",
-  "-D",
-  "warnings",
-]);
+const rustMatrix = strictRustPolicy
+  ? RUST_RELEASE_FEATURE_MATRIX
+  : [{ label: "default", features: [] }];
+
+if (strictRustPolicy && !RELEASE_CARGO_FEATURES.includes("gpu")) {
+  console.error("Strict release verification failed: desktop packages must enable the gpu feature.");
+  process.exit(1);
+}
+
+for (const variant of rustMatrix) {
+  const featureArgs = cargoFeatureArgs(variant.features);
+  runCargo(`Rust cargo check (${variant.label})`, [
+    "check",
+    "--manifest-path",
+    "src-tauri/Cargo.toml",
+    ...featureArgs,
+  ]);
+  runCargo(`Rust release tests (${variant.label})`, [
+    "test",
+    "--release",
+    "--manifest-path",
+    "src-tauri/Cargo.toml",
+    ...featureArgs,
+  ]);
+  runCargo(`Rust clippy (${variant.label})`, [
+    "clippy",
+    "--manifest-path",
+    "src-tauri/Cargo.toml",
+    "--all-targets",
+    ...featureArgs,
+    "--",
+    "-D",
+    "warnings",
+  ]);
+}
 
 function handleMissingRustPolicyTool(name, installCommand) {
   const message = `${name} is not installed. Install with: ${installCommand}`;

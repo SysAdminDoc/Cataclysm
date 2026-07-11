@@ -179,9 +179,16 @@ npm run doctor             # local toolchain preflight with actionable fixes
 npm run dev                # browser preview with deterministic demo data
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run verify             # local type/lint/test/audit/build verification gate
-npm run verify:release     # strict release gate; requires Rust advisory/license tools
-npm run tauri build        # platform installer(s) in src-tauri/target/release/bundle/
+npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
+npm run tauri:build        # verified GPU-enabled installer(s) + signed artifact manifest
 ```
+
+`tauri:build` runs the strict gate, deletes stale bundles, compiles the desktop
+binary with GPU support, performs a non-visual capability smoke, and writes
+`src-tauri/target/release/bundle/cataclysm-build-manifest.json` with the enabled
+Cargo features and SHA-256 digest of every platform artifact. Systems without a
+supported adapter continue through the existing CPU fallback instead of losing
+simulation capability.
 
 To bake a Cesium ion token at build time, `cp .env.example .env` and paste
 it in; otherwise leave it blank and paste at runtime in **Settings**.

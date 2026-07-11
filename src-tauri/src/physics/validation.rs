@@ -27,11 +27,17 @@
 
 #![cfg(feature = "validation")]
 
-use super::asteroid::{far_field_amplitude_m, AsteroidImpact};
+#[cfg(test)]
+use super::asteroid::{AsteroidImpact, far_field_amplitude_m};
+#[cfg(test)]
 use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
+#[cfg(test)]
 use super::landslide::lituya_bay_1958;
+#[cfg(test)]
 use super::shallow_water::synolakis_runup_m;
+#[cfg(test)]
 use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
+#[cfg(test)]
 use super::GeoPoint;
 
 /// Stoker 1957 dam-break analytical wave-front position over a uniform
@@ -106,12 +112,12 @@ fn stoker_wavefront_speed_matches_sqrt_gh() {
 fn synolakis_matches_carrier_greenspan_envelope() {
     // Mild slope, deep water; H/d cases from Synolakis Fig. 4.
     let depth_m = 50.0;
-    let slope_deg = 2.0;
+    let slope_deg: f64 = 2.0;
 
     // Carrier-Greenspan closed form for a plane beach (Synolakis 1987
     // eqn. 19, same as our synolakis_runup_m): R = 2.831 √(cot β) H^(5/4)/d^(1/4).
     // Test that our implementation reproduces it.
-    let cot_beta = 1.0_f64 / (slope_deg as f64).to_radians().tan();
+    let cot_beta = 1.0_f64 / slope_deg.to_radians().tan();
     for &h_over_d in &[0.005_f64, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3] {
         let amp = h_over_d * depth_m;
         let expected_r = 2.831 * cot_beta.sqrt() * amp.powf(5.0 / 4.0) / depth_m.powf(1.0 / 4.0);
