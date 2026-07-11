@@ -61,10 +61,18 @@ type Props = {
   impactAngleDeg?: number;
   /** Ocean impact → play the water splash + tsunami wave. */
   impactIsWater?: boolean;
+  /** Lightweight camera telemetry for the desktop viewport HUD. */
+  onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => void;
 };
 
 const EARTH_RADIUS_M = 6_371_000;
 const INUNDATION_SEGMENTS = 40;
+
+function themeColor(token: string, fallback: string): Cesium.Color {
+  if (typeof document === "undefined") return Cesium.Color.fromCssColorString(fallback);
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return Cesium.Color.fromCssColorString(value || fallback);
+}
 
 function circlePositions(lonDeg: number, latDeg: number, radiusM: number): Float64Array {
   const out = new Float64Array(INUNDATION_SEGMENTS * 3);
@@ -197,6 +205,7 @@ export function Globe({
   impactKind,
   impactAngleDeg,
   impactIsWater,
+  onCameraTelemetry,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -256,6 +265,9 @@ export function Globe({
     });
 
     viewer.scene.globe.enableLighting = true;
+    viewer.scene.globe.dynamicAtmosphereLighting = true;
+    viewer.scene.globe.dynamicAtmosphereLightingFromSun = true;
+    viewer.scene.highDynamicRange = true;
     if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
     viewer.scene.fog.enabled = true;
 
@@ -280,6 +292,28 @@ export function Globe({
       sweLayerRef.current = null;
     };
   }, [primary]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !onCameraTelemetry) return;
+
+    const updateTelemetry = () => {
+      const position = viewer.camera.positionCartographic;
+      onCameraTelemetry({
+        lat: Cesium.Math.toDegrees(position.latitude),
+        lon: Cesium.Math.toDegrees(position.longitude),
+        altitudeM: Math.max(0, position.height),
+        headingDeg: Cesium.Math.toDegrees(Cesium.Math.zeroToTwoPi(viewer.camera.heading)),
+      });
+    };
+
+    viewer.camera.percentageChanged = 0.01;
+    viewer.camera.changed.addEventListener(updateTelemetry);
+    updateTelemetry();
+    return () => {
+      viewer.camera.changed.removeEventListener(updateTelemetry);
+    };
+  }, [onCameraTelemetry, viewerEpoch]);
 
   // Resolve which globe style we should be using — prop override, persisted
   // setting, or DEFAULT_STYLE. Listens for `tsunamisim:settings-saved`
@@ -561,6 +595,14 @@ export function Globe({
     if (sourceEntityRef.current) viewer.entities.remove(sourceEntityRef.current);
 
     const { center, cavity_radius_m, peak_amplitude_m, label } = initial;
+    const palette = {
+      text: themeColor("--text", "#cdd6f4"),
+      crust: themeColor("--crust", "#11111b"),
+      yellow: themeColor("--yellow", "#f9e2af"),
+      red: themeColor("--red", "#f38ba8"),
+      maroon: themeColor("--maroon", "#eba0ac"),
+      background: themeColor("--viewport-hud", "#1e1e2e"),
+    };
     const position = Cesium.Cartesian3.fromDegrees(center.lon_deg, center.lat_deg, 0);
     // Cavity depth ≈ cavity_diameter / 2.83 (Ward-Asphaug parabolic).
     const cavityDepthM = Math.max(2 * cavity_radius_m / 2.83, 1.0);
@@ -570,8 +612,8 @@ export function Globe({
       position,
       point: {
         pixelSize: 12,
-        color: Cesium.Color.fromCssColorString("#f9e2af"),
-        outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+        color: palette.yellow,
+        outlineColor: palette.crust,
         outlineWidth: 2,
       },
       // Translucent 3D cylinder = the impact cavity.
@@ -579,30 +621,30 @@ export function Globe({
         length: cavityDepthM,
         topRadius: Math.max(cavity_radius_m, 500),
         bottomRadius: Math.max(cavity_radius_m * 0.3, 250),
-        material: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.3),
+        material: palette.red.withAlpha(0.3),
         outline: true,
-        outlineColor: Cesium.Color.fromCssColorString("#eba0ac"),
+        outlineColor: palette.maroon,
       },
       // Surface ring outlining the cavity rim on the water surface.
       ellipse: {
         semiMajorAxis: Math.max(cavity_radius_m, 1000),
         semiMinorAxis: Math.max(cavity_radius_m, 1000),
-        material: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.18),
+        material: palette.red.withAlpha(0.18),
         outline: true,
-        outlineColor: Cesium.Color.fromCssColorString("#eba0ac"),
+        outlineColor: palette.maroon,
         height: 0,
       },
       label: {
         text: `${label}\nA₀ = ${peak_amplitude_m.toFixed(1)} m`,
         font: "12px Inter, sans-serif",
-        fillColor: Cesium.Color.fromCssColorString("#cdd6f4"),
-        outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+        fillColor: palette.text,
+        outlineColor: palette.crust,
         outlineWidth: 3,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
         pixelOffset: new Cesium.Cartesian2(0, -16),
         showBackground: true,
-        backgroundColor: Cesium.Color.fromCssColorString("#1e1e2e").withAlpha(0.85),
+        backgroundColor: palette.background.withAlpha(0.9),
         backgroundPadding: new Cesium.Cartesian2(8, 6),
       },
     });

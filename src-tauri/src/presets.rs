@@ -117,7 +117,7 @@ pub fn all_presets() -> Vec<Preset> {
             is_speculative: false,
             controversy_note: None,
             // Frames Honshu + the Japan Trench rupture zone.
-            camera_view: Some(CameraView { heading_deg: 280.0, pitch_deg: -45.0, range_m: 2_000_000.0 }),
+            camera_view: Some(CameraView { heading_deg: 345.0, pitch_deg: -72.0, range_m: 4_800_000.0 }),
             source: PresetSource::Earthquake(EarthquakeSource {
                 mw: 9.1,
                 depth_m: 30_000.0,

@@ -43,6 +43,25 @@ html[data-theme="mocha"] {
   --accent-active: #6fd2ff;
   --viewport-hud: rgba(8, 16, 24, 0.9);
 
+  /* Desktop simulator system tokens. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --control-sm: 30px;
+  --control-md: 36px;
+  --control-lg: 42px;
+  --type-micro: 9px;
+  --type-caption: 10px;
+  --type-label: 11px;
+  --type-body: 12px;
+  --type-title: 14px;
+  --surface-recessed: color-mix(in srgb, var(--crust) 78%, var(--mantle));
+  --surface-raised: color-mix(in srgb, var(--metric-bg) 88%, var(--inspector-bg));
+  --hairline: color-mix(in srgb, var(--divider) 82%, transparent);
+  --transition-fast: 140ms ease;
+
   /* Corner radii — global rule: no pills, no fully rounded. Allowed: 0/4/6/8/10/12. */
   --r-sm: 4px;
   --r-md: 8px;
@@ -94,6 +113,9 @@ html[data-theme="latte"] {
   --divider: #b8c3cf;
   --accent-active: #087fa6;
   --viewport-hud: rgba(248, 251, 254, 0.94);
+  --surface-recessed: color-mix(in srgb, var(--crust) 48%, #ffffff);
+  --surface-raised: #ffffff;
+  --hairline: color-mix(in srgb, var(--divider) 78%, transparent);
 
   color-scheme: light;
 }

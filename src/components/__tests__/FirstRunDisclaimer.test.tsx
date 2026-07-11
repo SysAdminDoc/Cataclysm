@@ -25,4 +25,12 @@ describe("FirstRunDisclaimer", () => {
 
     window.removeEventListener("tsunamisim:disclaimer-acknowledged", acknowledged);
   });
+
+  it("frames every hazard output as a model estimate", async () => {
+    render(<FirstRunDisclaimer />);
+
+    expect(await screen.findByText(/planetary-hazard source physics/i)).toBeInTheDocument();
+    expect(screen.getByText(/not observations, forecasts, or official warnings/i)).toBeInTheDocument();
+    expect(screen.getByText(/idealized source physics/i)).toBeInTheDocument();
+  });
 });

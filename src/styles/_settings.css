@@ -59,6 +59,30 @@
   padding: 12px 16px;
   border-top: 1px solid var(--divider);
   background: color-mix(in srgb, var(--chrome-bg) 72%, transparent);
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.settings__footer-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.settings__footer-message {
+  color: var(--subtext);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.settings__footer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .settings__h3 {

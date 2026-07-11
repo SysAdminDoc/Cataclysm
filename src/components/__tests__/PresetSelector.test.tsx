@@ -11,7 +11,17 @@ const PRESETS: Preset[] = [
     date: "66 Ma",
     blurb: "14-km asteroid into a shallow Yucatan sea.",
     reference: "Range et al. 2022",
-    source: { kind: "Asteroid", source: {} as never },
+    source: {
+      kind: "Asteroid",
+      source: {
+        diameter_m: 14_000,
+        density_kg_m3: 2_700,
+        velocity_m_s: 20_000,
+        angle_deg: 45,
+        water_depth_m: 1_500,
+        location: { lat_deg: 21.4, lon_deg: -89.5 },
+      },
+    },
   },
   {
     id: "tohoku",
@@ -19,7 +29,19 @@ const PRESETS: Preset[] = [
     date: "2011-03-11",
     blurb: "M 9.1 megathrust earthquake off Japan.",
     reference: "Mori et al. 2011",
-    source: { kind: "Earthquake", source: {} as never },
+    source: {
+      kind: "Earthquake",
+      source: {
+        mw: 9.1,
+        depth_m: 24_000,
+        strike_deg: 195,
+        dip_deg: 14,
+        rake_deg: 81,
+        slip_m: 24,
+        water_depth_m: 6_000,
+        location: { lat_deg: 38.3, lon_deg: 142.37 },
+      },
+    },
   },
   {
     id: "poseidon",
@@ -29,7 +51,16 @@ const PRESETS: Preset[] = [
     reference: "DNA 1996",
     is_speculative: true,
     controversy_note: "Disputed propaganda-grade claim.",
-    source: { kind: "Nuclear", source: {} as never },
+    source: {
+      kind: "Nuclear",
+      source: {
+        yield_kt: 100_000,
+        burst_mode: "DeepOptimal",
+        burst_depth_m: 600,
+        water_depth_m: 4_000,
+        location: { lat_deg: 0, lon_deg: 0 },
+      },
+    },
   },
 ];
 
@@ -39,6 +70,21 @@ describe("PresetSelector", () => {
     expect(screen.getByText("Chicxulub Impact")).toBeInTheDocument();
     expect(screen.getByText("Tōhoku 2011")).toBeInTheDocument();
     expect(screen.getByText("Poseidon")).toBeInTheDocument();
+  });
+
+  it("groups recorded and what-if scenarios from preset metadata", () => {
+    render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
+    expect(screen.getByRole("heading", { name: "Recorded events" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What-if studies" })).toBeInTheDocument();
+    expect(screen.getByLabelText("2 scenarios")).toBeInTheDocument();
+    expect(screen.getByLabelText("1 scenario")).toBeInTheDocument();
+  });
+
+  it("shows compact source-specific metadata", () => {
+    render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
+    expect(screen.getByText("14 km body")).toBeInTheDocument();
+    expect(screen.getByText("M_w 9.1")).toBeInTheDocument();
+    expect(screen.getByText("100 Mt yield")).toBeInTheDocument();
   });
 
   it("calls onSelect when a preset is clicked", async () => {
@@ -76,9 +122,23 @@ describe("PresetSelector", () => {
     expect(presetBtn).toHaveTextContent("Tōhoku 2011");
   });
 
-  it("shows speculative badge on speculative presets", () => {
+  it("shows what-if badge on speculative presets", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
-    expect(screen.getByText("Speculative")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hypothetical or contested")).toHaveTextContent("What-if");
+  });
+
+  it("preserves recorded and what-if filters across card and timeline views", async () => {
+    const user = userEvent.setup();
+    render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
+
+    await user.click(screen.getByRole("tab", { name: "What-if" }));
+    expect(screen.getByText("Poseidon")).toBeInTheDocument();
+    expect(screen.queryByText("Tōhoku 2011")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Recorded events" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Timeline" }));
+    expect(screen.getByText("No dated timeline events")).toBeInTheDocument();
+    expect(screen.queryByText("Tōhoku 2011")).not.toBeInTheDocument();
   });
 
   it("shows preset count in header", () => {

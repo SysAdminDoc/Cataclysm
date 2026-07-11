@@ -86,7 +86,7 @@ const DEMO_PRESETS: Preset[] = [
     blurb: "M_w 9.1 megathrust off Sanriku coast. 40 m maximum runup at Miyako.",
     reference: "Mori et al. 2011, GRL; Fujii & Satake 2013",
     reference_url: "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2011GL049210",
-    camera_view: { heading_deg: 280, pitch_deg: -45, range_m: 2_000_000 },
+    camera_view: { heading_deg: 345, pitch_deg: -72, range_m: 4_800_000 },
     source: {
       kind: "Earthquake",
       source: {

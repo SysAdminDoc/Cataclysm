@@ -44,7 +44,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
     return (
       <div className="section">
         <div className="section__title">
-          <span>Engineering metrics</span>
+          <span>Source metrics</span>
           <span className="section__badge" data-tone="muted">Waiting</span>
         </div>
         <div className="empty-state">
@@ -76,7 +76,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
     <>
       <div className="section">
         <div className="section__title">
-          <span>Engineering metrics</span>
+          <span>Source metrics</span>
           <span className="section__badge" data-tone="success">Ready</span>
         </div>
         <div className="source-summary" aria-label="Source center">
@@ -93,7 +93,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
             </div>
           </div>
           <div className="results__cell" data-tone="secondary">
-            <div className="results__label"><GlossaryTip term="mw">M_w equivalent</GlossaryTip></div>
+            <div className="results__label"><GlossaryTip term="mw">Tsunami-equivalent M_w</GlossaryTip></div>
             <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
           </div>
           <div className="results__cell">
@@ -105,7 +105,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
             </div>
           </div>
           <div className="results__cell">
-            <div className="results__label">Peak amplitude</div>
+            <div className="results__label">Peak source displacement</div>
             <div className="results__value">
               {amp.value}
               {" "}

@@ -5,6 +5,15 @@
   line-height: 1.5;
 }
 
+.section__title > span:first-child > small {
+  margin-left: 6px;
+  color: var(--subtext);
+  font-size: var(--type-micro);
+  font-weight: 620;
+  letter-spacing: 0.35px;
+  text-transform: none;
+}
+
 .swe__meta-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -49,6 +58,16 @@
 
 .swe__row .primary {
   flex: 1;
+}
+
+.swe__row--primary {
+  margin-top: 0;
+}
+
+.swe__row--primary .primary {
+  min-height: var(--control-lg);
+  font-size: var(--type-body);
+  letter-spacing: 0.25px;
 }
 
 .swe__run-state {

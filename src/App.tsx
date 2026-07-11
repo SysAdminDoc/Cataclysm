@@ -29,6 +29,7 @@ import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
 import { LayerInspector } from "./components/LayerInspector";
+import { SourceModelSummary } from "./components/SourceModelSummary";
 import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
 import { falloutRings } from "./hazards/nuclear/fallout";
 import type { NuclearEffects } from "./hazards/nuclear/physics";
@@ -230,6 +231,7 @@ export default function App() {
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [presetsError, setPresetsError] = useState<string | null>(null);
   const [showLog, setShowLog] = useState(false);
+  const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const inTauri = useMemo(isTauri, []);
@@ -243,6 +245,9 @@ export default function App() {
     setToast({ msg, tone });
     window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 6000);
+  }, []);
+  const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
+    setCameraTelemetry(telemetry);
   }, []);
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
@@ -393,9 +398,7 @@ export default function App() {
     if (!eff?.fallout) return null;
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
-  const cockpitMode = compareMode ? "Compare" : inspectMode ? "Inspect" : pickMode ? "Pick location" : "Explore";
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
-  const timelineLabel = `${Math.round(timeS / 60)} min`;
   const sourceRequiredReason = "Select a preset or simulate a custom source first.";
   const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
@@ -470,15 +473,15 @@ export default function App() {
             <UiIcon name="info" size={14} />
           </span>
           <span>
-            <strong>Optional imagery token.</strong> The default Natural Earth globe
-            works locally. Add a free Cesium ion token for satellite imagery and bathymetry.
+            <strong>Higher-detail online maps are available.</strong> The bundled Earth
+            works offline. Configure optional streamed terrain and imagery when needed.
           </span>
           <button
             className="token-banner__action"
             onClick={() => setShowSettings(true)}
             type="button"
           >
-            Open Settings
+            Configure maps
           </button>
           <button
             className="token-banner__dismiss"
@@ -497,9 +500,6 @@ export default function App() {
       )}
       <header className="app__header">
         <div className="app__brand">
-          <span className="app__brand-mark" aria-hidden>
-            CX
-          </span>
           <div className="app__brand-copy">
             <h1 className="app__title">Cataclysm</h1>
             <span className="app__tagline">Planetary hazard simulator</span>
@@ -844,6 +844,7 @@ export default function App() {
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 impactAngleDeg={asteroidInput.angleDeg}
                 impactIsWater={asteroidInput.targetType === "water"}
+                onCameraTelemetry={handleCameraTelemetry}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
@@ -870,6 +871,25 @@ export default function App() {
           Layers
           <UiIcon name="chevronDown" size={13} />
         </button>
+        <div className="app__viewport-legend" data-visible={slotA.initial ? "true" : "false"} aria-label="Surface displacement legend">
+          <span className="app__viewport-instrument-label">Surface displacement</span>
+          <div className="app__viewport-legend-ramp" aria-hidden />
+          <div className="app__viewport-legend-scale" aria-hidden>
+            <span>0</span><span>0.1</span><span>1</span><span>5</span><span>10+</span>
+          </div>
+          <small>metres · analytical overlay</small>
+        </div>
+        <div className="app__viewport-telemetry" aria-label="Viewport telemetry">
+          <div className="app__viewport-north" style={{ transform: `rotate(${-cameraTelemetry.headingDeg}deg)` }} aria-hidden>
+            <span>N</span>
+            <i />
+          </div>
+          <div>
+            <span className="app__viewport-instrument-label">Camera</span>
+            <strong>{cameraTelemetry.altitudeM >= 1_000_000 ? `${(cameraTelemetry.altitudeM / 1_000_000).toFixed(1)} Mm` : `${(cameraTelemetry.altitudeM / 1000).toFixed(0)} km`} altitude</strong>
+            <small>{Math.abs(cameraTelemetry.lat).toFixed(2)}° {cameraTelemetry.lat >= 0 ? "N" : "S"} · {Math.abs(cameraTelemetry.lon).toFixed(2)}° {cameraTelemetry.lon >= 0 ? "E" : "W"}</small>
+          </div>
+        </div>
       </main>
 
       <aside className="app__panel app__panel--right" aria-label="Simulation controls and results">
@@ -914,6 +934,17 @@ export default function App() {
               setInspectorTab("results");
             }}
             display="setup"
+          />
+        )}
+        {inspectorTab === "setup" && !inHazardMode && (
+          <SourceModelSummary
+            preset={activePresetA ?? null}
+            initial={slotA.initial}
+            onEdit={() => {
+              const editor = document.querySelector<HTMLElement>(".scenario-form");
+              editor?.scrollIntoView({ block: "start", behavior: "smooth" });
+              editor?.querySelector<HTMLElement>("button, input, select")?.focus();
+            }}
           />
         )}
         {inspectorTab === "setup" && !inHazardMode && <SwePlayback
@@ -1026,6 +1057,9 @@ export default function App() {
         hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
         sourceLabel={inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}
         solverReady={hasSwePlayback}
+        domain={hazardMode}
+        frameCount={sweSnapshots?.length ?? 0}
+        onOpenDetails={() => setInspectorTab("setup")}
       />
       <div className="app__statusbar" role="status" aria-live="polite">
         <div className="statusbar__item statusbar__item--ready" data-active={timelinePlaying || recording ? "true" : "false"}>
@@ -1033,13 +1067,10 @@ export default function App() {
           {modelStatus}
         </div>
         <div className="statusbar__item">
-          Mode <strong>{cockpitMode}</strong>
+          Renderer <strong>CesiumJS</strong>
         </div>
         <div className="statusbar__item statusbar__item--wide">
-          {activeSourceLabel}
-        </div>
-        <div className="statusbar__item">
-          Timeline <strong>{timelineLabel}</strong>
+          WGS84 Earth · visual terrain · analytical ocean-depth model
         </div>
         <div className="statusbar__item statusbar__item--warning">
           <UiIcon name="alert" size={14} />

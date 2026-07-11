@@ -12,11 +12,11 @@ describe("Settings", () => {
     const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
-    expect(await screen.findByText("Globe imagery")).toBeInTheDocument();
-    expect(screen.getByText(/local-first and reliable/i)).toBeInTheDocument();
+    expect(await screen.findByText("Earth rendering")).toBeInTheDocument();
+    expect(screen.getByText(/bundled and works offline/i)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "OpenStreetMap (no token)" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Natural Earth II (offline-friendly)" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Performance" }));
+    await user.click(screen.getByRole("button", { name: "Simulation performance" }));
     expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();
   });
 
@@ -26,13 +26,16 @@ describe("Settings", () => {
     const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
-    const token = await screen.findByPlaceholderText(/Paste your token here/i);
+    const token = await screen.findByPlaceholderText(/Paste token/i);
+    expect(screen.getByRole("button", { name: "Apply Changes" })).toBeDisabled();
     await user.type(token, "  abc123  ");
     await user.click(screen.getByRole("button", { name: "Catppuccin Latte (light)" }));
     await user.click(screen.getByRole("button", { name: "Cividis (CVD-safe)" }));
-    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Apply Changes" }));
 
-    expect(await screen.findByText(/Saved at/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Changes applied at/i)).toBeInTheDocument();
+    expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("tsunamisim.cesium_token") ?? "\"\"")).toBe("abc123");
     expect(JSON.parse(localStorage.getItem("tsunamisim.theme") ?? "\"\"")).toBe("latte");
     expect(JSON.parse(localStorage.getItem("tsunamisim.colormap") ?? "\"\"")).toBe("cividis");
@@ -48,7 +51,7 @@ describe("Settings", () => {
     const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
-    await user.click(await screen.findByRole("button", { name: "Advanced" }));
+    await user.click(await screen.findByRole("button", { name: "Data & onboarding" }));
     await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
 
     expect(await screen.findByText("Settings reset to defaults.")).toBeInTheDocument();
@@ -65,12 +68,28 @@ describe("Settings", () => {
     const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
-    await user.click(await screen.findByRole("button", { name: "Advanced" }));
-    await user.click(await screen.findByRole("button", { name: "Show token banner again" }));
+    await user.click(await screen.findByRole("button", { name: "Data & onboarding" }));
+    await user.click(await screen.findByRole("button", { name: "Show online-map notice again" }));
 
-    expect(await screen.findByText("Imagery token banner re-armed.")).toBeInTheDocument();
+    expect(await screen.findByText("The online-map notice will appear again.")).toBeInTheDocument();
     expect(localStorage.getItem("tsunamisim.token_banner_dismissed_at")).toBeNull();
     expect(saved).toHaveBeenCalled();
     window.removeEventListener("tsunamisim:settings-saved", saved);
+  });
+
+  it("does not silently discard staged changes from a backdrop click", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(<Settings onClose={onClose} />);
+
+    const token = await screen.findByPlaceholderText(/Paste token/i);
+    await user.type(token, "staged-token");
+    await user.click(container.querySelector(".modal-overlay") as HTMLElement);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("Unsaved changes remain. Apply them or choose Cancel.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

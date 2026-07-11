@@ -14,6 +14,13 @@ import { UiIcon } from "./UiIcon";
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
 type SettingsSection = "visual" | "performance" | "advanced";
 
+type StagedSettings = {
+  token: string;
+  theme: Theme;
+  globeStyle: GlobeStyleId;
+  colormapId: ColormapId;
+};
+
 type Props = { onClose: () => void };
 
 export function Settings({ onClose }: Props) {
@@ -30,6 +37,7 @@ export function Settings({ onClose }: Props) {
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>(isTauri() ? "unknown" : "browser-preview");
   const [classroomLocked, setClassroomLocked] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSection>("visual");
+  const [appliedSettings, setAppliedSettings] = useState<StagedSettings | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +48,12 @@ export function Settings({ onClose }: Props) {
       setGlobeStyle(s.globe_style);
       setColormapId(s.colormap);
       setClassroomLocked(s.classroom_locked);
+      setAppliedSettings({
+        token: s.cesium_token,
+        theme: s.theme,
+        globeStyle: s.globe_style,
+        colormapId: s.colormap,
+      });
     });
     if (isTauri()) {
       api
@@ -74,7 +88,9 @@ export function Settings({ onClose }: Props) {
         settings.setGlobeStyle(globeStyle),
         settings.setColormap(colormapId),
       ]);
-      setStatusMsg(`Saved at ${new Date().toLocaleTimeString()}`);
+      setTokenLocal(trimmedToken);
+      setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId });
+      setStatusMsg(`Changes applied at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       console.error("[settings] save failed", err);
       setSaveErr(String(err));
@@ -90,6 +106,20 @@ export function Settings({ onClose }: Props) {
   }
 
   const needsToken = GLOBE_STYLES.find((s) => s.id === globeStyle)?.requires_token ?? false;
+  const hasUnsavedChanges = appliedSettings !== null && (
+    token !== appliedSettings.token
+    || theme !== appliedSettings.theme
+    || globeStyle !== appliedSettings.globeStyle
+    || colormapId !== appliedSettings.colormapId
+  );
+
+  function handleBackdropClick() {
+    if (hasUnsavedChanges) {
+      setStatusMsg("Unsaved changes remain. Apply them or choose Cancel.");
+      return;
+    }
+    onClose();
+  }
 
   function openCesiumSignup() {
     const validation = validateTrustedExternalUrl(CESIUM_SIGNUP_URL);
@@ -109,11 +139,11 @@ export function Settings({ onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleBackdropClick}>
       <div className="modal modal--settings" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
           <h2 id="settings-title">Settings</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close" type="button">
+          <button className="modal__close" onClick={onClose} aria-label="Cancel and close settings" type="button">
             <UiIcon name="close" size={16} />
           </button>
         </header>
@@ -138,19 +168,18 @@ export function Settings({ onClose }: Props) {
           )}
           <div className="settings__workspace">
             <nav className="settings__nav" aria-label="Settings categories">
-              <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>Visuals &amp; map</button>
-              <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>Performance</button>
-              <button type="button" aria-current={activeSection === "advanced" ? "page" : undefined} onClick={() => setActiveSection("advanced")}>Advanced</button>
+              <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>Earth &amp; appearance</button>
+              <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>Simulation performance</button>
+              <button type="button" aria-current={activeSection === "advanced" ? "page" : undefined} onClick={() => setActiveSection("advanced")}>Data &amp; onboarding</button>
             </nav>
             <div className="settings__content">
           {activeSection === "visual" && <>
           <section className="settings__section">
-            <h3 className="settings__h3">Globe imagery</h3>
+            <h3 className="settings__h3">Earth rendering</h3>
             <p className="modal__intro">
-              Pick how the globe is rendered. The default
-              (<strong>Natural Earth II</strong>) is local-first and reliable
-              without network tiles. Online street, satellite, bathymetry, and
-              terrain layers remain available when you want more context.
+              Choose the visual map beneath the simulation. <strong>Natural
+              Earth II</strong> is bundled and works offline; online street,
+              satellite, bathymetry, and terrain maps provide more context.
             </p>
             <select
               value={globeStyle}
@@ -172,16 +201,14 @@ export function Settings({ onClose }: Props) {
           {!classroomLocked && (
           <section className="settings__section">
             <h3 className="settings__h3">
-              Cesium ion access token{!needsToken && " (optional)"}
+              Online map access{!needsToken && " (optional)"}
             </h3>
             <p className="modal__intro">
-              Optional. Only needed if you select a Cesium ion-backed globe
-              style above (terrain, bathymetry, satellite imagery). Token is
-              stored in your operating system's keychain (Windows Credential
-              Manager / macOS Keychain / Linux Secret Service) in the desktop
-              build, and in <code>localStorage</code> only for browser preview.
-              It is never embedded in the binary or sent anywhere except{" "}
-              <code>cesium.com</code>. Get a free token at{" "}
+              A Cesium ion token enables optional streamed terrain,
+              bathymetry, and satellite imagery. The desktop app stores it in
+              your operating system keychain and sends it only to{" "}
+              <code>cesium.com</code>. Browser preview stores it locally in
+              this browser.{" "}
               <a
                 href={CESIUM_SIGNUP_URL}
                 target="_blank"
@@ -191,16 +218,16 @@ export function Settings({ onClose }: Props) {
                   openCesiumSignup();
                 }}
               >
-                cesium.com/ion/signup
+                Create a free Cesium ion token
               </a>
               .
             </p>
             <label className="settings__field">
-              <span>Access token</span>
+              <span>Cesium ion token</span>
               <input
                 type="password"
                 autoComplete="off"
-                placeholder={needsToken ? "Required for this globe style..." : "Paste your token here (optional)..."}
+                placeholder={needsToken ? "Required for the selected map" : "Paste token (optional)"}
                 value={token}
                 onChange={(e) => setTokenLocal(e.target.value)}
               />
@@ -289,8 +316,8 @@ export function Settings({ onClose }: Props) {
               )}
               {gpuStatus === "feature-off" && (
                 <span className="settings__status" data-tone="muted">
-                  GPU feature not compiled in this build (CPU-only). Build with{" "}
-                  <code>cargo tauri build -- --features gpu</code> to enable.
+                  This desktop build uses the CPU. GPU acceleration is
+                  available in accelerated builds.
                 </span>
               )}
               {gpuStatus === "browser-preview" && (
@@ -306,7 +333,7 @@ export function Settings({ onClose }: Props) {
           )}
           {activeSection === "advanced" && <>
           <section className="settings__section">
-            <h3 className="settings__h3">Advanced</h3>
+            <h3 className="settings__h3">Help &amp; onboarding</h3>
             <div className="settings__button-row">
               <button
                 className="scenario-tab"
@@ -341,13 +368,23 @@ export function Settings({ onClose }: Props) {
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                   }
-                  setStatusMsg("Imagery token banner re-armed.");
+                  setStatusMsg("The online-map notice will appear again.");
                 }}
                 type="button"
               >
                 <UiIcon name="alert" size={14} />
-                Show token banner again
+                Show online-map notice again
               </button>
+            </div>
+          </section>
+
+          <section className="settings__section">
+            <h3 className="settings__h3">Configuration data</h3>
+            <p className="modal__intro">
+              Export a portable settings file or restore one created by
+              Cataclysm. Imported settings take effect immediately.
+            </p>
+            <div className="settings__button-row">
               <button
                 className="scenario-tab"
                 onClick={async () => {
@@ -374,9 +411,16 @@ export function Settings({ onClose }: Props) {
                       const text = await file.text();
                       const result = await settings.importSettings(text);
                       const all = await settings.loadAll();
+                      setTokenLocal(all.cesium_token);
                       setThemeLocal(all.theme);
                       setGlobeStyle(all.globe_style);
                       setColormapId(all.colormap);
+                      setAppliedSettings({
+                        token: all.cesium_token,
+                        theme: all.theme,
+                        globeStyle: all.globe_style,
+                        colormapId: all.colormap,
+                      });
                       applyTheme(all.theme);
                       setSaveErr(null);
                       if (typeof window !== "undefined") {
@@ -406,6 +450,12 @@ export function Settings({ onClose }: Props) {
                   setThemeLocal("mocha");
                   setGlobeStyle(DEFAULT_STYLE);
                   setColormapId("diverging");
+                  setAppliedSettings({
+                    token: "",
+                    theme: "mocha",
+                    globeStyle: DEFAULT_STYLE,
+                    colormapId: "diverging",
+                  });
                   applyTheme("mocha");
                   primeCesiumToken(null);
                   if (typeof window !== "undefined") {
@@ -430,19 +480,25 @@ export function Settings({ onClose }: Props) {
           </div>
 
           <section className="settings__actions settings__actions--footer">
-            <button className="primary" onClick={save} disabled={saving}>
-              {saving ? "Saving..." : "Save settings"}
-            </button>
-            {statusMsg && !saveErr && (
-              <span className="settings__status" data-tone="success" role="status" aria-live="polite">
-                {statusMsg}
-              </span>
-            )}
-            {saveErr && (
-              <span className="settings__status" data-tone="danger" role="alert">
-                Save failed: {saveErr}
-              </span>
-            )}
+            <div className="settings__footer-status" aria-live="polite">
+              {hasUnsavedChanges && (
+                <span className="settings__status" data-tone="warning">Unsaved changes</span>
+              )}
+              {statusMsg && !saveErr && (
+                <span className="settings__footer-message" role="status">{statusMsg}</span>
+              )}
+              {saveErr && (
+                <span className="settings__status" data-tone="danger" role="alert">
+                  {saveErr.startsWith("Import failed:") ? saveErr : `Could not apply changes: ${saveErr}`}
+                </span>
+              )}
+            </div>
+            <div className="settings__footer-buttons">
+              <button type="button" onClick={onClose}>Cancel</button>
+              <button className="primary" type="button" onClick={save} disabled={saving || !hasUnsavedChanges}>
+                {saving ? "Applying Changes..." : "Apply Changes"}
+              </button>
+            </div>
           </section>
         </div>
       </div>

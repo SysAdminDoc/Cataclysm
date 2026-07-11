@@ -335,63 +335,26 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           ? "GPU ready"
           : "CPU ready"
         : "Ready";
-  const fidelityLabel = cellsPerDeg <= 4 ? "fast preview" : cellsPerDeg >= 10 ? "high fidelity" : "balanced";
+  const fidelityLabel = cellsPerDeg <= 4 ? "Preview" : cellsPerDeg >= 10 ? "High" : "Standard";
 
   return (
     <div className="section">
       <div className="section__title">
-        <span>Wave propagation <GlossaryTip term="swe">SWE</GlossaryTip></span>
+        <span>Wave propagation <small>Shallow-water model</small> <GlossaryTip term="swe">SWE</GlossaryTip></span>
         <span className="section__badge" data-tone={status === "error" ? "danger" : status === "running" ? "active" : undefined}>
           {solverBadge}
         </span>
       </div>
       <p className="swe__hint">
-        Compute a one-hour shallow-water propagation around the active source.
-        Desktop builds use the full solver; browser preview renders deterministic demonstration frames.
+        Compute one hour of regional ocean propagation. Desktop builds use the
+        full solver; browser preview uses deterministic demonstration frames.
       </p>
       <div className="swe__meta-grid" aria-label="Solver setup">
         <span><strong>{N_SNAPSHOTS}</strong> frames</span>
         <span><strong>60</strong> min window</span>
         <span><strong>{isTauri() ? "Backend" : "Preview"}</strong> mode</span>
       </div>
-      <div className="swe__options" role="group" aria-label="Solver options">
-        <label className="swe__check">
-          <input
-            type="checkbox"
-            checked={useBathy}
-            onChange={(e) => setUseBathy(e.target.checked)}
-          />
-          <span>Coarse basin/shelf bathymetry</span>
-        </label>
-        <div className="swe__confidence" role="note">
-          Low confidence: current solver depths are basin means with a shelf taper, not GEBCO_2026/TID-backed terrain.
-        </div>
-        <label className="swe__check">
-          <input
-            type="checkbox"
-            checked={includeLambWave}
-            onChange={(e) => setIncludeLambWave(e.target.checked)}
-          />
-          <span>Atmospheric Lamb wave (Hunga Tonga)</span>
-        </label>
-        <label className="swe__check swe__resolution">
-          <span>
-            Resolution <strong>{cellsPerDeg} cells/°</strong>
-            <em>{fidelityLabel}</em>
-          </span>
-          <input
-            type="range"
-            min={3}
-            max={12}
-            step={1}
-            value={cellsPerDeg}
-            onChange={(e) => setCellsPerDeg(Number(e.target.value))}
-            aria-label="Grid resolution in cells per degree"
-            title="Higher resolution is more accurate but slower. Default is 6."
-          />
-        </label>
-      </div>
-      <div className="swe__row">
+      <div className="swe__row swe__row--primary">
         <button
           className="primary"
           onClick={run}
@@ -411,6 +374,43 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             Cancel
           </button>
         )}
+      </div>
+      <div className="swe__options" role="group" aria-label="Solver options">
+        <label className="swe__check">
+          <input
+            type="checkbox"
+            checked={useBathy}
+            onChange={(e) => setUseBathy(e.target.checked)}
+          />
+          <span>Use simplified ocean-depth model</span>
+        </label>
+        <div className="swe__confidence" role="note">
+          Low confidence: current solver depths are basin means with a shelf taper, not GEBCO_2026/TID-backed terrain.
+        </div>
+        <label className="swe__check">
+          <input
+            type="checkbox"
+            checked={includeLambWave}
+            onChange={(e) => setIncludeLambWave(e.target.checked)}
+          />
+          <span>Include atmospheric pressure wave</span>
+        </label>
+        <label className="swe__check swe__resolution">
+          <span>
+            Resolution <strong>{cellsPerDeg} cells/°</strong>
+            <em>{fidelityLabel}</em>
+          </span>
+          <input
+            type="range"
+            min={3}
+            max={12}
+            step={1}
+            value={cellsPerDeg}
+            onChange={(e) => setCellsPerDeg(Number(e.target.value))}
+            aria-label="Grid resolution in cells per degree"
+            title="Higher resolution is more accurate but slower. Default is 6."
+          />
+        </label>
       </div>
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">

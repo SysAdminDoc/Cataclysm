@@ -93,8 +93,8 @@ a {
 
 .app {
   display: grid;
-  grid-template-columns: minmax(286px, 318px) minmax(520px, 1fr) minmax(340px, 382px);
-  grid-template-rows: auto 60px minmax(0, 1fr) 78px 28px;
+  grid-template-columns: minmax(292px, 306px) minmax(560px, 1fr) minmax(338px, 356px);
+  grid-template-rows: auto 58px minmax(0, 1fr) 86px 30px;
   grid-template-areas:
     "banner banner banner"
     "header header header"
@@ -383,15 +383,90 @@ a {
 .simulation-transport {
   grid-area: transport;
   display: grid;
-  grid-template-columns: auto 132px minmax(260px, 1fr) 94px 180px;
+  grid-template-columns: auto 128px minmax(220px, 1fr) 84px 90px 156px 68px;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   padding: 10px 16px;
   background: color-mix(in srgb, var(--chrome-bg) 94%, var(--inspector-bg));
   border-top: 1px solid var(--divider);
   color: var(--subtext);
   box-shadow: 0 -10px 28px color-mix(in srgb, var(--crust) 22%, transparent);
+}
+
+.simulation-transport__frame {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--divider);
+}
+
+.simulation-transport__frame span,
+.simulation-transport__effect-copy > span,
+.simulation-transport__effect-model > span {
+  color: var(--subtext);
+  font-size: var(--type-micro);
+  font-weight: 760;
+  letter-spacing: 0.75px;
+  text-transform: uppercase;
+}
+
+.simulation-transport__frame strong {
+  color: var(--text);
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: var(--type-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.simulation-transport__details {
+  min-height: var(--control-md);
+  padding-inline: 10px;
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+
+.simulation-transport--effect {
+  grid-template-columns: 48px minmax(260px, 1fr) minmax(220px, 420px) 100px;
+}
+
+.simulation-transport__effect-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--accent-active) 42%, var(--divider));
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent-active) 10%, var(--surface-recessed));
+  color: var(--accent-active);
+}
+
+.simulation-transport__effect-copy,
+.simulation-transport__effect-model {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.simulation-transport__effect-copy strong,
+.simulation-transport__effect-model strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--type-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simulation-transport__effect-copy small {
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.simulation-transport__effect-model {
+  justify-content: center;
+  padding-left: 16px;
+  border-left: 1px solid var(--divider);
 }
 
 .simulation-transport__controls {

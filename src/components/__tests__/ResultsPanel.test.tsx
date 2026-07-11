@@ -21,12 +21,12 @@ describe("ResultsPanel", () => {
 
   it("renders source readout for a given initial displacement", () => {
     render(<ResultsPanel initial={MOCK_INITIAL} timeS={900} onTimeChange={() => {}} />);
-    expect(screen.getByText("Engineering metrics")).toBeInTheDocument();
+    expect(screen.getByText("Source metrics")).toBeInTheDocument();
     expect(screen.getByText("Mt TNT")).toBeInTheDocument();
   });
 
   it("shows timeline readout", () => {
     render(<ResultsPanel initial={MOCK_INITIAL} timeS={1800} onTimeChange={() => {}} />);
-    expect(screen.getByText("Engineering metrics")).toBeInTheDocument();
+    expect(screen.getByText("Source metrics")).toBeInTheDocument();
   });
 });

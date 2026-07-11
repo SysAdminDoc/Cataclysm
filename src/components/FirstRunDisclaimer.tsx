@@ -40,9 +40,11 @@ export function FirstRunDisclaimer() {
         </header>
         <div className="modal__body">
           <p className="notice-lede">
-            Cataclysm is an exploratory model for peer-reviewed source
-            physics, wave propagation, and first-order coastal effects. It must
-            not guide evacuation, routing, forecasting, insurance, or operations.
+            Cataclysm is an exploratory simulator for planetary-hazard source
+            physics, propagation, and first-order effects. Its outputs are
+            model estimates—not observations, forecasts, or official
+            warnings—and must not guide evacuation, routing, insurance, or
+            operations.
           </p>
           <div className="notice-grid" aria-label="Use guidance">
             <div className="notice-grid__item">
@@ -59,7 +61,7 @@ export function FirstRunDisclaimer() {
             </div>
             <div className="notice-grid__item" data-tone="warning">
               <strong>Limits to expect</strong>
-              <span>Coarse bathymetry, simplified runup, and approximate export geometry.</span>
+              <span>Idealized source physics, coarse bathymetry, simplified atmosphere and runup, and approximate effect geometry.</span>
             </div>
           </div>
           <p className="modal__copy">

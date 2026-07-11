@@ -12,6 +12,9 @@ type Props = {
   hasSource: boolean;
   sourceLabel: string;
   solverReady: boolean;
+  domain: "tsunami" | "asteroid" | "nuclear";
+  frameCount?: number;
+  onOpenDetails: () => void;
 };
 
 function formatClock(timeS: number): string {
@@ -32,8 +35,34 @@ export function SimulationTransport({
   hasSource,
   sourceLabel,
   solverReady,
+  domain,
+  frameCount = 0,
+  onOpenDetails,
 }: Props) {
   const safeTimeS = Math.max(0, Math.min(TOTAL_TIME_S, Number.isFinite(timeS) ? timeS : 0));
+  if (domain !== "tsunami") {
+    const label = domain === "asteroid" ? "Impact effects" : "Nuclear effects";
+    return (
+      <section className="simulation-transport simulation-transport--effect" aria-label={`${label} playback status`}>
+        <div className="simulation-transport__effect-icon" aria-hidden>
+          <UiIcon name="play" size={18} />
+        </div>
+        <div className="simulation-transport__effect-copy">
+          <span>Effect renderer</span>
+          <strong>{hasSource ? `${label} ready` : `Configure ${label.toLowerCase()}`}</strong>
+          <small>{hasSource ? "Run the staged animation from the Setup panel." : "Choose a target location and source parameters to continue."}</small>
+        </div>
+        <div className="simulation-transport__effect-model">
+          <span>Active model</span>
+          <strong>{sourceLabel}</strong>
+        </div>
+        <button type="button" className="simulation-transport__details" onClick={onOpenDetails}>Open setup</button>
+      </section>
+    );
+  }
+  const frameIndex = solverReady && frameCount > 0
+    ? Math.min(frameCount, Math.max(1, Math.round((safeTimeS / TOTAL_TIME_S) * (frameCount - 1)) + 1))
+    : 0;
   return (
     <section className="simulation-transport" aria-label="Scenario playback controls">
       <div className="simulation-transport__controls">
@@ -90,13 +119,18 @@ export function SimulationTransport({
           <option value={12}>12x</option>
         </select>
       </label>
+      <div className="simulation-transport__frame">
+        <span>Frame</span>
+        <strong>{solverReady ? `${frameIndex} / ${frameCount}` : "— / —"}</strong>
+      </div>
       <div className="simulation-transport__solver" data-ready={solverReady ? "true" : "false"}>
         <span className="status-dot" aria-hidden />
         <div>
           <span>Solver status</span>
-          <strong>{solverReady ? "Playback ready" : "Analytical model"}</strong>
+          <strong>{solverReady ? `${frameCount} frames ready` : "Propagation not run"}</strong>
         </div>
       </div>
+      <button type="button" className="simulation-transport__details" onClick={onOpenDetails}>Details</button>
     </section>
   );
 }
