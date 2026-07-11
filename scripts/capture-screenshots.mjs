@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -10,6 +10,26 @@ const port = 4188;
 const origin = `http://127.0.0.1:${port}`;
 const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
 
+function buildProductionPreview() {
+  const command = process.platform === "win32" ? "cmd.exe" : "npm";
+  const args = process.platform === "win32"
+    ? ["/d", "/c", "npm", "run", "build"]
+    : ["run", "build"];
+  const result = spawnSync(command, args, {
+    cwd: root,
+    stdio: "inherit",
+    windowsHide: true,
+  });
+
+  if (result.error) {
+    throw new Error(`Production build failed to start: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`Production build failed with exit code ${result.status ?? "unknown"}.`);
+  }
+}
+
+buildProductionPreview();
 await mkdir(outputDir, { recursive: true });
 
 const server = spawn(process.execPath, [viteBin, "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
@@ -38,6 +58,29 @@ function seedPreview(theme = "mocha") {
   localStorage.setItem("tsunamisim.tour_completed_at", now);
   localStorage.setItem("tsunamisim.token_banner_dismissed_at", now);
   localStorage.setItem("tsunamisim.theme", JSON.stringify(theme));
+  // README captures intentionally use the best no-token online imagery. Strict
+  // visual-regression fixtures continue to use a masked/deterministic globe.
+  localStorage.setItem("tsunamisim.globe_style", JSON.stringify("esri-world-imagery"));
+}
+
+async function waitForStableWorkspace(page) {
+  await page.getByRole("button", { name: "Run simulation" }).waitFor({ state: "visible" });
+  await page.locator('.app__globe-status[data-status="loading"]').waitFor({ state: "detached" });
+
+  const canvas = page.locator(".cesium-widget canvas");
+  await canvas.waitFor({ state: "visible" });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  let previous;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const current = await canvas.screenshot({ animations: "disabled", scale: "css" });
+    if (previous?.equals(current)) return;
+    previous = current;
+    await page.waitForTimeout(100);
+  }
+  throw new Error("Cesium globe did not settle before screenshot capture.");
 }
 
 async function capture(page, fileName) {
@@ -54,12 +97,19 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const theme of ["mocha", "latte"]) {
-    const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
+    const context = await browser.newContext({
+      viewport: { width: 1600, height: 1000 },
+      deviceScaleFactor: 1,
+      locale: "en-US",
+      timezoneId: "UTC",
+      reducedMotion: "reduce",
+      serviceWorkers: "block",
+    });
     await context.addInitScript(seedPreview, theme);
     const page = await context.newPage();
     await page.goto(origin, { waitUntil: "networkidle" });
     await page.locator('.preset-card:has-text("Tohoku")').click();
-    await page.waitForTimeout(750);
+    await waitForStableWorkspace(page);
     await capture(page, theme === "mocha" ? "simulator-workspace-dark.png" : "simulator-workspace-light.png");
 
     if (theme === "mocha") {

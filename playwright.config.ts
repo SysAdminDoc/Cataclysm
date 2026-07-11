@@ -8,11 +8,18 @@ export default defineConfig({
   expect: {
     toHaveScreenshot: {
       animations: "disabled",
+      caret: "hide",
+      scale: "css",
     },
   },
   use: {
     baseURL: "http://127.0.0.1:4187",
     headless: true,
+    locale: "en-US",
+    timezoneId: "UTC",
+    reducedMotion: "reduce",
+    serviceWorkers: "block",
+    deviceScaleFactor: 1,
   },
   webServer: {
     command: "npx vite preview --host 127.0.0.1 --port 4187 --strictPort",
