@@ -205,7 +205,10 @@ export default function App() {
   const [hazardMode, setHazardMode] = useState<HazardMode>("tsunami");
   const [hazardCenter, setHazardCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [nuclearInput, setNuclearInput] = useState<NuclearInput>({ yieldKt: 100, burstType: "airburst", populationDensity: 5000 });
-  const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
+  // Default to a 300 m impactor: reaches the ground and excavates a crater
+  // (a 100 m stony airbursts) without continental-scale blast radii, so the
+  // default "Impact" is dramatic but the effects still frame nicely.
+  const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 300, densityKgM3: 4000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
   const [windFromDeg, setWindFromDeg] = useState(270);
   const [detonateNonce, setDetonateNonce] = useState(0);
   const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);

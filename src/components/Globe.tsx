@@ -817,12 +817,18 @@ export function Globe({
     const maxR = Math.max(...hazardRings.map((r) => r.radiusM), 1);
     const isWater = impactIsWater === true;
 
-    // Entry geometry: come in from the NW along the real entry angle. Steeper
-    // angle → shorter horizontal run. Start at 420 km altitude.
-    const START_ALT_M = 420_000;
+    // Scale the whole sequence off the outermost effect radius so the descent,
+    // impact, and water all sit in one readable frame (a fixed 420 km entry
+    // dwarfed few-km ground effects into invisibility). Come in from the NW
+    // along the real entry angle; steeper angle → shorter horizontal run.
+    const baseScale = Math.max(maxR, 3000);
+    // Start ~1.3× the outer effect radius up; the animation's own oblique camera
+    // (below) keeps this within frame so the bolide streaks in from the sky.
+    const START_ALT_M = baseScale * 1.3;
     const theta = Cesium.Math.toRadians(Math.min(Math.max(impactAngleDeg ?? 45, 8), 89));
     const bearingDeg = 315;
-    const horizM = START_ALT_M / Math.tan(theta);
+    // Cap the run-in for shallow angles so the bolide starts within the frame.
+    const horizM = Math.min(START_ALT_M / Math.tan(theta), START_ALT_M * 1.3);
     // Forward geodesic from the impact point, back along the incoming bearing.
     const br = Cesium.Math.toRadians(bearingDeg);
     const R = 6_371_000;
@@ -835,13 +841,13 @@ export function Globe({
     const startHigh = Cesium.Cartesian3.fromDegrees(startDeg.lon, startDeg.lat, START_ALT_M);
     const impactPos = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
 
-    const DESCENT_MS = 3200;
+    const DESCENT_MS = 5000;
     const total = DESCENT_MS + (isWater ? 5200 : 2600);
 
     // Mutable animation state read by the CallbackProperties below.
     let curPos = startHigh.clone();
     let boloAlpha = 1;
-    let boloSize = 7;
+    let boloScale = 0.7;
     let flashR = 1;
     let flashA = 0;
     let shockR = 1;
@@ -849,30 +855,47 @@ export function Globe({
     let splashH = 0;
     let splashA = 0;
     const waves = [0, 0, 0].map(() => ({ r: 1, a: 0 }));
-    const waterReach = Math.min(Math.max(maxR * 6, 120_000), 1_500_000);
+    const waterReach = Math.min(Math.max(maxR * 4, 60_000), 700_000);
 
     // Clear any prior run.
     for (const e of impactEntitiesRef.current) viewer.entities.remove(e);
     impactEntitiesRef.current = [];
 
-    // Bolide + fire trail.
+    // Generate a soft radial fireball texture for the bolide billboard — far
+    // more legible at continental scale than a plain point.
+    const fireCanvas = document.createElement("canvas");
+    fireCanvas.width = 128;
+    fireCanvas.height = 128;
+    const fctx = fireCanvas.getContext("2d");
+    if (fctx) {
+      const grad = fctx.createRadialGradient(64, 64, 3, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255,255,245,1)");
+      grad.addColorStop(0.25, "rgba(255,214,120,0.98)");
+      grad.addColorStop(0.55, "rgba(255,120,45,0.75)");
+      grad.addColorStop(1, "rgba(255,80,30,0)");
+      fctx.fillStyle = grad;
+      fctx.fillRect(0, 0, 128, 128);
+    }
+
+    // Bolide fire trail (thick glowing streak from entry point to the bolide).
     const trail = viewer.entities.add({
       polyline: {
         positions: new Cesium.CallbackProperty(() => [startHigh, curPos], false),
-        width: 3,
+        width: 10,
         material: new Cesium.PolylineGlowMaterialProperty({
-          glowPower: 0.35,
+          glowPower: 0.6,
           color: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#ff8c42").withAlpha(boloAlpha * 0.9), false),
         }),
       },
     });
+    // Bolide fireball billboard — grows as it heats up on entry, never occluded.
     const bolide = viewer.entities.add({
       position: new Cesium.CallbackPositionProperty(() => curPos, false),
-      point: {
-        pixelSize: new Cesium.CallbackProperty(() => boloSize, false),
-        color: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#fff3c4").withAlpha(boloAlpha), false),
-        outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#ff6b35").withAlpha(boloAlpha), false),
-        outlineWidth: 4,
+      billboard: {
+        image: fireCanvas,
+        scale: new Cesium.CallbackProperty(() => boloScale, false),
+        color: new Cesium.CallbackProperty(() => Cesium.Color.WHITE.withAlpha(boloAlpha), false),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     });
     impactEntitiesRef.current.push(trail, bolide);
@@ -908,9 +931,9 @@ export function Globe({
           position: impactPos,
           cylinder: {
             length: new Cesium.CallbackProperty(() => Math.max(splashH, 1), false),
-            topRadius: Math.max(maxR * 0.4, 800),
-            bottomRadius: Math.max(maxR * 0.8, 1500),
-            material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#cbe9ff").withAlpha(splashA), false)),
+            topRadius: Math.max(baseScale * 0.05, 700),
+            bottomRadius: Math.max(baseScale * 0.12, 1400),
+            material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#e8f6ff").withAlpha(splashA), false)),
           },
         }),
       );
@@ -922,10 +945,10 @@ export function Globe({
             ellipse: {
               semiMajorAxis: new Cesium.CallbackProperty(() => Math.max(w.r, 1), false),
               semiMinorAxis: new Cesium.CallbackProperty(() => Math.max(w.r, 1), false),
-              material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#3aa0ff").withAlpha(w.a * 0.18), false)),
+              material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#3aa0ff").withAlpha(w.a * 0.28), false)),
               outline: true,
-              outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#bfe4ff").withAlpha(w.a), false),
-              outlineWidth: 2,
+              outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#dff1ff").withAlpha(w.a), false),
+              outlineWidth: 3,
               height: 0,
             },
           }),
@@ -933,12 +956,17 @@ export function Globe({
       }
     }
 
-    // Oblique camera so the descent is visible against the limb.
-    viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(lon, lat - 1.2, Math.max(maxR * 5, 260_000)),
-      orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-32), roll: 0 },
-      duration: 1.0,
-    });
+    // Oblique cinematic camera: look AT the impact from the SE at a shallow
+    // downward pitch so the SKY above ground zero is in frame — the bolide
+    // (coming from the NW at altitude) then streaks down from the top of the
+    // view into the impact. lookAt locks the impact reference frame for the
+    // duration; released on cleanup / completion. The pick's steep top-down
+    // framing pushed anything at altitude far above the viewport, which is why
+    // the descending bolide was never on screen.
+    viewer.camera.lookAt(
+      impactPos,
+      new Cesium.HeadingPitchRange(Cesium.Math.toRadians(135), Cesium.Math.toRadians(-24), START_ALT_M * 2.6),
+    );
 
     let startT: number | null = null;
     const tick = (now: number) => {
@@ -950,7 +978,7 @@ export function Globe({
         const p = t / DESCENT_MS;
         const ease = p * p; // accelerate into the ground
         curPos = Cesium.Cartesian3.lerp(startHigh, impactPos, ease, new Cesium.Cartesian3());
-        boloSize = 7 + 22 * p; // grows as it heats up
+        boloScale = 0.7 + 2.1 * p; // fireball grows as it heats up on entry
         boloAlpha = 1;
       } else {
         boloAlpha = 0; // bolide consumed at impact
@@ -970,8 +998,8 @@ export function Globe({
         if (isWater) {
           // Splash column rises then falls back (0–1.2 s).
           const wp = Math.min(1, ti / 1200);
-          splashH = Math.sin(wp * Math.PI) * Math.max(maxR * 1.2, 4000);
-          splashA = Math.sin(wp * Math.PI) * 0.7;
+          splashH = Math.sin(wp * Math.PI) * Math.max(baseScale * 0.5, 4000);
+          splashA = Math.sin(wp * Math.PI) * 0.85;
           // Staggered tsunami rings expanding to waterReach over ~4 s.
           waves.forEach((w, i) => {
             const wt = ti - i * 900;
@@ -989,6 +1017,8 @@ export function Globe({
       } else {
         for (const e of impactEntitiesRef.current) viewer.entities.remove(e);
         impactEntitiesRef.current = [];
+        // Release the impact reference frame so the user can pan/zoom again.
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
       }
     };
     impactRafRef.current = requestAnimationFrame(tick);
@@ -997,6 +1027,7 @@ export function Globe({
       if (impactRafRef.current !== null) cancelAnimationFrame(impactRafRef.current);
       if (!viewer.isDestroyed()) {
         for (const e of impactEntitiesRef.current) viewer.entities.remove(e);
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
       }
       impactEntitiesRef.current = [];
     };
