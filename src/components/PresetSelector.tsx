@@ -14,6 +14,7 @@ type Props = {
 };
 
 type ViewMode = "cards" | "timeline";
+type LibraryFilter = "all" | "historical" | "hypothetical";
 
 function sortKey(p: Preset): number {
   return p.is_speculative ? 1 : 0;
@@ -29,24 +30,30 @@ export function PresetSelector({
 }: Props) {
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [filter, setFilter] = useState<LibraryFilter>("all");
+  const [lessonsOpen, setLessonsOpen] = useState(false);
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
   const normalizedQuery = query.trim().toLowerCase();
+  const filtered = useMemo(
+    () => sorted.filter((preset) => filter === "all" || (filter === "historical" ? !preset.is_speculative : preset.is_speculative)),
+    [filter, sorted],
+  );
   const visible = useMemo(
     () =>
       normalizedQuery
-        ? sorted.filter((p) =>
+        ? filtered.filter((p) =>
             [p.name, p.date, p.blurb, p.reference, p.source.kind]
               .join(" ")
               .toLowerCase()
               .includes(normalizedQuery),
           )
-        : sorted,
-    [normalizedQuery, sorted],
+        : filtered,
+    [filtered, normalizedQuery],
   );
   if (sorted.length === 0) {
     return (
       <div className="section">
-        <div className="section__title">Historical presets</div>
+        <div className="section__title">Scenario library</div>
         <div className="empty-state" role="status" aria-live="polite">
           <span className="empty-state__icon" aria-hidden />
           <div>
@@ -60,7 +67,7 @@ export function PresetSelector({
   return (
     <div className="section">
       <div className="section__title">
-        <span>Historical presets</span>
+        <span>Scenario library</span>
         <div className="section__title-actions">
           <div className="preset-view-toggle" role="group" aria-label="View mode">
             <button
@@ -82,10 +89,28 @@ export function PresetSelector({
         </div>
       </div>
 
+      <div className="preset-library-tabs" role="tablist" aria-label="Scenario library filter">
+        {(["all", "historical", "hypothetical"] as const).map((item) => (
+          <button
+            type="button"
+            role="tab"
+            key={item}
+            aria-selected={filter === item}
+            data-active={filter === item ? "true" : "false"}
+            onClick={() => setFilter(item)}
+          >
+            {item === "all" ? "All" : item === "historical" ? "Recorded" : "What-if"}
+          </button>
+        ))}
+      </div>
+
       {onStartLesson && (
-        <div className="lesson-launcher">
-          <div className="lesson-launcher__title">Guided lessons</div>
-          <div className="lesson-launcher__list">
+        <div className="lesson-launcher" data-open={lessonsOpen ? "true" : "false"}>
+          <button className="lesson-launcher__toggle" type="button" aria-expanded={lessonsOpen} onClick={() => setLessonsOpen((open) => !open)}>
+            <span><strong>Guided training</strong><small>{GUIDED_LESSONS.length} model walkthroughs</small></span>
+            <UiIcon name={lessonsOpen ? "chevronDown" : "chevronRight"} size={14} />
+          </button>
+          {lessonsOpen && <div className="lesson-launcher__list">
             {GUIDED_LESSONS.map((lesson) => (
               <button
                 key={lesson.id}
@@ -107,7 +132,7 @@ export function PresetSelector({
                 <UiIcon name="chevronRight" size={13} />
               </button>
             ))}
-          </div>
+          </div>}
         </div>
       )}
 

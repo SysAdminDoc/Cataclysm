@@ -86,7 +86,8 @@ describe("PresetSelector", () => {
     expect(screen.getByText("3/3")).toBeInTheDocument();
   });
 
-  it("shows completed guided lesson state", () => {
+  it("shows completed guided lesson state", async () => {
+    const user = userEvent.setup();
     render(
       <PresetSelector
         presets={PRESETS}
@@ -96,6 +97,8 @@ describe("PresetSelector", () => {
         completedLessons={{ "chicxulub-extinction": "2026-07-01T00:00:00.000Z" }}
       />,
     );
+
+    await user.click(screen.getByRole("button", { name: /Guided training/i }));
 
     const completedLesson = screen.getByRole("button", {
       name: /Chicxulub: The extinction-level tsunami/i,

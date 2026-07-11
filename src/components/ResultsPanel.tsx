@@ -44,7 +44,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
     return (
       <div className="section">
         <div className="section__title">
-          <span>Source Readout</span>
+          <span>Engineering metrics</span>
           <span className="section__badge" data-tone="muted">Waiting</span>
         </div>
         <div className="empty-state">
@@ -76,7 +76,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
     <>
       <div className="section">
         <div className="section__title">
-          <span>Source Readout</span>
+          <span>Engineering metrics</span>
           <span className="section__badge" data-tone="success">Ready</span>
         </div>
         <div className="source-summary" aria-label="Source center">

@@ -94,6 +94,37 @@
   background: color-mix(in srgb, var(--green) 5%, transparent);
 }
 
+.lesson-launcher__toggle {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 10px;
+  border-color: color-mix(in srgb, var(--divider) 86%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--metric-bg) 48%, transparent);
+}
+
+.lesson-launcher__toggle > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.lesson-launcher__toggle strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.lesson-launcher__toggle small {
+  color: var(--subtext);
+  font-size: 10px;
+}
+
+.lesson-launcher[data-open="false"] .lesson-launcher__title {
+  display: none;
+}
+
 .lesson-launcher__title {
   font-size: 11px;
   text-transform: uppercase;

@@ -40,7 +40,7 @@ html[data-theme="mocha"] {
   --inspector-bg: #0e1721;
   --metric-bg: #14212d;
   --divider: #263746;
-  --accent-active: #36b9f2;
+  --accent-active: #6fd2ff;
   --viewport-hud: rgba(8, 16, 24, 0.9);
 
   /* Corner radii — global rule: no pills, no fully rounded. Allowed: 0/4/6/8/10/12. */

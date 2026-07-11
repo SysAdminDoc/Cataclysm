@@ -29,9 +29,15 @@ test.describe("Keyboard-only golden path", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.focus();
     await page.keyboard.press("Enter");
+    const resultsTab = page.getByRole("tab", { name: "Results" });
+    await resultsTab.focus();
+    await page.keyboard.press("Enter");
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
 
     // 2. Run the SWE solver (browser preview computes demo frames instantly).
+    const setupTab = page.getByRole("tab", { name: "Setup" });
+    await setupTab.focus();
+    await page.keyboard.press("Enter");
     const run = page.getByRole("button", { name: /Run solver/ });
     await expect(run).toBeVisible({ timeout: 10_000 });
     await run.focus();

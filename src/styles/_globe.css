@@ -3,13 +3,13 @@
   grid-area: left;
   min-width: 0;
   min-height: 0;
-  background: var(--panel-bg);
+  background: var(--inspector-bg);
   border-right: 1px solid var(--panel-border);
-  padding: 18px 16px 20px;
+  padding: 16px 15px 18px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .app__panel--right {
@@ -23,7 +23,54 @@
   position: relative;
   min-width: 0;
   min-height: 0;
-  background: var(--crust);
+  background: var(--workspace-bg);
+  border-inline: 1px solid color-mix(in srgb, var(--divider) 72%, transparent);
+}
+
+.app__viewport-hud,
+.app__viewport-layers {
+  position: absolute;
+  z-index: 45;
+  border: 1px solid color-mix(in srgb, var(--divider) 82%, transparent);
+  border-radius: var(--r-sm);
+  background: var(--viewport-hud);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--crust) 34%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.app__viewport-hud--source {
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  max-width: min(360px, calc(100% - 150px));
+  padding: 8px 10px;
+  pointer-events: none;
+}
+
+.app__viewport-hud--source span {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app__viewport-hud--source strong {
+  color: var(--subtext);
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app__viewport-layers {
+  top: 14px;
+  right: 14px;
+  min-height: 34px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 11px;
 }
 
 .app__globe-stack {

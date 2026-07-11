@@ -9,6 +9,7 @@
 @import './styles/_settings.css';
 @import './styles/_globe.css';
 @import './styles/_sections.css';
+@import './styles/_inspector.css';
 @import './styles/_presets.css';
 @import './styles/_attenuation.css';
 @import './styles/_results.css';

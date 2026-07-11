@@ -30,10 +30,10 @@
 }
 
 .results__cell {
-  background: color-mix(in srgb, var(--surface0) 56%, transparent);
+  background: color-mix(in srgb, var(--metric-bg) 78%, transparent);
   padding: 12px;
   border-radius: var(--r-md);
-  border: 1px solid color-mix(in srgb, var(--surface1) 56%, transparent);
+  border: 1px solid color-mix(in srgb, var(--divider) 72%, transparent);
 }
 
 .results__cell[data-tone="primary"] {
@@ -66,6 +66,7 @@
   margin-top: 4px;
   color: var(--text);
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .results__unit {

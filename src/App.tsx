@@ -28,11 +28,13 @@ import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
+import { LayerInspector } from "./components/LayerInspector";
 import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
 import { falloutRings } from "./hazards/nuclear/fallout";
 import type { NuclearEffects } from "./hazards/nuclear/physics";
 
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
+type InspectorTab = "setup" | "results" | "layers";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
@@ -203,6 +205,7 @@ export default function App() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineRate, setTimelineRate] = useState(1);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("setup");
   const [pickMode, setPickMode] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -431,6 +434,7 @@ export default function App() {
     setPickMode(false);
     setInspectMode(false);
     if (mode !== "tsunami") setCompareMode(false);
+    setInspectorTab(mode === "tsunami" ? "results" : "setup");
   }
 
   return (
@@ -769,7 +773,10 @@ export default function App() {
         <PresetSelector
           presets={presets}
           activeId={slotA.activePresetId}
-          onSelect={slotA.setActivePresetId}
+          onSelect={(id) => {
+            slotA.setActivePresetId(id);
+            setInspectorTab("setup");
+          }}
           busyId={slotA.busyPresetId}
           onStartLesson={setActiveLesson}
           completedLessons={lessonCompletions}
@@ -844,10 +851,41 @@ export default function App() {
             )}
           </div>
         </Suspense>
+        <div className="app__viewport-hud app__viewport-hud--source">
+          <span>{activeSourceLabel}</span>
+          {slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}Â°, {slotA.initial.center.lon_deg.toFixed(2)}Â°</strong>}
+        </div>
+        <button className="app__viewport-layers" type="button" onClick={() => setInspectorTab("layers")} aria-label="Open visualization layers">
+          Layers
+          <UiIcon name="chevronDown" size={13} />
+        </button>
       </main>
 
       <aside className="app__panel app__panel--right" aria-label="Simulation controls and results">
-        {inHazardMode && (
+        <div className="inspector__header">
+          <div className="inspector__identity">
+            <span>Active workspace</span>
+            <strong>{inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}</strong>
+          </div>
+          <div className="inspector__tabs" role="tablist" aria-label="Simulation inspector">
+            {(["setup", "results", "layers"] as const).map((tab) => (
+              <button
+                id={`inspector-tab-${tab}`}
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={inspectorTab === tab}
+                aria-controls={`inspector-panel-${tab}`}
+                data-active={inspectorTab === tab ? "true" : "false"}
+                onClick={() => setInspectorTab(tab)}
+              >
+                {tab[0].toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="inspector__body" id={`inspector-panel-${inspectorTab}`} role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
+        {inspectorTab === "setup" && inHazardMode && (
           <HazardControls
             mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
             nuclear={nuclearInput}
@@ -860,23 +898,25 @@ export default function App() {
             result={hazardResult}
             windFromDeg={windFromDeg}
             onWindChange={setWindFromDeg}
-            onDetonate={() => setDetonateNonce((n) => n + 1)}
+            onDetonate={() => {
+              setDetonateNonce((n) => n + 1);
+              setInspectorTab("results");
+            }}
+            display="setup"
           />
         )}
-        <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />
-        <AttenuationChart
-          initial={slotA.initial}
-          isImpact={activePresetA?.source.kind === "Asteroid"}
-          timeS={timeS}
-          runupResults={slotA.runupResults}
-        />
-        {compareMode && (
-          <div className="app__compare-rail">
-            <div className="app__compare-rail-label">Slot B readout</div>
-            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />
-          </div>
+        {inspectorTab === "setup" && !inHazardMode && !compareMode && (
+          <ScenarioBuilder
+            onSimulate={(scenario) => {
+              slotA.simulate(scenario);
+              setInspectorTab("results");
+            }}
+            pickedLocation={pickedLocation}
+            onTogglePick={() => setPickMode((p) => !p)}
+            pickActive={pickMode}
+          />
         )}
-        <SwePlayback
+        {inspectorTab === "setup" && !inHazardMode && <SwePlayback
           initial={slotA.initial}
           onSnapshot={slotA.setSweSnapshot}
           onSnapshotsReady={setSweSnapshots}
@@ -884,19 +924,51 @@ export default function App() {
           dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
           onMaxField={setSweMaxField}
           onIsochrones={setSweIsochrones}
-        />
-        <Activity mode={compareMode ? "visible" : "hidden"}>
+        />}
+        {inspectorTab === "setup" && !inHazardMode && <Activity mode={compareMode ? "visible" : "hidden"}>
           <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />
-        </Activity>
-        <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />
-        {!compareMode && (
-          <ScenarioBuilder
-            onSimulate={slotA.simulate}
-            pickedLocation={pickedLocation}
-            onTogglePick={() => setPickMode((p) => !p)}
-            pickActive={pickMode}
-          />
+        </Activity>}
+        {inspectorTab === "results" && inHazardMode && <HazardControls
+          mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
+          nuclear={nuclearInput}
+          asteroid={asteroidInput}
+          onNuclearChange={setNuclearInput}
+          onAsteroidChange={setAsteroidInput}
+          center={hazardCenter}
+          onTogglePick={() => setPickMode((p) => !p)}
+          pickActive={pickMode}
+          result={hazardResult}
+          windFromDeg={windFromDeg}
+          onWindChange={setWindFromDeg}
+          onDetonate={() => setDetonateNonce((n) => n + 1)}
+          display="results"
+        />}
+        {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
+        {inspectorTab === "results" && !inHazardMode && <AttenuationChart
+          initial={slotA.initial}
+          isImpact={activePresetA?.source.kind === "Asteroid"}
+          timeS={timeS}
+          runupResults={slotA.runupResults}
+        />}
+        {inspectorTab === "results" && compareMode && (
+          <div className="app__compare-rail">
+            <div className="app__compare-rail-label">Slot B readout</div>
+            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />
+          </div>
         )}
+        {inspectorTab === "results" && !inHazardMode && <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />}
+        {inspectorTab === "layers" && <LayerInspector
+          hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
+          hasWavefront={Boolean(slotA.wavefront)}
+          hasSweField={Boolean(slotA.sweSnapshot)}
+          hasMaxField={Boolean(sweMaxField)}
+          arrivalCount={sweIsochrones?.length ?? 0}
+          runupCount={slotA.runupResults.length}
+          dartCount={dartPinsForPreset(slotA.activePresetId).length}
+          hasFallout={Boolean(hazardPolygons?.length)}
+          onOpenSettings={() => setShowSettings(true)}
+        />}
+        </div>
       </aside>
 
       <CoastalRunupOverlay

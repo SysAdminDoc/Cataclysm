@@ -57,6 +57,7 @@ export function HazardControls({
   windFromDeg,
   onWindChange,
   onDetonate,
+  display = "all",
 }: {
   mode: HazardMode;
   nuclear: NuclearInput;
@@ -70,17 +71,21 @@ export function HazardControls({
   windFromDeg: number;
   onWindChange: (deg: number) => void;
   onDetonate: () => void;
+  display?: "all" | "setup" | "results";
 }) {
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearEffects | undefined) : undefined;
   const timeline = nuclearEffects ? calcTimeline(nuclearEffects) : [];
   const hasFallout = Boolean(nuclearEffects?.fallout);
+  const showSetup = display !== "results";
+  const showResults = display !== "setup";
   return (
     <div className="section hazard">
       <div className="section__title">
-        <span>{mode === "nuclear" ? "Nuclear detonation" : "Asteroid impact"}</span>
-        <span className="section__badge">client-side</span>
+        <span>{display === "results" ? "Hazard results" : mode === "nuclear" ? "Nuclear detonation" : "Asteroid impact"}</span>
+        <span className="section__badge" data-tone={result ? "success" : "muted"}>{result ? "Ready" : "Setup"}</span>
       </div>
 
+      {showSetup && <>
       <div className="hazard__location">
         <button
           type="button"
@@ -212,8 +217,9 @@ export function HazardControls({
           </label>
         </>
       )}
+      </>}
 
-      {result ? (
+      {showResults && (result ? (
         <div className="hazard__results">
           <div className="hazard__readout">
             {result.readout.map((r) => (
@@ -264,7 +270,7 @@ export function HazardControls({
         </div>
       ) : (
         <p className="hazard__hint">Pick a location on the globe to model effects.</p>
-      )}
+      ))}
     </div>
   );
 }

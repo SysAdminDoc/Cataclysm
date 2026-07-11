@@ -39,6 +39,7 @@ test.describe("TsunamiSimulator browser preview", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
 
+    await page.getByRole("tab", { name: "Results" }).click();
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
   });
 
@@ -166,6 +167,7 @@ test.describe("Accessibility (axe-core WCAG A/AA)", () => {
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
+    await page.getByRole("tab", { name: "Results" }).click();
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
 
     const { violations } = await axeScan(page);
