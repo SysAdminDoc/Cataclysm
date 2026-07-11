@@ -93,12 +93,12 @@ Existing tools each do one piece:
 
 ### UX
 
-- **Desktop-first professional simulator workspace** â€” persistent scenario
+- **Desktop-first professional simulator workspace** — persistent scenario
   library, dominant globe viewport, Setup / Results / Layers inspector, and a
   full-width simulation transport with playback speed and solver state.
-- **Focused command bar** â€” mode switching, inspect/compare tools, grouped
+- **Focused command bar** — mode switching, inspect/compare tools, grouped
   exports, references, and settings without a wall of equal-priority buttons.
-- **Scenario library filters** â€” recorded and what-if cases stay searchable,
+- **Scenario library filters** — recorded and what-if cases stay searchable,
   while guided training remains available without crowding the primary flow.
 - **5 globe styles**: Natural Earth II (default, local-first), OpenStreetMap,
   Esri World Imagery, Cesium World Imagery, Cesium World Bathymetry.
@@ -161,7 +161,7 @@ resolved.
 Prerequisites:
 
 - **Node.js** ≥ 20 LTS
-- **Rust** ≥ 1.78 (stable) with `rustup`
+- **Rust** ≥ 1.88 (stable) with `rustup`
 - Windows: Visual Studio 2022/2026 with "Desktop development with C++"
   workload (provides MSVC `link.exe`); WebView2 runtime (preinstalled on Win11)
 - macOS: Xcode Command Line Tools
@@ -194,7 +194,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 ┌─────────────────────────── Tauri 2 Window ───────────────────────────┐
 │ ┌─────────────────────────────────────────────────────────────────┐  │
 │ │  React 19 + TypeScript + Vite (frontend / WebView2)             │  │
-│ │  ─ CesiumJS 1.142+ globe with optional bathymetric terrain        │  │
+│ │  ─ CesiumJS 1.143+ globe with optional bathymetric terrain        │  │
 │ │  ─ Scenario builder, timeline, overlays, results panel           │  │
 │ └──────────────────────────────  ▲  ───────────────────────────────┘  │
 │                                  │ tauri::invoke (JSON over IPC)      │
