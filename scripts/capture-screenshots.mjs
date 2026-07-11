@@ -115,6 +115,7 @@ try {
     if (theme === "mocha") {
       await page.getByRole("button", { name: "Settings", exact: true }).click();
       await page.getByRole("dialog").waitFor();
+      await page.getByRole("button", { name: "Simulation performance", exact: true }).click();
       await capture(page, "settings-dark.png");
     }
     await context.close();

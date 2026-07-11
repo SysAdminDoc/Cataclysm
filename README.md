@@ -1,6 +1,6 @@
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.8.1-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.2-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -10,7 +10,7 @@
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
 
-> **Migration status (v0.8.1):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Rust is the sole authority for direct asteroid and nuclear results, including effect geometry, casualties, fallout dimensions, and event timelines. Cesium rendering now runs through generation-owned, deterministic systems with leak-tested teardown. The remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
+> **Migration status (v0.8.2):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Rust is the sole authority for direct asteroid and nuclear results, including effect geometry, casualties, fallout dimensions, and event timelines. Cesium rendering now runs through generation-owned, deterministic systems with leak-tested teardown and runtime GPU quality budgets. The remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -130,13 +130,33 @@ Existing tools each do one piece:
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.
 - **Catppuccin Mocha** dark theme default + **Latte** light theme toggle.
 
+### Renderer quality budgets
+
+Visual quality is independent of the authoritative Rust solver field. Automatic
+performance protection watches rolling P95 frame time, steps down one tier only
+after sustained pressure, and recovers with hysteresis; it never changes solver
+ticks, event times, eta/velocity fields, or analytical overlays.
+
+| Tier | Target viewport | Target | GPU memory | Visual budget highlights |
+|---|---:|---:|---:|---|
+| Low | 1280 x 720 | 60 FPS | 512 MB | 0.75 render scale, 1x MSAA, no volumetrics/reflections |
+| Medium | 1920 x 1080 | 60 FPS | 1 GB | 2x MSAA, 24 volumetric samples, 30k particles |
+| High | 2560 x 1440 | 60 FPS | 2 GB | 4x MSAA, terrain shadows, AO, 80k particles |
+| Cinematic | 3840 x 2160 | 30 FPS | 4 GB | 8x MSAA, bloom, 96 volumetric samples, 200k particles |
+
+The hardware gate is measured in headless Chrome/ANGLE D3D11 on Windows 11
+build 26100, Intel Core Ultra 9 285, NVIDIA GeForce RTX 4070 SUPER, driver
+32.0.15.9579. Run `npm run benchmark:renderer`; it rejects software rendering
+and writes adapter plus frame-time evidence to
+`artifacts/performance/renderer-benchmark.json`.
+
 ---
 
 ## Install
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.8.1 Windows installers are
+an MSI package and an NSIS setup executable. The v0.8.2 Windows installers are
 locally built from this repository and are currently unsigned until a Windows
 code-signing certificate is configured, so Windows may show an unknown-publisher
 warning. macOS and Linux remain supported source-build targets; platform
@@ -148,12 +168,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\Cataclysm_0.8.1_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.8.2_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile Cataclysm_0.8.1_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.8.2_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full

@@ -4,6 +4,21 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-07-11 — Adaptive renderer quality
+
+- Added explicit Low, Medium, High, and Cinematic resolution, feature, and GPU
+  memory budgets. The live Cesium renderer now applies the persisted tier,
+  measures rolling P95 frame time, degrades and recovers one tier at a time
+  with hysteresis, and preserves every authoritative solver field and event.
+- Added WebGL context-loss detection, a recoverable renderer reset action, and
+  renderer adapter/tier/frame-time telemetry to copied support diagnostics.
+- Added the RTX 4070 SUPER hardware benchmark for High 1440p/60 and Cinematic
+  4K/30 targets, plus professional desktop settings controls for manual and
+  automatic quality selection.
+- Fixed streaming GPU fallback so CPU execution continues from the last
+  committed solver tick instead of restarting and duplicating visible frame
+  times after an adapter failure.
+
 ## [0.8.1] — 2026-07-11 — Deterministic renderer systems
 
 - Added renderer protocol v1 (`CATRFRM`) as the Rust-owned frame boundary for

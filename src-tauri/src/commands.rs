@@ -1294,7 +1294,6 @@ pub async fn simulate_grid_streaming(
                 diagnostics: Some(&diagnostics),
                 gauges: &req.gauge_points,
                 max_field: &max_field_acc,
-                max_field_threshold_m,
                 render: Some(&render_stream),
             };
             let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx);
@@ -1575,11 +1574,6 @@ struct StreamSimulationContext<'a> {
     /// Max-field accumulator, observed after every accepted solver step.
     /// RefCell because the context is shared immutably down the dispatch fns.
     max_field: &'a std::cell::RefCell<MaxFieldAccumulator>,
-    /// Arrival threshold, kept so the GPU→CPU fallback can rebuild a clean
-    /// accumulator (partial GPU observations must not leak into the rerun).
-    /// Only the gpu-feature dispatch path reads it.
-    #[cfg_attr(not(feature = "gpu"), allow(dead_code))]
-    max_field_threshold_m: f64,
     render: Option<&'a RenderStreamContext<'a>>,
 }
 
@@ -1590,14 +1584,37 @@ fn stream_simulation_cpu(
     total_steps: usize,
     ctx: &StreamSimulationContext<'_>,
 ) {
+    stream_simulation_cpu_from(grid, dt_s, n, total_steps, 1, None, ctx);
+}
+
+fn scheduled_stream_steps(total_steps: usize, snapshots: usize, snapshot_index: usize) -> usize {
+    let target_step = (snapshot_index * total_steps) / (snapshots - 1);
+    let previous_step = ((snapshot_index - 1) * total_steps) / (snapshots - 1);
+    target_step.saturating_sub(previous_step).max(1)
+}
+
+/// Continue the scheduled snapshot stream from an already-committed solver
+/// state. `first_take_remaining` is used when a GPU failed partway through the
+/// interval for `start_k`; later intervals use the normal deterministic plan.
+fn stream_simulation_cpu_from(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    n: usize,
+    total_steps: usize,
+    start_k: usize,
+    first_take_remaining: Option<usize>,
+    ctx: &StreamSimulationContext<'_>,
+) {
     let stepper = TimeStepper::new(dt_s);
-    for k in 1..n {
+    for k in start_k..n {
         if ctx.cancel.load(Ordering::Acquire) {
             break;
         }
-        let target_step = (k * total_steps) / (n - 1);
-        let current_step = ((k - 1) * total_steps) / (n - 1);
-        let take = target_step.saturating_sub(current_step).max(1);
+        let take = if k == start_k {
+            first_take_remaining.unwrap_or_else(|| scheduled_stream_steps(total_steps, n, k))
+        } else {
+            scheduled_stream_steps(total_steps, n, k)
+        };
         if !stepper.step_cancellable_observed(grid, take, Some(ctx.cancel), &mut |state| {
             ctx.max_field.borrow_mut().observe(state);
         }) {
@@ -1635,27 +1652,31 @@ fn stream_simulation_dispatch(
         true,
         ctx.diagnostics,
     ) {
-        let pristine = grid.clone();
-        let mut ok = true;
         for k in 1..n {
             if ctx.cancel.load(Ordering::Acquire) {
                 break;
             }
-            let target_step = (k * total_steps) / (n - 1);
-            let current_step = ((k - 1) * total_steps) / (n - 1);
-            let take = target_step.saturating_sub(current_step).max(1);
+            let take = scheduled_stream_steps(total_steps, n, k);
+            let mut completed = 0usize;
             for _ in 0..take {
                 if ctx.cancel.load(Ordering::Acquire) {
                     return true;
                 }
                 if !gpu.step_with_diagnostics(grid, 1, ctx.diagnostics) {
-                    ok = false;
-                    break;
+                    let remaining = take.saturating_sub(completed);
+                    stream_simulation_cpu_from(
+                        grid,
+                        dt_s,
+                        n,
+                        total_steps,
+                        k,
+                        Some(remaining),
+                        ctx,
+                    );
+                    return false;
                 }
+                completed = completed.saturating_add(1);
                 ctx.max_field.borrow_mut().observe(grid);
-            }
-            if !ok {
-                break;
             }
             let _ = ctx
                 .on_snapshot
@@ -1664,15 +1685,7 @@ fn stream_simulation_dispatch(
                 render.try_send_frame(grid);
             }
         }
-        if ok {
-            return true;
-        }
-        *grid = pristine;
-        // Discard partial-GPU observations; the CPU rerun re-observes from
-        // the pristine state (including its own t=0).
-        let mut fresh = MaxFieldAccumulator::new(grid.nx * grid.ny, ctx.max_field_threshold_m);
-        fresh.observe(grid);
-        *ctx.max_field.borrow_mut() = fresh;
+        return true;
     }
     stream_simulation_cpu(grid, dt_s, n, total_steps, ctx);
     false
@@ -1894,6 +1907,31 @@ mod tests {
             lon_deg: 0.0,
             depth_m: 4_000.0,
         }
+    }
+
+    #[test]
+    fn gpu_stream_fallback_continues_monotonic_snapshot_schedule() {
+        // Five 20-step intervals. If the GPU fails seven steps into the
+        // second interval, CPU continuation must take only the remaining 13
+        // steps before emitting t=40, never restart and re-emit t=0/t=20.
+        let total_steps = 100;
+        let snapshots = 6;
+        let committed_at_failure = 27;
+        let completed_in_interval = 7;
+        let first_remaining = scheduled_stream_steps(total_steps, snapshots, 2)
+            .saturating_sub(completed_in_interval);
+        let mut tick = committed_at_failure;
+        let mut emitted = Vec::new();
+        for k in 2..snapshots {
+            tick += if k == 2 {
+                first_remaining
+            } else {
+                scheduled_stream_steps(total_steps, snapshots, k)
+            };
+            emitted.push(tick);
+        }
+        assert_eq!(emitted, vec![40, 60, 80, 100]);
+        assert!(emitted.windows(2).all(|pair| pair[0] < pair[1]));
     }
 
     #[test]

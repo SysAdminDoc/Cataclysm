@@ -60,6 +60,11 @@ import {
   type ImageryControllerStatus,
 } from "../render/cesium/imagery-controller";
 import { CesiumImageryHost } from "../render/cesium/cesium-imagery-host";
+import {
+  CesiumQualityRuntime,
+  type CesiumQualityDiagnostics,
+} from "../render/quality/cesium-quality-runtime";
+import type { RendererQualityTier } from "../render/quality/quality-controller";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -255,6 +260,13 @@ export function Globe({
   // in every data effect's deps re-binds entities/imagery to the fresh Viewer
   // instead of leaving the dev globe blank until the next prop change.
   const [viewerEpoch, setViewerEpoch] = useState(0);
+  const [rendererResetNonce, setRendererResetNonce] = useState(0);
+  const [rendererError, setRendererError] = useState<string | null>(null);
+  const [qualityConfig, setQualityConfig] = useState<{
+    tier: RendererQualityTier;
+    automatic: boolean;
+  }>({ tier: "High", automatic: true });
+  const [qualityDiagnostics, setQualityDiagnostics] = useState<CesiumQualityDiagnostics | null>(null);
 
   // One-time viewer mount
   useEffect(() => {
@@ -407,7 +419,43 @@ export function Globe({
       sweCoordinatorRef.current = null;
       viewerRef.current = null;
     };
-  }, [primary]);
+  }, [primary, rendererResetNonce]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const current = await settings.loadAll();
+      if (!cancelled) {
+        setQualityConfig({
+          tier: current.renderer_quality,
+          automatic: current.renderer_auto_quality,
+        });
+      }
+    };
+    void load();
+    const onSettingsSaved = () => void load();
+    window.addEventListener("tsunamisim:settings-saved", onSettingsSaved);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("tsunamisim:settings-saved", onSettingsSaved);
+    };
+  }, []);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    const lifecycle = viewerLifecycleRef.current;
+    if (!viewer || !lifecycle) return;
+    const runtime = new CesiumQualityRuntime(viewer, {
+      requestedTier: qualityConfig.tier,
+      automatic: referenceCaptureEnabled() ? false : qualityConfig.automatic,
+      publishGlobal: primary,
+      onDiagnostics: setQualityDiagnostics,
+      onRecoverableError: setRendererError,
+    });
+    setRendererError(null);
+    const lease = lifecycle.ownSystem(() => runtime.destroy());
+    return () => lease.release();
+  }, [primary, qualityConfig, viewerEpoch]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -827,6 +875,25 @@ export function Globe({
         <div className="app__globe-status" data-status="failed" role="alert">
           <span>{imageryMessage}</span>
           <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry imagery</button>
+        </div>
+      )}
+      {rendererError && (
+        <div className="app__globe-status" data-status="failed" role="alert">
+          <span>{rendererError}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setRendererError(null);
+              setRendererResetNonce((nonce) => nonce + 1);
+            }}
+          >
+            Reset renderer
+          </button>
+        </div>
+      )}
+      {!rendererError && qualityDiagnostics && qualityDiagnostics.activeTier !== qualityDiagnostics.requestedTier && (
+        <div className="app__globe-status" data-status="degraded" role="status" aria-live="polite">
+          Renderer protected at {qualityDiagnostics.activeTier} · target remains {qualityDiagnostics.targetFps} FPS. Scientific fields unchanged.
         </div>
       )}
       {!initial && !hazardCenter && ["ready", "degraded", "fallback"].includes(imageryStatus) && (

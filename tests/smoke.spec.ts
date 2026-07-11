@@ -25,6 +25,20 @@ test.describe("Cataclysm browser preview", () => {
     await expect(canvas).toBeVisible({ timeout: 15_000 });
   });
 
+  test("surfaces WebGL context loss and rebuilds the renderer without losing the app", async ({ page }) => {
+    await page.goto("/");
+    const canvas = page.locator(".cesium-widget canvas");
+    await expect(canvas).toBeVisible({ timeout: 15_000 });
+    await canvas.evaluate((element) => {
+      element.dispatchEvent(new Event("webglcontextlost", { cancelable: true }));
+    });
+    const reset = page.getByRole("button", { name: "Reset renderer" });
+    await expect(reset).toBeVisible({ timeout: 10_000 });
+    await reset.click();
+    await expect(page.locator(".cesium-widget canvas")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(".app__title")).toHaveText("Cataclysm");
+  });
+
   test("starts directly on bundled imagery while offline", async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(Navigator.prototype, "onLine", {

@@ -1,7 +1,7 @@
 {
   "name": "cataclysm",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "description": "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator: asteroid impacts, nuclear detonations, earthquakes, landslides, and the tsunamis they generate.",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "verify:references": "node scripts/capture-reference-scenes.mjs --verify --skip-build",
     "verify:reference-locks": "node scripts/verify-reference-baselines.mjs",
     "verify:render-protocol": "node scripts/verify-render-protocol.mjs",
+    "benchmark:renderer": "node scripts/benchmark-renderer.mjs --enforce-hardware",
     "approve:reference": "node scripts/capture-reference-scenes.mjs --record",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

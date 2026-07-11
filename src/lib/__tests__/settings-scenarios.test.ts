@@ -115,12 +115,16 @@ describe("settings schema versioning", () => {
     await settings.setTheme("latte");
     await settings.setColormap("viridis");
     await settings.setGlobeStyle("osm");
+    await settings.setRendererQuality("Cinematic");
+    await settings.setRendererAutoQuality(false);
 
     const json = await settings.exportSettings();
     const parsed = JSON.parse(json);
     expect(parsed.theme).toBe("latte");
     expect(parsed.colormap).toBe("viridis");
     expect(parsed.globe_style).toBe("osm");
+    expect(parsed.renderer_quality).toBe("Cinematic");
+    expect(parsed.renderer_auto_quality).toBe(false);
     expect(parsed.cesium_token).toBeUndefined();
 
     await settings.resetAll();
@@ -131,6 +135,18 @@ describe("settings schema versioning", () => {
     expect(await settings.getTheme()).toBe("latte");
     expect(await settings.getColormap()).toBe("viridis");
     expect(await settings.getGlobeStyle()).toBe("osm");
+    expect(await settings.getRendererQuality()).toBe("Cinematic");
+    expect(await settings.getRendererAutoQuality()).toBe(false);
+  });
+
+  it("fails closed to safe renderer defaults for invalid quality values", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    localStorage.setItem(LS_PREFIX + "renderer_quality", JSON.stringify("Ultra"));
+    localStorage.setItem(LS_PREFIX + "renderer_auto_quality", JSON.stringify("yes"));
+    expect(await settings.getRendererQuality()).toBe("High");
+    expect(await settings.getRendererAutoQuality()).toBe(true);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
   it("import skips unknown keys with warning", async () => {

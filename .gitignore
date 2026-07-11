@@ -62,6 +62,7 @@ $RECYCLE.BIN/
 test-results/
 playwright-report/
 artifacts/visual-reference/
+artifacts/performance/
 
 # --- Logs ---
 *.log

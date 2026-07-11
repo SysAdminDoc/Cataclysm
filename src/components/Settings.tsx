@@ -11,6 +11,11 @@ import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-sty
 import { api, isTauri } from "../lib/tauri";
 import { getEarthAsset, getEarthProvider, getEarthStyleBinding } from "../lib/earth-assets";
 import { UiIcon } from "./UiIcon";
+import {
+  RENDERER_QUALITY_BUDGETS,
+  RENDERER_QUALITY_TIERS,
+  type RendererQualityTier,
+} from "../render/quality/quality-controller";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
 type SettingsSection = "visual" | "performance" | "advanced";
@@ -20,6 +25,8 @@ type StagedSettings = {
   theme: Theme;
   globeStyle: GlobeStyleId;
   colormapId: ColormapId;
+  rendererQuality: RendererQualityTier;
+  rendererAutoQuality: boolean;
 };
 
 type Props = { onClose: () => void };
@@ -32,6 +39,8 @@ export function Settings({ onClose }: Props) {
   const [theme, setThemeLocal] = useState<Theme>("mocha");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>(DEFAULT_STYLE);
   const [colormapId, setColormapId] = useState<ColormapId>("diverging");
+  const [rendererQuality, setRendererQuality] = useState<RendererQualityTier>("High");
+  const [rendererAutoQuality, setRendererAutoQuality] = useState(true);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -48,12 +57,16 @@ export function Settings({ onClose }: Props) {
       setThemeLocal(s.theme);
       setGlobeStyle(s.globe_style);
       setColormapId(s.colormap);
+      setRendererQuality(s.renderer_quality);
+      setRendererAutoQuality(s.renderer_auto_quality);
       setClassroomLocked(s.classroom_locked);
       setAppliedSettings({
         token: s.cesium_token,
         theme: s.theme,
         globeStyle: s.globe_style,
         colormapId: s.colormap,
+        rendererQuality: s.renderer_quality,
+        rendererAutoQuality: s.renderer_auto_quality,
       });
     });
     if (isTauri()) {
@@ -88,9 +101,11 @@ export function Settings({ onClose }: Props) {
         setTheme(theme),
         settings.setGlobeStyle(globeStyle),
         settings.setColormap(colormapId),
+        settings.setRendererQuality(rendererQuality),
+        settings.setRendererAutoQuality(rendererAutoQuality),
       ]);
       setTokenLocal(trimmedToken);
-      setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId });
+      setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId, rendererQuality, rendererAutoQuality });
       setStatusMsg(`Changes applied at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       console.error("[settings] save failed", err);
@@ -117,6 +132,8 @@ export function Settings({ onClose }: Props) {
     || theme !== appliedSettings.theme
     || globeStyle !== appliedSettings.globeStyle
     || colormapId !== appliedSettings.colormapId
+    || rendererQuality !== appliedSettings.rendererQuality
+    || rendererAutoQuality !== appliedSettings.rendererAutoQuality
   );
 
   function handleBackdropClick() {
@@ -332,6 +349,43 @@ export function Settings({ onClose }: Props) {
           </section>
           </>}
           {activeSection === "performance" && (
+          <>
+          <section className="settings__section">
+            <h3 className="settings__h3">Renderer quality budget</h3>
+            <p className="modal__intro">
+              Choose the maximum visual budget. Automatic control can step down one tier at a time when sustained frame time misses the target, then recover after headroom returns. Solver fields and event timing are never reduced.
+            </p>
+            <div className="settings__quality-grid" role="radiogroup" aria-label="Renderer quality tier">
+              {RENDERER_QUALITY_TIERS.map((tier) => {
+                const budget = RENDERER_QUALITY_BUDGETS[tier];
+                return (
+                  <button
+                    key={tier}
+                    className="settings__quality-card"
+                    data-active={rendererQuality === tier ? "true" : "false"}
+                    aria-checked={rendererQuality === tier}
+                    role="radio"
+                    type="button"
+                    onClick={() => setRendererQuality(tier)}
+                    disabled={classroomLocked}
+                  >
+                    <strong>{tier}</strong>
+                    <span>{budget.resolution.width} x {budget.resolution.height} at {budget.targetFps} FPS</span>
+                    <small>{budget.gpu.totalMemoryMb / 1024} GB GPU budget · {budget.features.msaaSamples}x MSAA · {budget.features.maximumParticles.toLocaleString()} particles</small>
+                  </button>
+                );
+              })}
+            </div>
+            <label className="settings__toggle-row">
+              <input
+                type="checkbox"
+                checked={rendererAutoQuality}
+                onChange={(event) => setRendererAutoQuality(event.target.checked)}
+                disabled={classroomLocked}
+              />
+              <span><strong>Automatic performance protection</strong><small>Uses rolling P95 frame time with hysteresis; never changes scientific data.</small></span>
+            </label>
+          </section>
           <section className="settings__section">
             <h3 className="settings__h3">Simulation acceleration</h3>
             <p className="modal__intro">
@@ -364,6 +418,7 @@ export function Settings({ onClose }: Props) {
               )}
             </div>
           </section>
+          </>
           )}
           {activeSection === "advanced" && <>
           <section className="settings__section">
@@ -449,11 +504,15 @@ export function Settings({ onClose }: Props) {
                       setThemeLocal(all.theme);
                       setGlobeStyle(all.globe_style);
                       setColormapId(all.colormap);
+                      setRendererQuality(all.renderer_quality);
+                      setRendererAutoQuality(all.renderer_auto_quality);
                       setAppliedSettings({
                         token: all.cesium_token,
                         theme: all.theme,
                         globeStyle: all.globe_style,
                         colormapId: all.colormap,
+                        rendererQuality: all.renderer_quality,
+                        rendererAutoQuality: all.renderer_auto_quality,
                       });
                       applyTheme(all.theme);
                       setSaveErr(null);
@@ -484,11 +543,15 @@ export function Settings({ onClose }: Props) {
                   setThemeLocal("mocha");
                   setGlobeStyle(DEFAULT_STYLE);
                   setColormapId("diverging");
+                  setRendererQuality("High");
+                  setRendererAutoQuality(true);
                   setAppliedSettings({
                     token: "",
                     theme: "mocha",
                     globeStyle: DEFAULT_STYLE,
                     colormapId: "diverging",
+                    rendererQuality: "High",
+                    rendererAutoQuality: true,
                   });
                   applyTheme("mocha");
                   primeCesiumToken(null);

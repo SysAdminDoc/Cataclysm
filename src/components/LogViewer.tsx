@@ -17,6 +17,7 @@ import { getEarthDiagnosticsSnapshot } from "../lib/earth-assets";
 import { getGeodesyDiagnosticsSnapshot } from "../lib/geodesy";
 import { getSurfaceMaskDiagnosticsSnapshot } from "../lib/surface";
 import { UiIcon } from "./UiIcon";
+import { getRendererQualityDiagnostics } from "../render/quality/cesium-quality-runtime";
 
 type CopyStatus = "idle" | "copied" | "error";
 
@@ -128,6 +129,7 @@ export function LogViewer({ open, onClose }: Props) {
       earth_assets: getEarthDiagnosticsSnapshot(),
       geodesy_contract: getGeodesyDiagnosticsSnapshot(),
       surface_mask_contract: getSurfaceMaskDiagnosticsSnapshot(),
+      renderer_quality: getRendererQualityDiagnostics(),
       user_agent: navigator.userAgent,
       backend,
       recent_log: entries.slice(-50).map((e) => ({

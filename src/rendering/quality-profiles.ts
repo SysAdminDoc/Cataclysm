@@ -1,6 +1,10 @@
 import * as Cesium from "cesium";
+import {
+  RENDERER_QUALITY_BUDGETS,
+  type RendererQualityTier,
+} from "../render/quality/quality-controller";
 
-export type RendererQualityTier = "Low" | "Medium" | "High" | "Cinematic";
+export type { RendererQualityTier } from "../render/quality/quality-controller";
 
 export type RendererQualityProfile = {
   tier: RendererQualityTier;
@@ -18,24 +22,26 @@ export type RendererQualityProfile = {
 
 export const RENDERER_QUALITY_PROFILES: Record<RendererQualityTier, RendererQualityProfile> = {
   Low: {
-    tier: "Low", resolutionScale: 1, msaaSamples: 1, highDynamicRange: false,
+    // Reference captures stay at native drawing-buffer resolution. The live
+    // quality runtime applies the Low 0.75 scale from its budget separately.
+    tier: "Low", resolutionScale: 1, msaaSamples: RENDERER_QUALITY_BUDGETS.Low.features.msaaSamples, highDynamicRange: false,
     tonemapper: Cesium.Tonemapper.REINHARD, exposure: 1, fxaa: true, bloom: false,
-    maximumScreenSpaceError: 4, fog: true, atmosphereLighting: true,
+    maximumScreenSpaceError: RENDERER_QUALITY_BUDGETS.Low.features.maximumScreenSpaceError, fog: true, atmosphereLighting: true,
   },
   Medium: {
-    tier: "Medium", resolutionScale: 1, msaaSamples: 2, highDynamicRange: true,
+    tier: "Medium", resolutionScale: RENDERER_QUALITY_BUDGETS.Medium.resolution.resolutionScale, msaaSamples: RENDERER_QUALITY_BUDGETS.Medium.features.msaaSamples, highDynamicRange: true,
     tonemapper: Cesium.Tonemapper.ACES, exposure: 1, fxaa: true, bloom: false,
-    maximumScreenSpaceError: 2.5, fog: true, atmosphereLighting: true,
+    maximumScreenSpaceError: RENDERER_QUALITY_BUDGETS.Medium.features.maximumScreenSpaceError, fog: true, atmosphereLighting: true,
   },
   High: {
-    tier: "High", resolutionScale: 1, msaaSamples: 4, highDynamicRange: true,
+    tier: "High", resolutionScale: RENDERER_QUALITY_BUDGETS.High.resolution.resolutionScale, msaaSamples: RENDERER_QUALITY_BUDGETS.High.features.msaaSamples, highDynamicRange: true,
     tonemapper: Cesium.Tonemapper.ACES, exposure: 1, fxaa: true, bloom: false,
-    maximumScreenSpaceError: 1.5, fog: true, atmosphereLighting: true,
+    maximumScreenSpaceError: RENDERER_QUALITY_BUDGETS.High.features.maximumScreenSpaceError, fog: true, atmosphereLighting: true,
   },
   Cinematic: {
-    tier: "Cinematic", resolutionScale: 1, msaaSamples: 8, highDynamicRange: true,
+    tier: "Cinematic", resolutionScale: RENDERER_QUALITY_BUDGETS.Cinematic.resolution.resolutionScale, msaaSamples: RENDERER_QUALITY_BUDGETS.Cinematic.features.msaaSamples, highDynamicRange: true,
     tonemapper: Cesium.Tonemapper.ACES, exposure: 1, fxaa: true, bloom: true,
-    maximumScreenSpaceError: 1, fog: true, atmosphereLighting: true,
+    maximumScreenSpaceError: RENDERER_QUALITY_BUDGETS.Cinematic.features.maximumScreenSpaceError, fog: true, atmosphereLighting: true,
   },
 };
 
