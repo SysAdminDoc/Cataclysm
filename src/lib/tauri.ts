@@ -35,6 +35,16 @@ export type RenderProtocolCapabilities = {
   maximum_cells: number;
 };
 
+let simulationRunSequence = 0;
+
+export function createSimulationRunId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `run-${crypto.randomUUID()}`;
+  }
+  simulationRunSequence += 1;
+  return `run-${Date.now()}-${simulationRunSequence}`;
+}
+
 function decodeRenderProtocolCapabilities(value: unknown): RenderProtocolCapabilities {
   if (!value || typeof value !== "object") throw new Error("invalid render protocol capabilities");
   const record = value as Record<string, unknown>;
@@ -262,7 +272,7 @@ export const api = {
     colormap?: ColormapId;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
   }) {
-    return invoke<SimulateGridResponse>("simulate_grid", { req });
+    return invoke<SimulateGridResponse>("simulate_grid", { runId: createSimulationRunId(), req });
   },
   /** F4-01 — Lightweight GPU-availability probe. Returns one of:
    *  "available", "no-adapter", or "feature-off". See the Rust
@@ -297,6 +307,7 @@ export const api = {
     return invoke("diagnostics_bundle");
   },
   simulateGridStreaming(
+    runId: string,
     req: {
       source: GeoPoint;
       initial_amplitude_m: number;
@@ -321,6 +332,7 @@ export const api = {
     ny: number;
     used_gpu: boolean;
     n_snapshots: number;
+    cancelled: boolean;
     max_field?: import("../types/scenario").MaxFieldProduct | null;
     render_scenario_id: string | null;
     render_frame_count: number;
@@ -348,10 +360,11 @@ export const api = {
       ny: number;
       used_gpu: boolean;
       n_snapshots: number;
+      cancelled: boolean;
       max_field?: import("../types/scenario").MaxFieldProduct | null;
       render_scenario_id: string | null;
       render_frame_count: number;
-    }>("simulate_grid_streaming", { req, onSnapshot: channel, onRenderPacket: renderChannel })
+    }>("simulate_grid_streaming", { runId, req, onSnapshot: channel, onRenderPacket: renderChannel })
       .then(async (meta) => {
         await decodeChain;
         if (decodeError) throw decodeError;
@@ -361,8 +374,8 @@ export const api = {
         return { ...meta, render_replay: replay };
       });
   },
-  cancelSimulation() {
-    return invoke<void>("cancel_simulation");
+  cancelSimulation(runId: string) {
+    return invoke<boolean>("cancel_simulation", { runId });
   },
 };
 

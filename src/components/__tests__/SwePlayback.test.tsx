@@ -15,6 +15,7 @@ const exportApi = vi.hoisted(() => ({
 
 vi.mock("../../lib/tauri", () => ({
   api: tauriApi,
+  createSimulationRunId: () => "run-test",
   isTauri: () => true,
 }));
 vi.mock("../../lib/export", () => exportApi);
@@ -65,9 +66,9 @@ describe("SwePlayback", () => {
   it("streams progress and hands snapshots to the parent", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
-      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number }) => void)
+      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean }) => void)
       | null = null;
-    tauriApi.simulateGridStreaming.mockImplementation(async (_req, onSnapshot) => {
+    tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
       return new Promise((resolve) => {
         finish = resolve;
@@ -93,7 +94,7 @@ describe("SwePlayback", () => {
 
     act(() => {
       pushSnapshot?.(SNAPSHOTS[1]);
-      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2 });
+      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false });
     });
 
     expect(await screen.findByText(/Frame\s+1\/2/i)).toBeInTheDocument();
@@ -103,7 +104,7 @@ describe("SwePlayback", () => {
 
   it("cancels an in-flight streaming run and ignores late frames", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
-    tauriApi.simulateGridStreaming.mockImplementation(async (_req, onSnapshot) => {
+    tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
       return new Promise(() => {});
     });
@@ -114,7 +115,7 @@ describe("SwePlayback", () => {
     await user.click(screen.getByRole("button", { name: "Run simulation" }));
     await user.click(await screen.findByRole("button", { name: "Cancel" }));
 
-    expect(tauriApi.cancelSimulation).toHaveBeenCalled();
+    expect(tauriApi.cancelSimulation).toHaveBeenCalledWith("run-test");
     expect(screen.getByRole("button", { name: "Run simulation" })).toBeInTheDocument();
 
     act(() => {
@@ -126,9 +127,9 @@ describe("SwePlayback", () => {
   it("requests backend gauge samples and exports sampled series", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
-      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number }) => void)
+      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean }) => void)
       | null = null;
-    tauriApi.simulateGridStreaming.mockImplementation(async (_req, onSnapshot) => {
+    tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
       return new Promise((resolve) => {
         finish = resolve;
@@ -144,6 +145,7 @@ describe("SwePlayback", () => {
     await user.click(screen.getByRole("button", { name: "Run simulation" }));
 
     expect(tauriApi.simulateGridStreaming).toHaveBeenCalledWith(
+      "run-test",
       expect.objectContaining({
         gauge_points: [{ id: "gauge-1", lat_deg: 0.25, lon_deg: 0.5 }],
       }),
@@ -160,7 +162,7 @@ describe("SwePlayback", () => {
         ...SNAPSHOTS[1],
         gauge_samples: [{ id: "gauge-1", eta_m: 0.25 }],
       });
-      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2 });
+      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false });
     });
 
     await user.click(await screen.findByRole("button", { name: "Export gauges CSV" }));
@@ -177,5 +179,22 @@ describe("SwePlayback", () => {
       "Backend SWE solver",
       "Coarse basin/shelf",
     );
+  });
+
+  it("keeps completed output when an equivalent source object is supplied", async () => {
+    tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
+      onSnapshot(SNAPSHOTS[0]);
+      onSnapshot(SNAPSHOTS[1]);
+      return { dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false };
+    });
+    const user = userEvent.setup();
+    const { rerender } = render(<SwePlayback initial={INITIAL} />);
+
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+    expect(await screen.findByRole("button", { name: "Re-run simulation" })).toBeInTheDocument();
+
+    rerender(<SwePlayback initial={{ ...INITIAL, center: { ...INITIAL.center } }} />);
+    expect(screen.getByRole("button", { name: "Re-run simulation" })).toBeInTheDocument();
+    expect(screen.getByText(/Frame\s+1\/2/i)).toBeInTheDocument();
   });
 });

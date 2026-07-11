@@ -92,4 +92,23 @@ describe("useScenarioSlot", () => {
 
     expect(result.current.initial?.label).toBe("Preset result");
   });
+
+  it("preserves the scientific source while timeline-only preset results refresh", async () => {
+    vi.mocked(api.runPreset).mockResolvedValue(makePresetResponse("tohoku", "Preset result"));
+    const { result, rerender } = renderHook(({ timeS }) => useScenarioSlot(timeS), {
+      initialProps: { timeS: 0 },
+    });
+
+    act(() => result.current.setActivePresetId("tohoku"));
+    await waitFor(() => expect(result.current.initial).not.toBeNull());
+    const originalInitial = result.current.initial;
+
+    rerender({ timeS: 900 });
+    await waitFor(() => expect(api.runPreset).toHaveBeenLastCalledWith(
+      expect.objectContaining({ preset_id: "tohoku", time_s: 900 }),
+    ));
+    await waitFor(() => expect(result.current.busyPresetId).toBeNull());
+
+    expect(result.current.initial).toBe(originalInitial);
+  });
 });

@@ -2,8 +2,9 @@
 //! Every function returns serde-serializable types; errors are stringified.
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, Weak};
 
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +28,8 @@ use crate::physics::{
 use crate::presets::{Preset, all_presets, find_preset};
 use tauri::{AppHandle, Emitter, ipc::Response};
 
-static SIM_CANCEL_TOKENS: Mutex<Vec<Arc<AtomicBool>>> = Mutex::new(Vec::new());
+static SIM_CANCEL_TOKENS: LazyLock<Mutex<HashMap<String, Weak<AtomicBool>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Clone, Serialize)]
 struct SolverDiagnosticPayload {
@@ -45,16 +47,39 @@ fn emit_solver_diagnostic(app: &AppHandle, message: impl Into<String>) {
     );
 }
 
-fn register_simulation_cancel(cancel: &Arc<AtomicBool>) {
-    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
-        guard.retain(|token| Arc::strong_count(token) > 1);
-        guard.push(Arc::clone(cancel));
+fn validate_run_id(run_id: &str) -> Result<(), String> {
+    if run_id.is_empty()
+        || run_id.len() > 128
+        || !run_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+    {
+        return Err("run_id must contain 1-128 ASCII letters, digits, '-' or '_'".into());
     }
+    Ok(())
 }
 
-fn unregister_simulation_cancel(cancel: &Arc<AtomicBool>) {
-    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
-        guard.retain(|token| !Arc::ptr_eq(token, cancel));
+fn register_simulation_cancel(run_id: &str, cancel: &Arc<AtomicBool>) -> Result<(), String> {
+    validate_run_id(run_id)?;
+    let mut guard = SIM_CANCEL_TOKENS
+        .lock()
+        .map_err(|_| "simulation registry is unavailable")?;
+    guard.retain(|_, token| token.strong_count() > 0);
+    if guard.get(run_id).and_then(Weak::upgrade).is_some() {
+        return Err(format!("simulation run '{run_id}' is already active"));
+    }
+    guard.insert(run_id.to_owned(), Arc::downgrade(cancel));
+    Ok(())
+}
+
+fn unregister_simulation_cancel(run_id: &str, cancel: &Arc<AtomicBool>) {
+    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock()
+        && guard
+            .get(run_id)
+            .and_then(Weak::upgrade)
+            .is_some_and(|registered| Arc::ptr_eq(&registered, cancel))
+    {
+        guard.remove(run_id);
     }
 }
 
@@ -984,12 +1009,14 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
 #[tauri::command]
 pub async fn simulate_grid(
     app: AppHandle,
+    run_id: String,
     req: SimulateGridRequest,
 ) -> Result<SimulateGridResponse, String> {
     validate_simulate_grid(&req)?;
 
     let cancel = Arc::new(AtomicBool::new(false));
-    register_simulation_cancel(&cancel);
+    register_simulation_cancel(&run_id, &cancel)?;
+    let worker_run_id = run_id.clone();
 
     tauri::async_runtime::spawn_blocking(move || {
         let diagnostics = |message: &str| emit_solver_diagnostic(&app, message);
@@ -1127,7 +1154,7 @@ pub async fn simulate_grid(
             max_field,
         })
         })();
-        unregister_simulation_cancel(&cancel);
+        unregister_simulation_cancel(&worker_run_id, &cancel);
         result
     })
     .await
@@ -1145,6 +1172,7 @@ pub struct SimulateGridStreamMeta {
     pub ny: u32,
     pub used_gpu: bool,
     pub n_snapshots: u32,
+    pub cancelled: bool,
     /// Max-field products (peak |η|, time of maximum, energy proxy,
     /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
@@ -1157,6 +1185,7 @@ pub struct SimulateGridStreamMeta {
 #[tauri::command]
 pub async fn simulate_grid_streaming(
     app: AppHandle,
+    run_id: String,
     req: SimulateGridRequest,
     on_snapshot: tauri::ipc::Channel<GridSnapshot>,
     on_render_packet: tauri::ipc::Channel<Response>,
@@ -1164,7 +1193,8 @@ pub async fn simulate_grid_streaming(
     validate_simulate_grid(&req)?;
 
     let cancel = Arc::new(AtomicBool::new(false));
-    register_simulation_cancel(&cancel);
+    register_simulation_cancel(&run_id, &cancel)?;
+    let worker_run_id = run_id.clone();
 
     tauri::async_runtime::spawn_blocking(move || {
         let diagnostics = |message: &str| emit_solver_diagnostic(&app, message);
@@ -1269,8 +1299,9 @@ pub async fn simulate_grid_streaming(
             }
 
             // Stream t=0 snapshot immediately
-            let _ = on_snapshot
-                .send(grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics)));
+            on_snapshot
+                .send(grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics)))
+                .map_err(|error| format!("simulation snapshot receiver closed: {error}"))?;
             render_stream.send_frame(&grid)?;
 
             let max_field_threshold_m =
@@ -1307,13 +1338,14 @@ pub async fn simulate_grid_streaming(
                 nx,
                 ny,
                 used_gpu,
-                n_snapshots: n as u32,
+                n_snapshots: render_stream.frame_count().min(u32::MAX as u64) as u32,
+                cancelled: cancel.load(Ordering::Acquire),
                 max_field: Some(max_field),
                 render_scenario_id: Some(scenario_id),
                 render_frame_count: render_stream.frame_count(),
             })
         })();
-        unregister_simulation_cancel(&cancel);
+        unregister_simulation_cancel(&worker_run_id, &cancel);
         result
     })
     .await
@@ -1440,13 +1472,16 @@ pub fn diagnostics_bundle() -> DiagnosticsBundle {
 }
 
 #[tauri::command]
-pub fn cancel_simulation() {
+pub fn cancel_simulation(run_id: String) -> Result<bool, String> {
+    validate_run_id(&run_id)?;
     if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
-        guard.retain(|token| Arc::strong_count(token) > 1);
-        for token in guard.iter() {
+        guard.retain(|_, token| token.strong_count() > 0);
+        if let Some(token) = guard.get(&run_id).and_then(Weak::upgrade) {
             token.store(true, Ordering::Release);
+            return Ok(true);
         }
     }
+    Ok(false)
 }
 
 /// F4-01 — Dispatcher around `run_simulation` that prefers the wgpu
@@ -1536,13 +1571,15 @@ impl<'a> RenderStreamContext<'a> {
         Ok(())
     }
 
-    fn try_send_frame(&self, grid: &SwGrid) {
+    fn try_send_frame(&self, grid: &SwGrid) -> bool {
         if self.send_error.borrow().is_some() {
-            return;
+            return false;
         }
         if let Err(error) = self.send_frame(grid) {
             *self.send_error.borrow_mut() = Some(error);
+            return false;
         }
+        true
     }
 
     fn finish(&self, grid: &SwGrid) -> Result<(), String> {
@@ -1620,11 +1657,19 @@ fn stream_simulation_cpu_from(
         }) {
             break;
         }
-        let _ = ctx
+        if ctx
             .on_snapshot
-            .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
+            .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics))
+            .is_err()
+        {
+            ctx.cancel.store(true, Ordering::Release);
+            break;
+        }
         if let Some(render) = ctx.render {
-            render.try_send_frame(grid);
+            if !render.try_send_frame(grid) {
+                ctx.cancel.store(true, Ordering::Release);
+                break;
+            }
         }
     }
 }
@@ -1678,11 +1723,19 @@ fn stream_simulation_dispatch(
                 completed = completed.saturating_add(1);
                 ctx.max_field.borrow_mut().observe(grid);
             }
-            let _ = ctx
+            if ctx
                 .on_snapshot
-                .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
+                .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics))
+                .is_err()
+            {
+                ctx.cancel.store(true, Ordering::Release);
+                break;
+            }
             if let Some(render) = ctx.render {
-                render.try_send_frame(grid);
+                if !render.try_send_frame(grid) {
+                    ctx.cancel.store(true, Ordering::Release);
+                    break;
+                }
             }
         }
         return true;
@@ -1907,6 +1960,30 @@ mod tests {
             lon_deg: 0.0,
             depth_m: 4_000.0,
         }
+    }
+
+    #[test]
+    fn simulation_cancellation_is_owned_by_run_id() {
+        let run_a = Arc::new(AtomicBool::new(false));
+        let run_b = Arc::new(AtomicBool::new(false));
+        register_simulation_cancel("test-owned-run-a", &run_a).expect("register run A");
+        register_simulation_cancel("test-owned-run-b", &run_b).expect("register run B");
+
+        assert!(cancel_simulation("test-owned-run-a".into()).expect("cancel run A"));
+        assert!(run_a.load(Ordering::Acquire));
+        assert!(!run_b.load(Ordering::Acquire));
+
+        unregister_simulation_cancel("test-owned-run-a", &run_a);
+        unregister_simulation_cancel("test-owned-run-b", &run_b);
+        assert!(!cancel_simulation("test-owned-run-a".into()).expect("run A is gone"));
+    }
+
+    #[test]
+    fn simulation_run_ids_reject_unsafe_values() {
+        for invalid in ["", "has spaces", "../escape", "line\nbreak"] {
+            assert!(validate_run_id(invalid).is_err(), "accepted {invalid:?}");
+        }
+        assert!(validate_run_id("slot-A_2026-07-11").is_ok());
     }
 
     #[test]

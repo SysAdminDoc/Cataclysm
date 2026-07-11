@@ -4,6 +4,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+- Fixed solver lifecycle ownership so changing inspector tabs preserves completed
+  wave results, replacing a source cancels its in-flight worker, and Compare runs
+  can be cancelled independently without terminating the other slot.
+- Fixed preset timeline refreshes replacing scientifically identical source
+  objects and clearing solver snapshots, max-field products, and exports.
+- Closed abandoned snapshot/render channels promptly and report actual streamed
+  frame counts and cancellation state instead of claiming a complete run.
+- Reset the inspector scroll position when its workspace or tab changes.
+
 ## [0.8.2] — 2026-07-11 — Adaptive renderer quality
 
 - Added explicit Low, Medium, High, and Cinematic resolution, feature, and GPU

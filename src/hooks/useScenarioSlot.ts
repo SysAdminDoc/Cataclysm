@@ -36,6 +36,18 @@ export type ScenarioSlot = {
   clearError: () => void;
 };
 
+function sameInitial(a: InitialDisplacement | null, b: InitialDisplacement): boolean {
+  return Boolean(
+    a &&
+      a.center.lat_deg === b.center.lat_deg &&
+      a.center.lon_deg === b.center.lon_deg &&
+      (a.center.depth_m ?? null) === (b.center.depth_m ?? null) &&
+      a.peak_amplitude_m === b.peak_amplitude_m &&
+      a.cavity_radius_m === b.cavity_radius_m &&
+      a.source_energy_j === b.source_energy_j,
+  );
+}
+
 /**
  * Encapsulates the per-slot reactive state + IPC plumbing so the app can run
  * one or two scenario slots in parallel for the F7 comparison view.
@@ -54,6 +66,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   // later one on rapid timeline scrubs.
   const runPresetReqIdRef = useRef(0);
   const simulateReqIdRef = useRef(0);
+  const loadedPresetIdRef = useRef<string | null>(null);
   // Track whether the hook is still mounted so async resolvers don't
   // setState on an unmounted component.
   const mountedRef = useRef(true);
@@ -66,10 +79,18 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   const inTauri = useMemo(isTauri, []);
 
   useEffect(() => {
+    const sourceChanged = loadedPresetIdRef.current !== activePresetId;
+    loadedPresetIdRef.current = activePresetId;
     if (!activePresetId) {
       runPresetReqIdRef.current += 1;
       setBusyPresetId(null);
       return;
+    }
+    if (sourceChanged) {
+      setInitial(null);
+      setWavefront(null);
+      setSweSnapshot(null);
+      setRunupResults([]);
     }
     setLastCustomScenario(null);
     // A preset selection supersedes any custom scenario IPC already in flight.
@@ -83,7 +104,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       window.setTimeout(() => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         const resp = runDemoPreset(activePresetId, timeS);
-        setInitial(resp.initial);
+        setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
         setWavefront(resp.wavefront);
         setBusyPresetId(null);
       }, 80);
@@ -94,7 +115,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       .then((resp) => {
         // Drop stale responses + don't touch unmounted state.
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
-        setInitial(resp.initial);
+        setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
         setWavefront(resp.wavefront);
       })
       .catch((err) => {
@@ -118,6 +139,10 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       setActivePresetId(null);
       setLastCustomScenario(input);
       setError(null);
+      setInitial(null);
+      setWavefront(null);
+      setSweSnapshot(null);
+      setRunupResults([]);
       if (!inTauri) {
         const d = demoInitialForScenario(input);
         setInitial(d);

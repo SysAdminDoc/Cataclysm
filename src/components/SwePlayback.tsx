@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, isTauri } from "../lib/tauri";
+import { api, createSimulationRunId, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportGaugeCsv } from "../lib/export";
@@ -74,6 +74,18 @@ const SPEED_OPTIONS = [
   { label: "4×", ms: 40 },
 ] as const;
 
+function initialIdentity(initial: InitialDisplacement | null): string | null {
+  if (!initial) return null;
+  return JSON.stringify([
+    initial.center.lat_deg,
+    initial.center.lon_deg,
+    initial.center.depth_m ?? null,
+    initial.peak_amplitude_m,
+    initial.cavity_radius_m,
+    initial.source_energy_j,
+  ]);
+}
+
 function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): GaugeTimeSeries[] {
   return gauges
     .map((gauge) => {
@@ -110,8 +122,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [gaugeLatInput, setGaugeLatInput] = useState("");
   const [gaugeLonInput, setGaugeLonInput] = useState("");
   const [gaugeNameInput, setGaugeNameInput] = useState("");
-  const lastInitialRef = useRef<InitialDisplacement | null>(null);
+  const lastInitialRef = useRef<string | null>(null);
   const reqIdRef = useRef(0);
+  const runIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const gaugeCounter = useRef(0);
 
@@ -119,13 +132,30 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      reqIdRef.current += 1;
+      const runId = runIdRef.current;
+      runIdRef.current = null;
+      if (runId && isTauri()) {
+        void api.cancelSimulation(runId).catch((err) =>
+          console.warn("[solver] failed to cancel unmounted simulation", err),
+        );
+      }
     };
   }, []);
 
   // Reset state when scenario changes.
   useEffect(() => {
-    if (initial !== lastInitialRef.current) {
-      lastInitialRef.current = initial;
+    const identity = initialIdentity(initial);
+    if (identity !== lastInitialRef.current) {
+      lastInitialRef.current = identity;
+      reqIdRef.current += 1;
+      const runId = runIdRef.current;
+      runIdRef.current = null;
+      if (runId && isTauri()) {
+        void api.cancelSimulation(runId).catch((err) =>
+          console.warn("[solver] failed to cancel replaced simulation", err),
+        );
+      }
       setStatus("idle");
       setSnapshots(null);
       setActiveIdx(0);
@@ -238,26 +268,51 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
 
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
-    if (isTauri()) {
+    const runId = runIdRef.current;
+    runIdRef.current = null;
+    if (runId && isTauri()) {
       api
-        .cancelSimulation()
+        .cancelSimulation(runId)
         .catch((err) => console.warn("[solver] failed to cancel active simulation", err));
     }
     setStatus("idle");
     setErrMsg(null);
     setIsPlaying(false);
+    setSnapshots(null);
+    setActiveIdx(0);
+    setStreamProgress(0);
+    setDiag(null);
+    setMaxField(null);
+    onSnapshot?.(null);
+    onSnapshotsReady?.(null);
+    onMaxField?.(null);
     onRenderFrame?.(null);
-  }, [onRenderFrame]);
+  }, [onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
 
   const run = useCallback(async () => {
     if (!initial) return;
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
+    const previousRunId = runIdRef.current;
+    if (previousRunId && isTauri()) {
+      void api.cancelSimulation(previousRunId).catch((err) =>
+        console.warn("[solver] failed to supersede active simulation", err),
+      );
+    }
+    const runId = createSimulationRunId();
+    runIdRef.current = isTauri() ? runId : null;
     setStatus("running");
     setErrMsg(null);
     setIsPlaying(false);
     onRenderFrame?.(null);
     setStreamProgress(0);
+    setSnapshots(null);
+    setActiveIdx(0);
+    setDiag(null);
+    setMaxField(null);
+    onSnapshot?.(null);
+    onSnapshotsReady?.(null);
+    onMaxField?.(null);
     try {
       const halfDeg = Math.min(
         25,
@@ -295,6 +350,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       if (isTauri()) {
         const streamSnaps: GridSnapshot[] = [];
         const meta = await api.simulateGridStreaming(
+          runId,
           gridReq,
           (snap) => {
             if (!mountedRef.current || reqId !== reqIdRef.current) return;
@@ -322,6 +378,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           },
         );
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
+        runIdRef.current = null;
+        if (meta.cancelled) {
+          setStatus("idle");
+          return;
+        }
         setDiag({ dt_s: meta.dt_s, nx: meta.nx, ny: meta.ny, used_gpu: meta.used_gpu });
         setActiveIdx(0);
         setStatus("ready");
@@ -344,6 +405,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       }
     } catch (err) {
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
+      runIdRef.current = null;
       console.error("simulate_grid failed", err);
       setErrMsg(String(err));
       setStatus("error");

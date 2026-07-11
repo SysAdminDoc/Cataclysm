@@ -1,4 +1,4 @@
-import { Activity, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PresetSelector } from "./components/PresetSelector";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
@@ -277,6 +277,7 @@ export default function App() {
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+  const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const inTauri = useMemo(isTauri, []);
   const referenceCaptureMode = useMemo(
     () => new URLSearchParams(window.location.search).get("referenceCapture") === "1",
@@ -301,6 +302,10 @@ export default function App() {
     setCameraTelemetry(telemetry);
   }, []);
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    inspectorBodyRef.current?.scrollTo({ top: 0 });
+  }, [inspectorTab, hazardMode, compareMode]);
 
   useEffect(() => {
     if (!timelinePlaying) return;
@@ -1198,7 +1203,7 @@ export default function App() {
             ))}
           </div>
         </div>
-        <div className="inspector__body" id="inspector-panel" role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
+        <div ref={inspectorBodyRef} className="inspector__body" id="inspector-panel" role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
         {inspectorTab === "setup" && inHazardMode && (
           <HazardControls
             mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
@@ -1220,7 +1225,7 @@ export default function App() {
             display="setup"
           />
         )}
-        {inspectorTab === "setup" && !inHazardMode && (
+        <div hidden={inspectorTab !== "setup" || inHazardMode}>
           <SourceModelSummary
             preset={activePresetA ?? null}
             initial={slotA.initial}
@@ -1230,22 +1235,21 @@ export default function App() {
               editor?.querySelector<HTMLElement>("button, input, select")?.focus();
             }}
           />
-        )}
-        {inspectorTab === "setup" && !inHazardMode && <SwePlayback
-          initial={slotA.initial}
-          onSnapshot={slotA.setSweSnapshot}
-          onSnapshotsReady={setSweSnapshots}
-          pendingGauge={pendingGauge}
-          dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
-          onMaxField={setSweMaxField}
-          onIsochrones={setSweIsochrones}
-          onRenderFrame={setSweRenderFrameA}
-        />}
-        {inspectorTab === "setup" && !inHazardMode && <Activity mode={compareMode ? "visible" : "hidden"}>
-          <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} />
-        </Activity>}
-        {inspectorTab === "setup" && !inHazardMode && !compareMode && (
-          <ScenarioBuilder
+          <SwePlayback
+            initial={slotA.initial}
+            onSnapshot={slotA.setSweSnapshot}
+            onSnapshotsReady={setSweSnapshots}
+            pendingGauge={pendingGauge}
+            dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
+            onMaxField={setSweMaxField}
+            onIsochrones={setSweIsochrones}
+            onRenderFrame={setSweRenderFrameA}
+          />
+          <div hidden={!compareMode} aria-label="Comparison slot B solver">
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} />
+          </div>
+          <div hidden={compareMode}>
+            <ScenarioBuilder
             onSimulate={(scenario) => {
               slotA.simulate(scenario);
               setInspectorTab("results");
@@ -1253,8 +1257,9 @@ export default function App() {
             pickedLocation={pickedLocation}
             onTogglePick={() => setPickMode((p) => !p)}
             pickActive={pickMode}
-          />
-        )}
+            />
+          </div>
+        </div>
         {inspectorTab === "results" && inHazardMode && <HazardControls
           mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
           nuclear={nuclearInput}
