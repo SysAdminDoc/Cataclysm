@@ -133,7 +133,7 @@ test.describe("Accessibility (axe-core WCAG A/AA)", () => {
   test("main cockpit has no violations", async ({ page }) => {
     await seedAcknowledgedPreview(page);
     await page.goto("/");
-    await expect(page.locator(".app__title")).toHaveText("TsunamiSimulator", { timeout: 10_000 });
+    await expect(page.locator(".app__title")).toHaveText("Cataclysm", { timeout: 10_000 });
 
     const { violations } = await axeScan(page);
     expect(violations).toEqual([]);
