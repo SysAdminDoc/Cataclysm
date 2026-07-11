@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const registryPath = path.join(repoRoot, "src", "data", "earth-assets.json");
 const schemaPath = path.join(repoRoot, "assets", "earth", "manifest.schema.json");
+const geodesySchemaPath = path.join(repoRoot, "assets", "earth", "geodesy-contract.schema.json");
+const geodesyPath = path.join(repoRoot, "src", "data", "geodesy-contract.json");
+const surfaceMaskPath = path.join(repoRoot, "src", "data", "surface-mask.json");
+const surfaceMaskSchemaPath = path.join(repoRoot, "assets", "earth", "surface-mask.schema.json");
 const permissionOperations = [
   "interactive_render",
   "transient_http_cache",
@@ -134,6 +138,92 @@ function validateFallbacks(registry, assetIds) {
   }
 }
 
+function geodeticToEcef(latDeg, lonDeg, heightM) {
+  const a = 6_378_137;
+  const flattening = 1 / 298.257_223_563;
+  const eccentricitySq = flattening * (2 - flattening);
+  const lat = latDeg * Math.PI / 180;
+  const lon = lonDeg * Math.PI / 180;
+  const sinLat = Math.sin(lat);
+  const cosLat = Math.cos(lat);
+  const primeVertical = a / Math.sqrt(1 - eccentricitySq * sinLat * sinLat);
+  return [
+    (primeVertical + heightM) * cosLat * Math.cos(lon),
+    (primeVertical + heightM) * cosLat * Math.sin(lon),
+    (primeVertical * (1 - eccentricitySq) + heightM) * sinLat,
+  ];
+}
+
+function validateGeodesyAndSurfaceContracts(assetIds) {
+  JSON.parse(readFileSync(geodesySchemaPath, "utf8"));
+  const geodesy = JSON.parse(readFileSync(geodesyPath, "utf8"));
+  if (geodesy.schema_version !== 1 || !/^\d+\.\d+\.\d+$/.test(geodesy.contract_version ?? "")) {
+    fail("geodesy contract schema/version is invalid");
+  }
+  if (geodesy.horizontal_crs?.geographic_2d !== "EPSG:4326" || geodesy.horizontal_crs?.ecef !== "EPSG:4978") {
+    fail("geodesy contract must declare WGS84 geographic and ECEF CRS identifiers");
+  }
+  if (!Array.isArray(geodesy.coastal_benchmarks) || geodesy.coastal_benchmarks.length < 3) {
+    fail("geodesy contract needs at least three coastal benchmarks");
+  }
+  const benchmarkIds = new Set();
+  for (const benchmark of geodesy.coastal_benchmarks) {
+    requiredString(benchmark.id, "geodesy benchmark id");
+    if (benchmarkIds.has(benchmark.id)) fail(`duplicate geodesy benchmark "${benchmark.id}"`);
+    benchmarkIds.add(benchmark.id);
+    httpsUrl(benchmark.source_url, `geodesy benchmark "${benchmark.id}" source URL`);
+    if (!new URL(benchmark.source_url).hostname.endsWith("noaa.gov")) {
+      fail(`geodesy benchmark "${benchmark.id}" must cite the official NOAA endpoint`);
+    }
+    for (const field of ["lat_deg", "lon_deg", "orthometric_height_m", "geoid_undulation_m", "geoid_model_error_m", "ellipsoid_height_m"]) {
+      if (!Number.isFinite(benchmark[field])) fail(`geodesy benchmark "${benchmark.id}" ${field} must be finite`);
+    }
+    if (Math.abs(benchmark.ellipsoid_height_m - (benchmark.orthometric_height_m + benchmark.geoid_undulation_m)) > geodesy.error_budget.fixture_vertical_conversion_m) {
+      fail(`geodesy benchmark "${benchmark.id}" violates h = H + N`);
+    }
+    if (!Array.isArray(benchmark.expected_ecef_m) || benchmark.expected_ecef_m.length !== 3) {
+      fail(`geodesy benchmark "${benchmark.id}" needs an ECEF triplet`);
+    }
+    const calculated = geodeticToEcef(benchmark.lat_deg, benchmark.lon_deg, benchmark.ellipsoid_height_m);
+    calculated.forEach((value, index) => {
+      if (Math.abs(value - benchmark.expected_ecef_m[index]) > geodesy.error_budget.geodetic_to_ecef_m) {
+        fail(`geodesy benchmark "${benchmark.id}" ECEF fixture exceeds its error budget`);
+      }
+    });
+  }
+
+  JSON.parse(readFileSync(surfaceMaskSchemaPath, "utf8"));
+  const surface = JSON.parse(readFileSync(surfaceMaskPath, "utf8"));
+  if (surface.schema_version !== 1 || !/^\d+\.\d+\.\d+$/.test(surface.mask_version ?? "")) {
+    fail("surface mask schema/version is invalid");
+  }
+  if (!assetIds.has(surface.source_asset_id)) fail(`surface mask source asset is missing: ${surface.source_asset_id}`);
+  if (surface.horizontal_crs !== "EPSG:4326" || surface.vertical_datum !== "CATACLYSM:IDEALIZED_MSL") {
+    fail("surface mask CRS/datum contract is invalid");
+  }
+  if (!Number.isFinite(surface.declared_horizontal_error_m) || surface.declared_horizontal_error_m <= 0) {
+    fail("surface mask must declare a positive horizontal error budget");
+  }
+  if (JSON.stringify([...(surface.wet_classes ?? [])].sort()) !== JSON.stringify(["inland_water", "ocean"])) {
+    fail("surface mask wet classes must be exactly inland_water and ocean");
+  }
+  const regionIds = new Set();
+  const classes = new Set(["land", "ocean", "inland_water", "ice", "coast"]);
+  for (const region of surface.regions ?? []) {
+    requiredString(region.id, "surface region id");
+    if (regionIds.has(region.id)) fail(`duplicate surface region "${region.id}"`);
+    regionIds.add(region.id);
+    if (!classes.has(region.surface_class)) fail(`surface region "${region.id}" has invalid class`);
+    if (!Array.isArray(region.bounds) || region.bounds.length !== 4 || !region.bounds.every(Number.isFinite)) {
+      fail(`surface region "${region.id}" must have finite west/south/east/north bounds`);
+    }
+    const [west, south, east, north] = region.bounds;
+    if (west < -180 || east > 180 || south < -90 || north > 90 || west >= east || south >= north) {
+      fail(`surface region "${region.id}" bounds are outside EPSG:4326 or inverted`);
+    }
+  }
+}
+
 export function validateRegistry(registry, { checkFiles = false } = {}) {
   if (!registry || typeof registry !== "object" || Array.isArray(registry)) fail("registry must be an object");
   if (registry.schema_version !== 1) fail("registry schema_version must be 1");
@@ -223,6 +313,7 @@ export function validateRegistry(registry, { checkFiles = false } = {}) {
     }
   }
   validateFallbacks(registry, assetIds);
+  validateGeodesyAndSurfaceContracts(assetIds);
   return { providerCount: providerIds.size, assetCount: assetIds.size, styleCount: styleIds.size };
 }
 

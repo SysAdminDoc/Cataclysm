@@ -1,4 +1,5 @@
 // Types that mirror the Rust serde structs in src-tauri/src/physics + presets.
+import type { HeightFieldMetadata } from "../lib/geodesy";
 
 export type GeoPoint = {
   lat_deg: number;
@@ -108,6 +109,7 @@ export type GridSnapshot = {
   bbox: [number, number, number, number];
   nx: number;
   ny: number;
+  height_field: HeightFieldMetadata;
   eta_min_m: number;
   eta_max_m: number;
   eta_abs_max_m: number;
@@ -127,6 +129,7 @@ export type MaxFieldProduct = {
   bbox: [number, number, number, number];
   nx: number;
   ny: number;
+  peak_height_field: HeightFieldMetadata;
   peak_abs_max_m: number;
   t_end_s: number;
   arrival_threshold_m: number;

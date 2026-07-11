@@ -1,5 +1,9 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { EARTH_ASSET_REGISTRY_VERSION, getActiveEarthSession } from "./earth-assets";
+import {
+  IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
+  type HeightFieldMetadata,
+} from "./geodesy";
 
 export const APP_VERSION = "0.8.0";
 
@@ -33,6 +37,7 @@ export type ModelProvenance = {
   citationReference: string;
   citationUrl: string | null;
   generatedAt: string;
+  heightField: HeightFieldMetadata;
   limitation: string;
   scenarioName: string;
   scenarioType: string;
@@ -52,6 +57,7 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
     citationReference: input.preset?.reference ?? "Custom scenario - no preset citation.",
     citationUrl: input.preset?.reference_url ?? null,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
+    heightField: { ...IDEALIZED_SEA_SURFACE_HEIGHT_FIELD },
     limitation: EDUCATIONAL_LIMITATION,
     scenarioName: input.preset?.name ?? input.initial?.label ?? "Custom scenario",
     scenarioType: input.scenarioKind ?? input.preset?.source?.kind ?? "Custom",
@@ -74,6 +80,7 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
     `Bathymetry source: ${p.bathymetrySource}`,
     `Bathymetry asset: ${p.bathymetryAssetId}`,
     `Earth asset registry: ${p.assetRegistryVersion}`,
+    `Height field: ${p.heightField.horizontal_crs}; ${p.heightField.vertical_datum}; ${p.heightField.vertical_axis}; ${p.heightField.unit}`,
     `Solver assets: ${p.solverAssetIds.join(", ")}`,
     `Visual assets: ${p.visualAssetIds.join(", ")}`,
     `Citation: ${citation}`,

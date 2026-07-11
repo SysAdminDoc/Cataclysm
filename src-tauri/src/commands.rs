@@ -101,6 +101,24 @@ fn check_lat_lon_values(prefix: &str, lat: f64, lon: f64) -> Result<(), String> 
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SurfaceProbeRequest {
+    pub lat_deg: f64,
+    pub lon_deg: f64,
+}
+
+/// Classify a picked location through the same bundled mask used by solver
+/// wet/dry initialization. The response always carries CRS, datum, mask
+/// version, confidence, and the declared coarse-mask error budget.
+#[tauri::command]
+pub fn surface_probe(
+    req: SurfaceProbeRequest,
+) -> Result<crate::data::surface::SurfaceProbe, String> {
+    check_lat_lon_values("surface probe", req.lat_deg, req.lon_deg)?;
+    crate::data::surface::probe(req.lat_deg, req.lon_deg)
+        .ok_or_else(|| "surface probe coordinates are not finite or normalized".to_string())
+}
+
 #[tauri::command]
 pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDisplacement, String> {
     check_finite_positive("diameter_m", input.diameter_m)?;
@@ -1302,6 +1320,8 @@ pub struct DiagnosticsBundle {
     /// Adapter name + backend when the gpu feature found one.
     pub gpu_adapter: Option<String>,
     pub solver: String,
+    pub geodesy: crate::data::geodesy::GeodesyDiagnostics,
+    pub surface_mask: crate::data::surface::SurfaceMaskDiagnostics,
 }
 
 #[tauri::command]
@@ -1330,6 +1350,8 @@ pub fn diagnostics_bundle() -> DiagnosticsBundle {
         },
         gpu_status,
         gpu_adapter,
+        geodesy: crate::data::geodesy::diagnostics(),
+        surface_mask: crate::data::surface::diagnostics(),
     }
 }
 
@@ -2223,6 +2245,63 @@ mod tests {
             }],
         });
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn surface_probe_uses_shared_wet_dry_contract() {
+        let ocean = surface_probe(SurfaceProbeRequest {
+            lat_deg: 0.0,
+            lon_deg: -150.0,
+        })
+        .unwrap();
+        assert!(ocean.is_wet);
+        assert_eq!(
+            ocean.surface_class,
+            crate::data::surface::SurfaceClass::Ocean,
+        );
+        assert!(ocean.water_depth_m > 3_000.0);
+
+        let land = surface_probe(SurfaceProbeRequest {
+            lat_deg: 0.0,
+            lon_deg: 20.0,
+        })
+        .unwrap();
+        assert!(!land.is_wet);
+        assert_eq!(land.water_depth_m, 0.0);
+    }
+
+    #[test]
+    fn surface_probe_rejects_nonfinite_and_out_of_domain_coordinates() {
+        assert!(
+            surface_probe(SurfaceProbeRequest {
+                lat_deg: f64::NAN,
+                lon_deg: 0.0,
+            })
+            .is_err()
+        );
+        assert!(
+            surface_probe(SurfaceProbeRequest {
+                lat_deg: 91.0,
+                lon_deg: 0.0,
+            })
+            .is_err()
+        );
+        assert!(
+            surface_probe(SurfaceProbeRequest {
+                lat_deg: 0.0,
+                lon_deg: 181.0,
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn diagnostics_publish_geodesy_and_surface_contract_versions() {
+        let diagnostics = diagnostics_bundle();
+        assert_eq!(diagnostics.geodesy.contract_version, "1.0.0");
+        assert_eq!(diagnostics.surface_mask.mask_version, "1.0.0");
+        assert_eq!(diagnostics.surface_mask.horizontal_crs, "EPSG:4326");
+        assert!(diagnostics.surface_mask.declared_horizontal_error_m > 100_000.0);
     }
 
     #[cfg(feature = "gpu")]

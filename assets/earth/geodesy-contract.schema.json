@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SysAdminDoc/Cataclysm/assets/earth/geodesy-contract.schema.json",
+  "title": "Cataclysm renderer-neutral geodesy contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "horizontal_crs", "vertical_datums", "renderer_frames", "error_budget", "coastal_benchmarks"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "horizontal_crs": { "type": "object" },
+    "vertical_datums": { "type": "object" },
+    "renderer_frames": { "type": "object" },
+    "error_budget": { "type": "object" },
+    "coastal_benchmarks": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "lat_deg", "lon_deg", "orthometric_height_m", "geoid_undulation_m", "geoid_model_error_m", "ellipsoid_height_m", "expected_ecef_m", "expected_unreal_local_cm", "source_url"]
+      }
+    }
+  }
+}

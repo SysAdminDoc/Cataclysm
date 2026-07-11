@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
+import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -161,6 +162,7 @@ describe("exportCzml", () => {
         eta_png_b64: "abc",
         nx: 2,
         ny: 2,
+        height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
         time_s: 0,
       },
     ]);
@@ -316,12 +318,13 @@ describe("exportGaugeCsv", () => {
 
     const csv = await getBlob()!.text();
     const lines = csv.trim().split("\n");
-    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source");
+    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis");
     expect(lines).toHaveLength(4);
     expect(lines[1]).toContain("Tokyo Bay");
     expect(lines[1]).toContain("35.65");
     expect(lines[1]).toContain("139.77");
     expect(lines[2]).toContain("1.2340");
+    expect(lines[2]).toContain("EPSG:4326,idealized_mean_sea_level,positive_up");
   });
 
   it("returns false for empty series", () => {

@@ -85,7 +85,7 @@ describe("Earth asset registry", () => {
   it("produces a token-free diagnostics inventory for every active provider and asset", () => {
     const diagnostics = getEarthDiagnosticsSnapshot();
     expect(diagnostics.providers).toHaveLength(7);
-    expect(diagnostics.assets).toHaveLength(11);
+    expect(diagnostics.assets).toHaveLength(13);
     expect(diagnostics.categoryInventory.buildings).toEqual([]);
     expect(diagnostics.categoryInventory.clouds).toEqual([]);
     expect(diagnostics.categoryInventory.vfx).toEqual([]);

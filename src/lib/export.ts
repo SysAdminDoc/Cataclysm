@@ -566,6 +566,7 @@ export function exportCzml(
         solverMode: provenance.solverMode,
         solverAssetIds: provenance.solverAssetIds,
         visualAssetIds: provenance.visualAssetIds,
+        heightField: snapshots[0].height_field,
       },
       rectangle: {
         coordinates: { wsenDegrees: [west, south, east, north] },
@@ -651,6 +652,7 @@ export function exportGeoJson(
       solver_mode: provenance.solverMode,
       solver_asset_ids: provenance.solverAssetIds,
       visual_asset_ids: provenance.visualAssetIds,
+      height_field: provenance.heightField,
       time_s: round5(meta.timeS),
     },
     features: [...features, ...isochroneFeatures],
@@ -759,7 +761,7 @@ export function exportGaugeCsv(
 ): boolean {
   if (series.length === 0) return false;
 
-  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source";
+  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis";
   const rows: string[] = [header];
   for (const ts of series) {
     const name = encodeSpreadsheetSafeCsvText(ts.gauge.name);
@@ -768,7 +770,10 @@ export function exportGaugeCsv(
     const mode = encodeSpreadsheetSafeCsvText(solverMode);
     const bathy = encodeSpreadsheetSafeCsvText(bathymetrySource);
     for (const s of ts.samples) {
-      rows.push(`${name},${lat},${lon},${s.time_s.toFixed(1)},${s.eta_m.toFixed(4)},${mode},${bathy}`);
+      rows.push(
+        `${name},${lat},${lon},${s.time_s.toFixed(1)},${s.eta_m.toFixed(4)},${mode},${bathy},` +
+          "EPSG:4326,idealized_mean_sea_level,positive_up",
+      );
     }
   }
 

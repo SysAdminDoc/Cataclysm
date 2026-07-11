@@ -87,6 +87,8 @@ pub struct GridSnapshot {
     pub bbox: [f64; 4],
     pub nx: u32,
     pub ny: u32,
+    /// CRS/datum/unit/error contract for η and gauge sample heights.
+    pub height_field: crate::data::geodesy::HeightFieldMetadata,
     /// Min/max amplitude in the field (m), for caller-side colour-ramp.
     pub eta_min_m: f64,
     pub eta_max_m: f64,
@@ -309,6 +311,7 @@ impl SwGrid {
             ],
             nx: self.nx as u32,
             ny: self.ny as u32,
+            height_field: crate::data::geodesy::sea_surface_height_field(),
             eta_min_m: if lo.is_finite() { lo } else { 0.0 },
             eta_max_m: if hi.is_finite() { hi } else { 0.0 },
             eta_abs_max_m: absmax,
@@ -1050,6 +1053,15 @@ mod tests {
         g.inject_gaussian(0.0, 0.0, 10.0, 1_000_000.0);
         let s = g.snapshot();
         assert!(s.eta_max_m > 9.0 && s.eta_max_m <= 10.0);
+        assert_eq!(s.height_field.horizontal_crs, "EPSG:4326");
+        assert_eq!(
+            s.height_field.vertical_datum,
+            crate::data::geodesy::VerticalDatum::IdealizedMeanSeaLevel,
+        );
+        assert_eq!(
+            s.height_field.vertical_axis,
+            crate::data::geodesy::VerticalAxis::PositiveUp,
+        );
         assert!(
             !s.eta_png_b64.is_empty(),
             "snapshot PNG should be non-empty"

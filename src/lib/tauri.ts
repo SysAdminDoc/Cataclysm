@@ -14,6 +14,7 @@ import type {
   SimulateGridResponse,
 } from "../types/scenario";
 import type { ColormapId } from "./settings";
+import type { SurfaceProbe } from "./surface";
 
 export type InspectAtPointResult = {
   range_m: number;
@@ -170,6 +171,9 @@ export const api = {
   gpuProbe(): Promise<"available" | "no-adapter" | "feature-off"> {
     return invoke<"available" | "no-adapter" | "feature-off">("gpu_probe");
   },
+  surfaceProbe(req: { lat_deg: number; lon_deg: number }): Promise<SurfaceProbe> {
+    return invoke<SurfaceProbe>("surface_probe", { req });
+  },
   /** Cesium ion token in the OS keychain. `null` = no token stored. */
   keychainGetToken(): Promise<string | null> {
     return invoke<string | null>("keychain_get_token");
@@ -185,6 +189,8 @@ export const api = {
     gpu_status: string;
     gpu_adapter: string | null;
     solver: string;
+    geodesy: Record<string, unknown>;
+    surface_mask: Record<string, unknown>;
   }> {
     return invoke("diagnostics_bundle");
   },

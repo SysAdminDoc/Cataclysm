@@ -12,6 +12,7 @@ import type {
   RunPresetResponse,
   SimulateGridResponse,
 } from "../types/scenario";
+import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "./geodesy";
 
 export type DemoRunupAtPointResult = {
   id: string;
@@ -700,6 +701,7 @@ function makeDemoSnapshot(
     ],
     nx,
     ny,
+    height_field: { ...IDEALIZED_SEA_SURFACE_HEIGHT_FIELD },
     eta_min_m: etaMin,
     eta_max_m: etaMax,
     eta_abs_max_m: etaAbsMax,

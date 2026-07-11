@@ -6,3 +6,5 @@
 //! storage, and first-run download decisions.
 
 pub mod bathymetry;
+pub mod geodesy;
+pub mod surface;

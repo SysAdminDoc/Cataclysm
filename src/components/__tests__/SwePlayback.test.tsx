@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SwePlayback } from "../SwePlayback";
 import type { GridSnapshot, InitialDisplacement } from "../../types/scenario";
+import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../../lib/geodesy";
 
 const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
@@ -33,6 +34,7 @@ const SNAPSHOTS: GridSnapshot[] = [
     bbox: [-1, -1, 1, 1],
     nx: 2,
     ny: 2,
+    height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
     eta_min_m: -1,
     eta_max_m: 1,
     eta_abs_max_m: 1,
@@ -43,6 +45,7 @@ const SNAPSHOTS: GridSnapshot[] = [
     bbox: [-1, -1, 1, 1],
     nx: 2,
     ny: 2,
+    height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
     eta_min_m: -2,
     eta_max_m: 2,
     eta_abs_max_m: 2,

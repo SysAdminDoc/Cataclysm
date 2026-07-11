@@ -33,6 +33,11 @@ import { SourceModelSummary } from "./components/SourceModelSummary";
 import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
 import { falloutRings } from "./hazards/nuclear/fallout";
 import type { NuclearEffects } from "./hazards/nuclear/physics";
+import {
+  asteroidTargetFromSurface,
+  probeSurfaceLocal,
+  surfaceBurstTypeFromSurface,
+} from "./lib/surface";
 
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
 type DirectHazardMode = Exclude<HazardMode, "tsunami">;
@@ -454,9 +459,41 @@ export default function App() {
       : "Analytical source geometry and coastal runup sampling",
   });
 
-  function handlePickGlobe(lat: number, lon: number) {
+  async function handlePickGlobe(lat: number, lon: number) {
     if (directHazardMode) {
       setHazardCenters((current) => ({ ...current, [directHazardMode]: { lat, lon } }));
+      try {
+        const surface = inTauri
+          ? await api.surfaceProbe({ lat_deg: lat, lon_deg: lon })
+          : probeSurfaceLocal(lat, lon);
+        if (surface.surface_class === "coast" || surface.surface_class === "unknown") {
+          showToast(
+            `Target is ${surface.surface_class}; preserving the selected material because the coarse mask cannot resolve the shoreline.`,
+            "info",
+          );
+        } else {
+          const asteroidTarget = asteroidTargetFromSurface(surface.surface_class);
+          if (directHazardMode === "asteroid") {
+            setAsteroidInput((current) => ({
+              ...current,
+              targetType: asteroidTarget ?? current.targetType,
+              waterDepthM: surface.is_wet ? Math.max(1, surface.water_depth_m) : 0,
+            }));
+          } else {
+            setNuclearInput((current) => ({
+              ...current,
+              burstType: surfaceBurstTypeFromSurface(current.burstType, surface.surface_class),
+            }));
+          }
+          showToast(
+            `Target classified as ${surface.surface_class.replace("_", " ")} by surface mask ${surface.mask_version} (${surface.confidence} confidence).`,
+            "info",
+          );
+        }
+      } catch (error) {
+        console.warn("[surface] target probe failed", error);
+        showToast("Target placed, but automatic surface classification failed; material was preserved.", "error");
+      }
     } else {
       setPickedLocation({ lat, lon });
     }

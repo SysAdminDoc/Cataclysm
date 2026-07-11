@@ -32,6 +32,7 @@ pub fn run() {
             lamb_wave_sample,
             dart_buoy_rmse,
             gpu_probe,
+            surface_probe,
             diagnostics_bundle,
             keychain_get_token,
             keychain_set_token,

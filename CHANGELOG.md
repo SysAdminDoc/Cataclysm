@@ -5,6 +5,18 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 ## [Unreleased]
 
 ### Changed — trustworthy accelerated releases
+- Added versioned geodesy and shared surface-mask contracts. Rust and Cesium
+  validate WGS84 geodetic/ECEF coordinates against three official NOAA GEOID18
+  coastal fixtures, and the declared Unreal local frame uses ENU centimetres;
+  unsupported vertical-datum conversion now fails closed without model data.
+- SWE snapshots, peak-height fields, model provenance, CZML, GeoJSON, text, and
+  gauge CSV output now carry horizontal CRS, vertical datum, axis direction,
+  units, and declared error metadata instead of relying on bare metre values.
+- The solver bathymetry sampler, wet/dry initialization, browser preview, Rust
+  surface probe, picked asteroid material, nuclear surface/water response, and
+  impact splash/collision response now consume one versioned
+  land/ocean/inland-water/ice/coast mask. Ambiguous coast cells remain
+  conservative and preserve the selected target material.
 - Added a versioned Earth asset registry and build-blocking provenance/rights
   validator covering providers, source URLs, licenses, attribution, bounds,
   resolution, datum, timestamps, integrity, quality tiers, fallback graphs,

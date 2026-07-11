@@ -28,6 +28,8 @@ pub struct MaxFieldProduct {
     pub bbox: [f64; 4],
     pub nx: u32,
     pub ny: u32,
+    /// CRS/datum/unit/error contract for the peak-amplitude height field.
+    pub peak_height_field: crate::data::geodesy::HeightFieldMetadata,
     /// Global maximum |η| over the whole run (m).
     pub peak_abs_max_m: f64,
     /// Simulated time of the final observation (s).
@@ -166,6 +168,7 @@ impl MaxFieldAccumulator {
             ],
             nx: nx as u32,
             ny: ny as u32,
+            peak_height_field: crate::data::geodesy::sea_surface_height_field(),
             peak_abs_max_m: peak_max,
             t_end_s: t_end,
             arrival_threshold_m: self.arrival_threshold_m,
@@ -454,6 +457,11 @@ mod tests {
         acc.last_t_s = 3600.0;
         acc.observed = true;
         let product = acc.into_product(&grid, None);
+        assert_eq!(product.peak_height_field.horizontal_crs, "EPSG:4326");
+        assert_eq!(
+            product.peak_height_field.vertical_datum,
+            crate::data::geodesy::VerticalDatum::IdealizedMeanSeaLevel,
+        );
         assert_eq!(product.nx, 20);
         assert!(!product.peak_png_b64.is_empty());
         assert!(!product.t_of_max_png_b64.is_empty());

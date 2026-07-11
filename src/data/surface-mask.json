@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "mask_version": "1.0.0",
+  "source_asset_id": "cataclysm-coarse-bathymetry-v1",
+  "horizontal_crs": "EPSG:4326",
+  "vertical_datum": "CATACLYSM:IDEALIZED_MSL",
+  "coastal_band_deg": 0.25,
+  "declared_horizontal_error_m": 550000,
+  "confidence": "low",
+  "wet_classes": ["ocean", "inland_water"],
+  "regions": [
+    { "id": "greenland_ice", "surface_class": "ice", "bounds": [-73, 60, -12, 83] },
+    { "id": "antarctic_ice", "surface_class": "ice", "bounds": [-180, -90, 180, -65] },
+    { "id": "great_lakes", "surface_class": "inland_water", "bounds": [-92.5, 41, -75, 49.5] },
+    { "id": "caspian_sea", "surface_class": "inland_water", "bounds": [46, 36, 55.5, 47.5] },
+    { "id": "lake_victoria", "surface_class": "inland_water", "bounds": [31.5, -3.5, 34.9, 0.7] },
+    { "id": "lake_baikal", "surface_class": "inland_water", "bounds": [103.5, 51.2, 110, 56.2] },
+    { "id": "north_america", "surface_class": "land", "bounds": [-141, 15, -52, 71] },
+    { "id": "south_america", "surface_class": "land", "bounds": [-82, -56, -34, 13] },
+    { "id": "africa", "surface_class": "land", "bounds": [-18, -35, 52, 37] },
+    { "id": "europe", "surface_class": "land", "bounds": [-10, 35, 40, 71] },
+    { "id": "asia", "surface_class": "land", "bounds": [26, 10, 180, 78] },
+    { "id": "australia", "surface_class": "land", "bounds": [112, -45, 154, -10] }
+  ]
+}

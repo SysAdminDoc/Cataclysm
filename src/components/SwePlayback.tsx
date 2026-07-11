@@ -46,6 +46,7 @@ function overlaySnapshot(product: MaxFieldProduct, choice: OverlayChoice): GridS
     bbox: product.bbox,
     nx: product.nx,
     ny: product.ny,
+    height_field: product.peak_height_field,
     eta_min_m: 0,
     eta_max_m: product.peak_abs_max_m,
     eta_abs_max_m: product.peak_abs_max_m,

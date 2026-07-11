@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DartOverlay } from "../DartOverlay";
 import type { GridSnapshot } from "../../types/scenario";
+import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../../lib/geodesy";
 
 const tauriApi = vi.hoisted(() => ({
   dartBuoyRmse: vi.fn(),
@@ -18,6 +19,7 @@ function snapshotAt(timeS: number, etaM: number): GridSnapshot {
     bbox: [-1, -1, 1, 1],
     nx: 2,
     ny: 2,
+    height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
     eta_min_m: -1,
     eta_max_m: 1,
     eta_abs_max_m: 1,

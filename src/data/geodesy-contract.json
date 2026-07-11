@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "horizontal_crs": {
+    "geographic_2d": "EPSG:4326",
+    "geographic_3d": "EPSG:4979",
+    "ecef": "EPSG:4978"
+  },
+  "vertical_datums": {
+    "ellipsoid": "EPSG:4979 WGS 84 ellipsoidal height",
+    "orthometric_fixture": "NAVD88 height using NOAA GEOID18 at declared benchmark coordinates",
+    "mean_sea_level": "CATACLYSM:IDEALIZED_MSL",
+    "depth": "CATACLYSM:DEPTH_BELOW_IDEALIZED_MSL",
+    "renderer_local": "CATACLYSM:LOCAL_ENU"
+  },
+  "renderer_frames": {
+    "cesium": { "frame": "EPSG:4978 ECEF", "axis_order": ["x", "y", "z"], "unit": "metre" },
+    "rust": { "frame": "EPSG:4978 ECEF", "axis_order": ["x", "y", "z"], "unit": "metre" },
+    "unreal": { "frame": "local ENU", "axis_order": ["east_x", "north_y", "up_z"], "unit": "centimetre" }
+  },
+  "error_budget": {
+    "geodetic_to_ecef_m": 0.01,
+    "ecef_to_local_enu_m": 0.02,
+    "fixture_vertical_conversion_m": 0.001,
+    "wgs84_to_nad83_horizontal_m": 2.0,
+    "note": "GEOID18 fixtures are validation points, not a bundled global conversion grid. Arbitrary NAVD88 conversion fails closed without a supplied geoid undulation."
+  },
+  "coastal_benchmarks": [
+    {
+      "id": "san_francisco",
+      "lat_deg": 37.7749,
+      "lon_deg": -122.4194,
+      "orthometric_height_m": 0,
+      "geoid_undulation_m": -32.535,
+      "geoid_model_error_m": 0.03,
+      "ellipsoid_height_m": -32.535,
+      "expected_ecef_m": [-2706161.05971, -4261037.780866, 3885705.560356],
+      "expected_unreal_local_cm": [0, 0, -3253.5],
+      "source_url": "https://geodesy.noaa.gov/api/geoid/ght?lat=37.7749&lon=-122.4194"
+    },
+    {
+      "id": "new_york",
+      "lat_deg": 40.7128,
+      "lon_deg": -74.006,
+      "orthometric_height_m": 0,
+      "geoid_undulation_m": -31.853,
+      "geoid_model_error_m": 0.031,
+      "ellipsoid_height_m": -31.853,
+      "expected_ecef_m": [1333991.803533, -4654021.633131, 4138279.46201],
+      "expected_unreal_local_cm": [0, 0, -3185.3],
+      "source_url": "https://geodesy.noaa.gov/api/geoid/ght?lat=40.7128&lon=-74.0060"
+    },
+    {
+      "id": "new_orleans",
+      "lat_deg": 29.9511,
+      "lon_deg": -90.0715,
+      "orthometric_height_m": 0,
+      "geoid_undulation_m": -25.967,
+      "geoid_model_error_m": 0.058,
+      "ellipsoid_height_m": -25.967,
+      "expected_ecef_m": [-6902.118921, -5530938.162076, 3165665.18208],
+      "expected_unreal_local_cm": [0, 0, -2596.7],
+      "source_url": "https://geodesy.noaa.gov/api/geoid/ght?lat=29.9511&lon=-90.0715"
+    }
+  ]
+}

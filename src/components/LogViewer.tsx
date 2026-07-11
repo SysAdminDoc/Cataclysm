@@ -14,6 +14,8 @@ import { api, isTauri } from "../lib/tauri";
 import { APP_VERSION } from "../lib/model-provenance";
 import { SETTINGS_SCHEMA_VERSION } from "../lib/settings";
 import { getEarthDiagnosticsSnapshot } from "../lib/earth-assets";
+import { getGeodesyDiagnosticsSnapshot } from "../lib/geodesy";
+import { getSurfaceMaskDiagnosticsSnapshot } from "../lib/surface";
 import { UiIcon } from "./UiIcon";
 
 type CopyStatus = "idle" | "copied" | "error";
@@ -124,6 +126,8 @@ export function LogViewer({ open, onClose }: Props) {
       frontend_version: APP_VERSION,
       settings_schema_version: SETTINGS_SCHEMA_VERSION,
       earth_assets: getEarthDiagnosticsSnapshot(),
+      geodesy_contract: getGeodesyDiagnosticsSnapshot(),
+      surface_mask_contract: getSurfaceMaskDiagnosticsSnapshot(),
       user_agent: navigator.userAgent,
       backend,
       recent_log: entries.slice(-50).map((e) => ({

@@ -21,42 +21,19 @@ pub fn sample(lat_deg: f64, lon_deg: f64) -> f64 {
     let lon = ((lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
     let lat = lat_deg.clamp(-90.0, 90.0);
 
-    // Wraparound longitude into the chosen half-open range.
-    if is_land(lat, lon) {
-        return 0.0;
+    // The shared mask is the single wet/dry authority for the solver,
+    // renderer probes, collision, and hazard target classification.
+    match super::surface::classify(lat, lon) {
+        super::surface::SurfaceClass::Ocean => basin_depth(lat, lon),
+        // The coarse contract identifies large inland-water rectangles but
+        // does not bundle lake bathymetry. Keep them wet at a declared
+        // low-confidence nominal depth until a real hydro DEM lands.
+        super::surface::SurfaceClass::InlandWater => 50.0,
+        super::surface::SurfaceClass::Land
+        | super::surface::SurfaceClass::Ice
+        | super::surface::SurfaceClass::Coast
+        | super::surface::SurfaceClass::Unknown => 0.0,
     }
-    basin_depth(lat, lon)
-}
-
-/// Crude land mask using continental bounding rectangles. Anything inside
-/// one of these boxes is treated as land. Misses islands, archipelagos,
-/// and complex coastlines until a high-resolution raster sampler is wired.
-fn is_land(lat: f64, lon: f64) -> bool {
-    // (south_lat, north_lat, west_lon, east_lon) boxes for major land masses.
-    const LAND_BOXES: &[(f64, f64, f64, f64)] = &[
-        // North America (excluding Mexico Gulf coast detail).
-        (15.0, 71.0, -141.0, -52.0),
-        // Greenland.
-        (60.0, 83.0, -73.0, -12.0),
-        // South America.
-        (-56.0, 13.0, -82.0, -34.0),
-        // Africa.
-        (-35.0, 37.0, -18.0, 52.0),
-        // Europe.
-        (35.0, 71.0, -10.0, 40.0),
-        // Asia (large).
-        (10.0, 78.0, 26.0, 180.0),
-        // Australia.
-        (-45.0, -10.0, 112.0, 154.0),
-        // Antarctica (most of it; we still allow Ross/Weddell sea wells).
-        (-90.0, -65.0, -180.0, 180.0),
-    ];
-    for &(s, n, w, e) in LAND_BOXES {
-        if lat >= s && lat <= n && lon >= w && lon <= e {
-            return true;
-        }
-    }
-    false
 }
 
 /// Mean depth of the ocean basin that contains this point. Continental-
@@ -118,43 +95,8 @@ fn classify_basin(lat: f64, lon: f64) -> Basin {
 /// Smooth shelf factor in [0, 1]. 1.0 = full basin depth; ramps down to 0
 /// within 5° of the nearest land bounding-box edge.
 fn shelf_factor(lat: f64, lon: f64) -> f64 {
-    let d = nearest_land_deg(lat, lon);
+    let d = super::surface::distance_to_dry_deg(lat, lon).unwrap_or(0.0);
     (d / 5.0).clamp(0.0, 1.0)
-}
-
-fn nearest_land_deg(lat: f64, lon: f64) -> f64 {
-    const LAND_BOXES: &[(f64, f64, f64, f64)] = &[
-        (15.0, 71.0, -141.0, -52.0),
-        (60.0, 83.0, -73.0, -12.0),
-        (-56.0, 13.0, -82.0, -34.0),
-        (-35.0, 37.0, -18.0, 52.0),
-        (35.0, 71.0, -10.0, 40.0),
-        (10.0, 78.0, 26.0, 180.0),
-        (-45.0, -10.0, 112.0, 154.0),
-        (-90.0, -65.0, -180.0, 180.0),
-    ];
-    let mut min_dist = 90.0_f64;
-    for &(s, n, w, e) in LAND_BOXES {
-        let dlat = if lat < s {
-            s - lat
-        } else if lat > n {
-            lat - n
-        } else {
-            0.0
-        };
-        let dlon = if lon < w {
-            w - lon
-        } else if lon > e {
-            lon - e
-        } else {
-            0.0
-        };
-        let d = (dlat * dlat + dlon * dlon).sqrt();
-        if d < min_dist {
-            min_dist = d;
-        }
-    }
-    min_dist
 }
 
 #[cfg(test)]
@@ -185,7 +127,7 @@ mod tests {
     fn coastal_shelf_shallower_than_basin() {
         // Open ocean: middle of Pacific at -15 lat.
         let deep = sample(-15.0, -140.0);
-        // ~2° off the South America land box (box west edge is -82.0).
+        // ~3° off the South America land box (box west edge is -82.0).
         // Must be west of -82 to be in the ocean, but close enough that
         // the shelf taper kicks in.
         let coast = sample(-15.0, -85.0);

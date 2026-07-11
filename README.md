@@ -108,6 +108,11 @@ Existing tools each do one piece:
   quality-tier, and use-rights metadata. Settings exposes the active source
   contract; diagnostics include the provider/asset inventory; media export
   fails closed when required live attribution is unavailable.
+- **Shared geodesy and surface contract** — WGS84 geographic/ECEF coordinates,
+  local Unreal-style ENU centimetres, vertical-axis direction, CRS/datum, and
+  declared error budgets travel with solver height fields and exports. One
+  versioned mask drives solver wet/dry cells and picked asteroid/nuclear target
+  response; ambiguous coast cells preserve the operator's material choice.
 - **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
   forms; click-globe-to-pick location.
 - **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
@@ -164,6 +169,12 @@ selected Earth source.
 Solver bathymetry remains the app's low-confidence coarse basin/shelf
 approximation until the blocked GEBCO_2026/TID-backed local data path is
 resolved.
+
+The bundled surface mask is intentionally coarse and declares a 550 km worst-
+case horizontal error. It is a consistency contract, not a shoreline product.
+Three official NOAA GEOID18 coastal fixtures validate ellipsoid/orthometric
+conversion and Cesium/Rust/Unreal coordinate agreement; arbitrary geoid or tide-
+datum conversion fails closed until the required model grid is supplied.
 
 ### Build from source
 

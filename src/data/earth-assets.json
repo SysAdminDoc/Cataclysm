@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "registry_version": "1.0.0",
+  "registry_version": "1.1.0",
   "generated_at": "2026-07-11T12:00:00.000Z",
   "providers": [
     {
@@ -272,7 +272,7 @@
       "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm analytical coarse bathymetry", "notice_paths": ["LICENSE"] },
       "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "idealized depth below mean sea level" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "generated" },
       "resolution": { "kind": "analytic-regions", "value": null, "min": null, "max": null, "unit": "meters-depth", "tile_size_px": null, "notes": "Basin/shelf heuristic, not a gridded survey product." },
-      "integrity": { "algorithm": "sha256", "digest": "9fd2c75ec78cd2cae79cc49567cf05d89c34a5616493d9b6cbbb074d586661f9", "scope": "source implementation", "target": "src-tauri/src/data/bathymetry.rs" },
+      "integrity": { "algorithm": "sha256", "digest": "5af421d8ff0ebf4f02cb2231effad6e3714f95842ae7c3099e9d758917b1778f", "scope": "source implementation", "target": "src-tauri/src/data/bathymetry.rs" },
       "permission_profile_id": "mit-generated", "quality_tiers": ["Low"], "fallback_asset_id": "cataclysm-uniform-depth-v1",
       "scientific": { "confidence": "low", "transformations": ["Analytical ocean-basin and shelf approximation."], "limitations": ["Not GEBCO/ETOPO; misses local seafloor structure; unsuitable for warning decisions."] }
     },
@@ -282,7 +282,7 @@
       "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm uniform-depth fallback", "notice_paths": ["LICENSE"] },
       "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "idealized depth below mean sea level" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "generated" },
       "resolution": { "kind": "constant", "value": 4000, "min": 4000, "max": 4000, "unit": "meters-depth", "tile_size_px": null, "notes": "Uniform 4 km depth used only as a deterministic fail-safe." },
-      "integrity": { "algorithm": "sha256", "digest": "f75a0790583c29b8c12cfdf31b89b3a11e88b8a95475081dcd860d9f8b567d88", "scope": "source implementation", "target": "src-tauri/src/physics/solver/mod.rs" },
+      "integrity": { "algorithm": "sha256", "digest": "611a1ba2a6a12f9fc0e5965d0b0de3345a4ff5861939385d29ffc923d1d0c8e0", "scope": "source implementation", "target": "src-tauri/src/physics/solver/mod.rs" },
       "permission_profile_id": "mit-generated", "quality_tiers": ["Low"], "fallback_asset_id": null,
       "scientific": { "confidence": "low", "transformations": ["Constant-depth field."], "limitations": ["No real bathymetry, coastline, shelf, or shoaling structure."] }
     },
@@ -305,6 +305,26 @@
       "integrity": { "algorithm": "sha256", "digest": "64474aa566bd86e77651405a10d1018e4cc195f86c0251b33228bc22ebe7823a", "scope": "bundled file", "target": "src/data/coastal_points.json" },
       "permission_profile_id": "mit-generated", "quality_tiers": ["Low", "Medium"], "fallback_asset_id": null,
       "scientific": { "confidence": "medium", "transformations": ["Curated names and coordinates serialized as JSON."], "limitations": ["Sparse point set; no shoreline or inundation geometry."] }
+    },
+    {
+      "id": "cataclysm-surface-mask-v1", "provider_id": "cataclysm", "kind": "terrain", "role": "Shared low-confidence land/ocean/inland-water/ice/coast classification", "delivery": "bundled",
+      "source_urls": ["https://github.com/SysAdminDoc/Cataclysm"], "runtime_locator": "src/data/surface-mask.json", "version": { "upstream": null, "package": "cataclysm@0.8.0", "provider_asset_id": "surface-mask-1.0.0" },
+      "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm coarse shared surface mask", "notice_paths": ["LICENSE"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "CATACLYSM:IDEALIZED_MSL" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "static" },
+      "resolution": { "kind": "analytic-regions", "value": 0.25, "min": null, "max": null, "unit": "degree-coast-band", "tile_size_px": null, "notes": "Continental and major-inland-water rectangles with a conservative coast band; declared horizontal error is 550 km." },
+      "integrity": { "algorithm": "sha256", "digest": "443fdca797733c99017efc9f586504bc0282d287ae9aef7705275a84b8504311", "scope": "bundled file", "target": "src/data/surface-mask.json" },
+      "permission_profile_id": "mit-generated", "quality_tiers": ["Low"], "fallback_asset_id": null,
+      "scientific": { "confidence": "low", "transformations": ["Shared rectangle classifier consumed by Rust and browser preview."], "limitations": ["Misses islands and real shore geometry; coast classifications require higher-resolution replacement before inundation or navigation use."] }
+    },
+    {
+      "id": "cataclysm-geodesy-contract-v1", "provider_id": "cataclysm", "kind": "terrain", "role": "Renderer-neutral CRS, datum, ECEF, and local-ENU contract", "delivery": "bundled",
+      "source_urls": ["https://geodesy.noaa.gov/api/geoid/ght?lat=37.7749&lon=-122.4194", "https://geodesy.noaa.gov/api/geoid/ght?lat=40.7128&lon=-74.0060", "https://geodesy.noaa.gov/api/geoid/ght?lat=29.9511&lon=-90.0715"], "runtime_locator": "src/data/geodesy-contract.json", "version": { "upstream": "NOAA GEOID18 benchmark responses checked 2026-07-11", "package": "cataclysm@0.8.0", "provider_asset_id": "geodesy-contract-1.0.0" },
+      "license": { "identifier": "MIT", "name": "MIT License with cited NOAA benchmark data", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm WGS84 renderer contract; NOAA GEOID18 coastal validation points", "notice_paths": ["LICENSE"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326 / EPSG:4979 / EPSG:4978", "vertical_datum": "WGS84 ellipsoid; explicit NAVD88/GEOID18 fixtures; idealized MSL" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": "2026-07-11", "observed_at": null, "status": "static" },
+      "resolution": { "kind": "coordinate-contract", "value": 0.01, "min": null, "max": 2, "unit": "metre-error-budget", "tile_size_px": null, "notes": "ECEF conversion budget is 1 cm; WGS84/NAD83 horizontal frame allowance is 2 m; arbitrary geoid conversion requires supplied model data." },
+      "integrity": { "algorithm": "sha256", "digest": "eb044da0e837c62fbb9faad1706ed8a76d1a33a1d9eb0bea7dcce768830c4436", "scope": "bundled file", "target": "src/data/geodesy-contract.json" },
+      "permission_profile_id": "mit-generated", "quality_tiers": ["Low", "Medium", "High", "Cinematic"], "fallback_asset_id": null,
+      "scientific": { "confidence": "reference", "transformations": ["WGS84 geodetic to ECEF and local ENU formulas; NOAA GEOID18 benchmark fixtures."], "limitations": ["The three GEOID18 fixtures validate conversions but do not constitute a global geoid or tide-datum grid."] }
     }
   ],
   "style_bindings": [
@@ -315,7 +335,7 @@
     { "id": "cesium-bathymetry", "label": "Cesium World Bathymetry (token required)", "description": "Natural Earth imagery over token-gated visual bathymetric terrain; the solver does not sample this surface.", "requires_token": true, "imagery_asset_id": "natural-earth-ii-cesium-1.143.0", "terrain_asset_id": "cesium-ion-world-bathymetry-2426648" }
   ],
   "category_inventory": {
-    "terrain": ["cesium-wgs84-ellipsoid-26.1.0", "cesium-ion-world-bathymetry-2426648"],
+    "terrain": ["cesium-wgs84-ellipsoid-26.1.0", "cesium-ion-world-bathymetry-2426648", "cataclysm-surface-mask-v1", "cataclysm-geodesy-contract-v1"],
     "imagery": ["natural-earth-ii-cesium-1.143.0", "osm-standard-raster", "esri-world-imagery", "cesium-ion-world-imagery-2"],
     "buildings": [],
     "ocean": ["cataclysm-coarse-bathymetry-v1", "cataclysm-uniform-depth-v1", "noaa-dart-observations-v1", "cataclysm-coastal-points-v1"],

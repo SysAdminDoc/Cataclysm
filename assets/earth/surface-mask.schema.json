@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SysAdminDoc/Cataclysm/assets/earth/surface-mask.schema.json",
+  "title": "Cataclysm shared surface-classification mask",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mask_version", "source_asset_id", "horizontal_crs", "vertical_datum", "coastal_band_deg", "declared_horizontal_error_m", "confidence", "wet_classes", "regions"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "mask_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "source_asset_id": { "type": "string", "minLength": 1 },
+    "horizontal_crs": { "const": "EPSG:4326" },
+    "vertical_datum": { "const": "CATACLYSM:IDEALIZED_MSL" },
+    "coastal_band_deg": { "type": "number", "minimum": 0 },
+    "declared_horizontal_error_m": { "type": "number", "exclusiveMinimum": 0 },
+    "confidence": { "enum": ["low", "medium", "high", "reference"] },
+    "wet_classes": { "type": "array", "items": { "enum": ["ocean", "inland_water"] }, "uniqueItems": true },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "surface_class", "bounds"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "surface_class": { "enum": ["land", "ocean", "inland_water", "ice", "coast"] },
+          "bounds": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } }
+        }
+      }
+    }
+  }
+}
