@@ -10,6 +10,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   opening the UI, and emits a SHA-256 artifact manifest with enabled features.
 - Strict release verification now checks, tests, and lints the default, GPU,
   validation, and combined GPU-plus-validation Rust feature configurations.
+- Peak height, time-of-peak, first-arrival, and integrated-energy products now
+  observe every accepted solver step on CPU and GPU instead of only display
+  frames; 12, 60, and 240-frame runs share identical quantitative outputs.
 
 ## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
 

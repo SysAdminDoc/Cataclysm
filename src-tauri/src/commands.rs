@@ -807,7 +807,7 @@ pub struct SimulateGridResponse {
     #[serde(default)]
     pub used_gpu: bool,
     /// Max-field products (peak |η|, time of maximum, energy proxy,
-    /// arrival isochrones) accumulated at snapshot cadence.
+    /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
 }
 
@@ -1075,7 +1075,7 @@ pub struct SimulateGridStreamMeta {
     pub used_gpu: bool,
     pub n_snapshots: u32,
     /// Max-field products (peak |η|, time of maximum, energy proxy,
-    /// arrival isochrones) accumulated at snapshot cadence.
+    /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
 }
 
@@ -1352,8 +1352,8 @@ struct StreamSimulationContext<'a> {
     on_snapshot: &'a tauri::ipc::Channel<GridSnapshot>,
     diagnostics: Option<&'a DiagnosticSink<'a>>,
     gauges: &'a [GridGaugePoint],
-    /// Max-field accumulator, observed at every streamed snapshot. RefCell
-    /// because the context is shared immutably down the dispatch fns.
+    /// Max-field accumulator, observed after every accepted solver step.
+    /// RefCell because the context is shared immutably down the dispatch fns.
     max_field: &'a std::cell::RefCell<MaxFieldAccumulator>,
     /// Arrival threshold, kept so the GPU→CPU fallback can rebuild a clean
     /// accumulator (partial GPU observations must not leak into the rerun).
@@ -1377,13 +1377,14 @@ fn stream_simulation_cpu(
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let take = target_step.saturating_sub(current_step).max(1);
-        if !stepper.step_cancellable(grid, take, Some(ctx.cancel)) {
+        if !stepper.step_cancellable_observed(grid, take, Some(ctx.cancel), &mut |state| {
+            ctx.max_field.borrow_mut().observe(state);
+        }) {
             break;
         }
         let _ = ctx
             .on_snapshot
             .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
-        ctx.max_field.borrow_mut().observe(grid);
     }
 }
 
@@ -1419,14 +1420,22 @@ fn stream_simulation_dispatch(
             let target_step = (k * total_steps) / (n - 1);
             let current_step = ((k - 1) * total_steps) / (n - 1);
             let take = target_step.saturating_sub(current_step).max(1);
-            if !gpu.step_with_diagnostics(grid, take, ctx.diagnostics) {
-                ok = false;
+            for _ in 0..take {
+                if ctx.cancel.load(Ordering::Acquire) {
+                    return true;
+                }
+                if !gpu.step_with_diagnostics(grid, 1, ctx.diagnostics) {
+                    ok = false;
+                    break;
+                }
+                ctx.max_field.borrow_mut().observe(grid);
+            }
+            if !ok {
                 break;
             }
             let _ = ctx
                 .on_snapshot
                 .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
-            ctx.max_field.borrow_mut().observe(grid);
         }
         if ok {
             return true;
@@ -1545,10 +1554,9 @@ fn run_simulation_dispatch(
     (snaps, false, Some(product))
 }
 
-/// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-
-/// spaced snapshots as the CPU path. The GPU dispatch loop runs
-/// `take` steps between each snapshot then reads back into `grid`
-/// so the snapshot encoder can serialise η as PNG.
+/// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-spaced
+/// snapshots as the CPU path while reading back every solver step for
+/// quantitative accumulation. Snapshot encoding remains independently paced.
 /// Returns `None` if any GPU step fails (map/poll error or non-finite field),
 /// signalling the dispatcher to fall back to the CPU path.
 #[cfg(feature = "gpu")]
@@ -1594,14 +1602,13 @@ fn run_simulation_gpu(
             if cancel.load(Ordering::Acquire) {
                 return Some(snaps);
             }
-            let take = remaining.min(16);
-            if !gpu.step_with_diagnostics(grid, take, diagnostics) {
+            if !gpu.step_with_diagnostics(grid, 1, diagnostics) {
                 return None;
             }
-            remaining -= take;
+            observe(grid);
+            remaining -= 1;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
-        observe(grid);
     }
     Some(snaps)
 }
@@ -2216,5 +2223,70 @@ mod tests {
             }],
         });
         assert!(res.is_err());
+    }
+
+    #[cfg(feature = "gpu")]
+    #[test]
+    fn gpu_quantitative_products_are_independent_of_snapshot_count() {
+        use crate::physics::constants::MANNING_N_COASTAL;
+        use crate::physics::solver::gpu::GpuTimeStepper;
+
+        type Fields = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
+        fn run(n_snapshots: usize) -> Option<(usize, Fields)> {
+            let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
+            grid.fill_uniform_depth(4_000.0);
+            grid.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+            let gpu = GpuTimeStepper::new(&grid, 1.0, MANNING_N_COASTAL, 0, true)?;
+            let cancel = AtomicBool::new(false);
+            let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
+            let snapshots = run_simulation_gpu(
+                &mut grid,
+                &gpu,
+                1.0,
+                240.0,
+                n_snapshots,
+                &cancel,
+                None,
+                &[],
+                &mut |state| acc.observe(state),
+            )?;
+            let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
+            Some((
+                snapshots.len(),
+                (
+                    peak.to_vec(),
+                    t_of_max.to_vec(),
+                    arrival.to_vec(),
+                    energy.to_vec(),
+                ),
+            ))
+        }
+
+        fn assert_same(left: &[f64], right: &[f64]) {
+            for (index, (&a, &b)) in left.iter().zip(right).enumerate() {
+                let equal_infinity = a.is_infinite() && b.is_infinite() && a.signum() == b.signum();
+                assert!(
+                    equal_infinity || (a - b).abs() <= 1e-9,
+                    "GPU field cell {index} differs: {a} vs {b}"
+                );
+            }
+        }
+
+        let Some((count_12, fields_12)) = run(12) else {
+            println!("gpu cadence regression: no adapter — skipping");
+            return;
+        };
+        let (count_60, fields_60) = run(60).expect("adapter disappeared during cadence test");
+        let (count_240, fields_240) = run(240).expect("adapter disappeared during cadence test");
+        assert_eq!((count_12, count_60, count_240), (12, 60, 240));
+        assert_same(&fields_12.0, &fields_60.0);
+        assert_same(&fields_12.0, &fields_240.0);
+        assert_same(&fields_12.1, &fields_60.1);
+        assert_same(&fields_12.1, &fields_240.1);
+        assert_same(&fields_12.2, &fields_60.2);
+        assert_same(&fields_12.2, &fields_240.2);
+        assert_same(&fields_12.3, &fields_60.3);
+        assert_same(&fields_12.3, &fields_240.3);
     }
 }

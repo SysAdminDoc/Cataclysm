@@ -3,9 +3,8 @@
 //! GeoClaw calls these `fgmax` products: per-cell peak amplitude, the time
 //! that peak occurred, first-arrival time, and a time-integrated η² energy
 //! proxy (a qualitative RIFT-style directivity map, not a calibrated PTWC
-//! energy product). Fields are sampled at snapshot cadence — identical for
-//! the CPU and GPU paths, both of which read back the full η field per
-//! snapshot — so the time resolution equals the snapshot interval.
+//! energy product). Fields are sampled after every accepted solver step on
+//! both CPU and GPU, independently of the display-snapshot cadence.
 
 use serde::Serialize;
 
@@ -45,8 +44,8 @@ pub struct MaxFieldProduct {
     pub isochrones: Vec<Isochrone>,
 }
 
-/// Running accumulator. Feed it the grid at every snapshot via [`observe`],
-/// then convert with [`into_product`].
+/// Running accumulator. Feed it the grid at t=0 and after every accepted
+/// solver step via [`observe`], then convert with [`into_product`].
 ///
 /// [`observe`]: MaxFieldAccumulator::observe
 /// [`into_product`]: MaxFieldAccumulator::into_product
@@ -104,11 +103,21 @@ impl MaxFieldAccumulator {
             if a >= self.arrival_threshold_m && self.arrival_s[k].is_infinite() {
                 self.arrival_s[k] = grid.t_s;
             }
-            // Rectangle-rule ∫ η² dt at snapshot cadence.
+            // Rectangle-rule ∫ η² dt at solver-step cadence.
             self.energy_m2s[k] += eta * eta * dt;
         }
         self.last_t_s = grid.t_s;
         self.observed = true;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn quantitative_fields(&self) -> (&[f64], &[f64], &[f64], &[f64]) {
+        (
+            &self.peak_m,
+            &self.t_of_max_s,
+            &self.arrival_s,
+            &self.energy_m2s,
+        )
     }
 
     /// Render the accumulated fields. `grid` supplies geometry + colormap.

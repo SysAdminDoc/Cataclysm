@@ -611,6 +611,20 @@ impl TimeStepper {
         n_steps: usize,
         cancel: Option<&AtomicBool>,
     ) -> bool {
+        let mut ignore = |_: &SwGrid| {};
+        self.step_cancellable_observed(grid, n_steps, cancel, &mut ignore)
+    }
+
+    /// Advance by up to `n_steps` and observe every accepted solver state.
+    /// The observer runs after each completed step while this method keeps one
+    /// set of scratch buffers alive for the whole batch.
+    pub fn step_cancellable_observed(
+        &self,
+        grid: &mut SwGrid,
+        n_steps: usize,
+        cancel: Option<&AtomicBool>,
+        observe: &mut dyn FnMut(&SwGrid),
+    ) -> bool {
         let n = grid.nx * grid.ny;
         let mut scratch = SolverScratch::new(n);
         for _ in 0..n_steps {
@@ -618,6 +632,7 @@ impl TimeStepper {
                 return false;
             }
             self.step_one_with_scratch(grid, &mut scratch);
+            observe(grid);
         }
         true
     }
@@ -985,8 +1000,8 @@ pub fn run_simulation_with_gauge_samples(
     cancel: Option<&AtomicBool>,
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
-    // Called with the grid state at every emitted snapshot; the max-field
-    // accumulator hooks in here (snapshots only carry PNG, not raw η).
+    // Called at t=0 and after every accepted solver step. Display snapshots
+    // stay independently scheduled and carry PNG rather than raw η.
     observe: &mut dyn FnMut(&SwGrid),
 ) -> Vec<GridSnapshot> {
     let n = n_snapshots.max(2);
@@ -1015,11 +1030,10 @@ pub fn run_simulation_with_gauge_samples(
         let target_step = (k * total_steps) / (n - 1);
         let current_step = ((k - 1) * total_steps) / (n - 1);
         let take = target_step.saturating_sub(current_step).max(1);
-        if !stepper.step_cancellable(grid, take, cancel) {
+        if !stepper.step_cancellable_observed(grid, take, cancel, observe) {
             break;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
-        observe(grid);
     }
     snaps
 }
@@ -1151,6 +1165,65 @@ mod tests {
         assert_eq!(snaps.len(), 5);
         assert!(snaps[0].time_s == 0.0);
         assert!(snaps.last().unwrap().time_s >= 200.0);
+    }
+
+    #[test]
+    fn quantitative_products_are_independent_of_snapshot_count() {
+        use super::max_field::MaxFieldAccumulator;
+
+        type Fields = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
+        fn run(n_snapshots: usize) -> (usize, Fields) {
+            let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
+            grid.fill_uniform_depth(4_000.0);
+            grid.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+            let stepper = TimeStepper::new(1.0);
+            let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
+            let snapshots = run_simulation_with_gauge_samples(
+                &mut grid,
+                &stepper,
+                240.0,
+                n_snapshots,
+                None,
+                None,
+                &[],
+                &mut |state| acc.observe(state),
+            );
+            let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
+            (
+                snapshots.len(),
+                (
+                    peak.to_vec(),
+                    t_of_max.to_vec(),
+                    arrival.to_vec(),
+                    energy.to_vec(),
+                ),
+            )
+        }
+
+        fn assert_same(left: &[f64], right: &[f64]) {
+            assert_eq!(left.len(), right.len());
+            for (index, (&a, &b)) in left.iter().zip(right).enumerate() {
+                let equal_infinity = a.is_infinite() && b.is_infinite() && a.signum() == b.signum();
+                assert!(
+                    equal_infinity || (a - b).abs() <= 1e-12,
+                    "field cell {index} differs: {a} vs {b}"
+                );
+            }
+        }
+
+        let (count_12, fields_12) = run(12);
+        let (count_60, fields_60) = run(60);
+        let (count_240, fields_240) = run(240);
+        assert_eq!((count_12, count_60, count_240), (12, 60, 240));
+        assert_same(&fields_12.0, &fields_60.0);
+        assert_same(&fields_12.0, &fields_240.0);
+        assert_same(&fields_12.1, &fields_60.1);
+        assert_same(&fields_12.1, &fields_240.1);
+        assert_same(&fields_12.2, &fields_60.2);
+        assert_same(&fields_12.2, &fields_240.2);
+        assert_same(&fields_12.3, &fields_60.3);
+        assert_same(&fields_12.3, &fields_240.3);
     }
 
     /// I-V01 — land cells (h <= LAND_DEPTH_THRESHOLD_M) must stay dry
