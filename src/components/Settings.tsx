@@ -9,6 +9,7 @@ import { downloadBlob } from "../lib/export";
 import { applyTheme, setTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
+import { getEarthAsset, getEarthProvider, getEarthStyleBinding } from "../lib/earth-assets";
 import { UiIcon } from "./UiIcon";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
@@ -106,6 +107,11 @@ export function Settings({ onClose }: Props) {
   }
 
   const needsToken = GLOBE_STYLES.find((s) => s.id === globeStyle)?.requires_token ?? false;
+  const earthBinding = getEarthStyleBinding(globeStyle);
+  const earthImagery = getEarthAsset(earthBinding.imagery_asset_id);
+  const earthTerrain = getEarthAsset(earthBinding.terrain_asset_id);
+  const earthProvider = getEarthProvider(earthImagery.provider_id);
+  const earthTerrainProvider = getEarthProvider(earthTerrain.provider_id);
   const hasUnsavedChanges = appliedSettings !== null && (
     token !== appliedSettings.token
     || theme !== appliedSettings.theme
@@ -122,16 +128,20 @@ export function Settings({ onClose }: Props) {
   }
 
   function openCesiumSignup() {
-    const validation = validateTrustedExternalUrl(CESIUM_SIGNUP_URL);
+    openTrustedUrl(CESIUM_SIGNUP_URL, "Cesium signup");
+  }
+
+  function openTrustedUrl(url: string, label: string) {
+    const validation = validateTrustedExternalUrl(url);
     if (!validation.ok) {
-      setStatusMsg(`Cesium signup link blocked: ${validation.reason}`);
+      setStatusMsg(`${label} link blocked: ${validation.reason}`);
       return;
     }
 
     if (isTauri()) {
       openExternal(validation.url).catch((err) => {
         console.error("shell open failed", err);
-        setStatusMsg("Cesium signup link could not be opened by the desktop shell policy.");
+        setStatusMsg(`${label} link could not be opened by the desktop shell policy.`);
       });
     } else {
       window.open(validation.url, "_blank", "noopener,noreferrer");
@@ -196,6 +206,30 @@ export function Settings({ onClose }: Props) {
             <p className="modal__footnote settings__description">
               {GLOBE_STYLES.find((s) => s.id === globeStyle)?.description}
             </p>
+            <div className="settings__source-card" role="group" aria-label="Selected Earth source provenance">
+              <div className="settings__source-heading">
+                <strong>Active source contract</strong>
+                <span data-delivery={earthImagery.delivery}>{earthImagery.delivery}</span>
+              </div>
+              <dl className="settings__source-grid">
+                <div><dt>Imagery</dt><dd>{earthProvider.name} · {earthImagery.role}</dd></div>
+                <div><dt>Terrain</dt><dd>{earthTerrainProvider.name} · {earthTerrain.role}</dd></div>
+                <div><dt>Coverage</dt><dd>{earthImagery.spatial.bounds.join("°, ")}° · {earthImagery.spatial.horizontal_crs}</dd></div>
+                <div><dt>Vertical datum</dt><dd>{earthTerrain.spatial.vertical_datum}</dd></div>
+                <div><dt>Resolution</dt><dd>{earthImagery.resolution.notes}</dd></div>
+                <div><dt>Version</dt><dd>{earthImagery.version.provider_asset_id ?? earthImagery.version.upstream ?? earthImagery.version.package ?? "Mutable service"}</dd></div>
+                <div><dt>Quality tiers</dt><dd>{earthImagery.quality_tiers.join(", ")}</dd></div>
+                <div><dt>Attribution</dt><dd>{earthImagery.license.attribution_text}</dd></div>
+                <div><dt>Rights review</dt><dd>Checked {earthProvider.policy_checked_at}; renew by {earthProvider.policy_review_by}</dd></div>
+              </dl>
+              <div className="settings__source-links">
+                <a href={earthProvider.terms_url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthProvider.terms_url, `${earthProvider.name} terms`); }}>Provider terms</a>
+                <a href={earthProvider.license_url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthProvider.license_url, `${earthProvider.name} license`); }}>License &amp; attribution</a>
+                {earthTerrainProvider.id !== earthProvider.id && (
+                  <a href={earthTerrain.license.url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthTerrain.license.url, `${earthTerrainProvider.name} terrain license`); }}>Terrain license</a>
+                )}
+              </div>
+            </div>
           </section>
 
           {!classroomLocked && (

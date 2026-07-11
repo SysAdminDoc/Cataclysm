@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SysAdminDoc/Cataclysm/assets/earth/manifest.schema.json",
+  "title": "Cataclysm Earth asset registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "registry_version", "generated_at", "providers", "permission_profiles", "assets", "style_bindings", "category_inventory"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "registry_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "providers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/provider" }
+    },
+    "permission_profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "permissions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "permissions": { "$ref": "#/$defs/permissions" }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/asset" }
+    },
+    "style_bindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/styleBinding" }
+    },
+    "category_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terrain", "imagery", "buildings", "ocean", "clouds", "vfx"],
+      "properties": {
+        "terrain": { "$ref": "#/$defs/idArray" },
+        "imagery": { "$ref": "#/$defs/idArray" },
+        "buildings": { "$ref": "#/$defs/idArray" },
+        "ocean": { "$ref": "#/$defs/idArray" },
+        "clouds": { "$ref": "#/$defs/idArray" },
+        "vfx": { "$ref": "#/$defs/idArray" }
+      }
+    }
+  },
+  "$defs": {
+    "idArray": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "url": { "type": "string", "pattern": "^https://" },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "homepage_url", "terms_url", "license_url", "endpoint_origins", "auth_mode", "attribution_mode", "policy_checked_at", "policy_review_by", "capabilities"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "homepage_url": { "$ref": "#/$defs/url" },
+        "terms_url": { "$ref": "#/$defs/url" },
+        "license_url": { "$ref": "#/$defs/url" },
+        "endpoint_origins": { "type": "array", "items": { "$ref": "#/$defs/url" }, "uniqueItems": true },
+        "auth_mode": { "enum": ["none", "user-token", "bundled"] },
+        "attribution_mode": { "enum": ["static", "dynamic", "both"] },
+        "policy_checked_at": { "type": "string", "format": "date" },
+        "policy_review_by": { "type": "string", "format": "date" },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["online", "offline", "dynamic_credits", "version_reporting"],
+          "properties": {
+            "online": { "type": "boolean" },
+            "offline": { "type": "boolean" },
+            "dynamic_credits": { "type": "boolean" },
+            "version_reporting": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "conditions", "source_url", "reviewed_at"],
+      "properties": {
+        "decision": { "enum": ["allowed", "prohibited", "unknown"] },
+        "conditions": { "type": "array", "items": { "type": "string" } },
+        "source_url": { "$ref": "#/$defs/url" },
+        "reviewed_at": { "type": "string", "format": "date" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interactive_render", "transient_http_cache", "prefetch", "offline_package", "raw_redistribution", "static_capture", "video_capture", "derived_data", "commercial_use"],
+      "properties": {
+        "interactive_render": { "$ref": "#/$defs/permission" },
+        "transient_http_cache": { "$ref": "#/$defs/permission" },
+        "prefetch": { "$ref": "#/$defs/permission" },
+        "offline_package": { "$ref": "#/$defs/permission" },
+        "raw_redistribution": { "$ref": "#/$defs/permission" },
+        "static_capture": { "$ref": "#/$defs/permission" },
+        "video_capture": { "$ref": "#/$defs/permission" },
+        "derived_data": { "$ref": "#/$defs/permission" },
+        "commercial_use": { "$ref": "#/$defs/permission" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "provider_id", "kind", "role", "delivery", "source_urls", "runtime_locator", "version", "license", "spatial", "temporal", "resolution", "integrity", "permission_profile_id", "quality_tiers", "fallback_asset_id", "scientific"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "provider_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "delivery": { "enum": ["bundled", "network", "generated"] },
+        "source_urls": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/url" } },
+        "runtime_locator": { "type": "string", "minLength": 1 },
+        "version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["upstream", "package", "provider_asset_id"],
+          "properties": {
+            "upstream": { "type": ["string", "null"] },
+            "package": { "type": ["string", "null"] },
+            "provider_asset_id": { "type": ["string", "null"] }
+          }
+        },
+        "license": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identifier", "name", "url", "attribution_text", "notice_paths"],
+          "properties": {
+            "identifier": { "type": "string", "minLength": 1 },
+            "name": { "type": "string", "minLength": 1 },
+            "url": { "$ref": "#/$defs/url" },
+            "attribution_text": { "type": "string", "minLength": 1 },
+            "notice_paths": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "spatial": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bounds", "horizontal_crs", "vertical_datum"],
+          "properties": {
+            "bounds": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } },
+            "horizontal_crs": { "type": "string", "minLength": 1 },
+            "vertical_datum": { "type": "string", "minLength": 1 }
+          }
+        },
+        "temporal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["content_timestamp", "retrieved_at", "observed_at", "status"],
+          "properties": {
+            "content_timestamp": { "type": ["string", "null"] },
+            "retrieved_at": { "type": ["string", "null"] },
+            "observed_at": { "type": ["string", "null"] },
+            "status": { "enum": ["static", "mutable", "generated"] }
+          }
+        },
+        "resolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value", "min", "max", "unit", "tile_size_px", "notes"],
+          "properties": {
+            "kind": { "type": "string" },
+            "value": { "type": ["number", "null"] },
+            "min": { "type": ["number", "null"] },
+            "max": { "type": ["number", "null"] },
+            "unit": { "type": "string" },
+            "tile_size_px": { "type": ["number", "null"] },
+            "notes": { "type": "string" }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "digest", "scope", "target"],
+          "properties": {
+            "algorithm": { "enum": ["sha256", "sha512-sri", "provider-asset-id", "mutable-service"] },
+            "digest": { "type": "string", "minLength": 1 },
+            "scope": { "type": "string", "minLength": 1 },
+            "target": { "type": ["string", "null"] }
+          }
+        },
+        "permission_profile_id": { "type": "string", "minLength": 1 },
+        "quality_tiers": { "type": "array", "minItems": 1, "items": { "enum": ["Low", "Medium", "High", "Cinematic"] }, "uniqueItems": true },
+        "fallback_asset_id": { "type": ["string", "null"] },
+        "scientific": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["confidence", "transformations", "limitations"],
+          "properties": {
+            "confidence": { "enum": ["reference", "high", "medium", "low", "visual-only"] },
+            "transformations": { "type": "array", "items": { "type": "string" } },
+            "limitations": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "styleBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "description", "requires_token", "imagery_asset_id", "terrain_asset_id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "requires_token": { "type": "boolean" },
+        "imagery_asset_id": { "type": "string", "minLength": 1 },
+        "terrain_asset_id": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

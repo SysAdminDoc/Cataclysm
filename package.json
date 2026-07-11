@@ -12,11 +12,12 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/validate-earth-assets.mjs && tsc --noEmit && vite build",
     "doctor": "node scripts/doctor.mjs",
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",
     "verify:release": "node scripts/verify.mjs --strict",
+    "validate:earth-assets": "node scripts/validate-earth-assets.mjs",
     "deps-check": "node scripts/deps-check.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

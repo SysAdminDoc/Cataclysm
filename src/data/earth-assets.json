@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "registry_version": "1.0.0",
+  "generated_at": "2026-07-11T12:00:00.000Z",
+  "providers": [
+    {
+      "id": "cesiumjs",
+      "name": "CesiumJS",
+      "homepage_url": "https://cesium.com/platform/cesiumjs/",
+      "terms_url": "https://github.com/CesiumGS/cesium/blob/main/LICENSE.md",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "endpoint_origins": [],
+      "auth_mode": "bundled",
+      "attribution_mode": "static",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-07-11",
+      "capabilities": { "online": false, "offline": true, "dynamic_credits": false, "version_reporting": true }
+    },
+    {
+      "id": "natural-earth",
+      "name": "Natural Earth",
+      "homepage_url": "https://www.naturalearthdata.com/",
+      "terms_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "license_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "endpoint_origins": [],
+      "auth_mode": "bundled",
+      "attribution_mode": "static",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-07-11",
+      "capabilities": { "online": false, "offline": true, "dynamic_credits": false, "version_reporting": false }
+    },
+    {
+      "id": "openstreetmap",
+      "name": "OpenStreetMap Foundation tile service",
+      "homepage_url": "https://www.openstreetmap.org/",
+      "terms_url": "https://operations.osmfoundation.org/policies/tiles/",
+      "license_url": "https://www.openstreetmap.org/copyright",
+      "endpoint_origins": ["https://tile.openstreetmap.org"],
+      "auth_mode": "none",
+      "attribution_mode": "static",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-01-11",
+      "capabilities": { "online": true, "offline": false, "dynamic_credits": false, "version_reporting": false }
+    },
+    {
+      "id": "esri",
+      "name": "Esri World Imagery",
+      "homepage_url": "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9",
+      "terms_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement",
+      "license_url": "https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/attribution/",
+      "endpoint_origins": ["https://server.arcgisonline.com"],
+      "auth_mode": "none",
+      "attribution_mode": "dynamic",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-01-11",
+      "capabilities": { "online": true, "offline": false, "dynamic_credits": true, "version_reporting": false }
+    },
+    {
+      "id": "cesium-ion",
+      "name": "Cesium ion",
+      "homepage_url": "https://cesium.com/platform/cesium-ion/",
+      "terms_url": "https://cesium.com/legal/terms-of-service/",
+      "license_url": "https://cesium.com/legal/credits/",
+      "endpoint_origins": ["https://api.cesium.com", "https://assets.cesium.com"],
+      "auth_mode": "user-token",
+      "attribution_mode": "dynamic",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-01-11",
+      "capabilities": { "online": true, "offline": false, "dynamic_credits": true, "version_reporting": true }
+    },
+    {
+      "id": "cataclysm",
+      "name": "Cataclysm project",
+      "homepage_url": "https://github.com/SysAdminDoc/Cataclysm",
+      "terms_url": "https://github.com/SysAdminDoc/Cataclysm/blob/main/LICENSE",
+      "license_url": "https://opensource.org/license/mit",
+      "endpoint_origins": [],
+      "auth_mode": "bundled",
+      "attribution_mode": "static",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-07-11",
+      "capabilities": { "online": false, "offline": true, "dynamic_credits": false, "version_reporting": true }
+    },
+    {
+      "id": "noaa-ndbc",
+      "name": "NOAA National Data Buoy Center",
+      "homepage_url": "https://www.ndbc.noaa.gov/",
+      "terms_url": "https://www.weather.gov/disclaimer",
+      "license_url": "https://www.weather.gov/disclaimer",
+      "endpoint_origins": [],
+      "auth_mode": "bundled",
+      "attribution_mode": "static",
+      "policy_checked_at": "2026-07-11",
+      "policy_review_by": "2027-07-11",
+      "capabilities": { "online": false, "offline": true, "dynamic_credits": false, "version_reporting": false }
+    }
+  ],
+  "permission_profiles": [
+    {
+      "id": "public-domain-bundled",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["Preserve source attribution in the application."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": ["Asset is bundled; no network cache is created."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "allowed", "conditions": ["Asset is already bundled."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "allowed", "conditions": ["Preserve provenance metadata."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "allowed", "conditions": ["Preserve provenance metadata."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": ["Keep visible attribution in exported media."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": ["Keep visible attribution in exported media."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "allowed", "conditions": ["Record transformations in provenance."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["No endorsement is implied."], "source_url": "https://www.naturalearthdata.com/about/terms-of-use/", "reviewed_at": "2026-07-11" }
+      }
+    },
+    {
+      "id": "osm-standard-tiles",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["Display OpenStreetMap attribution and identify the application with a valid User-Agent."], "source_url": "https://operations.osmfoundation.org/policies/tiles/", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": ["Honor HTTP cache headers and do not bypass caches."], "source_url": "https://operations.osmfoundation.org/policies/tiles/", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "prohibited", "conditions": ["Bulk downloading and prefetching are prohibited by the standard tile policy."], "source_url": "https://operations.osmfoundation.org/policies/tiles/", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "prohibited", "conditions": ["The standard tile service may not be used for offline tile archives."], "source_url": "https://operations.osmfoundation.org/policies/tiles/", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "prohibited", "conditions": ["Do not redistribute tiles from the standard service."], "source_url": "https://operations.osmfoundation.org/policies/tiles/", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": ["Show OpenStreetMap attribution on the image."], "source_url": "https://www.openstreetmap.org/copyright", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": ["Show OpenStreetMap attribution in the video."], "source_url": "https://www.openstreetmap.org/copyright", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "prohibited", "conditions": ["Use the underlying OpenStreetMap database under ODbL instead of deriving data from rendered tiles."], "source_url": "https://www.openstreetmap.org/copyright", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["Comply with the tile policy and ODbL attribution requirements."], "source_url": "https://www.openstreetmap.org/copyright", "reviewed_at": "2026-07-11" }
+      }
+    },
+    {
+      "id": "esri-online-imagery",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["Display all dynamic service-layer and data-source attribution."], "source_url": "https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/attribution/", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": ["Use only normal client caching controlled by service responses."], "source_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "prohibited", "conditions": ["No bulk tile harvesting is implemented or authorized by this registry."], "source_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "prohibited", "conditions": ["This public online service binding is streaming-only."], "source_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "prohibited", "conditions": ["Do not redistribute source tiles."], "source_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": ["Preserve all dynamic attribution returned by the service."], "source_url": "https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/attribution/", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": ["Preserve all dynamic attribution returned by the service."], "source_url": "https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/attribution/", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "prohibited", "conditions": ["Rendered tiles are visual context, not an extraction source."], "source_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["Subject to the Esri service terms and complete attribution."], "source_url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "reviewed_at": "2026-07-11" }
+      }
+    },
+    {
+      "id": "cesium-ion-streaming",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["A user-supplied ion token and plan entitlement are required; preserve Cesium and source credits."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": ["Use normal Cesium client caching only."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "prohibited", "conditions": ["No bulk asset harvesting is implemented or authorized by this registry."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "prohibited", "conditions": ["The ion binding is streaming-only."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "prohibited", "conditions": ["Do not redistribute ion asset payloads."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": ["Preserve all dynamic Cesium and data-source credits in the capture."], "source_url": "https://cesium.com/legal/credits/", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": ["Preserve all dynamic Cesium and data-source credits in the video."], "source_url": "https://cesium.com/legal/credits/", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "prohibited", "conditions": ["Streamed visual assets are not solver input or extraction sources."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["Requires an eligible ion plan and compliance with asset-specific terms."], "source_url": "https://cesium.com/legal/terms-of-service/", "reviewed_at": "2026-07-11" }
+      }
+    },
+    {
+      "id": "apache-2.0-bundled",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["Retain the Apache 2.0 license and notices."], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": [], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "allowed", "conditions": [], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "allowed", "conditions": ["Retain the Apache 2.0 license and notices."], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "allowed", "conditions": ["Retain the Apache 2.0 license and notices and mark modifications."], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": [], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": [], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "allowed", "conditions": ["Retain required notices for redistributed modified software."], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["Retain the Apache 2.0 license and notices."], "source_url": "https://www.apache.org/licenses/LICENSE-2.0", "reviewed_at": "2026-07-11" }
+      }
+    },
+    {
+      "id": "mit-generated",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["Retain the MIT license notice."], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": [], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "allowed", "conditions": [], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "allowed", "conditions": ["Retain the MIT license notice."], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "allowed", "conditions": ["Retain the MIT license notice."], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": [], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": [], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "allowed", "conditions": ["Record transformations in provenance."], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["Retain the MIT license notice."], "source_url": "https://opensource.org/license/mit", "reviewed_at": "2026-07-11" }
+      }
+    },
+    {
+      "id": "noaa-public-domain",
+      "permissions": {
+        "interactive_render": { "decision": "allowed", "conditions": ["Credit NOAA/NDBC; do not imply NOAA endorsement."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "transient_http_cache": { "decision": "allowed", "conditions": [], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "prefetch": { "decision": "allowed", "conditions": ["Respect service load if refreshed from NOAA."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "offline_package": { "decision": "allowed", "conditions": ["Include retrieval time and NOAA/NDBC source."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "raw_redistribution": { "decision": "allowed", "conditions": ["Include retrieval time and NOAA/NDBC source."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "static_capture": { "decision": "allowed", "conditions": ["Credit NOAA/NDBC."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "video_capture": { "decision": "allowed", "conditions": ["Credit NOAA/NDBC."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "derived_data": { "decision": "allowed", "conditions": ["Record transformations and do not imply official forecast status."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" },
+        "commercial_use": { "decision": "allowed", "conditions": ["Do not imply NOAA endorsement."], "source_url": "https://www.weather.gov/disclaimer", "reviewed_at": "2026-07-11" }
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "cesium-runtime-assets-1.143.0", "provider_id": "cesiumjs", "kind": "runtime", "role": "Cesium renderer runtime assets", "delivery": "bundled",
+      "source_urls": ["https://github.com/CesiumGS/cesium/releases/tag/1.143.0"], "runtime_locator": "node_modules/cesium/Build/Cesium/Assets", "version": { "upstream": "1.143.0", "package": "cesium@1.143.0", "provider_asset_id": null },
+      "license": { "identifier": "Apache-2.0", "name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0", "attribution_text": "CesiumJS", "notice_paths": ["node_modules/cesium/LICENSE.md", "node_modules/cesium/ThirdParty.json"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4979", "vertical_datum": "WGS 84 ellipsoid" }, "temporal": { "content_timestamp": "2026-06-01", "retrieved_at": "2026-07-11", "observed_at": null, "status": "static" },
+      "resolution": { "kind": "runtime", "value": null, "min": null, "max": null, "unit": "not-applicable", "tile_size_px": null, "notes": "Runtime shaders, workers, widgets, and bundled data." },
+      "integrity": { "algorithm": "sha512-sri", "digest": "sha512-EHz61NBp/2UPYE4iWCZ+YK9Jcb0d2hzRfqkj4DRaUM3cJmA9hE2FTmcPPZ2iL7w+W0YUScI0gc9XeSTXlPIQtA==", "scope": "npm package", "target": "node_modules/cesium" },
+      "permission_profile_id": "apache-2.0-bundled", "quality_tiers": ["Low", "Medium", "High", "Cinematic"], "fallback_asset_id": null,
+      "scientific": { "confidence": "reference", "transformations": ["Copied by vite-plugin-static-copy into the packaged application."], "limitations": ["Runtime dependency, not scientific source data."] }
+    },
+    {
+      "id": "natural-earth-ii-cesium-1.143.0", "provider_id": "natural-earth", "kind": "imagery", "role": "Offline global fallback imagery", "delivery": "bundled",
+      "source_urls": ["https://www.naturalearthdata.com/downloads/10m-raster-data/10m-natural-earth-2/"], "runtime_locator": "Assets/Textures/NaturalEarthII/{z}/{x}/{reverseY}.jpg", "version": { "upstream": null, "package": "cesium@1.143.0", "provider_asset_id": null },
+      "license": { "identifier": "LicenseRef-Natural-Earth-Public-Domain", "name": "Natural Earth public domain", "url": "https://www.naturalearthdata.com/about/terms-of-use/", "attribution_text": "Natural Earth II — public domain", "notice_paths": ["node_modules/cesium/ThirdParty.json"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "not-applicable" }, "temporal": { "content_timestamp": null, "retrieved_at": "2026-07-11", "observed_at": null, "status": "static" },
+      "resolution": { "kind": "tile-level", "value": 2, "min": 0, "max": 2, "unit": "zoom-level", "tile_size_px": 256, "notes": "Cesium-bundled Natural Earth II pyramid." },
+      "integrity": { "algorithm": "sha512-sri", "digest": "sha512-EHz61NBp/2UPYE4iWCZ+YK9Jcb0d2hzRfqkj4DRaUM3cJmA9hE2FTmcPPZ2iL7w+W0YUScI0gc9XeSTXlPIQtA==", "scope": "containing npm package", "target": "node_modules/cesium" },
+      "permission_profile_id": "public-domain-bundled", "quality_tiers": ["Low"], "fallback_asset_id": null,
+      "scientific": { "confidence": "visual-only", "transformations": ["Cesium tiled raster pyramid."], "limitations": ["Low-resolution cartographic texture; not suitable for analysis."] }
+    },
+    {
+      "id": "osm-standard-raster", "provider_id": "openstreetmap", "kind": "imagery", "role": "Online street-map context", "delivery": "network",
+      "source_urls": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], "runtime_locator": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "version": { "upstream": null, "package": null, "provider_asset_id": null },
+      "license": { "identifier": "ODbL-1.0", "name": "Open Database License 1.0", "url": "https://www.openstreetmap.org/copyright", "attribution_text": "© OpenStreetMap contributors", "notice_paths": [] },
+      "spatial": { "bounds": [-180, -85.051129, 180, 85.051129], "horizontal_crs": "EPSG:3857", "vertical_datum": "not-applicable" }, "temporal": { "content_timestamp": null, "retrieved_at": null, "observed_at": null, "status": "mutable" },
+      "resolution": { "kind": "tile-level", "value": null, "min": 0, "max": 19, "unit": "zoom-level", "tile_size_px": 256, "notes": "Service availability and maximum useful zoom vary." },
+      "integrity": { "algorithm": "mutable-service", "digest": "no-stable-content-checksum", "scope": "provider response", "target": null },
+      "permission_profile_id": "osm-standard-tiles", "quality_tiers": ["Medium"], "fallback_asset_id": "natural-earth-ii-cesium-1.143.0",
+      "scientific": { "confidence": "visual-only", "transformations": ["Rendered by Cesium Web Mercator tiling."], "limitations": ["Mutable cartographic tiles; no stable content timestamp or checksum."] }
+    },
+    {
+      "id": "esri-world-imagery", "provider_id": "esri", "kind": "imagery", "role": "Online satellite and aerial visual context", "delivery": "network",
+      "source_urls": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"], "runtime_locator": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer", "version": { "upstream": null, "package": null, "provider_asset_id": "World_Imagery" },
+      "license": { "identifier": "LicenseRef-Esri-World-Imagery-Service", "name": "Esri World Imagery service terms", "url": "https://www.esri.com/en-us/legal/terms/full-master-agreement", "attribution_text": "Dynamic Esri and source credits supplied by the service", "notice_paths": [] },
+      "spatial": { "bounds": [-180, -85.051129, 180, 85.051129], "horizontal_crs": "EPSG:3857", "vertical_datum": "not-applicable" }, "temporal": { "content_timestamp": null, "retrieved_at": null, "observed_at": null, "status": "mutable" },
+      "resolution": { "kind": "tile-level", "value": null, "min": 0, "max": 23, "unit": "zoom-level", "tile_size_px": 256, "notes": "Coverage date and resolution vary by contributor and location; service metadata is authoritative." },
+      "integrity": { "algorithm": "mutable-service", "digest": "no-stable-content-checksum", "scope": "provider response", "target": null },
+      "permission_profile_id": "esri-online-imagery", "quality_tiers": ["Medium", "High"], "fallback_asset_id": "natural-earth-ii-cesium-1.143.0",
+      "scientific": { "confidence": "visual-only", "transformations": ["Rendered from the ArcGIS REST map service."], "limitations": ["Mosaic provenance, acquisition date, and ground resolution vary spatially; not solver input."] }
+    },
+    {
+      "id": "cesium-ion-world-imagery-2", "provider_id": "cesium-ion", "kind": "imagery", "role": "Token-gated global imagery", "delivery": "network",
+      "source_urls": ["https://ion.cesium.com/assetdepot/2"], "runtime_locator": "ion://2", "version": { "upstream": null, "package": "@cesium/engine@26.1.0", "provider_asset_id": "2" },
+      "license": { "identifier": "LicenseRef-Cesium-ion-Asset-2", "name": "Cesium ion asset and source-specific terms", "url": "https://cesium.com/legal/terms-of-service/", "attribution_text": "Dynamic Cesium ion and imagery-source credits", "notice_paths": [] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "provider-defined tiled imagery", "vertical_datum": "not-applicable" }, "temporal": { "content_timestamp": null, "retrieved_at": null, "observed_at": null, "status": "mutable" },
+      "resolution": { "kind": "provider-level-of-detail", "value": null, "min": null, "max": null, "unit": "provider-defined", "tile_size_px": null, "notes": "Asset catalog and runtime credits are authoritative." },
+      "integrity": { "algorithm": "provider-asset-id", "digest": "2", "scope": "Cesium ion asset identifier", "target": null },
+      "permission_profile_id": "cesium-ion-streaming", "quality_tiers": ["High", "Cinematic"], "fallback_asset_id": "natural-earth-ii-cesium-1.143.0",
+      "scientific": { "confidence": "visual-only", "transformations": ["Streamed by Cesium ion."], "limitations": ["Requires user token and live entitlement; dynamic upstream composition; not solver input."] }
+    },
+    {
+      "id": "cesium-ion-world-bathymetry-2426648", "provider_id": "cesium-ion", "kind": "terrain", "role": "Visual ocean-floor terrain", "delivery": "network",
+      "source_urls": ["https://cesium.com/platform/cesium-ion/content/cesium-world-bathymetry/"], "runtime_locator": "ion://2426648", "version": { "upstream": null, "package": "@cesium/engine@26.1.0", "provider_asset_id": "2426648" },
+      "license": { "identifier": "LicenseRef-Cesium-World-Bathymetry", "name": "Cesium World Bathymetry asset terms", "url": "https://cesium.com/legal/terms-of-service/", "attribution_text": "Dynamic Cesium World Bathymetry and source credits", "notice_paths": [] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "provider-defined; visual-only" }, "temporal": { "content_timestamp": null, "retrieved_at": null, "observed_at": null, "status": "mutable" },
+      "resolution": { "kind": "provider-level-of-detail", "value": null, "min": null, "max": null, "unit": "provider-defined", "tile_size_px": null, "notes": "Provider asset metadata is authoritative." },
+      "integrity": { "algorithm": "provider-asset-id", "digest": "2426648", "scope": "Cesium ion asset identifier", "target": null },
+      "permission_profile_id": "cesium-ion-streaming", "quality_tiers": ["High", "Cinematic"], "fallback_asset_id": "cesium-wgs84-ellipsoid-26.1.0",
+      "scientific": { "confidence": "visual-only", "transformations": ["Streamed as Cesium quantized-mesh terrain."], "limitations": ["Visual context only; vertical datum and bathymetry are not sampled by the solver."] }
+    },
+    {
+      "id": "cesium-wgs84-ellipsoid-26.1.0", "provider_id": "cesiumjs", "kind": "terrain", "role": "Offline ellipsoid fallback surface", "delivery": "generated",
+      "source_urls": ["https://cesium.com/learn/cesiumjs/ref-doc/EllipsoidTerrainProvider.html"], "runtime_locator": "Cesium.EllipsoidTerrainProvider", "version": { "upstream": "26.1.0", "package": "@cesium/engine@26.1.0", "provider_asset_id": null },
+      "license": { "identifier": "Apache-2.0", "name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0", "attribution_text": "CesiumJS WGS 84 ellipsoid", "notice_paths": ["node_modules/cesium/LICENSE.md"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4979", "vertical_datum": "WGS 84 ellipsoid" }, "temporal": { "content_timestamp": "2026-06-01", "retrieved_at": "2026-07-11", "observed_at": null, "status": "generated" },
+      "resolution": { "kind": "analytic-surface", "value": null, "min": null, "max": null, "unit": "not-applicable", "tile_size_px": null, "notes": "Smooth WGS 84 reference ellipsoid; contains no elevation or bathymetry." },
+      "integrity": { "algorithm": "sha512-sri", "digest": "sha512-WzeJEcmGD7/htBJ8JEZt95OgZjErPwUHqyAlJY/mCzmDm7hfwpuucLBSUhiynWW3khqBT1C7dhibjb7tdic7oA==", "scope": "npm package", "target": "node_modules/@cesium/engine" },
+      "permission_profile_id": "apache-2.0-bundled", "quality_tiers": ["Low", "Medium", "High", "Cinematic"], "fallback_asset_id": null,
+      "scientific": { "confidence": "reference", "transformations": ["Analytically generated by CesiumJS."], "limitations": ["No relief, coastline, or bathymetry."] }
+    },
+    {
+      "id": "cataclysm-coarse-bathymetry-v1", "provider_id": "cataclysm", "kind": "ocean", "role": "Analytical solver depth approximation", "delivery": "generated",
+      "source_urls": ["https://github.com/SysAdminDoc/Cataclysm"], "runtime_locator": "src-tauri/src/data/bathymetry.rs", "version": { "upstream": null, "package": "cataclysm@0.8.0", "provider_asset_id": "coarse-bathymetry-v1" },
+      "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm analytical coarse bathymetry", "notice_paths": ["LICENSE"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "idealized depth below mean sea level" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "generated" },
+      "resolution": { "kind": "analytic-regions", "value": null, "min": null, "max": null, "unit": "meters-depth", "tile_size_px": null, "notes": "Basin/shelf heuristic, not a gridded survey product." },
+      "integrity": { "algorithm": "sha256", "digest": "9fd2c75ec78cd2cae79cc49567cf05d89c34a5616493d9b6cbbb074d586661f9", "scope": "source implementation", "target": "src-tauri/src/data/bathymetry.rs" },
+      "permission_profile_id": "mit-generated", "quality_tiers": ["Low"], "fallback_asset_id": "cataclysm-uniform-depth-v1",
+      "scientific": { "confidence": "low", "transformations": ["Analytical ocean-basin and shelf approximation."], "limitations": ["Not GEBCO/ETOPO; misses local seafloor structure; unsuitable for warning decisions."] }
+    },
+    {
+      "id": "cataclysm-uniform-depth-v1", "provider_id": "cataclysm", "kind": "ocean", "role": "Deterministic solver fallback depth", "delivery": "generated",
+      "source_urls": ["https://github.com/SysAdminDoc/Cataclysm"], "runtime_locator": "src-tauri/src/physics/solver/mod.rs#fill_uniform_depth", "version": { "upstream": null, "package": "cataclysm@0.8.0", "provider_asset_id": "uniform-depth-v1" },
+      "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm uniform-depth fallback", "notice_paths": ["LICENSE"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "idealized depth below mean sea level" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "generated" },
+      "resolution": { "kind": "constant", "value": 4000, "min": 4000, "max": 4000, "unit": "meters-depth", "tile_size_px": null, "notes": "Uniform 4 km depth used only as a deterministic fail-safe." },
+      "integrity": { "algorithm": "sha256", "digest": "f75a0790583c29b8c12cfdf31b89b3a11e88b8a95475081dcd860d9f8b567d88", "scope": "source implementation", "target": "src-tauri/src/physics/solver/mod.rs" },
+      "permission_profile_id": "mit-generated", "quality_tiers": ["Low"], "fallback_asset_id": null,
+      "scientific": { "confidence": "low", "transformations": ["Constant-depth field."], "limitations": ["No real bathymetry, coastline, shelf, or shoaling structure."] }
+    },
+    {
+      "id": "noaa-dart-observations-v1", "provider_id": "noaa-ndbc", "kind": "ocean", "role": "Bundled DART station reference observations", "delivery": "bundled",
+      "source_urls": ["https://www.ndbc.noaa.gov/dart.shtml"], "runtime_locator": "src/data/dart_buoys.json", "version": { "upstream": null, "package": "cataclysm@0.8.0", "provider_asset_id": null },
+      "license": { "identifier": "LicenseRef-US-Government-Work", "name": "United States government public-domain data", "url": "https://www.weather.gov/disclaimer", "attribution_text": "NOAA National Data Buoy Center DART", "notice_paths": [] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "station metadata dependent" }, "temporal": { "content_timestamp": null, "retrieved_at": "2026-07-11", "observed_at": null, "status": "static" },
+      "resolution": { "kind": "stations", "value": null, "min": null, "max": null, "unit": "point-observations", "tile_size_px": null, "notes": "Sparse reference stations; not a continuous field." },
+      "integrity": { "algorithm": "sha256", "digest": "b98655ad190460e5cf21b01f85eef9865aa9472510a2364caf33f4c8ca4c902b", "scope": "bundled file", "target": "src/data/dart_buoys.json" },
+      "permission_profile_id": "noaa-public-domain", "quality_tiers": ["Low", "Medium"], "fallback_asset_id": null,
+      "scientific": { "confidence": "medium", "transformations": ["Selected station metadata serialized as JSON."], "limitations": ["Bundled snapshot may become stale; not live warning data."] }
+    },
+    {
+      "id": "cataclysm-coastal-points-v1", "provider_id": "cataclysm", "kind": "ocean", "role": "Named coastal result sampling points", "delivery": "bundled",
+      "source_urls": ["https://github.com/SysAdminDoc/Cataclysm"], "runtime_locator": "src/data/coastal_points.json", "version": { "upstream": null, "package": "cataclysm@0.8.0", "provider_asset_id": "coastal-points-v1" },
+      "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm coastal sampling points", "notice_paths": ["LICENSE"] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "not-applicable" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "static" },
+      "resolution": { "kind": "points", "value": null, "min": null, "max": null, "unit": "named-locations", "tile_size_px": null, "notes": "Curated sampling targets, not a coastline geometry dataset." },
+      "integrity": { "algorithm": "sha256", "digest": "64474aa566bd86e77651405a10d1018e4cc195f86c0251b33228bc22ebe7823a", "scope": "bundled file", "target": "src/data/coastal_points.json" },
+      "permission_profile_id": "mit-generated", "quality_tiers": ["Low", "Medium"], "fallback_asset_id": null,
+      "scientific": { "confidence": "medium", "transformations": ["Curated names and coordinates serialized as JSON."], "limitations": ["Sparse point set; no shoreline or inundation geometry."] }
+    }
+  ],
+  "style_bindings": [
+    { "id": "natural-earth-2", "label": "Natural Earth II (offline-friendly)", "description": "Bundled public-domain Natural Earth raster with no network dependency.", "requires_token": false, "imagery_asset_id": "natural-earth-ii-cesium-1.143.0", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
+    { "id": "osm", "label": "OpenStreetMap (no token)", "description": "OSM Foundation standard raster service; interactive use only, with attribution and no bulk prefetch.", "requires_token": false, "imagery_asset_id": "osm-standard-raster", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
+    { "id": "esri-world-imagery", "label": "Esri World Imagery (satellite, no token)", "description": "Satellite and aerial mosaic with location-specific resolution, acquisition dates, and dynamic attribution.", "requires_token": false, "imagery_asset_id": "esri-world-imagery", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
+    { "id": "cesium-world-imagery", "label": "Cesium World Imagery (token required)", "description": "Cesium ion imagery streamed under the user account's asset entitlement and live credits.", "requires_token": true, "imagery_asset_id": "cesium-ion-world-imagery-2", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
+    { "id": "cesium-bathymetry", "label": "Cesium World Bathymetry (token required)", "description": "Natural Earth imagery over token-gated visual bathymetric terrain; the solver does not sample this surface.", "requires_token": true, "imagery_asset_id": "natural-earth-ii-cesium-1.143.0", "terrain_asset_id": "cesium-ion-world-bathymetry-2426648" }
+  ],
+  "category_inventory": {
+    "terrain": ["cesium-wgs84-ellipsoid-26.1.0", "cesium-ion-world-bathymetry-2426648"],
+    "imagery": ["natural-earth-ii-cesium-1.143.0", "osm-standard-raster", "esri-world-imagery", "cesium-ion-world-imagery-2"],
+    "buildings": [],
+    "ocean": ["cataclysm-coarse-bathymetry-v1", "cataclysm-uniform-depth-v1", "noaa-dart-observations-v1", "cataclysm-coastal-points-v1"],
+    "clouds": [],
+    "vfx": []
+  }
+}

@@ -6,13 +6,15 @@
 
 import * as Cesium from "cesium";
 import { tokenConfigured } from "./cesium";
+import {
+  assertEarthAssetOperationAllowed,
+  EARTH_STYLE_BINDINGS,
+  getEarthAsset,
+  getEarthStyleBinding,
+  type GlobeStyleId,
+} from "./earth-assets";
 
-export type GlobeStyleId =
-  | "osm"
-  | "natural-earth-2"
-  | "esri-world-imagery"
-  | "cesium-bathymetry"
-  | "cesium-world-imagery";
+export type { GlobeStyleId } from "./earth-assets";
 
 export type GlobeStyleMeta = {
   id: GlobeStyleId;
@@ -34,40 +36,23 @@ export type ImagerySelection = {
   requestedStyle: GlobeStyleId;
   resolvedStyle: GlobeStyleId;
   fallbackReason: ImageryFallbackReason;
+  imageryAssetId: string;
+  terrainAssetId: string;
+  providerId: string;
+  attribution: string;
 };
 
-export const GLOBE_STYLES: GlobeStyleMeta[] = [
-  {
-    id: "natural-earth-2",
-    label: "Natural Earth II (offline-friendly)",
-    description: "Local Natural Earth raster. Fast, stable, and usable without network tiles.",
-    requires_token: false,
-  },
-  {
-    id: "osm",
-    label: "OpenStreetMap (no token)",
-    description: "Free OSM raster tiles. More detailed online map context; no token required.",
-    requires_token: false,
-  },
-  {
-    id: "esri-world-imagery",
-    label: "Esri World Imagery (satellite, no token)",
-    description: "Free public Esri satellite imagery tiles. No token required.",
-    requires_token: false,
-  },
-  {
-    id: "cesium-world-imagery",
-    label: "Cesium World Imagery (token required)",
-    description: "High-resolution global imagery streamed from Cesium ion.",
-    requires_token: true,
-  },
-  {
-    id: "cesium-bathymetry",
-    label: "Cesium World Bathymetry (token required)",
-    description: "GEBCO bathymetric terrain for visual context; solver still uses coarse offline depth.",
-    requires_token: true,
-  },
-];
+type ImageryResolution = Pick<
+  ImagerySelection,
+  "requestedStyle" | "resolvedStyle" | "fallbackReason"
+>;
+
+export const GLOBE_STYLES: GlobeStyleMeta[] = EARTH_STYLE_BINDINGS.map((binding) => ({
+  id: binding.id,
+  label: binding.label,
+  description: binding.description,
+  requires_token: binding.requires_token,
+}));
 
 export function findStyle(id: GlobeStyleId | string | undefined | null): GlobeStyleMeta {
   return GLOBE_STYLES.find((s) => s.id === id)
@@ -79,7 +64,7 @@ export function resolveImageryStyle(
   requestedStyle: GlobeStyleId,
   online: boolean,
   hasToken: boolean,
-): Omit<ImagerySelection, "provider"> {
+): ImageryResolution {
   const meta = findStyle(requestedStyle);
   if (!online && requestedStyle !== OFFLINE_STYLE) {
     return {
@@ -99,10 +84,11 @@ export function resolveImageryStyle(
 }
 
 function naturalEarthImagery(): Cesium.ImageryProvider {
+  const asset = getEarthAsset(getEarthStyleBinding(OFFLINE_STYLE).imagery_asset_id);
   return new Cesium.UrlTemplateImageryProvider({
     url: `${CESIUM_BASE_URL}/Assets/Textures/NaturalEarthII/{z}/{x}/{reverseY}.jpg`,
     tilingScheme: new Cesium.GeographicTilingScheme(),
-    credit: "Natural Earth II — public domain (https://www.naturalearthdata.com/)",
+    credit: asset.license.attribution_text,
     maximumLevel: 2,
   });
 }
@@ -125,20 +111,22 @@ export async function buildImagery(
     console.info(`[globe] '${id}' resolved to bundled Natural Earth (${selection.fallbackReason}).`);
   }
 
+  const binding = getEarthStyleBinding(selection.resolvedStyle);
+  const imageryAsset = getEarthAsset(binding.imagery_asset_id);
+  assertEarthAssetOperationAllowed(imageryAsset.id, "interactive_render");
+
   let provider: Cesium.ImageryProvider;
   switch (selection.resolvedStyle) {
     case "osm":
       provider = new Cesium.OpenStreetMapImageryProvider({
         url: "https://tile.openstreetmap.org/",
-        credit: "© OpenStreetMap contributors",
+        credit: imageryAsset.license.attribution_text,
       });
       break;
     case "esri-world-imagery":
-      provider = new Cesium.UrlTemplateImageryProvider({
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        credit: "Esri, Maxar, Earthstar Geographics, USGS, AeroGRID, IGN, et al.",
-        maximumLevel: 19,
-      });
+      provider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+      );
       break;
     case "natural-earth-2":
       provider = naturalEarthImagery();
@@ -152,11 +140,21 @@ export async function buildImagery(
     default:
       provider = naturalEarthImagery();
   }
-  return { ...selection, provider };
+  return {
+    ...selection,
+    provider,
+    imageryAssetId: imageryAsset.id,
+    terrainAssetId: binding.terrain_asset_id,
+    providerId: imageryAsset.provider_id,
+    attribution: imageryAsset.license.attribution_text,
+  };
 }
 
 /** Build a Cesium terrain provider if the style implies one. */
 export async function buildTerrain(id: GlobeStyleId): Promise<Cesium.TerrainProvider | undefined> {
+  const binding = getEarthStyleBinding(id);
+  const terrainAsset = getEarthAsset(binding.terrain_asset_id);
+  assertEarthAssetOperationAllowed(terrainAsset.id, "interactive_render");
   if (id === "cesium-bathymetry") {
     if (!tokenConfigured()) return undefined;
     return await Cesium.createWorldBathymetryAsync({ requestVertexNormals: true });

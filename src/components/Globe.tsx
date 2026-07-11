@@ -10,6 +10,11 @@ import {
   type GlobeStyleId,
 } from "../lib/globe-styles";
 import { settings } from "../lib/settings";
+import {
+  publishEarthSession,
+  type EarthAssetHealth,
+  type EarthSessionSnapshot,
+} from "../lib/earth-assets";
 import { demoInspectAtPoint } from "../lib/demo";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type {
@@ -237,6 +242,13 @@ export function Globe({
   const impactRafRef = useRef<number | null>(null);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryRequestIdRef = useRef(0);
+  const earthSessionRef = useRef<{
+    requestedStyle: GlobeStyleId;
+    resolvedStyle: GlobeStyleId;
+    fallbackReason: EarthSessionSnapshot["fallbackReason"];
+    health: EarthAssetHealth;
+    dynamicAttributions: string[];
+  } | null>(null);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectEntityRef = useRef<Cesium.Entity | null>(null);
@@ -372,6 +384,39 @@ export function Globe({
     };
   }, []);
 
+  // Cesium providers can supply location-dependent credits only after tiles
+  // render. Mirror those live credits into the active Earth session so media
+  // export can fail closed until the required attribution is available.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !primary) return;
+    let lastCredits = "";
+    const syncCredits = () => {
+      const session = earthSessionRef.current;
+      if (!session) return;
+      const root = viewer.cesiumWidget.creditContainer;
+      const credits = [...root.querySelectorAll<HTMLElement>("a, .cesium-credit-text, img")]
+        .map((element) =>
+          element.textContent?.trim() ||
+          element.getAttribute("aria-label")?.trim() ||
+          element.getAttribute("title")?.trim() ||
+          element.getAttribute("alt")?.trim() ||
+          "",
+        )
+        .filter(Boolean);
+      if (credits.length === 0 && root.textContent?.trim()) credits.push(root.textContent.trim());
+      const uniqueCredits = [...new Set(credits)];
+      const key = uniqueCredits.join("\n");
+      if (key === lastCredits) return;
+      lastCredits = key;
+      earthSessionRef.current = { ...session, dynamicAttributions: uniqueCredits };
+      publishEarthSession(earthSessionRef.current);
+    };
+    const remove = viewer.scene.postRender.addEventListener(syncCredits);
+    syncCredits();
+    return remove;
+  }, [primary, viewerEpoch]);
+
   // (Re)build the imagery + terrain providers when the style changes.
   // Uses a monotonic request id so rapid style swaps don't race — only the
   // most recent request's result is allowed to commit.
@@ -388,6 +433,28 @@ export function Globe({
     const isStale = () => cancelled || imageryRequestIdRef.current !== requestId || !viewerRef.current;
     setImageryStatus("connecting");
     setImageryMessage(`Connecting to ${findStyle(resolvedStyle).label}…`);
+
+    const publishSelection = (
+      selectedStyle: GlobeStyleId,
+      fallbackReason: EarthSessionSnapshot["fallbackReason"],
+      health: EarthAssetHealth,
+    ) => {
+      if (!primary) return;
+      earthSessionRef.current = {
+        requestedStyle: resolvedStyle,
+        resolvedStyle: selectedStyle,
+        fallbackReason,
+        health,
+        dynamicAttributions: [],
+      };
+      publishEarthSession(earthSessionRef.current);
+    };
+
+    const publishHealth = (health: EarthAssetHealth) => {
+      if (!primary || !earthSessionRef.current) return;
+      earthSessionRef.current = { ...earthSessionRef.current, health };
+      publishEarthSession(earthSessionRef.current);
+    };
 
     const replaceBaseLayer = (provider: Cesium.ImageryProvider) => {
       const previousBase = imageryLayerRef.current;
@@ -414,11 +481,13 @@ export function Globe({
         if (localProvider) {
           setImageryStatus("failed");
           setImageryMessage("Bundled Natural Earth imagery could not be read.");
+          publishHealth("failed");
           return;
         }
         if (failures < TILE_FAILURES_BEFORE_FALLBACK) {
           setImageryStatus("degraded");
           setImageryMessage(`${findStyle(resolvedStyle).label} is losing tiles; retrying before fallback.`);
+          publishHealth("degraded");
           return;
         }
         void activateFallback(`${findStyle(resolvedStyle).label} stopped serving tiles.`);
@@ -439,11 +508,13 @@ export function Globe({
         monitorProvider(fallback.provider, true);
         setImageryStatus("fallback");
         setImageryMessage(`${reason} Using bundled Natural Earth II.`);
+        publishSelection(OFFLINE_STYLE, "provider-error", "degraded");
       } catch (innerError) {
         if (isStale()) return;
         console.error("[globe] bundled Natural Earth fallback failed", innerError);
         setImageryStatus("failed");
         setImageryMessage("Online imagery and bundled Natural Earth II both failed.");
+        publishSelection(OFFLINE_STYLE, "provider-error", "failed");
       }
     }
 
@@ -465,12 +536,15 @@ export function Globe({
         if (imagery.fallbackReason === "offline") {
           setImageryStatus("fallback");
           setImageryMessage(`Offline — using bundled Natural Earth II instead of ${findStyle(resolvedStyle).label}.`);
+          publishSelection(imagery.resolvedStyle, "offline", "degraded");
         } else if (imagery.fallbackReason === "missing-token") {
           setImageryStatus("fallback");
           setImageryMessage(`${findStyle(resolvedStyle).label} needs a Cesium token; using bundled Natural Earth II.`);
+          publishSelection(imagery.resolvedStyle, "missing-token", "degraded");
         } else {
           setImageryStatus("ready");
           setImageryMessage(`${findStyle(resolvedStyle).label} ready.`);
+          publishSelection(imagery.resolvedStyle, null, "ready");
         }
       } catch (err) {
         if (isStale()) return;
@@ -483,7 +557,7 @@ export function Globe({
       cancelled = true;
       stopMonitoring();
     };
-  }, [resolvedStyle, viewerEpoch, networkOnline, imageryRetryNonce]);
+  }, [resolvedStyle, viewerEpoch, networkOnline, imageryRetryNonce, primary]);
 
   // Pick mode: install a left-click handler that reports cartographic coords.
   useEffect(() => {

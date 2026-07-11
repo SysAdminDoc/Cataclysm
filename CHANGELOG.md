@@ -5,6 +5,19 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 ## [Unreleased]
 
 ### Changed — trustworthy accelerated releases
+- Added a versioned Earth asset registry and build-blocking provenance/rights
+  validator covering providers, source URLs, licenses, attribution, bounds,
+  resolution, datum, timestamps, integrity, quality tiers, fallback graphs,
+  cache/export/redistribution/derivative permissions, policy review dates, and
+  desktop CSP compatibility.
+- Globe styles and persisted-setting validation now derive from the registry;
+  Esri uses ArcGIS service metadata for dynamic credits. Settings shows the
+  selected imagery/terrain source contract, support bundles include every
+  provider and asset version without secrets, and model exports carry structured
+  solver/visual asset IDs plus the registry version.
+- PNG, share-card, comparison, and video export now fail closed for unknown or
+  prohibited Earth-asset rights and until location-dependent provider credits
+  are live; successful still-image exports stamp the applicable attribution.
 - Desktop packaging now runs the strict release gate, builds with the Rust
   `gpu` feature, smokes the packaged binary's compiled capabilities without
   opening the UI, and emits a SHA-256 artifact manifest with enabled features.

@@ -4,6 +4,46 @@
       "id": "cesiumSignup",
       "reason": "Settings token onboarding opens the official Cesium ion signup page.",
       "url": "https://cesium.com/ion/signup"
+    },
+    {
+      "id": "naturalEarthTerms",
+      "reason": "Earth source provenance opens the Natural Earth public-domain terms.",
+      "url": "https://www.naturalearthdata.com/about/terms-of-use/"
+    },
+    {
+      "id": "osmTilePolicy",
+      "reason": "Earth source provenance opens the OpenStreetMap standard tile usage policy.",
+      "url": "https://operations.osmfoundation.org/policies/tiles/"
+    },
+    {
+      "id": "osmCopyright",
+      "reason": "Earth source provenance opens OpenStreetMap copyright and attribution terms.",
+      "url": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "id": "esriTerms",
+      "reason": "Earth source provenance opens the Esri service terms.",
+      "url": "https://www.esri.com/en-us/legal/terms/full-master-agreement"
+    },
+    {
+      "id": "esriAttribution",
+      "reason": "Earth source provenance opens Esri attribution requirements.",
+      "url": "https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/attribution/"
+    },
+    {
+      "id": "cesiumTerms",
+      "reason": "Earth source provenance opens Cesium ion terms.",
+      "url": "https://cesium.com/legal/terms-of-service/"
+    },
+    {
+      "id": "cesiumCredits",
+      "reason": "Earth source provenance opens Cesium data-source credit requirements.",
+      "url": "https://cesium.com/legal/credits/"
+    },
+    {
+      "id": "apacheLicense",
+      "reason": "Earth source provenance opens the CesiumJS Apache 2.0 license.",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
     }
   ],
   "citationHttpsUrls": [

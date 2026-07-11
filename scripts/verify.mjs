@@ -382,6 +382,7 @@ if (docsOnly) {
   console.log("\nDocs/script truth gate completed.");
   process.exit(0);
 }
+runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);
 runNpm("ESLint", ["run", "lint"]);
 runNpm("Vitest unit suite", ["run", "test:unit"]);

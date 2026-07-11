@@ -74,4 +74,22 @@ describe("LogViewer", () => {
     expect(await screen.findByText(/readback failed/)).toBeInTheDocument();
     expect(screen.getByText("warn")).toBeInTheDocument();
   });
+
+  it("includes the active Earth providers and asset versions in the support bundle", async () => {
+    const user = userEvent.setup();
+    const clipboard = { writeText: vi.fn<(text: string) => Promise<void>>().mockResolvedValue() };
+    Object.defineProperty(navigator, "clipboard", { value: clipboard, configurable: true });
+    render(<LogViewer open onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Copy diagnostics" }));
+
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalled());
+    const bundle = JSON.parse(clipboard.writeText.mock.calls[0][0] as string) as {
+      earth_assets: { active: { imageryAssetId: string }; providers: unknown[]; assets: unknown[] };
+    };
+    expect(bundle.earth_assets.active.imageryAssetId).toBeTruthy();
+    expect(bundle.earth_assets.providers).toHaveLength(7);
+    expect(bundle.earth_assets.assets).toHaveLength(11);
+    expect(JSON.stringify(bundle).toLowerCase()).not.toContain("cesium_token");
+  });
 });

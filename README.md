@@ -100,8 +100,14 @@ Existing tools each do one piece:
   exports, references, and settings without a wall of equal-priority buttons.
 - **Scenario library filters** — recorded and what-if cases stay searchable,
   while guided training remains available without crowding the primary flow.
-- **5 globe styles**: Natural Earth II (default, local-first), OpenStreetMap,
-  Esri World Imagery, Cesium World Imagery, Cesium World Bathymetry.
+- **5 globe styles**: high-detail Esri World Imagery by default, bundled Natural
+  Earth II as the deterministic offline fallback, OpenStreetMap, Cesium World
+  Imagery, and Cesium World Bathymetry.
+- **Enforced Earth source contracts** — every integrated imagery, terrain, and
+  ocean input has version, license, attribution, datum, resolution, integrity,
+  quality-tier, and use-rights metadata. Settings exposes the active source
+  contract; diagnostics include the provider/asset inventory; media export
+  fails closed when required live attribution is unavailable.
 - **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
   forms; click-globe-to-pick location.
 - **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
@@ -148,10 +154,13 @@ certutil -hashfile Cataclysm_0.8.0_x64_en-US.msi SHA256
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full
 verification details and the maintainer release checklist.
 
-The app launches on the bundled **Natural Earth II** globe by default and is
-fully usable without network tiles or a token. OpenStreetMap and Esri imagery
-remain no-token online options, and a free Cesium ion token unlocks
-high-resolution satellite imagery and visual bathymetric terrain from Settings.
+The app starts with high-detail **Esri World Imagery** and automatically falls
+back to bundled **Natural Earth II** when offline or when the provider fails, so
+the simulator remains usable without network tiles or a token. OpenStreetMap is
+another no-token online option, and a free Cesium ion token unlocks optional
+streamed imagery and visual bathymetric terrain from Settings. Provider terms,
+attribution, spatial metadata, and rights-review dates are visible beside the
+selected Earth source.
 Solver bathymetry remains the app's low-confidence coarse basin/shelf
 approximation until the blocked GEBCO_2026/TID-backed local data path is
 resolved.

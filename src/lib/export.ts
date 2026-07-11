@@ -11,6 +11,21 @@ import {
   type ModelProvenanceInput,
 } from "./model-provenance";
 import { isTauri } from "./tauri";
+import {
+  assertEarthOperationAllowed,
+  type EarthOperationPreflight,
+} from "./earth-assets";
+
+function preflightMediaExport(
+  operation: "static_capture" | "video_capture",
+): EarthOperationPreflight | null {
+  try {
+    return assertEarthOperationAllowed(operation);
+  } catch (error) {
+    console.error(`[export] Earth asset ${operation} rights preflight blocked export`, error);
+    return null;
+  }
+}
 
 /** Find the Cesium globe canvas. */
 function findGlobeCanvas(): HTMLCanvasElement | null {
@@ -63,6 +78,7 @@ export function suggestedFilename(meta: ScreenshotMeta, ext: "png" | "webm" | "m
 
 /** Returns the globe canvas contents as a PNG data URL, or null if it's not mountable. */
 export function captureGlobePng(): string | null {
+  if (!preflightMediaExport("static_capture")) return null;
   const canvas = findGlobeCanvas();
   if (!canvas) return null;
   try {
@@ -129,16 +145,21 @@ function ellipsize(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return `${text.slice(0, lo)}...`;
 }
 
-function stampProvenanceStrip(canvas: HTMLCanvasElement, meta: ScreenshotMeta): void {
+function stampProvenanceStrip(
+  canvas: HTMLCanvasElement,
+  meta: ScreenshotMeta,
+  attributions: string[],
+): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const p = buildModelProvenance(meta);
-  const stripH = 58;
+  const stripH = 74;
   const pad = 16;
   const maxWidth = Math.max(120, canvas.width - pad * 2);
   const citation = p.citationUrl ? p.citationUrl : p.citationReference;
   const line1 = `Cataclysm v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
   const line2 = `${p.bathymetrySource} | ${citation} | ${p.limitation}`;
+  const line3 = `Earth assets ${p.assetRegistryVersion}: ${p.visualAssetIds.join(", ")} | ${attributions.join(" · ")}`;
 
   ctx.save();
   ctx.fillStyle = "rgba(17, 17, 27, 0.86)";
@@ -151,10 +172,16 @@ function stampProvenanceStrip(canvas: HTMLCanvasElement, meta: ScreenshotMeta): 
   ctx.font = "11px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#fab387";
   ctx.fillText(ellipsize(ctx, line2, maxWidth), pad, canvas.height - stripH + 31);
+  ctx.fillStyle = "#a6adc8";
+  ctx.fillText(ellipsize(ctx, line3, maxWidth), pad, canvas.height - stripH + 49);
   ctx.restore();
 }
 
-function copyGlobeWithProvenance(sourceCanvas: HTMLCanvasElement, meta: ScreenshotMeta): HTMLCanvasElement | null {
+function copyGlobeWithProvenance(
+  sourceCanvas: HTMLCanvasElement,
+  meta: ScreenshotMeta,
+  attributions: string[],
+): HTMLCanvasElement | null {
   const offscreen = document.createElement("canvas");
   offscreen.width = sourceCanvas.width;
   offscreen.height = sourceCanvas.height;
@@ -162,15 +189,17 @@ function copyGlobeWithProvenance(sourceCanvas: HTMLCanvasElement, meta: Screensh
   if (!ctx) return null;
   ctx.drawImage(sourceCanvas, 0, 0);
   if (!isTauri()) stampDemoWatermark(offscreen);
-  stampProvenanceStrip(offscreen, meta);
+  stampProvenanceStrip(offscreen, meta, attributions);
   return offscreen;
 }
 
 /** Full export flow — capture + download. Returns true if a screenshot was produced. */
 export function exportGlobePng(meta: ScreenshotMeta): boolean {
+  const preflight = preflightMediaExport("static_capture");
+  if (!preflight) return false;
   const sourceCanvas = findGlobeCanvas();
   if (!sourceCanvas) return false;
-  const stamped = copyGlobeWithProvenance(sourceCanvas, meta);
+  const stamped = copyGlobeWithProvenance(sourceCanvas, meta, preflight.attributions);
   if (!stamped) return false;
   downloadDataUrl(stamped.toDataURL("image/png"), suggestedFilename(meta, "png"));
   return true;
@@ -183,6 +212,8 @@ export function exportGlobePng(meta: ScreenshotMeta): boolean {
  *  (no external library needed). Includes a footer "Educational only —
  *  not for evacuation" trust-signal to preserve product framing. */
 export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
+  const preflight = preflightMediaExport("static_capture");
+  if (!preflight) return false;
   const sourceCanvas = findGlobeCanvas();
   if (!sourceCanvas) return false;
 
@@ -271,7 +302,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   ctx.fillStyle = "#a6adc8";
   ctx.font = "11px Inter, system-ui, sans-serif";
   ctx.fillText(
-    `${provenance.bathymetrySource} | ${provenance.citationUrl ?? provenance.citationReference} | ${provenance.limitation}`,
+    `${provenance.bathymetryAssetId} | Earth assets ${provenance.assetRegistryVersion} | ${preflight.attributions.join(" · ")} | ${provenance.limitation}`,
     24,
     H - FOOTER_H + 32,
   );
@@ -300,6 +331,8 @@ export type ComparisonExportMeta = {
 };
 
 export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
+  const preflight = preflightMediaExport("static_capture");
+  if (!preflight) return false;
   const canvases = findAllGlobeCanvases();
   if (canvases.length < 2) return false;
   const [srcA, srcB] = canvases;
@@ -362,7 +395,11 @@ export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
     W - 12, H - FOOTER_H + 8,
   );
   ctx.fillStyle = "#a6adc8";
-  ctx.fillText(provA.generatedAt, W - 12, H - FOOTER_H + 26);
+  ctx.fillText(
+    `${provA.generatedAt} | Earth assets ${provA.assetRegistryVersion} | ${preflight.attributions.join(" · ")}`,
+    W - 12,
+    H - FOOTER_H + 26,
+  );
 
   const dataUrl = canvas.toDataURL("image/png");
   downloadDataUrl(dataUrl, `cataclysm-compare-${timestampSuffix()}.png`);
@@ -401,6 +438,10 @@ export async function exportGlobeVideo(
   meta: ScreenshotMeta,
   opts: VideoExportOptions = {},
 ): Promise<{ ok: true; ext: "webm" | "mp4"; size: number } | { ok: false; reason: string }> {
+  const preflight = preflightMediaExport("video_capture");
+  if (!preflight) {
+    return { ok: false, reason: "Earth asset rights or live attribution preflight blocked video export" };
+  }
   const canvas = findGlobeCanvas();
   if (!canvas) return { ok: false, reason: "Globe canvas not mounted" };
   const mime = pickVideoMime();
@@ -515,12 +556,16 @@ export function exportCzml(
       description: `Cataclysm ${provenance.scenarioName} - ${snapshots.length} snapshots. ${provenance.limitation}`,
       properties: {
         appVersion: provenance.appVersion,
+        assetRegistryVersion: provenance.assetRegistryVersion,
+        bathymetryAssetId: provenance.bathymetryAssetId,
         bathymetrySource: provenance.bathymetrySource,
         citationReference: provenance.citationReference,
         citationUrl: provenance.citationUrl,
         generatedAt: provenance.generatedAt,
         scenarioType: provenance.scenarioType,
         solverMode: provenance.solverMode,
+        solverAssetIds: provenance.solverAssetIds,
+        visualAssetIds: provenance.visualAssetIds,
       },
       rectangle: {
         coordinates: { wsenDegrees: [west, south, east, north] },
@@ -593,6 +638,8 @@ export function exportGeoJson(
     type: "FeatureCollection" as const,
     properties: {
       app_version: provenance.appVersion,
+      asset_registry_version: provenance.assetRegistryVersion,
+      bathymetry_asset_id: provenance.bathymetryAssetId,
       bathymetry_source: provenance.bathymetrySource,
       citation_reference: provenance.citationReference,
       citation_url: provenance.citationUrl,
@@ -602,6 +649,8 @@ export function exportGeoJson(
       scenario: provenance.scenarioName,
       scenario_type: provenance.scenarioType,
       solver_mode: provenance.solverMode,
+      solver_asset_ids: provenance.solverAssetIds,
+      visual_asset_ids: provenance.visualAssetIds,
       time_s: round5(meta.timeS),
     },
     features: [...features, ...isochroneFeatures],

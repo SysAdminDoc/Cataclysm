@@ -8,6 +8,7 @@
 
 import { isTauri } from "./tauri";
 import { DEFAULT_STYLE, type GlobeStyleId } from "./globe-styles";
+import { isGlobeStyleId } from "./earth-assets";
 import { parseScenarioPayload } from "./scenario-schema";
 
 export type Theme = "mocha" | "latte";
@@ -63,14 +64,6 @@ const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
 const STORE_FILE = "settings.json";
 const LS_PREFIX = "tsunamisim.";
 const SENSITIVE_KEYS = new Set<keyof Settings>(["cesium_token"]);
-const GLOBE_STYLE_IDS: readonly GlobeStyleId[] = [
-  "osm",
-  "natural-earth-2",
-  "esri-world-imagery",
-  "cesium-bathymetry",
-  "cesium-world-imagery",
-];
-
 type LazyStore = {
   get<T>(key: string): Promise<T | undefined>;
   set(key: string, value: unknown): Promise<void>;
@@ -198,7 +191,7 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
       result = (value === "mocha" || value === "latte" ? value : undefined) as Settings[K] | undefined;
       break;
     case "globe_style":
-      result = (typeof value === "string" && GLOBE_STYLE_IDS.includes(value as GlobeStyleId)
+      result = (isGlobeStyleId(value)
         ? value
         : undefined) as Settings[K] | undefined;
       break;

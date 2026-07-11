@@ -181,6 +181,75 @@
   margin-top: 8px;
 }
 
+.settings__source-card {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--sapphire) 24%, var(--panel-border));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 54%, transparent);
+}
+
+.settings__source-heading,
+.settings__source-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings__source-heading strong {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.settings__source-heading span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  color: var(--subtext);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+}
+
+.settings__source-heading span[data-delivery="network"] {
+  border-color: color-mix(in srgb, var(--sapphire) 36%, var(--panel-border));
+  color: var(--accent-text);
+}
+
+.settings__source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0;
+}
+
+.settings__source-grid div {
+  min-width: 0;
+}
+
+.settings__source-grid dt {
+  color: var(--subtext);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.65px;
+  text-transform: uppercase;
+}
+
+.settings__source-grid dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.settings__source-links {
+  justify-content: flex-start;
+  font-size: 11px;
+}
+
 .settings__classroom-note {
   display: flex;
   align-items: center;
