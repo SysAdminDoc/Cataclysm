@@ -1,8 +1,7 @@
 /**
  * Globe imagery / terrain style options. Each entry says how to construct
- * a Cesium imagery provider + optional terrain. The Natural Earth default is
- * bundled with Cesium, so the app is usable on first launch without network
- * tiles or a token.
+ * a Cesium imagery provider + optional terrain. Natural Earth II is bundled
+ * with Cesium and is the explicit fallback for offline or failed providers.
  */
 
 import * as Cesium from "cesium";
@@ -26,12 +25,22 @@ export type GlobeStyleMeta = {
 // no token, so a fresh install shows a crisp Earth instead of the 2-level
 // Natural Earth raster. Natural Earth remains selectable as the offline option.
 export const DEFAULT_STYLE: GlobeStyleId = "esri-world-imagery";
+export const OFFLINE_STYLE: GlobeStyleId = "natural-earth-2";
+
+export type ImageryFallbackReason = "offline" | "missing-token" | null;
+
+export type ImagerySelection = {
+  provider: Cesium.ImageryProvider;
+  requestedStyle: GlobeStyleId;
+  resolvedStyle: GlobeStyleId;
+  fallbackReason: ImageryFallbackReason;
+};
 
 export const GLOBE_STYLES: GlobeStyleMeta[] = [
   {
     id: "natural-earth-2",
     label: "Natural Earth II (offline-friendly)",
-    description: "Local Natural Earth raster. Default — fast, stable, and usable without network tiles.",
+    description: "Local Natural Earth raster. Fast, stable, and usable without network tiles.",
     requires_token: false,
   },
   {
@@ -66,6 +75,29 @@ export function findStyle(id: GlobeStyleId | string | undefined | null): GlobeSt
     ?? GLOBE_STYLES[0];
 }
 
+export function resolveImageryStyle(
+  requestedStyle: GlobeStyleId,
+  online: boolean,
+  hasToken: boolean,
+): Omit<ImagerySelection, "provider"> {
+  const meta = findStyle(requestedStyle);
+  if (!online && requestedStyle !== OFFLINE_STYLE) {
+    return {
+      requestedStyle,
+      resolvedStyle: OFFLINE_STYLE,
+      fallbackReason: "offline",
+    };
+  }
+  if (meta.requires_token && !hasToken) {
+    return {
+      requestedStyle,
+      resolvedStyle: OFFLINE_STYLE,
+      fallbackReason: "missing-token",
+    };
+  }
+  return { requestedStyle, resolvedStyle: requestedStyle, fallbackReason: null };
+}
+
 function naturalEarthImagery(): Cesium.ImageryProvider {
   return new Cesium.UrlTemplateImageryProvider({
     url: `${CESIUM_BASE_URL}/Assets/Textures/NaturalEarthII/{z}/{x}/{reverseY}.jpg`,
@@ -76,49 +108,51 @@ function naturalEarthImagery(): Cesium.ImageryProvider {
 }
 
 /**
- * Build a Cesium imagery provider for the given style id. Falls back to the
- * default Natural Earth provider if the requested style isn't constructable (e.g.
- * token-gated provider but no token). Token presence is preflighted before
- * hitting the network so a misconfigured request doesn't waste a Cesium ion
- * quota point.
+ * Build a Cesium imagery selection for the requested style. The returned
+ * metadata makes fallback explicit so the UI cannot label Natural Earth as the
+ * requested online provider. Token presence and network state are preflighted.
  */
-export async function buildImagery(id: GlobeStyleId): Promise<Cesium.ImageryProvider> {
-  // If the style requires a token and we don't have one, short-circuit to
-  // OSM so the user gets a working globe instead of a 401-driven fallback.
-  const meta = findStyle(id);
-  if (meta.requires_token && !tokenConfigured()) {
-    console.info(
-      `[globe] '${id}' requires a Cesium ion token; falling back to Natural Earth. Paste a token in Settings to enable.`,
-    );
-    return naturalEarthImagery();
+export async function buildImagery(
+  id: GlobeStyleId,
+  options: { online?: boolean; hasToken?: boolean } = {},
+): Promise<ImagerySelection> {
+  const selection = resolveImageryStyle(
+    id,
+    options.online ?? true,
+    options.hasToken ?? tokenConfigured(),
+  );
+  if (selection.fallbackReason) {
+    console.info(`[globe] '${id}' resolved to bundled Natural Earth (${selection.fallbackReason}).`);
   }
 
-  switch (id) {
+  let provider: Cesium.ImageryProvider;
+  switch (selection.resolvedStyle) {
     case "osm":
-      return new Cesium.OpenStreetMapImageryProvider({
+      provider = new Cesium.OpenStreetMapImageryProvider({
         url: "https://tile.openstreetmap.org/",
         credit: "© OpenStreetMap contributors",
       });
+      break;
     case "esri-world-imagery":
-      return new Cesium.UrlTemplateImageryProvider({
+      provider = new Cesium.UrlTemplateImageryProvider({
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         credit: "Esri, Maxar, Earthstar Geographics, USGS, AeroGRID, IGN, et al.",
         maximumLevel: 19,
       });
+      break;
     case "natural-earth-2":
-      // Cesium ships a tiny Natural Earth II tileset locally in its Assets.
-      // No network or token needed.
-      return naturalEarthImagery();
+      provider = naturalEarthImagery();
+      break;
     case "cesium-world-imagery":
-      return Cesium.IonImageryProvider.fromAssetId(2);
+      provider = await Cesium.IonImageryProvider.fromAssetId(2);
+      break;
     case "cesium-bathymetry":
-      // Bathymetry is a terrain layer, not imagery — the caller pairs it
-      // with one of the imagery options above. Return Natural Earth as the
-      // matching imagery default.
-      return naturalEarthImagery();
+      provider = naturalEarthImagery();
+      break;
     default:
-      return naturalEarthImagery();
+      provider = naturalEarthImagery();
   }
+  return { ...selection, provider };
 }
 
 /** Build a Cesium terrain provider if the style implies one. */

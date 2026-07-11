@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium } from "../lib/cesium";
-import { buildImagery, buildTerrain, DEFAULT_STYLE, type GlobeStyleId } from "../lib/globe-styles";
+import {
+  buildImagery,
+  buildTerrain,
+  DEFAULT_STYLE,
+  findStyle,
+  OFFLINE_STYLE,
+  type GlobeStyleId,
+} from "../lib/globe-styles";
 import { settings } from "../lib/settings";
 import { demoInspectAtPoint } from "../lib/demo";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
@@ -68,6 +75,8 @@ type Props = {
 
 const EARTH_RADIUS_M = 6_371_000;
 const INUNDATION_SEGMENTS = 40;
+type ImageryHealth = "connecting" | "ready" | "degraded" | "fallback" | "failed";
+const TILE_FAILURES_BEFORE_FALLBACK = 2;
 
 function themeColor(token: string, fallback: string): Cesium.Color {
   if (typeof document === "undefined") return Cesium.Color.fromCssColorString(fallback);
@@ -231,7 +240,11 @@ export function Globe({
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const inspectEntityRef = useRef<Cesium.Entity | null>(null);
-  const [imageryStatus, setImageryStatus] = useState<"loading" | "ready" | "fallback" | "error" | "offline">("loading");
+  const [imageryStatus, setImageryStatus] = useState<ImageryHealth>("connecting");
+  const [imageryMessage, setImageryMessage] = useState("Connecting to globe imagery…");
+  const [activeImageryStyle, setActiveImageryStyle] = useState<GlobeStyleId | null>(null);
+  const [networkOnline, setNetworkOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
+  const [imageryRetryNonce, setImageryRetryNonce] = useState(0);
   const [resolvedStyle, setResolvedStyle] = useState<GlobeStyleId>(styleId ?? DEFAULT_STYLE);
   // Bumped each time the Viewer is (re)created. React 19 StrictMode mounts →
   // unmounts → remounts in dev, which destroys the first Viewer; including this
@@ -337,7 +350,10 @@ export function Globe({
         });
     };
     load();
-    const onSettingsSaved = () => load();
+    const onSettingsSaved = () => {
+      load();
+      setImageryRetryNonce((nonce) => nonce + 1);
+    };
     window.addEventListener("tsunamisim:settings-saved", onSettingsSaved);
     return () => {
       cancelled = true;
@@ -346,21 +362,15 @@ export function Globe({
   }, [styleId]);
 
   useEffect(() => {
-    const goOffline = () => {
-      if (imageryStatus === "ready" || imageryStatus === "loading") {
-        setImageryStatus("offline");
-      }
-    };
-    const goOnline = () => {
-      if (imageryStatus === "offline") setImageryStatus("ready");
-    };
+    const goOffline = () => setNetworkOnline(false);
+    const goOnline = () => setNetworkOnline(true);
     window.addEventListener("offline", goOffline);
     window.addEventListener("online", goOnline);
     return () => {
       window.removeEventListener("offline", goOffline);
       window.removeEventListener("online", goOnline);
     };
-  }, [imageryStatus]);
+  }, []);
 
   // (Re)build the imagery + terrain providers when the style changes.
   // Uses a monotonic request id so rapid style swaps don't race — only the
@@ -368,64 +378,112 @@ export function Globe({
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
+    const scene = viewer.scene;
 
     imageryRequestIdRef.current += 1;
     const requestId = imageryRequestIdRef.current;
     let cancelled = false;
+    let removeTileErrorListener: (() => void) | undefined;
+    let fallbackStarted = false;
     const isStale = () => cancelled || imageryRequestIdRef.current !== requestId || !viewerRef.current;
-    setImageryStatus("loading");
+    setImageryStatus("connecting");
+    setImageryMessage(`Connecting to ${findStyle(resolvedStyle).label}…`);
+
+    const replaceBaseLayer = (provider: Cesium.ImageryProvider) => {
+      const previousBase = imageryLayerRef.current;
+      const newBase = viewer.imageryLayers.addImageryProvider(provider);
+      viewer.imageryLayers.lowerToBottom(newBase);
+      imageryLayerRef.current = newBase;
+      if (previousBase && previousBase !== newBase) {
+        viewer.imageryLayers.remove(previousBase, true);
+      }
+    };
+
+    const stopMonitoring = () => {
+      removeTileErrorListener?.();
+      removeTileErrorListener = undefined;
+    };
+
+    const monitorProvider = (provider: Cesium.ImageryProvider, localProvider: boolean) => {
+      stopMonitoring();
+      let failures = 0;
+      removeTileErrorListener = provider.errorEvent.addEventListener((error) => {
+        if (isStale()) return;
+        failures += 1;
+        console.warn(`[globe] tile provider error ${failures}`, error);
+        if (localProvider) {
+          setImageryStatus("failed");
+          setImageryMessage("Bundled Natural Earth imagery could not be read.");
+          return;
+        }
+        if (failures < TILE_FAILURES_BEFORE_FALLBACK) {
+          setImageryStatus("degraded");
+          setImageryMessage(`${findStyle(resolvedStyle).label} is losing tiles; retrying before fallback.`);
+          return;
+        }
+        void activateFallback(`${findStyle(resolvedStyle).label} stopped serving tiles.`);
+      });
+    };
+
+    async function activateFallback(reason: string) {
+      if (fallbackStarted || isStale()) return;
+      fallbackStarted = true;
+      setImageryStatus("degraded");
+      setImageryMessage(`${reason} Loading bundled Natural Earth II…`);
+      try {
+        const fallback = await buildImagery(OFFLINE_STYLE, { online: true, hasToken: true });
+        if (isStale()) return;
+        replaceBaseLayer(fallback.provider);
+        scene.terrainProvider = new Cesium.EllipsoidTerrainProvider();
+        setActiveImageryStyle(OFFLINE_STYLE);
+        monitorProvider(fallback.provider, true);
+        setImageryStatus("fallback");
+        setImageryMessage(`${reason} Using bundled Natural Earth II.`);
+      } catch (innerError) {
+        if (isStale()) return;
+        console.error("[globe] bundled Natural Earth fallback failed", innerError);
+        setImageryStatus("failed");
+        setImageryMessage("Online imagery and bundled Natural Earth II both failed.");
+      }
+    }
 
     (async () => {
       try {
-        const imagery = await buildImagery(resolvedStyle);
+        const imagery = await buildImagery(resolvedStyle, { online: networkOnline });
         if (isStale()) return;
         // Only remove the previous BASE layer — leave overlay layers
         // (the SWE snapshot) intact, otherwise a style swap mid-run
         // wipes the propagating-wave rendering. Cesium's
         // `baseLayer: false` Viewer option already suppresses the
         // implicit default base layer, so we don't need a sweep.
-        if (imageryLayerRef.current) {
-          viewer.imageryLayers.remove(imageryLayerRef.current, true);
-          imageryLayerRef.current = null;
+        replaceBaseLayer(imagery.provider);
+        const terrain = imagery.fallbackReason ? undefined : await buildTerrain(imagery.resolvedStyle);
+        if (isStale()) return;
+        scene.terrainProvider = terrain ?? new Cesium.EllipsoidTerrainProvider();
+        setActiveImageryStyle(imagery.resolvedStyle);
+        monitorProvider(imagery.provider, imagery.resolvedStyle === OFFLINE_STYLE);
+        if (imagery.fallbackReason === "offline") {
+          setImageryStatus("fallback");
+          setImageryMessage(`Offline — using bundled Natural Earth II instead of ${findStyle(resolvedStyle).label}.`);
+        } else if (imagery.fallbackReason === "missing-token") {
+          setImageryStatus("fallback");
+          setImageryMessage(`${findStyle(resolvedStyle).label} needs a Cesium token; using bundled Natural Earth II.`);
+        } else {
+          setImageryStatus("ready");
+          setImageryMessage(`${findStyle(resolvedStyle).label} ready.`);
         }
-        if (isStale()) return;
-        const newBase = viewer.imageryLayers.addImageryProvider(imagery);
-        // Keep the base layer at the bottom so overlays (SWE PNG, etc.) sit on top.
-        viewer.imageryLayers.lowerToBottom(newBase);
-        imageryLayerRef.current = newBase;
-        const terrain = await buildTerrain(resolvedStyle);
-        if (isStale()) return;
-        viewer.scene.terrainProvider = terrain ?? new Cesium.EllipsoidTerrainProvider();
-        setImageryStatus("ready");
       } catch (err) {
         if (isStale()) return;
-        console.warn("[globe] imagery/terrain load failed; falling back to Natural Earth.", err);
-        try {
-          const fallback = await buildImagery(DEFAULT_STYLE);
-          if (isStale()) return;
-          if (imageryLayerRef.current) {
-            viewer.imageryLayers.remove(imageryLayerRef.current, true);
-          }
-          const fallbackLayer = viewer.imageryLayers.addImageryProvider(fallback);
-          viewer.imageryLayers.lowerToBottom(fallbackLayer);
-          imageryLayerRef.current = fallbackLayer;
-          // Only surface the toast when the user explicitly chose a
-          // token-gated style (i.e. they pasted a token but it 401'd
-          // or upstream is down). For free style swaps no toast is needed.
-          const styleMeta = (await import("../lib/globe-styles")).findStyle(resolvedStyle);
-          setImageryStatus(styleMeta.requires_token ? "fallback" : "ready");
-        } catch (innerErr) {
-          if (isStale()) return;
-          console.error("[globe] Natural Earth fallback also failed", innerErr);
-          setImageryStatus("error");
-        }
+        console.warn("[globe] imagery/terrain initialization failed", err);
+        await activateFallback(`${findStyle(resolvedStyle).label} failed to initialize.`);
       }
     })();
 
     return () => {
       cancelled = true;
+      stopMonitoring();
     };
-  }, [resolvedStyle, viewerEpoch]);
+  }, [resolvedStyle, viewerEpoch, networkOnline, imageryRetryNonce]);
 
   // Pick mode: install a left-click handler that reports cartographic coords.
   useEffect(() => {
@@ -1478,7 +1536,12 @@ export function Globe({
 
   return (
     <>
-      <div className="app__globe-mount" ref={containerRef} />
+      <div
+        className="app__globe-mount"
+        ref={containerRef}
+        data-imagery-status={imageryStatus}
+        data-imagery-style={activeImageryStyle ?? "none"}
+      />
       {pickMode && (
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">
@@ -1588,27 +1651,34 @@ export function Globe({
           />
         </div>
       )}
-      {imageryStatus === "loading" && (
-        <div className="app__globe-status" data-status="loading">
-          Loading globe imagery…
+      {imageryStatus === "connecting" && (
+        <div className="app__globe-status" data-status="connecting" role="status" aria-live="polite">
+          {imageryMessage}
         </div>
       )}
-      {imageryStatus === "error" && (
-        <div className="app__globe-status" data-status="error">
-          Imagery failed to load — check your network.
+      {imageryStatus === "degraded" && (
+        <div className="app__globe-status" data-status="degraded" role="status" aria-live="polite">
+          <span>{imageryMessage}</span>
+          {networkOnline && resolvedStyle !== OFFLINE_STYLE && (
+            <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry provider</button>
+          )}
         </div>
       )}
       {imageryStatus === "fallback" && (
         <div className="app__globe-status" data-status="fallback" role="status" aria-live="polite">
-          Cesium ion imagery unavailable (invalid token or upstream error) — fell back to Natural Earth.
+          <span>{imageryMessage}</span>
+          {networkOnline && resolvedStyle !== OFFLINE_STYLE && (
+            <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry {findStyle(resolvedStyle).label}</button>
+          )}
         </div>
       )}
-      {imageryStatus === "offline" && (
-        <div className="app__globe-status" data-status="offline" role="status" aria-live="polite">
-          Offline — using cached tiles. Select Natural Earth II in Settings for full offline support.
+      {imageryStatus === "failed" && (
+        <div className="app__globe-status" data-status="failed" role="alert">
+          <span>{imageryMessage}</span>
+          <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry imagery</button>
         </div>
       )}
-      {!initial && !hazardCenter && imageryStatus === "ready" && (
+      {!initial && !hazardCenter && ["ready", "degraded", "fallback"].includes(imageryStatus) && (
         <div className="app__globe-hint" role="status" aria-live="polite">
           <span className="app__globe-hint-kicker">{domain === "tsunami" ? "Ready for a source" : "Ready for a target"}</span>
           <strong>{domain === "tsunami" ? "Select a preset or simulate a custom source." : "Choose an effects origin."}</strong>

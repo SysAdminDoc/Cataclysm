@@ -21,6 +21,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Added domain-transition smoke coverage plus a visually reviewed nuclear
   workspace baseline with an axe check; the active hazard switch now uses a
   theme-specific high-contrast foreground.
+- Offline startup, missing-token providers, initialization faults, and repeated
+  tile failures now converge on bundled Natural Earth II with explicit
+  connecting, ready, degraded, fallback, and failed health states. Retrying the
+  selected online provider preserves the active simulation workspace.
 
 ## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
 

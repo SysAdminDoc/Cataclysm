@@ -25,6 +25,49 @@ test.describe("Cataclysm browser preview", () => {
     await expect(canvas).toBeVisible({ timeout: 15_000 });
   });
 
+  test("starts directly on bundled imagery while offline", async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "onLine", {
+        configurable: true,
+        get: () => false,
+      });
+    });
+    await page.goto("/");
+
+    const globe = page.locator(".app__globe-mount");
+    await expect(globe).toHaveAttribute("data-imagery-status", "fallback", { timeout: 15_000 });
+    await expect(globe).toHaveAttribute("data-imagery-style", "natural-earth-2");
+    await expect(page.locator('.app__globe-status[data-status="fallback"]')).toContainText(
+      "Offline — using bundled Natural Earth II",
+    );
+
+    // A stable local fallback must not churn back through the provider effect.
+    await page.waitForTimeout(1_000);
+    await expect(globe).toHaveAttribute("data-imagery-status", "fallback");
+  });
+
+  test("falls back after tile failures and retries without losing scenario state", async ({ page }) => {
+    await page.route(/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery/i, (route) =>
+      route.abort("failed"),
+    );
+    await page.goto("/");
+
+    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    await expect(chicxulub).toBeVisible({ timeout: 10_000 });
+    await chicxulub.click();
+    await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+
+    const globe = page.locator(".app__globe-mount");
+    await expect(globe).toHaveAttribute("data-imagery-status", "fallback", { timeout: 20_000 });
+    await expect(globe).toHaveAttribute("data-imagery-style", "natural-earth-2");
+
+    await page.getByRole("button", { name: /Retry Esri World Imagery/i }).click();
+    await expect(globe).toHaveAttribute("data-imagery-status", "fallback", { timeout: 20_000 });
+    await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("tab", { name: "Results" }).click();
+    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible();
+  });
+
   test("preset selector lists at least one preset", async ({ page }) => {
     await page.goto("/");
     const presetButtons = page.locator(".preset-card");

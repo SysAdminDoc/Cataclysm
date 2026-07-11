@@ -438,27 +438,54 @@
   box-shadow: var(--shadow-md);
 }
 
-.app__globe-status[data-status="loading"]::before {
+.app__globe-status[data-status="connecting"]::before {
   content: "● ";
   color: var(--sapphire);
   animation: pulse 1.4s ease-in-out infinite;
 }
 
-.app__globe-status[data-status="error"]::before {
+.app__globe-status[data-status="failed"]::before {
   content: "▲ ";
-  color: var(--peach);
+  color: var(--danger);
 }
 
-.app__globe-status[data-status="fallback"] {
+.app__globe-status[data-status="degraded"],
+.app__globe-status[data-status="fallback"],
+.app__globe-status[data-status="failed"] {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   background: color-mix(in srgb, var(--peach) 12%, var(--mantle));
   border-color: var(--peach);
   color: var(--text);
-  max-width: 360px;
+  max-width: 520px;
   pointer-events: auto;
 }
+.app__globe-status[data-status="degraded"]::before,
 .app__globe-status[data-status="fallback"]::before {
   content: "⚠ ";
   color: var(--peach);
+}
+
+.app__globe-status[data-status="failed"] {
+  border-color: var(--danger);
+}
+
+.app__globe-status button {
+  flex: none;
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app__globe-status button:hover {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
 }
 
 .icon--flip {

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { findStyle, GLOBE_STYLES, DEFAULT_STYLE } from "../globe-styles";
+import {
+  findStyle,
+  GLOBE_STYLES,
+  DEFAULT_STYLE,
+  OFFLINE_STYLE,
+  resolveImageryStyle,
+} from "../globe-styles";
 
 describe("findStyle", () => {
   it("returns matching style by id", () => {
@@ -46,6 +52,40 @@ describe("findStyle", () => {
 describe("DEFAULT_STYLE", () => {
   it("is high-res Esri World Imagery (no token, crisp on zoom)", () => {
     expect(DEFAULT_STYLE).toBe("esri-world-imagery");
+  });
+});
+
+describe("resolveImageryStyle", () => {
+  it("uses bundled Natural Earth immediately when an online style starts offline", () => {
+    expect(resolveImageryStyle("esri-world-imagery", false, false)).toEqual({
+      requestedStyle: "esri-world-imagery",
+      resolvedStyle: OFFLINE_STYLE,
+      fallbackReason: "offline",
+    });
+  });
+
+  it("keeps bundled Natural Earth ready while offline", () => {
+    expect(resolveImageryStyle(OFFLINE_STYLE, false, false)).toEqual({
+      requestedStyle: OFFLINE_STYLE,
+      resolvedStyle: OFFLINE_STYLE,
+      fallbackReason: null,
+    });
+  });
+
+  it("makes a missing token an explicit local fallback", () => {
+    expect(resolveImageryStyle("cesium-world-imagery", true, false)).toEqual({
+      requestedStyle: "cesium-world-imagery",
+      resolvedStyle: OFFLINE_STYLE,
+      fallbackReason: "missing-token",
+    });
+  });
+
+  it("keeps the chosen online provider when prerequisites are healthy", () => {
+    expect(resolveImageryStyle("cesium-world-imagery", true, true)).toEqual({
+      requestedStyle: "cesium-world-imagery",
+      resolvedStyle: "cesium-world-imagery",
+      fallbackReason: null,
+    });
   });
 });
 
