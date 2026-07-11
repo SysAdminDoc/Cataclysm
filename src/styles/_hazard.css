@@ -185,3 +185,74 @@
   font-size: 0.8rem;
   color: var(--subtext);
 }
+
+.hazard__detonate {
+  appearance: none;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--peach);
+  background: color-mix(in srgb, var(--peach) 16%, transparent);
+  color: var(--peach);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hazard__detonate:hover {
+  background: color-mix(in srgb, var(--peach) 28%, transparent);
+}
+
+.hazard__timeline {
+  margin-top: 12px;
+}
+
+.hazard__timeline-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--subtext);
+  margin-bottom: 6px;
+}
+
+.hazard__timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--panel-border);
+}
+
+.hazard__timeline-list li {
+  position: relative;
+  padding: 4px 0 6px 12px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.hazard__timeline-list li::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-sm);
+  background: var(--subtext);
+}
+
+.hazard__timeline-list li[data-cat="radiation"]::before { background: var(--success); }
+.hazard__timeline-list li[data-cat="thermal"]::before { background: var(--peach); }
+.hazard__timeline-list li[data-cat="blast"]::before { background: var(--blue); }
+.hazard__timeline-list li[data-cat="firestorm"]::before { background: var(--danger); }
+.hazard__timeline-list li[data-cat="fallout"]::before { background: var(--mauve); }
+
+.hazard__timeline-time {
+  display: inline-block;
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+  color: var(--subtext);
+  margin-right: 6px;
+}

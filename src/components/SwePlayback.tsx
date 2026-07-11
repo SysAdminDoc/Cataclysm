@@ -61,12 +61,14 @@ type Status = "idle" | "running" | "ready" | "error";
  * resulting snapshots. Snapshot PNG data flows to the parent via `onSnapshot`
  * so the Globe component can paint it as an imagery layer.
  */
-const N_SNAPSHOTS = 24;
+// 60 snapshots over the 1-hour window give visibly smoother wave motion than
+// the old 24 (this only changes sampling cadence, not solver work).
+const N_SNAPSHOTS = 60;
 const SPEED_OPTIONS = [
-  { label: "0.5×", ms: 500 },
-  { label: "1×", ms: 250 },
-  { label: "2×", ms: 125 },
-  { label: "4×", ms: 62 },
+  { label: "0.5×", ms: 320 },
+  { label: "1×", ms: 160 },
+  { label: "2×", ms: 80 },
+  { label: "4×", ms: 40 },
 ] as const;
 
 function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): GaugeTimeSeries[] {
@@ -92,7 +94,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
-  const [cellsPerDeg, setCellsPerDeg] = useState(6);
+  // 8 cells/deg (up from 6) gives a finer wavefront and better coastline
+  // capture; still well within the solver's cell/step budget for a 1-hour run.
+  const [cellsPerDeg, setCellsPerDeg] = useState(8);
   const [streamProgress, setStreamProgress] = useState(0);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean } | null>(null);
   const [maxField, setMaxField] = useState<MaxFieldProduct | null>(null);

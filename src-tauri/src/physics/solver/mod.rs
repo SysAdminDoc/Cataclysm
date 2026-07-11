@@ -433,18 +433,21 @@ pub enum Colormap {
 /// transparent so the underlying Cesium globe shows through.
 pub(super) fn diverging_colormap(t: f64) -> (u8, u8, u8, u8) {
     let mag = t.abs();
-    let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
+    // Alpha ramp: mag^0.45 lifts small ripples into visibility a touch more
+    // than a plain sqrt while keeping calm water/land translucent, so the wave
+    // reads as a moving water surface rather than a faint stain. Cap 245.
+    let a = (mag.powf(0.45) * 245.0).clamp(0.0, 245.0) as u8;
     if t < 0.0 {
-        // Blue (sky) → cyan
-        let r = (40.0 + 80.0 * (1.0 - mag)) as u8;
-        let g = (180.0 + 60.0 * (1.0 - mag)) as u8;
+        // Deep ocean blue (trough) → lighter blue toward zero.
+        let r = (30.0 + 70.0 * (1.0 - mag)) as u8;
+        let g = (120.0 + 90.0 * (1.0 - mag)) as u8;
         let b = 255;
         (r, g, b, a)
     } else {
-        // Red → peach
+        // Crest: white-cyan foam near the leading edge → deep red at peak.
         let r = 255;
-        let g = (140.0 - 100.0 * mag) as u8;
-        let b = (100.0 - 90.0 * mag) as u8;
+        let g = (170.0 - 150.0 * mag) as u8;
+        let b = (140.0 - 130.0 * mag) as u8;
         (r, g, b, a)
     }
 }

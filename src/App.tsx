@@ -28,6 +28,8 @@ import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
+import { falloutRings } from "./hazards/nuclear/fallout";
+import type { NuclearEffects } from "./hazards/nuclear/physics";
 
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
 
@@ -204,6 +206,8 @@ export default function App() {
   const [hazardCenter, setHazardCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [nuclearInput, setNuclearInput] = useState<NuclearInput>({ yieldKt: 100, burstType: "airburst", populationDensity: 5000 });
   const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
+  const [windFromDeg, setWindFromDeg] = useState(270);
+  const [detonateNonce, setDetonateNonce] = useState(0);
   const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -356,6 +360,14 @@ export default function App() {
       : asteroidEngine.run(asteroidInput, center);
   }, [hazardMode, hazardCenter, nuclearInput, asteroidInput]);
   const inHazardMode = hazardMode !== "tsunami";
+
+  // Nuclear fallout plume polygons (surface bursts only), driven by wind.
+  const hazardPolygons = useMemo(() => {
+    if (hazardMode !== "nuclear" || !hazardCenter || !hazardResult) return null;
+    const eff = hazardResult.detail as NuclearEffects | undefined;
+    if (!eff?.fallout) return null;
+    return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
+  }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
   const cockpitMode = compareMode ? "Compare" : inspectMode ? "Inspect" : pickMode ? "Pick location" : "Explore";
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
   const timelineLabel = `${Math.round(timeS / 60)} min`;
@@ -761,6 +773,8 @@ export default function App() {
                 isochrones={sweIsochrones}
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
+                hazardPolygons={hazardPolygons}
+                detonateNonce={detonateNonce}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
@@ -793,6 +807,9 @@ export default function App() {
             onTogglePick={() => setPickMode((p) => !p)}
             pickActive={pickMode}
             result={hazardResult}
+            windFromDeg={windFromDeg}
+            onWindChange={setWindFromDeg}
+            onDetonate={() => setDetonateNonce((n) => n + 1)}
           />
         )}
         <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} />

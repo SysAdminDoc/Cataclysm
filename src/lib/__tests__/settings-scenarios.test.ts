@@ -57,7 +57,7 @@ describe("settings schema versioning", () => {
     const all = await settings.loadAll();
     expect(all.theme).toBe("latte");
     expect(all.colormap).toBe("cividis");
-    expect(all.globe_style).toBe("natural-earth-2");
+    expect(all.globe_style).toBe("esri-world-imagery");
     expect(JSON.parse(localStorage.getItem(LS_PREFIX + SCHEMA_VERSION_KEY)!)).toBe(
       SETTINGS_SCHEMA_VERSION,
     );

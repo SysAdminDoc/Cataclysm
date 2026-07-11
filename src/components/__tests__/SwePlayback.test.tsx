@@ -85,7 +85,7 @@ describe("SwePlayback", () => {
     act(() => {
       pushSnapshot?.(SNAPSHOTS[0]);
     });
-    expect(await screen.findByText("Streaming frame 1 / 24")).toBeInTheDocument();
+    expect(await screen.findByText("Streaming frame 1 / 60")).toBeInTheDocument();
     expect(onSnapshot).toHaveBeenCalledWith(SNAPSHOTS[0]);
 
     act(() => {

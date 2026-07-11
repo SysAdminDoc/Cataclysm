@@ -4,7 +4,8 @@
 // the shared Cesium globe.
 
 import { WEAPON_PRESETS, type AsteroidInput, type HazardResult, type NuclearInput } from "../hazards";
-import type { BurstType } from "../hazards/nuclear/physics";
+import type { BurstType, NuclearEffects } from "../hazards/nuclear/physics";
+import { calcTimeline } from "../hazards/nuclear/timeline";
 import type { TargetType } from "../hazards/asteroid/physics/types";
 
 type HazardMode = "nuclear" | "asteroid";
@@ -53,6 +54,9 @@ export function HazardControls({
   onTogglePick,
   pickActive,
   result,
+  windFromDeg,
+  onWindChange,
+  onDetonate,
 }: {
   mode: HazardMode;
   nuclear: NuclearInput;
@@ -63,7 +67,13 @@ export function HazardControls({
   onTogglePick: () => void;
   pickActive: boolean;
   result: HazardResult | null;
+  windFromDeg: number;
+  onWindChange: (deg: number) => void;
+  onDetonate: () => void;
 }) {
+  const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearEffects | undefined) : undefined;
+  const timeline = nuclearEffects ? calcTimeline(nuclearEffects) : [];
+  const hasFallout = Boolean(nuclearEffects?.fallout);
   return (
     <div className="section hazard">
       <div className="section__title">
@@ -138,6 +148,17 @@ export function HazardControls({
             onChange={(v) => onNuclearChange({ ...nuclear, populationDensity: v })}
             format={(v) => (v === 0 ? "off" : `${v.toLocaleString()} /km²`)}
           />
+          {hasFallout && (
+            <Slider
+              label="Wind from"
+              value={windFromDeg}
+              min={0}
+              max={359}
+              step={1}
+              onChange={onWindChange}
+              format={(v) => `${v.toFixed(0)}° (${["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(v / 45) % 8]})`}
+            />
+          )}
         </>
       ) : (
         <>
@@ -222,6 +243,24 @@ export function HazardControls({
               </li>
             ))}
           </ul>
+
+          <button type="button" className="hazard__detonate" onClick={onDetonate}>
+            ▶ Detonate — animate shockwave
+          </button>
+
+          {timeline.length > 0 && (
+            <div className="hazard__timeline">
+              <div className="hazard__timeline-title">Detonation timeline</div>
+              <ol className="hazard__timeline-list">
+                {timeline.map((ev, i) => (
+                  <li key={`${ev.time}-${i}`} data-cat={ev.category}>
+                    <span className="hazard__timeline-time">{ev.time}</span>
+                    <span className="hazard__timeline-desc">{ev.description}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </div>
       ) : (
         <p className="hazard__hint">Pick a location on the globe to model effects.</p>

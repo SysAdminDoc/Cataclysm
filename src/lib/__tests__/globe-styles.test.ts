@@ -44,8 +44,8 @@ describe("findStyle", () => {
 });
 
 describe("DEFAULT_STYLE", () => {
-  it("is local-first Natural Earth", () => {
-    expect(DEFAULT_STYLE).toBe("natural-earth-2");
+  it("is high-res Esri World Imagery (no token, crisp on zoom)", () => {
+    expect(DEFAULT_STYLE).toBe("esri-world-imagery");
   });
 });
 

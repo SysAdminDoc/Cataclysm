@@ -49,6 +49,11 @@ type Props = {
    *  ground ellipses at hazardCenter. Radii are in meters, largest-first. */
   hazardRings?: EffectRing[] | null;
   hazardCenter?: GeoPoint | null;
+  /** Fallout plume polygons (nuclear surface bursts): closed lon/lat rings. */
+  hazardPolygons?: { label: string; color: string; points: GeoPoint[] }[] | null;
+  /** Bumping this triggers a one-shot expanding shockwave animation from the
+   *  hazard center out to the outermost ring. */
+  detonateNonce?: number;
 };
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -180,6 +185,8 @@ export function Globe({
   isochrones,
   hazardRings,
   hazardCenter,
+  hazardPolygons,
+  detonateNonce,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -193,6 +200,9 @@ export function Globe({
   const sweLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const isochroneEntitiesRef = useRef<Cesium.Entity[]>([]);
   const hazardRingEntitiesRef = useRef<Cesium.Entity[]>([]);
+  const falloutEntitiesRef = useRef<Cesium.Entity[]>([]);
+  const shockEntityRef = useRef<Cesium.Entity | null>(null);
+  const shockRafRef = useRef<number | null>(null);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryRequestIdRef = useRef(0);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
@@ -698,6 +708,91 @@ export function Globe({
       (flyResult as Promise<unknown>).catch(() => {});
     }
   }, [hazardRings, hazardCenter, viewerEpoch]);
+
+  // Fallout plume polygons (nuclear surface bursts). Drawn as filled ground
+  // polygons under the effect rings.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    for (const e of falloutEntitiesRef.current) viewer.entities.remove(e);
+    falloutEntitiesRef.current = [];
+    if (!hazardPolygons || hazardPolygons.length === 0) return;
+    for (const poly of hazardPolygons) {
+      const degrees: number[] = [];
+      for (const p of poly.points) {
+        if (Number.isFinite(p.lat) && Number.isFinite(p.lon)) degrees.push(p.lon, p.lat);
+      }
+      if (degrees.length < 6) continue;
+      const color = Cesium.Color.fromCssColorString(poly.color);
+      falloutEntitiesRef.current.push(
+        viewer.entities.add({
+          name: poly.label,
+          description: poly.label,
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(degrees)),
+            material: color.withAlpha(0.22),
+            outline: true,
+            outlineColor: color.withAlpha(0.8),
+            height: 0,
+          },
+        }),
+      );
+    }
+  }, [hazardPolygons, viewerEpoch]);
+
+  // One-shot expanding shockwave animation on "Detonate". Grows a bright ring
+  // from the center out to the outermost hazard ring over ~2.4 s, fading out.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !detonateNonce || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
+    const maxR = Math.max(...hazardRings.map((r) => r.radiusM), 1);
+    const { lat, lon } = hazardCenter;
+    const position = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
+    const DURATION = 2400;
+    let start: number | null = null;
+    let radius = 1;
+    let alpha = 0.9;
+
+    if (shockEntityRef.current) viewer.entities.remove(shockEntityRef.current);
+    shockEntityRef.current = viewer.entities.add({
+      position,
+      ellipse: {
+        semiMajorAxis: new Cesium.CallbackProperty(() => radius, false),
+        semiMinorAxis: new Cesium.CallbackProperty(() => radius, false),
+        material: new Cesium.ColorMaterialProperty(
+          new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#f9e2af").withAlpha(alpha * 0.25), false),
+        ),
+        outline: true,
+        outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.WHITE.withAlpha(alpha), false),
+        outlineWidth: 3,
+        height: 0,
+      },
+    });
+
+    const tick = (now: number) => {
+      if (start === null) start = now;
+      const p = Math.min(1, (now - start) / DURATION);
+      const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      radius = Math.max(eased * maxR, 1);
+      alpha = p > 0.6 ? Math.max(0, 0.9 * (1 - (p - 0.6) / 0.4)) : 0.9;
+      viewer.scene.requestRender();
+      if (p < 1) {
+        shockRafRef.current = requestAnimationFrame(tick);
+      } else if (shockEntityRef.current) {
+        viewer.entities.remove(shockEntityRef.current);
+        shockEntityRef.current = null;
+      }
+    };
+    shockRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (shockRafRef.current !== null) cancelAnimationFrame(shockRafRef.current);
+      if (shockEntityRef.current && !viewer.isDestroyed()) {
+        viewer.entities.remove(shockEntityRef.current);
+        shockEntityRef.current = null;
+      }
+    };
+  }, [detonateNonce, hazardCenter, hazardRings, viewerEpoch]);
 
   // React to a new wavefront snapshot — update existing entities in place.
   useEffect(() => {

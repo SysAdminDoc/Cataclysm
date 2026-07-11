@@ -21,6 +21,9 @@ describe("HazardControls", () => {
         onTogglePick={noop}
         pickActive={false}
         result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
       />,
     );
     expect(screen.getByText(/pick a location/i)).toBeInTheDocument();
@@ -40,6 +43,9 @@ describe("HazardControls", () => {
         onTogglePick={noop}
         pickActive={false}
         result={result}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
       />,
     );
     // readout label from the engine
@@ -63,6 +69,9 @@ describe("HazardControls", () => {
         onTogglePick={onTogglePick}
         pickActive={false}
         result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
       />,
     );
     screen.getByRole("button", { name: /pick location on globe/i }).click();

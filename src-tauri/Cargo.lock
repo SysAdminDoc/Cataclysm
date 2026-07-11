@@ -308,6 +308,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cataclysm"
+version = "0.6.0"
+dependencies = [
+ "base64 0.22.1",
+ "bytemuck",
+ "keyring",
+ "png 0.17.16",
+ "pollster",
+ "proptest",
+ "rayon",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-shell",
+ "tauri-plugin-store",
+ "wgpu",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4167,26 +4187,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "tsunami-simulator"
-version = "0.5.0"
-dependencies = [
- "base64 0.22.1",
- "bytemuck",
- "keyring",
- "png 0.17.16",
- "pollster",
- "proptest",
- "rayon",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-shell",
- "tauri-plugin-store",
- "wgpu",
-]
 
 [[package]]
 name = "typeid"

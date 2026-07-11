@@ -22,7 +22,10 @@ export type GlobeStyleMeta = {
   requires_token: boolean;
 };
 
-export const DEFAULT_STYLE: GlobeStyleId = "natural-earth-2";
+// Esri World Imagery is high-resolution satellite (zoom to level 19) and needs
+// no token, so a fresh install shows a crisp Earth instead of the 2-level
+// Natural Earth raster. Natural Earth remains selectable as the offline option.
+export const DEFAULT_STYLE: GlobeStyleId = "esri-world-imagery";
 
 export const GLOBE_STYLES: GlobeStyleMeta[] = [
   {
@@ -100,7 +103,7 @@ export async function buildImagery(id: GlobeStyleId): Promise<Cesium.ImageryProv
       return new Cesium.UrlTemplateImageryProvider({
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         credit: "Esri, Maxar, Earthstar Geographics, USGS, AeroGRID, IGN, et al.",
-        maximumLevel: 17,
+        maximumLevel: 19,
       });
     case "natural-earth-2":
       // Cesium ships a tiny Natural Earth II tileset locally in its Assets.
