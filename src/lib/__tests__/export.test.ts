@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { exportCzml, exportGaugeCsv, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
 
 afterEach(() => {
@@ -277,6 +277,27 @@ describe("exportKml", () => {
 });
 
 describe("exportGaugeCsv", () => {
+  it.each([
+    ["=1+1", "'=1+1"],
+    ["+SUM(1,1)", "\"'+SUM(1,1)\""],
+    ["-2+3", "'-2+3"],
+    ["@SUM(A1:A2)", "'@SUM(A1:A2)"],
+    ["\t=1+1", "\"'\t=1+1\""],
+    ["\r=1+1", "\"'\r=1+1\""],
+    ["\n=1+1", "\"'\n=1+1\""],
+    ["＝1+1", "'＝1+1"],
+    ["＋SUM(A1:A2)", "'＋SUM(A1:A2)"],
+    ["－2+3", "'－2+3"],
+    ["＠SUM(A1:A2)", "'＠SUM(A1:A2)"],
+  ])("neutralizes spreadsheet formula initiator %j", (input, expected) => {
+    expect(encodeSpreadsheetSafeCsvText(input)).toBe(expected);
+  });
+
+  it("leaves ordinary text and numeric-looking text unchanged", () => {
+    expect(encodeSpreadsheetSafeCsvText("Tokyo Bay")).toBe("Tokyo Bay");
+    expect(encodeSpreadsheetSafeCsvText("12.5")).toBe("12.5");
+  });
+
   it("exports CSV with correct headers and row format", async () => {
     const getBlob = mockDownload();
     const series: GaugeTimeSeries[] = [
@@ -320,6 +341,22 @@ describe("exportGaugeCsv", () => {
     exportGaugeCsv(series, "test", "test");
     const csv = await getBlob()!.text();
     expect(csv).toContain('"Port, East Side"');
+  });
+
+  it("neutralizes malicious gauge names and provenance text in the exported file", async () => {
+    const getBlob = mockDownload();
+    const series: GaugeTimeSeries[] = [
+      {
+        gauge: { id: "g1", name: "=HYPERLINK(\"https://invalid.example\")", lat_deg: -1, lon_deg: 2 },
+        samples: [{ time_s: 0, eta_m: -0.25 }],
+      },
+    ];
+
+    exportGaugeCsv(series, "+CMD", "＠external");
+    const csv = await getBlob()!.text();
+    expect(csv).toContain("\"'=HYPERLINK(\"\"https://invalid.example\"\")\"");
+    expect(csv).toContain("'+CMD,'＠external");
+    expect(csv).toContain(",-1,2,0.0,-0.2500,");
   });
 
   it("includes multiple gauges in a single CSV", async () => {

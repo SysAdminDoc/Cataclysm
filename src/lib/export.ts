@@ -713,11 +713,11 @@ export function exportGaugeCsv(
   const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source";
   const rows: string[] = [header];
   for (const ts of series) {
-    const name = csvEscape(ts.gauge.name);
+    const name = encodeSpreadsheetSafeCsvText(ts.gauge.name);
     const lat = round5(ts.gauge.lat_deg);
     const lon = round5(ts.gauge.lon_deg);
-    const mode = csvEscape(solverMode);
-    const bathy = csvEscape(bathymetrySource);
+    const mode = encodeSpreadsheetSafeCsvText(solverMode);
+    const bathy = encodeSpreadsheetSafeCsvText(bathymetrySource);
     for (const s of ts.samples) {
       rows.push(`${name},${lat},${lon},${s.time_s.toFixed(1)},${s.eta_m.toFixed(4)},${mode},${bathy}`);
     }
@@ -728,11 +728,21 @@ export function exportGaugeCsv(
   return true;
 }
 
-function csvEscape(s: string): string {
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return '"' + s.replace(/"/g, '""') + '"';
+const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n\uFF1D\uFF0B\uFF0D\uFF20]/u;
+
+/**
+ * Encode an untrusted text cell for CSV consumed by desktop spreadsheets.
+ * A leading apostrophe forces text interpretation in Excel and LibreOffice;
+ * ASCII/full-width formula initiators and leading controls are neutralized
+ * before RFC 4180 quoting. Trusted numeric columns deliberately bypass this
+ * encoder so negative and scientific values remain machine-readable numbers.
+ */
+export function encodeSpreadsheetSafeCsvText(value: string): string {
+  const safe = SPREADSHEET_FORMULA_PREFIX.test(value) ? `'${value}` : value;
+  if (/[",\t\r\n]/u.test(safe)) {
+    return '"' + safe.replace(/"/g, '""') + '"';
   }
-  return s;
+  return safe;
 }
 
 function circlePolygon(lat: number, lon: number, radius_m: number, n = 32): number[][] {

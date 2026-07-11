@@ -25,6 +25,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   tile failures now converge on bundled Natural Earth II with explicit
   connecting, ready, degraded, fallback, and failed health states. Retrying the
   selected online provider preserves the active simulation workspace.
+- Gauge CSV exports now neutralize ASCII and full-width spreadsheet formula
+  initiators in every text column while preserving trusted numeric columns for
+  machine-readable round trips.
 
 ## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
 
