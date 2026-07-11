@@ -61,6 +61,7 @@ $RECYCLE.BIN/
 # --- Playwright ---
 test-results/
 playwright-report/
+artifacts/visual-reference/
 
 # --- Logs ---
 *.log

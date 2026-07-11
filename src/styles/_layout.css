@@ -106,6 +106,33 @@ a {
   background: var(--workspace-bg);
 }
 
+/* HR-00 capture mode is activated only after the runner configures the normal
+   workflow. It captures a true full-resolution canvas, never an upscaled crop. */
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "globe";
+}
+
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] > :not(.app__globe),
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__viewport-hud,
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__viewport-layers,
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__viewport-legend,
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__viewport-telemetry {
+  display: none !important;
+}
+
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__globe-hint,
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__globe-status {
+  display: none !important;
+}
+
+html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .app__globe {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+}
+
 .app__statusbar {
   grid-area: status;
   display: flex;

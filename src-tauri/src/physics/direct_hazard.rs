@@ -1430,4 +1430,144 @@ mod tests {
         assert!(json["detail"]["psi20"].is_number());
         assert!(json["detail"]["timeline"].is_array());
     }
+
+    #[test]
+    fn capture_fixtures_are_exact_rust_products() {
+        fn assert_fixture(expected: &serde_json::Value, actual: &serde_json::Value, path: &str) {
+            match (expected, actual) {
+                (serde_json::Value::Number(left), serde_json::Value::Number(right)) => {
+                    let left = left.as_f64().unwrap();
+                    let right = right.as_f64().unwrap();
+                    let tolerance = 1e-12 * left.abs().max(right.abs()).max(1.0);
+                    assert!(
+                        (left - right).abs() <= tolerance,
+                        "{path}: {left} != {right}"
+                    );
+                }
+                (serde_json::Value::Array(left), serde_json::Value::Array(right)) => {
+                    assert_eq!(left.len(), right.len(), "{path}: array length");
+                    for (index, (left, right)) in left.iter().zip(right).enumerate() {
+                        assert_fixture(left, right, &format!("{path}[{index}]"));
+                    }
+                }
+                (serde_json::Value::Object(left), serde_json::Value::Object(right)) => {
+                    assert_eq!(left.len(), right.len(), "{path}: object length");
+                    for (key, left) in left {
+                        assert_fixture(
+                            left,
+                            right.get(key).unwrap_or(&serde_json::Value::Null),
+                            &format!("{path}.{key}"),
+                        );
+                    }
+                }
+                _ => assert_eq!(expected, actual, "{path}"),
+            }
+        }
+        let expected: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../src/data/direct-hazard-capture-fixtures.json"
+        ))
+        .unwrap();
+        let asteroid = |center,
+                        diameter_m,
+                        density_kg_m3,
+                        velocity_km_s,
+                        angle_deg,
+                        target_type,
+                        water_depth_m| {
+            serde_json::to_value(
+                simulate_asteroid_hazard(AsteroidHazardRequest {
+                    center,
+                    diameter_m,
+                    density_kg_m3,
+                    velocity_km_s,
+                    angle_deg,
+                    target_type,
+                    water_depth_m,
+                    beach_slope_rad: 0.02,
+                })
+                .unwrap(),
+            )
+            .unwrap()
+        };
+        assert_fixture(
+            &expected["asteroid-entry"],
+            &asteroid(
+                HazardCenter {
+                    lat: 42.5,
+                    lon: -102.5,
+                },
+                19.0,
+                3_300.0,
+                19.0,
+                18.0,
+                AsteroidTargetType::SedimentaryRock,
+                0.0,
+            ),
+            "asteroid-entry",
+        );
+        assert_fixture(
+            &expected["asteroid-land-impact"],
+            &asteroid(
+                HazardCenter {
+                    lat: 35.68,
+                    lon: 139.76,
+                },
+                300.0,
+                4_000.0,
+                20.0,
+                45.0,
+                AsteroidTargetType::SedimentaryRock,
+                0.0,
+            ),
+            "asteroid-land-impact",
+        );
+        assert_fixture(
+            &expected["asteroid-ocean-impact"],
+            &asteroid(
+                HazardCenter {
+                    lat: 0.0,
+                    lon: -140.0,
+                },
+                500.0,
+                3_000.0,
+                20.0,
+                45.0,
+                AsteroidTargetType::Water,
+                4_000.0,
+            ),
+            "asteroid-ocean-impact",
+        );
+        for (id, burst_type, center) in [
+            (
+                "nuclear-airburst",
+                NuclearBurstType::Airburst,
+                HazardCenter {
+                    lat: 35.68,
+                    lon: 139.76,
+                },
+            ),
+            (
+                "nuclear-surface-burst",
+                NuclearBurstType::Surface,
+                HazardCenter {
+                    lat: 40.71,
+                    lon: -74.01,
+                },
+            ),
+        ] {
+            let actual = serde_json::to_value(
+                simulate_nuclear_hazard(NuclearHazardRequest {
+                    center,
+                    yield_kt: 100.0,
+                    burst_type,
+                    height_m: None,
+                    fission_pct: 50.0,
+                    population_density: 0.0,
+                })
+                .unwrap(),
+            )
+            .unwrap();
+            assert_fixture(&expected[id], &actual, id);
+        }
+    }
 }

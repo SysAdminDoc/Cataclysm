@@ -200,6 +200,7 @@ npm run dev                # browser preview with deterministic demo data
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
+npm run capture:references # regenerate 12-scene 1440p/4K visual candidates + telemetry
 npm run tauri:build        # verified GPU-enabled installer(s) + signed artifact manifest
 ```
 
@@ -213,6 +214,20 @@ binary with GPU support, performs a non-visual capability smoke, and writes
 Cargo features and SHA-256 digest of every platform artifact. Systems without a
 supported adapter continue through the existing CPU fallback instead of losing
 simulation capability.
+
+The strict release gate also renders 24 unmasked, offline-safe reference frames
+from fixed scenario/time/effect/camera seeds. Candidate PNGs and telemetry are
+written under ignored `artifacts/visual-reference/`; the tracked hash locks are
+validated by `npm run verify:reference-locks`. A visual change is approved one
+frame at a time, for example:
+
+```bash
+npm run approve:reference -- --scene orbit-global --resolution 1440p --approve orbit-global@1440p --reason "Reviewed atmosphere change"
+```
+
+Wildcard, multi-frame, mismatched, and reason-free approvals fail before
+rendering. Browser-only direct-effect reference frames consume frozen products
+serialized by Rust and checked against Rust on every test run.
 
 To bake a Cesium ion token at build time, `cp .env.example .env` and paste
 it in; otherwise leave it blank and paste at runtime in **Settings**.

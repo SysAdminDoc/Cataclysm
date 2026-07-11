@@ -5,6 +5,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 ## [Unreleased]
 
 ### Changed — trustworthy accelerated releases
+- Added an HR-00 visual-truth gate with 12 fixed Earth/hazard scenes at true
+  2560×1440 and 3840×2160. Unmasked captures fix scenario time, effect phase,
+  UTC, camera, exposure, quality, and bundled Earth assets; sidecars record
+  GPU/WebGL, frame timing, renderer, sun vector, exact canvas dimensions,
+  source/request/fixture hashes, and asset provenance. Twenty-four hash locks
+  require one-scene, one-resolution review with a reason instead of blanket
+  baseline replacement; direct-hazard capture fixtures are exact Rust products.
 - Asteroid and nuclear direct-effect products now come exclusively from Rust
   commands, including rings, readouts, casualties, fallout dimensions, and the
   detonation timeline. Frozen parity fixtures cover the former TypeScript

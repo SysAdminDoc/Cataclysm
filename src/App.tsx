@@ -42,6 +42,7 @@ import {
   probeSurfaceLocal,
   surfaceBurstTypeFromSurface,
 } from "./lib/surface";
+import directHazardCaptureFixtures from "./data/direct-hazard-capture-fixtures.json";
 
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
 type DirectHazardMode = Exclude<HazardMode, "tsunami">;
@@ -254,6 +255,14 @@ export default function App() {
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const inTauri = useMemo(isTauri, []);
+  const referenceCaptureMode = useMemo(
+    () => new URLSearchParams(window.location.search).get("referenceCapture") === "1",
+    [],
+  );
+  const referenceCaptureSceneId = useMemo(
+    () => new URLSearchParams(window.location.search).get("referenceScene"),
+    [],
+  );
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
@@ -408,8 +417,16 @@ export default function App() {
   // response from an earlier slider value from replacing the current one.
   useEffect(() => {
     const requestId = ++hazardRequestId.current;
-    if (hazardMode === "tsunami" || !hazardCenter || !inTauri) {
+    if (hazardMode === "tsunami" || !hazardCenter) {
       setHazardResult(null);
+      setHazardPending(false);
+      return;
+    }
+    if (!inTauri) {
+      const fixture = referenceCaptureMode && referenceCaptureSceneId
+        ? (directHazardCaptureFixtures as Record<string, HazardResult>)[referenceCaptureSceneId]
+        : undefined;
+      setHazardResult(fixture?.kind === hazardMode ? structuredClone(fixture) : null);
       setHazardPending(false);
       return;
     }
@@ -459,7 +476,16 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [hazardMode, hazardCenter, inTauri, nuclearInput, asteroidInput, showToast]);
+  }, [
+    hazardMode,
+    hazardCenter,
+    inTauri,
+    nuclearInput,
+    asteroidInput,
+    referenceCaptureMode,
+    referenceCaptureSceneId,
+    showToast,
+  ]);
   // Nuclear fallout plume polygons (surface bursts only), driven by wind.
   const hazardPolygons = useMemo(() => {
     if (hazardMode !== "nuclear" || !hazardCenter || !hazardResult) return null;
@@ -480,7 +506,7 @@ export default function App() {
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
   const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
   const modelStatus = inHazardMode
-    ? !inTauri && hazardCenter
+    ? !inTauri && hazardCenter && !hazardResult
       ? "Desktop physics required"
       : hazardPending
       ? "Computing effects"
@@ -579,7 +605,12 @@ export default function App() {
   }
 
   return (
-    <div className="app" data-compare={compareMode ? "true" : "false"} data-domain={hazardMode}>
+    <div
+      className="app"
+      data-compare={compareMode ? "true" : "false"}
+      data-domain={hazardMode}
+      data-reference-capture={referenceCaptureMode ? "true" : "false"}
+    >
       <a className="skip-link" href="#main-globe">Skip to globe</a>
       {toast && (
         <div className="app-toast" data-tone={toast.tone} role="alert" aria-live="assertive">

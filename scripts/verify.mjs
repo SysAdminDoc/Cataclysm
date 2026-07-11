@@ -383,10 +383,14 @@ if (docsOnly) {
   process.exit(0);
 }
 runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"]);
+runNpm("HR-00 reference baseline contract", ["run", "verify:reference-locks"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);
 runNpm("ESLint", ["run", "lint"]);
 runNpm("Vitest unit suite", ["run", "test:unit"]);
 runNpm("Production web build", ["run", "build"]);
+if (strictRustPolicy) {
+  runNpm("HR-00 deterministic 1440p/4K capture matrix", ["run", "verify:references"]);
+}
 runNpm("npm audit", ["audit", "--audit-level=moderate"]);
 runNpm("Playwright browser preview suite", ["run", "test:e2e"]);
 

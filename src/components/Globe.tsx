@@ -11,10 +11,17 @@ import {
 } from "../lib/globe-styles";
 import { settings } from "../lib/settings";
 import {
+  getActiveEarthSession,
   publishEarthSession,
   type EarthAssetHealth,
   type EarthSessionSnapshot,
 } from "../lib/earth-assets";
+import {
+  REFERENCE_CAPTURE_EVENT,
+  referenceCaptureEnabled,
+  type ReferenceCaptureView,
+} from "../lib/reference-capture";
+import { applyRendererQualityProfile } from "../rendering/quality-profiles";
 import { demoInspectAtPoint } from "../lib/demo";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type {
@@ -341,6 +348,79 @@ export function Globe({
       viewer.camera.changed.removeEventListener(updateTelemetry);
     };
   }, [onCameraTelemetry, viewerEpoch]);
+
+  // Deterministic, query-gated bridge for the visual reference suite. It owns
+  // only clock/camera state and reports the resolved Earth session; scientific
+  // scenario values still enter through the normal application workflow.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewerEpoch === 0 || !primary || !referenceCaptureEnabled()) return;
+    const applyReferenceView = (event: Event) => {
+      const view = (event as CustomEvent<ReferenceCaptureView>).detail;
+      if (!view?.sceneId || !Number.isFinite(view.seed)) return;
+      document.documentElement.dataset.referenceEventReceived = view.sceneId;
+      const currentTime = Cesium.JulianDate.fromIso8601(view.utc);
+      viewer.clock.currentTime = currentTime;
+      viewer.clock.shouldAnimate = false;
+      viewer.scene.requestRenderMode = true;
+      viewer.scene.maximumRenderTimeChange = Number.POSITIVE_INFINITY;
+      const quality = applyRendererQualityProfile(viewer, view.qualityTier, view.exposure);
+      if (viewer.camera.frustum instanceof Cesium.PerspectiveFrustum) {
+        viewer.camera.frustum.fov = Cesium.Math.toRadians(view.camera.verticalFovDeg);
+      }
+      viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(
+          view.camera.lon,
+          view.camera.lat,
+          view.camera.altitudeM,
+        ),
+        orientation: {
+          heading: Cesium.Math.toRadians(view.camera.headingDeg),
+          pitch: Cesium.Math.toRadians(view.camera.pitchDeg),
+          roll: Cesium.Math.toRadians(view.camera.rollDeg),
+        },
+      });
+      viewer.resize();
+      viewer.scene.requestRender();
+      const position = viewer.camera.positionCartographic;
+      const sun = Cesium.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(
+        currentTime,
+        new Cesium.Cartesian3(),
+      );
+      window.__CATACLYSM_REFERENCE_CAPTURE__ = {
+        ...view,
+        ready: true,
+        renderer: "CesiumJS 1.143.0",
+        earthSession: getActiveEarthSession(),
+        sunPositionEciM: { x: sun.x, y: sun.y, z: sun.z },
+        quality,
+        actualCamera: {
+          lat: Cesium.Math.toDegrees(position.latitude),
+          lon: Cesium.Math.toDegrees(position.longitude),
+          altitudeM: position.height,
+          headingDeg: Cesium.Math.toDegrees(viewer.camera.heading),
+          pitchDeg: Cesium.Math.toDegrees(viewer.camera.pitch),
+          rollDeg: Cesium.Math.toDegrees(viewer.camera.roll),
+          verticalFovDeg: viewer.camera.frustum instanceof Cesium.PerspectiveFrustum
+            ? Cesium.Math.toDegrees(viewer.camera.frustum.fov ?? Cesium.Math.toRadians(view.camera.verticalFovDeg))
+            : view.camera.verticalFovDeg,
+        },
+      };
+    };
+
+    document.documentElement.dataset.referenceBridgeReady = "true";
+    window.__CATACLYSM_APPLY_REFERENCE_VIEW__ = (view) => {
+      applyReferenceView(new CustomEvent(REFERENCE_CAPTURE_EVENT, { detail: view }));
+    };
+    window.addEventListener(REFERENCE_CAPTURE_EVENT, applyReferenceView);
+    return () => {
+      window.removeEventListener(REFERENCE_CAPTURE_EVENT, applyReferenceView);
+      window.__CATACLYSM_REFERENCE_CAPTURE__ = undefined;
+      window.__CATACLYSM_APPLY_REFERENCE_VIEW__ = undefined;
+      delete document.documentElement.dataset.referenceBridgeReady;
+      delete document.documentElement.dataset.referenceEventReceived;
+    };
+  }, [primary, viewerEpoch]);
 
   // Resolve which globe style we should be using — prop override, persisted
   // setting, or DEFAULT_STYLE. Listens for `tsunamisim:settings-saved`
@@ -888,6 +968,13 @@ export function Globe({
     );
 
     // Frame the outermost ring: pull the camera back to ~3× its radius.
+    // HR-00 applies an exact camera after this renderer product is installed.
+    // A still-running flyTo would race that pose and make otherwise identical
+    // captures land on different frames.
+    if (referenceCaptureEnabled()) {
+      viewer.scene.requestRender();
+      return;
+    }
     const flyResult = viewer.flyTo(hazardRingEntitiesRef.current, {
       duration: 1.2,
       offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-55), Math.max(outerRadius * 3.2, 20000)),
@@ -937,6 +1024,9 @@ export function Globe({
     const { lat, lon } = hazardCenter;
     const position = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
     const DURATION = 2400;
+    const capturePhaseMs = referenceCaptureEnabled()
+      ? window.__CATACLYSM_REFERENCE_CAPTURE__?.effectTimeMs
+      : undefined;
     let start: number | null = null;
     let radius = 1;
     let alpha = 0.9;
@@ -971,7 +1061,14 @@ export function Globe({
         shockEntityRef.current = null;
       }
     };
-    shockRafRef.current = requestAnimationFrame(tick);
+    if (capturePhaseMs !== undefined) {
+      start = 0;
+      tick(capturePhaseMs);
+      if (shockRafRef.current !== null) cancelAnimationFrame(shockRafRef.current);
+      shockRafRef.current = null;
+    } else {
+      shockRafRef.current = requestAnimationFrame(tick);
+    }
 
     return () => {
       if (shockRafRef.current !== null) cancelAnimationFrame(shockRafRef.current);
@@ -1019,6 +1116,9 @@ export function Globe({
 
     const DESCENT_MS = 5000;
     const total = DESCENT_MS + (isWater ? 5200 : 2600);
+    const capturePhaseMs = referenceCaptureEnabled()
+      ? window.__CATACLYSM_REFERENCE_CAPTURE__?.effectTimeMs
+      : undefined;
 
     // Mutable animation state read by the CallbackProperties below.
     let curPos = startHigh.clone();
@@ -1197,7 +1297,14 @@ export function Globe({
         viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
       }
     };
-    impactRafRef.current = requestAnimationFrame(tick);
+    if (capturePhaseMs !== undefined) {
+      startT = 0;
+      tick(capturePhaseMs);
+      if (impactRafRef.current !== null) cancelAnimationFrame(impactRafRef.current);
+      impactRafRef.current = null;
+    } else {
+      impactRafRef.current = requestAnimationFrame(tick);
+    }
 
     return () => {
       if (impactRafRef.current !== null) cancelAnimationFrame(impactRafRef.current);

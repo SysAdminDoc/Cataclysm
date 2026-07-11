@@ -24,6 +24,10 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "capture:screenshots": "node scripts/capture-screenshots.mjs",
+    "capture:references": "node scripts/capture-reference-scenes.mjs --record",
+    "verify:references": "node scripts/capture-reference-scenes.mjs --verify --skip-build",
+    "verify:reference-locks": "node scripts/verify-reference-baselines.mjs",
+    "approve:reference": "node scripts/capture-reference-scenes.mjs --record",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "node scripts/build-release.mjs"

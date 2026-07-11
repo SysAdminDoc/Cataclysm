@@ -1,0 +1,718 @@
+{
+  "asteroid-entry": {
+    "authority": "rust",
+    "casualties": null,
+    "center": {
+      "lat": 42.5,
+      "lon": -102.5
+    },
+    "detail": {
+      "atmosphericEntry": {
+        "airburstAltitude": 29005.84966775951,
+        "airburstEnergy": 1659585761646078.5,
+        "breakupAltitude": 32056.720127519922,
+        "impactVelocity": 18279.604812724276,
+        "reachesGround": false
+      },
+      "crater": null,
+      "fireballRadiusM": 236.78992995197615,
+      "impactorMassKg": 11851501.206034815,
+      "kineticEnergyJ": 2139195967689284.0,
+      "megatons": 0.5112801070003069,
+      "radiusSevereDamageM": 1.0,
+      "radiusTotalDestructionM": 1.0,
+      "radiusWindowBreakageM": 1.0,
+      "seismicMagnitude": 4.327399799106979,
+      "thermalRadiusFirstDegreeM": 1.0,
+      "thermalRadiusThirdDegreeM": 1.0,
+      "tsunami": {
+        "amplitudeAtDistance": 0.0,
+        "applies": false,
+        "arrivalTime": 0.0,
+        "cavityDepth": 0.0,
+        "cavityDiameter": 0.0,
+        "initialAmplitude": 0.0,
+        "runupHeight": 0.0
+      }
+    },
+    "kind": "asteroid",
+    "modelVersion": "asteroid-direct-1.0.0",
+    "readout": [
+      {
+        "hint": null,
+        "label": "Impact energy",
+        "value": "511 kt"
+      },
+      {
+        "hint": "burst @ 29.01 km",
+        "label": "Reaches ground",
+        "value": "No (airburst)"
+      },
+      {
+        "hint": null,
+        "label": "Seismic magnitude",
+        "value": "M 4.3"
+      },
+      {
+        "hint": null,
+        "label": "Fireball radius",
+        "value": "237 m"
+      },
+      {
+        "hint": null,
+        "label": "20 psi radius",
+        "value": "1 m"
+      }
+    ],
+    "rings": [
+      {
+        "category": "fireball",
+        "color": "#f5e0dc",
+        "description": "Thermal fireball radius.",
+        "label": "Fireball",
+        "radiusM": 236.78992995197615
+      },
+      {
+        "category": "thermal",
+        "color": "#f5c2e7",
+        "description": "First-degree burns to exposed skin.",
+        "label": "1st° burns",
+        "radiusM": 1.0
+      },
+      {
+        "category": "blast",
+        "color": "#f9e2af",
+        "description": "Glass shatters; light injuries.",
+        "label": "Window breakage (1 psi)",
+        "radiusM": 1.0
+      },
+      {
+        "category": "thermal",
+        "color": "#fab387",
+        "description": "Third-degree burns; widespread ignition.",
+        "label": "3rd° burns",
+        "radiusM": 1.0
+      },
+      {
+        "category": "blast",
+        "color": "#cba6f7",
+        "description": "Most buildings collapse.",
+        "label": "Severe damage (7 psi)",
+        "radiusM": 1.0
+      },
+      {
+        "category": "blast",
+        "color": "#89b4fa",
+        "description": "Reinforced structures destroyed.",
+        "label": "Total destruction (20 psi)",
+        "radiusM": 1.0
+      }
+    ]
+  },
+  "asteroid-land-impact": {
+    "authority": "rust",
+    "casualties": null,
+    "center": {
+      "lat": 35.68,
+      "lon": 139.76
+    },
+    "detail": {
+      "atmosphericEntry": {
+        "airburstAltitude": 0.0,
+        "airburstEnergy": 8.474674813161789e+18,
+        "breakupAltitude": 32927.74205247725,
+        "impactVelocity": 19203.92438194841,
+        "reachesGround": true
+      },
+      "crater": {
+        "craterDepth": 625.4478467171882,
+        "finalDiameter": 5922.093285090789,
+        "isComplex": true
+      },
+      "fireballRadiusM": 4077.597395706634,
+      "impactorMassKg": 56548667764.61628,
+      "kineticEnergyJ": 1.1309733552923257e+19,
+      "megatons": 2703.0911933372986,
+      "radiusSevereDamageM": 82790.08495423695,
+      "radiusTotalDestructionM": 49985.08806052699,
+      "radiusWindowBreakageM": 268687.7651574273,
+      "seismicMagnitude": 6.8118424385556535,
+      "thermalRadiusFirstDegreeM": 75996.13097063318,
+      "thermalRadiusThirdDegreeM": 46461.84360577518,
+      "tsunami": {
+        "amplitudeAtDistance": 0.0,
+        "applies": false,
+        "arrivalTime": 0.0,
+        "cavityDepth": 0.0,
+        "cavityDiameter": 0.0,
+        "initialAmplitude": 0.0,
+        "runupHeight": 0.0
+      }
+    },
+    "kind": "asteroid",
+    "modelVersion": "asteroid-direct-1.0.0",
+    "readout": [
+      {
+        "hint": null,
+        "label": "Impact energy",
+        "value": "2703.1 Mt"
+      },
+      {
+        "hint": null,
+        "label": "Reaches ground",
+        "value": "Yes"
+      },
+      {
+        "hint": null,
+        "label": "Seismic magnitude",
+        "value": "M 6.8"
+      },
+      {
+        "hint": null,
+        "label": "Fireball radius",
+        "value": "4.08 km"
+      },
+      {
+        "hint": null,
+        "label": "20 psi radius",
+        "value": "49.99 km"
+      },
+      {
+        "hint": "complex crater",
+        "label": "Crater diameter",
+        "value": "5.92 km"
+      }
+    ],
+    "rings": [
+      {
+        "category": "blast",
+        "color": "#f9e2af",
+        "description": "Glass shatters; light injuries.",
+        "label": "Window breakage (1 psi)",
+        "radiusM": 268687.7651574273
+      },
+      {
+        "category": "blast",
+        "color": "#cba6f7",
+        "description": "Most buildings collapse.",
+        "label": "Severe damage (7 psi)",
+        "radiusM": 82790.08495423695
+      },
+      {
+        "category": "thermal",
+        "color": "#f5c2e7",
+        "description": "First-degree burns to exposed skin.",
+        "label": "1st° burns",
+        "radiusM": 75996.13097063318
+      },
+      {
+        "category": "blast",
+        "color": "#89b4fa",
+        "description": "Reinforced structures destroyed.",
+        "label": "Total destruction (20 psi)",
+        "radiusM": 49985.08806052699
+      },
+      {
+        "category": "thermal",
+        "color": "#fab387",
+        "description": "Third-degree burns; widespread ignition.",
+        "label": "3rd° burns",
+        "radiusM": 46461.84360577518
+      },
+      {
+        "category": "fireball",
+        "color": "#f5e0dc",
+        "description": "Thermal fireball radius.",
+        "label": "Fireball",
+        "radiusM": 4077.597395706634
+      },
+      {
+        "category": "crater",
+        "color": "#eba0ac",
+        "description": "Excavated crater (radius).",
+        "label": "Final crater",
+        "radiusM": 2961.0466425453947
+      }
+    ]
+  },
+  "asteroid-ocean-impact": {
+    "authority": "rust",
+    "casualties": null,
+    "center": {
+      "lat": 0.0,
+      "lon": -140.0
+    },
+    "detail": {
+      "atmosphericEntry": {
+        "airburstAltitude": 0.0,
+        "airburstEnergy": 3.379252793470104e+19,
+        "breakupAltitude": 38825.25106601889,
+        "impactVelocity": 19604.18059053095,
+        "reachesGround": true
+      },
+      "crater": {
+        "craterDepth": 840.7517008397764,
+        "finalDiameter": 11783.061863691726,
+        "isComplex": true
+      },
+      "fireballRadiusM": 6466.017705655404,
+      "impactorMassKg": 196349540849.36206,
+      "kineticEnergyJ": 3.926990816987241e+19,
+      "megatons": 9385.73331019895,
+      "radiusSevereDamageM": 131283.72009714844,
+      "radiusTotalDestructionM": 79263.45665180657,
+      "radiusWindowBreakageM": 426069.4909777455,
+      "seismicMagnitude": 7.214309856589426,
+      "thermalRadiusFirstDegreeM": 104829.00102125082,
+      "thermalRadiusThirdDegreeM": 67796.74582256257,
+      "tsunami": {
+        "amplitudeAtDistance": 2000.0,
+        "applies": true,
+        "arrivalTime": 5.048187773461523,
+        "cavityDepth": 4000.0,
+        "cavityDiameter": 9669.648182463916,
+        "initialAmplitude": 2000.0,
+        "runupHeight": 16833.226712863518
+      }
+    },
+    "kind": "asteroid",
+    "modelVersion": "asteroid-direct-1.0.0",
+    "readout": [
+      {
+        "hint": null,
+        "label": "Impact energy",
+        "value": "9385.7 Mt"
+      },
+      {
+        "hint": null,
+        "label": "Reaches ground",
+        "value": "Yes"
+      },
+      {
+        "hint": null,
+        "label": "Seismic magnitude",
+        "value": "M 7.2"
+      },
+      {
+        "hint": null,
+        "label": "Fireball radius",
+        "value": "6.47 km"
+      },
+      {
+        "hint": null,
+        "label": "20 psi radius",
+        "value": "79.26 km"
+      },
+      {
+        "hint": "complex crater",
+        "label": "Crater diameter",
+        "value": "11.78 km"
+      },
+      {
+        "hint": null,
+        "label": "Tsunami runup",
+        "value": "16.83 km"
+      }
+    ],
+    "rings": [
+      {
+        "category": "blast",
+        "color": "#f9e2af",
+        "description": "Glass shatters; light injuries.",
+        "label": "Window breakage (1 psi)",
+        "radiusM": 426069.4909777455
+      },
+      {
+        "category": "blast",
+        "color": "#cba6f7",
+        "description": "Most buildings collapse.",
+        "label": "Severe damage (7 psi)",
+        "radiusM": 131283.72009714844
+      },
+      {
+        "category": "thermal",
+        "color": "#f5c2e7",
+        "description": "First-degree burns to exposed skin.",
+        "label": "1st° burns",
+        "radiusM": 104829.00102125082
+      },
+      {
+        "category": "blast",
+        "color": "#89b4fa",
+        "description": "Reinforced structures destroyed.",
+        "label": "Total destruction (20 psi)",
+        "radiusM": 79263.45665180657
+      },
+      {
+        "category": "thermal",
+        "color": "#fab387",
+        "description": "Third-degree burns; widespread ignition.",
+        "label": "3rd° burns",
+        "radiusM": 67796.74582256257
+      },
+      {
+        "category": "fireball",
+        "color": "#f5e0dc",
+        "description": "Thermal fireball radius.",
+        "label": "Fireball",
+        "radiusM": 6466.017705655404
+      },
+      {
+        "category": "crater",
+        "color": "#eba0ac",
+        "description": "Excavated crater (radius).",
+        "label": "Final crater",
+        "radiusM": 5891.530931845863
+      }
+    ]
+  },
+  "nuclear-airburst": {
+    "authority": "rust",
+    "casualties": null,
+    "center": {
+      "lat": 35.68,
+      "lon": 139.76
+    },
+    "detail": {
+      "cloudTopH": 2.0063098156649155,
+      "craterR": 0.0,
+      "fallout": null,
+      "fireball": 0.4164318473569276,
+      "gammaRad": 2.3988329190194904,
+      "isSurface": false,
+      "isWater": false,
+      "neutronRad": 1.6791830433136432,
+      "optimalHeight": 1021.1495433948112,
+      "psi1": 10.211495433948114,
+      "psi20": 1.299644873411578,
+      "psi5": 3.2955280718650726,
+      "radiation": 2.758657856872414,
+      "thermal1": 6.9052792480458836,
+      "thermal3": 4.426646101650893,
+      "timeline": [
+        {
+          "category": "radiation",
+          "description": "Detonation. X-ray pulse heats the air to millions of degrees.",
+          "time": "0 ms"
+        },
+        {
+          "category": "radiation",
+          "description": "Prompt neutron/gamma pulse. Lethal radiation to 1.68 km (neutrons), 2.40 km (gamma).",
+          "time": "0.01 ms"
+        },
+        {
+          "category": "thermal",
+          "description": "Thermal flash. Temporary flash blindness to 13.3 km (day) / 174 km (night).",
+          "time": "0.1 ms"
+        },
+        {
+          "category": "thermal",
+          "description": "Fireball reaches maximum size (416 m radius). Surface ~10,000,000 °C.",
+          "time": "8 ms"
+        },
+        {
+          "category": "blast",
+          "description": "Blast wave at 5 psi (3.30 km). Most buildings destroyed; ~160 mph winds.",
+          "time": "9.7 sec"
+        },
+        {
+          "category": "blast",
+          "description": "Blast wave at 1 psi (10.2 km). Windows shatter into shrapnel.",
+          "time": "30.0 sec"
+        },
+        {
+          "category": "firestorm",
+          "description": "Firestorm ignites within 564 m. Hurricane-force inward winds feed the fire.",
+          "time": "~5 min"
+        },
+        {
+          "category": "cloud",
+          "description": "Mushroom cloud reaches ~2.0 km altitude.",
+          "time": "~10 min"
+        }
+      ],
+      "waveHeight": 0.0,
+      "yieldKt": 100.0
+    },
+    "kind": "nuclear",
+    "modelVersion": "nuclear-direct-1.0.0",
+    "readout": [
+      {
+        "hint": null,
+        "label": "Yield",
+        "value": "100 kT"
+      },
+      {
+        "hint": "optimal air-burst height 1.02 km",
+        "label": "Burst",
+        "value": "Air"
+      },
+      {
+        "hint": null,
+        "label": "Fireball radius",
+        "value": "416 m"
+      },
+      {
+        "hint": "residential destruction",
+        "label": "5 psi radius",
+        "value": "3.30 km"
+      },
+      {
+        "hint": null,
+        "label": "3rd° burn radius",
+        "value": "4.43 km"
+      },
+      {
+        "hint": null,
+        "label": "500 rem radius",
+        "value": "2.76 km"
+      },
+      {
+        "hint": null,
+        "label": "Mushroom cloud top",
+        "value": "2.01 km"
+      }
+    ],
+    "rings": [
+      {
+        "category": "blast",
+        "color": "#f9e2af",
+        "description": "Glass shatters into shrapnel; light injuries widespread.",
+        "label": "1 psi — window breakage",
+        "radiusM": 10211.495433948114
+      },
+      {
+        "category": "thermal",
+        "color": "#f5c2e7",
+        "description": "≥2.5 cal/cm² — first-degree burns to exposed skin.",
+        "label": "1st° burns",
+        "radiusM": 6905.279248045884
+      },
+      {
+        "category": "thermal",
+        "color": "#fab387",
+        "description": "≥8 cal/cm² — third-degree burns; ignition of many materials.",
+        "label": "3rd° burns",
+        "radiusM": 4426.646101650893
+      },
+      {
+        "category": "blast",
+        "color": "#cba6f7",
+        "description": "Most residential buildings collapse; ~160 mph winds.",
+        "label": "5 psi — buildings destroyed",
+        "radiusM": 3295.5280718650724
+      },
+      {
+        "category": "radiation",
+        "color": "#94e2d5",
+        "description": "Acute lethal dose to unsheltered survivors of blast/thermal.",
+        "label": "500 rem radiation",
+        "radiusM": 2758.657856872414
+      },
+      {
+        "category": "blast",
+        "color": "#89b4fa",
+        "description": "Reinforced structures destroyed; near-total fatalities.",
+        "label": "20 psi — heavy destruction",
+        "radiusM": 1299.644873411578
+      },
+      {
+        "category": "fireball",
+        "color": "#f5e0dc",
+        "description": "Everything within is vaporized.",
+        "label": "Fireball",
+        "radiusM": 416.4318473569276
+      }
+    ]
+  },
+  "nuclear-surface-burst": {
+    "authority": "rust",
+    "casualties": null,
+    "center": {
+      "lat": 40.71,
+      "lon": -74.01
+    },
+    "detail": {
+      "cloudTopH": 1.6603943302054474,
+      "craterR": 0.14723765457733298,
+      "fallout": {
+        "heavy": {
+          "length": 7.559269941246139,
+          "width": 1.5335717809340037
+        },
+        "light": {
+          "length": 26.748185945947878,
+          "width": 4.325458869301036
+        }
+      },
+      "fireball": 0.3154786722400967,
+      "gammaRad": 2.3988329190194904,
+      "isSurface": true,
+      "isWater": false,
+      "neutronRad": 1.6791830433136432,
+      "optimalHeight": 1021.1495433948112,
+      "psi1": 8.169196347158492,
+      "psi20": 1.0397158987292625,
+      "psi5": 2.636422457492058,
+      "radiation": 2.758657856872414,
+      "thermal1": 6.9052792480458836,
+      "thermal3": 4.426646101650893,
+      "timeline": [
+        {
+          "category": "radiation",
+          "description": "Detonation. X-ray pulse heats the air to millions of degrees.",
+          "time": "0 ms"
+        },
+        {
+          "category": "radiation",
+          "description": "Prompt neutron/gamma pulse. Lethal radiation to 1.68 km (neutrons), 2.40 km (gamma).",
+          "time": "0.01 ms"
+        },
+        {
+          "category": "thermal",
+          "description": "Thermal flash. Temporary flash blindness to 13.3 km (day) / 174 km (night).",
+          "time": "0.1 ms"
+        },
+        {
+          "category": "thermal",
+          "description": "Fireball reaches maximum size (315 m radius). Surface ~10,000,000 °C.",
+          "time": "8 ms"
+        },
+        {
+          "category": "blast",
+          "description": "Blast wave at 5 psi (2.64 km). Most buildings destroyed; ~160 mph winds.",
+          "time": "7.8 sec"
+        },
+        {
+          "category": "blast",
+          "description": "Blast wave at 1 psi (8.17 km). Windows shatter into shrapnel.",
+          "time": "24.0 sec"
+        },
+        {
+          "category": "firestorm",
+          "description": "Firestorm ignites within 564 m. Hurricane-force inward winds feed the fire.",
+          "time": "~5 min"
+        },
+        {
+          "category": "cloud",
+          "description": "Mushroom cloud stabilizes at ~1.7 km. Fallout begins.",
+          "time": "~10 min"
+        },
+        {
+          "category": "fallout",
+          "description": "Heaviest fallout within 7.56 km downwind.",
+          "time": "~30 min"
+        },
+        {
+          "category": "fallout",
+          "description": "Light fallout extends 26.7 km downwind. 7:10 decay rule applies.",
+          "time": "~24 hrs"
+        }
+      ],
+      "waveHeight": 0.0,
+      "yieldKt": 100.0
+    },
+    "kind": "nuclear",
+    "modelVersion": "nuclear-direct-1.0.0",
+    "readout": [
+      {
+        "hint": null,
+        "label": "Yield",
+        "value": "100 kT"
+      },
+      {
+        "hint": "optimal air-burst height 1.02 km",
+        "label": "Burst",
+        "value": "Surface"
+      },
+      {
+        "hint": null,
+        "label": "Fireball radius",
+        "value": "315 m"
+      },
+      {
+        "hint": "residential destruction",
+        "label": "5 psi radius",
+        "value": "2.64 km"
+      },
+      {
+        "hint": null,
+        "label": "3rd° burn radius",
+        "value": "4.43 km"
+      },
+      {
+        "hint": null,
+        "label": "500 rem radius",
+        "value": "2.76 km"
+      },
+      {
+        "hint": null,
+        "label": "Mushroom cloud top",
+        "value": "1.66 km"
+      },
+      {
+        "hint": null,
+        "label": "Crater radius",
+        "value": "147 m"
+      }
+    ],
+    "rings": [
+      {
+        "category": "blast",
+        "color": "#f9e2af",
+        "description": "Glass shatters into shrapnel; light injuries widespread.",
+        "label": "1 psi — window breakage",
+        "radiusM": 8169.196347158491
+      },
+      {
+        "category": "fallout",
+        "color": "#a6e3a1",
+        "description": "Downwind heavy-fallout reach (idealized plume length).",
+        "label": "Light fallout (heavy zone shown)",
+        "radiusM": 7559.269941246139
+      },
+      {
+        "category": "thermal",
+        "color": "#f5c2e7",
+        "description": "≥2.5 cal/cm² — first-degree burns to exposed skin.",
+        "label": "1st° burns",
+        "radiusM": 6905.279248045884
+      },
+      {
+        "category": "thermal",
+        "color": "#fab387",
+        "description": "≥8 cal/cm² — third-degree burns; ignition of many materials.",
+        "label": "3rd° burns",
+        "radiusM": 4426.646101650893
+      },
+      {
+        "category": "radiation",
+        "color": "#94e2d5",
+        "description": "Acute lethal dose to unsheltered survivors of blast/thermal.",
+        "label": "500 rem radiation",
+        "radiusM": 2758.657856872414
+      },
+      {
+        "category": "blast",
+        "color": "#cba6f7",
+        "description": "Most residential buildings collapse; ~160 mph winds.",
+        "label": "5 psi — buildings destroyed",
+        "radiusM": 2636.422457492058
+      },
+      {
+        "category": "blast",
+        "color": "#89b4fa",
+        "description": "Reinforced structures destroyed; near-total fatalities.",
+        "label": "20 psi — heavy destruction",
+        "radiusM": 1039.7158987292626
+      },
+      {
+        "category": "fireball",
+        "color": "#f5e0dc",
+        "description": "Everything within is vaporized.",
+        "label": "Fireball",
+        "radiusM": 315.47867224009667
+      }
+    ]
+  }
+}
