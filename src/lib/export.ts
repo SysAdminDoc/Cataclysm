@@ -58,7 +58,7 @@ export function suggestedFilename(meta: ScreenshotMeta, ext: "png" | "webm" | "m
   // past path length limits (the extension is appended after the clamp).
   const id = safeFilenamePart(meta.preset?.id ?? "custom-scenario").slice(0, 64);
   const t = Math.round(meta.timeS / 60);
-  return `tsunamisim-${id}-t${t}min-${timestampSuffix()}.${ext}`;
+  return `cataclysm-${id}-t${t}min-${timestampSuffix()}.${ext}`;
 }
 
 /** Returns the globe canvas contents as a PNG data URL, or null if it's not mountable. */
@@ -365,7 +365,7 @@ export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
   ctx.fillText(provA.generatedAt, W - 12, H - FOOTER_H + 26);
 
   const dataUrl = canvas.toDataURL("image/png");
-  downloadDataUrl(dataUrl, `tsunamisim-compare-${timestampSuffix()}.png`);
+  downloadDataUrl(dataUrl, `cataclysm-compare-${timestampSuffix()}.png`);
   return true;
 }
 
@@ -533,7 +533,7 @@ export function exportCzml(
   const json = JSON.stringify(czml, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const presetId = meta.preset?.id ?? "custom-scenario";
-  downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}.czml`);
+  downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}.czml`);
   return true;
 }
 
@@ -610,7 +610,7 @@ export function exportGeoJson(
   const json = JSON.stringify(fc, null, 2);
   const blob = new Blob([json], { type: "application/geo+json" });
   const presetId = meta.preset?.id ?? "custom-scenario";
-  downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}-inundation.geojson`);
+  downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}-inundation.geojson`);
   return true;
 }
 
@@ -680,7 +680,7 @@ export function exportKml(
 
   const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
   const presetId = meta.preset?.id ?? "custom-scenario";
-  downloadBlob(blob, `tsunamisim-${safeFilenamePart(presetId)}.kml`);
+  downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}.kml`);
   return true;
 }
 
@@ -724,7 +724,7 @@ export function exportGaugeCsv(
   }
 
   const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
-  downloadBlob(blob, `tsunamisim-gauges-${timestampSuffix()}.csv`);
+  downloadBlob(blob, `cataclysm-gauges-${timestampSuffix()}.csv`);
   return true;
 }
 

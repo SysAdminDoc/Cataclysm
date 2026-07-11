@@ -63,7 +63,7 @@ export function FirstRunDisclaimer() {
             </div>
           </div>
           <p className="modal__copy">
-            Physics references are available from <em>Citations</em>. Treat
+            Physics references are available from <em>References</em>. Treat
             every map, overlay, and export as approximate.
           </p>
           <p className="modal__copy modal__copy--muted">

@@ -151,6 +151,10 @@ a {
   color: var(--success);
 }
 
+.statusbar__item--ready[data-active="true"] {
+  color: var(--accent-active);
+}
+
 .statusbar__item--warning {
   color: var(--warning);
   border-right: none;

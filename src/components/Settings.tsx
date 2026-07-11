@@ -12,6 +12,7 @@ import { api, isTauri } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
+type SettingsSection = "visual" | "performance" | "advanced";
 
 type Props = { onClose: () => void };
 
@@ -28,6 +29,7 @@ export function Settings({ onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>(isTauri() ? "unknown" : "browser-preview");
   const [classroomLocked, setClassroomLocked] = useState(false);
+  const [activeSection, setActiveSection] = useState<SettingsSection>("visual");
 
   useEffect(() => {
     let cancelled = false;
@@ -108,14 +110,14 @@ export function Settings({ onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div className="modal modal--settings" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
           <h2 id="settings-title">Settings</h2>
           <button className="modal__close" onClick={onClose} aria-label="Close" type="button">
             <UiIcon name="close" size={16} />
           </button>
         </header>
-        <div className="modal__body">
+        <div className="modal__body settings__modal-body">
           {classroomLocked && (
             <div className="settings__classroom-note" role="note">
               <strong>Classroom profile active.</strong> Imagery, theme, and
@@ -134,6 +136,14 @@ export function Settings({ onClose }: Props) {
               </button>
             </div>
           )}
+          <div className="settings__workspace">
+            <nav className="settings__nav" aria-label="Settings categories">
+              <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>Visuals &amp; map</button>
+              <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>Performance</button>
+              <button type="button" aria-current={activeSection === "advanced" ? "page" : undefined} onClick={() => setActiveSection("advanced")}>Advanced</button>
+            </nav>
+            <div className="settings__content">
+          {activeSection === "visual" && <>
           <section className="settings__section">
             <h3 className="settings__h3">Globe imagery</h3>
             <p className="modal__intro">
@@ -259,31 +269,13 @@ export function Settings({ onClose }: Props) {
               </button>
             </div>
           </section>
-
-          <section className="settings__actions">
-            <button className="primary" onClick={save} disabled={saving}>
-              {saving ? "Saving..." : "Save settings"}
-            </button>
-            {statusMsg && !saveErr && (
-              <span className="settings__status" data-tone="success" role="status" aria-live="polite">
-                {statusMsg}
-              </span>
-            )}
-            {saveErr && (
-              <span className="settings__status" data-tone="danger" role="alert">
-                Save failed: {saveErr}
-              </span>
-            )}
-          </section>
-
-          <hr className="modal__sep" />
-
+          </>}
+          {activeSection === "performance" && (
           <section className="settings__section">
-            <h3 className="settings__h3">GPU acceleration (F4-01)</h3>
+            <h3 className="settings__h3">Simulation acceleration</h3>
             <p className="modal__intro">
-              The SWE leapfrog can run on the GPU via <code>wgpu</code> when
-              the binary is built with <code>--features gpu</code>. Status
-              is probed lazily on first Settings open.
+              The shallow-water solver can use a compatible graphics processor
+              in accelerated desktop builds. Hardware is checked when this panel opens.
             </p>
             <div className="settings__row">
               <strong>Status:</strong>{" "}
@@ -311,7 +303,8 @@ export function Settings({ onClose }: Props) {
               )}
             </div>
           </section>
-
+          )}
+          {activeSection === "advanced" && <>
           <section className="settings__section">
             <h3 className="settings__h3">Advanced</h3>
             <div className="settings__button-row">
@@ -360,7 +353,7 @@ export function Settings({ onClose }: Props) {
                 onClick={async () => {
                   const json = await settings.exportSettings();
                   const blob = new Blob([json], { type: "application/json" });
-                  downloadBlob(blob, "tsunamisimulator-settings.json");
+                  downloadBlob(blob, "cataclysm-settings.json");
                   setStatusMsg("Settings exported.");
                 }}
                 type="button"
@@ -432,6 +425,25 @@ export function Settings({ onClose }: Props) {
             For evacuation warnings use <strong>NOAA NTWC / PTWC</strong> — this
             tool is for education and hazard awareness only.
           </p>
+          </>}
+            </div>
+          </div>
+
+          <section className="settings__actions settings__actions--footer">
+            <button className="primary" onClick={save} disabled={saving}>
+              {saving ? "Saving..." : "Save settings"}
+            </button>
+            {statusMsg && !saveErr && (
+              <span className="settings__status" data-tone="success" role="status" aria-live="polite">
+                {statusMsg}
+              </span>
+            )}
+            {saveErr && (
+              <span className="settings__status" data-tone="danger" role="alert">
+                Save failed: {saveErr}
+              </span>
+            )}
+          </section>
         </div>
       </div>
     </div>

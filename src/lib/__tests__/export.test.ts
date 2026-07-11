@@ -58,7 +58,7 @@ describe("suggestedFilename", () => {
       timeS: 900,
     };
     const name = suggestedFilename(meta, "png");
-    expect(name).toMatch(/^tsunamisim-chicxulub-t15min-.*\.png$/);
+    expect(name).toMatch(/^cataclysm-chicxulub-t15min-.*\.png$/);
   });
 
   it("uses 'custom-scenario' when no preset", () => {

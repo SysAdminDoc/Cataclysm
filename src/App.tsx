@@ -400,6 +400,17 @@ export default function App() {
   const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
   const hasSwePlayback = (sweSnapshots?.length ?? 0) > 0;
+  const modelStatus = recording
+    ? "Recording export"
+    : timelinePlaying
+      ? "Playback active"
+      : slotA.busyPresetId
+        ? "Loading source"
+        : hasSwePlayback
+          ? "SWE field ready"
+          : slotA.initial || hazardResult
+            ? "Source ready"
+            : "Awaiting source";
   const exportMetaA = (): ScreenshotMeta => ({
     preset: activePresetA,
     initial: slotA.initial,
@@ -434,7 +445,7 @@ export default function App() {
     setPickMode(false);
     setInspectMode(false);
     if (mode !== "tsunami") setCompareMode(false);
-    setInspectorTab(mode === "tsunami" ? "results" : "setup");
+    setInspectorTab("setup");
   }
 
   return (
@@ -905,17 +916,6 @@ export default function App() {
             display="setup"
           />
         )}
-        {inspectorTab === "setup" && !inHazardMode && !compareMode && (
-          <ScenarioBuilder
-            onSimulate={(scenario) => {
-              slotA.simulate(scenario);
-              setInspectorTab("results");
-            }}
-            pickedLocation={pickedLocation}
-            onTogglePick={() => setPickMode((p) => !p)}
-            pickActive={pickMode}
-          />
-        )}
         {inspectorTab === "setup" && !inHazardMode && <SwePlayback
           initial={slotA.initial}
           onSnapshot={slotA.setSweSnapshot}
@@ -928,6 +928,17 @@ export default function App() {
         {inspectorTab === "setup" && !inHazardMode && <Activity mode={compareMode ? "visible" : "hidden"}>
           <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />
         </Activity>}
+        {inspectorTab === "setup" && !inHazardMode && !compareMode && (
+          <ScenarioBuilder
+            onSimulate={(scenario) => {
+              slotA.simulate(scenario);
+              setInspectorTab("results");
+            }}
+            pickedLocation={pickedLocation}
+            onTogglePick={() => setPickMode((p) => !p)}
+            pickActive={pickMode}
+          />
+        )}
         {inspectorTab === "results" && inHazardMode && <HazardControls
           mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
           nuclear={nuclearInput}
@@ -1017,9 +1028,9 @@ export default function App() {
         solverReady={hasSwePlayback}
       />
       <div className="app__statusbar" role="status" aria-live="polite">
-        <div className="statusbar__item statusbar__item--ready">
+        <div className="statusbar__item statusbar__item--ready" data-active={timelinePlaying || recording ? "true" : "false"}>
           <span className="status-dot" aria-hidden />
-          Model ready
+          {modelStatus}
         </div>
         <div className="statusbar__item">
           Mode <strong>{cockpitMode}</strong>

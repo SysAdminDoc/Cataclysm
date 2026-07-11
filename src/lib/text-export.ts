@@ -116,7 +116,7 @@ export function downloadTextExport(data: TextExportData): void {
   const a = document.createElement("a");
   a.href = url;
   const presetId = data.preset?.id ?? "custom-scenario";
-  a.download = `tsunamisim-${presetId}-results.txt`;
+  a.download = `cataclysm-${presetId}-results.txt`;
   document.body.appendChild(a);
   a.click();
   a.remove();

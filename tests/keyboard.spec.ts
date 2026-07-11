@@ -38,7 +38,7 @@ test.describe("Keyboard-only golden path", () => {
     const setupTab = page.getByRole("tab", { name: "Setup" });
     await setupTab.focus();
     await page.keyboard.press("Enter");
-    const run = page.getByRole("button", { name: /Run solver/ });
+    const run = page.getByRole("button", { name: /Run simulation/ });
     await expect(run).toBeVisible({ timeout: 10_000 });
     await run.focus();
     await page.keyboard.press("Enter");
@@ -62,7 +62,7 @@ test.describe("Keyboard-only golden path", () => {
     const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
     await page.keyboard.press("Enter");
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toContain("tsunamisim");
+    expect(download.suggestedFilename()).toContain("cataclysm");
   });
 
   test("modal focus trap: Settings opens, tab stays inside, Escape closes", async ({ page }) => {

@@ -79,7 +79,7 @@ describe("SwePlayback", () => {
     expect(screen.getByRole("note")).toHaveTextContent(/Low confidence/i);
     expect(screen.getByRole("note")).toHaveTextContent(/GEBCO_2026\/TID-backed terrain/i);
 
-    await user.click(screen.getByRole("button", { name: "Run solver" }));
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
     await screen.findByRole("button", { name: "Cancel" });
 
     act(() => {
@@ -108,11 +108,11 @@ describe("SwePlayback", () => {
     const user = userEvent.setup();
     render(<SwePlayback initial={INITIAL} onSnapshot={onSnapshot} />);
 
-    await user.click(screen.getByRole("button", { name: "Run solver" }));
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
     await user.click(await screen.findByRole("button", { name: "Cancel" }));
 
     expect(tauriApi.cancelSimulation).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Run solver" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run simulation" })).toBeInTheDocument();
 
     act(() => {
       pushSnapshot?.(SNAPSHOTS[0]);
@@ -138,7 +138,7 @@ describe("SwePlayback", () => {
     await user.type(screen.getByLabelText("Gauge latitude"), "0.25");
     await user.type(screen.getByLabelText("Gauge longitude"), "0.5");
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(screen.getByRole("button", { name: "Run solver" }));
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
 
     expect(tauriApi.simulateGridStreaming).toHaveBeenCalledWith(
       expect.objectContaining({

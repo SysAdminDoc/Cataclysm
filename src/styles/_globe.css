@@ -82,11 +82,15 @@
 
 .app__globe-stack[data-split="true"] .app__globe-pane {
   flex: 1 1 50%;
-  border-bottom: 1px solid var(--surface0);
+  border-right: 1px solid var(--surface0);
 }
 
 .app__globe-stack[data-split="true"] .app__globe-pane:last-child {
-  border-bottom: none;
+  border-right: none;
+}
+
+.app__globe-stack[data-split="true"] {
+  flex-direction: row;
 }
 
 .app__globe-pane {

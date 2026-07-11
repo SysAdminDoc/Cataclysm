@@ -340,14 +340,14 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   return (
     <div className="section">
       <div className="section__title">
-        <span>Live <GlossaryTip term="swe">SWE</GlossaryTip> Solver</span>
+        <span>Wave propagation <GlossaryTip term="swe">SWE</GlossaryTip></span>
         <span className="section__badge" data-tone={status === "error" ? "danger" : status === "running" ? "active" : undefined}>
           {solverBadge}
         </span>
       </div>
       <p className="swe__hint">
         Compute a one-hour shallow-water propagation around the active source.
-        Desktop builds use the backend solver; browser preview renders deterministic demo frames.
+        Desktop builds use the full solver; browser preview renders deterministic demonstration frames.
       </p>
       <div className="swe__meta-grid" aria-label="Solver setup">
         <span><strong>{N_SNAPSHOTS}</strong> frames</span>
@@ -399,7 +399,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           type="button"
         >
           {status !== "running" && <UiIcon name={status === "ready" ? "refresh" : "play"} size={14} />}
-          {status === "running" ? "Computing..." : status === "ready" ? "Re-run solver" : "Run solver"}
+          {status === "running" ? "Computing..." : status === "ready" ? "Re-run simulation" : "Run simulation"}
         </button>
         {status === "running" && (
           <button

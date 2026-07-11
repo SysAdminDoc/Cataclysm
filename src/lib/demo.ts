@@ -201,7 +201,7 @@ const DEMO_PRESETS: Preset[] = [
     reference: "Carvajal et al. 2022; Matoza et al. 2022",
     reference_url: "https://www.science.org/doi/10.1126/science.abo4364",
     controversy_note:
-      "Atmospheric Lamb-wave coupling is modelled as an optional IC injection in the Live SWE Solver panel.",
+      "Atmospheric Lamb-wave coupling is modelled as an optional IC injection in the Wave propagation panel.",
     camera_view: { heading_deg: 0, pitch_deg: -50, range_m: 2_500_000 },
     source: {
       kind: "Landslide",

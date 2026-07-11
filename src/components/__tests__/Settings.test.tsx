@@ -9,12 +9,14 @@ describe("Settings", () => {
   });
 
   it("renders no-token and offline-friendly globe rows", async () => {
+    const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
     expect(await screen.findByText("Globe imagery")).toBeInTheDocument();
     expect(screen.getByText(/local-first and reliable/i)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "OpenStreetMap (no token)" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Natural Earth II (offline-friendly)" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Performance" }));
     expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();
   });
 
@@ -46,6 +48,7 @@ describe("Settings", () => {
     const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
+    await user.click(await screen.findByRole("button", { name: "Advanced" }));
     await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
 
     expect(await screen.findByText("Settings reset to defaults.")).toBeInTheDocument();
@@ -62,6 +65,7 @@ describe("Settings", () => {
     const user = userEvent.setup();
     render(<Settings onClose={() => {}} />);
 
+    await user.click(await screen.findByRole("button", { name: "Advanced" }));
     await user.click(await screen.findByRole("button", { name: "Show token banner again" }));
 
     expect(await screen.findByText("Imagery token banner re-armed.")).toBeInTheDocument();

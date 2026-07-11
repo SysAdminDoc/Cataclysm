@@ -76,7 +76,7 @@ test.describe("Visual regression — desktop", () => {
       timeout: 10_000,
     });
 
-    const runBtn = page.getByRole("button", { name: "Run solver" });
+    const runBtn = page.getByRole("button", { name: "Run simulation" });
     await expect(runBtn).toBeVisible({ timeout: 5_000 });
 
     await expect(page).toHaveScreenshot("desktop-swe-ready.png", {
@@ -95,7 +95,7 @@ test.describe("Visual regression — desktop", () => {
       timeout: 10_000,
     });
 
-    const runBtn = page.getByRole("button", { name: "Run solver" });
+    const runBtn = page.getByRole("button", { name: "Run simulation" });
     await expect(runBtn).toBeVisible({ timeout: 5_000 });
     await runBtn.click();
 
