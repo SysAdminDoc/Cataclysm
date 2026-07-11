@@ -2,6 +2,44 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
+
+### Changed — professional desktop workflow
+- Re-imagined the simulator from a new image-generated v2 desktop design target
+  and implemented the major parity gaps without replacing the React/Cesium
+  architecture: source-first setup, stronger Earth dominance, restrained
+  technical surfaces, and a clearer command/transport hierarchy.
+- Rebuilt the scenario library around metadata-derived Recorded events and
+  What-if studies, source-specific glyphs, compact physical metadata, and
+  complete selected, busy, search, filter, timeline, focus, and empty states.
+- Added a source-model summary with coordinates, depth, magnitude, model
+  provenance, edit action, and confidence treatment before solver controls.
+- Added a surface-displacement legend, camera altitude/coordinate telemetry,
+  heading-aware north indicator, broader Tōhoku/Pacific framing, HDR rendering,
+  and theme-aware Cesium source labels.
+- Made the primary propagation action visible before advanced solver options,
+  clarified ocean-depth/pressure-wave language, added frame telemetry, and
+  replaced the misleading six-hour transport in direct Impact/Nuclear modes
+  with truthful effect-renderer status.
+- Clarified Settings with explicit Cancel / Apply Changes behavior, unsaved-state
+  feedback, user-oriented categories, simpler online-map wording, and a
+  multi-hazard first-run trust notice.
+
+### Added — design and visual verification
+- Added `assets/mockups/cataclysm-professional-simulator-v2.png` as the retained
+  image-generation target used for implementation comparison.
+- Made headless capture build-safe and deterministic in locale, timezone,
+  reduced-motion, service-worker, font, camera, and canvas-settle behavior while
+  preserving high-detail Esri imagery for inspected README captures.
+- Re-captured dark/light 1600×1000 workspaces and Settings, and deliberately
+  refreshed all nine desktop visual-regression baselines after inspection.
+
+### Verification
+- 153 Vitest tests and all 23 Playwright smoke, keyboard, accessibility, and
+  visual-regression checks pass locally in both themes. Typecheck, lint,
+  production build, docs/security gates, Rust checks/tests, and Windows package
+  generation are part of the v0.8.0 release verification.
+
 ## [0.7.0] — 2026-07-11 — Professional simulator workspace
 
 ### Changed — desktop GUI and workflow hierarchy

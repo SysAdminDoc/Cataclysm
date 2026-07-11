@@ -1,6 +1,6 @@
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -10,7 +10,7 @@
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
 
-> **Migration status (v0.7.0):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Impact and nuclear modes render effect geometry on the Cesium globe; the remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
+> **Migration status (v0.8.0):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. The desktop shell now uses a source-first inspector, grouped reference-event library, instrumented Earth viewport, and solver-aware transport derived from the v2 visual target. Impact and nuclear modes render effect geometry on the Cesium globe; the remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -125,7 +125,7 @@ Existing tools each do one piece:
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.7.0 Windows installers are
+an MSI package and an NSIS setup executable. The v0.8.0 Windows installers are
 locally built from this repository and are currently unsigned until a Windows
 code-signing certificate is configured, so Windows may show an unknown-publisher
 warning. macOS and Linux remain supported source-build targets; platform
@@ -137,12 +137,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\Cataclysm_0.7.0_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.8.0_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile Cataclysm_0.7.0_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.8.0_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full
