@@ -4,6 +4,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.8.3] — 2026-07-11 — Usability and recovery audit
+
 - Fixed solver lifecycle ownership so changing inspector tabs preserves completed
   wave results, replacing a source cancels its in-flight worker, and Compare runs
   can be cancelled independently without terminating the other slot.

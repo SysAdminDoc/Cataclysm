@@ -18,6 +18,9 @@ vi.mock("../../lib/tauri", () => ({
   createSimulationRunId: () => "run-test",
   isTauri: () => true,
 }));
+vi.mock("../../lib/settings", () => ({
+  settings: { getColormap: () => Promise.resolve("diverging") },
+}));
 vi.mock("../../lib/export", () => exportApi);
 
 const INITIAL: InitialDisplacement = {
@@ -85,6 +88,7 @@ describe("SwePlayback", () => {
 
     await user.click(screen.getByRole("button", { name: "Run simulation" }));
     await screen.findByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(pushSnapshot).not.toBeNull());
 
     act(() => {
       pushSnapshot?.(SNAPSHOTS[0]);

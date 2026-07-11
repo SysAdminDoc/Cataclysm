@@ -1665,11 +1665,11 @@ fn stream_simulation_cpu_from(
             ctx.cancel.store(true, Ordering::Release);
             break;
         }
-        if let Some(render) = ctx.render {
-            if !render.try_send_frame(grid) {
-                ctx.cancel.store(true, Ordering::Release);
-                break;
-            }
+        if let Some(render) = ctx.render
+            && !render.try_send_frame(grid)
+        {
+            ctx.cancel.store(true, Ordering::Release);
+            break;
         }
     }
 }
@@ -1731,11 +1731,11 @@ fn stream_simulation_dispatch(
                 ctx.cancel.store(true, Ordering::Release);
                 break;
             }
-            if let Some(render) = ctx.render {
-                if !render.try_send_frame(grid) {
-                    ctx.cancel.store(true, Ordering::Release);
-                    break;
-                }
+            if let Some(render) = ctx.render
+                && !render.try_send_frame(grid)
+            {
+                ctx.cancel.store(true, Ordering::Release);
+                break;
             }
         }
         return true;

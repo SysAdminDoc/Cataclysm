@@ -80,6 +80,8 @@ test.describe("Visual regression — desktop", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Nuclear", exact: true }).click();
     await expect(page.getByRole("complementary", { name: "Direct effects workspace" })).toBeVisible();
+    await expect(page.locator('.app__globe-status[data-status="loading"]')).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.locator(CANVAS_MASK)).toBeVisible({ timeout: 15_000 });
 
     await expect(page).toHaveScreenshot("desktop-nuclear-workspace.png", {
       mask: [page.locator(CANVAS_MASK)],
