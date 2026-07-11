@@ -75,6 +75,21 @@ test.describe("Visual regression — desktop", () => {
     });
   });
 
+  test("isolated nuclear workspace", async ({ page }) => {
+    await seedAcknowledged(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+    await expect(page.getByRole("complementary", { name: "Direct effects workspace" })).toBeVisible();
+
+    await expect(page).toHaveScreenshot("desktop-nuclear-workspace.png", {
+      mask: [page.locator(CANVAS_MASK)],
+      maxDiffPixelRatio: 0.01,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
   test("SWE solver ready state", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");

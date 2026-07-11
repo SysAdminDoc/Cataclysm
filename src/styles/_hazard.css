@@ -27,9 +27,10 @@
   background: var(--surface1);
 }
 
-.hazard-switch[data-active="true"] {
-  background: var(--accent);
-  color: var(--base);
+.app__command-group--hazard .hazard-switch[data-active="true"],
+.app__command-group--hazard .hazard-switch[data-active="true"]:hover {
+  background: var(--accent-active);
+  color: var(--on-accent);
   font-weight: 600;
 }
 

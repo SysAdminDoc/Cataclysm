@@ -13,6 +13,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Peak height, time-of-peak, first-arrival, and integrated-energy products now
   observe every accepted solver step on CPU and GPU instead of only display
   frames; 12, 60, and 240-frame runs share identical quantitative outputs.
+- Tsunami, asteroid, and nuclear workspaces now park incompatible sources,
+  overlays, layers, exports, inspection, comparison state, targets, and effect
+  animations when switching domains; direct-effect origins are isolated per
+  hazard and returning to Tsunami restores its prior scenario without stale
+  cross-domain rendering.
+- Added domain-transition smoke coverage plus a visually reviewed nuclear
+  workspace baseline with an axe check; the active hazard switch now uses a
+  theme-specific high-contrast foreground.
 
 ## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
 

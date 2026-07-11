@@ -35,6 +35,7 @@ import { falloutRings } from "./hazards/nuclear/fallout";
 import type { NuclearEffects } from "./hazards/nuclear/physics";
 
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
+type DirectHazardMode = Exclude<HazardMode, "tsunami">;
 type InspectorTab = "setup" | "results" | "layers";
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
@@ -211,14 +212,20 @@ export default function App() {
   const [inspectMode, setInspectMode] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [hazardMode, setHazardMode] = useState<HazardMode>("tsunami");
-  const [hazardCenter, setHazardCenter] = useState<{ lat: number; lon: number } | null>(null);
+  const [hazardCenters, setHazardCenters] = useState<Record<DirectHazardMode, { lat: number; lon: number } | null>>({
+    asteroid: null,
+    nuclear: null,
+  });
   const [nuclearInput, setNuclearInput] = useState<NuclearInput>({ yieldKt: 100, burstType: "airburst", populationDensity: 5000 });
   // Default to a 300 m impactor: reaches the ground and excavates a crater
   // (a 100 m stony airbursts) without continental-scale blast radii, so the
   // default "Impact" is dramatic but the effects still frame nicely.
   const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 300, densityKgM3: 4000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
   const [windFromDeg, setWindFromDeg] = useState(270);
-  const [detonateNonce, setDetonateNonce] = useState(0);
+  const [detonateNonces, setDetonateNonces] = useState<Record<DirectHazardMode, number>>({
+    asteroid: 0,
+    nuclear: 0,
+  });
   const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -379,6 +386,10 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+  const directHazardMode: DirectHazardMode | null = hazardMode === "tsunami" ? null : hazardMode;
+  const inHazardMode = directHazardMode !== null;
+  const hazardCenter = directHazardMode ? hazardCenters[directHazardMode] : null;
+  const detonateNonce = directHazardMode ? detonateNonces[directHazardMode] : 0;
 
   // Client-side hazard result (nuclear/asteroid). Recomputed when inputs or the
   // picked center change; drives both the globe rings and the results readout.
@@ -389,8 +400,6 @@ export default function App() {
       ? nuclearEngine.run(nuclearInput, center)
       : asteroidEngine.run(asteroidInput, center);
   }, [hazardMode, hazardCenter, nuclearInput, asteroidInput]);
-  const inHazardMode = hazardMode !== "tsunami";
-
   // Nuclear fallout plume polygons (surface bursts only), driven by wind.
   const hazardPolygons = useMemo(() => {
     if (hazardMode !== "nuclear" || !hazardCenter || !hazardResult) return null;
@@ -399,21 +408,32 @@ export default function App() {
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
-  const sourceRequiredReason = "Select a preset or simulate a custom source first.";
+  const activeWorkspaceLabel = inHazardMode
+    ? hazardMode === "nuclear"
+      ? "Nuclear detonation"
+      : "Asteroid impact"
+    : activeSourceLabel;
+  const sourceRequiredReason = inHazardMode
+    ? "Tsunami inspection and exports are unavailable in direct hazard workspaces."
+    : "Select a preset or simulate a custom source first.";
   const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
-  const hasSwePlayback = (sweSnapshots?.length ?? 0) > 0;
-  const modelStatus = recording
-    ? "Recording export"
-    : timelinePlaying
-      ? "Playback active"
-      : slotA.busyPresetId
-        ? "Loading source"
-        : hasSwePlayback
-          ? "SWE field ready"
-          : slotA.initial || hazardResult
-            ? "Source ready"
-            : "Awaiting source";
+  const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
+  const modelStatus = inHazardMode
+    ? hazardResult
+      ? "Effects ready"
+      : "Awaiting target"
+    : recording
+      ? "Recording export"
+      : timelinePlaying
+        ? "Playback active"
+        : slotA.busyPresetId
+          ? "Loading source"
+          : hasSwePlayback
+            ? "SWE field ready"
+            : slotA.initial
+              ? "Source ready"
+              : "Awaiting source";
   const exportMetaA = (): ScreenshotMeta => ({
     preset: activePresetA,
     initial: slotA.initial,
@@ -435,8 +455,8 @@ export default function App() {
   });
 
   function handlePickGlobe(lat: number, lon: number) {
-    if (inHazardMode) {
-      setHazardCenter({ lat, lon });
+    if (directHazardMode) {
+      setHazardCenters((current) => ({ ...current, [directHazardMode]: { lat, lon } }));
     } else {
       setPickedLocation({ lat, lon });
     }
@@ -447,12 +467,23 @@ export default function App() {
     setHazardMode(mode);
     setPickMode(false);
     setInspectMode(false);
-    if (mode !== "tsunami") setCompareMode(false);
+    setCompareMode(false);
+    setExportMenuOpen(false);
+    setTimelinePlaying(false);
+    setPendingGauge(null);
     setInspectorTab("setup");
   }
 
+  function detonateActiveHazard() {
+    if (!directHazardMode) return;
+    setDetonateNonces((current) => ({
+      ...current,
+      [directHazardMode]: current[directHazardMode] + 1,
+    }));
+  }
+
   return (
-    <div className="app" data-compare={compareMode ? "true" : "false"}>
+    <div className="app" data-compare={compareMode ? "true" : "false"} data-domain={hazardMode}>
       <a className="skip-link" href="#main-globe">Skip to globe</a>
       {toast && (
         <div className="app-toast" data-tone={toast.tone} role="alert" aria-live="assertive">
@@ -540,7 +571,7 @@ export default function App() {
                 if (!inspectMode) setPickMode(false);
               }}
               title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
-              disabled={!slotA.initial}
+              disabled={inHazardMode || !slotA.initial}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -552,6 +583,9 @@ export default function App() {
               variant="mode"
               onClick={() => setCompareMode((v) => !v)}
               title="Toggle side-by-side comparison mode"
+              disabled={inHazardMode}
+              disabledReason="Compare is available only between two tsunami workspaces."
+              onUnavailable={(reason) => showToast(reason, "info")}
             >
               Compare
             </ToolbarButton>
@@ -586,7 +620,7 @@ export default function App() {
                 showToast(ok ? "Saved globe PNG." : "No globe view to export yet.", ok ? "info" : "error");
               }}
               title="Save the current globe view as PNG"
-              disabled={!slotA.initial}
+              disabled={inHazardMode || !slotA.initial}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -619,7 +653,7 @@ export default function App() {
                 showToast(ok ? "Saved share card." : "No globe view to export yet.", ok ? "info" : "error");
               }}
               title="Save a branded share-card with scenario metadata + citation overlay"
-              disabled={!slotA.initial}
+              disabled={inHazardMode || !slotA.initial}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -640,7 +674,7 @@ export default function App() {
                 );
               }}
               title="Copy a shareable URL for the current scenario"
-              disabled={!slotA.activePresetId && !slotA.lastCustomScenario}
+              disabled={inHazardMode || (!slotA.activePresetId && !slotA.lastCustomScenario)}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -665,7 +699,7 @@ export default function App() {
                 }
               }}
               title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
-              disabled={!slotA.initial || recording}
+              disabled={inHazardMode || !slotA.initial || recording}
               disabledReason={recording ? "Recording is already in progress." : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -681,7 +715,7 @@ export default function App() {
                 showToast("Saved text results.", "info");
               }}
               title="Export scenario parameters and runup results as a screen-reader-friendly text file"
-              disabled={!slotA.initial}
+              disabled={inHazardMode || !slotA.initial}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -698,7 +732,7 @@ export default function App() {
                 }
               }}
               title="Export SWE simulation as a CZML file for playback in any Cesium viewer"
-              disabled={!sweSnapshots || sweSnapshots.length === 0}
+              disabled={inHazardMode || !sweSnapshots || sweSnapshots.length === 0}
               disabledReason={snapshotsRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -721,7 +755,7 @@ export default function App() {
                 showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
               }}
               title="Export inundation polygons as GeoJSON"
-              disabled={slotA.runupResults.length === 0}
+              disabled={inHazardMode || slotA.runupResults.length === 0}
               disabledReason={runupRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -744,7 +778,7 @@ export default function App() {
                 showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
               }}
               title="Export source and runup data as KML for Google Earth"
-              disabled={!slotA.initial}
+              disabled={inHazardMode || !slotA.initial}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -763,8 +797,8 @@ export default function App() {
         </div>
       </header>
 
-      <aside className="app__panel" aria-label="Preset scenarios">
-        {presetsError && (
+      <aside className="app__panel" aria-label={inHazardMode ? "Direct effects workspace" : "Preset scenarios"}>
+        {!inHazardMode && presetsError && (
           <div className="panel-error" role="status" aria-live="polite">
             <span>Couldn't load presets: {presetsError}</span>
             <button
@@ -781,18 +815,18 @@ export default function App() {
             </button>
           </div>
         )}
-        <PresetSelector
-          presets={presets}
-          activeId={slotA.activePresetId}
-          onSelect={(id) => {
-            slotA.setActivePresetId(id);
-            setInspectorTab("setup");
-          }}
-          busyId={slotA.busyPresetId}
-          onStartLesson={setActiveLesson}
-          completedLessons={lessonCompletions}
-        />
-        {compareMode && (
+        {!inHazardMode && <PresetSelector
+            presets={presets}
+            activeId={slotA.activePresetId}
+            onSelect={(id) => {
+              slotA.setActivePresetId(id);
+              setInspectorTab("setup");
+            }}
+            busyId={slotA.busyPresetId}
+            onStartLesson={setActiveLesson}
+            completedLessons={lessonCompletions}
+          />}
+        {!inHazardMode && compareMode && (
           <div className="app__compare-rail">
             <div className="app__compare-rail-label">Compare slot B</div>
             <PresetSelector
@@ -801,6 +835,13 @@ export default function App() {
               onSelect={slotB.setActivePresetId}
               busyId={slotB.busyPresetId}
             />
+          </div>
+        )}
+        {inHazardMode && (
+          <div className="app__domain-summary" role="status" aria-live="polite">
+            <span>Direct effects workspace</span>
+            <strong>{activeWorkspaceLabel}</strong>
+            <p>Tsunami sources, wave fields, runup, DART stations, and comparison slots are parked while this domain is active.</p>
           </div>
         )}
         <div className="footer-note">
@@ -823,20 +864,21 @@ export default function App() {
           <div className="app__globe-stack" data-split={compareMode ? "true" : "false"}>
             <div className="app__globe-pane">
               <Globe
-                initial={slotA.initial}
-                wavefront={slotA.wavefront}
-                sweSnapshot={slotA.sweSnapshot}
-                runupResults={slotA.runupResults}
-                dartBuoys={dartPinsForPreset(slotA.activePresetId)}
+                domain={hazardMode}
+                initial={inHazardMode ? null : slotA.initial}
+                wavefront={inHazardMode ? null : slotA.wavefront}
+                sweSnapshot={inHazardMode ? null : slotA.sweSnapshot}
+                runupResults={inHazardMode ? [] : slotA.runupResults}
+                dartBuoys={inHazardMode ? [] : dartPinsForPreset(slotA.activePresetId)}
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
                 onPickCancel={() => setPickMode(false)}
-                inspectMode={inspectMode}
+                inspectMode={!inHazardMode && inspectMode}
                 inspectIsImpact={activePresetA?.source.kind === "Asteroid"}
                 inspectTimeS={timeS}
                 onInspectCancel={() => setInspectMode(false)}
-                onAddGauge={(lat, lon) => setPendingGauge({ lat, lon })}
-                isochrones={sweIsochrones}
+                onAddGauge={inHazardMode ? undefined : (lat, lon) => setPendingGauge({ lat, lon })}
+                isochrones={inHazardMode ? null : sweIsochrones}
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
@@ -851,6 +893,7 @@ export default function App() {
             {compareMode && (
               <div className="app__globe-pane">
                 <Globe
+                  domain="tsunami"
                   initial={slotB.initial}
                   wavefront={slotB.wavefront}
                   sweSnapshot={slotB.sweSnapshot}
@@ -864,14 +907,15 @@ export default function App() {
           </div>
         </Suspense>
         <div className="app__viewport-hud app__viewport-hud--source">
-          <span>{activeSourceLabel}</span>
-          {slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}Â°, {slotA.initial.center.lon_deg.toFixed(2)}Â°</strong>}
+          <span>{activeWorkspaceLabel}</span>
+          {inHazardMode && hazardCenter && <strong>{hazardCenter.lat.toFixed(2)}°, {hazardCenter.lon.toFixed(2)}°</strong>}
+          {!inHazardMode && slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}°, {slotA.initial.center.lon_deg.toFixed(2)}°</strong>}
         </div>
         <button className="app__viewport-layers" type="button" onClick={() => setInspectorTab("layers")} aria-label="Open visualization layers">
           Layers
           <UiIcon name="chevronDown" size={13} />
         </button>
-        <div className="app__viewport-legend" data-visible={slotA.initial ? "true" : "false"} aria-label="Surface displacement legend">
+        <div className="app__viewport-legend" data-visible={!inHazardMode && slotA.initial ? "true" : "false"} aria-label="Surface displacement legend">
           <span className="app__viewport-instrument-label">Surface displacement</span>
           <div className="app__viewport-legend-ramp" aria-hidden />
           <div className="app__viewport-legend-scale" aria-hidden>
@@ -930,7 +974,7 @@ export default function App() {
             windFromDeg={windFromDeg}
             onWindChange={setWindFromDeg}
             onDetonate={() => {
-              setDetonateNonce((n) => n + 1);
+              detonateActiveHazard();
               setInspectorTab("results");
             }}
             display="setup"
@@ -982,7 +1026,7 @@ export default function App() {
           result={hazardResult}
           windFromDeg={windFromDeg}
           onWindChange={setWindFromDeg}
-          onDetonate={() => setDetonateNonce((n) => n + 1)}
+          onDetonate={detonateActiveHazard}
           display="results"
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
@@ -1000,26 +1044,27 @@ export default function App() {
         )}
         {inspectorTab === "results" && !inHazardMode && <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />}
         {inspectorTab === "layers" && <LayerInspector
+          domain={hazardMode}
           hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
-          hasWavefront={Boolean(slotA.wavefront)}
-          hasSweField={Boolean(slotA.sweSnapshot)}
-          hasMaxField={Boolean(sweMaxField)}
-          arrivalCount={sweIsochrones?.length ?? 0}
-          runupCount={slotA.runupResults.length}
-          dartCount={dartPinsForPreset(slotA.activePresetId).length}
+          hasWavefront={!inHazardMode && Boolean(slotA.wavefront)}
+          hasSweField={!inHazardMode && Boolean(slotA.sweSnapshot)}
+          hasMaxField={!inHazardMode && Boolean(sweMaxField)}
+          arrivalCount={inHazardMode ? 0 : sweIsochrones?.length ?? 0}
+          runupCount={inHazardMode ? 0 : slotA.runupResults.length}
+          dartCount={inHazardMode ? 0 : dartPinsForPreset(slotA.activePresetId).length}
           hasFallout={Boolean(hazardPolygons?.length)}
           onOpenSettings={() => setShowSettings(true)}
         />}
         </div>
       </aside>
 
-      <CoastalRunupOverlay
+      {!inHazardMode && <CoastalRunupOverlay
         initial={slotA.initial}
         activePreset={activePresetA}
         timeS={timeS}
         onResults={slotA.setRunupResults}
-      />
-      {compareMode && (
+      />}
+      {!inHazardMode && compareMode && (
         <CoastalRunupOverlay
           initial={slotB.initial}
           activePreset={activePresetB}
@@ -1056,9 +1101,9 @@ export default function App() {
         onRateChange={setTimelineRate}
         hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
         sourceLabel={inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}
-        solverReady={hasSwePlayback}
+        solverReady={!inHazardMode && hasSwePlayback}
         domain={hazardMode}
-        frameCount={sweSnapshots?.length ?? 0}
+        frameCount={inHazardMode ? 0 : sweSnapshots?.length ?? 0}
         onOpenDetails={() => setInspectorTab("setup")}
       />
       <div className="app__statusbar" role="status" aria-live="polite">

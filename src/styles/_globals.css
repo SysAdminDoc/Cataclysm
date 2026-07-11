@@ -41,6 +41,7 @@ html[data-theme="mocha"] {
   --metric-bg: #14212d;
   --divider: #263746;
   --accent-active: #6fd2ff;
+  --on-accent: #07111b;
   --viewport-hud: rgba(8, 16, 24, 0.9);
 
   /* Desktop simulator system tokens. */
@@ -112,6 +113,7 @@ html[data-theme="latte"] {
   --metric-bg: #ffffff;
   --divider: #b8c3cf;
   --accent-active: #087fa6;
+  --on-accent: #ffffff;
   --viewport-hud: rgba(248, 251, 254, 0.94);
   --surface-recessed: color-mix(in srgb, var(--crust) 48%, #ffffff);
   --surface-raised: #ffffff;

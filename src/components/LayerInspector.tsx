@@ -1,6 +1,7 @@
 import { UiIcon } from "./UiIcon";
 
 type Props = {
+  domain: "tsunami" | "asteroid" | "nuclear";
   hasSource: boolean;
   hasWavefront: boolean;
   hasSweField: boolean;
@@ -26,6 +27,7 @@ function LayerRow({ label, detail, active }: { label: string; detail: string; ac
 }
 
 export function LayerInspector({
+  domain,
   hasSource,
   hasWavefront,
   hasSweField,
@@ -36,6 +38,7 @@ export function LayerInspector({
   hasFallout,
   onOpenSettings,
 }: Props) {
+  const tsunamiDomain = domain === "tsunami";
   return (
     <div className="section layer-inspector">
       <div className="section__title">
@@ -46,14 +49,15 @@ export function LayerInspector({
         Layers activate from simulation output. Quantitative overlays remain synchronized with the active source and scenario time.
       </p>
       <ul className="layer-inspector__list">
-        <LayerRow label="Source geometry" detail="Initial displacement and source marker" active={hasSource} />
-        <LayerRow label="Analytical wavefront" detail="Arrival and attenuation geometry" active={hasWavefront} />
-        <LayerRow label="SWE water field" detail="Time-varying shallow-water solution" active={hasSweField} />
-        <LayerRow label="Maximum field" detail="Peak, time-of-maximum, and energy products" active={hasMaxField} />
-        <LayerRow label="Arrival isochrones" detail={arrivalCount > 0 ? `${arrivalCount} contour levels` : "Generated after propagation"} active={arrivalCount > 0} />
-        <LayerRow label="Coastal runup" detail={runupCount > 0 ? `${runupCount} evaluated coastal points` : "Computed from the active source"} active={runupCount > 0} />
-        <LayerRow label="DART observations" detail={dartCount > 0 ? `${dartCount} historical buoy records` : "Available for instrumented events"} active={dartCount > 0} />
-        <LayerRow label="Fallout plume" detail="Wind-driven deposition geometry" active={hasFallout} />
+        <LayerRow label={tsunamiDomain ? "Source geometry" : "Effects origin"} detail={tsunamiDomain ? "Initial displacement and source marker" : "Direct hazard target and effect center"} active={hasSource} />
+        {tsunamiDomain && <LayerRow label="Analytical wavefront" detail="Arrival and attenuation geometry" active={hasWavefront} />}
+        {tsunamiDomain && <LayerRow label="SWE water field" detail="Time-varying shallow-water solution" active={hasSweField} />}
+        {tsunamiDomain && <LayerRow label="Maximum field" detail="Peak, time-of-maximum, and energy products" active={hasMaxField} />}
+        {tsunamiDomain && <LayerRow label="Arrival isochrones" detail={arrivalCount > 0 ? `${arrivalCount} contour levels` : "Generated after propagation"} active={arrivalCount > 0} />}
+        {tsunamiDomain && <LayerRow label="Coastal runup" detail={runupCount > 0 ? `${runupCount} evaluated coastal points` : "Computed from the active source"} active={runupCount > 0} />}
+        {tsunamiDomain && <LayerRow label="DART observations" detail={dartCount > 0 ? `${dartCount} historical buoy records` : "Available for instrumented events"} active={dartCount > 0} />}
+        {!tsunamiDomain && <LayerRow label="Hazard effect rings" detail="Domain-specific physical thresholds" active={hasSource} />}
+        {domain === "nuclear" && <LayerRow label="Fallout plume" detail="Wind-driven deposition geometry" active={hasFallout} />}
       </ul>
       <button type="button" className="layer-inspector__configure" onClick={onOpenSettings}>
         Configure globe imagery

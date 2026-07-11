@@ -72,6 +72,46 @@ test.describe("Cataclysm browser preview", () => {
     await expect(panel.getByRole("option", { name: /Little Boy \(Hiroshima\)/ })).toBeAttached();
   });
 
+  test("hazard domain switches park incompatible workspace state", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    const app = page.locator(".app");
+    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    await expect(chicxulub).toBeVisible({ timeout: 10_000 });
+    await chicxulub.click();
+    await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    await expect(app).toHaveAttribute("data-compare", "true");
+
+    await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+    await expect(app).toHaveAttribute("data-domain", "nuclear");
+    await expect(app).toHaveAttribute("data-compare", "false");
+    await expect(page.locator(".preset-card")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Compare", exact: true })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByRole("button", { name: "Inspect", exact: true })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("Nuclear detonation");
+    await expect(page.locator(".app__viewport-hud--source")).not.toContainText("Chicxulub");
+    await expect(page.getByLabel("Surface displacement legend")).toHaveAttribute("data-visible", "false");
+    await expect(page.getByText("Choose an effects origin.")).toBeVisible();
+    await page.getByRole("tab", { name: "Layers" }).click();
+    await expect(page.getByText("Hazard effect rings")).toBeVisible();
+    await expect(page.getByText("SWE water field")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Impact", exact: true }).click();
+    await expect(app).toHaveAttribute("data-domain", "asteroid");
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("Asteroid impact");
+    await expect(page.locator(".preset-card")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Tsunami", exact: true }).click();
+    await expect(app).toHaveAttribute("data-domain", "tsunami");
+    await expect(app).toHaveAttribute("data-compare", "false");
+    await expect(chicxulub).toBeVisible();
+    await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Inspect", exact: true })).toHaveAttribute("aria-disabled", "false");
+    await expect(page.getByLabel("Surface displacement legend")).toHaveAttribute("data-visible", "true");
+  });
+
   test("saves and reloads a custom scenario round trip", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");

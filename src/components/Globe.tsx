@@ -14,6 +14,7 @@ import type {
 import type { EffectRing, GeoPoint } from "../hazards/types";
 
 type Props = {
+  domain?: "tsunami" | "asteroid" | "nuclear";
   initial: InitialDisplacement | null;
   wavefront: PropagationSnapshot | null;
   /** Live SWE solver snapshot (PNG + bbox) to paint on the globe. */
@@ -182,6 +183,7 @@ function destroyScreenSpaceHandler(handler: Cesium.ScreenSpaceEventHandler | nul
  * All physics state comes from props. The Viewer is created once and reused.
  */
 export function Globe({
+  domain = "tsunami",
   initial,
   wavefront,
   sweSnapshot,
@@ -1606,11 +1608,15 @@ export function Globe({
           Offline — using cached tiles. Select Natural Earth II in Settings for full offline support.
         </div>
       )}
-      {!initial && imageryStatus === "ready" && (
+      {!initial && !hazardCenter && imageryStatus === "ready" && (
         <div className="app__globe-hint" role="status" aria-live="polite">
-          <span className="app__globe-hint-kicker">Ready for a source</span>
-          <strong>Select a preset or simulate a custom source.</strong>
-          <span>Wavefronts, runup bars, exports, and inspection unlock after a scenario is active.</span>
+          <span className="app__globe-hint-kicker">{domain === "tsunami" ? "Ready for a source" : "Ready for a target"}</span>
+          <strong>{domain === "tsunami" ? "Select a preset or simulate a custom source." : "Choose an effects origin."}</strong>
+          <span>
+            {domain === "tsunami"
+              ? "Wavefronts, runup bars, exports, and inspection unlock after a scenario is active."
+              : `Pick a location to calculate ${domain === "nuclear" ? "blast, thermal, radiation, and fallout" : "entry, crater, blast, and thermal"} effects.`}
+          </span>
         </div>
       )}
     </>
