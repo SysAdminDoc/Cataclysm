@@ -3,10 +3,11 @@
 //! Physics lives in `physics::*`. Tauri command handlers are in `commands`.
 //! Historical event registry lives in `presets`.
 
+pub mod commands;
 pub mod data;
 pub mod physics;
 pub mod presets;
-pub mod commands;
+pub mod render_protocol;
 
 use commands::*;
 
@@ -32,9 +33,12 @@ pub fn run() {
             lamb_wave_sample,
             dart_buoy_rmse,
             gpu_probe,
+            render_protocol_capabilities,
             surface_probe,
             simulate_asteroid_hazard,
+            simulate_asteroid_hazard_render,
             simulate_nuclear_hazard,
+            simulate_nuclear_hazard_render,
             diagnostics_bundle,
             keychain_get_token,
             keychain_set_token,

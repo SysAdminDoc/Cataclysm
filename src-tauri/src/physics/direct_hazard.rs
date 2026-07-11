@@ -68,7 +68,7 @@ pub enum HazardDetail {
     Nuclear(NuclearDetail),
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AsteroidTargetType {
     SedimentaryRock,
@@ -76,7 +76,7 @@ pub enum AsteroidTargetType {
     Water,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AsteroidHazardRequest {
     pub center: HazardCenter,
     pub diameter_m: f64,
@@ -689,7 +689,7 @@ pub enum NuclearBurstType {
     Water,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NuclearHazardRequest {
     pub center: HazardCenter,
     pub yield_kt: f64,
@@ -1289,14 +1289,18 @@ mod tests {
         let fallout = detail.fallout.as_ref().expect("surface fallout");
         assert_relative(fallout.heavy.length, 7.559_269_941_246_139, 1e-12);
         assert_relative(fallout.light.length, 26.748_185_945_947_878, 1e-12);
-        assert!(detail
-            .timeline
-            .iter()
-            .any(|event| event.category == "blast"));
-        assert!(detail
-            .timeline
-            .iter()
-            .any(|event| event.category == "fallout"));
+        assert!(
+            detail
+                .timeline
+                .iter()
+                .any(|event| event.category == "blast")
+        );
+        assert!(
+            detail
+                .timeline
+                .iter()
+                .any(|event| event.category == "fallout")
+        );
     }
 
     #[test]
@@ -1333,10 +1337,12 @@ mod tests {
             panic!("wrong detail");
         };
         assert!(detail.atmospheric_entry.reaches_ground);
-        assert!(detail
-            .crater
-            .as_ref()
-            .is_some_and(|value| value.final_diameter > 100_000.0));
+        assert!(
+            detail
+                .crater
+                .as_ref()
+                .is_some_and(|value| value.final_diameter > 100_000.0)
+        );
 
         let default_impact = simulate_asteroid_hazard(AsteroidHazardRequest {
             center: center(),
@@ -1389,14 +1395,18 @@ mod tests {
             beach_slope_rad: 0.02,
         })
         .unwrap();
-        assert!(ocean
-            .readout
-            .iter()
-            .any(|item| item.label == "Tsunami runup"));
-        assert!(ocean
-            .rings
-            .windows(2)
-            .all(|pair| pair[0].radius_m >= pair[1].radius_m));
+        assert!(
+            ocean
+                .readout
+                .iter()
+                .any(|item| item.label == "Tsunami runup")
+        );
+        assert!(
+            ocean
+                .rings
+                .windows(2)
+                .all(|pair| pair[0].radius_m >= pair[1].radius_m)
+        );
     }
 
     #[test]

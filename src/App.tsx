@@ -21,7 +21,7 @@ import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type RunupPoint, type ScreenshotMeta } from "./lib/export";
-import { APP_VERSION } from "./lib/model-provenance";
+import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
@@ -43,10 +43,29 @@ import {
   surfaceBurstTypeFromSurface,
 } from "./lib/surface";
 import directHazardCaptureFixtures from "./data/direct-hazard-capture-fixtures.json";
+import referenceScenes from "./data/reference-scenes.json";
+import asteroidEntryRecordingUrl from "./data/direct-render/asteroid-entry.catframe?url";
+import asteroidLandRecordingUrl from "./data/direct-render/asteroid-land-impact.catframe?url";
+import asteroidOceanRecordingUrl from "./data/direct-render/asteroid-ocean-impact.catframe?url";
+import nuclearAirburstRecordingUrl from "./data/direct-render/nuclear-airburst.catframe?url";
+import nuclearSurfaceRecordingUrl from "./data/direct-render/nuclear-surface-burst.catframe?url";
+import {
+  ingestRenderRecording,
+  type RendererNeutralFrameView,
+  type RenderReplayAdapter,
+} from "./rendering/protocol";
 
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
 type DirectHazardMode = Exclude<HazardMode, "tsunami">;
 type InspectorTab = "setup" | "results" | "layers";
+
+const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
+  "asteroid-entry": asteroidEntryRecordingUrl,
+  "asteroid-land-impact": asteroidLandRecordingUrl,
+  "asteroid-ocean-impact": asteroidOceanRecordingUrl,
+  "nuclear-airburst": nuclearAirburstRecordingUrl,
+  "nuclear-surface-burst": nuclearSurfaceRecordingUrl,
+};
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
@@ -232,6 +251,8 @@ export default function App() {
   // default "Impact" is dramatic but the effects still frame nicely.
   const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 300, densityKgM3: 4000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [directRenderReplay, setDirectRenderReplay] = useState<RenderReplayAdapter | null>(null);
+  const [directRenderFrame, setDirectRenderFrame] = useState<RendererNeutralFrameView | null>(null);
   const [hazardPending, setHazardPending] = useState(false);
   const hazardRequestId = useRef(0);
   const [windFromDeg, setWindFromDeg] = useState(270);
@@ -244,6 +265,8 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [sweMaxField, setSweMaxField] = useState<import("./types/scenario").MaxFieldProduct | null>(null);
+  const [sweRenderFrameA, setSweRenderFrameA] = useState<RenderFrameProvenance | null>(null);
+  const [sweRenderFrameB, setSweRenderFrameB] = useState<RenderFrameProvenance | null>(null);
   const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
@@ -419,32 +442,55 @@ export default function App() {
     const requestId = ++hazardRequestId.current;
     if (hazardMode === "tsunami" || !hazardCenter) {
       setHazardResult(null);
+      setDirectRenderReplay(null);
+      setDirectRenderFrame(null);
       setHazardPending(false);
       return;
     }
+    let cancelled = false;
     if (!inTauri) {
       const fixture = referenceCaptureMode && referenceCaptureSceneId
         ? (directHazardCaptureFixtures as Record<string, HazardResult>)[referenceCaptureSceneId]
         : undefined;
       setHazardResult(fixture?.kind === hazardMode ? structuredClone(fixture) : null);
+      setDirectRenderReplay(null);
+      const recordingUrl = referenceCaptureSceneId
+        ? DIRECT_RENDER_FIXTURE_URLS[referenceCaptureSceneId]
+        : undefined;
+      if (recordingUrl) {
+        void fetch(recordingUrl)
+          .then((response) => {
+            if (!response.ok) throw new Error(`render fixture returned ${response.status}`);
+            return response.arrayBuffer();
+          })
+          .then(ingestRenderRecording)
+          .then((replay) => {
+            if (!cancelled && requestId === hazardRequestId.current) setDirectRenderReplay(replay);
+          })
+          .catch((error) => {
+            if (!cancelled) console.error("direct render fixture failed", error);
+          });
+      }
       setHazardPending(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
     setHazardResult(null);
+    setDirectRenderReplay(null);
+    setDirectRenderFrame(null);
     setHazardPending(true);
     const center = { lat: hazardCenter.lat, lon: hazardCenter.lon };
-    const request = hazardMode === "nuclear"
-      ? api.simulateNuclearHazard({
+    const nuclearRequest = {
           center,
           yield_kt: nuclearInput.yieldKt,
           burst_type: nuclearInput.burstType,
           height_m: nuclearInput.heightM,
           fission_pct: nuclearInput.fissionPct ?? 50,
           population_density: nuclearInput.populationDensity ?? 0,
-        })
-      : api.simulateAsteroidHazard({
+        };
+    const asteroidRequest = {
           center,
           diameter_m: asteroidInput.diameterM,
           density_kg_m3: asteroidInput.densityKgM3,
@@ -453,15 +499,25 @@ export default function App() {
           target_type: asteroidInput.targetType,
           water_depth_m: asteroidInput.waterDepthM ?? 0,
           beach_slope_rad: asteroidInput.beachSlopeRad ?? 0.02,
-        });
+        };
+    const request = hazardMode === "nuclear"
+      ? Promise.all([
+          api.simulateNuclearHazard(nuclearRequest),
+          api.simulateNuclearHazardRender(nuclearRequest),
+        ])
+      : Promise.all([
+          api.simulateAsteroidHazard(asteroidRequest),
+          api.simulateAsteroidHazardRender(asteroidRequest),
+        ]);
 
     void request
-      .then((result) => {
+      .then(([result, replay]) => {
         if (cancelled || requestId !== hazardRequestId.current) return;
         if (result.authority !== "rust" || result.kind !== hazardMode) {
           throw new Error("backend returned an invalid direct-hazard authority contract");
         }
         setHazardResult(result);
+        setDirectRenderReplay(replay);
       })
       .catch((error) => {
         if (cancelled || requestId !== hazardRequestId.current) return;
@@ -486,6 +542,30 @@ export default function App() {
     referenceCaptureSceneId,
     showToast,
   ]);
+
+  useEffect(() => {
+    setDirectRenderFrame(null);
+    if (!directRenderReplay || !detonateNonce) return;
+    const frames = directRenderReplay.frames;
+    const lastTick = frames.at(-1)?.header.solver_tick ?? 0;
+    const tickDurationS = directRenderReplay.scenario?.header.tick_duration_s ?? 0.1;
+    if (referenceCaptureMode && referenceCaptureSceneId) {
+      const scene = referenceScenes.scenes.find((entry) => entry.id === referenceCaptureSceneId);
+      const tick = Math.min(lastTick, Math.max(0, Math.round((scene?.effectTimeMs ?? 0) / (tickDurationS * 1000))));
+      setDirectRenderFrame(directRenderReplay.frameAtTick(tick));
+      return;
+    }
+    let animationFrame = 0;
+    const startedAt = performance.now();
+    const advance = (now: number) => {
+      const tick = Math.min(lastTick, Math.floor((now - startedAt) / (tickDurationS * 1000)));
+      setDirectRenderFrame(directRenderReplay.frameAtTick(tick));
+      if (tick < lastTick) animationFrame = requestAnimationFrame(advance);
+    };
+    animationFrame = requestAnimationFrame(advance);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [directRenderReplay, detonateNonce, referenceCaptureMode, referenceCaptureSceneId]);
+
   // Nuclear fallout plume polygons (surface bursts only), driven by wind.
   const hazardPolygons = useMemo(() => {
     if (hazardMode !== "nuclear" || !hazardCenter || !hazardResult) return null;
@@ -505,6 +585,19 @@ export default function App() {
   const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
   const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
+  const directRenderProvenance: RenderFrameProvenance | null = directRenderFrame
+    ? {
+        protocolVersion: "1.0",
+        scenarioId: directRenderFrame.scenario_id,
+        scenarioSha256: directRenderFrame.scenario_sha256,
+        sequence: directRenderFrame.sequence.toString(),
+        solverTick: directRenderFrame.solver_tick,
+        simulationTimeS: directRenderFrame.simulation_time_s,
+        tickDurationS: directRenderFrame.tick_duration_s,
+        payloadSha256: directRenderFrame.payload_sha256,
+        fieldSha256: {},
+      }
+    : null;
   const modelStatus = inHazardMode
     ? !inTauri && hazardCenter && !hazardResult
       ? "Desktop physics required"
@@ -532,6 +625,7 @@ export default function App() {
     solverMode: hasSwePlayback
       ? "Shallow-water-equation snapshot playback"
       : "Analytical source geometry and coastal runup sampling",
+    renderFrame: inHazardMode ? directRenderProvenance : sweRenderFrameA,
   });
 
   const exportMetaB = (): ScreenshotMeta => ({
@@ -542,6 +636,7 @@ export default function App() {
     solverMode: hasSwePlayback
       ? "Shallow-water-equation snapshot playback"
       : "Analytical source geometry and coastal runup sampling",
+    renderFrame: sweRenderFrameB,
   });
 
   async function handlePickGlobe(lat: number, lon: number) {
@@ -1013,6 +1108,7 @@ export default function App() {
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 impactAngleDeg={asteroidInput.angleDeg}
                 impactIsWater={asteroidInput.targetType === "water"}
+                directRenderFrame={directRenderFrame}
                 onCameraTelemetry={handleCameraTelemetry}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
@@ -1026,6 +1122,7 @@ export default function App() {
                   sweSnapshot={slotB.sweSnapshot}
                   runupResults={slotB.runupResults}
                   dartBuoys={dartPinsForPreset(slotB.activePresetId)}
+                  directRenderFrame={null}
                   primary={false}
                 />
                 <div className="app__globe-tag" data-slot="b">Slot B</div>
@@ -1145,9 +1242,10 @@ export default function App() {
           dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
           onMaxField={setSweMaxField}
           onIsochrones={setSweIsochrones}
+          onRenderFrame={setSweRenderFrameA}
         />}
         {inspectorTab === "setup" && !inHazardMode && <Activity mode={compareMode ? "visible" : "hidden"}>
-          <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} />
+          <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} />
         </Activity>}
         {inspectorTab === "setup" && !inHazardMode && !compareMode && (
           <ScenarioBuilder

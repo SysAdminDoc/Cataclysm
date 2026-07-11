@@ -148,6 +148,7 @@ describe("SwePlayback", () => {
         gauge_points: [{ id: "gauge-1", lat_deg: 0.25, lon_deg: 0.5 }],
       }),
       expect.any(Function),
+      expect.any(Function),
     );
 
     act(() => {

@@ -4,6 +4,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+- Added renderer protocol v1 (`CATRFRM`) as the Rust-owned frame boundary for
+  Cesium and future cinematic clients. Length-prefixed scenario/frame/end
+  recordings carry authoritative solver ticks, WGS84/ECEF/local-ENU transforms,
+  typed hazard events, raw eta/u/v/bathymetry/wet-mask fields, SI units, model
+  provenance, and per-field/payload SHA-256. TypeScript and an independent Node
+  conformance client reject incompatible versions, corrupt or oversized fields,
+  bad sequence/timing, and transform drift. SWE and direct asteroid/nuclear
+  playback now consume the protocol; derived exports identify their exact frame.
+
 ### Changed — trustworthy accelerated releases
 - Added an HR-00 visual-truth gate with 12 fixed Earth/hazard scenes at true
   2560×1440 and 3840×2160. Unmasked captures fix scenario time, effect phase,

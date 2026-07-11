@@ -200,6 +200,7 @@ npm run dev                # browser preview with deterministic demo data
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
+npm run verify:render-protocol # independent binary replay and ECEF conformance gate
 npm run capture:references # regenerate 12-scene 1440p/4K visual candidates + telemetry
 npm run tauri:build        # verified GPU-enabled installer(s) + signed artifact manifest
 ```
@@ -226,8 +227,8 @@ npm run approve:reference -- --scene orbit-global --resolution 1440p --approve o
 ```
 
 Wildcard, multi-frame, mismatched, and reason-free approvals fail before
-rendering. Browser-only direct-effect reference frames consume frozen products
-serialized by Rust and checked against Rust on every test run.
+rendering. Browser-only direct-effect reference frames consume tracked binary
+recordings serialized by Rust and decoded through the same protocol client.
 
 To bake a Cesium ion token at build time, `cp .env.example .env` and paste
 it in; otherwise leave it blank and paste at runtime in **Settings**.
@@ -258,10 +259,11 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 ```
 
 Physics runs in the Rust backend (multi-threaded via `rayon`, GPU via `wgpu`
-behind the `gpu` feature flag). Asteroid and nuclear commands return complete,
-versioned renderer products; the frontend only accepts inputs and renders those
-results. The IPC boundary also keeps the WebView from blocking on million-cell
-SWE solves.
+behind the `gpu` feature flag). Renderer protocol v1 streams checksummed raw
+SWE fields, authoritative ticks, typed hazard events, and georeferenced ENU/ECEF
+transforms over Tauri raw channels. Cesium decodes and presents those packets;
+future renderers replay the same bytes without reimplementing physics. The
+legacy SWE PNG channel remains temporarily for analytical color overlays.
 
 ---
 

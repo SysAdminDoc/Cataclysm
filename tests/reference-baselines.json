@@ -7,29 +7,219 @@
     "capturedFromCommit": "967d71842109d7a62758f104639f8897c826ec1d"
   },
   "entries": {
-    "orbit-global@1440p": { "pngSha256": "f8e8e9840d3f26da91b9f5d5f87747d02ea6053faa9d2a35e1fe14d2ce8f7a23", "sceneSha256": "4f0bab7eefd7aa1b77dc32eda906a5b7144eb1a2ab8a44acbf0ff3059935bc86", "width": 2560, "height": 1440 },
-    "ocean-daylight@1440p": { "pngSha256": "b27cb9886a8d36ca6d234403a1d9764fa241c764e6d37d529545971c2b2319db", "sceneSha256": "6884ed77f30c1487315da2b0e3760f2170992aae32e316e03e9303b97a0a62ec", "width": 2560, "height": 1440 },
-    "earth-night@1440p": { "pngSha256": "c2587d0d125875a8c05d76503027a9bea436d97e13feacab35be8fa4ab6dd1d7", "sceneSha256": "ebd3dd159b2c11898c2373f5488a27548176a2827e841b709e0bc50d224df2a7", "width": 2560, "height": 1440 },
-    "asteroid-entry@1440p": { "pngSha256": "ef3c7cb12e10109799f46036c3305c7c558a9ee5abf2767ab2a6892d429128bf", "sceneSha256": "045beb9a012e20644d74742bebcd6b45a9b5f8b99bf6565beff3ea9452450829", "width": 2560, "height": 1440 },
-    "asteroid-land-impact@1440p": { "pngSha256": "ddbc9cbdaac5e6e53a1596cf97eca236debbcc7d4b32bb66eff5a1854f37a0e3", "sceneSha256": "a9087c6a9b833fbae26a3dcab1c7bb8dbe46b2fb14bcd9a273bf32233ce6cf3a", "width": 2560, "height": 1440 },
-    "asteroid-ocean-impact@1440p": { "pngSha256": "adb1acecda727754d92a938d158e8b4b8ddba1db274463abb40ded1da300dce6", "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7", "width": 2560, "height": 1440 },
-    "nuclear-airburst@1440p": { "pngSha256": "72d25748a562b5f06aef4cc0776a4cc63eaaf111b3cb348202108a68de10bcf8", "sceneSha256": "1f8d3023673de91a48f94f50ea893d4af82e3ea4d82704bdf1b11e89bbbc2e6f", "width": 2560, "height": 1440 },
-    "nuclear-surface-burst@1440p": { "pngSha256": "3f39a1d9566730165953bd714c7e623c708a35dd5ce0342c13b3c20c6ea0d11c", "sceneSha256": "7da5d43a0d759059341bdd229e51071d5554ed4d921faac184b298be4cc0f319", "width": 2560, "height": 1440 },
-    "tsunami-deep-ocean@1440p": { "pngSha256": "0398a49966dba63ff5a396ebe4c2cdd65d939ed7ee39fb05f664b7f7ec5441db", "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82", "width": 2560, "height": 1440 },
-    "tsunami-shoaling@1440p": { "pngSha256": "ffa37899477df224885807d83ea0c78095243c3a9a4cff49872d711a2d66973d", "sceneSha256": "f48c353e9b14571761c3f9d8bdb490cc3abd2a5c1d08b5288eb9e973d86f159e", "width": 2560, "height": 1440 },
-    "urban-inundation@1440p": { "pngSha256": "6a7bc5dbdefe180439e0f445fa267352caeebbd4c802ee8da4f94d95fbcdbbbc", "sceneSha256": "1d665fd2775304b34d9d3c85f732e5d1da5aab15b7800335fc4d10dbff629a6f", "width": 2560, "height": 1440 },
-    "fjord-runup@1440p": { "pngSha256": "442f03914fc9be557536aa14a1670b3a5476580dfc228615427cf57620886a6d", "sceneSha256": "ba5981cf4993923fd873d6ef4deca02aebea54e75384c942ce1073414dc0dbd1", "width": 2560, "height": 1440 },
-    "orbit-global@4k": { "pngSha256": "2d4de0c50c8e47be0f13f9904a5e9d26bab3857f48ef9b493f1eaa34aeb010cc", "sceneSha256": "4f0bab7eefd7aa1b77dc32eda906a5b7144eb1a2ab8a44acbf0ff3059935bc86", "width": 3840, "height": 2160 },
-    "ocean-daylight@4k": { "pngSha256": "bb3645bcdcc24c4859afd0c75be13054708d232cf670fb0d9280479e20136c82", "sceneSha256": "6884ed77f30c1487315da2b0e3760f2170992aae32e316e03e9303b97a0a62ec", "width": 3840, "height": 2160 },
-    "earth-night@4k": { "pngSha256": "02861a7e075adcd11e6318d76ae8e57d3765b8072e2e03147fd71a4be709ff33", "sceneSha256": "ebd3dd159b2c11898c2373f5488a27548176a2827e841b709e0bc50d224df2a7", "width": 3840, "height": 2160 },
-    "asteroid-entry@4k": { "pngSha256": "40ef0f216eb196d90718f5125c952765e376c97f817a8e20e8450f4d4046e35a", "sceneSha256": "045beb9a012e20644d74742bebcd6b45a9b5f8b99bf6565beff3ea9452450829", "width": 3840, "height": 2160 },
-    "asteroid-land-impact@4k": { "pngSha256": "45188a470ec9bdf657bb32e20abc594be7880dbd7af753492ca9396bc31b9cd1", "sceneSha256": "a9087c6a9b833fbae26a3dcab1c7bb8dbe46b2fb14bcd9a273bf32233ce6cf3a", "width": 3840, "height": 2160 },
-    "asteroid-ocean-impact@4k": { "pngSha256": "b07f1e4fb1a07777f48dee3886f9c6ea731951ec03594aa41b0ec0f3d177c8c6", "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7", "width": 3840, "height": 2160 },
-    "nuclear-airburst@4k": { "pngSha256": "4a7da678a44d1cc53c5921083ef5577487d43f6a105e3e63ac43fdf66b55e746", "sceneSha256": "1f8d3023673de91a48f94f50ea893d4af82e3ea4d82704bdf1b11e89bbbc2e6f", "width": 3840, "height": 2160 },
-    "nuclear-surface-burst@4k": { "pngSha256": "2bbd01b468711682f7052b855a66a76f9572d6546934e6d883f079b97083153b", "sceneSha256": "7da5d43a0d759059341bdd229e51071d5554ed4d921faac184b298be4cc0f319", "width": 3840, "height": 2160 },
-    "tsunami-deep-ocean@4k": { "pngSha256": "cacde6964827a98b5d9487966d813ff65e29163e0d9acb1731c284cd8bae8afc", "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82", "width": 3840, "height": 2160 },
-    "tsunami-shoaling@4k": { "pngSha256": "fd65719188eb73d143e33de222e863dcf9c285b51840f834bfc1aa71ff3f181d", "sceneSha256": "f48c353e9b14571761c3f9d8bdb490cc3abd2a5c1d08b5288eb9e973d86f159e", "width": 3840, "height": 2160 },
-    "urban-inundation@4k": { "pngSha256": "10c65a7173b32491e1ff121a9463174a2ffba9a604864f5b6cb744e047c55c63", "sceneSha256": "1d665fd2775304b34d9d3c85f732e5d1da5aab15b7800335fc4d10dbff629a6f", "width": 3840, "height": 2160 },
-    "fjord-runup@4k": { "pngSha256": "50ba02d87fa422f206a42b9e79a263c67eb832e8d6e40601d0c3d97eea47cc99", "sceneSha256": "ba5981cf4993923fd873d6ef4deca02aebea54e75384c942ce1073414dc0dbd1", "width": 3840, "height": 2160 }
+    "orbit-global@1440p": {
+      "pngSha256": "f8e8e9840d3f26da91b9f5d5f87747d02ea6053faa9d2a35e1fe14d2ce8f7a23",
+      "sceneSha256": "4f0bab7eefd7aa1b77dc32eda906a5b7144eb1a2ab8a44acbf0ff3059935bc86",
+      "width": 2560,
+      "height": 1440
+    },
+    "ocean-daylight@1440p": {
+      "pngSha256": "b27cb9886a8d36ca6d234403a1d9764fa241c764e6d37d529545971c2b2319db",
+      "sceneSha256": "6884ed77f30c1487315da2b0e3760f2170992aae32e316e03e9303b97a0a62ec",
+      "width": 2560,
+      "height": 1440
+    },
+    "earth-night@1440p": {
+      "pngSha256": "c2587d0d125875a8c05d76503027a9bea436d97e13feacab35be8fa4ab6dd1d7",
+      "sceneSha256": "ebd3dd159b2c11898c2373f5488a27548176a2827e841b709e0bc50d224df2a7",
+      "width": 2560,
+      "height": 1440
+    },
+    "asteroid-entry@1440p": {
+      "pngSha256": "ef3c7cb12e10109799f46036c3305c7c558a9ee5abf2767ab2a6892d429128bf",
+      "sceneSha256": "045beb9a012e20644d74742bebcd6b45a9b5f8b99bf6565beff3ea9452450829",
+      "width": 2560,
+      "height": 1440,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:25:15.145Z",
+        "previousPngSha256": "ef3c7cb12e10109799f46036c3305c7c558a9ee5abf2767ab2a6892d429128bf",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "asteroid-land-impact@1440p": {
+      "pngSha256": "d77bd988c7948d43e584bb62ef2d9768b372670174e32db1cecf203a5052501a",
+      "sceneSha256": "a9087c6a9b833fbae26a3dcab1c7bb8dbe46b2fb14bcd9a273bf32233ce6cf3a",
+      "width": 2560,
+      "height": 1440,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:26:37.935Z",
+        "previousPngSha256": "ddbc9cbdaac5e6e53a1596cf97eca236debbcc7d4b32bb66eff5a1854f37a0e3",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "asteroid-ocean-impact@1440p": {
+      "pngSha256": "e039eb5bc4d6a4c4abb7bada5603069abd656ad46856df4fd41f8c69e4ef0546",
+      "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
+      "width": 2560,
+      "height": 1440,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:28:08.950Z",
+        "previousPngSha256": "adb1acecda727754d92a938d158e8b4b8ddba1db274463abb40ded1da300dce6",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "nuclear-airburst@1440p": {
+      "pngSha256": "72d25748a562b5f06aef4cc0776a4cc63eaaf111b3cb348202108a68de10bcf8",
+      "sceneSha256": "1f8d3023673de91a48f94f50ea893d4af82e3ea4d82704bdf1b11e89bbbc2e6f",
+      "width": 2560,
+      "height": 1440,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:29:41.072Z",
+        "previousPngSha256": "72d25748a562b5f06aef4cc0776a4cc63eaaf111b3cb348202108a68de10bcf8",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "nuclear-surface-burst@1440p": {
+      "pngSha256": "3f39a1d9566730165953bd714c7e623c708a35dd5ce0342c13b3c20c6ea0d11c",
+      "sceneSha256": "7da5d43a0d759059341bdd229e51071d5554ed4d921faac184b298be4cc0f319",
+      "width": 2560,
+      "height": 1440,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:31:15.924Z",
+        "previousPngSha256": "3f39a1d9566730165953bd714c7e623c708a35dd5ce0342c13b3c20c6ea0d11c",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "tsunami-deep-ocean@1440p": {
+      "pngSha256": "0398a49966dba63ff5a396ebe4c2cdd65d939ed7ee39fb05f664b7f7ec5441db",
+      "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82",
+      "width": 2560,
+      "height": 1440
+    },
+    "tsunami-shoaling@1440p": {
+      "pngSha256": "ffa37899477df224885807d83ea0c78095243c3a9a4cff49872d711a2d66973d",
+      "sceneSha256": "f48c353e9b14571761c3f9d8bdb490cc3abd2a5c1d08b5288eb9e973d86f159e",
+      "width": 2560,
+      "height": 1440
+    },
+    "urban-inundation@1440p": {
+      "pngSha256": "6a7bc5dbdefe180439e0f445fa267352caeebbd4c802ee8da4f94d95fbcdbbbc",
+      "sceneSha256": "1d665fd2775304b34d9d3c85f732e5d1da5aab15b7800335fc4d10dbff629a6f",
+      "width": 2560,
+      "height": 1440
+    },
+    "fjord-runup@1440p": {
+      "pngSha256": "442f03914fc9be557536aa14a1670b3a5476580dfc228615427cf57620886a6d",
+      "sceneSha256": "ba5981cf4993923fd873d6ef4deca02aebea54e75384c942ce1073414dc0dbd1",
+      "width": 2560,
+      "height": 1440
+    },
+    "orbit-global@4k": {
+      "pngSha256": "2d4de0c50c8e47be0f13f9904a5e9d26bab3857f48ef9b493f1eaa34aeb010cc",
+      "sceneSha256": "4f0bab7eefd7aa1b77dc32eda906a5b7144eb1a2ab8a44acbf0ff3059935bc86",
+      "width": 3840,
+      "height": 2160
+    },
+    "ocean-daylight@4k": {
+      "pngSha256": "bb3645bcdcc24c4859afd0c75be13054708d232cf670fb0d9280479e20136c82",
+      "sceneSha256": "6884ed77f30c1487315da2b0e3760f2170992aae32e316e03e9303b97a0a62ec",
+      "width": 3840,
+      "height": 2160
+    },
+    "earth-night@4k": {
+      "pngSha256": "02861a7e075adcd11e6318d76ae8e57d3765b8072e2e03147fd71a4be709ff33",
+      "sceneSha256": "ebd3dd159b2c11898c2373f5488a27548176a2827e841b709e0bc50d224df2a7",
+      "width": 3840,
+      "height": 2160
+    },
+    "asteroid-entry@4k": {
+      "pngSha256": "40ef0f216eb196d90718f5125c952765e376c97f817a8e20e8450f4d4046e35a",
+      "sceneSha256": "045beb9a012e20644d74742bebcd6b45a9b5f8b99bf6565beff3ea9452450829",
+      "width": 3840,
+      "height": 2160,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:26:05.794Z",
+        "previousPngSha256": "40ef0f216eb196d90718f5125c952765e376c97f817a8e20e8450f4d4046e35a",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "asteroid-land-impact@4k": {
+      "pngSha256": "bfcda3cc97e95892622954aa2c19d91995a6936f5a67e2a2db21784e4e0ded56",
+      "sceneSha256": "a9087c6a9b833fbae26a3dcab1c7bb8dbe46b2fb14bcd9a273bf32233ce6cf3a",
+      "width": 3840,
+      "height": 2160,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:27:41.221Z",
+        "previousPngSha256": "45188a470ec9bdf657bb32e20abc594be7880dbd7af753492ca9396bc31b9cd1",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "asteroid-ocean-impact@4k": {
+      "pngSha256": "5a2a98ca5374ce535546f13d7c4b23c3aa7196d1e3d4f118bef67ca06e6c90fa",
+      "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
+      "width": 3840,
+      "height": 2160,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:29:04.668Z",
+        "previousPngSha256": "b07f1e4fb1a07777f48dee3886f9c6ea731951ec03594aa41b0ec0f3d177c8c6",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "nuclear-airburst@4k": {
+      "pngSha256": "4a7da678a44d1cc53c5921083ef5577487d43f6a105e3e63ac43fdf66b55e746",
+      "sceneSha256": "1f8d3023673de91a48f94f50ea893d4af82e3ea4d82704bdf1b11e89bbbc2e6f",
+      "width": 3840,
+      "height": 2160,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:30:48.981Z",
+        "previousPngSha256": "4a7da678a44d1cc53c5921083ef5577487d43f6a105e3e63ac43fdf66b55e746",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "nuclear-surface-burst@4k": {
+      "pngSha256": "2bbd01b468711682f7052b855a66a76f9572d6546934e6d883f079b97083153b",
+      "sceneSha256": "7da5d43a0d759059341bdd229e51071d5554ed4d921faac184b298be4cc0f319",
+      "width": 3840,
+      "height": 2160,
+      "review": {
+        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-11T16:32:18.190Z",
+        "previousPngSha256": "2bbd01b468711682f7052b855a66a76f9572d6546934e6d883f079b97083153b",
+        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+      }
+    },
+    "tsunami-deep-ocean@4k": {
+      "pngSha256": "cacde6964827a98b5d9487966d813ff65e29163e0d9acb1731c284cd8bae8afc",
+      "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82",
+      "width": 3840,
+      "height": 2160
+    },
+    "tsunami-shoaling@4k": {
+      "pngSha256": "fd65719188eb73d143e33de222e863dcf9c285b51840f834bfc1aa71ff3f181d",
+      "sceneSha256": "f48c353e9b14571761c3f9d8bdb490cc3abd2a5c1d08b5288eb9e973d86f159e",
+      "width": 3840,
+      "height": 2160
+    },
+    "urban-inundation@4k": {
+      "pngSha256": "10c65a7173b32491e1ff121a9463174a2ffba9a604864f5b6cb744e047c55c63",
+      "sceneSha256": "1d665fd2775304b34d9d3c85f732e5d1da5aab15b7800335fc4d10dbff629a6f",
+      "width": 3840,
+      "height": 2160
+    },
+    "fjord-runup@4k": {
+      "pngSha256": "50ba02d87fa422f206a42b9e79a263c67eb832e8d6e40601d0c3d97eea47cc99",
+      "sceneSha256": "ba5981cf4993923fd873d6ef4deca02aebea54e75384c942ce1073414dc0dbd1",
+      "width": 3840,
+      "height": 2160
+    }
   }
 }

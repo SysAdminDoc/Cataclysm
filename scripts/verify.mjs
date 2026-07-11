@@ -384,6 +384,7 @@ if (docsOnly) {
 }
 runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"]);
 runNpm("HR-00 reference baseline contract", ["run", "verify:reference-locks"]);
+runNpm("HR-01 renderer protocol conformance", ["run", "verify:render-protocol"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);
 runNpm("ESLint", ["run", "lint"]);
 runNpm("Vitest unit suite", ["run", "test:unit"]);

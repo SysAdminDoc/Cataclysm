@@ -1,6 +1,7 @@
 //! Tauri command handlers exposed to the React frontend.
 //! Every function returns serde-serializable types; errors are stringified.
 
+use std::cell::{Cell, RefCell};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -24,7 +25,7 @@ use crate::physics::{
     },
 };
 use crate::presets::{Preset, all_presets, find_preset};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, ipc::Response};
 
 static SIM_CANCEL_TOKENS: Mutex<Vec<Arc<AtomicBool>>> = Mutex::new(Vec::new());
 
@@ -136,6 +137,39 @@ pub fn simulate_nuclear_hazard(
     req: crate::physics::direct_hazard::NuclearHazardRequest,
 ) -> Result<crate::physics::direct_hazard::HazardResult, String> {
     crate::physics::direct_hazard::simulate_nuclear_hazard(req)
+}
+
+fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
+    let total = packets.iter().try_fold(0_usize, |total, packet| {
+        total
+            .checked_add(4)
+            .and_then(|value| value.checked_add(packet.len()))
+            .ok_or_else(|| "render recording length overflow".to_string())
+    })?;
+    let mut recording = Vec::with_capacity(total);
+    for packet in packets {
+        let length = u32::try_from(packet.len())
+            .map_err(|_| "render packet exceeds the u32 recording limit".to_string())?;
+        recording.extend_from_slice(&length.to_le_bytes());
+        recording.extend_from_slice(&packet);
+    }
+    Ok(Response::new(recording))
+}
+
+#[tauri::command]
+pub fn simulate_asteroid_hazard_render(
+    req: crate::physics::direct_hazard::AsteroidHazardRequest,
+) -> Result<Response, String> {
+    let (_, packets) = crate::render_protocol::asteroid_render_recording(&req)?;
+    render_recording_response(packets)
+}
+
+#[tauri::command]
+pub fn simulate_nuclear_hazard_render(
+    req: crate::physics::direct_hazard::NuclearHazardRequest,
+) -> Result<Response, String> {
+    let (_, packets) = crate::render_protocol::nuclear_render_recording(&req)?;
+    render_recording_response(packets)
 }
 
 #[tauri::command]
@@ -785,7 +819,7 @@ pub fn inspect_at_point(req: InspectAtPointRequest) -> Result<InspectAtPointResu
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SimulateGridRequest {
     /// Source centre (deg).
     pub source: GeoPoint,
@@ -1114,6 +1148,10 @@ pub struct SimulateGridStreamMeta {
     /// Max-field products (peak |η|, time of maximum, energy proxy,
     /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
+    /// Stable identity for the Rust-authoritative render stream emitted beside
+    /// the legacy PNG snapshots. `None` means no render channel was requested.
+    pub render_scenario_id: Option<String>,
+    pub render_frame_count: u64,
 }
 
 #[tauri::command]
@@ -1121,6 +1159,7 @@ pub async fn simulate_grid_streaming(
     app: AppHandle,
     req: SimulateGridRequest,
     on_snapshot: tauri::ipc::Channel<GridSnapshot>,
+    on_render_packet: tauri::ipc::Channel<Response>,
 ) -> Result<SimulateGridStreamMeta, String> {
     validate_simulate_grid(&req)?;
 
@@ -1194,6 +1233,26 @@ pub async fn simulate_grid_streaming(
             let ny = grid.ny as u32;
             let n = req.n_snapshots.max(2);
 
+            let canonical_scenario = serde_json::to_vec(&req)
+                .map_err(|error| format!("failed to canonicalize render scenario: {error}"))?;
+            let scenario_sha256 = crate::render_protocol::sha256_hex(&canonical_scenario);
+            let scenario_id = format!("swe-{}", &scenario_sha256[..16]);
+            let render_stream = RenderStreamContext::new(
+                &on_render_packet,
+                scenario_id.clone(),
+                scenario_sha256.clone(),
+                dt,
+            );
+            render_stream.send_scenario(
+                &canonical_scenario,
+                crate::data::geodesy::GeodeticPosition {
+                    lat_deg: lat,
+                    lon_deg: lon,
+                    ellipsoid_height_m: 0.0,
+                },
+                req.use_real_bathymetry,
+            )?;
+
             let est_steps = if dt.is_finite() && dt > 0.0 {
                 (req.t_end_s / dt).clamp(1.0, 1.0e9)
             } else {
@@ -1212,6 +1271,7 @@ pub async fn simulate_grid_streaming(
             // Stream t=0 snapshot immediately
             let _ = on_snapshot
                 .send(grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics)));
+            render_stream.send_frame(&grid)?;
 
             let max_field_threshold_m =
                 MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
@@ -1235,9 +1295,13 @@ pub async fn simulate_grid_streaming(
                 gauges: &req.gauge_points,
                 max_field: &max_field_acc,
                 max_field_threshold_m,
+                render: Some(&render_stream),
             };
             let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx);
-            let max_field = max_field_acc.into_inner().into_product(&grid, Some(&diagnostics));
+            render_stream.finish(&grid)?;
+            let max_field = max_field_acc
+                .into_inner()
+                .into_product(&grid, Some(&diagnostics));
 
             Ok(SimulateGridStreamMeta {
                 dt_s: dt,
@@ -1246,6 +1310,8 @@ pub async fn simulate_grid_streaming(
                 used_gpu,
                 n_snapshots: n as u32,
                 max_field: Some(max_field),
+                render_scenario_id: Some(scenario_id),
+                render_frame_count: render_stream.frame_count(),
             })
         })();
         unregister_simulation_cancel(&cancel);
@@ -1388,6 +1454,119 @@ pub fn cancel_simulation() {
 /// GPU path when the `gpu` feature is compiled in and an adapter is
 /// available, and falls back to the CPU `TimeStepper` otherwise.
 /// Returns `(snapshots, used_gpu)`.
+#[tauri::command]
+pub fn render_protocol_capabilities() -> crate::render_protocol::ProtocolCapabilitiesV1 {
+    crate::render_protocol::capabilities()
+}
+
+struct RenderStreamContext<'a> {
+    channel: &'a tauri::ipc::Channel<Response>,
+    scenario_id: String,
+    scenario_sha256: String,
+    tick_duration_s: f64,
+    next_sequence: Cell<u64>,
+    frame_count: Cell<u64>,
+    send_error: RefCell<Option<String>>,
+}
+
+impl<'a> RenderStreamContext<'a> {
+    fn new(
+        channel: &'a tauri::ipc::Channel<Response>,
+        scenario_id: String,
+        scenario_sha256: String,
+        tick_duration_s: f64,
+    ) -> Self {
+        Self {
+            channel,
+            scenario_id,
+            scenario_sha256,
+            tick_duration_s,
+            next_sequence: Cell::new(1),
+            frame_count: Cell::new(0),
+            send_error: RefCell::new(None),
+        }
+    }
+
+    fn send_scenario(
+        &self,
+        canonical_scenario: &[u8],
+        origin: crate::data::geodesy::GeodeticPosition,
+        uses_bundled_bathymetry: bool,
+    ) -> Result<(), String> {
+        let packet = crate::render_protocol::scenario_packet(
+            &self.scenario_id,
+            canonical_scenario,
+            origin,
+            self.tick_duration_s,
+            crate::render_protocol::PhysicsProvenanceV1 {
+                authority: "rust".into(),
+                model_versions: vec![crate::render_protocol::ModelVersionV1 {
+                    component: "shallow_water_solver".into(),
+                    version: "1.0.0".into(),
+                }],
+                geodesy_contract_version: crate::data::geodesy::CONTRACT_VERSION.into(),
+                surface_mask_version: None,
+                bathymetry_asset_id: Some(if uses_bundled_bathymetry {
+                    "cataclysm-coarse-bathymetry-v1".into()
+                } else {
+                    "uniform-depth-request".into()
+                }),
+                solver_backend: "runtime-selected-cpu-or-gpu".into(),
+            },
+        )?;
+        self.channel
+            .send(Response::new(packet))
+            .map_err(|error| format!("failed to send render scenario packet: {error}"))
+    }
+
+    fn send_frame(&self, grid: &SwGrid) -> Result<(), String> {
+        let sequence = self.next_sequence.get();
+        let packet = crate::render_protocol::frame_packet_from_grid(
+            &self.scenario_id,
+            &self.scenario_sha256,
+            grid,
+            self.tick_duration_s,
+            sequence,
+        )?;
+        self.channel
+            .send(Response::new(packet))
+            .map_err(|error| format!("failed to send render frame packet: {error}"))?;
+        self.next_sequence.set(sequence.saturating_add(1));
+        self.frame_count
+            .set(self.frame_count.get().saturating_add(1));
+        Ok(())
+    }
+
+    fn try_send_frame(&self, grid: &SwGrid) {
+        if self.send_error.borrow().is_some() {
+            return;
+        }
+        if let Err(error) = self.send_frame(grid) {
+            *self.send_error.borrow_mut() = Some(error);
+        }
+    }
+
+    fn finish(&self, grid: &SwGrid) -> Result<(), String> {
+        if let Some(error) = self.send_error.borrow_mut().take() {
+            return Err(error);
+        }
+        let packet = crate::render_protocol::end_packet(
+            &self.scenario_id,
+            &self.scenario_sha256,
+            grid.step_index,
+            self.frame_count.get(),
+            self.next_sequence.get(),
+        )?;
+        self.channel
+            .send(Response::new(packet))
+            .map_err(|error| format!("failed to send render end packet: {error}"))
+    }
+
+    fn frame_count(&self) -> u64 {
+        self.frame_count.get()
+    }
+}
+
 struct StreamSimulationContext<'a> {
     cancel: &'a AtomicBool,
     on_snapshot: &'a tauri::ipc::Channel<GridSnapshot>,
@@ -1401,6 +1580,7 @@ struct StreamSimulationContext<'a> {
     /// Only the gpu-feature dispatch path reads it.
     #[cfg_attr(not(feature = "gpu"), allow(dead_code))]
     max_field_threshold_m: f64,
+    render: Option<&'a RenderStreamContext<'a>>,
 }
 
 fn stream_simulation_cpu(
@@ -1426,6 +1606,9 @@ fn stream_simulation_cpu(
         let _ = ctx
             .on_snapshot
             .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
+        if let Some(render) = ctx.render {
+            render.try_send_frame(grid);
+        }
     }
 }
 
@@ -1477,6 +1660,9 @@ fn stream_simulation_dispatch(
             let _ = ctx
                 .on_snapshot
                 .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics));
+            if let Some(render) = ctx.render {
+                render.try_send_frame(grid);
+            }
         }
         if ok {
             return true;
@@ -1484,8 +1670,7 @@ fn stream_simulation_dispatch(
         *grid = pristine;
         // Discard partial-GPU observations; the CPU rerun re-observes from
         // the pristine state (including its own t=0).
-        let mut fresh =
-            MaxFieldAccumulator::new(grid.nx * grid.ny, ctx.max_field_threshold_m);
+        let mut fresh = MaxFieldAccumulator::new(grid.nx * grid.ny, ctx.max_field_threshold_m);
         fresh.observe(grid);
         *ctx.max_field.borrow_mut() = fresh;
     }

@@ -27,6 +27,7 @@
     "capture:references": "node scripts/capture-reference-scenes.mjs --record",
     "verify:references": "node scripts/capture-reference-scenes.mjs --verify --skip-build",
     "verify:reference-locks": "node scripts/verify-reference-baselines.mjs",
+    "verify:render-protocol": "node scripts/verify-render-protocol.mjs",
     "approve:reference": "node scripts/capture-reference-scenes.mjs --record",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

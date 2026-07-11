@@ -1,0 +1,144 @@
+{
+  "fixture_version": 1,
+  "protocol": {
+    "major": 1,
+    "minor": 0
+  },
+  "fixture_sha256": "6bf09f4210826662faffd9f03f182a3b83abc6966d365b6a33b0b2f389d84717",
+  "bytes": 14848,
+  "packet_count": 5,
+  "packet_lengths": [
+    1599,
+    4249,
+    4260,
+    4256,
+    464
+  ],
+  "frame_count": 3,
+  "sequences": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "ticks": [
+    0,
+    1,
+    2
+  ],
+  "times_s": [
+    0,
+    0.5,
+    1
+  ],
+  "scenario_id": "golden-4x3",
+  "scenario_sha256": "e0d09108b582ee7deab2e499f59ffa8ed6a6882ad4886483fb08aa6a04fb9d82",
+  "payload_sha256s": [
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "30b916d2f2f3ec2b6f4da35f38140186dd91bb713a3196df2dec215d8b567b3c",
+    "74cc22c2c51f5649fe4e87af13a18249022be8d9ec69c53bf97f57c1fd25fb70",
+    "fe9b9d3a1bdd1ff24628c125d869b0ea8ee04b54cc7d85b7b76074a1beae3b3f",
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  ],
+  "frame_fields": [
+    [
+      {
+        "id": "eta",
+        "semantic": "water_surface_eta_m",
+        "data_type": "f32_le",
+        "sha256": "1dae451d5ede600ec41c41fbf29b527d8ac7b85eb8fa798baad826adfe646b53"
+      },
+      {
+        "id": "velocity_east",
+        "semantic": "water_velocity_east_m_s",
+        "data_type": "f32_le",
+        "sha256": "2c33839cc055e00600e51f4a19bab17fde02a606c2ab966cdf37205f459a3596"
+      },
+      {
+        "id": "velocity_north",
+        "semantic": "water_velocity_north_m_s",
+        "data_type": "f32_le",
+        "sha256": "f410366b88312eeff822d8b93539daf246d52a7929c92688e03f2dd4768410f6"
+      },
+      {
+        "id": "bathymetry",
+        "semantic": "bathymetry_depth_m",
+        "data_type": "f32_le",
+        "sha256": "fc5b0a72cf9f417443eab65f2c4197d7f18f9e110c1defa43d1f8ca377659f6e"
+      },
+      {
+        "id": "wet_mask",
+        "semantic": "wet_mask",
+        "data_type": "bitset_u1",
+        "sha256": "74c5053016f3f964085db6458f208d0a70a2d551ab8db19e55966bd04f49ebf6"
+      }
+    ],
+    [
+      {
+        "id": "eta",
+        "semantic": "water_surface_eta_m",
+        "data_type": "f32_le",
+        "sha256": "f757b1ca3dd588e593ec80f552182229f5d893c0842146e7eddd8706bd6e2746"
+      },
+      {
+        "id": "velocity_east",
+        "semantic": "water_velocity_east_m_s",
+        "data_type": "f32_le",
+        "sha256": "ec80510ed83ad2c40428dde917e68ac6820ba651082c875af16a344ee10a598a"
+      },
+      {
+        "id": "velocity_north",
+        "semantic": "water_velocity_north_m_s",
+        "data_type": "f32_le",
+        "sha256": "da0a6a1f46b0ae3881c33fa9f2a99659f46ac600a4fac9016f4fa8f317919833"
+      },
+      {
+        "id": "bathymetry",
+        "semantic": "bathymetry_depth_m",
+        "data_type": "f32_le",
+        "sha256": "fc5b0a72cf9f417443eab65f2c4197d7f18f9e110c1defa43d1f8ca377659f6e"
+      },
+      {
+        "id": "wet_mask",
+        "semantic": "wet_mask",
+        "data_type": "bitset_u1",
+        "sha256": "74c5053016f3f964085db6458f208d0a70a2d551ab8db19e55966bd04f49ebf6"
+      }
+    ],
+    [
+      {
+        "id": "eta",
+        "semantic": "water_surface_eta_m",
+        "data_type": "f32_le",
+        "sha256": "a2f192aa0ea117676d6afa8ca1d28064652e09169fca3bc3cbe0baf9238f114d"
+      },
+      {
+        "id": "velocity_east",
+        "semantic": "water_velocity_east_m_s",
+        "data_type": "f32_le",
+        "sha256": "b7002a6a5810459946ab3778bb1b55d833096e5c748fb65a9df5c1de10a6a575"
+      },
+      {
+        "id": "velocity_north",
+        "semantic": "water_velocity_north_m_s",
+        "data_type": "f32_le",
+        "sha256": "daf62990416fe3757bcce29d20378bcc61c190537f31f8c14696d21f994f3bf3"
+      },
+      {
+        "id": "bathymetry",
+        "semantic": "bathymetry_depth_m",
+        "data_type": "f32_le",
+        "sha256": "fc5b0a72cf9f417443eab65f2c4197d7f18f9e110c1defa43d1f8ca377659f6e"
+      },
+      {
+        "id": "wet_mask",
+        "semantic": "wet_mask",
+        "data_type": "bitset_u1",
+        "sha256": "74c5053016f3f964085db6458f208d0a70a2d551ab8db19e55966bd04f49ebf6"
+      }
+    ]
+  ],
+  "georeference_max_error_m": 0,
+  "coastal_fixture_max_ecef_error_m": 7.517172338882966e-7
+}

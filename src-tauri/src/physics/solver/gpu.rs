@@ -471,7 +471,11 @@ impl GpuTimeStepper {
             .map_async(wgpu::MapMode::Read, move |r| {
                 let _ = tx_v.send(r);
             });
-        if self.device.poll(wgpu::PollType::wait_indefinitely()).is_err() {
+        if self
+            .device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .is_err()
+        {
             report_diagnostic(
                 diagnostics,
                 "[gpu] device.poll failed during readback — aborting GPU step",
@@ -514,6 +518,7 @@ impl GpuTimeStepper {
                 grid.u_ms = u;
                 grid.v_ms = v;
                 grid.t_s += self.dt_s * n_steps as f64;
+                grid.step_index = grid.step_index.saturating_add(n_steps as u64);
                 true
             }
             _ => {

@@ -16,6 +16,18 @@ export const DEFAULT_SOLVER_MODE =
 export const EDUCATIONAL_LIMITATION =
   "Educational model only; not an evacuation or warning product. Use official NOAA NTWC/PTWC alerts for real hazards.";
 
+export type RenderFrameProvenance = {
+  protocolVersion: string;
+  scenarioId: string;
+  scenarioSha256: string;
+  sequence: string;
+  solverTick: number;
+  simulationTimeS: number;
+  tickDurationS: number;
+  payloadSha256: string;
+  fieldSha256: Record<string, string>;
+};
+
 export type ModelProvenanceInput = {
   bathymetryAssetId?: string;
   bathymetrySource?: string;
@@ -27,6 +39,7 @@ export type ModelProvenanceInput = {
   timeS?: number;
   solverAssetIds?: string[];
   visualAssetIds?: string[];
+  renderFrame?: RenderFrameProvenance | null;
 };
 
 export type ModelProvenance = {
@@ -45,6 +58,7 @@ export type ModelProvenance = {
   timeS: number;
   solverAssetIds: string[];
   visualAssetIds: string[];
+  renderFrame: RenderFrameProvenance | null;
 };
 
 export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenance {
@@ -65,13 +79,19 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
     timeS: Number.isFinite(input.timeS) ? input.timeS ?? 0 : 0,
     solverAssetIds: input.solverAssetIds ?? ["cataclysm-coarse-bathymetry-v1"],
     visualAssetIds: input.visualAssetIds ?? [earthSession.imageryAssetId, earthSession.terrainAssetId],
+    renderFrame: input.renderFrame
+      ? {
+          ...input.renderFrame,
+          fieldSha256: { ...input.renderFrame.fieldSha256 },
+        }
+      : null,
   };
 }
 
 export function provenanceSummary(input: ModelProvenanceInput): string {
   const p = buildModelProvenance(input);
   const citation = p.citationUrl ? `${p.citationReference} (${p.citationUrl})` : p.citationReference;
-  return [
+  const lines = [
     `Cataclysm v${p.appVersion}`,
     `Generated: ${p.generatedAt}`,
     `Scenario: ${p.scenarioName}`,
@@ -85,5 +105,19 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
     `Visual assets: ${p.visualAssetIds.join(", ")}`,
     `Citation: ${citation}`,
     `Model limitation: ${p.limitation}`,
-  ].join("\n");
+  ];
+  if (p.renderFrame) {
+    lines.splice(
+      lines.length - 1,
+      0,
+      `Render protocol: ${p.renderFrame.protocolVersion}`,
+      `Render scenario: ${p.renderFrame.scenarioId} (${p.renderFrame.scenarioSha256})`,
+      `Render frame: sequence ${p.renderFrame.sequence}; tick ${p.renderFrame.solverTick}; t=${p.renderFrame.simulationTimeS}s; dt=${p.renderFrame.tickDurationS}s`,
+      `Render payload: ${p.renderFrame.payloadSha256}`,
+      `Render fields: ${Object.entries(p.renderFrame.fieldSha256)
+        .map(([id, sha256]) => `${id}=${sha256}`)
+        .join(", ")}`,
+    );
+  }
+  return lines.join("\n");
 }

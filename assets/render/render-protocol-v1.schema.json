@@ -1,0 +1,393 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SysAdminDoc/Cataclysm/assets/render/render-protocol-v1.schema.json",
+  "title": "Cataclysm Rust render protocol V1 packet headers",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["major", "minor"],
+      "properties": {
+        "major": { "const": 1 },
+        "minor": { "const": 0 }
+      }
+    },
+    "requiredFeatures": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "json_header",
+          "raw_f32_fields",
+          "bitset_wet_mask",
+          "sha256",
+          "local_enu",
+          "authoritative_tick",
+          "codec_none"
+        ]
+      }
+    },
+    "geodeticPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lat_deg", "lon_deg", "ellipsoid_height_m"],
+      "properties": {
+        "lat_deg": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon_deg": { "type": "number", "minimum": -180, "maximum": 180 },
+        "ellipsoid_height_m": { "type": "number" }
+      }
+    },
+    "ecefPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x_m", "y_m", "z_m"],
+      "properties": {
+        "x_m": { "type": "number" },
+        "y_m": { "type": "number" },
+        "z_m": { "type": "number" }
+      }
+    },
+    "matrix4": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": { "type": "number" }
+    },
+    "georeference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "geographic_crs",
+        "ecef_crs",
+        "origin",
+        "origin_ecef_m",
+        "local_enu_to_ecef",
+        "ecef_to_local_enu",
+        "matrix_order",
+        "local_axis_order",
+        "local_unit",
+        "unreal_centimetres_per_metre"
+      ],
+      "properties": {
+        "contract_version": { "const": "1.0.0" },
+        "geographic_crs": { "const": "EPSG:4979" },
+        "ecef_crs": { "const": "EPSG:4978" },
+        "origin": { "$ref": "#/$defs/geodeticPosition" },
+        "origin_ecef_m": { "$ref": "#/$defs/ecefPosition" },
+        "local_enu_to_ecef": { "$ref": "#/$defs/matrix4" },
+        "ecef_to_local_enu": { "$ref": "#/$defs/matrix4" },
+        "matrix_order": { "const": "column_major" },
+        "local_axis_order": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "east_x" },
+            { "const": "north_y" },
+            { "const": "up_z" }
+          ],
+          "items": false
+        },
+        "local_unit": { "const": "metre" },
+        "unreal_centimetres_per_metre": { "const": 100 }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "parent_frame", "translation_enu_m", "rotation_xyzw", "scale"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "parent_frame": { "type": "string" },
+        "translation_enu_m": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number" }
+        },
+        "rotation_xyzw": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "number" }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "quantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semantic", "value", "unit"],
+      "properties": {
+        "semantic": { "type": "string", "minLength": 1 },
+        "value": { "type": "number" },
+        "unit": { "type": "string", "minLength": 1 }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "phase",
+        "start_tick",
+        "peak_tick",
+        "end_tick",
+        "transform_id",
+        "quantities",
+        "field_refs"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "asteroid_entry",
+            "airburst",
+            "impact",
+            "fireball",
+            "blast_front",
+            "crater",
+            "ejecta",
+            "ocean_cavity",
+            "tsunami",
+            "nuclear_cloud",
+            "fallout",
+            "earthquake",
+            "landslide"
+          ]
+        },
+        "phase": { "enum": ["scheduled", "active", "peak", "decaying", "complete"] },
+        "start_tick": { "type": "integer", "minimum": 0 },
+        "peak_tick": { "type": ["integer", "null"], "minimum": 0 },
+        "end_tick": { "type": ["integer", "null"], "minimum": 0 },
+        "transform_id": { "type": ["string", "null"] },
+        "quantities": { "type": "array", "items": { "$ref": "#/$defs/quantity" } },
+        "field_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nx",
+        "ny",
+        "west_cell_center_lon_deg",
+        "south_cell_center_lat_deg",
+        "dlon_deg",
+        "dlat_deg",
+        "row_order",
+        "cell_registration",
+        "longitude_wrap"
+      ],
+      "properties": {
+        "nx": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "ny": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "west_cell_center_lon_deg": { "type": "number", "minimum": -180, "maximum": 180 },
+        "south_cell_center_lat_deg": { "type": "number", "minimum": -90, "maximum": 90 },
+        "dlon_deg": { "type": "number", "exclusiveMinimum": 0 },
+        "dlat_deg": { "type": "number", "exclusiveMinimum": 0 },
+        "row_order": { "const": "south_to_north_west_to_east" },
+        "cell_registration": { "const": "cell_center" },
+        "longitude_wrap": { "const": "normalized_minus180_180" }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "semantic",
+        "data_type",
+        "codec",
+        "unit",
+        "vertical_datum",
+        "vertical_axis",
+        "grid",
+        "byte_offset",
+        "byte_length",
+        "element_count",
+        "minimum",
+        "maximum",
+        "maximum_abs_conversion_error",
+        "sha256"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "semantic": {
+          "enum": [
+            "water_surface_eta_m",
+            "water_velocity_east_m_s",
+            "water_velocity_north_m_s",
+            "bathymetry_depth_m",
+            "wet_mask",
+            "temperature_k",
+            "overpressure_pa",
+            "fallout_deposition_kg_m2",
+            "fallout_dose_rate_sv_h"
+          ]
+        },
+        "data_type": { "enum": ["f32_le", "bitset_u1"] },
+        "codec": { "const": "none" },
+        "unit": { "type": "string", "minLength": 1 },
+        "vertical_datum": {
+          "type": ["string", "null"],
+          "enum": [
+            "wgs84_ellipsoid",
+            "navd88_geoid18",
+            "idealized_mean_sea_level",
+            "depth_below_idealized_mean_sea_level",
+            "local_enu",
+            null
+          ]
+        },
+        "vertical_axis": {
+          "type": ["string", "null"],
+          "enum": ["positive_up", "positive_down", null]
+        },
+        "grid": { "$ref": "#/$defs/grid" },
+        "byte_offset": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "byte_length": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "element_count": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "minimum": { "type": ["number", "null"] },
+        "maximum": { "type": ["number", "null"] },
+        "maximum_abs_conversion_error": { "type": ["number", "null"], "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "modelVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "version"],
+      "properties": {
+        "component": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority",
+        "model_versions",
+        "geodesy_contract_version",
+        "surface_mask_version",
+        "bathymetry_asset_id",
+        "solver_backend"
+      ],
+      "properties": {
+        "authority": { "const": "rust" },
+        "model_versions": { "type": "array", "items": { "$ref": "#/$defs/modelVersion" } },
+        "geodesy_contract_version": { "const": "1.0.0" },
+        "surface_mask_version": { "type": ["string", "null"] },
+        "bathymetry_asset_id": { "type": ["string", "null"] },
+        "solver_backend": { "type": "string" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packet_kind",
+        "protocol",
+        "minimum_reader_minor",
+        "required_features",
+        "scenario_id",
+        "scenario_sha256",
+        "georeference",
+        "tick_duration_s",
+        "transforms",
+        "events",
+        "provenance",
+        "payload_sha256"
+      ],
+      "properties": {
+        "packet_kind": { "const": "scenario" },
+        "protocol": { "$ref": "#/$defs/protocol" },
+        "minimum_reader_minor": { "type": "integer", "minimum": 0, "maximum": 0 },
+        "required_features": { "$ref": "#/$defs/requiredFeatures" },
+        "scenario_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "scenario_sha256": { "$ref": "#/$defs/sha256" },
+        "georeference": { "$ref": "#/$defs/georeference" },
+        "tick_duration_s": { "type": "number", "exclusiveMinimum": 0 },
+        "transforms": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/transform" } },
+        "events": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/event" } },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "payload_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packet_kind",
+        "protocol",
+        "minimum_reader_minor",
+        "required_features",
+        "scenario_id",
+        "scenario_sha256",
+        "solver_tick",
+        "simulation_time_s",
+        "tick_duration_s",
+        "keyframe",
+        "base_sequence",
+        "transforms",
+        "events",
+        "fields",
+        "payload_sha256"
+      ],
+      "properties": {
+        "packet_kind": { "const": "frame" },
+        "protocol": { "$ref": "#/$defs/protocol" },
+        "minimum_reader_minor": { "type": "integer", "minimum": 0, "maximum": 0 },
+        "required_features": { "$ref": "#/$defs/requiredFeatures" },
+        "scenario_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "scenario_sha256": { "$ref": "#/$defs/sha256" },
+        "solver_tick": { "type": "integer", "minimum": 0 },
+        "simulation_time_s": { "type": "number", "minimum": 0 },
+        "tick_duration_s": { "type": "number", "exclusiveMinimum": 0 },
+        "keyframe": { "type": "boolean" },
+        "base_sequence": { "type": ["integer", "null"], "minimum": 0 },
+        "transforms": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/transform" } },
+        "events": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/event" } },
+        "fields": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/field" } },
+        "payload_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packet_kind",
+        "protocol",
+        "minimum_reader_minor",
+        "required_features",
+        "scenario_id",
+        "scenario_sha256",
+        "final_tick",
+        "frame_count",
+        "payload_sha256"
+      ],
+      "properties": {
+        "packet_kind": { "const": "end" },
+        "protocol": { "$ref": "#/$defs/protocol" },
+        "minimum_reader_minor": { "type": "integer", "minimum": 0, "maximum": 0 },
+        "required_features": { "$ref": "#/$defs/requiredFeatures" },
+        "scenario_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "scenario_sha256": { "$ref": "#/$defs/sha256" },
+        "final_tick": { "type": "integer", "minimum": 0 },
+        "frame_count": { "type": "integer", "minimum": 0 },
+        "payload_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  ]
+}

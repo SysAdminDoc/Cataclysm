@@ -65,7 +65,7 @@ pub(crate) fn report_diagnostic(
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GridGaugePoint {
     pub id: String,
     pub lat_deg: f64,
@@ -123,7 +123,29 @@ pub struct SwGrid {
     pub v_ms: Vec<f64>,
     /// Simulation time, seconds.
     pub t_s: f64,
+    /// Authoritative number of accepted solver steps since the initial state.
+    /// Render/replay clients use this integer rather than integrating floating
+    /// point time independently.
+    pub step_index: u64,
     pub colormap: Colormap,
+}
+
+/// Borrowed quantitative fields exposed to the renderer protocol before any
+/// colour mapping or PNG quantisation is applied.
+#[derive(Debug, Clone, Copy)]
+pub struct RawGridFields<'a> {
+    pub nx: usize,
+    pub ny: usize,
+    pub west_lon_deg: f64,
+    pub south_lat_deg: f64,
+    pub dlon_deg: f64,
+    pub dlat_deg: f64,
+    pub time_s: f64,
+    pub step_index: u64,
+    pub bathymetry_depth_m: &'a [f64],
+    pub eta_m: &'a [f64],
+    pub velocity_east_m_s: &'a [f64],
+    pub velocity_north_m_s: &'a [f64],
 }
 
 #[inline]
@@ -159,8 +181,40 @@ impl SwGrid {
             u_ms: vec![0.0; n],
             v_ms: vec![0.0; n],
             t_s: 0.0,
+            step_index: 0,
             colormap: Colormap::default(),
         }
+    }
+
+    /// Borrow the scientific fields used by the renderer protocol. The
+    /// returned slices remain owned by this grid and are always row-major.
+    pub fn raw_render_fields(&self) -> RawGridFields<'_> {
+        RawGridFields {
+            nx: self.nx,
+            ny: self.ny,
+            west_lon_deg: self.west_lon,
+            south_lat_deg: self.south_lat,
+            dlon_deg: self.dlon_deg,
+            dlat_deg: self.dlat_deg,
+            time_s: self.t_s,
+            step_index: self.step_index,
+            bathymetry_depth_m: &self.h_m,
+            eta_m: &self.eta_m,
+            velocity_east_m_s: &self.u_ms,
+            velocity_north_m_s: &self.v_ms,
+        }
+    }
+
+    /// Pack the solver's exact wet/dry decision into one bit per cell. Bit 1
+    /// means wet; unused high bits in the final byte are always zero.
+    pub fn wet_mask_bits(&self) -> Vec<u8> {
+        let mut bits = vec![0_u8; self.h_m.len().div_ceil(8)];
+        for (index, depth) in self.h_m.iter().enumerate() {
+            if depth.is_finite() && *depth > LAND_DEPTH_THRESHOLD_M {
+                bits[index / 8] |= 1 << (index % 8);
+            }
+        }
+        bits
     }
 
     /// Fill the bathymetry grid with a uniform depth. Used by the "flat ocean
@@ -482,11 +536,11 @@ pub(super) fn viridis_colormap(t: f64) -> (u8, u8, u8, u8) {
     let a = (mag.sqrt() * 235.0).clamp(0.0, 235.0) as u8;
     // 5-stop linear interpolation through the viridis anchor colours.
     let anchors: [(f64, f64, f64); 5] = [
-        (68.0, 1.0, 84.0),     // 0.00 — dark purple
-        (59.0, 82.0, 139.0),   // 0.25
-        (33.0, 145.0, 140.0),  // 0.50 — teal
-        (94.0, 201.0, 98.0),   // 0.75
-        (253.0, 231.0, 37.0),  // 1.00 — yellow
+        (68.0, 1.0, 84.0),    // 0.00 — dark purple
+        (59.0, 82.0, 139.0),  // 0.25
+        (33.0, 145.0, 140.0), // 0.50 — teal
+        (94.0, 201.0, 98.0),  // 0.75
+        (253.0, 231.0, 37.0), // 1.00 — yellow
     ];
     let idx_f = (mag * 4.0).min(3.9999);
     let lo = idx_f as usize;
@@ -673,212 +727,217 @@ impl TimeStepper {
         // The borrows on grid.{eta_m, u_ms, v_ms, h_m} must end before the
         // swap at the bottom, so we use a block scope.
         {
-        let eta_old: &[f64] = &grid.eta_m;
-        let u_in: &[f64] = &grid.u_ms;
-        let v_in: &[f64] = &grid.v_ms;
-        let h: &[f64] = &grid.h_m;
+            let eta_old: &[f64] = &grid.eta_m;
+            let u_in: &[f64] = &grid.u_ms;
+            let v_in: &[f64] = &grid.v_ms;
+            let h: &[f64] = &grid.h_m;
 
-        // Continuity update: rows in parallel.
-        scratch.eta.par_chunks_mut(nx).enumerate().for_each(|(j, row)| {
-            for i in 0..nx {
-                // Dry cells stay dry — η pinned to 0. Prevents the
-                // "slow spread halo" over continental interiors when
-                // simulate_grid substitutes 1 m for land bathymetry.
-                // Runs BEFORE the boundary fall-through so a land-on-
-                // the-rim cell can't leak a residual IC amplitude.
-                if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
-                    row[i] = 0.0;
-                    continue;
-                }
-                if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                    row[i] = eta_old[idx(i, j, nx)];
-                    continue;
-                }
-                let h_e = h[idx(i + 1, j, nx)];
-                let h_w = h[idx(i - 1, j, nx)];
-                let h_n = h[idx(i, j + 1, nx)];
-                let h_s = h[idx(i, j - 1, nx)];
-                // Land-neighbour flux substitution: treat dry cells as
-                // reflective walls — zero the contributing flux term
-                // rather than letting an η_land × u_water product
-                // smear amplitude onto land.
-                let eta_e = if h_e > LAND_DEPTH_THRESHOLD_M {
-                    eta_old[idx(i + 1, j, nx)]
-                } else {
-                    0.0
-                };
-                let eta_w = if h_w > LAND_DEPTH_THRESHOLD_M {
-                    eta_old[idx(i - 1, j, nx)]
-                } else {
-                    0.0
-                };
-                let eta_n = if h_n > LAND_DEPTH_THRESHOLD_M {
-                    eta_old[idx(i, j + 1, nx)]
-                } else {
-                    0.0
-                };
-                let eta_s = if h_s > LAND_DEPTH_THRESHOLD_M {
-                    eta_old[idx(i, j - 1, nx)]
-                } else {
-                    0.0
-                };
-                let u_e = if h_e > LAND_DEPTH_THRESHOLD_M {
-                    u_in[idx(i + 1, j, nx)]
-                } else {
-                    0.0
-                };
-                let u_w = if h_w > LAND_DEPTH_THRESHOLD_M {
-                    u_in[idx(i - 1, j, nx)]
-                } else {
-                    0.0
-                };
-                let v_n = if h_n > LAND_DEPTH_THRESHOLD_M {
-                    v_in[idx(i, j + 1, nx)]
-                } else {
-                    0.0
-                };
-                let v_s = if h_s > LAND_DEPTH_THRESHOLD_M {
-                    v_in[idx(i, j - 1, nx)]
-                } else {
-                    0.0
-                };
-                let flux_x =
-                    ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w) / (2.0 * dx);
-                let flux_y =
-                    ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s) / (2.0 * dy);
-                row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
-            }
-        });
-
-        // Momentum update: rows in parallel. Use the PRE-STEP η (eta_old)
-        // for the pressure gradient so CPU matches the GPU leapfrog kernel
-        // (simultaneous update — Mader 1988, Kowalik & Murty 1993).
-        let eta_ref: &[f64] = eta_old;
-        scratch.u
-            .par_chunks_mut(nx)
-            .zip(scratch.v.par_chunks_mut(nx))
-            .enumerate()
-            .for_each(|(j, (u_row, v_row))| {
-                for i in 0..nx {
-                    // Dry cells carry no momentum (land + rim land both go
-                    // to 0 before the boundary fall-through).
-                    if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
-                        u_row[i] = 0.0;
-                        v_row[i] = 0.0;
-                        continue;
-                    }
-                    if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                        u_row[i] = 0.0;
-                        v_row[i] = 0.0;
-                        continue;
-                    }
-                    let eta_e = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                        eta_ref[idx(i + 1, j, nx)]
-                    } else {
-                        0.0
-                    };
-                    let eta_w = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                        eta_ref[idx(i - 1, j, nx)]
-                    } else {
-                        0.0
-                    };
-                    let eta_n = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                        eta_ref[idx(i, j + 1, nx)]
-                    } else {
-                        0.0
-                    };
-                    let eta_s = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                        eta_ref[idx(i, j - 1, nx)]
-                    } else {
-                        0.0
-                    };
-                    let dnedx = (eta_e - eta_w) / (2.0 * dx);
-                    let dnedy = (eta_n - eta_s) / (2.0 * dy);
-                    let h_total = (h[idx(i, j, nx)] + eta_ref[idx(i, j, nx)]).max(0.01);
-                    let u = u_in[idx(i, j, nx)];
-                    let v = v_in[idx(i, j, nx)];
-
-                    // F4-02 Nonlinear momentum advection: (u·∇)u with
-                    // first-order upwind differencing for stability across
-                    // the steepening shock front. Land neighbours
-                    // contribute zero velocity (already-masked by the
-                    // continuity step). Linear mode skips the advection
-                    // for the validation harness Stoker comparison.
-                    let (adv_u, adv_v) = if nonlinear {
-                        let u_east = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+            // Continuity update: rows in parallel.
+            scratch
+                .eta
+                .par_chunks_mut(nx)
+                .enumerate()
+                .for_each(|(j, row)| {
+                    for i in 0..nx {
+                        // Dry cells stay dry — η pinned to 0. Prevents the
+                        // "slow spread halo" over continental interiors when
+                        // simulate_grid substitutes 1 m for land bathymetry.
+                        // Runs BEFORE the boundary fall-through so a land-on-
+                        // the-rim cell can't leak a residual IC amplitude.
+                        if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                            row[i] = 0.0;
+                            continue;
+                        }
+                        if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                            row[i] = eta_old[idx(i, j, nx)];
+                            continue;
+                        }
+                        let h_e = h[idx(i + 1, j, nx)];
+                        let h_w = h[idx(i - 1, j, nx)];
+                        let h_n = h[idx(i, j + 1, nx)];
+                        let h_s = h[idx(i, j - 1, nx)];
+                        // Land-neighbour flux substitution: treat dry cells as
+                        // reflective walls — zero the contributing flux term
+                        // rather than letting an η_land × u_water product
+                        // smear amplitude onto land.
+                        let eta_e = if h_e > LAND_DEPTH_THRESHOLD_M {
+                            eta_old[idx(i + 1, j, nx)]
+                        } else {
+                            0.0
+                        };
+                        let eta_w = if h_w > LAND_DEPTH_THRESHOLD_M {
+                            eta_old[idx(i - 1, j, nx)]
+                        } else {
+                            0.0
+                        };
+                        let eta_n = if h_n > LAND_DEPTH_THRESHOLD_M {
+                            eta_old[idx(i, j + 1, nx)]
+                        } else {
+                            0.0
+                        };
+                        let eta_s = if h_s > LAND_DEPTH_THRESHOLD_M {
+                            eta_old[idx(i, j - 1, nx)]
+                        } else {
+                            0.0
+                        };
+                        let u_e = if h_e > LAND_DEPTH_THRESHOLD_M {
                             u_in[idx(i + 1, j, nx)]
                         } else {
                             0.0
                         };
-                        let u_west = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        let u_w = if h_w > LAND_DEPTH_THRESHOLD_M {
                             u_in[idx(i - 1, j, nx)]
                         } else {
                             0.0
                         };
-                        let u_north = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            u_in[idx(i, j + 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let u_south = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            u_in[idx(i, j - 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let v_east = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            v_in[idx(i + 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let v_west = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            v_in[idx(i - 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let v_north = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        let v_n = if h_n > LAND_DEPTH_THRESHOLD_M {
                             v_in[idx(i, j + 1, nx)]
                         } else {
                             0.0
                         };
-                        let v_south = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                        let v_s = if h_s > LAND_DEPTH_THRESHOLD_M {
                             v_in[idx(i, j - 1, nx)]
                         } else {
                             0.0
                         };
-                        // Upwind: take the backward gradient when the
-                        // velocity points east/north, the forward gradient
-                        // when it points west/south.
-                        let dudx_up = if u >= 0.0 {
-                            (u - u_west) / dx
-                        } else {
-                            (u_east - u) / dx
-                        };
-                        let dudy_up = if v >= 0.0 {
-                            (u - u_south) / dy
-                        } else {
-                            (u_north - u) / dy
-                        };
-                        let dvdx_up = if u >= 0.0 {
-                            (v - v_west) / dx
-                        } else {
-                            (v_east - v) / dx
-                        };
-                        let dvdy_up = if v >= 0.0 {
-                            (v - v_south) / dy
-                        } else {
-                            (v_north - v) / dy
-                        };
-                        (u * dudx_up + v * dudy_up, u * dvdx_up + v * dvdy_up)
-                    } else {
-                        (0.0, 0.0)
-                    };
+                        let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
+                            / (2.0 * dx);
+                        let flux_y = ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s)
+                            / (2.0 * dy);
+                        row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
+                    }
+                });
 
-                    let speed = (u * u + v * v).sqrt();
-                    let fric = g * n2 * speed / h_total.powf(4.0 / 3.0);
-                    u_row[i] = u - dt * (adv_u + g * dnedx + fric * u);
-                    v_row[i] = v - dt * (adv_v + g * dnedy + fric * v);
-                }
-            });
+            // Momentum update: rows in parallel. Use the PRE-STEP η (eta_old)
+            // for the pressure gradient so CPU matches the GPU leapfrog kernel
+            // (simultaneous update — Mader 1988, Kowalik & Murty 1993).
+            let eta_ref: &[f64] = eta_old;
+            scratch
+                .u
+                .par_chunks_mut(nx)
+                .zip(scratch.v.par_chunks_mut(nx))
+                .enumerate()
+                .for_each(|(j, (u_row, v_row))| {
+                    for i in 0..nx {
+                        // Dry cells carry no momentum (land + rim land both go
+                        // to 0 before the boundary fall-through).
+                        if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                            u_row[i] = 0.0;
+                            v_row[i] = 0.0;
+                            continue;
+                        }
+                        if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                            u_row[i] = 0.0;
+                            v_row[i] = 0.0;
+                            continue;
+                        }
+                        let eta_e = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                            eta_ref[idx(i + 1, j, nx)]
+                        } else {
+                            0.0
+                        };
+                        let eta_w = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                            eta_ref[idx(i - 1, j, nx)]
+                        } else {
+                            0.0
+                        };
+                        let eta_n = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                            eta_ref[idx(i, j + 1, nx)]
+                        } else {
+                            0.0
+                        };
+                        let eta_s = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                            eta_ref[idx(i, j - 1, nx)]
+                        } else {
+                            0.0
+                        };
+                        let dnedx = (eta_e - eta_w) / (2.0 * dx);
+                        let dnedy = (eta_n - eta_s) / (2.0 * dy);
+                        let h_total = (h[idx(i, j, nx)] + eta_ref[idx(i, j, nx)]).max(0.01);
+                        let u = u_in[idx(i, j, nx)];
+                        let v = v_in[idx(i, j, nx)];
+
+                        // F4-02 Nonlinear momentum advection: (u·∇)u with
+                        // first-order upwind differencing for stability across
+                        // the steepening shock front. Land neighbours
+                        // contribute zero velocity (already-masked by the
+                        // continuity step). Linear mode skips the advection
+                        // for the validation harness Stoker comparison.
+                        let (adv_u, adv_v) = if nonlinear {
+                            let u_east = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                u_in[idx(i + 1, j, nx)]
+                            } else {
+                                0.0
+                            };
+                            let u_west = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                u_in[idx(i - 1, j, nx)]
+                            } else {
+                                0.0
+                            };
+                            let u_north = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                u_in[idx(i, j + 1, nx)]
+                            } else {
+                                0.0
+                            };
+                            let u_south = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                u_in[idx(i, j - 1, nx)]
+                            } else {
+                                0.0
+                            };
+                            let v_east = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                v_in[idx(i + 1, j, nx)]
+                            } else {
+                                0.0
+                            };
+                            let v_west = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                v_in[idx(i - 1, j, nx)]
+                            } else {
+                                0.0
+                            };
+                            let v_north = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                v_in[idx(i, j + 1, nx)]
+                            } else {
+                                0.0
+                            };
+                            let v_south = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
+                                v_in[idx(i, j - 1, nx)]
+                            } else {
+                                0.0
+                            };
+                            // Upwind: take the backward gradient when the
+                            // velocity points east/north, the forward gradient
+                            // when it points west/south.
+                            let dudx_up = if u >= 0.0 {
+                                (u - u_west) / dx
+                            } else {
+                                (u_east - u) / dx
+                            };
+                            let dudy_up = if v >= 0.0 {
+                                (u - u_south) / dy
+                            } else {
+                                (u_north - u) / dy
+                            };
+                            let dvdx_up = if u >= 0.0 {
+                                (v - v_west) / dx
+                            } else {
+                                (v_east - v) / dx
+                            };
+                            let dvdy_up = if v >= 0.0 {
+                                (v - v_south) / dy
+                            } else {
+                                (v_north - v) / dy
+                            };
+                            (u * dudx_up + v * dudy_up, u * dvdx_up + v * dvdy_up)
+                        } else {
+                            (0.0, 0.0)
+                        };
+
+                        let speed = (u * u + v * v).sqrt();
+                        let fric = g * n2 * speed / h_total.powf(4.0 / 3.0);
+                        u_row[i] = u - dt * (adv_u + g * dnedx + fric * u);
+                        v_row[i] = v - dt * (adv_v + g * dnedy + fric * v);
+                    }
+                });
         } // end borrow scope for grid.{eta_m, u_ms, v_ms, h_m}
 
         // Sponge-layer damping on the four rim cells. A cosine-tapered
@@ -899,6 +958,7 @@ impl TimeStepper {
         std::mem::swap(&mut grid.u_ms, &mut scratch.u);
         std::mem::swap(&mut grid.v_ms, &mut scratch.v);
         grid.t_s += dt;
+        grid.step_index = grid.step_index.saturating_add(1);
     }
 }
 

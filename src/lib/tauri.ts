@@ -16,6 +16,60 @@ import type {
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
 import type { BurstType, HazardResult, TargetType } from "../hazards";
+import {
+  RENDER_PROTOCOL_MAJOR,
+  RENDER_PROTOCOL_MINOR,
+  RenderReplayAdapter,
+  ingestRenderRecording,
+  type DecodedRenderPacket,
+} from "../rendering/protocol";
+
+export type RenderProtocolCapabilities = {
+  protocol: { major: number; minor: number };
+  minimum_reader_minor: number;
+  features: string[];
+  codecs: string[];
+  maximum_header_bytes: number;
+  maximum_payload_bytes: number;
+  maximum_fields: number;
+  maximum_cells: number;
+};
+
+function decodeRenderProtocolCapabilities(value: unknown): RenderProtocolCapabilities {
+  if (!value || typeof value !== "object") throw new Error("invalid render protocol capabilities");
+  const record = value as Record<string, unknown>;
+  const protocol = record.protocol as Record<string, unknown> | undefined;
+  if (
+    protocol?.major !== RENDER_PROTOCOL_MAJOR ||
+    typeof protocol.minor !== "number" ||
+    protocol.minor < RENDER_PROTOCOL_MINOR ||
+    !Array.isArray(record.features) ||
+    !record.features.every((entry) => typeof entry === "string") ||
+    !Array.isArray(record.codecs) ||
+    !record.codecs.every((entry) => typeof entry === "string")
+  ) throw new Error("backend returned incompatible render protocol capabilities");
+  for (const key of [
+    "minimum_reader_minor",
+    "maximum_header_bytes",
+    "maximum_payload_bytes",
+    "maximum_fields",
+    "maximum_cells",
+  ]) {
+    if (!Number.isSafeInteger(record[key]) || (record[key] as number) < 0) {
+      throw new Error(`backend returned invalid render protocol capability ${key}`);
+    }
+  }
+  return {
+    protocol: { major: protocol.major as number, minor: protocol.minor },
+    minimum_reader_minor: record.minimum_reader_minor as number,
+    features: [...record.features] as string[],
+    codecs: [...record.codecs] as string[],
+    maximum_header_bytes: record.maximum_header_bytes as number,
+    maximum_payload_bytes: record.maximum_payload_bytes as number,
+    maximum_fields: record.maximum_fields as number,
+    maximum_cells: record.maximum_cells as number,
+  };
+}
 
 export type InspectAtPointResult = {
   range_m: number;
@@ -68,6 +122,18 @@ export const api = {
   }) {
     return invoke<HazardResult>("simulate_asteroid_hazard", { req });
   },
+  async simulateAsteroidHazardRender(req: {
+    center: { lat: number; lon: number };
+    diameter_m: number;
+    density_kg_m3: number;
+    velocity_km_s: number;
+    angle_deg: number;
+    target_type: TargetType;
+    water_depth_m: number;
+    beach_slope_rad: number;
+  }): Promise<RenderReplayAdapter> {
+    return ingestRenderRecording(await invoke<ArrayBuffer>("simulate_asteroid_hazard_render", { req }));
+  },
   simulateNuclearHazard(req: {
     center: { lat: number; lon: number };
     yield_kt: number;
@@ -77,6 +143,16 @@ export const api = {
     population_density: number;
   }) {
     return invoke<HazardResult>("simulate_nuclear_hazard", { req });
+  },
+  async simulateNuclearHazardRender(req: {
+    center: { lat: number; lon: number };
+    yield_kt: number;
+    burst_type: BurstType;
+    height_m?: number;
+    fission_pct: number;
+    population_density: number;
+  }): Promise<RenderReplayAdapter> {
+    return ingestRenderRecording(await invoke<ArrayBuffer>("simulate_nuclear_hazard_render", { req }));
   },
   asteroidInitialConditions(input: AsteroidImpactInput) {
     return invoke<InitialDisplacement>("asteroid_initial_conditions", { input });
@@ -194,6 +270,9 @@ export const api = {
   gpuProbe(): Promise<"available" | "no-adapter" | "feature-off"> {
     return invoke<"available" | "no-adapter" | "feature-off">("gpu_probe");
   },
+  async renderProtocolCapabilities(): Promise<RenderProtocolCapabilities> {
+    return decodeRenderProtocolCapabilities(await invoke<unknown>("render_protocol_capabilities"));
+  },
   surfaceProbe(req: { lat_deg: number; lon_deg: number }): Promise<SurfaceProbe> {
     return invoke<SurfaceProbe>("surface_probe", { req });
   },
@@ -235,6 +314,7 @@ export const api = {
       gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
     },
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
+    onRenderPacket?: (packet: DecodedRenderPacket, replay: RenderReplayAdapter) => void,
   ): Promise<{
     dt_s: number;
     nx: number;
@@ -242,10 +322,44 @@ export const api = {
     used_gpu: boolean;
     n_snapshots: number;
     max_field?: import("../types/scenario").MaxFieldProduct | null;
+    render_scenario_id: string | null;
+    render_frame_count: number;
+    render_replay: RenderReplayAdapter;
   }> {
     const channel = new Channel<import("../types/scenario").GridSnapshot>();
     channel.onmessage = onSnapshot;
-    return invoke("simulate_grid_streaming", { req, onSnapshot: channel });
+    const renderChannel = new Channel<ArrayBuffer>();
+    const replay = new RenderReplayAdapter();
+    let decodeChain = Promise.resolve();
+    let decodeError: unknown = null;
+    renderChannel.onmessage = (bytes) => {
+      decodeChain = decodeChain
+        .then(async () => {
+          const packet = await replay.ingest(bytes);
+          onRenderPacket?.(packet, replay);
+        })
+        .catch((error) => {
+          decodeError ??= error;
+        });
+    };
+    return invoke<{
+      dt_s: number;
+      nx: number;
+      ny: number;
+      used_gpu: boolean;
+      n_snapshots: number;
+      max_field?: import("../types/scenario").MaxFieldProduct | null;
+      render_scenario_id: string | null;
+      render_frame_count: number;
+    }>("simulate_grid_streaming", { req, onSnapshot: channel, onRenderPacket: renderChannel })
+      .then(async (meta) => {
+        await decodeChain;
+        if (decodeError) throw decodeError;
+        if (!replay.complete || replay.frame_count !== meta.render_frame_count) {
+          throw new Error("backend render stream ended without a complete matching replay");
+        }
+        return { ...meta, render_replay: replay };
+      });
   },
   cancelSimulation() {
     return invoke<void>("cancel_simulation");

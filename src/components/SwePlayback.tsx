@@ -3,6 +3,7 @@ import { api, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportGaugeCsv } from "../lib/export";
+import type { RenderFrameProvenance } from "../lib/model-provenance";
 import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import { GlossaryTip } from "./GlossaryTip";
@@ -21,6 +22,7 @@ type Props = {
   /** Fires with the arrival-time contours when the "Arrivals" toggle is on
    *  (null when off or reset). App routes these to the globe layer. */
   onIsochrones?: (isochrones: import("../types/scenario").Isochrone[] | null) => void;
+  onRenderFrame?: (frame: RenderFrameProvenance | null) => void;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
@@ -86,7 +88,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -135,8 +137,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
       onMaxField?.(null);
+      onRenderFrame?.(null);
     }
-  }, [initial, onSnapshot, onSnapshotsReady, onMaxField]);
+  }, [initial, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
 
   // Publish the arrival contours to the globe when toggled.
   useEffect(() => {
@@ -243,7 +246,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     setStatus("idle");
     setErrMsg(null);
     setIsPlaying(false);
-  }, []);
+    onRenderFrame?.(null);
+  }, [onRenderFrame]);
 
   const run = useCallback(async () => {
     if (!initial) return;
@@ -252,6 +256,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     setStatus("running");
     setErrMsg(null);
     setIsPlaying(false);
+    onRenderFrame?.(null);
     setStreamProgress(0);
     try {
       const halfDeg = Math.min(
@@ -289,14 +294,33 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       };
       if (isTauri()) {
         const streamSnaps: GridSnapshot[] = [];
-        const meta = await api.simulateGridStreaming(gridReq, (snap) => {
-          if (!mountedRef.current || reqId !== reqIdRef.current) return;
-          streamSnaps.push(snap);
-          setSnapshots([...streamSnaps]);
-          setActiveIdx(streamSnaps.length - 1);
-          setStreamProgress(streamSnaps.length);
-          onSnapshot?.(snap);
-        });
+        const meta = await api.simulateGridStreaming(
+          gridReq,
+          (snap) => {
+            if (!mountedRef.current || reqId !== reqIdRef.current) return;
+            streamSnaps.push(snap);
+            setSnapshots([...streamSnaps]);
+            setActiveIdx(streamSnaps.length - 1);
+            setStreamProgress(streamSnaps.length);
+            onSnapshot?.(snap);
+          },
+          (packet) => {
+            if (!mountedRef.current || reqId !== reqIdRef.current || packet.kind !== "frame") return;
+            onRenderFrame?.({
+              protocolVersion: `${packet.prelude.major}.${packet.prelude.minor}`,
+              scenarioId: packet.header.scenario_id,
+              scenarioSha256: packet.header.scenario_sha256,
+              sequence: packet.prelude.sequence.toString(),
+              solverTick: packet.header.solver_tick,
+              simulationTimeS: packet.header.simulation_time_s,
+              tickDurationS: packet.header.tick_duration_s,
+              payloadSha256: packet.header.payload_sha256,
+              fieldSha256: Object.fromEntries(
+                packet.header.fields.map((field) => [field.id, field.sha256]),
+              ),
+            });
+          },
+        );
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
         setDiag({ dt_s: meta.dt_s, nx: meta.nx, ny: meta.ny, used_gpu: meta.used_gpu });
         setActiveIdx(0);
@@ -324,7 +348,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
 
   if (!initial) return null;
 

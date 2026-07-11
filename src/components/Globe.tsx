@@ -31,6 +31,7 @@ import type {
   PropagationSnapshot,
 } from "../types/scenario";
 import type { EffectRing, GeoPoint } from "../hazards/types";
+import type { RendererNeutralFrameView } from "../types/render-protocol";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -81,6 +82,7 @@ type Props = {
   impactAngleDeg?: number;
   /** Ocean impact → play the water splash + tsunami wave. */
   impactIsWater?: boolean;
+  directRenderFrame: RendererNeutralFrameView | null;
   /** Lightweight camera telemetry for the desktop viewport HUD. */
   onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => void;
 };
@@ -228,6 +230,7 @@ export function Globe({
   impactKind,
   impactAngleDeg,
   impactIsWater,
+  directRenderFrame,
   onCameraTelemetry,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1019,7 +1022,7 @@ export function Globe({
   // bright ring from the center out to the outermost hazard ring over ~2.4 s.
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !detonateNonce || impactKind === "asteroid" || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
+    if (directRenderFrame !== undefined || !viewer || !detonateNonce || impactKind === "asteroid" || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
     const maxR = Math.max(...hazardRings.map((r) => r.radiusM), 1);
     const { lat, lon } = hazardCenter;
     const position = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
@@ -1077,7 +1080,7 @@ export function Globe({
         shockEntityRef.current = null;
       }
     };
-  }, [detonateNonce, impactKind, hazardCenter, hazardRings, viewerEpoch]);
+  }, [detonateNonce, impactKind, hazardCenter, hazardRings, viewerEpoch, directRenderFrame]);
 
   // Asteroid entry sequence: a glowing bolide descends from space along the
   // physics entry angle with a fire trail, impacts with a flash + shockwave,
@@ -1085,7 +1088,7 @@ export function Globe({
   // tsunami wavefront outward. One-shot, triggered by detonateNonce.
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !detonateNonce || impactKind !== "asteroid" || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
+    if (directRenderFrame !== undefined || !viewer || !detonateNonce || impactKind !== "asteroid" || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
     const { lat, lon } = hazardCenter;
     const maxR = Math.max(...hazardRings.map((r) => r.radiusM), 1);
     const isWater = impactIsWater === true;
@@ -1314,7 +1317,103 @@ export function Globe({
       }
       impactEntitiesRef.current = [];
     };
-  }, [detonateNonce, impactKind, impactIsWater, impactAngleDeg, hazardCenter, hazardRings, viewerEpoch]);
+  }, [detonateNonce, impactKind, impactIsWater, impactAngleDeg, hazardCenter, hazardRings, viewerEpoch, directRenderFrame]);
+
+  // Renderer-neutral direct-hazard frames. Every transform, radius, height,
+  // and phase is supplied by Rust; this adapter only maps SI state to Cesium.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || directRenderFrame === undefined) return;
+    if (shockEntityRef.current) {
+      viewer.entities.remove(shockEntityRef.current);
+      shockEntityRef.current = null;
+    }
+    for (const entity of impactEntitiesRef.current) viewer.entities.remove(entity);
+    impactEntitiesRef.current = [];
+    if (!directRenderFrame) {
+      viewer.scene.requestRender();
+      return;
+    }
+
+    const quantity = (eventId: string, semantic: string) =>
+      directRenderFrame.events.find((event) => event.id === eventId)
+        ?.quantities.find((item) => item.semantic === semantic)?.value ?? 0;
+    const eventActive = (eventId: string) => {
+      const phase = directRenderFrame.events.find((event) => event.id === eventId)?.phase;
+      return phase === "active" || phase === "peak" || phase === "decaying";
+    };
+    const origin = directRenderFrame.georeference.origin_ecef_m;
+    const originPosition = new Cesium.Cartesian3(origin.x_m, origin.y_m, origin.z_m);
+    const localToEcef = (local: readonly [number, number, number]) => {
+      const matrix = directRenderFrame.georeference.local_enu_to_ecef;
+      return new Cesium.Cartesian3(
+        matrix[0] * local[0] + matrix[4] * local[1] + matrix[8] * local[2] + matrix[12],
+        matrix[1] * local[0] + matrix[5] * local[1] + matrix[9] * local[2] + matrix[13],
+        matrix[2] * local[0] + matrix[6] * local[1] + matrix[10] * local[2] + matrix[14],
+      );
+    };
+    const ellipse = (radius: number, color: string, alpha = 0.22) => {
+      if (!(radius > 0)) return;
+      impactEntitiesRef.current.push(viewer.entities.add({
+        position: originPosition,
+        ellipse: {
+          semiMajorAxis: radius,
+          semiMinorAxis: radius,
+          material: Cesium.Color.fromCssColorString(color).withAlpha(alpha),
+          outline: true,
+          outlineColor: Cesium.Color.fromCssColorString(color).withAlpha(0.9),
+          outlineWidth: 3,
+          height: 0,
+        },
+      }));
+    };
+
+    if (impactKind === "nuclear") {
+      ellipse(quantity("nuclear-blast", "current_radius"), "#f9e2af", 0.2);
+      if (eventActive("nuclear-fireball")) ellipse(quantity("nuclear-fireball", "maximum_radius"), "#fff4d6", 0.72);
+    } else if (impactKind === "asteroid") {
+      const body = directRenderFrame.transforms.find((transform) => transform.id === "asteroid-body");
+      if (body && eventActive("asteroid-entry")) {
+        const bodyPosition = localToEcef(body.translation_enu_m);
+        impactEntitiesRef.current.push(
+          viewer.entities.add({
+            polyline: {
+              positions: [bodyPosition, originPosition],
+              width: 8,
+              material: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.55, color: Cesium.Color.fromCssColorString("#ff8c42").withAlpha(0.88) }),
+            },
+          }),
+          viewer.entities.add({
+            position: bodyPosition,
+            point: { pixelSize: 18, color: Cesium.Color.WHITE, outlineColor: Cesium.Color.fromCssColorString("#ff8c42"), outlineWidth: 8, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          }),
+        );
+      }
+      ellipse(quantity("asteroid-fireball", "flash_current_radius"), "#ffffff", 0.7);
+      ellipse(quantity("asteroid-blast", "current_radius"), "#f9e2af", 0.2);
+      const splashHeight = quantity("asteroid-splash", "current_height");
+      if (splashHeight > 0) {
+        impactEntitiesRef.current.push(viewer.entities.add({
+          position: originPosition,
+          cylinder: {
+            length: splashHeight,
+            topRadius: Math.max(splashHeight * 0.1, 700),
+            bottomRadius: Math.max(splashHeight * 0.24, 1_400),
+            material: Cesium.Color.fromCssColorString("#e8f6ff").withAlpha(0.75),
+          },
+        }));
+      }
+      ellipse(quantity("asteroid-tsunami", "wave_0_radius"), "#dff1ff", 0.24);
+      ellipse(quantity("asteroid-tsunami", "wave_1_radius"), "#8bc8ff", 0.2);
+      ellipse(quantity("asteroid-tsunami", "wave_2_radius"), "#3aa0ff", 0.16);
+    }
+    viewer.scene.requestRender();
+    return () => {
+      if (viewer.isDestroyed()) return;
+      for (const entity of impactEntitiesRef.current) viewer.entities.remove(entity);
+      impactEntitiesRef.current = [];
+    };
+  }, [directRenderFrame, impactKind, viewerEpoch]);
 
   // React to a new wavefront snapshot — update existing entities in place.
   useEffect(() => {
