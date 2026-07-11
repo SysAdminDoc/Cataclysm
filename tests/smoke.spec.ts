@@ -42,15 +42,16 @@ test.describe("TsunamiSimulator browser preview", () => {
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
   });
 
-  test("export buttons are present in toolbar", async ({ page }) => {
+  test("export menu exposes all supported formats", async ({ page }) => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
     await expect(page.getByRole("button", { name: "PNG", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Share", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Video", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Text", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "KML", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Link", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Citations", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "References", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   });
 

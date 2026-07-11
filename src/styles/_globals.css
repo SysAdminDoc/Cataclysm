@@ -35,6 +35,13 @@ html[data-theme="mocha"] {
   --focus-ring: color-mix(in srgb, var(--sapphire) 42%, transparent);
   --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.48);
   --shadow-md: 0 12px 36px rgba(0, 0, 0, 0.28);
+  --chrome-bg: #091019;
+  --workspace-bg: #070c12;
+  --inspector-bg: #0e1721;
+  --metric-bg: #14212d;
+  --divider: #263746;
+  --accent-active: #36b9f2;
+  --viewport-hud: rgba(8, 16, 24, 0.9);
 
   /* Corner radii — global rule: no pills, no fully rounded. Allowed: 0/4/6/8/10/12. */
   --r-sm: 4px;
@@ -80,6 +87,13 @@ html[data-theme="latte"] {
   --focus-ring: color-mix(in srgb, var(--sapphire) 34%, transparent);
   --shadow-lg: 0 24px 80px rgba(76, 79, 105, 0.18);
   --shadow-md: 0 12px 36px rgba(76, 79, 105, 0.12);
+  --chrome-bg: #f7f9fc;
+  --workspace-bg: #dfe5ed;
+  --inspector-bg: #f4f7fa;
+  --metric-bg: #ffffff;
+  --divider: #b8c3cf;
+  --accent-active: #087fa6;
+  --viewport-hud: rgba(248, 251, 254, 0.94);
 
   color-scheme: light;
 }
@@ -94,7 +108,7 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Segoe UI Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   background: var(--base);
@@ -132,8 +146,23 @@ button:active:not(:disabled) {
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.48;
+  opacity: 0.7;
   transform: none;
+}
+
+button[data-active="true"]:disabled {
+  opacity: 0.86;
+}
+
+input::placeholder {
+  color: var(--subtext);
+  opacity: 0.78;
+}
+
+input:disabled,
+select:disabled {
+  color: var(--subtext);
+  opacity: 0.88;
 }
 
 button svg {

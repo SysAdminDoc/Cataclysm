@@ -50,11 +50,12 @@
     min-height: 100vh;
     height: auto;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(300px, 38vh) auto auto auto;
+    grid-template-rows: auto auto minmax(360px, 48vh) auto auto auto auto;
     grid-template-areas:
       "banner"
       "header"
       "globe"
+      "transport"
       "left"
       "right"
       "status";
@@ -88,6 +89,10 @@
     width: 100%;
   }
 
+  .app__command-group--hazard {
+    margin: 0;
+  }
+
   .app__header-actions {
     display: flex;
     flex-direction: column;
@@ -104,6 +109,19 @@
 
   .app__command-group--exports {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .app__export-menu,
+  .app__export-trigger {
+    width: 100%;
+  }
+
+  .app__export-panel {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    box-shadow: none;
   }
 
   .app__header-actions .icon-button {
@@ -163,6 +181,14 @@
     top: 10px;
     width: min(520px, calc(100% - 20px));
   }
+
+  .simulation-transport {
+    grid-template-columns: auto 118px minmax(220px, 1fr) 86px;
+  }
+
+  .simulation-transport__solver {
+    display: none;
+  }
 }
 
 @media (max-width: 560px) {
@@ -219,6 +245,29 @@
 
   .app__command-group--exports {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app__export-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .simulation-transport {
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .simulation-transport__clock {
+    padding-left: 10px;
+  }
+
+  .simulation-transport__track {
+    grid-column: 1 / -1;
+  }
+
+  .simulation-transport__speed,
+  .simulation-transport__solver {
+    display: none;
   }
 
   .section__title {

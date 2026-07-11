@@ -27,6 +27,7 @@ import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
+import { SimulationTransport } from "./components/SimulationTransport";
 import { asteroidEngine, nuclearEngine, type AsteroidInput, type NuclearInput } from "./hazards";
 import { falloutRings } from "./hazards/nuclear/fallout";
 import type { NuclearEffects } from "./hazards/nuclear/physics";
@@ -199,6 +200,9 @@ export default function App() {
   const [timeS, setTimeS] = useState<number>(15 * 60);
   const [showCitations, setShowCitations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
+  const [timelineRate, setTimelineRate] = useState(1);
   const [pickMode, setPickMode] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -238,6 +242,21 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 6000);
   }, []);
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    if (!timelinePlaying) return;
+    const timer = window.setInterval(() => {
+      setTimeS((current) => {
+        const next = current + 60 * timelineRate;
+        if (next >= 6 * 3600) {
+          setTimelinePlaying(false);
+          return 6 * 3600;
+        }
+        return next;
+      });
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [timelinePlaying, timelineRate]);
 
   useEffect(() => {
     settings
@@ -464,9 +483,12 @@ export default function App() {
       <header className="app__header">
         <div className="app__brand">
           <span className="app__brand-mark" aria-hidden>
-            TS
+            CX
           </span>
-          <h1 className="app__title">Cataclysm</h1>
+          <div className="app__brand-copy">
+            <h1 className="app__title">Cataclysm</h1>
+            <span className="app__tagline">Planetary hazard simulator</span>
+          </div>
           <span className="app__version">v{APP_VERSION}</span>
         </div>
         <div className="app__warning">
@@ -519,7 +541,29 @@ export default function App() {
               Compare
             </ToolbarButton>
           </div>
-          <div className="app__command-group app__command-group--exports" role="group" aria-label="Export current scenario">
+          <div className="app__export-menu">
+            <button
+              type="button"
+              className="app__export-trigger"
+              aria-expanded={exportMenuOpen}
+              aria-controls="export-actions"
+              onClick={() => setExportMenuOpen((open) => !open)}
+            >
+              <ToolbarIcon name="image" />
+              <span>Export</span>
+              <UiIcon name="chevronDown" size={13} />
+            </button>
+            {exportMenuOpen && <div
+              id="export-actions"
+              className="app__export-panel"
+              role="group"
+              aria-label="Export current scenario"
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest("button")) {
+                  window.setTimeout(() => setExportMenuOpen(false), 0);
+                }
+              }}
+            >
             <ToolbarButton
               icon="image"
               onClick={() => {
@@ -691,10 +735,11 @@ export default function App() {
             >
               KML
             </ToolbarButton>
+            </div>}
           </div>
           <div className="app__command-group app__command-group--utility" role="group" aria-label="References and preferences">
             <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="View citations">
-              Citations
+              References
             </ToolbarButton>
             <ToolbarButton icon="settings" variant="utility" onClick={() => setShowSettings(true)} title="Settings">
               Settings
@@ -818,7 +863,7 @@ export default function App() {
             onDetonate={() => setDetonateNonce((n) => n + 1)}
           />
         )}
-        <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} />
+        <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />
         <AttenuationChart
           initial={slotA.initial}
           isImpact={activePresetA?.source.kind === "Asteroid"}
@@ -828,7 +873,7 @@ export default function App() {
         {compareMode && (
           <div className="app__compare-rail">
             <div className="app__compare-rail-label">Slot B readout</div>
-            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} />
+            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />
           </div>
         )}
         <SwePlayback
@@ -888,6 +933,17 @@ export default function App() {
           onComplete={markLessonComplete}
         />
       )}
+      <SimulationTransport
+        timeS={timeS}
+        onTimeChange={setTimeS}
+        playing={timelinePlaying}
+        onTogglePlaying={() => setTimelinePlaying((playing) => !playing)}
+        rate={timelineRate}
+        onRateChange={setTimelineRate}
+        hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
+        sourceLabel={inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}
+        solverReady={hasSwePlayback}
+      />
       <div className="app__statusbar" role="status" aria-live="polite">
         <div className="statusbar__item statusbar__item--ready">
           <span className="status-dot" aria-hidden />

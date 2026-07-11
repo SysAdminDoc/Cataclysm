@@ -5,6 +5,7 @@ type Props = {
   initial: InitialDisplacement | null;
   timeS: number;
   onTimeChange: (s: number) => void;
+  showTimeline?: boolean;
 };
 
 function formatEnergy(j: number): { value: string; unit: string } {
@@ -38,7 +39,7 @@ function formatCoord(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`;
 }
 
-export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
+export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true }: Props) {
   if (!initial) {
     return (
       <div className="section">
@@ -124,7 +125,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
         </div>
       </div>
 
-      <div className="section">
+      {showTimeline && <div className="section">
         <div className="section__title">
           <span>Timeline</span>
           <span className="section__badge">{(safeTimeS / 3600).toFixed(2)} h</span>
@@ -148,7 +149,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange }: Props) {
             <span>{(safeTimeS / 3600).toFixed(2)} h</span>
           </div>
         </div>
-      </div>
+      </div>}
     </>
   );
 }

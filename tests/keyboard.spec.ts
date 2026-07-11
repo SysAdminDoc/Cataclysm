@@ -48,6 +48,9 @@ test.describe("Keyboard-only golden path", () => {
     expect(Number(after)).not.toBe(Number(before));
 
     // 4. Export the text report from the keyboard.
+    const exportMenu = page.getByRole("button", { name: "Export", exact: true });
+    await exportMenu.focus();
+    await page.keyboard.press("Enter");
     const textExport = page.getByRole("button", { name: "Text", exact: true });
     await textExport.focus();
     const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
