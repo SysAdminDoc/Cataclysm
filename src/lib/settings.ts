@@ -116,6 +116,7 @@ async function migrateStore(store: LazyStore): Promise<void> {
         `[settings] store version ${version} is newer than supported ${SETTINGS_SCHEMA_VERSION}; ` +
           "unrecognised keys will be preserved, unknown values fall back to defaults",
       );
+      return;
     }
 
     await store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
@@ -141,6 +142,7 @@ function migrateLocalStorage(): void {
         `[settings] localStorage version ${version} is newer than supported ${SETTINGS_SCHEMA_VERSION}; ` +
           "unknown values fall back to defaults",
       );
+      return;
     }
 
     localStorage.setItem(
@@ -357,6 +359,7 @@ async function write<K extends keyof Settings>(key: K, value: Settings[K]): Prom
       await blankStoreToken();
       return;
     }
+    throw new Error("The operating-system keychain is unavailable; the token was not stored.");
     // Keychain unavailable — fall through to the plugin-store path below.
   }
   if (shouldMirrorToLocalStorage(key) && typeof localStorage !== "undefined") {
@@ -378,6 +381,7 @@ async function write<K extends keyof Settings>(key: K, value: Settings[K]): Prom
         ? "value not mirrored to localStorage."
         : "localStorage mirror kept.";
       console.warn(`[settings] store.set/save failed for ${String(key)}; ${suffix}`, err);
+      throw new Error(`Could not persist ${String(key)} in the desktop settings store.`, { cause: err });
     }
   } else if (isTauri() && SENSITIVE_KEYS.has(key)) {
     console.warn(`[settings] Tauri store unavailable; ${String(key)} was not persisted.`);
@@ -571,6 +575,10 @@ export const settings = {
       "token_banner_dismissed_at",
       "classroom_locked",
     ];
+    if (isTauri()) {
+      const { api } = await import("./tauri");
+      await api.keychainSetToken("");
+    }
     if (typeof localStorage !== "undefined") {
       for (const k of keys) {
         try {
@@ -593,15 +601,15 @@ export const settings = {
       for (const k of keys) {
         try {
           await store.delete(k);
-        } catch {
-          /* best-effort */
+        } catch (err) {
+          throw new Error(`Could not delete ${String(k)} from the desktop settings store.`, { cause: err });
         }
       }
       try {
         await store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
         await store.save();
-      } catch {
-        /* ignore */
+      } catch (err) {
+        throw new Error("Could not save the reset desktop settings store.", { cause: err });
       }
     }
   },
@@ -653,12 +661,19 @@ export const settings = {
     );
   },
   async importSettings(json: string): Promise<{ applied: number; skipped: string[] }> {
+    if (new TextEncoder().encode(json).byteLength > 256 * 1024) {
+      throw new Error("Settings file exceeds the 256 KB import limit.");
+    }
     const raw = JSON.parse(json) as Record<string, unknown>;
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       throw new Error("Settings file must contain a JSON object.");
     }
     const skipped: string[] = [];
-    let applied = 0;
+    const pending: Array<[keyof Settings, Settings[keyof Settings]]> = [];
+    const importedVersion = raw._schema_version;
+    if (typeof importedVersion === "number" && importedVersion > SETTINGS_SCHEMA_VERSION) {
+      throw new Error(`Settings schema ${importedVersion} is newer than supported schema ${SETTINGS_SCHEMA_VERSION}.`);
+    }
     for (const key of Object.keys(raw)) {
       if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
       if (key === "_schema_version" || key === "cesium_token") continue;
@@ -670,12 +685,12 @@ export const settings = {
       const value = raw[key];
       const normalised = normaliseSetting(key as keyof Settings, value);
       if (normalised !== undefined) {
-        await write(key as keyof Settings, normalised);
-        applied++;
+        pending.push([key as keyof Settings, normalised]);
       } else {
         skipped.push(key);
       }
     }
-    return { applied, skipped };
+    for (const [key, value] of pending) await write(key, value);
+    return { applied: pending.length, skipped };
   },
 };

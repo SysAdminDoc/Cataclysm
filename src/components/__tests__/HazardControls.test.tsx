@@ -149,4 +149,46 @@ describe("HazardControls", () => {
     );
     expect(screen.getByText(/requires the desktop app/i)).toBeInTheDocument();
   });
+
+  it("surfaces calculation failures and exposes animation from Setup", () => {
+    const { rerender } = render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+        error="Direct hazard simulation failed: backend unavailable"
+        display="setup"
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("backend unavailable");
+
+    rerender(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={nuclearResult}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+        display="setup"
+        canAnimate
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Detonation animation" })).toBeEnabled();
+  });
 });

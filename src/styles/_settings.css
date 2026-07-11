@@ -334,3 +334,16 @@
   font-size: 12px;
   margin-left: auto;
 }
+.settings__loading {
+  margin: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--r-sm);
+  color: var(--subtext);
+  background: var(--metric-bg);
+}
+
+.modal--settings[data-loading="true"] .settings__workspace,
+.modal--settings[data-loading="true"] .settings__actions {
+  opacity: 0.55;
+}

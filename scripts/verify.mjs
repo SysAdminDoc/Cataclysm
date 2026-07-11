@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import net from "node:net";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
@@ -48,6 +49,23 @@ function commandExists(command) {
   const args = process.platform === "win32" ? [command] : ["-v", command];
   const result = spawnSync(lookup, args, { stdio: "ignore", shell: process.platform !== "win32" });
   return result.status === 0;
+}
+
+async function assertPortAvailable(port) {
+  await new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.once("error", (error) => reject(error));
+    server.listen({ host: "127.0.0.1", port, exclusive: true }, () => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }).catch((error) => {
+    console.error(
+      `\nBrowser verification requires a clean preview port, but 127.0.0.1:${port} is unavailable (${error.code ?? error.message}).`,
+    );
+    console.error("Stop the stale preview process and rerun verification; attaching to an unknown build is forbidden.");
+    process.exit(1);
+  });
 }
 
 function quoteCmdArg(arg) {
@@ -393,6 +411,8 @@ if (strictRustPolicy) {
   runNpm("HR-00 deterministic 1440p/4K capture matrix", ["run", "verify:references"]);
 }
 runNpm("npm audit", ["audit", "--audit-level=moderate"]);
+console.log("\n==> Browser preview ownership gate");
+await assertPortAvailable(4187);
 runNpm("Playwright browser preview suite", ["run", "test:e2e"]);
 
 const rustMatrix = strictRustPolicy

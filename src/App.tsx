@@ -59,6 +59,15 @@ type HazardMode = "tsunami" | "nuclear" | "asteroid";
 type DirectHazardMode = Exclude<HazardMode, "tsunami">;
 type InspectorTab = "setup" | "results" | "layers";
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
   "asteroid-entry": asteroidEntryRecordingUrl,
   "asteroid-land-impact": asteroidLandRecordingUrl,
@@ -251,6 +260,7 @@ export default function App() {
   // default "Impact" is dramatic but the effects still frame nicely.
   const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 300, densityKgM3: 4000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [hazardError, setHazardError] = useState<string | null>(null);
   const [directRenderReplay, setDirectRenderReplay] = useState<RenderReplayAdapter | null>(null);
   const [directRenderFrame, setDirectRenderFrame] = useState<RendererNeutralFrameView | null>(null);
   const [hazardPending, setHazardPending] = useState(false);
@@ -278,10 +288,13 @@ export default function App() {
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+  const lastCameraUpdateAt = useRef(0);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
   const inTauri = useMemo(isTauri, []);
+  const debouncedNuclearInput = useDebouncedValue(nuclearInput, 180);
+  const debouncedAsteroidInput = useDebouncedValue(asteroidInput, 180);
   const referenceCaptureMode = useMemo(
     () => new URLSearchParams(window.location.search).get("referenceCapture") === "1",
     [],
@@ -303,7 +316,17 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 6000);
   }, []);
   const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
-    setCameraTelemetry(telemetry);
+    const now = performance.now();
+    if (now - lastCameraUpdateAt.current < 100) return;
+    lastCameraUpdateAt.current = now;
+    setCameraTelemetry((current) =>
+      Math.abs(current.lat - telemetry.lat) < 0.005
+      && Math.abs(current.lon - telemetry.lon) < 0.005
+      && Math.abs(current.altitudeM - telemetry.altitudeM) < 25
+      && Math.abs(current.headingDeg - telemetry.headingDeg) < 0.25
+        ? current
+        : telemetry,
+    );
   }, []);
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
@@ -486,6 +509,7 @@ export default function App() {
     const requestId = ++hazardRequestId.current;
     if (hazardMode === "tsunami" || !hazardCenter) {
       setHazardResult(null);
+      setHazardError(null);
       setDirectRenderReplay(null);
       setDirectRenderFrame(null);
       setHazardPending(false);
@@ -522,52 +546,64 @@ export default function App() {
     }
 
     setHazardResult(null);
+    setHazardError(null);
     setDirectRenderReplay(null);
     setDirectRenderFrame(null);
     setHazardPending(true);
     const center = { lat: hazardCenter.lat, lon: hazardCenter.lon };
     const nuclearRequest = {
           center,
-          yield_kt: nuclearInput.yieldKt,
-          burst_type: nuclearInput.burstType,
-          height_m: nuclearInput.heightM,
-          fission_pct: nuclearInput.fissionPct ?? 50,
-          population_density: nuclearInput.populationDensity ?? 0,
+          yield_kt: debouncedNuclearInput.yieldKt,
+          burst_type: debouncedNuclearInput.burstType,
+          height_m: debouncedNuclearInput.heightM,
+          fission_pct: debouncedNuclearInput.fissionPct ?? 50,
+          population_density: debouncedNuclearInput.populationDensity ?? 0,
         };
     const asteroidRequest = {
           center,
-          diameter_m: asteroidInput.diameterM,
-          density_kg_m3: asteroidInput.densityKgM3,
-          velocity_km_s: asteroidInput.velocityKmS,
-          angle_deg: asteroidInput.angleDeg,
-          target_type: asteroidInput.targetType,
-          water_depth_m: asteroidInput.waterDepthM ?? 0,
-          beach_slope_rad: asteroidInput.beachSlopeRad ?? 0.02,
+          diameter_m: debouncedAsteroidInput.diameterM,
+          density_kg_m3: debouncedAsteroidInput.densityKgM3,
+          velocity_km_s: debouncedAsteroidInput.velocityKmS,
+          angle_deg: debouncedAsteroidInput.angleDeg,
+          target_type: debouncedAsteroidInput.targetType,
+          water_depth_m: debouncedAsteroidInput.waterDepthM ?? 0,
+          beach_slope_rad: debouncedAsteroidInput.beachSlopeRad ?? 0.02,
         };
     const request = hazardMode === "nuclear"
-      ? Promise.all([
+      ? Promise.allSettled([
           api.simulateNuclearHazard(nuclearRequest),
           api.simulateNuclearHazardRender(nuclearRequest),
         ])
-      : Promise.all([
+      : Promise.allSettled([
           api.simulateAsteroidHazard(asteroidRequest),
           api.simulateAsteroidHazardRender(asteroidRequest),
         ]);
 
     void request
-      .then(([result, replay]) => {
+      .then(([resultOutcome, renderOutcome]) => {
         if (cancelled || requestId !== hazardRequestId.current) return;
+        if (resultOutcome.status === "rejected") throw resultOutcome.reason;
+        const result = resultOutcome.value;
         if (result.authority !== "rust" || result.kind !== hazardMode) {
           throw new Error("backend returned an invalid direct-hazard authority contract");
         }
         setHazardResult(result);
-        setDirectRenderReplay(replay);
+        setHazardError(null);
+        if (renderOutcome.status === "fulfilled") {
+          setDirectRenderReplay(renderOutcome.value);
+        } else {
+          console.error("direct hazard render stream failed", renderOutcome.reason);
+          setDirectRenderReplay(null);
+          showToast("Effects were calculated, but the staged animation could not be prepared.", "error");
+        }
       })
       .catch((error) => {
         if (cancelled || requestId !== hazardRequestId.current) return;
         console.error("direct hazard simulation failed", error);
         setHazardResult(null);
-        showToast(`Direct hazard simulation failed: ${String(error)}`, "error");
+        const message = `Direct hazard simulation failed: ${String(error)}`;
+        setHazardError(message);
+        showToast(message, "error");
       })
       .finally(() => {
         if (!cancelled && requestId === hazardRequestId.current) setHazardPending(false);
@@ -580,8 +616,8 @@ export default function App() {
     hazardMode,
     hazardCenter,
     inTauri,
-    nuclearInput,
-    asteroidInput,
+    debouncedNuclearInput,
+    debouncedAsteroidInput,
     referenceCaptureMode,
     referenceCaptureSceneId,
     showToast,
@@ -726,6 +762,9 @@ export default function App() {
 
   function selectHazardMode(mode: HazardMode) {
     setHazardMode(mode);
+    if (mode !== "tsunami") {
+      setDetonateNonces((current) => ({ ...current, [mode]: 0 }));
+    }
     setPickMode(false);
     setInspectMode(false);
     setCompareMode(false);
@@ -1272,6 +1311,9 @@ export default function App() {
             }}
             backendAvailable={inTauri}
             display="setup"
+            pending={hazardPending}
+            error={hazardError}
+            canAnimate={Boolean(directRenderReplay)}
           />
         )}
         <div hidden={inspectorTab !== "setup" || inHazardMode}>
@@ -1333,6 +1375,9 @@ export default function App() {
           onDetonate={detonateActiveHazard}
           backendAvailable={inTauri}
           display="results"
+          pending={hazardPending}
+          error={hazardError}
+          canAnimate={Boolean(directRenderReplay)}
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
         {inspectorTab === "results" && !inHazardMode && <AttenuationChart

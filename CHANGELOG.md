@@ -22,6 +22,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   Escape/outside-click popover handling, and accessible active-control contrast.
 - Fixed custom asteroid sources being treated as non-impact events by
   inspection, attenuation, and coastal-runup calculations.
+- Hardened settings persistence: failed desktop writes now surface to the user,
+  Cesium tokens fail closed when the OS keychain is unavailable, reset clears
+  the keychain, future schemas are never downgraded, and imports are capped and
+  validated before changes begin.
+- Debounced direct-hazard recomputation, retained valid physics results when an
+  animation stream fails, exposed calculation errors in the active panel, and
+  made effect animation available directly from Setup.
+- Throttled renderer and camera telemetry before React state updates, and made
+  verification refuse to attach Playwright to an unknown process on its preview
+  port.
 
 ## [0.8.2] — 2026-07-11 — Adaptive renderer quality
 

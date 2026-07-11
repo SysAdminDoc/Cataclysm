@@ -6,7 +6,7 @@ import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId } from "../lib/settings";
 import { downloadBlob } from "../lib/export";
-import { applyTheme, setTheme } from "../lib/theme";
+import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
 import { getEarthAsset, getEarthProvider, getEarthStyleBinding } from "../lib/earth-assets";
@@ -48,27 +48,35 @@ export function Settings({ onClose }: Props) {
   const [classroomLocked, setClassroomLocked] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSection>("visual");
   const [appliedSettings, setAppliedSettings] = useState<StagedSettings | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    settings.loadAll().then((s) => {
-      if (cancelled) return;
-      setTokenLocal(s.cesium_token);
-      setThemeLocal(s.theme);
-      setGlobeStyle(s.globe_style);
-      setColormapId(s.colormap);
-      setRendererQuality(s.renderer_quality);
-      setRendererAutoQuality(s.renderer_auto_quality);
-      setClassroomLocked(s.classroom_locked);
-      setAppliedSettings({
-        token: s.cesium_token,
-        theme: s.theme,
-        globeStyle: s.globe_style,
-        colormapId: s.colormap,
-        rendererQuality: s.renderer_quality,
-        rendererAutoQuality: s.renderer_auto_quality,
+    settings.loadAll()
+      .then((s) => {
+        if (cancelled) return;
+        setTokenLocal(s.cesium_token);
+        setThemeLocal(s.theme);
+        setGlobeStyle(s.globe_style);
+        setColormapId(s.colormap);
+        setRendererQuality(s.renderer_quality);
+        setRendererAutoQuality(s.renderer_auto_quality);
+        setClassroomLocked(s.classroom_locked);
+        setAppliedSettings({
+          token: s.cesium_token,
+          theme: s.theme,
+          globeStyle: s.globe_style,
+          colormapId: s.colormap,
+          rendererQuality: s.renderer_quality,
+          rendererAutoQuality: s.renderer_auto_quality,
+        });
+      })
+      .catch((err) => {
+        if (!cancelled) setSaveErr(`Could not load settings: ${String(err)}`);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-    });
     if (isTauri()) {
       api
         .gpuProbe()
@@ -94,19 +102,23 @@ export function Settings({ onClose }: Props) {
     // Apply the token immediately so the next imagery request sees it,
     // even if the persistence write below races. This makes 'Save' feel
     // instant even on slow disks.
-    primeCesiumToken(trimmedToken || null);
     try {
       await Promise.all([
         settings.setCesiumToken(trimmedToken),
-        setTheme(theme),
+        settings.setTheme(theme),
         settings.setGlobeStyle(globeStyle),
         settings.setColormap(colormapId),
         settings.setRendererQuality(rendererQuality),
         settings.setRendererAutoQuality(rendererAutoQuality),
       ]);
       setTokenLocal(trimmedToken);
+      primeCesiumToken(trimmedToken || null);
+      applyTheme(theme);
       setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId, rendererQuality, rendererAutoQuality });
       setStatusMsg(`Changes applied at ${new Date().toLocaleTimeString()}`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+      }
     } catch (err) {
       console.error("[settings] save failed", err);
       setSaveErr(String(err));
@@ -116,9 +128,6 @@ export function Settings({ onClose }: Props) {
     // Always dispatch — Globe + main.tsx listen for this to re-read the
     // active style + token. Even if persistence failed the in-memory
     // values are still useful for the current session.
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
-    }
   }
 
   const needsToken = GLOBE_STYLES.find((s) => s.id === globeStyle)?.requires_token ?? false;
@@ -167,7 +176,7 @@ export function Settings({ onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={handleBackdropClick}>
-      <div className="modal modal--settings" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div className="modal modal--settings" data-loading={loading ? "true" : "false"} ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
           <h2 id="settings-title">Settings</h2>
           <button className="modal__close" onClick={onClose} aria-label="Cancel and close settings" type="button">
@@ -175,6 +184,7 @@ export function Settings({ onClose }: Props) {
           </button>
         </header>
         <div className="modal__body settings__modal-body">
+          {loading && <div className="settings__loading" role="status">Loading settings…</div>}
           {classroomLocked && (
             <div className="settings__classroom-note" role="note">
               <strong>Classroom profile active.</strong> Imagery, theme, and
@@ -193,7 +203,7 @@ export function Settings({ onClose }: Props) {
               </button>
             </div>
           )}
-          <div className="settings__workspace">
+          <div className="settings__workspace" inert={loading ? true : undefined}>
             <nav className="settings__nav" aria-label="Settings categories">
               <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>Earth &amp; appearance</button>
               <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>Simulation performance</button>
@@ -497,6 +507,7 @@ export function Settings({ onClose }: Props) {
                     const file = input.files?.[0];
                     if (!file) return;
                     try {
+                      if (file.size > 256 * 1024) throw new Error("Settings file exceeds the 256 KB import limit.");
                       const text = await file.text();
                       const result = await settings.importSettings(text);
                       const all = await settings.loadAll();
@@ -506,6 +517,7 @@ export function Settings({ onClose }: Props) {
                       setColormapId(all.colormap);
                       setRendererQuality(all.renderer_quality);
                       setRendererAutoQuality(all.renderer_auto_quality);
+                      setClassroomLocked(all.classroom_locked);
                       setAppliedSettings({
                         token: all.cesium_token,
                         theme: all.theme,
@@ -538,27 +550,33 @@ export function Settings({ onClose }: Props) {
                 className="scenario-tab"
                 data-tone="danger"
                 onClick={async () => {
-                  await settings.resetAll();
-                  setTokenLocal("");
-                  setThemeLocal("mocha");
-                  setGlobeStyle(DEFAULT_STYLE);
-                  setColormapId("diverging");
-                  setRendererQuality("High");
-                  setRendererAutoQuality(true);
-                  setAppliedSettings({
-                    token: "",
-                    theme: "mocha",
-                    globeStyle: DEFAULT_STYLE,
-                    colormapId: "diverging",
-                    rendererQuality: "High",
-                    rendererAutoQuality: true,
-                  });
-                  applyTheme("mocha");
-                  primeCesiumToken(null);
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                  try {
+                    await settings.resetAll();
+                    setTokenLocal("");
+                    setThemeLocal("mocha");
+                    setGlobeStyle(DEFAULT_STYLE);
+                    setColormapId("diverging");
+                    setRendererQuality("High");
+                    setRendererAutoQuality(true);
+                    setClassroomLocked(false);
+                    setAppliedSettings({
+                      token: "",
+                      theme: "mocha",
+                      globeStyle: DEFAULT_STYLE,
+                      colormapId: "diverging",
+                      rendererQuality: "High",
+                      rendererAutoQuality: true,
+                    });
+                    applyTheme("mocha");
+                    primeCesiumToken(null);
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                    }
+                    setSaveErr(null);
+                    setStatusMsg("Settings reset to defaults.");
+                  } catch (err) {
+                    setSaveErr(`Reset failed: ${err instanceof Error ? err.message : String(err)}`);
                   }
-                  setStatusMsg("Settings reset to defaults.");
                 }}
                 type="button"
               >
@@ -592,7 +610,7 @@ export function Settings({ onClose }: Props) {
             </div>
             <div className="settings__footer-buttons">
               <button type="button" onClick={onClose}>Cancel</button>
-              <button className="primary" type="button" onClick={save} disabled={saving || !hasUnsavedChanges}>
+              <button className="primary" type="button" onClick={save} disabled={loading || saving || !hasUnsavedChanges}>
                 {saving ? "Applying Changes..." : "Apply Changes"}
               </button>
             </div>

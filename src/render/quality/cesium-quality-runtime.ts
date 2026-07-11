@@ -70,6 +70,7 @@ export class CesiumQualityRuntime {
   readonly #contextRestored: () => void;
   readonly #adapter: RendererAdapterDiagnostics;
   #lastFrameAt: number | null = null;
+  #lastUiPublishAt = 0;
   #destroyed = false;
 
   constructor(viewer: Cesium.Viewer, options: CesiumQualityRuntimeOptions) {
@@ -156,10 +157,13 @@ export class CesiumQualityRuntime {
       if (elapsed > 0 && elapsed < 250) this.#controller.recordFrameTime(elapsed);
     }
     this.#lastFrameAt = now;
-    this.#publish();
+    this.#publish(false);
   }
 
-  #publish(): void {
+  #publish(force = true): void {
+    const now = performance.now();
+    if (!force && now - this.#lastUiPublishAt < 500) return;
+    this.#lastUiPublishAt = now;
     const diagnostics = this.diagnostics();
     if (this.#publishGlobal) currentDiagnostics = diagnostics;
     if (this.#publishGlobal && typeof window !== "undefined") {

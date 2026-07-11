@@ -111,6 +111,14 @@ describe("settings schema versioning", () => {
     infoSpy.mockRestore();
   });
 
+  it("never stamps a future settings schema down to the current version", async () => {
+    localStorage.setItem(LS_PREFIX + SCHEMA_VERSION_KEY, JSON.stringify(99));
+    localStorage.setItem(LS_PREFIX + "theme", JSON.stringify("latte"));
+
+    expect(await settings.getTheme()).toBe("latte");
+    expect(JSON.parse(localStorage.getItem(LS_PREFIX + SCHEMA_VERSION_KEY)!)).toBe(99);
+  });
+
   it("round-trips settings through export/import", async () => {
     await settings.setTheme("latte");
     await settings.setColormap("viridis");
@@ -167,6 +175,20 @@ describe("settings schema versioning", () => {
     await expect(settings.importSettings("[1,2,3]")).rejects.toThrow(
       "Settings file must contain a JSON object.",
     );
+  });
+
+  it("rejects future and oversized settings imports before applying values", async () => {
+    await expect(settings.importSettings(JSON.stringify({
+      _schema_version: SETTINGS_SCHEMA_VERSION + 1,
+      theme: "latte",
+    }))).rejects.toThrow(/newer than supported/);
+    expect(await settings.getTheme()).toBe("mocha");
+
+    await expect(settings.importSettings(JSON.stringify({
+      theme: "latte",
+      padding: "x".repeat(256 * 1024),
+    }))).rejects.toThrow(/256 KB/);
+    expect(await settings.getTheme()).toBe("mocha");
   });
 
   it("import ignores prototype pollution keys", async () => {

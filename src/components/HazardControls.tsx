@@ -65,6 +65,9 @@ export function HazardControls({
   onDetonate,
   backendAvailable = true,
   display = "all",
+  pending = false,
+  error = null,
+  canAnimate = true,
 }: {
   mode: HazardMode;
   nuclear: NuclearInput;
@@ -80,6 +83,9 @@ export function HazardControls({
   onDetonate: () => void;
   backendAvailable?: boolean;
   display?: "all" | "setup" | "results";
+  pending?: boolean;
+  error?: string | null;
+  canAnimate?: boolean;
 }) {
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
   const timeline = nuclearEffects?.timeline ?? [];
@@ -230,6 +236,28 @@ export function HazardControls({
       )}
       </>}
 
+      {showSetup && !showResults && !result && (
+        <p className="hazard__hint" role={error ? "alert" : "status"}>
+          {error
+            ? error
+            : !backendAvailable && center
+              ? "Direct hazard physics requires the desktop app; browser preview cannot calculate effects."
+              : pending && center
+                ? "Computing authoritative effects…"
+                : center
+                  ? "Ready to calculate effects."
+                  : "Pick a location on the globe to model effects."}
+        </p>
+      )}
+
+      {showSetup && result && (
+        <button type="button" className="hazard__detonate" onClick={onDetonate} disabled={!canAnimate}>
+          {canAnimate
+            ? mode === "asteroid" ? "Impact animation" : "Detonation animation"
+            : "Animation unavailable"}
+        </button>
+      )}
+
       {showResults && (result ? (
         <div className="hazard__results">
           <div className="hazard__readout">
@@ -261,7 +289,7 @@ export function HazardControls({
             ))}
           </ul>
 
-          <button type="button" className="hazard__detonate" onClick={onDetonate}>
+          <button type="button" className="hazard__detonate" onClick={onDetonate} disabled={!canAnimate}>
             {mode === "asteroid" ? "☄ Impact — asteroid from space" : "▶ Detonate — animate shockwave"}
           </button>
 
@@ -280,12 +308,16 @@ export function HazardControls({
           )}
         </div>
       ) : (
-        <p className="hazard__hint">
-          {!backendAvailable && center
+        <p className="hazard__hint" role={error ? "alert" : "status"}>
+          {error
+            ? error
+            : !backendAvailable && center
             ? "Direct hazard physics requires the desktop app; browser preview cannot calculate effects."
-            : center
+            : pending && center
               ? "Computing authoritative effects…"
-              : "Pick a location on the globe to model effects."}
+              : center
+                ? "Ready to calculate effects."
+                : "Pick a location on the globe to model effects."}
         </p>
       ))}
     </div>
