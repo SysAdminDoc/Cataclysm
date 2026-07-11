@@ -51,12 +51,15 @@ deploys with parity — only then are they retired (code is already safe in-tree
   to nuclear/impact results; preserve NukeMap's offline single-file capability
   path where feasible under Vite/Tauri.
 
-### Exit criteria (then retire standalones)
-- Nuclear + impact modes reach feature parity with the standalone apps.
-- Cataclysm web build deploys (GitHub Pages) and desktop bundle builds.
-- Only then: delete `SysAdminDoc/NukeMap` and `SysAdminDoc/AsteroidSimulator`
-  (code + history already preserved under `legacy/`), and update the desktop
-  Portfolio-Consolidation-Map.
+### Standalone repos retired (2026-07-10)
+- **`SysAdminDoc/AsteroidSimulator` and `SysAdminDoc/NukeMap` deleted** (GitHub +
+  local) by owner direction: Cataclysm is the single primary repo. Their code and
+  full history remain in-tree under `legacy/asteroid` and `legacy/nukemap` (git
+  subtree). NukeMap's old GitHub Pages site (`sysadmindoc.github.io/NukeMap/`) is
+  offline as a result; the nuclear experience now lives in Cataclysm's Nuclear
+  mode and will ship on Cataclysm's own Pages deploy.
+- The UNI-05/06/08..14 items below remain the parity backlog, now worked entirely
+  inside Cataclysm against the preserved `legacy/` reference.
 
 ---
 
