@@ -610,3 +610,130 @@ existing Earth, ocean, hazard, or Unreal milestones.
   physics; automated sequences detect tile popping, shimmer, swimming, field
   discontinuity, and resource growth; exported media declares its color space.
   Complexity: L
+
+## Research-Driven Additions
+
+### P0
+
+- [ ] P0 — Ship a GPU-enabled Windows simulator artifact
+  Why: v0.8.0 advertises GPU compute, but the release build uses default Cargo features and its package fingerprints record `features: []`, making every installed run report `feature-off`.
+  Evidence: `src-tauri/Cargo.toml` optional `gpu` feature; `package.json` `tauri:build`; `docs/release/CODESIGNING.md`; `src-tauri/target/release/.fingerprint/cataclysm-*/bin-cataclysm.json`; Celeris-WebGPU and Tsunami-HySEA ship acceleration as a product capability.
+  Touches: `package.json`, `scripts/verify.mjs`, `src-tauri/Cargo.toml`, release/build documentation, artifact metadata.
+  Acceptance: a clean Windows package build enables `gpu`; an installed-package smoke reports an attempted or active GPU backend rather than `feature-off`; unsupported adapters visibly fall back to CPU; the artifact manifest records enabled features.
+  Complexity: M
+
+- [ ] P0 — Add a Rust release feature-matrix gate
+  Why: the canonical gate tests only default Cargo features, so GPU, validation, and their combined dependency/layout path can regress without blocking a release.
+  Evidence: `scripts/verify.mjs` default-feature Cargo commands; `src-tauri/Cargo.toml` `gpu` and `validation`; recent ANUGA GPU-boundary work and wgpu releases reinforce explicit accelerator-path testing.
+  Touches: `scripts/verify.mjs`, `package.json`, Rust parity/validation tests, package smoke fixtures.
+  Acceptance: `verify:release` runs check, test, and clippy for default, `gpu`, `validation`, and `gpu,validation`; it runs CPU/GPU parity plus validation fixtures and refuses packaging if any feature combination fails.
+  Complexity: M
+
+- [ ] P0 — Make maxima and arrival products independent of snapshot count
+  Why: `MaxFieldAccumulator` currently updates only when a display snapshot is emitted, so peak height, arrival, energy proxy, and time-of-maximum change with `n_snapshots` instead of only with the numerical solution.
+  Evidence: `src-tauri/src/physics/solver/max_field.rs`; emitted-frame branches in `src-tauri/src/physics/solver/mod.rs`; Clawpack gauges sample every solver step while output frames are configured separately; NOAA requires maximum height/current and arrival products.
+  Touches: solver step loop, `MaxFieldAccumulator`, streaming metadata, max-field/isochrone tests.
+  Acceptance: quantitative accumulators update on every accepted solver step; runs with 12, 60, and 240 output frames agree within declared numerical tolerance for maxima, arrivals, and energy while serialized frame counts differ.
+  Complexity: M
+
+- [ ] P0 — Isolate tsunami, asteroid, and nuclear workspace state
+  Why: direct hazard modes can display stale tsunami source geometry, SWE fields, runup, DART data, and legends; Compare can be re-enabled as direct slot A versus tsunami slot B, visually misattributing results.
+  Evidence: `src/App.tsx` keeps `PresetSelector`, slot-A fields, source HUD, layer inputs, and Compare controls active across hazard switches; OpenQuake uses distinct scenario workflows and outputs.
+  Touches: `src/App.tsx`, active-workspace state/types, `Globe.tsx` inputs, inspect/compare availability, Playwright mode fixtures.
+  Acceptance: switching domains atomically hides or parks incompatible data; direct modes never render tsunami overlays or inspect a stale tsunami; Compare is either disabled with an explanation or requires two same-domain workspaces; regression tests cover every transition.
+  Complexity: M
+
+- [ ] P0 — Repair offline imagery fallback and provider health
+  Why: the current failure path retries the network-dependent default instead of loading bundled Natural Earth, while asynchronous tile failures can leave the UI claiming the globe is ready.
+  Evidence: `src/lib/globe-styles.ts` `DEFAULT_STYLE` and fallback copy; imagery error handling in `src/components/Globe.tsx`; ArcGIS Earth and NASA Worldview make offline/degraded state explicit.
+  Touches: `src/lib/globe-styles.ts`, `src/components/Globe.tsx`, provider status UI, offline/provider-failure tests.
+  Acceptance: offline startup and forced tile failure select bundled Natural Earth without retry loops; status distinguishes connecting, ready, degraded, fallback, and failed; recovery can retry the chosen online provider without losing simulation state.
+  Complexity: M
+
+- [ ] P0 — Neutralize spreadsheet formulas in CSV exports
+  Why: user-controlled gauge names can begin with formula initiators that Excel or LibreOffice interprets as executable formulas when exported CSV is opened.
+  Evidence: `src/lib/export.ts` `csvEscape`; OWASP CSV Injection guidance: https://owasp.org/www-community/attacks/CSV_Injection.
+  Touches: shared CSV cell encoder, gauge export, export unit tests and malicious-name fixtures.
+  Acceptance: every exported cell follows one documented spreadsheet-safe policy for ASCII and full-width `=`, `+`, `-`, `@`, tab, CR, and LF initiators; ordinary machine-readable values round-trip unchanged; regression fixtures cannot become formulas in supported spreadsheet targets.
+  Complexity: S
+
+- [ ] P0 — Enforce WCAG AA across both desktop themes and Compare
+  Why: live light-theme axe inspection found 30 contrast failures; Compare has a 2.05:1 active label and duplicate preset-group IDs, while current light visual tests do not run accessibility checks.
+  Evidence: `src/styles/_globals.css`, `_hazard.css`, `_presets.css`, `_inspector.css`, `_scenario.css`, `_layout.css`, `_globe.css`; `src/components/PresetSelector.tsx`; WCAG 2.2: https://www.w3.org/TR/WCAG22/.
+  Touches: semantic color tokens, tab/filter widgets, per-instance ARIA IDs, chart/legend summaries, `tests/visual-regression.spec.ts`, Playwright axe fixtures.
+  Acceptance: axe reports zero serious/critical violations for dark/light setup, results, layers, Compare, asteroid, nuclear, settings, and error states; text/non-text contrast meets AA; repeated components have unique IDs; tabs support roving focus and arrow navigation.
+  Complexity: M
+
+### P1
+
+- [ ] P1 — Implement row-aware spherical SWE metrics and conservation tests
+  Why: one longitude scale computed at box-center latitude is applied to every row in domains up to 120 degrees wide, biasing cell geometry and transport away from the center latitude.
+  Evidence: metric setup and use in `src-tauri/src/physics/solver/mod.rs`; domain caps in `src-tauri/src/commands.rs`; Clawpack documents latitude cell-size source terms as important for tropic-to-pole propagation; Celeris-WebGPU added a spherical NLSW solver in 2026.
+  Touches: grid geometry, flux/source terms, CFL calculation, CPU/GPU kernels, conservation and latitude-symmetry fixtures.
+  Acceptance: per-row metric terms are used consistently on CPU/GPU; still-water and mass/energy fixtures remain bounded; mirrored low/high-latitude scenarios agree in physical distance/time within tolerance; dateline and polar tests pass.
+  Complexity: L
+
+- [ ] P1 — Give solver runs identity, scoped cancellation, and resource admission
+  Why: one global token list makes Cancel affect every active run, compare can double a roughly 352 MB high-resolution allocation, and closed snapshot receivers do not stop computation.
+  Evidence: cancellation registry and streaming sends in `src-tauri/src/commands.rs`; grid/max-field allocations in `src-tauri/src/physics/solver/**`; ANUGA documents checkpointing, parallel memory failures, and resource troubleshooting.
+  Touches: IPC request/response types, run registry, cancellation commands, memory/concurrency estimator, compare orchestration, diagnostics.
+  Acceptance: every run has an ID and lifecycle; cancel-by-ID leaves other runs active; closed receivers terminate work; completion reports actual emitted frames and cancellation; over-budget compare/run requests are rejected before allocation with a calculated explanation.
+  Complexity: L
+
+- [ ] P1 — Make settings persistence and import transactional
+  Why: writes can fail while the UI reports success; imports apply key-by-key without rollback or size limits; a future schema is stamped down to v1; early edits and classroom-lock state can be overwritten or remain stale.
+  Evidence: `src/lib/settings.ts` write/migration/import paths; `src/components/Settings.tsx` load/apply/import/reset flows; Tauri Store persists in app data and returns asynchronous operations.
+  Touches: settings schema validator, migration registry, staged snapshot/rollback, file-size cap, Settings loading/commit state, failure tests.
+  Acceptance: the UI is non-editable until the durable snapshot loads; all changes prevalidate and commit atomically; any write failure restores prior durable/in-memory state and shows recovery; future schemas are rejected without mutation; import/reset immediately refresh every dependent setting.
+  Complexity: M
+
+- [ ] P1 — Use typed loading, empty, stale, and error states for derived outputs
+  Why: preset, runup, attenuation, inspect, SWE, saved-scenario, and DART failures currently collapse into loading, empty, waiting, or “no overlap,” making failed computations look valid.
+  Evidence: `PresetSelector.tsx`, `CoastalRunupOverlay.tsx`, `AttenuationChart.tsx`, `Globe.tsx`, `DartOverlay.tsx`, `ScenarioBuilder.tsx`; professional hazard tools distinguish workflow/output failures.
+  Touches: shared async-result type, affected components/hooks, toast/log linkage, retry actions, unit and Playwright failure fixtures.
+  Acceptance: each surface distinguishes loading, valid empty, current result, stale prior result, and error; errors retain the last valid result with a stale marker when safe; retry is local; “no overlap” is used only for a successful comparison with zero overlap.
+  Complexity: M
+
+- [ ] P1 — Turn Layers into a real simulator layer controller
+  Why: `LayerInspector` exposes only Active/Waiting inventory despite a Layers affordance; professional globe tools provide visibility, opacity, order, legend, temporal coupling, and persistent layer state.
+  Evidence: `src/components/LayerInspector.tsx`; OpenSpace layer groups/order/time controls; NASA Worldview and WorldWind Explorer layer opacity, ordering, palette, and comparison controls.
+  Touches: layer descriptor/state model, `LayerInspector.tsx`, Cesium overlay adapters, settings/scenario schema, exports, accessibility tests.
+  Acceptance: applicable layers can be shown/hidden, reordered, opacity-adjusted, reset, and inspected for legend/provenance; unavailable layers explain prerequisites; state persists per scenario and is represented in share/export metadata; controls are fully keyboard accessible.
+  Complexity: L
+
+- [ ] P1 — Add precise direct-hazard inputs and honest uncertainty
+  Why: critical asteroid/nuclear parameters are range-only, preventing exact simulator entry, while casualty outputs render exact integers from an explicitly educational approximation.
+  Evidence: `src/components/HazardControls.tsx`; OpenQuake consequence workflows require explicit exposure, vulnerability, and consequence models.
+  Touches: hazard controls, validators, direct-hazard result types, uncertainty/limitation copy, accessibility and physics-boundary tests.
+  Acceptance: every continuous parameter has synchronized numeric entry with units, bounds, step, and validation; sliders remain optional coarse controls; educational consequence outputs use justified ranges/precision and expose assumptions rather than false exactness.
+  Complexity: M
+
+- [ ] P1 — Establish an authoritative product-truth and planning-ledger gate
+  Why: tracked docs, onboarding, screenshots, and blocked work still contain legacy product names, versions, frame counts, runtime floors, provider defaults, release URLs, and already-shipped blockers.
+  Evidence: `CONTRIBUTING.md`, `SECURITY.md`, `docs/manual/**`, `docs/science/**`, `Tour.tsx`, screenshot assets, `Roadmap_Blocked.md`; current `scripts/verify.mjs` docs checks cover only a small subset of drift.
+  Touches: authoritative product constants/manifest, affected docs/onboarding/screenshots, `scripts/verify.mjs`, `ROADMAP.md`, `Roadmap_Blocked.md`.
+  Acceptance: legacy/current product facts are reconciled; shipped and duplicate blocked entries are removed; docs and onboarding derive or validate name/version/runtime/frame/provider facts; verification fails on stale product names, release links, version strings, provider defaults, or completed blockers.
+  Complexity: M
+
+- [ ] P1 — Persist redacted crash evidence and add deterministic recovery
+  Why: diagnostics are memory-only and vanish on reload; `Try again` commonly rethrows the same render fault and there is no reset-visual-settings or save/copy support action.
+  Evidence: `src/lib/diagnosticsLog.ts`, `src/components/ErrorBoundary.tsx`, `src/main.tsx`; ANUGA and OpenQuake treat logs and failed-job evidence as first-class outputs.
+  Touches: bounded crash store, redaction, backend/frontend panic hooks, diagnostics bundle, ErrorBoundary recovery actions, crash fixtures.
+  Acceptance: the last bounded crash report survives restart without tokens/paths/private scenario content; fatal UI offers copy/save diagnostics, reset visual settings, retry, and reload; recovery actions are independently tested; successful restart marks but does not silently erase the report.
+  Complexity: M
+
+### P2
+
+- [ ] P2 — Reduce Tauri frontend authority to used commands and store operations
+  Why: the capability grants store enumeration, clear, and reload operations the app does not use, while Tauri registered application commands are otherwise callable by the webview unless explicitly constrained.
+  Evidence: `src-tauri/capabilities/default.json`; `src/lib/settings.ts`; Tauri capabilities guidance: https://v2.tauri.app/security/capabilities/.
+  Touches: capability/permission files, `build.rs` application command manifest, IPC negative tests, security documentation.
+  Acceptance: only load/get/set/save/delete store operations and enumerated Cataclysm commands are available to `main`; unused calls are denied in tests; remote origins retain no IPC authority; normal simulator workflows pass.
+  Complexity: M
+
+- [ ] P2 — Extend static checks to tests, scripts, configs, and fresh E2E output
+  Why: Playwright tests, config files, and verification scripts escape normal type/lint coverage, and standalone E2E can preview a stale `dist` directory.
+  Evidence: `tsconfig.json`, `eslint.config.js`, package lint scripts, `playwright.config.ts`, `tests/**`, `scripts/**`.
+  Touches: dedicated support-code tsconfig/JS checking, ESLint targets, E2E prebuild contract, verification tests.
+  Acceptance: tests/config/scripts are type- or check-validated and linted; E2E always builds or proves a matching fresh artifact before preview; an intentionally stale `dist` fixture is rejected; the full local release gate remains deterministic.
+  Complexity: M
