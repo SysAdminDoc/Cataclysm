@@ -76,7 +76,7 @@
   gap: 7px;
   padding: 9px 10px;
   border-radius: var(--r-md);
-  color: var(--sapphire);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--sapphire) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--sapphire) 24%, transparent);
   font-size: 12px;
@@ -167,7 +167,7 @@
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--warning) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
-  color: color-mix(in srgb, var(--warning) 82%, var(--text));
+  color: var(--warning-text);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -192,7 +192,7 @@
 
 .swe__notice {
   background: color-mix(in srgb, var(--warning) 10%, transparent);
-  color: var(--warning);
+  color: var(--warning-text);
   border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
   border-radius: var(--r-md);
   padding: 8px 10px;

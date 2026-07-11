@@ -63,7 +63,14 @@
 }
 
 .inspector__tabs button[data-active="true"] {
-  color: var(--accent-active);
+  color: var(--accent-text);
+}
+
+.inspector__tabs button[data-active="true"]:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent-text);
+  transform: none;
 }
 
 .inspector__tabs button[data-active="true"]::after {
@@ -109,7 +116,7 @@
   height: 20px;
   border: 1px solid var(--divider);
   border-radius: var(--r-sm);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .layer-inspector__row[data-active="true"] .layer-inspector__state {
@@ -145,7 +152,7 @@
 }
 
 .layer-inspector__row[data-active="true"] .layer-inspector__status {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .layer-inspector__configure {
@@ -243,7 +250,7 @@
 }
 
 .source-model__confidence > div:first-child strong {
-  color: var(--success);
+  color: var(--success-text);
   font-size: var(--type-caption);
 }
 

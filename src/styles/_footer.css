@@ -26,7 +26,7 @@
   min-height: 26px;
   background: color-mix(in srgb, var(--surface0) 42%, transparent);
   border: 1px solid color-mix(in srgb, var(--panel-border) 62%, transparent);
-  color: var(--lavender);
+  color: var(--accent-text);
   text-decoration: none;
   cursor: pointer;
   padding: 4px 7px;

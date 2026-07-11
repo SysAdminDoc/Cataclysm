@@ -131,7 +131,7 @@ describe("PresetSelector", () => {
     const user = userEvent.setup();
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
 
-    await user.click(screen.getByRole("tab", { name: "What-if" }));
+    await user.click(screen.getByRole("button", { name: "What-if" }));
     expect(screen.getByText("Poseidon")).toBeInTheDocument();
     expect(screen.queryByText("Tōhoku 2011")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Recorded events" })).not.toBeInTheDocument();

@@ -47,7 +47,7 @@
   appearance: none;
   border: 1px solid var(--accent);
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   font: inherit;
   font-size: 0.82rem;
   padding: 5px 10px;
@@ -56,8 +56,8 @@
 }
 
 .hazard__pick[data-active="true"] {
-  background: var(--accent);
-  color: var(--base);
+  background: var(--accent-active);
+  color: var(--on-accent);
 }
 
 .hazard__coord {
@@ -143,7 +143,7 @@
 }
 
 .hazard__casualties strong {
-  color: var(--peach);
+  color: var(--warning-text);
 }
 
 .hazard__casualties-note {
@@ -194,7 +194,7 @@
   padding: 8px 12px;
   border: 1px solid var(--peach);
   background: color-mix(in srgb, var(--peach) 16%, transparent);
-  color: var(--peach);
+  color: var(--warning-text);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;

@@ -61,7 +61,7 @@ describe("TimelineView", () => {
 
   it("parses all preset date formats correctly", () => {
     render(<TimelineView presets={PRESETS} activeId={null} onSelect={() => {}} />);
-    const markers = screen.getAllByRole("listitem");
+    const markers = screen.getAllByRole("button");
     expect(markers.length).toBe(4);
   });
 

@@ -41,6 +41,9 @@ html[data-theme="mocha"] {
   --metric-bg: #14212d;
   --divider: #263746;
   --accent-active: #6fd2ff;
+  --accent-text: var(--sapphire);
+  --success-text: var(--success);
+  --warning-text: var(--warning);
   --on-accent: #07111b;
   --viewport-hud: rgba(8, 16, 24, 0.9);
 
@@ -77,8 +80,8 @@ html[data-theme="latte"] {
   --mantle: #e6e9ef;
   --crust: #dce0e8;
   --text: #4c4f69;
-  --subtext: #5c5f77;
-  --overlay: #8c8fa1;
+  --subtext: #50566c;
+  --overlay: #5c5f77;
   --overlay0: var(--overlay);
   --surface0: #ccd0da;
   --surface1: #bcc0cc;
@@ -112,7 +115,10 @@ html[data-theme="latte"] {
   --inspector-bg: #f4f7fa;
   --metric-bg: #ffffff;
   --divider: #b8c3cf;
-  --accent-active: #087fa6;
+  --accent-active: #006b8f;
+  --accent-text: #005774;
+  --success-text: #1f6617;
+  --warning-text: #873400;
   --on-accent: #ffffff;
   --viewport-hud: rgba(248, 251, 254, 0.94);
   --surface-recessed: color-mix(in srgb, var(--crust) 48%, #ffffff);

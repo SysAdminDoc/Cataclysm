@@ -58,7 +58,7 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
   const range = Math.max(maxLog - minLog, 1);
 
   return (
-    <div className="timeline" role="list" aria-label="Historical event timeline">
+    <div className="timeline" role="group" aria-label="Historical event timeline">
       <div className="timeline__track">
         <div className="timeline__line" />
         {entries.map((e) => {
@@ -69,7 +69,6 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
           return (
             <button
               key={e.preset.id}
-              role="listitem"
               className="timeline__marker"
               data-active={isActive ? "true" : "false"}
               style={{ left: `${pct}%` }}

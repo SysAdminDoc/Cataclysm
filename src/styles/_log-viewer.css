@@ -76,7 +76,7 @@
   font-size: 12px;
   color: var(--subtext);
 }
-.log-viewer__copy-status[data-tone="success"] { color: var(--success); }
+.log-viewer__copy-status[data-tone="success"] { color: var(--success-text); }
 .log-viewer__copy-status[data-tone="error"] { color: var(--danger); }
 .log-viewer__list {
   flex: 1;

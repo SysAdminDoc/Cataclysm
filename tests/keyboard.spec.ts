@@ -83,4 +83,40 @@ test.describe("Keyboard-only golden path", () => {
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
   });
+
+  test("scenario and inspector tabs use roving focus with arrow, Home, and End keys", async ({ page }) => {
+    await seedAcknowledgedPreview(page);
+    await page.goto("/");
+
+    const scenarioTabs = page.locator(".scenario-tabs");
+    const asteroid = scenarioTabs.getByRole("tab", { name: "Asteroid" });
+    const nuclear = scenarioTabs.getByRole("tab", { name: "Nuclear" });
+    const landslide = scenarioTabs.getByRole("tab", { name: "Landslide" });
+    await asteroid.focus();
+    await expect(asteroid).toHaveAttribute("tabindex", "0");
+    await asteroid.press("ArrowRight");
+    await expect(nuclear).toBeFocused();
+    await expect(nuclear).toHaveAttribute("aria-selected", "true");
+    await nuclear.press("End");
+    await expect(landslide).toBeFocused();
+    await expect(landslide).toHaveAttribute("aria-selected", "true");
+    await landslide.press("Home");
+    await expect(asteroid).toBeFocused();
+    await expect(asteroid).toHaveAttribute("aria-selected", "true");
+
+    const inspector = page.locator(".inspector__tabs");
+    const setup = inspector.getByRole("tab", { name: "Setup" });
+    const results = inspector.getByRole("tab", { name: "Results" });
+    const layers = inspector.getByRole("tab", { name: "Layers" });
+    await setup.focus();
+    await setup.press("ArrowRight");
+    await expect(results).toBeFocused();
+    await expect(results).toHaveAttribute("aria-selected", "true");
+    await results.press("End");
+    await expect(layers).toBeFocused();
+    await expect(layers).toHaveAttribute("aria-selected", "true");
+    await layers.press("Home");
+    await expect(setup).toBeFocused();
+    await expect(setup).toHaveAttribute("aria-selected", "true");
+  });
 });

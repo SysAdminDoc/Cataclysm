@@ -81,7 +81,7 @@ label {
 }
 
 a {
-  color: var(--sapphire);
+  color: var(--accent-text);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
@@ -148,7 +148,7 @@ a {
 }
 
 .statusbar__item--ready {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .statusbar__item--ready[data-active="true"] {
@@ -156,7 +156,7 @@ a {
 }
 
 .statusbar__item--warning {
-  color: var(--warning);
+  color: var(--warning-text);
   border-right: none;
 }
 
@@ -570,7 +570,7 @@ a {
 
 .simulation-transport__solver[data-ready="true"] .status-dot,
 .simulation-transport__solver[data-ready="true"] strong {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .simulation-transport__solver > div {

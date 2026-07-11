@@ -152,7 +152,7 @@
 }
 
 .scenario-actions__clip[data-tone="success"] {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .scenario-actions__clip[data-tone="error"] {

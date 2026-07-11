@@ -28,6 +28,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Gauge CSV exports now neutralize ASCII and full-width spreadsheet formula
   initiators in every text column while preserving trusted numeric columns for
   machine-readable round trips.
+- Both desktop themes now use contrast-safe semantic text accents across Setup,
+  Results, Layers, Compare, direct Impact/Nuclear results, Settings, and imagery
+  recovery. Preset instances have unique ARIA IDs, filter buttons use pressed
+  semantics, and source/inspector tabs implement roving arrow/Home/End focus.
+- Added a dedicated two-theme WCAG AA browser suite covering 16 simulator states
+  plus explicit duplicate-ID checks and keyboard tab-pattern regression tests.
 
 ## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
 

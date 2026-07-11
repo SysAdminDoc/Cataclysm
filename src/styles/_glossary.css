@@ -16,7 +16,7 @@
   margin-left: 2px;
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 9px;
   font-weight: 800;
   vertical-align: super;
@@ -45,7 +45,7 @@
 .glossary-tip__term {
   font-size: 12px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .glossary-tip__def {

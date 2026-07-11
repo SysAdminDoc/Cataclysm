@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { UiIcon } from "./UiIcon";
 import { TimelineView } from "./TimelineView";
 import { GUIDED_LESSONS, type GuidedLesson } from "../lib/guided-lessons";
@@ -88,6 +88,7 @@ export function PresetSelector({
   onStartLesson,
   completedLessons = {},
 }: Props) {
+  const instanceId = useId();
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [filter, setFilter] = useState<LibraryFilter>("all");
@@ -192,13 +193,12 @@ export function PresetSelector({
         )}
       </div>
 
-      <div className="preset-library-tabs" role="tablist" aria-label="Scenario library filter">
+      <div className="preset-library-tabs" role="group" aria-label="Scenario library filter">
         {(["all", "historical", "hypothetical"] as const).map((item) => (
           <button
             type="button"
-            role="tab"
             key={item}
-            aria-selected={filter === item}
+            aria-pressed={filter === item}
             data-active={filter === item ? "true" : "false"}
             onClick={() => setFilter(item)}
           >
@@ -270,10 +270,10 @@ export function PresetSelector({
               </div>
             )}
             {groups.map((group) => (
-              <section className="preset-group" key={group.id} aria-labelledby={`preset-group-${group.id}`}>
+              <section className="preset-group" key={group.id} aria-labelledby={`${instanceId}-preset-group-${group.id}`}>
                 <header className="preset-group__header">
                   <span>
-                    <h3 id={`preset-group-${group.id}`}>{group.label}</h3>
+                    <h3 id={`${instanceId}-preset-group-${group.id}`}>{group.label}</h3>
                     <small>{group.description}</small>
                   </span>
                   <b aria-label={`${group.presets.length} ${group.presets.length === 1 ? "scenario" : "scenarios"}`}>{group.presets.length}</b>

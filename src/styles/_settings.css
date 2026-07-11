@@ -142,13 +142,13 @@
 }
 
 .settings__status[data-tone="success"] {
-  color: var(--success);
+  color: var(--success-text);
   background: color-mix(in srgb, var(--success) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
 }
 
 .settings__status[data-tone="warning"] {
-  color: var(--warning);
+  color: var(--warning-text);
   background: color-mix(in srgb, var(--warning) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
 }

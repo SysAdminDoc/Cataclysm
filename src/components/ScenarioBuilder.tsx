@@ -317,18 +317,38 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
       <div className="scenario-tabs" role="tablist" aria-label="Scenario source type">
         {TABS.map((t) => (
           <button
+            id={`scenario-tab-${t.key}`}
             key={t.key}
             className="scenario-tab"
             role="tab"
             type="button"
             aria-selected={tab === t.key}
+            aria-controls="scenario-panel"
+            tabIndex={tab === t.key ? 0 : -1}
             data-active={tab === t.key ? "true" : "false"}
+            data-tab={t.key}
             onClick={() => setTab(t.key)}
+            onKeyDown={(event) => {
+              const currentIndex = TABS.findIndex((item) => item.key === t.key);
+              let nextIndex: number | null = null;
+              if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % TABS.length;
+              if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + TABS.length) % TABS.length;
+              if (event.key === "Home") nextIndex = 0;
+              if (event.key === "End") nextIndex = TABS.length - 1;
+              if (nextIndex === null) return;
+              event.preventDefault();
+              const next = TABS[nextIndex].key;
+              setTab(next);
+              event.currentTarget.parentElement
+                ?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)
+                ?.focus();
+            }}
           >
             {t.label}
           </button>
         ))}
       </div>
+      <div id="scenario-panel" role="tabpanel" aria-labelledby={`scenario-tab-${tab}`}>
       <p className="scenario-summary">
         {tab === "earthquake" ? (
           <>Fault-source parameters for <GlossaryTip term="okada">Okada</GlossaryTip>-style seafloor displacement.</>
@@ -509,6 +529,7 @@ export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pick
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

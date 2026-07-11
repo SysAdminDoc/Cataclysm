@@ -950,16 +950,34 @@ export default function App() {
                 type="button"
                 role="tab"
                 aria-selected={inspectorTab === tab}
-                aria-controls={`inspector-panel-${tab}`}
+                aria-controls="inspector-panel"
+                tabIndex={inspectorTab === tab ? 0 : -1}
                 data-active={inspectorTab === tab ? "true" : "false"}
+                data-tab={tab}
                 onClick={() => setInspectorTab(tab)}
+                onKeyDown={(event) => {
+                  const tabs = ["setup", "results", "layers"] as const;
+                  const currentIndex = tabs.indexOf(tab);
+                  let nextIndex: number | null = null;
+                  if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+                  if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                  if (event.key === "Home") nextIndex = 0;
+                  if (event.key === "End") nextIndex = tabs.length - 1;
+                  if (nextIndex === null) return;
+                  event.preventDefault();
+                  const next = tabs[nextIndex];
+                  setInspectorTab(next);
+                  event.currentTarget.parentElement
+                    ?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)
+                    ?.focus();
+                }}
               >
                 {tab[0].toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
         </div>
-        <div className="inspector__body" id={`inspector-panel-${inspectorTab}`} role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
+        <div className="inspector__body" id="inspector-panel" role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
         {inspectorTab === "setup" && inHazardMode && (
           <HazardControls
             mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
