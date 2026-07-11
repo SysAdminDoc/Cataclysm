@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchJplJson } from '../../services/jplApi';
 import { catppuccinMocha } from '../../theme';
 
 interface ApproachEntry {
@@ -16,23 +17,37 @@ interface CloseApproachProps {
   onSelect: (entry: { diameter: number; velocity: number; density: number }) => void;
 }
 
+interface CloseApproachResponse {
+  fields?: string[];
+  data?: string[][];
+}
+
 export function CloseApproach({ onSelect }: CloseApproachProps) {
   const [entries, setEntries] = useState<ApproachEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!expanded || entries.length > 0) return;
 
     setLoading(true);
+    setError('');
     const today = new Date();
     const future = new Date(today);
     future.setDate(future.getDate() + 60);
     const dateMin = today.toISOString().slice(0, 10);
     const dateMax = future.toISOString().slice(0, 10);
 
-    fetch(`/api/jpl/cad.api?date-min=${dateMin}&date-max=${dateMax}&dist-max=0.05&sort=dist&limit=10`)
-      .then(r => r.json())
+    const params = new URLSearchParams({
+      'date-min': dateMin,
+      'date-max': dateMax,
+      'dist-max': '0.05',
+      sort: 'dist',
+      limit: '10',
+    });
+
+    fetchJplJson<CloseApproachResponse>('cad.api', params)
       .then(data => {
         if (!data.data) {
           setEntries([]);
@@ -68,7 +83,8 @@ export function CloseApproach({ onSelect }: CloseApproachProps) {
         setEntries(parsed);
         setLoading(false);
       })
-      .catch(() => {
+      .catch(error => {
+        setError(error instanceof Error ? error.message : 'Unable to load close approaches');
         setLoading(false);
       });
   }, [expanded]);
@@ -114,7 +130,13 @@ export function CloseApproach({ onSelect }: CloseApproachProps) {
         </div>
       )}
 
-      {expanded && !loading && entries.length === 0 && (
+      {expanded && error && (
+        <div style={{ color: catppuccinMocha.red, fontSize: 10, marginTop: 4 }}>
+          {error}
+        </div>
+      )}
+
+      {expanded && !loading && !error && entries.length === 0 && (
         <div style={{ color: catppuccinMocha.overlay0, fontSize: 10, marginTop: 4 }}>
           No close approaches in the next 60 days
         </div>

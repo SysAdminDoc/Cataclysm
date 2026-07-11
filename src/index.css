@@ -29,6 +29,9 @@ html, body, #root {
   flex: 1;
   position: relative;
   min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
 }
 
 .results-panel {
@@ -36,6 +39,80 @@ html, body, #root {
   flex-shrink: 0;
   overflow-y: auto;
   height: 100%;
+}
+
+.globe-container.globe-comparison {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.globe-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid #313244;
+}
+
+.globe-pane:first-child {
+  border-left: none;
+}
+
+.globe-title {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(17, 17, 27, 0.86);
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid #313244;
+  color: #cdd6f4;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.globe-title-version {
+  color: #6c7086;
+  font-size: 12px;
+  margin-left: 10px;
+}
+
+.globe-instructions {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10;
+  background: rgba(17, 17, 27, 0.8);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #313244;
+  font-size: 10px;
+  color: #6c7086;
+  line-height: 1.45;
+}
+
+.fireball-status {
+  color: #fab387;
+  margin-top: 2px;
+}
+
+.results-panel.comparison-results {
+  width: 420px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+}
+
+.results-panel.comparison-results > div {
+  min-height: 0;
+  overflow-y: auto;
+  border-bottom: 1px solid #313244;
+}
+
+.results-panel.comparison-results > div:last-child {
+  border-bottom: none;
 }
 
 @media (max-width: 1024px) {
@@ -58,11 +135,32 @@ html, body, #root {
     min-height: 300px;
   }
 
+  .globe-container.globe-comparison {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(300px, 50vh) minmax(300px, 50vh);
+    height: auto;
+  }
+
+  .globe-pane {
+    min-height: 300px;
+    border-left: none;
+    border-top: 1px solid #313244;
+  }
+
+  .globe-pane:first-child {
+    border-top: none;
+  }
+
   .results-panel {
     width: 100%;
     height: auto;
     border-left: none;
     border-top: 1px solid #313244;
+  }
+
+  .results-panel.comparison-results {
+    width: 100%;
+    grid-template-rows: auto auto;
   }
 }
 
@@ -74,6 +172,28 @@ html, body, #root {
   .globe-container {
     height: 40vh;
     min-height: 250px;
+  }
+
+  .globe-container.globe-comparison {
+    grid-template-rows: minmax(250px, 40vh) minmax(250px, 40vh);
+  }
+
+  .globe-pane {
+    min-height: 250px;
+  }
+
+  .globe-title {
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  .globe-instructions {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
   }
 }
 

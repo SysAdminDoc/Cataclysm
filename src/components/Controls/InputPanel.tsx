@@ -2,15 +2,18 @@ import { catppuccinMocha } from '../../theme';
 import { COMPOSITION_DENSITY } from '../../physics/constants';
 import type { ImpactParams, TargetType } from '../../physics/types';
 import { PRESETS } from '../../presets/historical';
+import { validateImpactParams } from '../../validation/impactValidation';
 import { NeoSearch } from './NeoSearch';
 import { CloseApproach } from './CloseApproach';
 
 interface InputPanelProps {
+  title?: string;
   params: ImpactParams;
   onUpdate: <K extends keyof ImpactParams>(key: K, value: ImpactParams[K]) => void;
   onLoadPreset: (index: number) => void;
   lat: number;
   lon: number;
+  toolbar?: React.ReactNode;
 }
 
 function SliderRow({
@@ -56,7 +59,16 @@ function SliderRow({
   );
 }
 
-export function InputPanel({ params, onUpdate, onLoadPreset, lat, lon }: InputPanelProps) {
+export function InputPanel({
+  title = 'Impact Parameters',
+  params,
+  onUpdate,
+  onLoadPreset,
+  lat,
+  lon,
+  toolbar,
+}: InputPanelProps) {
+  const warnings = validateImpactParams(params);
   const s = {
     panel: {
       background: catppuccinMocha.mantle,
@@ -108,15 +120,53 @@ export function InputPanel({ params, onUpdate, onLoadPreset, lat, lon }: InputPa
       fontSize: 11,
       marginBottom: 12,
     },
+    warningBox: {
+      background: catppuccinMocha.surface0,
+      border: `1px solid ${warnings.some(w => w.severity === 'danger') ? catppuccinMocha.red : catppuccinMocha.peach}`,
+      borderRadius: 6,
+      padding: '8px 10px',
+      marginBottom: 12,
+    },
   };
 
   return (
     <div style={s.panel}>
-      <h2 style={s.heading}>Impact Parameters</h2>
+      <h2 style={s.heading}>{title}</h2>
+
+      {toolbar}
 
       <div style={s.coords}>
         {lat.toFixed(4)}, {lon.toFixed(4)} — click globe to move
       </div>
+
+      {warnings.length > 0 && (
+        <div style={s.warningBox}>
+          <div style={{
+            color: catppuccinMocha.peach,
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            marginBottom: 5,
+          }}>
+            Parameter Warnings
+          </div>
+          {warnings.map((warning, index) => (
+            <div key={index} style={{ marginBottom: index === warnings.length - 1 ? 0 : 6 }}>
+              <div style={{
+                color: warning.severity === 'danger' ? catppuccinMocha.red : catppuccinMocha.yellow,
+                fontSize: 12,
+                fontWeight: 700,
+              }}>
+                {warning.message}
+              </div>
+              <div style={{ color: catppuccinMocha.overlay1, fontSize: 10, lineHeight: 1.4 }}>
+                {warning.detail}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={s.subheading}>Presets</div>
       {PRESETS.map((p, i) => (

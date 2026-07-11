@@ -16,6 +16,7 @@ import {
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import type { ImpactEffects } from '../../physics/types';
+import type { FireballEvent } from '../../types/fireballs';
 import { effectColors } from '../../theme';
 import { EARTH_RADIUS } from '../../physics/constants';
 import { useBlastWave } from './BlastWave';
@@ -26,6 +27,8 @@ interface GlobeProps {
   observerLat: number | null;
   observerLon: number | null;
   results: ImpactEffects | null;
+  fireballs?: FireballEvent[];
+  showFireballs?: boolean;
   onLocationClick: (lat: number, lon: number) => void;
   onObserverClick: (lat: number, lon: number) => void;
 }
@@ -123,7 +126,29 @@ function parseRgba(rgba: string): Color {
   );
 }
 
-export function Globe({ lat, lon, observerLat, observerLon, results, onLocationClick, onObserverClick }: GlobeProps) {
+function fireballSize(event: FireballEvent): number {
+  const energy = Math.max(event.impactEnergyKt || event.energyKt || 1, 1);
+  return Math.min(16, Math.max(5, 4 + Math.log10(energy + 1) * 3));
+}
+
+function fireballLabel(event: FireballEvent): string {
+  const date = event.date.slice(0, 10);
+  const energy = event.impactEnergyKt || event.energyKt;
+  const energyText = energy >= 1000 ? `${(energy / 1000).toFixed(1)} Mt` : `${energy.toFixed(1)} kt`;
+  return `${date} ${energyText}`;
+}
+
+export function Globe({
+  lat,
+  lon,
+  observerLat,
+  observerLon,
+  results,
+  fireballs = [],
+  showFireballs = false,
+  onLocationClick,
+  onObserverClick,
+}: GlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const handlerRef = useRef<ScreenSpaceEventHandler | null>(null);
@@ -376,7 +401,31 @@ export function Globe({ lat, lon, observerLat, observerLon, results, onLocationC
         // skip rings too small or too large for Cesium
       }
     }
-  }, [lat, lon, observerLat, observerLon, results]);
+
+    if (showFireballs) {
+      for (const event of fireballs) {
+        viewer.entities.add({
+          position: Cartesian3.fromDegrees(event.lon, event.lat, (event.altitudeKm ?? 0) * 1000),
+          point: {
+            pixelSize: fireballSize(event),
+            color: Color.fromCssColorString('#fab387').withAlpha(0.85),
+            outlineColor: Color.BLACK,
+            outlineWidth: 1,
+          },
+          label: {
+            text: fireballLabel(event),
+            font: '10px sans-serif',
+            fillColor: Color.fromCssColorString('#fab387'),
+            outlineColor: Color.BLACK,
+            outlineWidth: 2,
+            verticalOrigin: VerticalOrigin.BOTTOM,
+            pixelOffset: new Cartesian3(0, -10, 0) as any,
+            show: (event.impactEnergyKt || event.energyKt) >= 50,
+          },
+        });
+      }
+    }
+  }, [lat, lon, observerLat, observerLon, results, fireballs, showFireballs]);
 
   return (
     <div

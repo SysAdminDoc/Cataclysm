@@ -18,6 +18,21 @@ const DEFAULT_PARAMS: ImpactParams = {
 const DEFAULT_LAT = 35.0268;
 const DEFAULT_LON = -111.0222;
 
+interface UseSimulationOptions {
+  syncUrl?: boolean;
+  defaultParams?: ImpactParams;
+  defaultLat?: number;
+  defaultLon?: number;
+}
+
+interface ScenarioSnapshot {
+  params: ImpactParams;
+  impactLat: number;
+  impactLon: number;
+  observerLat: number | null;
+  observerLon: number | null;
+}
+
 function haversineDistance(
   lat1: number, lon1: number,
   lat2: number, lon2: number,
@@ -105,19 +120,23 @@ function writeUrlParams(params: ImpactParams, lat: number, lon: number) {
   window.history.replaceState(null, '', `#${sp.toString()}`);
 }
 
-export function useSimulation() {
-  const initial = parseUrlParams();
-  const [params, setParams] = useState<ImpactParams>(initial?.params ?? DEFAULT_PARAMS);
-  const [impactLat, setImpactLat] = useState(initial?.lat ?? DEFAULT_LAT);
-  const [impactLon, setImpactLon] = useState(initial?.lon ?? DEFAULT_LON);
+export function useSimulation(options: UseSimulationOptions = {}) {
+  const syncUrl = options.syncUrl ?? true;
+  const initial = syncUrl ? parseUrlParams() : null;
+  const [params, setParams] = useState<ImpactParams>(
+    initial?.params ?? options.defaultParams ?? DEFAULT_PARAMS,
+  );
+  const [impactLat, setImpactLat] = useState(initial?.lat ?? options.defaultLat ?? DEFAULT_LAT);
+  const [impactLon, setImpactLon] = useState(initial?.lon ?? options.defaultLon ?? DEFAULT_LON);
   const [observerLat, setObserverLat] = useState<number | null>(null);
   const [observerLon, setObserverLon] = useState<number | null>(null);
 
   const results = useMemo(() => simulate(params), [params]);
 
   useEffect(() => {
+    if (!syncUrl) return;
     writeUrlParams(params, impactLat, impactLon);
-  }, [params, impactLat, impactLon]);
+  }, [params, impactLat, impactLon, syncUrl]);
 
   const updateParam = useCallback(<K extends keyof ImpactParams>(
     key: K,
@@ -162,6 +181,14 @@ export function useSimulation() {
     }
   }, []);
 
+  const replaceScenario = useCallback((snapshot: ScenarioSnapshot) => {
+    setParams({ ...snapshot.params });
+    setImpactLat(snapshot.impactLat);
+    setImpactLon(snapshot.impactLon);
+    setObserverLat(snapshot.observerLat);
+    setObserverLon(snapshot.observerLon);
+  }, []);
+
   return {
     params,
     results,
@@ -173,5 +200,6 @@ export function useSimulation() {
     setImpactLocation,
     setObserverLocation,
     loadPreset,
+    replaceScenario,
   };
 }

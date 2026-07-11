@@ -85,9 +85,10 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
 
 interface ResultsPanelProps {
   results: ImpactEffects;
+  title?: string;
 }
 
-export function ResultsPanel({ results }: ResultsPanelProps) {
+export function ResultsPanel({ results, title = 'Impact Effects' }: ResultsPanelProps) {
   const { energy, atmosphericEntry, crater, thermal, seismic, airblast, ejecta, tsunami } = results;
 
   const s = {
@@ -110,7 +111,7 @@ export function ResultsPanel({ results }: ResultsPanelProps) {
 
   return (
     <div style={s.panel}>
-      <h2 style={s.heading}>Impact Effects</h2>
+      <h2 style={s.heading}>{title}</h2>
 
       <Section title="Energy">
         <Row label="Kinetic energy" value={fmtEnergy(energy.kineticEnergy)} highlight />
