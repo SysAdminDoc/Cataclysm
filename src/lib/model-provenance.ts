@@ -5,7 +5,7 @@ import {
   type HeightFieldMetadata,
 } from "./geodesy";
 
-export const APP_VERSION = "0.8.0";
+export const APP_VERSION = "0.8.1";
 
 export const DEFAULT_BATHYMETRY_SOURCE =
   "Low-confidence coarse basin/shelf approximation; GEBCO_2026/TID raster sampling is not bundled; optional Cesium bathymetric terrain is visual context only.";

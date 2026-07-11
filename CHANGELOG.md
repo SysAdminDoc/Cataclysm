@@ -4,6 +4,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-07-11 — Deterministic renderer systems
+
 - Added renderer protocol v1 (`CATRFRM`) as the Rust-owned frame boundary for
   Cesium and future cinematic clients. Length-prefixed scenario/frame/end
   recordings carry authoritative solver ticks, WGS84/ECEF/local-ENU transforms,
@@ -14,6 +16,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   playback now consume the protocol; derived exports identify their exact frame.
 
 ### Changed — trustworthy accelerated releases
+- Split the 2,031-line Cesium globe into generation-owned planet, imagery,
+  camera, interaction, source, runup, analytical-overlay, static-hazard, and
+  direct-effect systems. Stable handles update in place; async results fail
+  closed across viewer generations; every listener, handler, entity, primitive,
+  imagery layer, camera flight, and RAF has explicit teardown before Viewer
+  destruction. Forty-six unit files include 100-cycle resource/replay tests,
+  and the approved asteroid/nuclear frames remain pixel-identical.
 - Added an HR-00 visual-truth gate with 12 fixed Earth/hazard scenes at true
   2560×1440 and 3840×2160. Unmasked captures fix scenario time, effect phase,
   UTC, camera, exposure, quality, and bundled Earth assets; sidecars record

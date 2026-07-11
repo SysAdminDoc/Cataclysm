@@ -1104,10 +1104,7 @@ export default function App() {
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
-                detonateNonce={detonateNonce}
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
-                impactAngleDeg={asteroidInput.angleDeg}
-                impactIsWater={asteroidInput.targetType === "water"}
                 directRenderFrame={directRenderFrame}
                 onCameraTelemetry={handleCameraTelemetry}
               />
