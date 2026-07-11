@@ -51,9 +51,16 @@ type Props = {
   hazardCenter?: GeoPoint | null;
   /** Fallout plume polygons (nuclear surface bursts): closed lon/lat rings. */
   hazardPolygons?: { label: string; color: string; points: GeoPoint[] }[] | null;
-  /** Bumping this triggers a one-shot expanding shockwave animation from the
-   *  hazard center out to the outermost ring. */
+  /** Bumping this triggers the impact/detonation animation from the hazard
+   *  center: a shockwave for nuclear, or a full asteroid entry sequence
+   *  (bolide from space → flash → shockwave → ocean tsunami) for asteroid. */
   detonateNonce?: number;
+  /** Which animation the nonce should play. */
+  impactKind?: "asteroid" | "nuclear" | null;
+  /** Asteroid entry angle from horizontal (deg) — steepness of the descent. */
+  impactAngleDeg?: number;
+  /** Ocean impact → play the water splash + tsunami wave. */
+  impactIsWater?: boolean;
 };
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -187,6 +194,9 @@ export function Globe({
   hazardCenter,
   hazardPolygons,
   detonateNonce,
+  impactKind,
+  impactAngleDeg,
+  impactIsWater,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -203,6 +213,8 @@ export function Globe({
   const falloutEntitiesRef = useRef<Cesium.Entity[]>([]);
   const shockEntityRef = useRef<Cesium.Entity | null>(null);
   const shockRafRef = useRef<number | null>(null);
+  const impactEntitiesRef = useRef<Cesium.Entity[]>([]);
+  const impactRafRef = useRef<number | null>(null);
   const imageryLayerRef = useRef<Cesium.ImageryLayer | null>(null);
   const imageryRequestIdRef = useRef(0);
   const pickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
@@ -740,11 +752,11 @@ export function Globe({
     }
   }, [hazardPolygons, viewerEpoch]);
 
-  // One-shot expanding shockwave animation on "Detonate". Grows a bright ring
-  // from the center out to the outermost hazard ring over ~2.4 s, fading out.
+  // One-shot expanding shockwave animation on nuclear "Detonate". Grows a
+  // bright ring from the center out to the outermost hazard ring over ~2.4 s.
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !detonateNonce || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
+    if (!viewer || !detonateNonce || impactKind === "asteroid" || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
     const maxR = Math.max(...hazardRings.map((r) => r.radiusM), 1);
     const { lat, lon } = hazardCenter;
     const position = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
@@ -792,7 +804,203 @@ export function Globe({
         shockEntityRef.current = null;
       }
     };
-  }, [detonateNonce, hazardCenter, hazardRings, viewerEpoch]);
+  }, [detonateNonce, impactKind, hazardCenter, hazardRings, viewerEpoch]);
+
+  // Asteroid entry sequence: a glowing bolide descends from space along the
+  // physics entry angle with a fire trail, impacts with a flash + shockwave,
+  // and — for ocean strikes — throws up a splash column and radiates a
+  // tsunami wavefront outward. One-shot, triggered by detonateNonce.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !detonateNonce || impactKind !== "asteroid" || !hazardCenter || !hazardRings || hazardRings.length === 0) return;
+    const { lat, lon } = hazardCenter;
+    const maxR = Math.max(...hazardRings.map((r) => r.radiusM), 1);
+    const isWater = impactIsWater === true;
+
+    // Entry geometry: come in from the NW along the real entry angle. Steeper
+    // angle → shorter horizontal run. Start at 420 km altitude.
+    const START_ALT_M = 420_000;
+    const theta = Cesium.Math.toRadians(Math.min(Math.max(impactAngleDeg ?? 45, 8), 89));
+    const bearingDeg = 315;
+    const horizM = START_ALT_M / Math.tan(theta);
+    // Forward geodesic from the impact point, back along the incoming bearing.
+    const br = Cesium.Math.toRadians(bearingDeg);
+    const R = 6_371_000;
+    const dR = horizM / R;
+    const lat1 = Cesium.Math.toRadians(lat);
+    const lon1 = Cesium.Math.toRadians(lon);
+    const startLat = Math.asin(Math.sin(lat1) * Math.cos(dR) + Math.cos(lat1) * Math.sin(dR) * Math.cos(br));
+    const startLon = lon1 + Math.atan2(Math.sin(br) * Math.sin(dR) * Math.cos(lat1), Math.cos(dR) - Math.sin(lat1) * Math.sin(startLat));
+    const startDeg = { lat: Cesium.Math.toDegrees(startLat), lon: Cesium.Math.toDegrees(startLon) };
+    const startHigh = Cesium.Cartesian3.fromDegrees(startDeg.lon, startDeg.lat, START_ALT_M);
+    const impactPos = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
+
+    const DESCENT_MS = 3200;
+    const total = DESCENT_MS + (isWater ? 5200 : 2600);
+
+    // Mutable animation state read by the CallbackProperties below.
+    let curPos = startHigh.clone();
+    let boloAlpha = 1;
+    let boloSize = 7;
+    let flashR = 1;
+    let flashA = 0;
+    let shockR = 1;
+    let shockA = 0;
+    let splashH = 0;
+    let splashA = 0;
+    const waves = [0, 0, 0].map(() => ({ r: 1, a: 0 }));
+    const waterReach = Math.min(Math.max(maxR * 6, 120_000), 1_500_000);
+
+    // Clear any prior run.
+    for (const e of impactEntitiesRef.current) viewer.entities.remove(e);
+    impactEntitiesRef.current = [];
+
+    // Bolide + fire trail.
+    const trail = viewer.entities.add({
+      polyline: {
+        positions: new Cesium.CallbackProperty(() => [startHigh, curPos], false),
+        width: 3,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.35,
+          color: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#ff8c42").withAlpha(boloAlpha * 0.9), false),
+        }),
+      },
+    });
+    const bolide = viewer.entities.add({
+      position: new Cesium.CallbackPositionProperty(() => curPos, false),
+      point: {
+        pixelSize: new Cesium.CallbackProperty(() => boloSize, false),
+        color: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#fff3c4").withAlpha(boloAlpha), false),
+        outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#ff6b35").withAlpha(boloAlpha), false),
+        outlineWidth: 4,
+      },
+    });
+    impactEntitiesRef.current.push(trail, bolide);
+
+    // Impact-time entities (created up front, invisible until flash/shock fire).
+    const flash = viewer.entities.add({
+      position: impactPos,
+      ellipse: {
+        semiMajorAxis: new Cesium.CallbackProperty(() => flashR, false),
+        semiMinorAxis: new Cesium.CallbackProperty(() => flashR, false),
+        material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.WHITE.withAlpha(flashA), false)),
+        height: 0,
+      },
+    });
+    const shock = viewer.entities.add({
+      position: impactPos,
+      ellipse: {
+        semiMajorAxis: new Cesium.CallbackProperty(() => shockR, false),
+        semiMinorAxis: new Cesium.CallbackProperty(() => shockR, false),
+        material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#f9e2af").withAlpha(shockA * 0.22), false)),
+        outline: true,
+        outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.WHITE.withAlpha(shockA), false),
+        outlineWidth: 3,
+        height: 0,
+      },
+    });
+    impactEntitiesRef.current.push(flash, shock);
+
+    if (isWater) {
+      // Central splash column.
+      impactEntitiesRef.current.push(
+        viewer.entities.add({
+          position: impactPos,
+          cylinder: {
+            length: new Cesium.CallbackProperty(() => Math.max(splashH, 1), false),
+            topRadius: Math.max(maxR * 0.4, 800),
+            bottomRadius: Math.max(maxR * 0.8, 1500),
+            material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#cbe9ff").withAlpha(splashA), false)),
+          },
+        }),
+      );
+      // Tsunami wavefront rings.
+      for (const w of waves) {
+        impactEntitiesRef.current.push(
+          viewer.entities.add({
+            position: impactPos,
+            ellipse: {
+              semiMajorAxis: new Cesium.CallbackProperty(() => Math.max(w.r, 1), false),
+              semiMinorAxis: new Cesium.CallbackProperty(() => Math.max(w.r, 1), false),
+              material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#3aa0ff").withAlpha(w.a * 0.18), false)),
+              outline: true,
+              outlineColor: new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString("#bfe4ff").withAlpha(w.a), false),
+              outlineWidth: 2,
+              height: 0,
+            },
+          }),
+        );
+      }
+    }
+
+    // Oblique camera so the descent is visible against the limb.
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat - 1.2, Math.max(maxR * 5, 260_000)),
+      orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-32), roll: 0 },
+      duration: 1.0,
+    });
+
+    let startT: number | null = null;
+    const tick = (now: number) => {
+      if (startT === null) startT = now;
+      const t = now - startT;
+
+      // Phase 1 — descent (accelerating).
+      if (t < DESCENT_MS) {
+        const p = t / DESCENT_MS;
+        const ease = p * p; // accelerate into the ground
+        curPos = Cesium.Cartesian3.lerp(startHigh, impactPos, ease, new Cesium.Cartesian3());
+        boloSize = 7 + 22 * p; // grows as it heats up
+        boloAlpha = 1;
+      } else {
+        boloAlpha = 0; // bolide consumed at impact
+      }
+
+      // Phase 2 — flash (first 500 ms after impact).
+      const ti = t - DESCENT_MS;
+      if (ti >= 0) {
+        const fp = Math.min(1, ti / 500);
+        flashR = (0.3 + 1.7 * fp) * Math.max(maxR * 0.25, 1500);
+        flashA = fp < 1 ? 0.85 * (1 - fp) : 0;
+        // Shockwave out to the outer ring over 2 s.
+        const sp = Math.min(1, ti / 2000);
+        shockR = Math.max((1 - Math.pow(1 - sp, 3)) * maxR, 1);
+        shockA = sp >= 1 ? 0 : sp > 0.6 ? 0.9 * (1 - (sp - 0.6) / 0.4) : 0.9;
+
+        if (isWater) {
+          // Splash column rises then falls back (0–1.2 s).
+          const wp = Math.min(1, ti / 1200);
+          splashH = Math.sin(wp * Math.PI) * Math.max(maxR * 1.2, 4000);
+          splashA = Math.sin(wp * Math.PI) * 0.7;
+          // Staggered tsunami rings expanding to waterReach over ~4 s.
+          waves.forEach((w, i) => {
+            const wt = ti - i * 900;
+            if (wt <= 0) return;
+            const rp = Math.min(1, wt / 4000);
+            w.r = Math.max(rp * waterReach, 1);
+            w.a = rp >= 1 ? 0 : 0.9 * (1 - rp);
+          });
+        }
+      }
+
+      viewer.scene.requestRender();
+      if (t < total) {
+        impactRafRef.current = requestAnimationFrame(tick);
+      } else {
+        for (const e of impactEntitiesRef.current) viewer.entities.remove(e);
+        impactEntitiesRef.current = [];
+      }
+    };
+    impactRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (impactRafRef.current !== null) cancelAnimationFrame(impactRafRef.current);
+      if (!viewer.isDestroyed()) {
+        for (const e of impactEntitiesRef.current) viewer.entities.remove(e);
+      }
+      impactEntitiesRef.current = [];
+    };
+  }, [detonateNonce, impactKind, impactIsWater, impactAngleDeg, hazardCenter, hazardRings, viewerEpoch]);
 
   // React to a new wavefront snapshot — update existing entities in place.
   useEffect(() => {

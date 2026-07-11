@@ -245,7 +245,7 @@ export function HazardControls({
           </ul>
 
           <button type="button" className="hazard__detonate" onClick={onDetonate}>
-            ▶ Detonate — animate shockwave
+            {mode === "asteroid" ? "☄ Impact — asteroid from space" : "▶ Detonate — animate shockwave"}
           </button>
 
           {timeline.length > 0 && (

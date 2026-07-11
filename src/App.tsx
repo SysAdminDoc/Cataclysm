@@ -775,6 +775,9 @@ export default function App() {
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
                 detonateNonce={detonateNonce}
+                impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
+                impactAngleDeg={asteroidInput.angleDeg}
+                impactIsWater={asteroidInput.targetType === "water"}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
