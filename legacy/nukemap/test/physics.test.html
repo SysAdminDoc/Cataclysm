@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NukeMap Physics Regression Tests</title>
+<style>
+  body { font-family: monospace; background: #1e1e2e; color: #cdd6f4; padding: 20px; }
+  .pass { color: #a6e3a1; } .fail { color: #f38ba8; } .warn { color: #f9e2af; }
+  h1 { color: #cba6f7; } h2 { color: #89b4fa; margin-top: 20px; }
+  table { border-collapse: collapse; margin: 10px 0; }
+  td, th { padding: 4px 12px; border: 1px solid #45475a; text-align: right; }
+  th { background: #313244; text-align: left; }
+  #summary { font-size: 18px; margin: 20px 0; padding: 12px; border-radius: 8px; }
+  #summary.all-pass { background: rgba(166,227,161,0.15); border: 1px solid #a6e3a1; }
+  #summary.has-fail { background: rgba(243,139,168,0.15); border: 1px solid #f38ba8; }
+</style>
+</head>
+<body>
+<h1>NukeMap Physics Regression Tests</h1>
+<p>Reference data: NWFAQ Section 5, HSAJ 10kT (peer-reviewed), OTA 1MT table</p>
+<div id="summary"></div>
+<div id="results"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/physics.js"></script>
+<script>
+// Reference data from NWFAQ, HSAJ, and OTA publications
+// Format: [yield_kT, burstType, field, expected_km, tolerance_pct, source]
+const TESTS = [
+  // HSAJ 10kT airburst (peer-reviewed, Manhattan scenario)
+  [10, 'airburst', 'psi5',     1.51,  10, 'HSAJ 10kT'],
+  [10, 'airburst', 'psi1',     4.58,  10, 'HSAJ 10kT'],
+  [10, 'airburst', 'thermal3', 1.87,  15, 'HSAJ 10kT (8 cal/cm²)'],
+
+  // NWFAQ optimum-burst coefficients at 1kT
+  [1,  'airburst', 'psi20',    0.28,  10, 'NWFAQ 1kT'],
+  [1,  'airburst', 'psi5',     0.71,  10, 'NWFAQ 1kT'],
+  [1,  'airburst', 'psi1',     2.20,  10, 'NWFAQ 1kT'],
+  [1,  'airburst', 'thermal3', 0.67,  10, 'NWFAQ 1kT'],
+
+  // OTA 1MT airburst at 8000ft (widely cited reference)
+  [1000, 'airburst', 'psi20',   2.80,  15, 'OTA 1MT'],
+  [1000, 'airburst', 'psi5',    7.10,  15, 'OTA 1MT'],
+  [1000, 'airburst', 'psi1',   22.00,  15, 'OTA 1MT'],
+
+  // NWFAQ thermal burns at 20kT
+  [20, 'airburst', 'thermal3',  2.70,  15, 'NWFAQ 20kT'],
+  [20, 'airburst', 'thermal1',  4.30,  15, 'NWFAQ 20kT'],
+
+  // NWFAQ thermal burns at 1MT
+  [1000, 'airburst', 'thermal3', 12.0,  15, 'NWFAQ 1MT'],
+  [1000, 'airburst', 'thermal1', 18.0,  20, 'NWFAQ 1MT'],
+
+  // Fireball radius (G&D max radius: ~0.066 * Y^0.4 km)
+  [1,    'airburst', 'fireball', 0.066, 15, 'G&D fireball 1kT'],
+  [1000, 'airburst', 'fireball', 1.045, 15, 'G&D fireball 1MT'],
+
+  // Surface burst reduction factor (~0.8x blast radii)
+  [100, 'surface', 'psi5',     2.63,   15, 'NWFAQ surface 100kT (0.8x airburst)'],
+
+  // 10MT reference
+  [10000, 'airburst', 'psi5',  15.30,  15, 'NWFAQ 10MT'],
+  [10000, 'airburst', 'psi1',  47.40,  15, 'NWFAQ 10MT'],
+
+  // Water burst: isSurface=true, baseSurge generated, fallout generated
+  [100, 'water', 'baseSurge',  1.35,   15, 'G&D Ch.6 water 100kT base surge'],
+  [100, 'water', 'psi5',       2.63,   20, 'Water burst has surface blast factor (0.8x)'],
+];
+
+let passed = 0, failed = 0, warned = 0;
+let html = '';
+
+for (const [yield_kT, burst, field, expected, tolerance, source] of TESTS) {
+  const effects = NM.calcEffects(yield_kT, burst);
+  const actual = effects[field];
+  if (actual === undefined) {
+    html += `<div class="fail">FAIL: ${field} at ${NM.fmtYield(yield_kT)} ${burst} — field not found</div>`;
+    failed++;
+    continue;
+  }
+  const pctDiff = ((actual - expected) / expected * 100);
+  const absPct = Math.abs(pctDiff);
+  const status = absPct <= tolerance ? 'pass' : 'fail';
+  if (status === 'pass') passed++; else failed++;
+  const arrow = pctDiff > 0 ? '↑' : pctDiff < 0 ? '↓' : '=';
+  html += `<div class="${status}">${status.toUpperCase()}: ${field} at ${NM.fmtYield(yield_kT)} ${burst} = ${actual.toFixed(3)}km (expected ${expected}km, ${pctDiff >= 0 ? '+' : ''}${pctDiff.toFixed(1)}%, tol ±${tolerance}%) [${source}]</div>`;
+}
+
+const total = passed + failed;
+const summaryEl = document.getElementById('summary');
+summaryEl.className = failed > 0 ? 'has-fail' : 'all-pass';
+summaryEl.innerHTML = `<span class="${failed > 0 ? 'fail' : 'pass'}">${passed}/${total} passed</span> — ${failed} failed`;
+document.getElementById('results').innerHTML = html;
+
+// Also log to console for CI/automation
+console.log(`Physics regression: ${passed}/${total} passed, ${failed} failed`);
+if (failed > 0) console.error('PHYSICS REGRESSION FAILURES DETECTED');
+</script>
+</body>
+</html>

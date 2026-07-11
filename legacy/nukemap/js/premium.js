@@ -1,0 +1,435 @@
+// NukeMap - Premium Features Module
+// Draggable GZ, per-zone casualties, EMP details, destruction stats,
+// weapon info cards, altitude cross-section, export PNG, warhead arc,
+// survival calculator, historic test timeline
+window.NM = window.NM || {};
+
+// ---- DRAGGABLE GROUND ZERO ----
+NM.DraggableGZ = {
+  enabled: false,
+  marker: null,
+
+  enable(map, det, redrawFn) {
+    this.enabled = true;
+    // Replace the GZ marker with a draggable one
+    const icon = L.divIcon({
+      className: '', iconSize: [32, 32], iconAnchor: [16, 16],
+      html: '<div class="gz-marker gz-draggable"><div class="gz-outer"></div><div class="gz-inner"></div><div class="gz-drag-hint">DRAG</div></div>'
+    });
+    if (this.marker) map.removeLayer(this.marker);
+    this.marker = L.marker([det.lat, det.lng], {icon, draggable: true}).addTo(map);
+    this.marker.on('dragend', (e) => {
+      const pos = e.target.getLatLng();
+      redrawFn(pos.lat, pos.lng);
+    });
+  },
+
+  disable(map) {
+    this.enabled = false;
+    if (this.marker) { map.removeLayer(this.marker); this.marker = null; }
+  }
+};
+
+// ---- PER-ZONE CASUALTY BREAKDOWN (delegates to shared NM.calcZoneMortality) ----
+NM.ZoneCasualties = {
+  generate(effects, density) {
+    const result = NM.calcZoneMortality(effects, density);
+    let html = '<div class="zone-table"><div class="zt-row zt-head"><span>Zone</span><span>Area</span><span>Fatalities</span><span>Injuries</span></div>';
+    for (const pz of result.perZone) {
+      if (pz.zone.r < 0.001) continue;
+      html += `<div class="zt-row"><span style="color:${pz.zone.color};font-weight:700">${pz.zone.name}</span><span>${NM.fmtArea(pz.zone.r)}</span><span class="zt-d">${NM.fmtNum(pz.deaths)}</span><span class="zt-i">${NM.fmtNum(pz.injuries)}</span></div>`;
+    }
+    html += `<div class="zt-row zt-total"><span>Total</span><span></span><span class="zt-d">${NM.fmtNum(result.deaths)}</span><span class="zt-i">${NM.fmtNum(result.injuries)}</span></div></div>`;
+    return html;
+  }
+};
+
+// ---- EMP DETAILED EFFECTS ----
+NM.EMPDetails = {
+  generate(empRadius) {
+    const items = [
+      {dist: 0.1, name: 'Computers & servers', effect: 'Permanent damage to all unshielded electronics', icon: 'computer'},
+      {dist: 0.2, name: 'Smartphones & radios', effect: 'Circuits burned out, permanent failure', icon: 'phone'},
+      {dist: 0.3, name: 'Vehicle electronics', effect: 'Engine control units fail, vehicles stall', icon: 'car'},
+      {dist: 0.4, name: 'Power grid transformers', effect: 'High-voltage transformers destroyed, months to replace', icon: 'power'},
+      {dist: 0.5, name: 'Hospital equipment', effect: 'Life support, ventilators, monitoring fails', icon: 'hospital'},
+      {dist: 0.6, name: 'Water treatment', effect: 'Pumps and control systems disabled', icon: 'water'},
+      {dist: 0.7, name: 'Communication towers', effect: 'Cell towers, internet backbone down', icon: 'tower'},
+      {dist: 0.8, name: 'Traffic systems', effect: 'All traffic lights, rail signals fail', icon: 'traffic'},
+      {dist: 0.9, name: 'Aircraft electronics', effect: 'Avionics disrupted, navigation lost', icon: 'plane'},
+      {dist: 1.0, name: 'Peripheral electronics', effect: 'Sensitive devices may be damaged or disrupted', icon: 'misc'},
+    ];
+
+    let html = '<div class="emp-list">';
+    for (const item of items) {
+      const r = empRadius * item.dist;
+      const status = item.dist < 0.5 ? 'Destroyed' : item.dist < 0.8 ? 'Severe damage' : 'Disrupted';
+      const statusColor = item.dist < 0.5 ? 'var(--red)' : item.dist < 0.8 ? 'var(--peach)' : 'var(--yellow)';
+      html += `<div class="emp-item">
+        <div class="emp-name">${item.name}</div>
+        <div class="emp-effect">${item.effect}</div>
+        <div class="emp-range">Within ${NM.fmtR(r)} <span style="color:${statusColor};font-weight:700">${status}</span></div>
+      </div>`;
+    }
+    // IEC 61000-2-9 (2025) E1 waveform parameters
+    const isHEMP = empRadius > 100;
+    const peakField = isHEMP ? 50 : Math.min(50, 25 * (empRadius / 40));
+    html += '<div class="emp-waveform">';
+    html += '<div class="emp-wf-title">E1 Pulse (IEC 61000-2-9:2025)</div>';
+    html += `<div class="cloud-row"><span class="cl">Peak field</span><span class="cv">${peakField.toFixed(0)} kV/m</span></div>`;
+    html += '<div class="cloud-row"><span class="cl">Rise time</span><span class="cv">2.5 ns</span></div>';
+    html += '<div class="cloud-row"><span class="cl">Pulse width</span><span class="cv">23 ns (FWHM)</span></div>';
+    html += `<div class="cloud-row"><span class="cl">Waveform</span><span class="cv">E₀·(e<sup>−αt</sup> − e<sup>−βt</sup>)</span></div>`;
+    html += '<div class="cloud-row"><span class="cl">α / β</span><span class="cv">4×10⁷ / 6×10⁸ s⁻¹</span></div>';
+    if (isHEMP) {
+      html += '<div class="cloud-row"><span class="cl">E3 (late-time)</span><span class="cv">~10–80 V/km for minutes</span></div>';
+      html += '<div class="cloud-row"><span class="cl">Grid effect</span><span class="cv">GIC-induced transformer damage</span></div>';
+    }
+    html += '</div>';
+    html += `<div class="emp-note">Total EMP radius: ${NM.fmtDist(empRadius)}.${isHEMP ? ' HEMP burst — continent-scale coverage.' : ''} Faraday cages protect electronics.</div></div>`;
+    return html;
+  }
+};
+
+// ---- DESTRUCTION AREA STATISTICS ----
+NM.DestructionStats = {
+  generate(effects, casualties) {
+    const totalDestroyed = Math.PI * effects.psi5 * effects.psi5;
+    const heavyDamage = Math.PI * effects.psi20 * effects.psi20;
+    const moderateDamage = Math.PI * effects.psi1 * effects.psi1;
+    const burnArea = Math.PI * effects.thermal3 * effects.thermal3;
+    const totalAffected = Math.PI * Math.max(effects.psi1, effects.thermal1) ** 2;
+
+    const buildingsDestroyed = Math.round(totalDestroyed * 2000);
+    const buildingsDamaged = Math.round((moderateDamage - totalDestroyed) * 800);
+    const hospitalsAffected = Math.round((casualties.deaths + casualties.injuries) / 30000);
+
+    const resDestroyed = Math.round(buildingsDestroyed * 0.65);
+    const comDestroyed = Math.round(buildingsDestroyed * 0.25);
+    const indDestroyed = Math.round(buildingsDestroyed * 0.10);
+    const avgFloors = casualties.density > 5000 ? 8 : casualties.density > 1000 ? 4 : 2;
+    const avgFloorArea = 0.0002; // km\u00B2 per floor (~200 m\u00B2)
+    const floorAreaDestroyed = buildingsDestroyed * avgFloors * avgFloorArea;
+
+    return `<div class="ds-grid">
+      <div class="ds-card"><div class="ds-val" style="color:var(--red)">${totalDestroyed.toFixed(1)} km\u00B2</div><div class="ds-label">Total destruction (5+ psi)</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--peach)">${moderateDamage.toFixed(1)} km\u00B2</div><div class="ds-label">Damage zone (1+ psi)</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--yellow)">${burnArea.toFixed(1)} km\u00B2</div><div class="ds-label">Fire/burn zone</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--text)">${totalAffected.toFixed(0)} km\u00B2</div><div class="ds-label">Total affected area</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--blue)">${NM.fmtNum(buildingsDestroyed)}</div><div class="ds-label">Est. buildings destroyed</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--mauve)">${NM.fmtNum(buildingsDamaged)}</div><div class="ds-label">Est. buildings damaged</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--maroon)">${hospitalsAffected}</div><div class="ds-label">Hospitals overwhelmed</div></div>
+      <div class="ds-card"><div class="ds-val" style="color:var(--flamingo)">${floorAreaDestroyed.toFixed(1)} km\u00B2</div><div class="ds-label">Floor area destroyed</div></div>
+    </div>
+    <div class="ds-breakdown">
+      <div class="ds-bk-title">Building Type Breakdown (5+ psi zone)</div>
+      <div class="ds-bk-row"><span>Residential</span><span>${NM.fmtNum(resDestroyed)}</span></div>
+      <div class="ds-bk-row"><span>Commercial</span><span>${NM.fmtNum(comDestroyed)}</span></div>
+      <div class="ds-bk-row"><span>Industrial</span><span>${NM.fmtNum(indDestroyed)}</span></div>
+    </div>`;
+  }
+};
+
+// ---- WEAPON INFO CARDS ----
+NM.WeaponInfo = {
+  specs: {
+    'Davy Crockett (M-28)': {type:'Fission',fuel:'Plutonium-239',weight:'23 kg (warhead)',length:'0.78 m (projectile)',diameter:'0.28 m',deployed:'M28/M29 recoilless rifle',note:'Smallest US nuclear weapon. 3-man crew. Range: 1.25-2.5 miles. Lethal radiation to the crew at max range.'},
+    'Little Boy (Hiroshima)': {type:'Gun-type fission',fuel:'Uranium-235',weight:'4,400 kg',length:'3 m',diameter:'0.71 m',deployed:'B-29 Superfortress',note:'First weapon used in combat. 64 kg of U-235, only ~1 kg fissioned.'},
+    'Fat Man (Nagasaki)': {type:'Implosion fission',fuel:'Plutonium-239',weight:'4,670 kg',length:'3.25 m',diameter:'1.52 m',deployed:'B-29 Superfortress',note:'Implosion design using explosive lenses. More efficient than Little Boy.'},
+    'W76-2 (Trident Low)': {type:'Thermonuclear (modified)',fuel:'Classified',weight:'~164 kg',length:'~0.3 m',diameter:'~0.3 m',deployed:'Trident II D5 SLBM',note:'Low-yield "mini-nuke" for flexible deterrence. Modified W76-1 with secondary disabled. Controversial.'},
+    'B61-12 (Guided)': {type:'Thermonuclear',fuel:'Classified',weight:'~375 kg',length:'3.58 m',diameter:'0.34 m',deployed:'F-35A, F-15E, B-2, Tornado',note:'GPS/INS guided tail kit for precision strike. Variable yield 0.3-50 kT. $28B program. NATO nuclear sharing.'},
+    'W76-1 (Trident II)': {type:'Thermonuclear',fuel:'Classified',weight:'~164 kg',length:'~0.3 m',diameter:'~0.3 m',deployed:'Trident II D5 SLBM',note:'Most numerous US warhead (~1,500 deployed). 8 per missile, 20 missiles per Ohio-class sub.'},
+    'W87-0 (Minuteman III)': {type:'Thermonuclear',fuel:'Classified',weight:'~200 kg',length:'~0.5 m',diameter:'~0.55 m',deployed:'Minuteman III ICBM',note:'Land-based ICBM warhead. Single warhead per missile. 400 deployed across 3 bases in MT, ND, WY.'},
+    'W88 (Trident II)': {type:'Thermonuclear',fuel:'Plutonium + Lithium deuteride',weight:'~360 kg',length:'~1.75 m',diameter:'~0.55 m',deployed:'Trident II D5 SLBM',note:'Most powerful US SLBM warhead. 5 per missile, 24 missiles per Ohio-class sub.'},
+    'B83-1': {type:'Thermonuclear',fuel:'Classified',weight:'1,100 kg',length:'3.67 m',diameter:'0.46 m',deployed:'B-2 Spirit, B-52',note:'Largest weapon in active US inventory. Variable yield up to 1.2 MT. Scheduled for retirement.'},
+    'Castle Bravo': {type:'Thermonuclear',fuel:'Lithium deuteride',weight:'10,660 kg',length:'4.56 m',diameter:'1.37 m',deployed:'Surface (Bikini Atoll)',note:'Yielded 15 MT \u2014 2.5x predicted. Contaminated 7,000 sq mi. Japanese fishing vessel Lucky Dragon #5 irradiated.'},
+    'Tsar Bomba (50 MT)': {type:'Three-stage thermonuclear',fuel:'Lithium deuteride',weight:'27,000 kg',length:'8 m',diameter:'2.1 m',deployed:'Tu-95V bomber',note:'Largest detonation in history. Shockwave circled Earth 3x. Mushroom cloud rose 64 km. Windows broken 900 km away.'},
+    'Tsar Bomba (100 MT)': {type:'Three-stage thermonuclear',fuel:'Lithium deuteride + Uranium tamper',weight:'~27,000 kg',length:'8 m',diameter:'2.1 m',deployed:'Theoretical',note:'Full design yield with uranium-238 tamper. Never tested. Would have produced extreme fallout.'},
+    'RS-28 Sarmat': {type:'Thermonuclear MIRV',fuel:'Liquid (UDMH/N2O4)',weight:'208,100 kg',length:'35.5 m',diameter:'3 m',deployed:'Silo-based ICBM',note:'Replaces SS-18 Satan. Can carry 10-15 MIRV warheads or Avangard HGV. Range: 18,000 km.'},
+    'R-36M2 SS-18 Satan': {type:'Thermonuclear MIRV',fuel:'Liquid (UDMH/N2O4)',weight:'211,100 kg',length:'36.6 m',diameter:'3 m',deployed:'Silo-based ICBM',note:'10 MIRV x 750 kT or single 20 MT warhead. Most feared Cold War ICBM. Being replaced by Sarmat.'},
+    'RT-2PM2 Topol-M': {type:'Thermonuclear',fuel:'Solid',weight:'47,200 kg',length:'22.7 m',diameter:'1.95 m',deployed:'Silo or road-mobile TEL',note:'Single 800 kT warhead. Can maneuver during reentry to evade ABM. ~60 deployed.'},
+    'DF-41 (China)': {type:'Thermonuclear MIRV',fuel:'Solid',weight:'~80,000 kg',length:'~22 m',diameter:'~2.25 m',deployed:'Road-mobile TEL or silo',note:'China\'s most capable ICBM. 3+ MIRV warheads. Range: 12,000-15,000 km. Rapid buildup underway.'},
+    'Trident D5 (UK)': {type:'Thermonuclear MIRV',fuel:'Solid',weight:'58,500 kg',length:'13.42 m',diameter:'2.11 m',deployed:'Vanguard-class SSBN',note:'UK deterrent. 4 submarines, 1 always on patrol. Up to 8 warheads per missile, 16 missiles per sub.'},
+    'Hwasong-15 (DPRK)': {type:'Thermonuclear (claimed)',fuel:'Liquid',weight:'Unknown',length:'~22 m',diameter:'~2.4 m',deployed:'Road-mobile TEL',note:'Demonstrated ICBM range to reach entire US mainland. Actual warhead capability uncertain.'},
+  },
+
+  generate(weaponName) {
+    const info = this.specs[weaponName];
+    if (!info) return '';
+    let html = '<div class="wi-card">';
+    const rows = [['Type', info.type], ['Fuel', info.fuel], ['Weight', info.weight], ['Dimensions', `${info.length} x ${info.diameter}`], ['Delivery', info.deployed]];
+    for (const [label, val] of rows) {
+      html += `<div class="wi-row"><span class="wi-label">${label}</span><span class="wi-val">${val}</span></div>`;
+    }
+    if (info.note) html += `<div class="wi-note">${info.note}</div>`;
+    html += '</div>';
+    return html;
+  }
+};
+
+// ---- ALTITUDE CROSS-SECTION (SVG) ----
+NM.AltitudeProfile = {
+  generate(effects, yieldKt) {
+    const cloudTop = effects.cloudTopH;
+    const cloudR = effects.cloudTopR;
+    const stemR = effects.stemR;
+    const burstH = effects.burstHeight / 1000; // to km
+    const fireR = effects.fireball;
+    const maxH = Math.max(cloudTop * 1.3, 20);
+    const maxW = Math.max(effects.psi1 * 1.2, cloudR * 3, 10);
+
+    // SVG coordinates: width=300, height=200, origin at bottom center
+    const W = 300, H = 180;
+    const sx = (km) => 150 + (km / maxW) * 140; // x scale
+    const sy = (km) => H - (km / maxH) * 160;    // y scale (inverted)
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="alt-svg">`;
+
+    // Ground line
+    svg += `<line x1="0" y1="${sy(0)}" x2="${W}" y2="${sy(0)}" stroke="var(--surface1)" stroke-width="1"/>`;
+
+    // Altitude grid
+    for (let alt = 5; alt < maxH; alt += maxH > 50 ? 20 : maxH > 20 ? 10 : 5) {
+      const y = sy(alt);
+      svg += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--surface0)" stroke-width="0.5" stroke-dasharray="3 4"/>`;
+      svg += `<text x="4" y="${y - 2}" fill="var(--overlay0)" font-size="7">${alt} km</text>`;
+    }
+
+    // Fireball (circle at burst height)
+    const fbCx = sx(0), fbCy = sy(burstH);
+    const fbR = Math.max(3, (fireR / maxW) * 140);
+    svg += `<circle cx="${fbCx}" cy="${fbCy}" r="${fbR}" fill="rgba(245,224,220,0.5)" stroke="#f5e0dc" stroke-width="1"/>`;
+
+    // Stem
+    const stemW = Math.max(4, (stemR / maxW) * 140 * 2);
+    const stemCapY = sy(cloudTop * 0.7), stemBaseY = sy(burstH);
+    const stemY = Math.min(stemCapY, stemBaseY);
+    const stemH = Math.max(0.5, Math.abs(stemBaseY - stemCapY));
+    svg += `<rect x="${sx(0) - stemW/2}" y="${stemY}" width="${stemW}" height="${stemH}" fill="rgba(139,115,85,0.3)" rx="2"/>`;
+
+    // Mushroom cap
+    const capCx = sx(0), capCy = sy(cloudTop);
+    const capRx = Math.max(10, (cloudR / maxW) * 140);
+    const capRy = Math.max(6, capRx * 0.5);
+    svg += `<ellipse cx="${capCx}" cy="${capCy}" rx="${capRx}" ry="${capRy}" fill="rgba(238,136,68,0.4)" stroke="#ee8844" stroke-width="1"/>`;
+
+    // Labels
+    svg += `<text x="${sx(0) + capRx + 4}" y="${capCy + 3}" fill="var(--peach)" font-size="8" font-weight="700">${cloudTop.toFixed(1)} km</text>`;
+    svg += `<text x="${sx(0) + fbR + 4}" y="${fbCy + 3}" fill="var(--rosewater)" font-size="7">Fireball</text>`;
+
+    // 5 psi radius markers on ground
+    const psi5x = sx(effects.psi5);
+    if (psi5x < W - 10) {
+      svg += `<line x1="${psi5x}" y1="${sy(0) - 3}" x2="${psi5x}" y2="${sy(0) + 3}" stroke="var(--mauve)" stroke-width="1.5"/>`;
+      svg += `<text x="${psi5x}" y="${sy(0) + 12}" fill="var(--mauve)" font-size="7" text-anchor="middle">5 psi</text>`;
+    }
+    const psi1x = sx(effects.psi1);
+    if (psi1x < W - 10) {
+      svg += `<line x1="${psi1x}" y1="${sy(0) - 3}" x2="${psi1x}" y2="${sy(0) + 3}" stroke="var(--yellow)" stroke-width="1.5"/>`;
+      svg += `<text x="${psi1x}" y="${sy(0) + 12}" fill="var(--yellow)" font-size="7" text-anchor="middle">1 psi</text>`;
+    }
+
+    // Burst height indicator
+    if (burstH > 0.1) {
+      svg += `<line x1="${sx(0)}" y1="${sy(0)}" x2="${sx(0)}" y2="${fbCy}" stroke="var(--overlay0)" stroke-width="0.5" stroke-dasharray="2 3"/>`;
+      svg += `<text x="${sx(0) + 4}" y="${sy(burstH / 2)}" fill="var(--overlay0)" font-size="7">HOB: ${(burstH * 1000).toFixed(0)}m</text>`;
+    }
+
+    svg += '</svg>';
+    return svg;
+  }
+};
+
+// ---- SURVIVAL PROBABILITY AT DISTANCE ----
+NM.SurvivalCalc = {
+  calculate(effects, distKm) {
+    const psi = NM.Shelter.estimatePsi(effects, distKm);
+    const thermal = NM.Shelter.estimateThermalCal(effects, distKm);
+    const inRad = distKm <= effects.radiation;
+
+    // Probability in open air
+    let openSurvival = 1;
+    if (psi >= 200) openSurvival = 0;
+    else if (psi >= 20) openSurvival = 0.02;
+    else if (psi >= 5) openSurvival = Math.max(0, 0.5 - (psi - 5) / 30);
+    else if (psi >= 1) openSurvival = Math.max(0.5, 1 - psi * 0.12);
+    else openSurvival = Math.max(0.8, 1 - psi * 0.05);
+
+    if (thermal >= 8) openSurvival *= 0.3;
+    else if (thermal >= 2) openSurvival *= 0.7;
+    if (inRad) openSurvival *= 0.2;
+
+    // In basement
+    let basementSurvival = 1;
+    if (psi >= 15) basementSurvival = 0.1;
+    else if (psi >= 5) basementSurvival = 0.5;
+    else basementSurvival = 0.95;
+    if (inRad) basementSurvival *= 0.8;
+
+    return {
+      openAir: Math.round(Math.max(0, Math.min(1, openSurvival)) * 100),
+      basement: Math.round(Math.max(0, Math.min(1, basementSurvival)) * 100),
+      psi, thermal, inRadiation: inRad,
+      blastArrival: distKm / 0.34
+    };
+  },
+
+  generateHTML(effects) {
+    const distances = [1, 2, 3, 5, 8, 10, 15, 20, 30, 50];
+    let html = '<div class="surv-table"><div class="surv-row surv-head"><span>Distance</span><span>Open Air</span><span>Basement</span><span>Overpressure</span></div>';
+    for (const d of distances) {
+      const r = this.calculate(effects, d);
+      const openClass = r.openAir >= 80 ? 'safe' : r.openAir >= 30 ? 'risk' : 'dead';
+      const baseClass = r.basement >= 80 ? 'safe' : r.basement >= 30 ? 'risk' : 'dead';
+      html += `<div class="surv-row">
+        <span class="surv-dist">${d} km</span>
+        <span class="surv-pct ${openClass}">${r.openAir}%</span>
+        <span class="surv-pct ${baseClass}">${r.basement}%</span>
+        <span class="surv-psi">${r.psi.toFixed(1)} psi</span>
+      </div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+};
+
+// ---- WARHEAD DELIVERY ARC ANIMATION ----
+NM.DeliveryArc = {
+  layer: null,
+
+  animate(map, fromLat, fromLng, toLat, toLng, durationMs, onComplete) {
+    if (this.layer) map.removeLayer(this.layer);
+    durationMs = durationMs || 3000;
+
+    const steps = 60;
+    const arcPoints = [];
+    const R = 6371;
+    const dist = NM.haversine(fromLat, fromLng, toLat, toLng);
+    const maxAlt = Math.min(1200, dist * 0.08); // km apogee
+
+    // Generate arc path (great circle with altitude)
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const lat = fromLat + (toLat - fromLat) * t;
+      const lng = fromLng + (toLng - fromLng) * t;
+      arcPoints.push([lat, lng]);
+    }
+
+    // Animated polyline that grows
+    const line = L.polyline([], {color: '#f38ba8', weight: 2, opacity: 0.7, dashArray: '8 4'}).addTo(map);
+    const warhead = L.circleMarker([fromLat, fromLng], {
+      radius: 4, color: '#f38ba8', fillColor: '#f38ba8', fillOpacity: 1, weight: 0
+    }).addTo(map);
+
+    this.layer = L.layerGroup([line, warhead]).addTo(map);
+
+    const start = performance.now();
+    const tick = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(1, elapsed / durationMs);
+      const idx = Math.floor(progress * steps);
+
+      line.setLatLngs(arcPoints.slice(0, idx + 1));
+      if (arcPoints[idx]) warhead.setLatLng(arcPoints[idx]);
+
+      if (progress >= 1) {
+        map.removeLayer(this.layer);
+        this.layer = null;
+        if (onComplete) onComplete();
+      } else {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+
+    // Fit bounds to show both endpoints
+    map.fitBounds(L.latLngBounds([fromLat, fromLng], [toLat, toLng]).pad(0.3), {animate: true, duration: 0.5});
+  }
+};
+
+// ---- EXPORT MAP AS PNG ----
+NM.ExportPNG = {
+  async capture(hiDpi) {
+    const scale = hiDpi ? 4 : 2;
+    const mapEl = document.getElementById('map');
+    try {
+      const canvas = document.createElement('canvas');
+      const rect = mapEl.getBoundingClientRect();
+      canvas.width = rect.width * scale;
+      canvas.height = rect.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#11111b';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      // Draw tile images (IMG elements from tile layers)
+      const tiles = mapEl.querySelectorAll('.leaflet-tile');
+      for (const tile of tiles) {
+        if (tile.complete && (tile.tagName === 'IMG' || tile.tagName === 'CANVAS')) {
+          const tr = tile.getBoundingClientRect();
+          try { ctx.drawImage(tile, tr.left - rect.left, tr.top - rect.top, tr.width, tr.height); } catch(e) {}
+        }
+      }
+
+      // Draw canvas overlays (preferCanvas renderer)
+      const canvases = mapEl.querySelectorAll('canvas.leaflet-zoom-animated');
+      for (const c of canvases) {
+        const cr = c.getBoundingClientRect();
+        try { ctx.drawImage(c, cr.left - rect.left, cr.top - rect.top, cr.width, cr.height); } catch(e) {}
+      }
+
+      // Draw SVG overlays (if any remain from non-canvas layers)
+      const svgs = mapEl.querySelectorAll('svg.leaflet-zoom-animated');
+      for (const svg of svgs) {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const img = new Image();
+        const blob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        await new Promise((resolve) => {
+          img.onload = () => {
+            const sr = svg.getBoundingClientRect();
+            ctx.drawImage(img, sr.left - rect.left, sr.top - rect.top, sr.width, sr.height);
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+          img.src = url;
+        });
+      }
+
+      this.download(canvas.toDataURL('image/png'), hiDpi ? 'nukemap-export-hd.png' : 'nukemap-export.png');
+    } catch(e) {
+      console.error('Export failed:', e);
+    }
+  },
+
+  exportSVG() {
+    const mapEl = document.getElementById('map');
+    const svgs = mapEl.querySelectorAll('svg.leaflet-zoom-animated');
+    if (!svgs.length) return;
+    const rect = mapEl.getBoundingClientRect();
+    let combined = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}" viewBox="0 0 ${rect.width} ${rect.height}">`;
+    combined += `<rect width="100%" height="100%" fill="#11111b"/>`;
+    for (const svg of svgs) {
+      const sr = svg.getBoundingClientRect();
+      const x = sr.left - rect.left, y = sr.top - rect.top;
+      combined += `<g transform="translate(${x},${y})">`;
+      for (const child of svg.children) combined += new XMLSerializer().serializeToString(child);
+      combined += '</g>';
+    }
+    combined += '</svg>';
+    const blob = new Blob([combined], {type: 'image/svg+xml'});
+    const url = URL.createObjectURL(blob);
+    this.download(url, 'nukemap-export.svg');
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  download(dataURL, filename) {
+    const a = document.createElement('a');
+    a.href = dataURL;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+};

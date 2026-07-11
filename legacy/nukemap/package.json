@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "node test/run-physics.js && node test/run-url-search.js && node test/run-ww3.js && node test/run-shelter.js",
+    "test:browser": "node test/run-browser-qa.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
