@@ -1,14 +1,16 @@
-# TsunamiSimulator
+# Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
-[![Physics](https://img.shields.io/badge/physics-Ward%E2%80%93Asphaug%20%7C%20Synolakis%20%7C%20Okada%20%7C%20Glasstone-purple.svg)](./docs/science)
+[![Physics](https://img.shields.io/badge/physics-Ward%E2%80%93Asphaug%20%7C%20Synolakis%20%7C%20Okada%20%7C%20Glasstone%E2%80%93Dolan%20%7C%20Holsapple-purple.svg)](./docs/science)
 
-> A scientifically grounded 3D-globe desktop application for simulating tsunami generation, propagation, and first-order coastal effects from asteroid impacts, nuclear detonations (atmospheric and underwater), seafloor earthquakes, and subaerial landslides — with peer-reviewed historical presets like Chicxulub (66 Ma), Tōhoku 2011, Indian Ocean 2004, and Lituya Bay 1958.
+> A scientifically grounded 3D-globe **multi-hazard disaster simulator**: asteroid impacts (entry, airburst, cratering, thermal/blast), nuclear detonations (fireball, overpressure, thermal, radiation, EMP, fallout, casualties), seafloor earthquakes, subaerial/submarine landslides — and the tsunamis these events generate. Peer-reviewed historical presets span Chicxulub, Tunguska, Chelyabinsk, Hiroshima, Tsar Bomba, Tōhoku 2011, and Lituya Bay 1958.
 
-This is the **NukeMap for tsunamis** — but with a 3D globe, peer-reviewed source models, a coarse bathymetry-aware shallow-water solver, and presets you can scrub through frame-by-frame.
+**Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
+
+> **Migration status (v0.6.0):** the tsunami + asteroid + earthquake + landslide source models and the ported nuclear effects engine are live and tested. The dedicated nuclear/impact **UI modes** (blast-ring overlays, WW3 exchange, fallout plume, immersive/mushroom-cloud views) are being rebuilt on the Cesium globe from NukeMap's reference code, preserved in-tree under [`legacy/`](./legacy). Until Cataclysm reaches parity and deploys, the standalone **NukeMap** and **AsteroidSimulator** apps remain live. See [ROADMAP.md](./ROADMAP.md).
 
 ---
 

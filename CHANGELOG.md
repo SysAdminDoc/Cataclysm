@@ -1,6 +1,41 @@
 # Changelog
 
-All notable changes to TsunamiSimulator. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
+All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
+
+## [0.6.0] — 2026-07-10 — Cataclysm: unified multi-hazard simulator
+
+### Project unification
+- **Renamed TsunamiSimulator → Cataclysm** and expanded scope from a tsunami
+  simulator to a full multi-hazard disaster simulator. Product name, window
+  title, bundle identifier (`com.sysadmindoc.cataclysm`), crate/package names,
+  and all provenance/export brand strings updated. Version 0.5.0 → 0.6.0.
+- **Absorbed AsteroidSimulator and NukeMap.** Both repos merged in via
+  `git subtree` under `legacy/asteroid` and `legacy/nukemap` (full history
+  preserved) as the reference for the ongoing UI-parity rebuild.
+
+### Added — unified hazard engine layer (`src/hazards/`)
+- **Common `HazardResult` contract**: any hazard resolves to globe-ready effect
+  rings (meters), a structured readout, and an optional casualty estimate, so
+  new hazards render without touching the Cesium layer. Engine registry in
+  `src/hazards/index.ts`.
+- **Nuclear engine** (`src/hazards/nuclear/`): NukeMap's `physics.js` ported to
+  typed, pure TypeScript — `calcEffects` (fireball, 200/20/5/3/1 psi, thermal
+  1°/2°/3°, 500-rem/neutron/gamma radiation, EMP, crater, fallout plume, cloud
+  top, base surge, water-burst wave height), Bayesian combined-mortality
+  casualty model, and formatters. Curated 9-weapon preset table (Hiroshima →
+  Tsar Bomba).
+- **Asteroid engine** (`src/hazards/asteroid/`): AsteroidSimulator's physics
+  (energy, RK4 atmospheric entry, Holsapple cratering, thermal, airblast,
+  seismic, ejecta, impact tsunami) ported in and wrapped to the unified contract.
+- **Tests**: two new hazard suites — nuclear regression against HSAJ/NWFAQ
+  reference radii and casualty monotonicity; asteroid calibration (Chelyabinsk
+  airburst, Chicxulub cratering, ocean-impact tsunami). Full unit suite: 135 tests.
+
+### Notes
+- Nuclear/impact **UI modes** (blast overlays on the globe, WW3 exchange,
+  fallout plume, immersive + mushroom-cloud views) are not yet wired — the
+  engines are complete and tested; the Cesium rendering/UI is the next phase.
+  See `ROADMAP.md`.
 
 ## [0.5.0] — 2026-07-09 — Validation, corrected physics, classroom tooling
 

@@ -1,8 +1,63 @@
-# TsunamiSimulator Roadmap
+# Cataclysm Roadmap
 
 Single source of truth for delivery. Blocked items live in
 [`Roadmap_Blocked.md`](./Roadmap_Blocked.md). Shipped work is summarized in
 [`CHANGELOG.md`](./CHANGELOG.md).
+
+---
+
+## Unification: NukeMap + AsteroidSimulator parity (2026-07-10)
+
+Cataclysm absorbed **AsteroidSimulator** and **NukeMap** (both merged in under
+`legacy/`, history preserved). v0.6.0 landed the ported **engines**; these items
+rebuild their **UIs** on the Cesium globe. The standalone NukeMap and
+AsteroidSimulator repos stay live until this section is drained and Cataclysm
+deploys with parity — only then are they retired (code is already safe in-tree).
+
+### P1 — Nuclear mode (core NukeMap experience)
+- **UNI-01** Hazard-mode switch in the top bar (Tsunami / Impact / Nuclear); routes
+  the left panel + globe overlay to the selected hazard. Tsunami keeps the Rust
+  scenario path; impact/nuclear use the client-side `src/hazards` engines.
+- **UNI-02** Nuclear input panel: weapon preset picker (`WEAPON_PRESETS`), yield
+  slider (log 0.001–100,000 kt), burst-type selector, fission %, pick-on-globe.
+- **UNI-03** Cesium ring renderer for `HazardResult.rings` (concentric ground
+  ellipses, category colors, hover tooltip → `EffectRing.description`). Reused by
+  both nuclear and asteroid modes. Replaces NukeMap `js/effects.js` (Leaflet).
+- **UNI-04** Results panel binding `HazardResult.readout` + casualty estimate;
+  detonation timeline (port `NM.calcTimeline`).
+- **UNI-05** Fallout plume overlay (wind angle/speed) as a Cesium polygon —
+  port `NM.Effects.drawFallout`.
+- **UNI-06** Shelter advisor (port `js/shelter.js`, already pure) + latent-cancer
+  readout (`estimateLatentCancer`).
+
+### P2 — Impact mode + data
+- **UNI-07** Asteroid input panel + `TrajectoryChart`/`CraterDiagram` (port the
+  SVG components from `legacy/asteroid/src/components/Results`).
+- **UNI-08** NEO/fireball database integration (port `services/jplApi.ts`,
+  `useFireballs`, fallback datasets) with the app's CSP allowlist.
+- **UNI-09** Port NukeMap target/weapon/city/ZIP datasets (`data/*.json`,
+  `js/zipcodes.js`, 41,958 ZIPs; `js/data.js` tables) to typed JSON;
+  location search + density estimation from real city table.
+- **UNI-10** Historical presets: fold NukeMap's 10 tests + AsteroidSimulator's
+  6 impact presets into the unified preset registry alongside the tsunami presets.
+
+### P3 — Advanced NukeMap features (breadth parity)
+- **UNI-11** WW3 exchange engine: port scenario/target data + casualty aggregation
+  (pure) from `js/ww3.js`; rebuild missile arcs + HUD as React/Cesium (708
+  warheads, 427 targets, 7 scenarios).
+- **UNI-12** MIRV mode (port `NM.MIRV.generatePattern`, already pure) + pattern
+  preview on the globe.
+- **UNI-13** Immersive mode, mushroom-cloud 3D, sound, night mode.
+- **UNI-14** Export/PWA parity: extend existing exporters (PNG/CZML/GeoJSON/KML)
+  to nuclear/impact results; preserve NukeMap's offline single-file capability
+  path where feasible under Vite/Tauri.
+
+### Exit criteria (then retire standalones)
+- Nuclear + impact modes reach feature parity with the standalone apps.
+- Cataclysm web build deploys (GitHub Pages) and desktop bundle builds.
+- Only then: delete `SysAdminDoc/NukeMap` and `SysAdminDoc/AsteroidSimulator`
+  (code + history already preserved under `legacy/`), and update the desktop
+  Portfolio-Consolidation-Map.
 
 ---
 
