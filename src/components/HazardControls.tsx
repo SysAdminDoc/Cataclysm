@@ -30,6 +30,7 @@ function Slider({
   onChange: (v: number) => void;
   format?: (v: number) => string;
 }) {
+  const formattedValue = format ? format(value) : String(value);
   return (
     <label className="hazard__row">
       <span className="hazard__row-label">{label}</span>
@@ -39,10 +40,12 @@ function Slider({
         max={max}
         step={step}
         value={value}
+        aria-label={label}
+        aria-valuetext={formattedValue}
         onChange={(e) => onChange(Number(e.target.value))}
         className="hazard__slider"
       />
-      <span className="hazard__row-value">{format ? format(value) : String(value)}</span>
+      <span className="hazard__row-value">{formattedValue}</span>
     </label>
   );
 }
@@ -96,6 +99,7 @@ export function HazardControls({
           type="button"
           className="hazard__pick"
           data-active={pickActive ? "true" : "false"}
+          aria-pressed={pickActive}
           onClick={onTogglePick}
         >
           {pickActive ? "Click the globe…" : center ? "Change location" : "Pick location on globe"}
@@ -111,7 +115,9 @@ export function HazardControls({
             <span className="hazard__row-label">Weapon preset</span>
             <select
               className="hazard__select"
-              value=""
+              value={WEAPON_PRESETS.find((preset) =>
+                preset.yieldKt === nuclear.yieldKt && preset.burstType === nuclear.burstType,
+              )?.id ?? ""}
               onChange={(e) => {
                 const p = WEAPON_PRESETS.find((w) => w.id === e.target.value);
                 if (p) onNuclearChange({ ...nuclear, yieldKt: p.yieldKt, burstType: p.burstType });

@@ -19,9 +19,12 @@ const baseProps = {
 
 describe("SimulationTransport", () => {
   it("reports solver frames and scenario time", () => {
-    render(<SimulationTransport {...baseProps} />);
+    render(<SimulationTransport {...baseProps} durationS={3600} />);
     expect(screen.getByText("60 frames ready")).toBeInTheDocument();
     expect(screen.getByLabelText("Scenario time 00:15:00")).toBeInTheDocument();
+    expect(screen.getByText("16 / 60")).toBeInTheDocument();
+    expect(screen.getByText("15 min / 60 min")).toBeInTheDocument();
+    expect(screen.getByLabelText("Scenario timeline scrubber")).toHaveAttribute("max", "3600");
     expect(screen.getByRole("button", { name: "Details" })).toBeEnabled();
   });
 

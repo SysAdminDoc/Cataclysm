@@ -24,7 +24,7 @@ import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exp
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
-import { scenarioFromUrl, scenarioToUrlParams } from "./lib/scenario-schema";
+import { scenarioFromUrl, scenarioToUrlParams, type ScenarioInput } from "./lib/scenario-schema";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
@@ -276,8 +276,11 @@ export default function App() {
   const [showLog, setShowLog] = useState(false);
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
+  const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
+  const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
   const inTauri = useMemo(isTauri, []);
   const referenceCaptureMode = useMemo(
     () => new URLSearchParams(window.location.search).get("referenceCapture") === "1",
@@ -290,6 +293,7 @@ export default function App() {
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
+  const timelineDurationS = sweSnapshots?.at(-1)?.time_s ?? 6 * 3600;
 
   // Ephemeral status toast for actions that otherwise fail silently
   // (exports, IPC errors). Auto-dismisses; replaced by the next message.
@@ -303,24 +307,57 @@ export default function App() {
   }, []);
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
+  const handleSweSnapshotsReady = useCallback((snapshots: import("./types/scenario").GridSnapshot[] | null) => {
+    setSweSnapshots(snapshots);
+    if (snapshots?.length) {
+      setTimeS(snapshots[0].time_s);
+      setTimelinePlaying(false);
+    }
+  }, []);
+
   useEffect(() => {
     inspectorBodyRef.current?.scrollTo({ top: 0 });
   }, [inspectorTab, hazardMode, compareMode]);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const panel = exportMenuRef.current?.querySelector<HTMLElement>(".app__export-panel");
+      const focusTarget = panel?.querySelector<HTMLButtonElement>('button:not([aria-disabled="true"])') ?? panel;
+      focusTarget?.focus();
+    });
+    const closeOutside = (event: PointerEvent) => {
+      if (!exportMenuRef.current?.contains(event.target as Node)) setExportMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setExportMenuOpen(false);
+      exportTriggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [exportMenuOpen]);
 
   useEffect(() => {
     if (!timelinePlaying) return;
     const timer = window.setInterval(() => {
       setTimeS((current) => {
         const next = current + 60 * timelineRate;
-        if (next >= 6 * 3600) {
+        if (next >= timelineDurationS) {
           setTimelinePlaying(false);
-          return 6 * 3600;
+          return timelineDurationS;
         }
         return next;
       });
     }, 250);
     return () => window.clearInterval(timer);
-  }, [timelinePlaying, timelineRate]);
+  }, [timelinePlaying, timelineRate, timelineDurationS]);
 
   useEffect(() => {
     settings
@@ -435,6 +472,8 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+  const activeScenarioKindA = activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? null;
+  const activeScenarioKindB = activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? null;
   const directHazardMode: DirectHazardMode | null = hazardMode === "tsunami" ? null : hazardMode;
   const inHazardMode = directHazardMode !== null;
   const hazardCenter = directHazardMode ? hazardCenters[directHazardMode] : null;
@@ -637,7 +676,7 @@ export default function App() {
     preset: activePresetB,
     initial: slotB.initial,
     timeS,
-    scenarioKind: activePresetB?.source.kind ?? "Custom",
+    scenarioKind: activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? "Custom",
     solverMode: hasSwePlayback
       ? "Shallow-water-equation snapshot playback"
       : "Analytical source geometry and coastal runup sampling",
@@ -775,6 +814,7 @@ export default function App() {
                 type="button"
                 className="hazard-switch"
                 data-active={hazardMode === m ? "true" : "false"}
+                aria-pressed={hazardMode === m}
                 onClick={() => selectHazardMode(m)}
                 title={
                   m === "tsunami"
@@ -817,8 +857,9 @@ export default function App() {
               Compare
             </ToolbarButton>
           </div>
-          <div className="app__export-menu">
+          <div className="app__export-menu" ref={exportMenuRef}>
             <button
+              ref={exportTriggerRef}
               type="button"
               className="app__export-trigger"
               aria-expanded={exportMenuOpen}
@@ -832,6 +873,8 @@ export default function App() {
             {exportMenuOpen && <div
               id="export-actions"
               className="app__export-panel"
+              tabIndex={-1}
+              autoFocus
               role="group"
               aria-label="Export current scenario"
               onClick={(event) => {
@@ -1054,14 +1097,20 @@ export default function App() {
             completedLessons={lessonCompletions}
           />}
         {!inHazardMode && compareMode && (
-          <div className="app__compare-rail">
-            <div className="app__compare-rail-label">Compare slot B</div>
-            <PresetSelector
-              presets={presets}
-              activeId={slotB.activePresetId}
-              onSelect={slotB.setActivePresetId}
-              busyId={slotB.busyPresetId}
-            />
+          <div className="app__compare-picker">
+            <label htmlFor="compare-source-b">Compare against</label>
+            <select
+              id="compare-source-b"
+              value={slotB.activePresetId ?? ""}
+              onChange={(event) => slotB.setActivePresetId(event.target.value || null)}
+              disabled={slotB.busyPresetId !== null}
+            >
+              <option value="">Select Slot B source…</option>
+              {presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>{preset.name} · {preset.date}</option>
+              ))}
+            </select>
+            <small>{slotB.busyPresetId ? "Loading comparison source…" : activePresetB?.blurb ?? "Choose a second source without leaving Slot A."}</small>
           </div>
         )}
         {inHazardMode && (
@@ -1101,7 +1150,7 @@ export default function App() {
                 onPick={handlePickGlobe}
                 onPickCancel={() => setPickMode(false)}
                 inspectMode={!inHazardMode && inspectMode}
-                inspectIsImpact={activePresetA?.source.kind === "Asteroid"}
+                inspectIsImpact={activeScenarioKindA === "Asteroid"}
                 inspectTimeS={timeS}
                 onInspectCancel={() => setInspectMode(false)}
                 onAddGauge={inHazardMode ? undefined : (lat, lon) => setPendingGauge({ lat, lon })}
@@ -1229,27 +1278,36 @@ export default function App() {
           <SourceModelSummary
             preset={activePresetA ?? null}
             initial={slotA.initial}
-            onEdit={() => {
-              const editor = document.querySelector<HTMLElement>(".scenario-form");
-              editor?.scrollIntoView({ block: "start", behavior: "smooth" });
-              editor?.querySelector<HTMLElement>("button, input, select")?.focus();
+            onEdit={compareMode ? undefined : () => {
+              const scenario = activePresetA?.source ?? slotA.lastCustomScenario;
+              if (!scenario) return;
+              setScenarioEditRequest({ id: Date.now(), scenario });
+              window.requestAnimationFrame(() => {
+                const editor = document.querySelector<HTMLElement>(".scenario-form");
+                editor?.scrollIntoView({ block: "start", behavior: "smooth" });
+                editor?.querySelector<HTMLElement>("button, input, select")?.focus();
+              });
             }}
           />
           <SwePlayback
             initial={slotA.initial}
             onSnapshot={slotA.setSweSnapshot}
-            onSnapshotsReady={setSweSnapshots}
+            onSnapshotsReady={handleSweSnapshotsReady}
             pendingGauge={pendingGauge}
             dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
             onMaxField={setSweMaxField}
             onIsochrones={setSweIsochrones}
             onRenderFrame={setSweRenderFrameA}
+            playbackTimeS={timeS}
+            onPlaybackTimeChange={setTimeS}
+            slotLabel={compareMode ? "Slot A" : undefined}
           />
           <div hidden={!compareMode} aria-label="Comparison slot B solver">
-            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} />
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
           </div>
           <div hidden={compareMode}>
             <ScenarioBuilder
+            editRequest={scenarioEditRequest}
             onSimulate={(scenario) => {
               slotA.simulate(scenario);
               setInspectorTab("results");
@@ -1279,7 +1337,7 @@ export default function App() {
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
         {inspectorTab === "results" && !inHazardMode && <AttenuationChart
           initial={slotA.initial}
-          isImpact={activePresetA?.source.kind === "Asteroid"}
+          isImpact={activeScenarioKindA === "Asteroid"}
           timeS={timeS}
           runupResults={slotA.runupResults}
         />}
@@ -1308,6 +1366,7 @@ export default function App() {
       {!inHazardMode && <CoastalRunupOverlay
         initial={slotA.initial}
         activePreset={activePresetA}
+        sourceKind={activeScenarioKindA}
         timeS={timeS}
         onResults={slotA.setRunupResults}
       />}
@@ -1315,6 +1374,7 @@ export default function App() {
         <CoastalRunupOverlay
           initial={slotB.initial}
           activePreset={activePresetB}
+          sourceKind={activeScenarioKindB}
           timeS={timeS}
           onResults={slotB.setRunupResults}
         />
@@ -1351,6 +1411,7 @@ export default function App() {
         solverReady={!inHazardMode && hasSwePlayback}
         domain={hazardMode}
         frameCount={inHazardMode ? 0 : sweSnapshots?.length ?? 0}
+        durationS={timelineDurationS}
         onOpenDetails={() => setInspectorTab("setup")}
       />
       <div className="app__statusbar" role="status" aria-live="polite">

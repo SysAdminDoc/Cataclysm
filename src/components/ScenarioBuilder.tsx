@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { settings, type SavedScenario } from "../lib/settings";
 import {
   createScenarioPayload,
@@ -21,6 +21,7 @@ import { GlossaryTip } from "./GlossaryTip";
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
+  editRequest?: { id: number; scenario: ScenarioInput } | null;
   /** Latitude/longitude that was just clicked on the globe — auto-fills the form. */
   pickedLocation: { lat: number; lon: number } | null;
   onTogglePick: () => void;
@@ -101,6 +102,8 @@ function NumField({
   const showSlider = SLIDER_FIELDS.has(field);
   const [helpOpen, setHelpOpen] = useState(false);
   const [draft, setDraft] = useState<string>(() => String(value));
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const errorId = useId();
   const focusedRef = useRef(false);
   useEffect(() => {
     if (!focusedRef.current) setDraft(String(value));
@@ -108,9 +111,19 @@ function NumField({
 
   function commit() {
     const parsed = Number(draft);
-    const next = clamp(field, parsed);
-    onChange(next);
-    setDraft(String(next));
+    if (draft.trim() === "" || !Number.isFinite(parsed)) {
+      setValidationError(`${label} must be a number.`);
+      setDraft(String(value));
+      return;
+    }
+    if ((b?.min !== undefined && parsed < b.min) || (b?.max !== undefined && parsed > b.max)) {
+      setValidationError(`${label} must be between ${b.min ?? "negative infinity"} and ${b.max ?? "positive infinity"}.`);
+      setDraft(String(value));
+      return;
+    }
+    setValidationError(null);
+    onChange(parsed);
+    setDraft(String(parsed));
   }
 
   return (
@@ -148,8 +161,13 @@ function NumField({
           step={step ?? "any"}
           min={b?.min}
           max={b?.max}
+          aria-invalid={Boolean(validationError)}
+          aria-describedby={validationError ? errorId : undefined}
           onFocus={() => { focusedRef.current = true; }}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (validationError) setValidationError(null);
+          }}
           onBlur={() => { focusedRef.current = false; commit(); }}
         />
         {showSlider && b?.min !== undefined && b?.max !== undefined && (
@@ -164,21 +182,28 @@ function NumField({
               const v = Number(e.target.value);
               onChange(v);
               setDraft(String(v));
+              setValidationError(null);
             }}
             aria-label={`${label} slider`}
           />
         )}
       </span>
+      {validationError && <span id={errorId} className="scenario-field__error" role="alert">{validationError}</span>}
     </label>
   );
 }
 
-export function ScenarioBuilder({ onSimulate, pickedLocation, onTogglePick, pickActive }: Props) {
+export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTogglePick, pickActive }: Props) {
   const [tab, setTab] = useState<TabKey>("asteroid");
   const [asteroid, setAsteroid] = useState(INITIAL_ASTEROID);
   const [nuclear, setNuclear] = useState(INITIAL_NUCLEAR);
   const [earthquake, setEarthquake] = useState(INITIAL_EARTHQUAKE);
   const [landslide, setLandslide] = useState(INITIAL_LANDSLIDE);
+
+  useEffect(() => {
+    if (!editRequest) return;
+    applyScenario(editRequest.scenario);
+  }, [editRequest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When the globe pick reports a location, push it into whichever tab is active.
   useEffect(() => {

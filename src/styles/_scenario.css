@@ -77,6 +77,11 @@
   accent-color: var(--blue);
   cursor: pointer;
 }
+.scenario-field__error {
+  color: var(--red);
+  font-size: 11px;
+  line-height: 1.35;
+}
 
 .scenario-tabs {
   display: grid;

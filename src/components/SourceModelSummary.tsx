@@ -4,7 +4,7 @@ import { UiIcon } from "./UiIcon";
 type Props = {
   preset: Preset | null;
   initial: InitialDisplacement | null;
-  onEdit: () => void;
+  onEdit?: () => void;
 };
 
 function formatCoord(value: number, positive: string, negative: string): string {
@@ -81,9 +81,11 @@ export function SourceModelSummary({ preset, initial, onEdit }: Props) {
         <div><dt>Magnitude</dt><dd>{source.magnitude}</dd></div>
         <div><dt>Source model</dt><dd>{source.model}</dd></div>
       </dl>
-      <button className="source-model__edit" type="button" onClick={onEdit}>
-        <UiIcon name="mapPin" size={14} /> Edit source parameters
-      </button>
+      {onEdit && (
+        <button className="source-model__edit" type="button" onClick={onEdit}>
+          <UiIcon name="mapPin" size={14} /> Edit source parameters
+        </button>
+      )}
       <div className="source-model__confidence">
         <div>
           <span>Model confidence</span>

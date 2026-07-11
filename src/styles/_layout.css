@@ -106,6 +106,10 @@ a {
   background: var(--workspace-bg);
 }
 
+.app[data-compare="true"] {
+  grid-template-columns: minmax(230px, 250px) minmax(680px, 1fr) minmax(280px, 312px);
+}
+
 /* HR-00 capture mode is activated only after the runner configures the normal
    workflow. It captures a true full-resolution canvas, never an upscaled crop. */
 html[data-reference-capture-active="true"] .app[data-reference-capture="true"] {
@@ -319,6 +323,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .app__export-trigger[aria-expanded="true"] {
   border-color: var(--accent-active);
   background: color-mix(in srgb, var(--accent-active) 12%, var(--inspector-bg));
+  color: var(--text);
 }
 
 .app__export-panel {
@@ -378,6 +383,16 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .icon-button[data-variant="mode"] {
   background: color-mix(in srgb, var(--surface0) 70%, var(--mantle));
   font-weight: 720;
+}
+
+.icon-button[data-variant="mode"][data-active="true"] {
+  background: #006080;
+  border-color: #006080;
+  color: #ffffff;
+}
+
+.icon-button[data-variant="mode"][data-active="true"] svg {
+  color: #ffffff;
 }
 
 .icon-button[data-variant="export"] {

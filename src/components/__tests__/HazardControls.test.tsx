@@ -104,6 +104,29 @@ describe("HazardControls", () => {
     );
     screen.getByRole("button", { name: /pick location on globe/i }).click();
     expect(onTogglePick).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: /pick location on globe/i })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("preserves a matching weapon preset and exposes formatted slider values", () => {
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={{ ...nuclear, yieldKt: 15 }}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={null}
+        onTogglePick={noop}
+        pickActive
+        result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+    expect(screen.getByLabelText("Weapon preset")).toHaveValue("hiroshima");
+    expect(screen.getByRole("slider", { name: "Yield" })).toHaveAttribute("aria-valuetext", "15 kT");
+    expect(screen.getByRole("button", { name: /click the globe/i })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("explains that direct physics is desktop-only in browser preview", () => {

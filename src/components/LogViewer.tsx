@@ -164,6 +164,7 @@ export function LogViewer({ open, onClose }: Props) {
         className="modal log-viewer"
         ref={dialogRef}
         role="dialog"
+        aria-modal="true"
         aria-label="Application log"
         onClick={(e) => e.stopPropagation()}
       >

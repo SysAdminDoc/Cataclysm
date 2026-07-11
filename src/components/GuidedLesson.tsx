@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { UiIcon } from "./UiIcon";
 import type { GuidedLesson as LessonDef } from "../lib/guided-lessons";
 
@@ -13,6 +14,7 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true);
+  useEscapeKey(onClose);
 
   useEffect(() => {
     setStepIdx(0);

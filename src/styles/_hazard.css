@@ -29,8 +29,8 @@
 
 .app__command-group--hazard .hazard-switch[data-active="true"],
 .app__command-group--hazard .hazard-switch[data-active="true"]:hover {
-  background: var(--accent-active);
-  color: var(--on-accent);
+  background: #006080;
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -56,8 +56,8 @@
 }
 
 .hazard__pick[data-active="true"] {
-  background: var(--accent-active);
-  color: var(--on-accent);
+  background: #006080;
+  color: #ffffff;
 }
 
 .hazard__coord {

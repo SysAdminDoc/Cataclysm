@@ -7,6 +7,7 @@ import type { CoastalPoint, InitialDisplacement, Preset } from "../types/scenari
 type Props = {
   initial: InitialDisplacement | null;
   activePreset: Preset | null;
+  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
   timeS: number;
   onResults: (results: RunupAtPointResult[]) => void;
 };
@@ -22,7 +23,7 @@ const VALID_POINTS: readonly CoastalPoint[] = getCoastalPoints();
  * Uses a monotonic request id to drop stale responses on rapid scrubbing,
  * and a mounted ref to avoid setting state on an unmounted component.
  */
-export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }: Props) {
+export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, onResults }: Props) {
   const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
   const lastArrivedCountRef = useRef(0);
@@ -36,9 +37,8 @@ export function CoastalRunupOverlay({ initial, activePreset, timeS, onResults }:
   }, []);
 
   const isImpact = useMemo<boolean>(() => {
-    if (!activePreset) return false;
-    return activePreset.source.kind === "Asteroid";
-  }, [activePreset]);
+    return sourceKind === "Asteroid" || activePreset?.source.kind === "Asteroid";
+  }, [activePreset, sourceKind]);
 
   useEffect(() => {
     if (!initial) {

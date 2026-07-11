@@ -23,6 +23,9 @@ type Props = {
    *  (null when off or reset). App routes these to the globe layer. */
   onIsochrones?: (isochrones: import("../types/scenario").Isochrone[] | null) => void;
   onRenderFrame?: (frame: RenderFrameProvenance | null) => void;
+  playbackTimeS?: number;
+  onPlaybackTimeChange?: (timeS: number) => void;
+  slotLabel?: string;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
@@ -100,7 +103,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -187,6 +190,20 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onSnapshot?.(snapshots[activeIdx]);
     }
   }, [snapshots, activeIdx, onSnapshot, overlay, maxField]);
+
+  useEffect(() => {
+    if (playbackTimeS === undefined || !snapshots?.length) return;
+    let nearest = 0;
+    let distance = Math.abs(snapshots[0].time_s - playbackTimeS);
+    for (let index = 1; index < snapshots.length; index += 1) {
+      const candidate = Math.abs(snapshots[index].time_s - playbackTimeS);
+      if (candidate < distance) {
+        nearest = index;
+        distance = candidate;
+      }
+    }
+    setActiveIdx(nearest);
+  }, [playbackTimeS, snapshots]);
 
   // Scrubbing or playing always returns the view to the live wave field.
   useEffect(() => {
@@ -425,9 +442,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const fidelityLabel = cellsPerDeg <= 4 ? "Preview" : cellsPerDeg >= 10 ? "High" : "Standard";
 
   return (
-    <div className="section">
+    <div className="section" aria-label={slotLabel ? `${slotLabel} wave propagation` : undefined}>
       <div className="section__title">
-        <span>Wave propagation <small>Shallow-water model</small> <GlossaryTip term="swe">SWE</GlossaryTip></span>
+        <span>{slotLabel && <>{slotLabel} · </>}Wave propagation <small>Shallow-water model</small> <GlossaryTip term="swe">SWE</GlossaryTip></span>
         <span className="section__badge" data-tone={status === "error" ? "danger" : status === "running" ? "active" : undefined}>
           {solverBadge}
         </span>
@@ -523,7 +540,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       {snapshots && snapshots.length > 1 && (
         <>
           <div className="swe__row">
-            <button
+            {playbackTimeS === undefined && <button
               onClick={() => {
                 // Pressing Play at the final frame restarts from the top
                 // instead of silently no-opping.
@@ -547,8 +564,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
                   Play
                 </>
               )}
-            </button>
-            <select
+            </button>}
+            {playbackTimeS === undefined && <select
               className="swe__speed"
               value={speedIdx}
               onChange={(e) => setSpeedIdx(Number(e.target.value))}
@@ -558,7 +575,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               {SPEED_OPTIONS.map((opt, i) => (
                 <option key={opt.label} value={i}>{opt.label}</option>
               ))}
-            </select>
+            </select>}
             <input
               type="range"
               min={0}
@@ -567,7 +584,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               value={activeIdx}
               onChange={(e) => {
                 setIsPlaying(false);
-                setActiveIdx(Number(e.target.value));
+                const next = Number(e.target.value);
+                setActiveIdx(next);
+                onPlaybackTimeChange?.(snapshots[next].time_s);
               }}
               aria-label="Simulation timeline scrubber"
             />

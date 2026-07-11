@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { UiIcon } from "./UiIcon";
 
 /**
@@ -41,7 +42,7 @@ const STEPS: TourStep[] = [
   {
     title: "3 · Run wave propagation",
     body:
-      "Run a 24-frame shallow-water simulation, then scrub or play the resulting propagation layer on the globe.",
+      "Run a 60-frame shallow-water simulation, then scrub or play the resulting propagation layer on the globe.",
     pos: "bottom-right",
   },
   {
@@ -68,6 +69,7 @@ export function Tour({ open, onClose }: Props) {
   const step = useMemo(() => STEPS[idx], [idx]);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
+  useEscapeKey(onClose, open);
 
   useEffect(() => {
     if (open) setIdx(0);

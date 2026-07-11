@@ -84,6 +84,19 @@ test.describe("Keyboard-only golden path", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("export popover moves focus and closes on Escape", async ({ page }) => {
+    await page.goto("/");
+    const trigger = page.getByRole("button", { name: "Export", exact: true });
+    await trigger.click();
+    await expect(page.locator(".app__export-panel")).toBeVisible();
+    await expect(page.locator(".app__export-panel")).toBeFocused();
+
+    await page.keyboard.press("Escape");
+
+    await expect(page.locator(".app__export-panel")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
   test("scenario and inspector tabs use roving focus with arrow, Home, and End keys", async ({ page }) => {
     await seedAcknowledgedPreview(page);
     await page.goto("/");

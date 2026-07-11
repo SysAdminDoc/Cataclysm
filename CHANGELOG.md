@@ -12,6 +12,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Closed abandoned snapshot/render channels promptly and report actual streamed
   frame counts and cancellation state instead of claiming a complete run.
 - Reset the inspector scroll position when its workspace or tab changes.
+- Unified SWE scrubbing and the persistent playback transport around the
+  solver's actual one-hour frame range, eliminating contradictory clocks.
+- Fixed source editing to clone the active preset into the custom editor,
+  replaced the duplicated Compare library with a compact Slot B selector, and
+  labelled both comparison solvers explicitly.
+- Added strict coordinate and scientific-number validation, persistent nuclear
+  weapon preset selection, formatted slider values for assistive technology,
+  Escape/outside-click popover handling, and accessible active-control contrast.
+- Fixed custom asteroid sources being treated as non-impact events by
+  inspection, attenuation, and coastal-runup calculations.
 
 ## [0.8.2] — 2026-07-11 — Adaptive renderer quality
 

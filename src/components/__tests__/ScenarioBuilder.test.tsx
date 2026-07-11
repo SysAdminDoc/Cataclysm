@@ -191,4 +191,39 @@ describe("ScenarioBuilder scenario persistence", () => {
       },
     });
   });
+
+  it("rejects blank scientific inputs instead of silently committing a minimum", async () => {
+    const user = setupUser();
+    renderBuilder();
+    const diameter = document.querySelector<HTMLInputElement>(
+      '.scenario-field input[type="number"]',
+    );
+    expect(diameter).not.toBeNull();
+    const original = diameter?.value;
+
+    await user.clear(diameter!);
+    await user.tab();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Diameter.*must be a number/);
+    expect(diameter).toHaveValue(Number(original));
+  });
+
+  it("loads an active source into the editor", async () => {
+    render(
+      <ScenarioBuilder
+        onSimulate={vi.fn()}
+        editRequest={{
+          id: 1,
+          scenario: { kind: "Asteroid", source: { ...INITIAL_ASTEROID, diameter_m: 14_000 } },
+        }}
+        pickedLocation={null}
+        onTogglePick={vi.fn()}
+        pickActive={false}
+      />,
+    );
+
+    await waitFor(() => expect(
+      document.querySelector<HTMLInputElement>('.scenario-field input[type="number"]'),
+    ).toHaveValue(14_000));
+  });
 });

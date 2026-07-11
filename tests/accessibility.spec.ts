@@ -85,8 +85,7 @@ for (const theme of THEMES) {
       await compare.click();
       await compare.focus();
       await expect(page.locator(".app")).toHaveAttribute("data-compare", "true");
-      const slotB = page.locator(".preset-library").nth(1);
-      await slotB.locator('.preset-card:has-text("Chicxulub")').click();
+      await page.getByLabel("Compare against").selectOption("chicxulub");
       await assertAccessiblePage(page);
     });
 
@@ -98,6 +97,8 @@ for (const theme of THEMES) {
         await expect(workspace).toBeVisible();
         await page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }).click();
         const coordinates = page.getByRole("form", { name: "Enter coordinates" });
+        await expect(coordinates.getByRole("button", { name: "Go" })).toBeDisabled();
+        await expect(coordinates.getByText("Enter both latitude and longitude.")).toBeVisible();
         await coordinates.getByLabel("Latitude").fill("35.68");
         await coordinates.getByLabel("Longitude").fill("139.76");
         await coordinates.getByRole("button", { name: "Go" }).click();

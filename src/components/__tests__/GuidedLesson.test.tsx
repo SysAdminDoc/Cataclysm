@@ -32,4 +32,14 @@ describe("GuidedLesson", () => {
     expect(onComplete).toHaveBeenCalledWith("lesson-a");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("closes on Escape", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<GuidedLesson lesson={LESSON} onClose={onClose} />);
+
+    await user.keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });

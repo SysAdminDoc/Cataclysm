@@ -613,6 +613,15 @@
 .coord-entry__go:hover {
   background: var(--surface0);
 }
+.coord-entry__go:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.coord-entry__validation {
+  flex-basis: 100%;
+  color: var(--subtext);
+  font-size: 11px;
+}
 
 .app__globe-pickbanner kbd {
   font-family: "JetBrains Mono", monospace;

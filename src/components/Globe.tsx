@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium } from "../lib/cesium";
 import {
@@ -125,13 +125,21 @@ function CoordEntryForm({
 }) {
   const [lat, setLat] = useState("");
   const [lon, setLon] = useState("");
+  const validationId = useId();
+  const hasBoth = lat.trim().length > 0 && lon.trim().length > 0;
+  const la = hasBoth ? Number(lat) : Number.NaN;
+  const lo = hasBoth ? Number(lon) : Number.NaN;
+  const coordinatesValid =
+    Number.isFinite(la) && Number.isFinite(lo) && la >= -90 && la <= 90 && lo >= -180 && lo <= 180;
+  const validationMessage = !hasBoth
+    ? "Enter both latitude and longitude."
+    : coordinatesValid
+      ? null
+      : "Latitude must be -90 to 90 and longitude -180 to 180.";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const la = Number(lat);
-    const lo = Number(lon);
-    if (!Number.isFinite(la) || !Number.isFinite(lo)) return;
-    if (la < -90 || la > 90 || lo < -180 || lo > 180) return;
+    if (!coordinatesValid) return;
     onSubmit(la, lo);
   }
 
@@ -146,6 +154,9 @@ function CoordEntryForm({
         min={-90}
         max={90}
         value={lat}
+        required
+        aria-invalid={lat.length > 0 && (!Number.isFinite(la) || la < -90 || la > 90)}
+        aria-describedby={validationId}
         onChange={(e) => setLat(e.target.value)}
         className="coord-entry__input"
       />
@@ -157,10 +168,16 @@ function CoordEntryForm({
         min={-180}
         max={180}
         value={lon}
+        required
+        aria-invalid={lon.length > 0 && (!Number.isFinite(lo) || lo < -180 || lo > 180)}
+        aria-describedby={validationId}
         onChange={(e) => setLon(e.target.value)}
         className="coord-entry__input"
       />
-      <button type="submit" className="coord-entry__go">Go</button>
+      <button type="submit" className="coord-entry__go" disabled={!coordinatesValid}>Go</button>
+      <span id={validationId} className="coord-entry__validation" role="status">
+        {validationMessage}
+      </span>
     </form>
   );
 }

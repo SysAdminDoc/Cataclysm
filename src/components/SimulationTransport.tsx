@@ -1,6 +1,6 @@
 import { UiIcon } from "./UiIcon";
 
-const TOTAL_TIME_S = 6 * 3600;
+const DEFAULT_TOTAL_TIME_S = 6 * 3600;
 
 type Props = {
   timeS: number;
@@ -14,11 +14,12 @@ type Props = {
   solverReady: boolean;
   domain: "tsunami" | "asteroid" | "nuclear";
   frameCount?: number;
+  durationS?: number;
   onOpenDetails: () => void;
 };
 
-function formatClock(timeS: number): string {
-  const safe = Math.max(0, Math.min(TOTAL_TIME_S, Number.isFinite(timeS) ? timeS : 0));
+function formatClock(timeS: number, durationS = DEFAULT_TOTAL_TIME_S): string {
+  const safe = Math.max(0, Math.min(durationS, Number.isFinite(timeS) ? timeS : 0));
   const hours = Math.floor(safe / 3600);
   const minutes = Math.floor((safe % 3600) / 60);
   const seconds = Math.floor(safe % 60);
@@ -37,9 +38,11 @@ export function SimulationTransport({
   solverReady,
   domain,
   frameCount = 0,
+  durationS = DEFAULT_TOTAL_TIME_S,
   onOpenDetails,
 }: Props) {
-  const safeTimeS = Math.max(0, Math.min(TOTAL_TIME_S, Number.isFinite(timeS) ? timeS : 0));
+  const safeDurationS = Number.isFinite(durationS) && durationS > 0 ? durationS : DEFAULT_TOTAL_TIME_S;
+  const safeTimeS = Math.max(0, Math.min(safeDurationS, Number.isFinite(timeS) ? timeS : 0));
   if (domain !== "tsunami") {
     const label = domain === "asteroid" ? "Impact effects" : "Nuclear effects";
     return (
@@ -61,7 +64,7 @@ export function SimulationTransport({
     );
   }
   const frameIndex = solverReady && frameCount > 0
-    ? Math.min(frameCount, Math.max(1, Math.round((safeTimeS / TOTAL_TIME_S) * (frameCount - 1)) + 1))
+    ? Math.min(frameCount, Math.max(1, Math.round((safeTimeS / safeDurationS) * (frameCount - 1)) + 1))
     : 0;
   return (
     <section className="simulation-transport" aria-label="Scenario playback controls">
@@ -87,19 +90,19 @@ export function SimulationTransport({
           <UiIcon name="reset" size={15} />
         </button>
       </div>
-      <div className="simulation-transport__clock" aria-label={`Scenario time ${formatClock(safeTimeS)}`}>
-        <strong>{formatClock(safeTimeS)}</strong>
+      <div className="simulation-transport__clock" aria-label={`Scenario time ${formatClock(safeTimeS, safeDurationS)}`}>
+        <strong>{formatClock(safeTimeS, safeDurationS)}</strong>
         <span>scenario time</span>
       </div>
       <div className="simulation-transport__track">
         <div className="simulation-transport__meta">
           <span>{sourceLabel}</span>
-          <span>{Math.round(safeTimeS / 60)} min / 6 h</span>
+          <span>{Math.round(safeTimeS / 60)} min / {Math.round(safeDurationS / 60)} min</span>
         </div>
         <input
           type="range"
           min={0}
-          max={TOTAL_TIME_S}
+          max={safeDurationS}
           step={60}
           value={safeTimeS}
           onChange={(event) => onTimeChange(Number(event.target.value))}
@@ -108,7 +111,9 @@ export function SimulationTransport({
           aria-valuetext={`${Math.round(safeTimeS / 60)} minutes after the source event`}
         />
         <div className="simulation-transport__ticks" aria-hidden>
-          <span>0</span><span>1 h</span><span>2 h</span><span>3 h</span><span>4 h</span><span>5 h</span><span>6 h</span>
+          {Array.from({ length: 7 }, (_, index) => (
+            <span key={index}>{index === 0 ? "0" : `${Math.round((safeDurationS / 360) * index)} m`}</span>
+          ))}
         </div>
       </div>
       <label className="simulation-transport__speed">
