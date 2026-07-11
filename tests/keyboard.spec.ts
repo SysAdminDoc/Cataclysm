@@ -21,7 +21,7 @@ test.describe("Keyboard-only golden path", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
   });
 
-  test("preset → run solver → scrub → export without pointer events", async ({ page }) => {
+  test("preset → run simulation → scrub → export without pointer events", async ({ page }) => {
     await page.goto("/");
 
     // 1. Activate the Chicxulub preset card from the keyboard.

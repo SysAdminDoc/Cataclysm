@@ -753,7 +753,7 @@ export default function App() {
             </div>}
           </div>
           <div className="app__command-group app__command-group--utility" role="group" aria-label="References and preferences">
-            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="View citations">
+            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="View references">
               References
             </ToolbarButton>
             <ToolbarButton icon="settings" variant="utility" onClick={() => setShowSettings(true)} title="Settings">
@@ -805,7 +805,7 @@ export default function App() {
         )}
         <div className="footer-note">
           <span>Peer-reviewed parameters and local diagnostics.</span>
-          <button type="button" onClick={() => setShowCitations(true)}>View all citations</button>
+          <button type="button" onClick={() => setShowCitations(true)}>View all references</button>
           <button type="button" onClick={() => setShowLog(true)}>Diagnostics log</button>
         </div>
       </aside>

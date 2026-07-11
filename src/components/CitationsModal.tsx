@@ -43,7 +43,7 @@ export function CitationsModal({ presets, onClose }: Props) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
         <header className="modal__header">
-          <h2 id="citations-title">Citations & references</h2>
+          <h2 id="citations-title">References &amp; provenance</h2>
           <button onClick={onClose} aria-label="Close" className="modal__close" type="button">
             <UiIcon name="close" size={16} />
           </button>

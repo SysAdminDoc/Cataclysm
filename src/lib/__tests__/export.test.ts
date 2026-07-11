@@ -137,7 +137,7 @@ describe("suggestedFilename", () => {
 
     expect(ok).toBe(true);
     const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, string | number | null> };
-    expect(fc.properties.app_version).toBe("0.6.0");
+    expect(fc.properties.app_version).toBe("0.7.0");
     expect(fc.properties.generated_at).toBe("2026-06-28T00:00:00.000Z");
     expect(fc.properties.scenario_type).toBe("Asteroid");
     expect(fc.properties.solver_mode).toBe("SWE snapshot playback");
@@ -172,7 +172,7 @@ describe("exportCzml", () => {
       properties?: Record<string, string | null>;
     }>;
     expect(czml[0].description).toContain("Scenario type: Asteroid");
-    expect(czml[1].properties?.appVersion).toBe("0.6.0");
+    expect(czml[1].properties?.appVersion).toBe("0.7.0");
     expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
     expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
   });
@@ -248,7 +248,7 @@ describe("exportKml", () => {
     exportKml(PROVENANCE_META, [SAMPLE_POINT]);
 
     const kml = await getBlob()!.text();
-    expect(kml).toContain("Cataclysm v0.6.0");
+    expect(kml).toContain("Cataclysm v0.7.0");
     expect(kml).toContain("Scenario type: Asteroid");
     expect(kml).toContain("Solver mode: SWE snapshot playback");
     expect(kml).toContain("https://doi.org/10.1029/2021AV000627");

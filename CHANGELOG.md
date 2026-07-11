@@ -2,6 +2,40 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-07-11 — Professional simulator workspace
+
+### Changed — desktop GUI and workflow hierarchy
+- Rebuilt the application shell around four persistent simulator zones: a
+  filterable scenario library, dominant globe viewport, Setup / Results /
+  Layers inspector, and full-width simulation transport.
+- Consolidated the command bar into hazard modes, inspect/compare tools, a
+  grouped export menu, references, and settings. Exported files now use
+  `cataclysm-*` names while legacy storage/event identifiers remain compatible.
+- Added a real inspector workflow: propagation and source configuration stay in
+  Setup, engineering metrics and observations stay in Results, and live layer
+  availability is visible in Layers.
+- Reworked Settings into categorized Visuals & map, Performance, and Advanced
+  sections with a persistent save footer; refreshed first-run and simulator
+  terminology throughout the visible UI.
+- Comparison globes now split horizontally on desktop. Solver/playback status is
+  derived from application state instead of displaying a permanent ready label.
+
+### Added — visual QA and design reference
+- Added a generated professional-simulator design reference under
+  `assets/mockups/` and implemented its restrained graphite/cyan visual system,
+  dense technical typography, tabbed inspector, and transport hierarchy.
+- Added reproducible dark/light desktop screenshot capture via
+  `npm run capture:screenshots`; replaced stale README imagery with verified
+  1600×1000 captures.
+- Expanded Playwright visual coverage to nine desktop states, including both
+  themes, first run, active scenarios, solver states, Settings, References, and
+  diagnostics. Keyboard and WCAG A/AA browser paths remain covered.
+
+### Verification
+- 144 Vitest tests, 14 Playwright smoke/keyboard checks, nine desktop visual
+  regression states, lint, typecheck, production web build, Rust checks/tests,
+  dependency audit gates, and Windows installer build.
+
 ## [0.6.0] — 2026-07-10 — Cataclysm: unified multi-hazard simulator
 
 ### Project unification

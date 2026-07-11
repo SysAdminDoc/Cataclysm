@@ -39,7 +39,7 @@ const STEPS: TourStep[] = [
     pos: "top-right",
   },
   {
-    title: "3 · Run the live SWE solver",
+    title: "3 · Run wave propagation",
     body:
       "Run a 24-frame shallow-water simulation, then scrub or play the resulting propagation layer on the globe.",
     pos: "bottom-right",

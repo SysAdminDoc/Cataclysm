@@ -22,6 +22,13 @@ debris, lighting, camera, and audio. Both renderers consume the same versioned
 scenario and frame-state contract; Unreal must not reimplement source, blast,
 fallout, wave, or runup formulas.
 
+**v0.7 desktop baseline:** the analytical client now has the professional
+simulator workspace that future cinematic rendering plugs into: scenario
+library, dominant viewport, Setup / Results / Layers inspector, persistent
+transport, grouped exports, categorized settings, and reproducible dark/light
+desktop captures. The remaining rows below concern physical scene realism and
+renderer architecture rather than another shell redesign.
+
 **Visual truth rules**
 
 - Deep-ocean tsunamis remain broad and visually subtle; dramatic height,

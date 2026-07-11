@@ -11,7 +11,7 @@ async function seedAcknowledgedPreview(page: { addInitScript: (script: () => voi
   });
 }
 
-test.describe("TsunamiSimulator browser preview", () => {
+test.describe("Cataclysm browser preview", () => {
   test.beforeEach(async ({ page }) => {
     await seedAcknowledgedPreview(page);
   });

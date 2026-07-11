@@ -1,6 +1,6 @@
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -10,21 +10,17 @@
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
 
-> **Migration status (v0.6.0):** the tsunami + asteroid + earthquake + landslide source models and the ported nuclear effects engine are live and tested. The dedicated nuclear/impact **UI modes** (blast-ring overlays, WW3 exchange, fallout plume, immersive/mushroom-cloud views) are being rebuilt on the Cesium globe from NukeMap's reference code, preserved in-tree under [`legacy/`](./legacy). Until Cataclysm reaches parity and deploys, the standalone **NukeMap** and **AsteroidSimulator** apps remain live. See [ROADMAP.md](./ROADMAP.md).
+> **Migration status (v0.7.0):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Impact and nuclear modes render effect geometry on the Cesium globe; the remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
 ## Visual tour
 
-![Animated Chicxulub playback demo](./assets/screenshots/chicxulub-demo.gif)
+![Cataclysm professional simulator workspace in the dark theme](./assets/screenshots/simulator-workspace-dark.png)
 
-| Historical preset + source readout | Live SWE playback |
+| Light workspace | Categorized settings |
 |---|---|
-| ![Tohoku preset selected on the globe](./assets/screenshots/preset-tohoku.png) | ![Live shallow-water-equation playback with a wave overlay](./assets/screenshots/swe-running.png) |
-
-| Side-by-side comparison | Scenario builder + globe pick | Citations |
-|---|---|---|
-| ![Poseidon realistic versus exaggerated comparison mode](./assets/screenshots/compare-poseidon.png) | ![Custom scenario builder with globe pick mode enabled](./assets/screenshots/scenario-builder.png) | ![Citations modal with peer-reviewed references](./assets/screenshots/citations.png) |
+| ![Cataclysm simulator workspace in the light theme](./assets/screenshots/simulator-workspace-light.png) | ![Professional simulator settings with category navigation](./assets/screenshots/settings-dark.png) |
 
 ---
 
@@ -37,7 +33,7 @@ Existing tools each do one piece:
 - **[Purdue "Impact: Earth!"](https://impact.ese.ic.ac.uk/ImpactEarth/)** — accurate formulas, single-point readout, no animation.
 - **[GeoClaw](http://depts.washington.edu/clawpack/geoclaw/)** / **[COMCOT](https://www.researchgate.net/publication/374553562)** / **[MOST](https://www.pmel.noaa.gov/news-story/first-global-tsunami-simulation-chicxulub-asteroid-impact-66-million-years-ago)** — operational accuracy, Fortran/Python, no consumer UI.
 
-`TsunamiSimulator` combines them: **peer-reviewed source physics + consumer-grade interactive globe**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the app's low-confidence coarse basin/shelf bathymetry, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
+`Cataclysm` combines them: **peer-reviewed source physics + a professional interactive globe workspace**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the app's low-confidence coarse basin/shelf bathymetry, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
 
 ---
 
@@ -97,6 +93,13 @@ Existing tools each do one piece:
 
 ### UX
 
+- **Desktop-first professional simulator workspace** â€” persistent scenario
+  library, dominant globe viewport, Setup / Results / Layers inspector, and a
+  full-width simulation transport with playback speed and solver state.
+- **Focused command bar** â€” mode switching, inspect/compare tools, grouped
+  exports, references, and settings without a wall of equal-priority buttons.
+- **Scenario library filters** â€” recorded and what-if cases stay searchable,
+  while guided training remains available without crowding the primary flow.
 - **5 globe styles**: Natural Earth II (default, local-first), OpenStreetMap,
   Esri World Imagery, Cesium World Imagery, Cesium World Bathymetry.
 - **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
@@ -121,8 +124,8 @@ Existing tools each do one piece:
 ## Install
 
 Prebuilt Windows installers for the latest release are on the
-[Releases page](https://github.com/SysAdminDoc/TsunamiSimulator/releases):
-an MSI package and an NSIS setup executable. The v0.5.0 Windows installers are
+[Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
+an MSI package and an NSIS setup executable. The v0.7.0 Windows installers are
 locally built from this repository and are currently unsigned until a Windows
 code-signing certificate is configured, so Windows may show an unknown-publisher
 warning. macOS and Linux remain supported source-build targets; platform
@@ -134,12 +137,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\TsunamiSimulator_0.5.0_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.7.0_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile TsunamiSimulator_0.5.0_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.7.0_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full
@@ -169,8 +172,8 @@ The Tauri CLI ships via the `@tauri-apps/cli` npm dev dependency — no
 separate `cargo install` step.
 
 ```bash
-git clone https://github.com/SysAdminDoc/TsunamiSimulator
-cd TsunamiSimulator
+git clone https://github.com/SysAdminDoc/Cataclysm
+cd Cataclysm
 npm install
 npm run doctor             # local toolchain preflight with actionable fixes
 npm run dev                # browser preview with deterministic demo data
@@ -225,7 +228,7 @@ See [`docs/science/`](./docs/science) for formula derivations and citations.
 
 ---
 
-## Citations (anchors, full list in `docs/science/REFERENCES.bib`)
+## References (anchors, full list in `docs/science/REFERENCES.bib`)
 
 - Ward, S. N., & Asphaug, E. (2000). Asteroid impact tsunami: a probabilistic hazard assessment. *Icarus*, 145, 64–78.
 - Range, M. M., et al. (2022). The Chicxulub Impact Produced a Powerful Global Tsunami. *AGU Advances*. https://doi.org/10.1029/2021AV000627
