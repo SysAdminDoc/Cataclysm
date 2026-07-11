@@ -21,7 +21,7 @@ export type TourStep = {
 
 const STEPS: TourStep[] = [
   {
-    title: "Welcome to TsunamiSimulator",
+    title: "Welcome to Cataclysm",
     body:
       "Explore scientifically grounded tsunami source models, propagation, and coastal runup. Educational only — not for evacuation planning.",
     pos: "center",

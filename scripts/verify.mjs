@@ -216,7 +216,7 @@ function runCargo(label, args, options = {}) {
   run(label, "cargo", args, options);
 }
 
-console.log(`TsunamiSimulator local verification on ${os.platform()} ${os.release()}`);
+console.log(`Cataclysm local verification on ${os.platform()} ${os.release()}`);
 if (needsVsEnv) {
   console.log(`MSVC linker is not on PATH; using ${vsDevCmd ?? "no Visual Studio environment found"}.`);
 }

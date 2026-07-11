@@ -31,7 +31,7 @@ describe("generateTextExport", () => {
     expect(report).toContain("Chicxulub Impact");
     expect(report).toContain("Range 2022");
     expect(report).toContain("Provenance");
-    expect(report).toContain("TsunamiSimulator v0.5.0");
+    expect(report).toContain("Cataclysm v0.6.0");
     expect(report).toContain("Generated: 2026-06-28T00:00:00.000Z");
     expect(report).toContain("Scenario type: Asteroid");
     expect(report).toContain("Solver mode: SWE snapshot playback");
@@ -52,7 +52,7 @@ describe("generateTextExport", () => {
   it("handles missing initial gracefully", () => {
     const report = generateTextExport({ timeS: 0 });
     expect(report).toBeTruthy();
-    expect(report).toContain("TsunamiSimulator");
+    expect(report).toContain("Cataclysm");
   });
 
   it("includes header", () => {

@@ -84,7 +84,7 @@ export function LogViewer({ open, onClose }: Props) {
       })
       .join("\n");
     const header = [
-      `TsunamiSimulator diagnostics`,
+      `Cataclysm diagnostics`,
       `Captured: ${new Date().toISOString()}`,
       `User-Agent: ${navigator.userAgent}`,
       `Entries: ${entries.length}`,

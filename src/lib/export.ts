@@ -137,7 +137,7 @@ function stampProvenanceStrip(canvas: HTMLCanvasElement, meta: ScreenshotMeta): 
   const pad = 16;
   const maxWidth = Math.max(120, canvas.width - pad * 2);
   const citation = p.citationUrl ? p.citationUrl : p.citationReference;
-  const line1 = `TsunamiSimulator v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
+  const line1 = `Cataclysm v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
   const line2 = `${p.bathymetrySource} | ${citation} | ${p.limitation}`;
 
   ctx.save();
@@ -264,7 +264,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   ctx.font = "12px Inter, system-ui, sans-serif";
   ctx.textBaseline = "top";
   ctx.fillText(
-    `TsunamiSimulator v${provenance.appVersion} | ${provenance.generatedAt} | ${provenance.solverMode}`,
+    `Cataclysm v${provenance.appVersion} | ${provenance.generatedAt} | ${provenance.solverMode}`,
     24,
     H - FOOTER_H + 10,
   );
@@ -358,7 +358,7 @@ export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
   ctx.textAlign = "right";
   ctx.fillStyle = "#fab387";
   ctx.fillText(
-    `TsunamiSimulator v${provA.appVersion} | ${provA.limitation}`,
+    `Cataclysm v${provA.appVersion} | ${provA.limitation}`,
     W - 12, H - FOOTER_H + 8,
   );
   ctx.fillStyle = "#a6adc8";
@@ -497,7 +497,7 @@ export function exportCzml(
   const czml = [
     {
       id: "document",
-      name: meta.preset?.name ?? "TsunamiSimulator Export",
+      name: meta.preset?.name ?? "Cataclysm Export",
       version: "1.0",
       description: provenanceSummary({ ...meta, solverMode: provenance.solverMode, generatedAt: provenance.generatedAt }),
       clock: {
@@ -512,7 +512,7 @@ export function exportCzml(
       id: "wave-field",
       name: "SWE wave field",
       availability: interval,
-      description: `TsunamiSimulator ${provenance.scenarioName} - ${snapshots.length} snapshots. ${provenance.limitation}`,
+      description: `Cataclysm ${provenance.scenarioName} - ${snapshots.length} snapshots. ${provenance.limitation}`,
       properties: {
         appVersion: provenance.appVersion,
         bathymetrySource: provenance.bathymetrySource,
@@ -667,7 +667,7 @@ export function exportKml(
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-  <name>TsunamiSimulator — ${escapeXml(name)}</name>
+  <name>Cataclysm — ${escapeXml(name)}</name>
   <description>${escapeXml(provenanceText)}</description>
   <Folder>
     <name>Source</name>${sourcePlacemarks.join("")}

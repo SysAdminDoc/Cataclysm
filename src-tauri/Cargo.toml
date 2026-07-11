@@ -1,10 +1,10 @@
 [package]
-name = "tsunami-simulator"
-version = "0.5.0"
-description = "Scientifically grounded 3D-globe desktop simulator for tsunami generation, propagation, and inundation"
+name = "cataclysm"
+version = "0.6.0"
+description = "Cataclysm — scientifically grounded 3D-globe multi-hazard disaster simulator (asteroid, nuclear, earthquake, landslide, tsunami)"
 authors = ["SysAdminDoc"]
 license = "MIT"
-repository = "https://github.com/SysAdminDoc/TsunamiSimulator"
+repository = "https://github.com/SysAdminDoc/Cataclysm"
 edition = "2024"
 # Floor set by wgpu/naga 29 (MSRV 1.87) and time-core 0.1.9 (MSRV 1.88).
 rust-version = "1.88"

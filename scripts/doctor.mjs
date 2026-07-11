@@ -209,7 +209,7 @@ function runChecks(options = {}) {
     "Workspace path",
     risks.length === 0,
     risks.length === 0 ? cwd : risks.join(" "),
-    "Move the checkout to a local non-synced path such as C:\\Users\\--\\repos\\TsunamiSimulator for best results.",
+    "Move the checkout to a local non-synced path such as C:\\Users\\--\\repos\\Cataclysm for best results.",
   ));
 
   checks.push(makeCheck(
@@ -246,7 +246,7 @@ function printSummary(checks) {
 }
 
 function printDoctor() {
-  console.log(`TsunamiSimulator toolchain doctor on ${os.platform()} ${os.release()}`);
+  console.log(`Cataclysm toolchain doctor on ${os.platform()} ${os.release()}`);
   console.log(`Workspace: ${process.cwd()}`);
   console.log("");
 

@@ -38,7 +38,7 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
       <div className="lesson-worksheet" aria-hidden>
         <h1>{lesson.title}</h1>
         <p className="lesson-worksheet__meta">
-          TsunamiSimulator classroom worksheet · Name: ______________________ · Date: ____________
+          Cataclysm classroom worksheet · Name: ______________________ · Date: ____________
         </p>
         <p>{lesson.summary}</p>
         <ol>

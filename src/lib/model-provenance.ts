@@ -1,6 +1,6 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
 
-export const APP_VERSION = "0.5.0";
+export const APP_VERSION = "0.6.0";
 
 export const DEFAULT_BATHYMETRY_SOURCE =
   "Low-confidence coarse basin/shelf approximation; GEBCO_2026/TID raster sampling is not bundled; optional Cesium bathymetric terrain is visual context only.";
@@ -53,7 +53,7 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
   const p = buildModelProvenance(input);
   const citation = p.citationUrl ? `${p.citationReference} (${p.citationUrl})` : p.citationReference;
   return [
-    `TsunamiSimulator v${p.appVersion}`,
+    `Cataclysm v${p.appVersion}`,
     `Generated: ${p.generatedAt}`,
     `Scenario: ${p.scenarioName}`,
     `Scenario type: ${p.scenarioType}`,

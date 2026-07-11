@@ -40,7 +40,7 @@ export function FirstRunDisclaimer() {
         </header>
         <div className="modal__body">
           <p className="notice-lede">
-            TsunamiSimulator is an exploratory model for peer-reviewed source
+            Cataclysm is an exploratory model for peer-reviewed source
             physics, wave propagation, and first-order coastal effects. It must
             not guide evacuation, routing, forecasting, insurance, or operations.
           </p>

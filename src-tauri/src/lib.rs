@@ -1,4 +1,4 @@
-//! TsunamiSimulator backend.
+//! Cataclysm backend.
 //!
 //! Physics lives in `physics::*`. Tauri command handlers are in `commands`.
 //! Historical event registry lives in `presets`.

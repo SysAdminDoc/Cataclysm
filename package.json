@@ -1,14 +1,14 @@
 {
-  "name": "tsunami-simulator",
+  "name": "cataclysm",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
-  "description": "Scientifically grounded 3D-globe desktop simulator for tsunami generation, propagation, and inundation from asteroid impacts, nuclear detonations, earthquakes, and landslides.",
+  "description": "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator: asteroid impacts, nuclear detonations, earthquakes, landslides, and the tsunamis they generate.",
   "license": "MIT",
   "author": "SysAdminDoc",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SysAdminDoc/TsunamiSimulator"
+    "url": "https://github.com/SysAdminDoc/Cataclysm"
   },
   "scripts": {
     "dev": "vite",

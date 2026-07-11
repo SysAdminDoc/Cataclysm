@@ -421,7 +421,7 @@ export default function App() {
           <span className="app__brand-mark" aria-hidden>
             TS
           </span>
-          <h1 className="app__title">TsunamiSimulator</h1>
+          <h1 className="app__title">Cataclysm</h1>
           <span className="app__version">v{APP_VERSION}</span>
         </div>
         <div className="app__warning">

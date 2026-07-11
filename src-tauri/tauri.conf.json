@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
-  "productName": "TsunamiSimulator",
-  "version": "0.5.0",
-  "identifier": "com.sysadmindoc.tsunamisimulator",
+  "productName": "Cataclysm",
+  "version": "0.6.0",
+  "identifier": "com.sysadmindoc.cataclysm",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "TsunamiSimulator",
+        "title": "Cataclysm",
         "width": 1600,
         "height": 1000,
         "minWidth": 1200,
@@ -39,7 +39,7 @@
       "icons/icon.ico"
     ],
     "category": "Education",
-    "shortDescription": "Tsunami simulator for asteroid impacts, nuclear detonations, earthquakes, and landslides",
-    "longDescription": "A scientifically grounded 3D-globe desktop application for simulating tsunami generation, propagation, and coastal inundation. Uses Ward & Asphaug analytical formulas for asteroid impacts, Glasstone-Dolan + Le Méhauté for nuclear sources, Fritz-Hager for landslides, and Synolakis for coastal runup. Historical presets include Chicxulub, Tōhoku 2011, Indian Ocean 2004, and Lituya Bay 1958."
+    "shortDescription": "Multi-hazard disaster simulator: asteroid impacts, nuclear detonations, earthquakes, landslides, tsunamis",
+    "longDescription": "Cataclysm is a scientifically grounded 3D-globe desktop application for simulating catastrophic events and their effects. It models asteroid entry, airburst, cratering, thermal and blast effects (Holsapple, Collins et al.); nuclear weapon fireball, overpressure, thermal, radiation, EMP, fallout, and casualties (Glasstone-Dolan, NWFAQ); seismic and landslide sources; and the tsunamis these events generate (Ward & Asphaug, Le Méhauté, Fritz-Hager, Synolakis). Historical presets span Chicxulub, Tunguska, Chelyabinsk, Hiroshima, Tsar Bomba, Tōhoku 2011, and Lituya Bay 1958."
   }
 }
