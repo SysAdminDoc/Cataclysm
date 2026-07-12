@@ -421,9 +421,10 @@ export type SavedScenario = {
 
 /**
  * Re-validate persisted scenario records on read, mirroring the write-path
- * trust boundary in {@link saveScenario}. A tampered or corrupted store, or a
- * legacy record from an older schema, is dropped here rather than flowing
- * unvalidated into the UI. `data` is normalized to the freshly-parsed payload.
+ * trust boundary in {@link saveScenario}. A tampered or corrupted record, or one
+ * whose payload no longer parses, is dropped here rather than flowing
+ * unvalidated into the UI. Valid records keep their original `data` so that
+ * downstream schema-migration detection (legacy vs current) still works.
  */
 function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
   if (!Array.isArray(raw)) return [];
@@ -437,7 +438,7 @@ function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
     if (!name || !savedAt) { dropped++; continue; }
     const parsed = parseScenarioPayload(rec.data);
     if (!parsed.ok) { dropped++; continue; }
-    clean.push({ name, savedAt, data: parsed.payload });
+    clean.push({ name, savedAt, data: rec.data });
   }
   if (dropped > 0) {
     console.warn(`[settings] dropped ${dropped} invalid saved scenario(s) on read`);
