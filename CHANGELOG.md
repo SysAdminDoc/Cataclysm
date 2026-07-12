@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added a Rust-authoritative run-quality record with finite-field, minimum
+  total-depth, characteristic-CFL, accepted/rejected-step, and sponge-adjusted
+  mass/energy drift metrics. CPU candidates now roll back on hard violations;
+  invalid runs clear playback and are blocked from scientific exports, while
+  warning records remain visible and are stamped into provenance and CSV data.
 - Added a versioned scientific input contract shared by all four tsunami source
   models and both direct-hazard models. TypeScript, UI controls, Rust commands,
   defaults, enum choices, inclusive bounds, and manual ranges now derive from

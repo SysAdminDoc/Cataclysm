@@ -419,6 +419,20 @@ export function simulateDemoGrid(
     nx: 128,
     ny: 128,
     used_gpu: false,
+    run_quality: {
+      status: "pass",
+      finite_fields: true,
+      minimum_total_depth_m: 0,
+      cfl_number: 0,
+      cfl_margin: 1,
+      accepted_steps: nSnapshots - 1,
+      rejected_steps: 0,
+      mass_drift_pct: 0,
+      energy_drift_pct: 0,
+      sponge_width_cells: 0,
+      warnings: ["Browser preview uses illustrative fields; desktop Rust runs publish numerical-integrity metrics."],
+      failure: null,
+    },
   };
 }
 

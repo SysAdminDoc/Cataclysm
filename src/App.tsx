@@ -326,6 +326,8 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [sweMaxField, setSweMaxField] = useState<import("./types/scenario").MaxFieldProduct | null>(null);
+  const [sweRunQualityA, setSweRunQualityA] = useState<import("./types/scenario").RunQualityRecord | null>(null);
+  const [sweRunQualityB, setSweRunQualityB] = useState<import("./types/scenario").RunQualityRecord | null>(null);
   const [sweRenderFrameA, setSweRenderFrameA] = useState<RenderFrameProvenance | null>(null);
   const [sweRenderFrameB, setSweRenderFrameB] = useState<RenderFrameProvenance | null>(null);
   const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
@@ -859,6 +861,7 @@ export default function App() {
       ? "Shallow-water-equation snapshot playback"
       : "Analytical source geometry and coastal runup sampling",
     renderFrame: inHazardMode ? directRenderProvenance : sweRenderFrameA,
+    runQuality: sweRunQualityA,
   });
 
   const exportMetaB = (): ScreenshotMeta => ({
@@ -870,6 +873,7 @@ export default function App() {
       ? "Shallow-water-equation snapshot playback"
       : "Analytical source geometry and coastal runup sampling",
     renderFrame: sweRenderFrameB,
+    runQuality: sweRunQualityB,
   });
 
   async function handlePickGlobe(lat: number, lon: number) {
@@ -1276,11 +1280,11 @@ export default function App() {
             <ToolbarButton
               icon="text"
               onClick={() => {
-                downloadTextExport({
+                const ok = downloadTextExport({
                   ...exportMetaA(),
                   runupResults: slotA.runupResults,
                 });
-                showToast("Saved text results.", "info");
+                showToast(ok ? "Saved text results." : "Export blocked by numerical-integrity checks.", ok ? "info" : "error");
               }}
               title="Export scenario parameters and runup results as a screen-reader-friendly text file"
               disabled={inHazardMode || !slotA.initial}
@@ -1634,6 +1638,7 @@ export default function App() {
             pendingGauge={pendingGauge}
             dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
             onMaxField={setSweMaxField}
+            onRunQuality={setSweRunQualityA}
             onIsochrones={setSweIsochrones}
             onRenderFrame={setSweRenderFrameA}
             playbackTimeS={timeS}
@@ -1643,7 +1648,7 @@ export default function App() {
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
           <div hidden={!compareMode} aria-label="Comparison slot B solver">
-            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
           </div>
           <div hidden={compareMode || !customEditorOpen || workspaceMode === "simple"}>
             <ScenarioBuilder

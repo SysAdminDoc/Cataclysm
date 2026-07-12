@@ -1,10 +1,34 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, preflightRunQuality, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe("run-quality export preflight", () => {
+  it("blocks invalid runs while allowing warning-stamped output", () => {
+    const quality = {
+      status: "warning" as const,
+      finite_fields: true,
+      minimum_total_depth_m: 1,
+      cfl_number: 0.8,
+      cfl_margin: 0.2,
+      accepted_steps: 10,
+      rejected_steps: 0,
+      mass_drift_pct: 6,
+      energy_drift_pct: -2,
+      sponge_width_cells: 10,
+      warnings: ["mass drift"],
+      failure: null,
+    };
+    expect(preflightRunQuality({ runQuality: quality })).toEqual({ ok: true });
+    expect(preflightRunQuality({ runQuality: { ...quality, status: "failed", failure: "non-finite field" } })).toEqual({
+      ok: false,
+      reason: "non-finite field",
+    });
+  });
 });
 
 function mockDownload() {
@@ -340,7 +364,7 @@ describe("exportGaugeCsv", () => {
 
     const csv = await getBlob()!.text();
     const lines = csv.trim().split("\n");
-    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis");
+    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct");
     expect(lines).toHaveLength(4);
     expect(lines[1]).toContain("Tokyo Bay");
     expect(lines[1]).toContain("35.65");

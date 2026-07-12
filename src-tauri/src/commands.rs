@@ -22,6 +22,7 @@ use crate::physics::{
     solver::{
         Colormap, DiagnosticSink, GridGaugePoint, GridSnapshot, SwGrid, TimeStepper,
         max_field::{MaxFieldAccumulator, MaxFieldProduct},
+        quality::{QualityBaseline, RunQualityRecord},
         run_simulation_with_gauge_samples,
     },
 };
@@ -30,6 +31,14 @@ use tauri::{AppHandle, Emitter, ipc::Response};
 
 static SIM_CANCEL_TOKENS: LazyLock<Mutex<HashMap<String, Weak<AtomicBool>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+static LAST_RUN_QUALITY: LazyLock<Mutex<Option<RunQualityRecord>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+fn publish_run_quality(record: &RunQualityRecord) {
+    if let Ok(mut last) = LAST_RUN_QUALITY.lock() {
+        *last = Some(record.clone());
+    }
+}
 
 #[derive(Clone, Serialize)]
 struct SolverDiagnosticPayload {
@@ -874,6 +883,7 @@ pub struct SimulateGridResponse {
     /// Max-field products (peak |η|, time of maximum, energy proxy,
     /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
+    pub run_quality: RunQualityRecord,
 }
 
 /// Hard cap on the SWE grid size — protects us against runaway requests.
@@ -1104,6 +1114,15 @@ pub async fn simulate_grid(
         // leapfrog kernel; nonlinear advection (F4-02) is CPU-only
         // for now, so when the user has selected a nonlinear-class
         // scenario we stay on CPU even with the feature flag on.
+        let quality_baseline = QualityBaseline::capture(
+            &grid,
+            crate::physics::solver::BoundaryMode::default_sponge(),
+        );
+        let admission_quality = quality_baseline.assess(&grid, dt);
+        if let Some(failure) = &admission_quality.failure {
+            publish_run_quality(&admission_quality);
+            return Err(format!("simulation rejected by numerical-integrity admission gate: {failure}"));
+        }
         let (snapshots, used_gpu, max_field) = run_simulation_dispatch(
             &mut grid,
             dt,
@@ -1114,6 +1133,12 @@ pub async fn simulate_grid(
             &req.gauge_points,
             MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m),
         );
+        let run_quality = quality_baseline.assess(&grid, dt);
+        publish_run_quality(&run_quality);
+        if let Some(failure) = &run_quality.failure {
+            diagnostics(&format!("numerical-integrity violation: {failure}"));
+            return Err(format!("simulation rejected by numerical-integrity gate: {failure}"));
+        }
         Ok(SimulateGridResponse {
             snapshots,
             dt_s: dt,
@@ -1121,6 +1146,7 @@ pub async fn simulate_grid(
             ny,
             used_gpu,
             max_field,
+            run_quality,
         })
         })();
         unregister_simulation_cancel(&worker_run_id, &cancel);
@@ -1149,6 +1175,7 @@ pub struct SimulateGridStreamMeta {
     /// the legacy PNG snapshots. `None` means no render channel was requested.
     pub render_scenario_id: Option<String>,
     pub render_frame_count: u64,
+    pub run_quality: RunQualityRecord,
 }
 
 #[tauri::command]
@@ -1231,6 +1258,15 @@ pub async fn simulate_grid_streaming(
             let nx = grid.nx as u32;
             let ny = grid.ny as u32;
             let n = req.n_snapshots.max(2);
+            let quality_baseline = QualityBaseline::capture(
+                &grid,
+                crate::physics::solver::BoundaryMode::default_sponge(),
+            );
+            let admission_quality = quality_baseline.assess(&grid, dt);
+            if let Some(failure) = &admission_quality.failure {
+                publish_run_quality(&admission_quality);
+                return Err(format!("simulation rejected by numerical-integrity admission gate: {failure}"));
+            }
 
             let canonical_scenario = serde_json::to_vec(&req)
                 .map_err(|error| format!("failed to canonicalize render scenario: {error}"))?;
@@ -1295,8 +1331,15 @@ pub async fn simulate_grid_streaming(
                 gauges: &req.gauge_points,
                 max_field: &max_field_acc,
                 render: Some(&render_stream),
+                quality_baseline: &quality_baseline,
             };
-            let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx);
+            let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx)?;
+            let run_quality = quality_baseline.assess(&grid, dt);
+            publish_run_quality(&run_quality);
+            if let Some(failure) = &run_quality.failure {
+                diagnostics(&format!("numerical-integrity violation: {failure}"));
+                return Err(format!("simulation rejected by numerical-integrity gate: {failure}"));
+            }
             render_stream.finish(&grid)?;
             let max_field = max_field_acc
                 .into_inner()
@@ -1312,6 +1355,7 @@ pub async fn simulate_grid_streaming(
                 max_field: Some(max_field),
                 render_scenario_id: Some(scenario_id),
                 render_frame_count: render_stream.frame_count(),
+                run_quality,
             })
         })();
         unregister_simulation_cancel(&worker_run_id, &cancel);
@@ -1407,6 +1451,7 @@ pub struct DiagnosticsBundle {
     pub solver: String,
     pub geodesy: crate::data::geodesy::GeodesyDiagnostics,
     pub surface_mask: crate::data::surface::SurfaceMaskDiagnostics,
+    pub last_run_quality: Option<RunQualityRecord>,
 }
 
 #[tauri::command]
@@ -1437,6 +1482,7 @@ pub fn diagnostics_bundle() -> DiagnosticsBundle {
         gpu_adapter,
         geodesy: crate::data::geodesy::diagnostics(),
         surface_mask: crate::data::surface::diagnostics(),
+        last_run_quality: LAST_RUN_QUALITY.lock().ok().and_then(|quality| quality.clone()),
     }
 }
 
@@ -1581,6 +1627,7 @@ struct StreamSimulationContext<'a> {
     /// RefCell because the context is shared immutably down the dispatch fns.
     max_field: &'a std::cell::RefCell<MaxFieldAccumulator>,
     render: Option<&'a RenderStreamContext<'a>>,
+    quality_baseline: &'a QualityBaseline,
 }
 
 fn stream_simulation_cpu(
@@ -1589,8 +1636,8 @@ fn stream_simulation_cpu(
     n: usize,
     total_steps: usize,
     ctx: &StreamSimulationContext<'_>,
-) {
-    stream_simulation_cpu_from(grid, dt_s, n, total_steps, 1, None, ctx);
+) -> Result<(), String> {
+    stream_simulation_cpu_from(grid, dt_s, n, total_steps, 1, None, ctx)
 }
 
 fn scheduled_stream_steps(total_steps: usize, snapshots: usize, snapshot_index: usize) -> usize {
@@ -1610,7 +1657,7 @@ fn stream_simulation_cpu_from(
     start_k: usize,
     first_take_remaining: Option<usize>,
     ctx: &StreamSimulationContext<'_>,
-) {
+) -> Result<(), String> {
     let stepper = TimeStepper::new(dt_s);
     for k in start_k..n {
         if ctx.cancel.load(Ordering::Acquire) {
@@ -1621,10 +1668,20 @@ fn stream_simulation_cpu_from(
         } else {
             scheduled_stream_steps(total_steps, n, k)
         };
-        if !stepper.step_cancellable_observed(grid, take, Some(ctx.cancel), &mut |state| {
-            ctx.max_field.borrow_mut().observe(state);
-        }) {
-            break;
+        match stepper.step_cancellable_checked(
+            grid,
+            take,
+            Some(ctx.cancel),
+            ctx.quality_baseline,
+            &mut |state| ctx.max_field.borrow_mut().observe(state),
+        ) {
+            Ok(true) => {}
+            Ok(false) => break,
+            Err(quality) => {
+                publish_run_quality(&quality);
+                let failure = quality.failure.clone().unwrap_or_else(|| "unknown numerical-integrity violation".to_string());
+                return Err(format!("simulation rejected at step {}: {failure}", quality.accepted_steps));
+            }
         }
         if ctx
             .on_snapshot
@@ -1641,6 +1698,7 @@ fn stream_simulation_cpu_from(
             break;
         }
     }
+    Ok(())
 }
 
 #[cfg(feature = "gpu")]
@@ -1650,7 +1708,7 @@ fn stream_simulation_dispatch(
     n: usize,
     total_steps: usize,
     ctx: &StreamSimulationContext<'_>,
-) -> bool {
+) -> Result<bool, String> {
     use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
 
@@ -1674,7 +1732,7 @@ fn stream_simulation_dispatch(
             let mut completed = 0usize;
             for _ in 0..take {
                 if ctx.cancel.load(Ordering::Acquire) {
-                    return true;
+                    return Ok(true);
                 }
                 if !gpu.step_with_diagnostics(grid, 1, ctx.diagnostics) {
                     let remaining = take.saturating_sub(completed);
@@ -1686,8 +1744,13 @@ fn stream_simulation_dispatch(
                         k,
                         Some(remaining),
                         ctx,
-                    );
-                    return false;
+                    )?;
+                    return Ok(false);
+                }
+                let quality = ctx.quality_baseline.assess(grid, dt_s);
+                if let Some(failure) = quality.failure.clone() {
+                    publish_run_quality(&quality);
+                    return Err(format!("GPU simulation rejected at step {}: {failure}", quality.accepted_steps));
                 }
                 completed = completed.saturating_add(1);
                 ctx.max_field.borrow_mut().observe(grid);
@@ -1707,10 +1770,10 @@ fn stream_simulation_dispatch(
                 break;
             }
         }
-        return true;
+        return Ok(true);
     }
-    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx);
-    false
+    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx)?;
+    Ok(false)
 }
 
 #[cfg(not(feature = "gpu"))]
@@ -1720,9 +1783,9 @@ fn stream_simulation_dispatch(
     n: usize,
     total_steps: usize,
     ctx: &StreamSimulationContext<'_>,
-) -> bool {
-    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx);
-    false
+) -> Result<bool, String> {
+    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx)?;
+    Ok(false)
 }
 
 #[cfg(feature = "gpu")]

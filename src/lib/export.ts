@@ -43,6 +43,12 @@ export type ScreenshotMeta = ModelProvenanceInput & {
   timeS: number;
 };
 
+export function preflightRunQuality(meta: ModelProvenanceInput): { ok: true } | { ok: false; reason: string } {
+  const quality = meta.runQuality;
+  if (!quality || quality.status !== "failed") return { ok: true };
+  return { ok: false, reason: quality.failure ?? "Run failed numerical-integrity checks" };
+}
+
 function timestampSuffix(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -195,6 +201,7 @@ function copyGlobeWithProvenance(
 
 /** Full export flow — capture + download. Returns true if a screenshot was produced. */
 export function exportGlobePng(meta: ScreenshotMeta): boolean {
+  if (!preflightRunQuality(meta).ok) return false;
   const preflight = preflightMediaExport("static_capture");
   if (!preflight) return false;
   const sourceCanvas = findGlobeCanvas();
@@ -212,6 +219,7 @@ export function exportGlobePng(meta: ScreenshotMeta): boolean {
  *  (no external library needed). Includes a footer "Educational only —
  *  not for evacuation" trust-signal to preserve product framing. */
 export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
+  if (!preflightRunQuality(meta).ok) return false;
   const preflight = preflightMediaExport("static_capture");
   if (!preflight) return false;
   const sourceCanvas = findGlobeCanvas();
@@ -331,6 +339,7 @@ export type ComparisonExportMeta = {
 };
 
 export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
+  if (!preflightRunQuality(opts.metaA).ok || !preflightRunQuality(opts.metaB).ok) return false;
   const preflight = preflightMediaExport("static_capture");
   if (!preflight) return false;
   const canvases = findAllGlobeCanvases();
@@ -438,6 +447,8 @@ export async function exportGlobeVideo(
   meta: ScreenshotMeta,
   opts: VideoExportOptions = {},
 ): Promise<{ ok: true; ext: "webm" | "mp4"; size: number } | { ok: false; reason: string }> {
+  const qualityPreflight = preflightRunQuality(meta);
+  if (!qualityPreflight.ok) return { ok: false, reason: qualityPreflight.reason };
   const preflight = preflightMediaExport("video_capture");
   if (!preflight) {
     return { ok: false, reason: "Earth asset rights or live attribution preflight blocked video export" };
@@ -504,6 +515,7 @@ export function exportCzml(
   meta: ScreenshotMeta,
   snapshots: import("../types/scenario").GridSnapshot[],
 ): boolean {
+  if (!preflightRunQuality(meta).ok) return false;
   if (!snapshots.length) return false;
   const provenance = buildModelProvenance({
     ...meta,
@@ -609,6 +621,7 @@ export function exportGeoJson(
   meta: ScreenshotMeta,
   isochrones?: import("../types/scenario").Isochrone[] | null,
 ): boolean {
+  if (!preflightRunQuality(meta).ok) return false;
   if (!points.length && !(isochrones && isochrones.length)) return false;
   const provenance = buildModelProvenance(meta);
 
@@ -679,6 +692,7 @@ export function exportKml(
   meta: ScreenshotMeta,
   runupPoints: RunupPoint[],
 ): boolean {
+  if (!preflightRunQuality(meta).ok) return false;
   const provenance = buildModelProvenance(meta);
   const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
   const name = provenance.scenarioName;
@@ -768,10 +782,12 @@ export function exportGaugeCsv(
   series: import("../types/scenario").GaugeTimeSeries[],
   solverMode: string,
   bathymetrySource: string,
+  runQuality?: import("../types/scenario").RunQualityRecord | null,
 ): boolean {
   if (series.length === 0) return false;
+  if (!preflightRunQuality({ runQuality }).ok) return false;
 
-  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis";
+  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct";
   const rows: string[] = [header];
   for (const ts of series) {
     const name = encodeSpreadsheetSafeCsvText(ts.gauge.name);
@@ -782,7 +798,7 @@ export function exportGaugeCsv(
     for (const s of ts.samples) {
       rows.push(
         `${name},${lat},${lon},${s.time_s.toFixed(1)},${s.eta_m.toFixed(4)},${mode},${bathy},` +
-          "EPSG:4326,idealized_mean_sea_level,positive_up",
+          `EPSG:4326,idealized_mean_sea_level,positive_up,${runQuality?.status ?? "unavailable"},${runQuality?.cfl_number ?? ""},${runQuality?.mass_drift_pct ?? ""},${runQuality?.energy_drift_pct ?? ""}`,
       );
     }
   }

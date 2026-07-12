@@ -1,4 +1,4 @@
-import type { InitialDisplacement, Preset } from "../types/scenario";
+import type { InitialDisplacement, Preset, RunQualityRecord } from "../types/scenario";
 import { EARTH_ASSET_REGISTRY_VERSION, getActiveEarthSession } from "./earth-assets";
 import {
   IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
@@ -40,6 +40,7 @@ export type ModelProvenanceInput = {
   solverAssetIds?: string[];
   visualAssetIds?: string[];
   renderFrame?: RenderFrameProvenance | null;
+  runQuality?: RunQualityRecord | null;
 };
 
 export type ModelProvenance = {
@@ -59,6 +60,7 @@ export type ModelProvenance = {
   solverAssetIds: string[];
   visualAssetIds: string[];
   renderFrame: RenderFrameProvenance | null;
+  runQuality: RunQualityRecord | null;
 };
 
 export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenance {
@@ -85,6 +87,7 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
           fieldSha256: { ...input.renderFrame.fieldSha256 },
         }
       : null,
+    runQuality: input.runQuality ? { ...input.runQuality, warnings: [...input.runQuality.warnings] } : null,
   };
 }
 
@@ -117,6 +120,14 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
       `Render fields: ${Object.entries(p.renderFrame.fieldSha256)
         .map(([id, sha256]) => `${id}=${sha256}`)
         .join(", ")}`,
+    );
+  }
+  if (p.runQuality) {
+    lines.splice(
+      lines.length - 1,
+      0,
+      `Run quality: ${p.runQuality.status}; finite=${p.runQuality.finite_fields}; CFL=${p.runQuality.cfl_number.toFixed(4)}; minimum depth=${p.runQuality.minimum_total_depth_m.toFixed(4)} m; mass drift=${p.runQuality.mass_drift_pct.toFixed(3)}%; energy drift=${p.runQuality.energy_drift_pct.toFixed(3)}%; accepted/rejected=${p.runQuality.accepted_steps}/${p.runQuality.rejected_steps}`,
+      ...p.runQuality.warnings.map((warning) => `Run quality warning: ${warning}`),
     );
   }
   return lines.join("\n");

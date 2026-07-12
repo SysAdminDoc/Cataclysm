@@ -139,6 +139,21 @@ export type MaxFieldProduct = {
   isochrones: Isochrone[];
 };
 
+export type RunQualityRecord = {
+  status: "pass" | "warning" | "failed";
+  finite_fields: boolean;
+  minimum_total_depth_m: number;
+  cfl_number: number;
+  cfl_margin: number;
+  accepted_steps: number;
+  rejected_steps: number;
+  mass_drift_pct: number;
+  energy_drift_pct: number;
+  sponge_width_cells: number;
+  warnings: string[];
+  failure: string | null;
+};
+
 export type SimulateGridResponse = {
   snapshots: GridSnapshot[];
   dt_s: number;
@@ -148,6 +163,7 @@ export type SimulateGridResponse = {
    *  Always false on builds compiled without `--features gpu`. */
   used_gpu?: boolean;
   max_field?: MaxFieldProduct | null;
+  run_quality: RunQualityRecord;
 };
 
 export type Gauge = {

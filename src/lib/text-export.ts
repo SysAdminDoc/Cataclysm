@@ -1,6 +1,6 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { buildModelProvenance, provenanceSummary, type ModelProvenanceInput } from "./model-provenance";
-import { safeFilenamePart } from "./export";
+import { preflightRunQuality, safeFilenamePart } from "./export";
 import type { RunupAtPointResult } from "./tauri";
 
 export type TextExportData = ModelProvenanceInput & {
@@ -110,7 +110,8 @@ function padRow(cols: string[]): string {
   return cols.map((c, i) => c.padEnd(widths[i] ?? 10)).join("  ");
 }
 
-export function downloadTextExport(data: TextExportData): void {
+export function downloadTextExport(data: TextExportData): boolean {
+  if (!preflightRunQuality(data).ok) return false;
   const text = generateTextExport(data);
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -122,4 +123,5 @@ export function downloadTextExport(data: TextExportData): void {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5_000);
+  return true;
 }

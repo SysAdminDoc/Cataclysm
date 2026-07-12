@@ -50,6 +50,7 @@ use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
 pub mod gpu;
 pub mod kernels;
 pub mod max_field;
+pub mod quality;
 
 pub type DiagnosticSink<'a> = dyn Fn(&str) + Send + Sync + 'a;
 
@@ -692,6 +693,39 @@ impl TimeStepper {
             observe(grid);
         }
         true
+    }
+
+    /// Advance only numerically valid candidates. A violating candidate is
+    /// rolled back using the old fields retained in the scratch buffers.
+    pub fn step_cancellable_checked(
+        &self,
+        grid: &mut SwGrid,
+        n_steps: usize,
+        cancel: Option<&AtomicBool>,
+        baseline: &quality::QualityBaseline,
+        observe: &mut dyn FnMut(&SwGrid),
+    ) -> Result<bool, quality::RunQualityRecord> {
+        let n = grid.nx * grid.ny;
+        let mut scratch = SolverScratch::new(n);
+        for _ in 0..n_steps {
+            if cancel.is_some_and(|c| c.load(Ordering::Acquire)) {
+                return Ok(false);
+            }
+            self.step_one_with_scratch(grid, &mut scratch);
+            let mut quality = baseline.assess(grid, self.dt_s);
+            if quality.failure.is_some() {
+                std::mem::swap(&mut grid.eta_m, &mut scratch.eta);
+                std::mem::swap(&mut grid.u_ms, &mut scratch.u);
+                std::mem::swap(&mut grid.v_ms, &mut scratch.v);
+                grid.t_s -= self.dt_s;
+                grid.step_index = grid.step_index.saturating_sub(1);
+                quality.accepted_steps = grid.step_index;
+                quality.rejected_steps = 1;
+                return Err(quality);
+            }
+            observe(grid);
+        }
+        Ok(true)
     }
 
     /// Single explicit leapfrog step with freshly allocated scratch buffers.

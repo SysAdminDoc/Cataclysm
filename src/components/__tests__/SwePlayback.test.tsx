@@ -57,6 +57,21 @@ const SNAPSHOTS: GridSnapshot[] = [
   },
 ];
 
+const RUN_QUALITY = {
+  status: "pass" as const,
+  finite_fields: true,
+  minimum_total_depth_m: 1,
+  cfl_number: 0.8,
+  cfl_margin: 0.2,
+  accepted_steps: 30,
+  rejected_steps: 0,
+  mass_drift_pct: 0.1,
+  energy_drift_pct: -0.2,
+  sponge_width_cells: 10,
+  warnings: [],
+  failure: null,
+};
+
 describe("SwePlayback", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -69,7 +84,7 @@ describe("SwePlayback", () => {
   it("streams progress and hands snapshots to the parent", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
-      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean }) => void)
+      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean; run_quality: typeof RUN_QUALITY }) => void)
       | null = null;
     tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
@@ -98,7 +113,7 @@ describe("SwePlayback", () => {
 
     act(() => {
       pushSnapshot?.(SNAPSHOTS[1]);
-      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false });
+      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false, run_quality: RUN_QUALITY });
     });
 
     expect(await screen.findByText(/Frame\s+1\/2/i)).toBeInTheDocument();
@@ -131,7 +146,7 @@ describe("SwePlayback", () => {
   it("requests backend gauge samples and exports sampled series", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
-      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean }) => void)
+      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean; run_quality: typeof RUN_QUALITY }) => void)
       | null = null;
     tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
@@ -166,7 +181,7 @@ describe("SwePlayback", () => {
         ...SNAPSHOTS[1],
         gauge_samples: [{ id: "gauge-1", eta_m: 0.25 }],
       });
-      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false });
+      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false, run_quality: RUN_QUALITY });
     });
 
     await user.click(await screen.findByRole("button", { name: "Export gauges CSV" }));
@@ -182,6 +197,7 @@ describe("SwePlayback", () => {
       ],
       "Backend SWE solver",
       "Coarse basin/shelf",
+      RUN_QUALITY,
     );
   });
 
@@ -189,7 +205,7 @@ describe("SwePlayback", () => {
     tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       onSnapshot(SNAPSHOTS[0]);
       onSnapshot(SNAPSHOTS[1]);
-      return { dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false };
+      return { dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false, run_quality: RUN_QUALITY };
     });
     const user = userEvent.setup();
     const { rerender } = render(<SwePlayback initial={INITIAL} />);
@@ -213,6 +229,7 @@ describe("SwePlayback", () => {
         used_gpu: true,
         n_snapshots: 2,
         cancelled: false,
+        run_quality: RUN_QUALITY,
       };
     });
 
@@ -239,6 +256,7 @@ describe("SwePlayback", () => {
       used_gpu: false,
       n_snapshots: 0,
       cancelled: false,
+      run_quality: RUN_QUALITY,
     });
     await user.click(screen.getByRole("button", { name: "Retry simulation" }));
     await waitFor(() => expect(tauriApi.simulateGridStreaming).toHaveBeenCalledTimes(2));

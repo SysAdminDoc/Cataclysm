@@ -4,7 +4,7 @@ import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportGaugeCsv } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, RunQualityRecord } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
@@ -20,6 +20,7 @@ type Props = {
   /** Fires when a completed run yields max-field products (or null on
    *  reset). App uses this for GeoJSON export enrichment. */
   onMaxField?: (product: MaxFieldProduct | null) => void;
+  onRunQuality?: (quality: RunQualityRecord | null) => void;
   /** Fires with the arrival-time contours when the "Arrivals" toggle is on
    *  (null when off or reset). App routes these to the globe layer. */
   onIsochrones?: (isochrones: import("../types/scenario").Isochrone[] | null) => void;
@@ -106,7 +107,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -119,7 +120,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   // capture; still well within the solver's cell/step budget for a 1-hour run.
   const [cellsPerDeg, setCellsPerDeg] = useState(8);
   const [streamProgress, setStreamProgress] = useState(0);
-  const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean } | null>(null);
+  const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean; quality: RunQualityRecord } | null>(null);
   const [maxField, setMaxField] = useState<MaxFieldProduct | null>(null);
   const [overlay, setOverlay] = useState<OverlayChoice>("wave");
   const [showArrivals, setShowArrivals] = useState(false);
@@ -174,9 +175,10 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
       onMaxField?.(null);
+      onRunQuality?.(null);
       onRenderFrame?.(null);
     }
-  }, [initial, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
+  }, [initial, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame]);
 
   // Publish the arrival contours to the globe when toggled.
   useEffect(() => {
@@ -284,8 +286,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     if (gaugeSeries.length === 0) return;
     const mode = isTauri() ? "Backend SWE solver" : "Browser preview (approximate)";
     const bathy = useBathy ? "Coarse basin/shelf" : "Uniform depth";
-    exportGaugeCsv(gaugeSeries, mode, bathy);
-  }, [gaugeSeries, useBathy]);
+    exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality);
+  }, [diag?.quality, gaugeSeries, useBathy]);
 
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
@@ -307,8 +309,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     onSnapshot?.(null);
     onSnapshotsReady?.(null);
     onMaxField?.(null);
+    onRunQuality?.(null);
     onRenderFrame?.(null);
-  }, [onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
+  }, [onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame]);
 
   const run = useCallback(async (autoPlay = false) => {
     if (!initial) return;
@@ -334,6 +337,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     onSnapshot?.(null);
     onSnapshotsReady?.(null);
     onMaxField?.(null);
+    onRunQuality?.(null);
     try {
       const halfDeg = Math.min(
         25,
@@ -404,7 +408,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           setStatus("idle");
           return;
         }
-        setDiag({ dt_s: meta.dt_s, nx: meta.nx, ny: meta.ny, used_gpu: meta.used_gpu });
+        setDiag({ dt_s: meta.dt_s, nx: meta.nx, ny: meta.ny, used_gpu: meta.used_gpu, quality: meta.run_quality });
+        onRunQuality?.(meta.run_quality);
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(streamSnaps);
@@ -420,7 +425,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         });
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
         setSnapshots(resp.snapshots);
-        setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false });
+        setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false, quality: resp.run_quality });
+        onRunQuality?.(resp.run_quality);
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(resp.snapshots);
@@ -431,9 +437,16 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       runIdRef.current = null;
       console.error("simulate_grid failed", err);
       setErrMsg(String(err));
+      setSnapshots(null);
+      setMaxField(null);
+      setDiag(null);
+      onSnapshot?.(null);
+      onSnapshotsReady?.(null);
+      onMaxField?.(null);
+      onRunQuality?.(null);
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame, playbackTimeS]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame, playbackTimeS]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -616,8 +629,14 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               <span>grid {diag.nx}×{diag.ny}</span>
               <span>{(diag.nx * diag.ny).toLocaleString()} cells</span>
               <span>{diag.used_gpu ? "GPU (wgpu)" : "CPU (rayon)"}</span>
+              <span>
+                quality {diag.quality.status} · CFL {diag.quality.cfl_number.toFixed(3)} · mass {diag.quality.mass_drift_pct.toFixed(2)}% · energy {diag.quality.energy_drift_pct.toFixed(2)}%
+              </span>
             </div>
           )}
+          {diag?.quality.warnings.map((warning) => (
+            <p className="swe__hint" role="status" key={warning}>{warning}</p>
+          ))}
           {workspaceMode !== "simple" && maxField && (
             <div className="swe__overlay-row" role="group" aria-label="Result overlay">
               <span className="swe__overlay-label">Overlay</span>

@@ -306,6 +306,7 @@ export const api = {
     solver: string;
     geodesy: Record<string, unknown>;
     surface_mask: Record<string, unknown>;
+    last_run_quality: import("../types/scenario").RunQualityRecord | null;
   }> {
     return invoke("diagnostics_bundle");
   },
@@ -337,6 +338,7 @@ export const api = {
     n_snapshots: number;
     cancelled: boolean;
     max_field?: import("../types/scenario").MaxFieldProduct | null;
+    run_quality: import("../types/scenario").RunQualityRecord;
     render_scenario_id: string | null;
     render_frame_count: number;
     render_replay: RenderReplayAdapter;
@@ -365,6 +367,7 @@ export const api = {
       n_snapshots: number;
       cancelled: boolean;
       max_field?: import("../types/scenario").MaxFieldProduct | null;
+      run_quality: import("../types/scenario").RunQualityRecord;
       render_scenario_id: string | null;
       render_frame_count: number;
     }>("simulate_grid_streaming", { runId, req, onSnapshot: channel, onRenderPacket: renderChannel })
