@@ -178,6 +178,28 @@ describe("exportCzml", () => {
     expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
     expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
   });
+
+  it("emits a spec-correct time-tagged image material with transparency", async () => {
+    const getBlob = mockDownload();
+    exportCzml(PROVENANCE_META, [
+      { bbox: [-90, 20, -88, 22], eta_abs_max_m: 1, eta_max_m: 1, eta_min_m: -1, eta_png_b64: "a", nx: 2, ny: 2, height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD, time_s: 0 },
+      { bbox: [-90, 20, -88, 22], eta_abs_max_m: 1, eta_max_m: 1, eta_min_m: -1, eta_png_b64: "b", nx: 2, ny: 2, height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD, time_s: 60 },
+    ]);
+    const czml = JSON.parse(await getBlob()!.text()) as Array<{
+      id: string;
+      rectangle?: { material?: { image?: { image?: Array<Record<string, unknown>>; repeat?: unknown; color?: unknown; transparent?: boolean } } };
+    }>;
+    const image = czml[1].rectangle?.material?.image;
+    // repeat/color/transparent live at the ImageMaterial level, not inside intervals.
+    expect(image?.transparent).toBe(true);
+    expect(image?.repeat).toBeDefined();
+    expect(image?.color).toBeDefined();
+    // The time-tagged image property is an array of { interval, image } only.
+    expect(Array.isArray(image?.image)).toBe(true);
+    expect(image?.image).toHaveLength(2);
+    expect(Object.keys(image!.image![0]).sort()).toEqual(["image", "interval"]);
+    expect(image?.image?.[0].image).toContain("data:image/png;base64,a");
+  });
 });
 
 describe("exportKml", () => {

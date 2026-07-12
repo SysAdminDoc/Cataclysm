@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- CZML playback export now emits a spec-correct time-tagged image material with
+  `transparent: true` and material-level `repeat`/`color`; previously those
+  properties were nested inside the per-frame interval elements (where a strict
+  CesiumJS `CzmlDataSource` ignores them) and the missing transparency could
+  render the wave rectangle opaque, hiding the globe in third-party viewers.
+- The Settings load-error message is now calm and actionable ("defaults are
+  shown … changes will still be saved") instead of exposing the raw error
+  object; the underlying error is logged to the console.
 - The Results outcome disclaimer used an undefined `--overlay1` CSS variable, so
   its color silently fell back to the inherited text color; it now uses the
   `--subtext` token and renders as intended muted caption text in both themes.

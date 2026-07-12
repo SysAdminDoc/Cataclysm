@@ -77,7 +77,10 @@ export function Settings({ onClose }: Props) {
         });
       })
       .catch((err) => {
-        if (!cancelled) setSaveErr(`Could not load settings: ${String(err)}`);
+        console.warn("[settings] failed to load", err);
+        if (!cancelled) {
+          setSaveErr("Your settings could not be loaded, so defaults are shown. Changes you make here will still be saved.");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

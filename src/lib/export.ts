@@ -521,6 +521,9 @@ export function exportCzml(
   const tEnd = snapshots[snapshots.length - 1].time_s;
   const interval = `${toIso(tStart)}/${toIso(Math.max(tEnd, tStart + 1))}`;
 
+  // Time-tagged CZML ImageProperty: each element is only { interval, image }.
+  // repeat/color/transparent belong to the ImageMaterial level (below), not
+  // inside these interval elements, or a strict CzmlDataSource ignores them.
   const materialIntervals: unknown[] = [];
   for (let k = 0; k < snapshots.length; k++) {
     const snap = snapshots[k];
@@ -528,8 +531,6 @@ export function exportCzml(
     materialIntervals.push({
       interval: `${toIso(snap.time_s)}/${toIso(next)}`,
       image: `data:image/png;base64,${snap.eta_png_b64}`,
-      repeat: { cartesian2: [1, 1] },
-      color: { rgba: [255, 255, 255, 230] },
     });
   }
 
@@ -570,7 +571,16 @@ export function exportCzml(
       },
       rectangle: {
         coordinates: { wsenDegrees: [west, south, east, north] },
-        material: { image: { image: materialIntervals } },
+        material: {
+          image: {
+            image: materialIntervals,
+            repeat: { cartesian2: [1, 1] },
+            color: { rgba: [255, 255, 255, 230] },
+            // The eta PNGs carry their own alpha for land/dry cells; without
+            // this the rectangle renders opaque and hides the globe beneath.
+            transparent: true,
+          },
+        },
         height: 0,
       },
     },
