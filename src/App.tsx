@@ -1596,7 +1596,7 @@ export default function App() {
             pending={hazardPending}
             error={hazardError}
             canAnimate={Boolean(directRenderReplay)}
-            workspaceMode={workspaceMode}
+            workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
         )}
         <div hidden={inspectorTab !== "setup" || inHazardMode}>
@@ -1629,7 +1629,7 @@ export default function App() {
             onPlaybackTimeChange={setTimeS}
             slotLabel={compareMode ? "Slot A" : undefined}
             runAndWatchNonce={sweRunAndWatchNonce}
-            workspaceMode={workspaceMode}
+            workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
           <div hidden={!compareMode} aria-label="Comparison slot B solver">
             <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
@@ -1665,7 +1665,7 @@ export default function App() {
           pending={hazardPending}
           error={hazardError}
           canAnimate={Boolean(directRenderReplay)}
-          workspaceMode={workspaceMode}
+          workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
         {inspectorTab === "results" && !inHazardMode && <AttenuationChart
