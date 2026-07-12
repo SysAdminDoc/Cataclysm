@@ -356,3 +356,13 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Touches: cited large-event effect models (ejecta thickness, seismic magnitude, thermal-pulse global effects), a "days/months/years after" timeline mode coupled to the scrubber, confidence/limits copy.
   Acceptance: large impacts expose cited secondary effects (ejecta blanket thickness, equivalent seismic magnitude, thermal reentry, climate-disruption narrative) staged on a long-term timeline; each effect cites a source and states uncertainty; small events omit effects that do not apply.
   Complexity: L
+
+## Audit-Driven Additions (2026-07-12)
+
+- [ ] P1 — Make the surface-displacement legend match the active colormap
+  Why: the SWE overlay is rendered by the Rust solver in the user-selected colormap (diverging / cividis / viridis via `settings.getColormap()` in `SwePlayback.tsx`), but the viewport legend ramp is a fixed rainbow gradient that matches none of them, so a colorblind user who picks the CVD-safe cividis/viridis gets a legend that misrepresents the data. Needs a design decision (magnitude vs signed legend, since diverging is signed while the scale reads 0–10+) and visual verification against the live overlay in each colormap.
+  Where: `src/styles/_globe.css` (`.app__viewport-legend-ramp`), `src/App.tsx` (legend block ~L1490, wire active colormap), colormap definitions in `src-tauri/src/physics/solver/mod.rs` (`diverging_colormap`/`cividis_colormap`/`viridis_colormap`).
+
+- [ ] P2 — Latte (light) theme contrast QA pass with a live checker
+  Why: several tokens need on-screen WCAG AA verification in the light theme that can't be done headless — `--divider` (#b8c3cf) may be too subtle on `--mantle` (#e6e9ef) so panel separations blur, the `.status-dot` colors want checking on light surfaces, and placeholder text at 0.78 opacity on `--subtext` is borderline.
+  Where: `src/styles/_globals.css` (Latte block), `src/styles/_layout.css` (`.status-dot`, `input::placeholder`).
