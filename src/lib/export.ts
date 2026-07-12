@@ -53,7 +53,7 @@ function isForbiddenFilenameChar(ch: string): boolean {
   return ch.charCodeAt(0) <= 0x1f || '<>:"/\\|?*'.includes(ch);
 }
 
-function safeFilenamePart(value: string): string {
+export function safeFilenamePart(value: string): string {
   const cleaned = value
     .trim()
     .split("")

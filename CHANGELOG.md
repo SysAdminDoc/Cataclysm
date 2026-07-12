@@ -4,6 +4,21 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- The Results outcome disclaimer used an undefined `--overlay1` CSS variable, so
+  its color silently fell back to the inherited text color; it now uses the
+  `--subtext` token and renders as intended muted caption text in both themes.
+- Replaced hardcoded `#006080`/`#ffffff` active-toggle colors (mode and hazard
+  switches) with new `--control-active-bg`/`--control-active-fg` theme tokens so
+  the selected state stays consistent and theme-aware across Mocha and Latte.
+- Normalized two off-scale corner radii in Settings (a `3px` code chip and a
+  banned `999px` "pill" source badge) to the `--r-sm` token, complying with the
+  project's allowed-radius rule.
+- The plain-text results export now routes the preset id through the same
+  `safeFilenamePart` sanitizer as the CZML/GeoJSON/KML exporters, closing an
+  inconsistency in download-filename handling.
+
 ### Changed
 
 - Direct-hazard casualty and latent-cancer figures are now shown as

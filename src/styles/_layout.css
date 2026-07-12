@@ -386,13 +386,13 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 }
 
 .icon-button[data-variant="mode"][data-active="true"] {
-  background: #006080;
-  border-color: #006080;
-  color: #ffffff;
+  background: var(--control-active-bg);
+  border-color: var(--control-active-bg);
+  color: var(--control-active-fg);
 }
 
 .icon-button[data-variant="mode"][data-active="true"] svg {
-  color: #ffffff;
+  color: var(--control-active-fg);
 }
 
 .icon-button[data-variant="export"] {

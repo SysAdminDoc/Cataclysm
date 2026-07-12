@@ -233,7 +233,7 @@
 .settings__row code {
   background: var(--surface0);
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--r-sm);
   font-size: 11px;
 }
 
@@ -264,7 +264,7 @@
 
 .settings__source-heading span {
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--panel-border);
   color: var(--subtext);
   font-size: 10px;

@@ -29,7 +29,7 @@
 }
 
 .results__outcome-note {
-  color: var(--overlay1);
+  color: var(--subtext);
   font-size: 11px;
   line-height: 1.35;
 }

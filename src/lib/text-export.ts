@@ -1,5 +1,6 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { buildModelProvenance, provenanceSummary, type ModelProvenanceInput } from "./model-provenance";
+import { safeFilenamePart } from "./export";
 import type { RunupAtPointResult } from "./tauri";
 
 export type TextExportData = ModelProvenanceInput & {
@@ -115,7 +116,7 @@ export function downloadTextExport(data: TextExportData): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const presetId = data.preset?.id ?? "custom-scenario";
+  const presetId = safeFilenamePart(data.preset?.id ?? "custom-scenario");
   a.download = `cataclysm-${presetId}-results.txt`;
   document.body.appendChild(a);
   a.click();

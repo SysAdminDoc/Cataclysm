@@ -45,6 +45,11 @@ html[data-theme="mocha"] {
   --success-text: var(--success);
   --warning-text: var(--warning);
   --on-accent: #07111b;
+  /* Solid fill + text for a selected/active toggle button (mode + hazard
+     switches). Deliberately a darker teal than --accent-active so white text
+     stays AA-legible; kept as a token so the two themes stay in sync. */
+  --control-active-bg: #006080;
+  --control-active-fg: #ffffff;
   --viewport-hud: rgba(8, 16, 24, 0.9);
   --cinematic-bg: #030711;
   --cinematic-bg-raised: #081423;
@@ -130,6 +135,8 @@ html[data-theme="latte"] {
   --success-text: #1f6617;
   --warning-text: #873400;
   --on-accent: #ffffff;
+  --control-active-bg: #006b8f;
+  --control-active-fg: #ffffff;
   --viewport-hud: rgba(248, 251, 254, 0.94);
   --surface-recessed: color-mix(in srgb, var(--crust) 48%, #ffffff);
   --surface-raised: #ffffff;
