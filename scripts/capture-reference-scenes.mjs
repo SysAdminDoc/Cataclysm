@@ -178,6 +178,7 @@ async function configureWorkflow(page, scene) {
   const workflow = scene.workflow;
   if (workflow.kind === "preset") {
     await page.locator(".preset-card", { hasText: presetLabels[workflow.presetId] }).first().click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
     await page.getByRole("button", { name: "Run simulation" }).waitFor({ state: "visible" });
     if (workflow.runSolver) {
       await page.getByRole("button", { name: "Run simulation" }).click();

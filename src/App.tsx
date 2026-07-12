@@ -872,7 +872,7 @@ export default function App() {
     setLibraryPreview({ kind: "preset", presetId });
     setLibraryPreviewPending(false);
     slotA.setActivePresetId(presetId);
-    setPendingRunPresetId(presetId);
+    setPendingRunPresetId(referenceCaptureMode ? null : presetId);
     setInspectorTab("setup");
     updateLibraryPreferences((current) => recordRecentScenario(current, `preset:${presetId}`));
   }
