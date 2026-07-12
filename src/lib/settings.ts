@@ -419,12 +419,38 @@ export type SavedScenario = {
   data: unknown;
 };
 
+/**
+ * Re-validate persisted scenario records on read, mirroring the write-path
+ * trust boundary in {@link saveScenario}. A tampered or corrupted store, or a
+ * legacy record from an older schema, is dropped here rather than flowing
+ * unvalidated into the UI. `data` is normalized to the freshly-parsed payload.
+ */
+function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
+  if (!Array.isArray(raw)) return [];
+  const clean: SavedScenario[] = [];
+  let dropped = 0;
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") { dropped++; continue; }
+    const rec = entry as Record<string, unknown>;
+    const name = typeof rec.name === "string" ? rec.name : "";
+    const savedAt = typeof rec.savedAt === "string" ? rec.savedAt : "";
+    if (!name || !savedAt) { dropped++; continue; }
+    const parsed = parseScenarioPayload(rec.data);
+    if (!parsed.ok) { dropped++; continue; }
+    clean.push({ name, savedAt, data: parsed.payload });
+  }
+  if (dropped > 0) {
+    console.warn(`[settings] dropped ${dropped} invalid saved scenario(s) on read`);
+  }
+  return clean.slice(0, MAX_SAVED_SCENARIOS);
+}
+
 async function readScenarios(): Promise<SavedScenario[]> {
   const store = await getStore();
   if (store) {
     try {
       const v = await store.get<SavedScenario[]>(SCENARIOS_KEY);
-      if (Array.isArray(v)) return v;
+      if (Array.isArray(v)) return sanitizeSavedScenarios(v);
     } catch { /* ignore */ }
   }
   if (typeof localStorage !== "undefined") {
@@ -432,7 +458,7 @@ async function readScenarios(): Promise<SavedScenario[]> {
       const raw = localStorage.getItem(LS_PREFIX + SCENARIOS_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return sanitizeSavedScenarios(parsed);
       }
     } catch { /* ignore */ }
   }

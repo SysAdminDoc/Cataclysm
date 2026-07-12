@@ -32,6 +32,25 @@ describe("settings scenario storage", () => {
 
     expect(await settings.getSavedScenarios()).toEqual([]);
   });
+
+  it("drops corrupted or unvalidated records on read", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    localStorage.setItem(
+      LS_PREFIX + "saved_scenarios",
+      JSON.stringify([
+        { name: "Good", savedAt: "2026-07-12T00:00:00.000Z", data: { schemaVersion: SCENARIO_SCHEMA_VERSION, kind: "Asteroid", source: INITIAL_ASTEROID } },
+        { name: "Tampered", savedAt: "2026-07-12T00:00:00.000Z", data: { kind: "Asteroid", source: { ...INITIAL_ASTEROID, diameter_m: 100_000 } } },
+        { name: "", savedAt: "2026-07-12T00:00:00.000Z", data: null },
+        "not-an-object",
+      ]),
+    );
+
+    const scenarios = await settings.getSavedScenarios();
+    expect(scenarios).toHaveLength(1);
+    expect(scenarios[0].name).toBe("Good");
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("dropped 3 invalid"));
+    warnSpy.mockRestore();
+  });
 });
 
 describe("settings schema versioning", () => {

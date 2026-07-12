@@ -327,13 +327,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 
 ### P1
 
-- [ ] P1 — Re-validate persisted scenarios on read, not only on write
-  Why: `saveScenario` validates via `parseScenarioPayload`, but `readScenarios()` returns stored records with only an `Array.isArray` check, so a tampered/corrupted store or a schema change flows unvalidated data into the UI.
-  Evidence: `src/lib/settings.ts` `readScenarios` (~L422-440) vs the validated write path; code-audit 2026-07-12.
-  Touches: `src/lib/settings.ts`, scenario read path, migration, unit tests for corrupt/legacy records.
-  Acceptance: every scenario returned by `getSavedScenarios()` passes the same schema validation as the write path; malformed records are dropped or quarantined with a diagnostic, never rendered; a corrupt-store fixture is covered by a test.
-  Complexity: S
-
 - [ ] P1 — Derive front-end and back-end input bounds from one shared table
   Why: `SCENARIO_BOUNDS` clamps earthquake `mw` to [5,10] and `rake` to [-180,180], while Rust `earthquake_initial_conditions` accepts `mw` [4.0,10.5] and does not range-check `rake` at all, so URL/JSON-imported scenarios accept/reject inconsistently across the two entry paths.
   Evidence: `src/lib/scenario-schema.ts` (~L76,L80) vs `src-tauri/src/commands.rs` `earthquake_initial_conditions` (~L261-273); code-audit 2026-07-12.

@@ -4,6 +4,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- Saved scenarios are now re-validated on read with the same schema check used
+  on write, so a tampered or corrupted store, or a record from an older schema,
+  is dropped with a diagnostic instead of flowing unvalidated into the UI.
+
 ## [0.10.0] — 2026-07-12 — Progressive simulator workspace
 
 - Added persisted Simple, Customize, and Advanced workspace detail levels;
