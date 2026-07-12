@@ -384,13 +384,3 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Touches: cited large-event effect models (ejecta thickness, seismic magnitude, thermal-pulse global effects), a "days/months/years after" timeline mode coupled to the scrubber, confidence/limits copy.
   Acceptance: large impacts expose cited secondary effects (ejecta blanket thickness, equivalent seismic magnitude, thermal reentry, climate-disruption narrative) staged on a long-term timeline; each effect cites a source and states uncertainty; small events omit effects that do not apply.
   Complexity: L
-
-### P3
-
-- [ ] P3 — Make the non-streaming `simulate_grid` command cancellable or drop its dead run id
-  Why: `api.simulateGrid` generates a `run_id` inline and discards it, so the registered cancel token can never be invoked for that path — dead code that implies a capability the caller cannot use.
-  Evidence: `src/lib/tauri.ts` (~L275) discards the id; `src-tauri/src/commands.rs` `simulate_grid` (~L1010-1018); code-audit 2026-07-12.
-  Touches: `tauri.ts` signature, `simulate_grid` registration, callers, test.
-  Acceptance: either the non-streaming path returns its run id and honors `cancel_simulation`, or the unused registration is removed; behavior is covered by a test.
-  Complexity: S
-

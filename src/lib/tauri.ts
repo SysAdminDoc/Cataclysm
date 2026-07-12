@@ -271,8 +271,11 @@ export const api = {
     lamb_wave_source_radius_m?: number;
     colormap?: ColormapId;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
-  }) {
-    return invoke<SimulateGridResponse>("simulate_grid", { runId: createSimulationRunId(), req });
+  }, runId: string = createSimulationRunId()) {
+    // Thread a caller-supplied runId so this non-streaming path is cancellable
+    // via cancelSimulation(runId); previously the id was generated inline and
+    // discarded, leaving the registered cancel token unreachable.
+    return invoke<SimulateGridResponse>("simulate_grid", { runId, req });
   },
   /** F4-01 — Lightweight GPU-availability probe. Returns one of:
    *  "available", "no-adapter", or "feature-off". See the Rust
