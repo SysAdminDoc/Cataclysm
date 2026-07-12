@@ -9,12 +9,7 @@
     "store:allow-get",
     "store:allow-set",
     "store:allow-save",
-    "store:allow-has",
-    "store:allow-keys",
-    "store:allow-entries",
-    "store:allow-clear",
     "store:allow-delete",
-    "store:allow-reload",
     {
       "identifier": "shell:allow-open",
       "allow": [

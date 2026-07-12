@@ -350,6 +350,41 @@ function cspAllowlistGate() {
   }
 }
 
+// -- Capability surface gate --
+// The app only uses load/get/set/save/delete store operations (verified across
+// src). The store enumeration, clear, and reload permissions must not be
+// granted to the webview. If a future feature needs one, add it here and to
+// src-tauri/capabilities/default.json deliberately.
+const ALLOWED_STORE_PERMISSIONS = new Set([
+  "store:allow-load",
+  "store:allow-get",
+  "store:allow-set",
+  "store:allow-save",
+  "store:allow-delete",
+]);
+
+function capabilitySurfaceGate() {
+  const capPath = path.join(repoRoot, "src-tauri", "capabilities", "default.json");
+  const cap = JSON.parse(readFileSync(capPath, "utf8"));
+  const failures = [];
+  const storePerms = (cap.permissions ?? []).filter(
+    (p) => typeof p === "string" && p.startsWith("store:"),
+  );
+  for (const perm of storePerms) {
+    if (!ALLOWED_STORE_PERMISSIONS.has(perm)) {
+      failures.push(
+        `store permission "${perm}" is granted but unused. ` +
+          "Remove it, or add it to ALLOWED_STORE_PERMISSIONS in scripts/verify.mjs with a rationale if a feature now needs it.",
+      );
+    }
+  }
+  if (failures.length > 0) {
+    console.error("\nCapability surface gate failed:");
+    for (const f of failures) console.error(`- ${f}`);
+    process.exit(1);
+  }
+}
+
 // -- DOMPurify floor gate --
 // Four sanitizer bypasses shipped in the 12 months before 2026-07; the
 // last (CVE-2026-49978, IN_PLACE shadow-root bypass) is fixed in 3.4.7.
@@ -393,6 +428,9 @@ dompurifyFloorGate();
 
 console.log("\n==> CSP allowlist gate");
 cspAllowlistGate();
+
+console.log("\n==> Capability surface gate");
+capabilitySurfaceGate();
 
 console.log("\n==> Docs/script truth gate");
 docsTruthGate();

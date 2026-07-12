@@ -303,13 +303,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ### P2
 
-- [ ] P2 — Reduce Tauri frontend authority to used commands and store operations
-  Why: the capability grants store enumeration, clear, and reload operations the app does not use, while Tauri registered application commands are otherwise callable by the webview unless explicitly constrained.
-  Evidence: `src-tauri/capabilities/default.json`; `src/lib/settings.ts`; Tauri capabilities guidance: https://v2.tauri.app/security/capabilities/.
-  Touches: capability/permission files, `build.rs` application command manifest, IPC negative tests, security documentation.
-  Acceptance: only load/get/set/save/delete store operations and enumerated Cataclysm commands are available to `main`; unused calls are denied in tests; remote origins retain no IPC authority; normal simulator workflows pass.
-  Complexity: M
-
 - [ ] P2 — Extend static checks to tests, scripts, configs, and fresh E2E output
   Why: Playwright tests, config files, and verification scripts escape normal type/lint coverage, and standalone E2E can preview a stale `dist` directory.
   Evidence: `tsconfig.json`, `eslint.config.js`, package lint scripts, `playwright.config.ts`, `tests/**`, `scripts/**`.

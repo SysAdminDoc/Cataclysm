@@ -11,6 +11,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   glass-cut casualty band. The coefficient is extrapolated from the same
   Glasstone–Dolan scaled-overpressure fit as the other rings.
 
+### Security
+
+- Trimmed the Tauri capability surface to the five store operations the app
+  actually uses (`load`/`get`/`set`/`save`/`delete`); the unused enumeration,
+  clear, and reload permissions are no longer granted to the webview, and a new
+  `npm run verify` capability-surface gate prevents them from creeping back.
+
 ### Fixed
 
 - Saved scenarios are now re-validated on read with the same schema check used
