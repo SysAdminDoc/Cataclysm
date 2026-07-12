@@ -203,17 +203,44 @@ describe("SwePlayback", () => {
   });
 
   it("starts automatically when Run & Watch is requested", async () => {
+    tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
+      onSnapshot(SNAPSHOTS[0]);
+      onSnapshot(SNAPSHOTS[1]);
+      return {
+        dt_s: 2,
+        nx: 2,
+        ny: 2,
+        used_gpu: true,
+        n_snapshots: 2,
+        cancelled: false,
+      };
+    });
+
+    render(<SwePlayback initial={INITIAL} runAndWatchNonce={1} playbackTimeS={0} />);
+
+    await waitFor(() => expect(tauriApi.simulateGridStreaming).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/Frame\s+1\/2/i)).toBeInTheDocument();
+    expect(screen.queryByRole("slider", { name: "Simulation timeline scrubber" })).not.toBeInTheDocument();
+  });
+
+  it("preserves the source and exposes a local retry after a solver failure", async () => {
+    tauriApi.simulateGridStreaming.mockRejectedValueOnce(new Error("solver unavailable"));
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} />);
+
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+    expect(await screen.findByRole("button", { name: "Retry simulation" })).toBeInTheDocument();
+    expect(screen.getByText("Use simplified ocean-depth model")).toBeInTheDocument();
+
     tauriApi.simulateGridStreaming.mockResolvedValue({
       dt_s: 2,
       nx: 2,
       ny: 2,
-      used_gpu: true,
+      used_gpu: false,
       n_snapshots: 0,
       cancelled: false,
     });
-
-    render(<SwePlayback initial={INITIAL} runAndWatchNonce={1} />);
-
-    await waitFor(() => expect(tauriApi.simulateGridStreaming).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Retry simulation" }));
+    await waitFor(() => expect(tauriApi.simulateGridStreaming).toHaveBeenCalledTimes(2));
   });
 });

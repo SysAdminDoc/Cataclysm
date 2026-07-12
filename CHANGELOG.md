@@ -4,6 +4,18 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-07-12 — Guided Run & Watch
+
+- Turned Run & Watch into one explicit Prepare / Calculate / Watch /
+  Understand journey that opens the outcome overview and begins playback when
+  frames are ready.
+- Reused completed frames and direct-effect results for immediate replay while
+  keeping a visible manual-controls exit and local solver retry.
+- Consolidated tsunami playback under the persistent transport, removing the
+  duplicate solver playhead and hidden internal autoplay state.
+- Added journey, cached replay, single-playhead, failure/retry, and rendered
+  desktop regression coverage.
+
 ## [0.9.0] â€” 2026-07-11 â€” Universal scenario library
 
 - Replaced the domain-specific empty rail with one persistent library spanning

@@ -84,6 +84,102 @@
   padding-top: 16px;
 }
 
+.journey-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 12px 0 -4px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent-active) 38%, var(--divider));
+  border-radius: var(--r-sm);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-active) 10%, var(--metric-bg)), var(--metric-bg));
+}
+
+.journey-progress ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journey-progress li {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--overlay);
+  text-align: center;
+}
+
+.journey-progress li:not(:last-child)::after {
+  position: absolute;
+  z-index: 0;
+  top: 10px;
+  left: calc(50% + 13px);
+  width: calc(100% - 26px);
+  height: 1px;
+  background: var(--divider);
+  content: "";
+}
+
+.journey-progress li[data-state="complete"]:not(:last-child)::after {
+  background: var(--accent-active);
+}
+
+.journey-progress li span {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border: 1px solid var(--divider);
+  border-radius: 50%;
+  background: var(--inspector-bg);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.journey-progress li strong {
+  overflow: hidden;
+  width: 100%;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.journey-progress li[data-state="active"] {
+  color: var(--accent-text);
+}
+
+.journey-progress li[data-state="active"] span {
+  border-color: var(--accent-active);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-active) 14%, transparent);
+}
+
+.journey-progress li[data-state="complete"] {
+  color: var(--success-text);
+}
+
+.journey-progress li[data-state="complete"] span {
+  border-color: color-mix(in srgb, var(--success-text) 65%, var(--divider));
+}
+
+.journey-progress > button {
+  align-self: flex-end;
+  min-height: 26px;
+  padding: 3px 7px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--subtext);
+  font-size: 9px;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+}
+
 .layer-inspector__intro {
   color: var(--subtext);
   font-size: 12px;

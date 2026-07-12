@@ -408,7 +408,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         onSnapshotsReady?.(streamSnaps);
         setMaxField(meta.max_field ?? null);
         onMaxField?.(meta.max_field ?? null);
-        if (autoPlay) setIsPlaying(true);
+        if (autoPlay && playbackTimeS === undefined) setIsPlaying(true);
       } else {
         const resp = simulateDemoGrid(initial, {
           boxHalfSizeDeg: halfDeg,
@@ -422,7 +422,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(resp.snapshots);
-        if (autoPlay) setIsPlaying(true);
+        if (autoPlay && playbackTimeS === undefined) setIsPlaying(true);
       }
     } catch (err) {
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
@@ -431,7 +431,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setErrMsg(String(err));
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame, playbackTimeS]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -476,7 +476,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           type="button"
         >
           {status !== "running" && <UiIcon name={status === "ready" ? "refresh" : "play"} size={14} />}
-          {status === "running" ? "Computing..." : status === "ready" ? "Re-run simulation" : "Run simulation"}
+          {status === "running" ? "Computing..." : status === "ready" ? "Re-run simulation" : status === "error" ? "Retry simulation" : "Run simulation"}
         </button>
         {status === "running" && (
           <button
@@ -586,20 +586,22 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
                 <option key={opt.label} value={i}>{opt.label}</option>
               ))}
             </select>}
-            <input
-              type="range"
-              min={0}
-              max={snapshots.length - 1}
-              step={1}
-              value={activeIdx}
-              onChange={(e) => {
-                setIsPlaying(false);
-                const next = Number(e.target.value);
-                setActiveIdx(next);
-                onPlaybackTimeChange?.(snapshots[next].time_s);
-              }}
-              aria-label="Simulation timeline scrubber"
-            />
+            {playbackTimeS === undefined && (
+              <input
+                type="range"
+                min={0}
+                max={snapshots.length - 1}
+                step={1}
+                value={activeIdx}
+                onChange={(e) => {
+                  setIsPlaying(false);
+                  const next = Number(e.target.value);
+                  setActiveIdx(next);
+                  onPlaybackTimeChange?.(snapshots[next].time_s);
+                }}
+                aria-label="Simulation timeline scrubber"
+              />
+            )}
           </div>
           <div className="swe__readout">
             <span>Frame {activeIdx + 1}/{snapshots.length}</span>

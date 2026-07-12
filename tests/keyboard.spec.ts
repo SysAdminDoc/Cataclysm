@@ -35,7 +35,9 @@ test.describe("Keyboard-only golden path", () => {
     await expect(run).toBeVisible({ timeout: 10_000 });
     await run.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText(/Frame \d+\/\d+/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".simulation-transport__frame")).toContainText("60");
+    await expect(page.getByRole("slider", { name: "Simulation timeline scrubber" })).toHaveCount(0);
 
     const resultsTab = page.getByRole("tab", { name: "Results" });
     await resultsTab.focus();

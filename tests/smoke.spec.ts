@@ -127,15 +127,27 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.locator(".app__viewport-hud--source")).toContainText("No source selected");
   });
 
-  test("selecting Chicxulub loads source readout", async ({ page }) => {
+  test("Run & Watch advances to outcomes with one playhead and reuses cached frames", async ({ page }) => {
     await page.goto("/");
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
 
-    await page.getByRole("tab", { name: "Results" }).click();
+    const journey = page.getByRole("status", { name: /Run and Watch:/i });
+    await expect(journey).toContainText("Prepare");
+    await expect(journey).toContainText("Calculate");
+    await expect(journey).toContainText("Watch");
+    await expect(journey).toContainText("Understand");
+    await expect(journey).toHaveAttribute("aria-label", "Run and Watch: Understand", { timeout: 10_000 });
+    await expect(page.getByRole("tab", { name: "Results" })).toHaveAttribute("aria-selected", "true");
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("slider", { name: "Scenario timeline scrubber" })).toHaveCount(1);
+    await expect(page.getByRole("slider", { name: "Simulation timeline scrubber" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(journey).toHaveAttribute("aria-label", "Run and Watch: Watch");
+    await expect(page.getByRole("progressbar", { name: "SWE solver progress" })).toHaveCount(0);
   });
 
   test("export menu exposes all supported formats", async ({ page }) => {

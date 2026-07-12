@@ -140,9 +140,11 @@ test.describe("Visual regression — desktop", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
-    await expect(page.getByRole("button", { name: "Re-run simulation" })).toBeVisible({ timeout: 20_000 });
-    const pause = page.getByRole("button", { name: "Pause" });
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+    const pause = page.getByRole("button", { name: "Pause scenario timeline" });
     if (await pause.isVisible()) await pause.click();
+    await page.getByRole("button", { name: "Manual controls" }).click();
+    await expect(page.getByRole("button", { name: "Re-run simulation" })).toBeVisible();
 
     await expect(page).toHaveScreenshot("desktop-swe-ready.png", {
       mask: [page.locator(CANVAS_MASK)],
@@ -157,9 +159,10 @@ test.describe("Visual regression — desktop", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
-    await expect(page.getByText(/Frame \d+\/\d+/)).toBeVisible({ timeout: 20_000 });
-    const pause = page.getByRole("button", { name: "Pause" });
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+    const pause = page.getByRole("button", { name: "Pause scenario timeline" });
     if (await pause.isVisible()) await pause.click();
+    await page.getByRole("slider", { name: "Scenario timeline scrubber" }).fill("720");
 
     await expect(page).toHaveScreenshot("desktop-swe-running.png", {
       mask: [page.locator(CANVAS_MASK)],

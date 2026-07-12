@@ -72,6 +72,32 @@ type InspectorTab = "setup" | "results" | "layers";
 type LibraryPreview =
   | { kind: "preset"; presetId: string }
   | { kind: "direct"; scenario: DirectScenarioTemplate };
+type JourneyStage = "prepare" | "calculate" | "watch" | "understand";
+type RunJourney = { scenarioId: string; stage: JourneyStage };
+
+const JOURNEY_STEPS: Array<{ id: JourneyStage; label: string }> = [
+  { id: "prepare", label: "Prepare" },
+  { id: "calculate", label: "Calculate" },
+  { id: "watch", label: "Watch" },
+  { id: "understand", label: "Understand" },
+];
+
+function JourneyProgress({ journey, onManual }: { journey: RunJourney; onManual: () => void }) {
+  const activeIndex = JOURNEY_STEPS.findIndex((step) => step.id === journey.stage);
+  return (
+    <div className="journey-progress" role="status" aria-label={`Run and Watch: ${JOURNEY_STEPS[activeIndex].label}`}>
+      <ol>
+        {JOURNEY_STEPS.map((step, index) => (
+          <li key={step.id} data-state={index < activeIndex ? "complete" : index === activeIndex ? "active" : "pending"}>
+            <span aria-hidden>{index < activeIndex ? "✓" : index + 1}</span>
+            <strong>{step.label}</strong>
+          </li>
+        ))}
+      </ol>
+      <button type="button" onClick={onManual}>Manual controls</button>
+    </div>
+  );
+}
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -303,6 +329,7 @@ export default function App() {
   const [libraryPreferences, setLibraryPreferences] = useState<ScenarioLibraryPreferences>(loadScenarioLibraryPreferences);
   const [sweRunAndWatchNonce, setSweRunAndWatchNonce] = useState(0);
   const [pendingRunPresetId, setPendingRunPresetId] = useState<string | null>(null);
+  const [runJourney, setRunJourney] = useState<RunJourney | null>(null);
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
@@ -354,6 +381,7 @@ export default function App() {
       && slotA.initial !== null
     ) {
       setPendingRunPresetId(null);
+      setRunJourney({ scenarioId: `preset:${pendingRunPresetId}`, stage: "calculate" });
       setSweRunAndWatchNonce((nonce) => nonce + 1);
     }
   }, [pendingRunPresetId, slotA.activePresetId, slotA.busyPresetId, slotA.error, slotA.initial]);
@@ -384,9 +412,37 @@ export default function App() {
     setSweSnapshots(snapshots);
     if (snapshots?.length) {
       setTimeS(snapshots[0].time_s);
-      setTimelinePlaying(false);
+      const shouldAutoWatch = runJourney?.scenarioId.startsWith("preset:")
+        && runJourney.stage === "calculate";
+      setTimelinePlaying(Boolean(shouldAutoWatch));
+      if (shouldAutoWatch) {
+        setInspectorTab("results");
+        setRunJourney((current) => current ? { ...current, stage: "watch" } : null);
+      }
     }
-  }, []);
+  }, [runJourney]);
+
+  useEffect(() => {
+    if (!runJourney?.scenarioId.startsWith("direct:")) return;
+    if (hazardPending) {
+      setRunJourney((current) => current ? { ...current, stage: "calculate" } : null);
+      return;
+    }
+    if (hazardResult) {
+      setInspectorTab("results");
+      setRunJourney((current) => current ? { ...current, stage: "watch" } : null);
+    }
+  }, [hazardPending, hazardResult, runJourney?.scenarioId]);
+
+  useEffect(() => {
+    if (runJourney?.stage !== "watch") return;
+    const timer = window.setTimeout(() => {
+      setRunJourney((current) => current?.stage === "watch"
+        ? { ...current, stage: "understand" }
+        : current);
+    }, 2500);
+    return () => window.clearTimeout(timer);
+  }, [runJourney?.stage, runJourney?.scenarioId]);
 
   useEffect(() => {
     inspectorBodyRef.current?.scrollTo({ top: 0 });
@@ -833,6 +889,7 @@ export default function App() {
   }
 
   function selectHazardMode(mode: HazardMode) {
+    setRunJourney(null);
     setHazardMode(mode);
     setLibraryPreviewPending(false);
     if (mode !== "tsunami") {
@@ -858,23 +915,40 @@ export default function App() {
   }
 
   function previewPreset(presetId: string) {
+    setRunJourney(null);
+    setTimelinePlaying(false);
     setLibraryPreview({ kind: "preset", presetId });
     setLibraryPreviewPending(true);
   }
 
   function previewDirectScenario(scenario: DirectScenarioTemplate) {
+    setRunJourney(null);
+    setTimelinePlaying(false);
     setLibraryPreview({ kind: "direct", scenario });
     setLibraryPreviewPending(true);
   }
 
   function runPresetFromLibrary(presetId: string) {
+    const scenarioId = `preset:${presetId}`;
+    const canReuseSnapshots = !referenceCaptureMode
+      && slotA.activePresetId === presetId
+      && Boolean(sweSnapshots?.length);
     selectHazardMode("tsunami");
     setLibraryPreview({ kind: "preset", presetId });
     setLibraryPreviewPending(false);
     slotA.setActivePresetId(presetId);
-    setPendingRunPresetId(referenceCaptureMode ? null : presetId);
-    setInspectorTab("setup");
-    updateLibraryPreferences((current) => recordRecentScenario(current, `preset:${presetId}`));
+    if (canReuseSnapshots) {
+      setPendingRunPresetId(null);
+      setTimeS(sweSnapshots![0].time_s);
+      setTimelinePlaying(true);
+      setInspectorTab("results");
+      setRunJourney({ scenarioId, stage: "watch" });
+    } else {
+      setPendingRunPresetId(referenceCaptureMode ? null : presetId);
+      setInspectorTab("setup");
+      setRunJourney(referenceCaptureMode ? null : { scenarioId, stage: "prepare" });
+    }
+    updateLibraryPreferences((current) => recordRecentScenario(current, scenarioId));
   }
 
   function runLibraryPreview() {
@@ -886,25 +960,37 @@ export default function App() {
     }
 
     const scenario = libraryPreview.scenario;
+    const currentCenter = hazardCenters[scenario.domain];
+    const currentInput = scenario.domain === "asteroid" ? asteroidInput : nuclearInput;
+    const scenarioInput = scenario.domain === "asteroid" ? scenario.asteroid : scenario.nuclear;
+    const canReuseResult = hazardMode === scenario.domain
+      && hazardResult?.kind === scenario.domain
+      && currentCenter?.lat === scenario.center.lat
+      && currentCenter?.lon === scenario.center.lon
+      && JSON.stringify(currentInput) === JSON.stringify(scenarioInput);
     selectHazardMode(scenario.domain);
-    setHazardResult(null);
-    setDirectRenderReplay(null);
     setDirectRenderFrame(null);
-    if (scenario.domain === "asteroid" && scenario.asteroid) {
-      setAsteroidInput({ ...scenario.asteroid });
-    } else if (scenario.domain === "nuclear" && scenario.nuclear) {
-      setNuclearInput({ ...scenario.nuclear });
+    if (!canReuseResult) {
+      setHazardResult(null);
+      setDirectRenderReplay(null);
+      if (scenario.domain === "asteroid" && scenario.asteroid) {
+        setAsteroidInput({ ...scenario.asteroid });
+      } else if (scenario.domain === "nuclear" && scenario.nuclear) {
+        setNuclearInput({ ...scenario.nuclear });
+      }
+      setHazardCenters((current) => ({ ...current, [scenario.domain]: { ...scenario.center } }));
     }
-    setHazardCenters((current) => ({ ...current, [scenario.domain]: { ...scenario.center } }));
     setDetonateNonces((current) => ({
       ...current,
       [scenario.domain]: current[scenario.domain] + 1,
     }));
     setInspectorTab("results");
+    setRunJourney({ scenarioId: scenario.id, stage: canReuseResult ? "watch" : "calculate" });
     updateLibraryPreferences((current) => recordRecentScenario(current, scenario.id));
   }
 
   function createCustomScenario() {
+    setRunJourney(null);
     setLibraryPreview(null);
     setLibraryPreviewPending(false);
     selectHazardMode("tsunami");
@@ -1443,6 +1529,16 @@ export default function App() {
             ))}
           </div>
         </div>
+        {runJourney && (
+          <JourneyProgress
+            journey={runJourney}
+            onManual={() => {
+              setRunJourney(null);
+              setTimelinePlaying(false);
+              setInspectorTab("setup");
+            }}
+          />
+        )}
         <div ref={inspectorBodyRef} className="inspector__body" id="inspector-panel" role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
         {inspectorTab === "setup" && inHazardMode && (
           <HazardControls
