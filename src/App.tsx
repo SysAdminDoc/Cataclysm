@@ -1667,7 +1667,7 @@ export default function App() {
           canAnimate={Boolean(directRenderReplay)}
           workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
         />}
-        {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
+        {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindA} />}
         {inspectorTab === "results" && !inHazardMode && <AttenuationChart
           initial={slotA.initial}
           isImpact={activeScenarioKindA === "Asteroid"}
@@ -1677,7 +1677,7 @@ export default function App() {
         {inspectorTab === "results" && compareMode && (
           <div className="app__compare-rail">
             <div className="app__compare-rail-label">Slot B readout</div>
-            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />
+            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindB} />
           </div>
         )}
         {inspectorTab === "results" && !inHazardMode && <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />}

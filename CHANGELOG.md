@@ -4,6 +4,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Changed
+
+- The Results panel now opens with a plain-language **"What happened?"** outcome
+  lead (source-appropriate headline, peak effect, and energy) instead of raw
+  source metrics, and labels are source-aware: earthquakes and landslides show
+  "Source region radius" rather than the misleading "Cavity radius" (which now
+  appears only for impact and detonation sources).
+
 ### Added
 
 - Nuclear results now include a **latent-cancer estimate** (BEIR VII linear

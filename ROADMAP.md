@@ -173,11 +173,11 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ### P0
 
-- [ ] P0 - UX-05: Replace generic source metrics with source-aware outcome storytelling
-  Why: Results leads with internal quantities and currently labels a Tohoku earthquake metric as Cavity radius, while users primarily want to know what happened, where, when, how severe it was, and how certain the model is.
-  Evidence: live Tohoku Results audit; generic metric rendering in `src/components/ResultsPanel.tsx`; NUKEMAP translates effect zones into plain-language consequences (https://db.nuclearsecrecy.com/nukemap/faq/); ArcGIS guided tours pair map stops with explanatory media (https://storymaps.arcgis.com/stories/22da4d581d7942a091dabd9e6b52619c).
-  Touches: source-aware result view models, `ResultsPanel.tsx`, attenuation/runup/DART panels, direct-hazard results, glossary, confidence copy, export summaries, result fixtures.
-  Acceptance: Results opens on What happened? with maximum effect, first/nearest affected place, arrival time, geographic reach, and confidence/limitations; Science and Validation tabs retain expert metrics and observations; labels vary correctly by earthquake, landslide, asteroid, and nuclear source; no earthquake shows cavity terminology; selecting an outcome focuses the relevant place/time on the globe; consequence estimates use honest ranges and assumptions.
+- [ ] P0 - UX-05b: Expand source-aware Results into place/time/reach storytelling and Science/Validation tabs
+  Why: Results now opens on a plain-language "What happened?" lead with source-correct labels (earthquakes no longer show "Cavity radius"), but it still lacks the first/nearest affected place, arrival time, geographic reach, and a Science/Validation tab split; direct-hazard consequence numbers still read as exact integers.
+  Evidence: `src/components/ResultsPanel.tsx` (`describeOutcome`/`cavityLabel` shipped, no place/time/reach yet); nearest coastal point + arrival data in `src/components/CoastalRunupOverlay.tsx`/`DartOverlay.tsx`; NUKEMAP plain-language consequences (https://db.nuclearsecrecy.com/nukemap/faq/).
+  Touches: result view models, `ResultsPanel.tsx`, attenuation/runup/DART panels, direct-hazard results, confidence copy, export summaries, result fixtures.
+  Acceptance: the outcome lead adds maximum effect, first/nearest affected place, arrival time, geographic reach, and confidence/limitations; Science and Validation tabs retain expert metrics and observations; selecting an outcome focuses the relevant place/time on the globe; direct-hazard consequence estimates use honest ranges and assumptions rather than exact integers.
   Complexity: M
 
 ### P1

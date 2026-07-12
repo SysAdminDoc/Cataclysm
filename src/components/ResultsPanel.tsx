@@ -1,12 +1,72 @@
 import type { InitialDisplacement } from "../types/scenario";
 import { GlossaryTip } from "./GlossaryTip";
 
+/** The four modelled tsunami source families. `null` covers presets/custom
+ * scenarios whose discrete kind is not known to the caller. */
+export type SourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
+
 type Props = {
   initial: InitialDisplacement | null;
   timeS: number;
   onTimeChange: (s: number) => void;
   showTimeline?: boolean;
+  /** Discrete source family, used to label metrics correctly (an earthquake
+   * has no impact "cavity") and to lead with a plain-language outcome. */
+  sourceKind?: SourceKind;
 };
+
+/** Source-aware label for `cavity_radius_m`: a real cavity only exists for
+ * impact/detonation sources; for fault and slide sources the same field is the
+ * effective generating-region radius, so calling it a "cavity" is misleading. */
+function cavityLabel(kind: SourceKind): { term: string; text: string } {
+  switch (kind) {
+    case "Earthquake":
+    case "Landslide":
+      return { term: "cavity_radius", text: "Source region radius" };
+    default:
+      return { term: "cavity_radius", text: "Cavity radius" };
+  }
+}
+
+/** Plain-language "what happened" lead so Results opens with the outcome rather
+ * than internal quantities. Kept honest and source-appropriate. */
+function describeOutcome(
+  initial: InitialDisplacement,
+  kind: SourceKind,
+): { headline: string; detail: string } {
+  const energy = formatEnergy(initial.source_energy_j);
+  const energyText = energy.value === "—" ? "an uncertain amount of energy" : `${energy.value} ${energy.unit}`;
+  const amp = formatLength(initial.peak_amplitude_m);
+  const ampText = amp.value === "—" ? "an uncertain height" : `${amp.value} ${amp.unit}`;
+  const mw = formatMagnitude(initial.seismic_mw_equivalent);
+  switch (kind) {
+    case "Earthquake":
+      return {
+        headline: `Magnitude ${mw} seafloor earthquake`,
+        detail: `Peak seafloor uplift of ${ampText} displaces the water column, radiating a tsunami. Released about ${energyText}.`,
+      };
+    case "Asteroid":
+      return {
+        headline: `Asteroid impact releasing ${energyText}`,
+        detail: `The impact excavates a water cavity whose ${ampText} rim collapse launches the wave.`,
+      };
+    case "Nuclear":
+      return {
+        headline: `Underwater detonation releasing ${energyText}`,
+        detail: `The explosion cavity collapse raises a ${ampText} initial water mound (tsunami-equivalent M ${mw}).`,
+      };
+    case "Landslide":
+      return {
+        headline: `Landslide-generated wave`,
+        detail: `The moving mass pushes up a ${ampText} initial wave, releasing about ${energyText} (tsunami-equivalent M ${mw}).`,
+      };
+    default:
+      return {
+        headline: initial.label || "Modelled tsunami source",
+        detail: `Initial disturbance of ${ampText}, releasing about ${energyText}.`,
+      };
+  }
+}
 
 function formatEnergy(j: number): { value: string; unit: string } {
   if (!Number.isFinite(j)) return { value: "—", unit: "" };
@@ -39,7 +99,7 @@ function formatCoord(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`;
 }
 
-export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true }: Props) {
+export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true, sourceKind = null }: Props) {
   if (!initial) {
     return (
       <div className="section">
@@ -71,13 +131,22 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
   // scaleX(NaN) (which collapses the fill bar) or render "NaN minutes".
   const safeTimeS = Number.isFinite(timeS) ? timeS : 0;
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
+  const outcome = describeOutcome(initial, sourceKind);
+  const cavity_label = cavityLabel(sourceKind);
 
   return (
     <>
       <div className="section">
         <div className="section__title">
-          <span>Source metrics</span>
+          <span>What happened?</span>
           <span className="section__badge" data-tone="success">Ready</span>
+        </div>
+        <div className="results__outcome">
+          <strong className="results__outcome-headline">{outcome.headline}</strong>
+          <p className="results__outcome-detail">{outcome.detail}</p>
+          <span className="results__outcome-note">
+            Modelled first-order tsunami source — educational estimate, not a forecast.
+          </span>
         </div>
         <div className="source-summary" aria-label="Source center">
           <span>{formatCoord(initial.center.lat_deg, initial.center.lon_deg)}</span>
@@ -97,7 +166,7 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
             <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
           </div>
           <div className="results__cell">
-            <div className="results__label"><GlossaryTip term="cavity_radius">Cavity radius</GlossaryTip></div>
+            <div className="results__label"><GlossaryTip term={cavity_label.term}>{cavity_label.text}</GlossaryTip></div>
             <div className="results__value">
               {cavity.value}
               {" "}
