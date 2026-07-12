@@ -25,6 +25,7 @@ import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance"
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams, type ScenarioInput } from "./lib/scenario-schema";
+import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
@@ -303,6 +304,19 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get("referenceScene"),
     [],
   );
+  const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!referenceCaptureMode) return;
+    const handleReferenceView = (event: Event) => {
+      const view = (event as CustomEvent<ReferenceCaptureView>).detail;
+      if (view?.sceneId === referenceCaptureSceneId && Number.isFinite(view.effectTimeMs)) {
+        setReferenceEffectTimeMs(view.effectTimeMs);
+      }
+    };
+    window.addEventListener(REFERENCE_CAPTURE_EVENT, handleReferenceView);
+    return () => window.removeEventListener(REFERENCE_CAPTURE_EVENT, handleReferenceView);
+  }, [referenceCaptureMode, referenceCaptureSceneId]);
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
@@ -631,7 +645,8 @@ export default function App() {
     const tickDurationS = directRenderReplay.scenario?.header.tick_duration_s ?? 0.1;
     if (referenceCaptureMode && referenceCaptureSceneId) {
       const scene = referenceScenes.scenes.find((entry) => entry.id === referenceCaptureSceneId);
-      const tick = Math.min(lastTick, Math.max(0, Math.round((scene?.effectTimeMs ?? 0) / (tickDurationS * 1000))));
+      const effectTimeMs = referenceEffectTimeMs ?? scene?.effectTimeMs ?? 0;
+      const tick = Math.min(lastTick, Math.max(0, Math.round(effectTimeMs / (tickDurationS * 1000))));
       setDirectRenderFrame(directRenderReplay.frameAtTick(tick));
       return;
     }
@@ -644,7 +659,7 @@ export default function App() {
     };
     animationFrame = requestAnimationFrame(advance);
     return () => cancelAnimationFrame(animationFrame);
-  }, [directRenderReplay, detonateNonce, referenceCaptureMode, referenceCaptureSceneId]);
+  }, [directRenderReplay, detonateNonce, referenceCaptureMode, referenceCaptureSceneId, referenceEffectTimeMs]);
 
   // Nuclear fallout plume polygons (surface bursts only), driven by wind.
   const hazardPolygons = useMemo(() => {

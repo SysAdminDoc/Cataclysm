@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.0.0",
+  "sampling": {
+    "sampleWidth": 320,
+    "diffThreshold": 16,
+    "flatBlockStdDev": 2
+  },
+  "scenes": {
+    "orbit-global": {
+      "subject": "A complete sunlit Earth with a readable atmospheric limb",
+      "eventPhase": "environment",
+      "targetRegion": { "x": 0, "y": 0, "width": 1, "height": 1 },
+      "requiredScaleCue": "The full curved Earth and atmospheric limb are visible together.",
+      "forbiddenFailureCues": ["cropped globe", "blank background", "unloaded imagery", "flat map projection"],
+      "thresholds": { "minDynamicRange": 28, "minEdgeEnergy": 0.65, "maxFlatBlockRatio": 0.94 },
+      "review": {
+        "status": "approved",
+        "approver": "SysAdminDoc",
+        "reason": "Current orbit frame clearly presents the complete Earth and atmospheric limb; approved only for globe-scale identity shots, not local realism.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "ocean-daylight": {
+      "subject": "A daylight ocean surface that reads as water rather than a flat map texture",
+      "eventPhase": "environment",
+      "targetRegion": { "x": 0.12, "y": 0.12, "width": 0.76, "height": 0.76 },
+      "requiredScaleCue": "Coastline or horizon context establishes regional ocean scale.",
+      "forbiddenFailureCues": ["flat blue texture", "blurred bathymetry", "hard tile seam", "missing surface response"],
+      "thresholds": { "minDynamicRange": 18, "minEdgeEnergy": 0.45, "maxFlatBlockRatio": 0.96 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current frame is a low-detail imagery surface and is not credible highlight footage.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "earth-night": {
+      "subject": "The night-side Earth with readable darkness, limb, and illuminated geography",
+      "eventPhase": "environment",
+      "targetRegion": { "x": 0.16, "y": 0.08, "width": 0.68, "height": 0.84 },
+      "requiredScaleCue": "The planetary limb and recognizable continental geometry remain visible.",
+      "forbiddenFailureCues": ["uniform black globe", "daylight imagery", "clipped city lights", "missing limb"],
+      "thresholds": { "minDynamicRange": 20, "minEdgeEnergy": 0.5, "maxFlatBlockRatio": 0.95 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "Night lighting has not passed a scene-specific visual review for promotional use.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "asteroid-entry": {
+      "subject": "A scale-correct asteroid body and luminous atmospheric entry path",
+      "eventPhase": "entry",
+      "aftermathEffectTimeMs": 7600,
+      "targetRegion": { "x": 0.12, "y": 0.12, "width": 0.76, "height": 0.7 },
+      "requiredScaleCue": "The Earth horizon and asteroid path are visible in the same frame.",
+      "forbiddenFailureCues": ["missing asteroid", "empty ocean texture", "billboard sprite", "unreadable entry path"],
+      "thresholds": { "minDynamicRange": 20, "minEdgeEnergy": 0.5, "maxFlatBlockRatio": 0.95, "minChangedPixelRatio": 0.0005, "minMeanColorDelta": 0.08, "minTargetChangeCoverage": 0.45 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The approved baseline does not visibly communicate the asteroid or atmospheric entry.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "asteroid-land-impact": {
+      "subject": "The impact flash, crater/ejecta sequence, and expanding effects at the target",
+      "eventPhase": "impact",
+      "aftermathEffectTimeMs": 7600,
+      "targetRegion": { "x": 0.14, "y": 0.18, "width": 0.72, "height": 0.7 },
+      "requiredScaleCue": "Terrain and the full impact footprint are visible together.",
+      "forbiddenFailureCues": ["off-screen impact", "flat ellipse only", "missing crater", "blurred terrain"],
+      "thresholds": { "minDynamicRange": 22, "minEdgeEnergy": 0.55, "maxFlatBlockRatio": 0.94, "minChangedPixelRatio": 0.001, "minMeanColorDelta": 0.12, "minTargetChangeCoverage": 0.5 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current capture is dominated by blurred terrain and analytical ellipses rather than a readable impact.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "asteroid-ocean-impact": {
+      "subject": "The ocean cavity, splash crown, vapor, and transition into wave birth",
+      "eventPhase": "impact",
+      "aftermathEffectTimeMs": 10200,
+      "targetRegion": { "x": 0.14, "y": 0.16, "width": 0.72, "height": 0.72 },
+      "requiredScaleCue": "The disturbance and surrounding ocean surface are visible together.",
+      "forbiddenFailureCues": ["flat cylinder", "ellipse rings only", "missing splash", "flat blue texture"],
+      "thresholds": { "minDynamicRange": 20, "minEdgeEnergy": 0.5, "maxFlatBlockRatio": 0.95, "minChangedPixelRatio": 0.001, "minMeanColorDelta": 0.1, "minTargetChangeCoverage": 0.5 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current analytical water-impact geometry is not credible highlight footage.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "nuclear-airburst": {
+      "subject": "A staged nuclear flash, fireball, blast front, and rising cloud",
+      "eventPhase": "detonation",
+      "aftermathEffectTimeMs": 2400,
+      "targetRegion": { "x": 0.14, "y": 0.15, "width": 0.72, "height": 0.72 },
+      "requiredScaleCue": "The burst and surrounding terrain are visible together.",
+      "forbiddenFailureCues": ["missing detonation", "generic flat disc", "off-screen fireball", "blurred terrain"],
+      "thresholds": { "minDynamicRange": 24, "minEdgeEnergy": 0.55, "maxFlatBlockRatio": 0.94, "minChangedPixelRatio": 0.001, "minMeanColorDelta": 0.15, "minTargetChangeCoverage": 0.5 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current baseline has no clearly readable detonation and cannot be used in the opener or library.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "nuclear-surface-burst": {
+      "subject": "A surface burst with flash, debris stem, blast front, and persistent cloud",
+      "eventPhase": "detonation",
+      "aftermathEffectTimeMs": 2400,
+      "targetRegion": { "x": 0.14, "y": 0.16, "width": 0.72, "height": 0.72 },
+      "requiredScaleCue": "The burst and surrounding terrain are visible together.",
+      "forbiddenFailureCues": ["missing detonation", "airburst-identical scene", "flat ring only", "missing aftermath"],
+      "thresholds": { "minDynamicRange": 24, "minEdgeEnergy": 0.55, "maxFlatBlockRatio": 0.94, "minChangedPixelRatio": 0.001, "minMeanColorDelta": 0.15, "minTargetChangeCoverage": 0.5 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current scene does not yet communicate the distinct physical character of a surface burst.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "tsunami-deep-ocean": {
+      "subject": "A broad, physically subtle deep-ocean tsunami propagation field",
+      "eventPhase": "propagation",
+      "aftermathSimulationTimeS": 3600,
+      "targetRegion": { "x": 0.1, "y": 0.12, "width": 0.8, "height": 0.76 },
+      "requiredScaleCue": "Basin-scale coastlines make the broad wavelength legible.",
+      "forbiddenFailureCues": ["rectangular field seam", "cropped dateline", "dramatic breaking wave offshore", "unloaded imagery"],
+      "thresholds": { "minDynamicRange": 18, "minEdgeEnergy": 0.45, "maxFlatBlockRatio": 0.96, "minChangedPixelRatio": 0.002, "minMeanColorDelta": 0.15, "minTargetChangeCoverage": 0.4 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current analytical overlay has visible field boundaries and is not suitable for spectacle assets.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "tsunami-shoaling": {
+      "subject": "A wave field steepening and concentrating as it approaches the Japanese coast",
+      "eventPhase": "shoaling",
+      "aftermathSimulationTimeS": 3600,
+      "targetRegion": { "x": 0.1, "y": 0.12, "width": 0.8, "height": 0.76 },
+      "requiredScaleCue": "The approaching wave field and recognizable coastline are visible together.",
+      "forbiddenFailureCues": ["flat rectangular overlay", "blurred coastline", "uniform field", "missing wave concentration"],
+      "thresholds": { "minDynamicRange": 18, "minEdgeEnergy": 0.45, "maxFlatBlockRatio": 0.96, "minChangedPixelRatio": 0.002, "minMeanColorDelta": 0.15, "minTargetChangeCoverage": 0.4 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current capture is a blurred analytical field without a readable shoaling wave.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "urban-inundation": {
+      "subject": "Coastal inundation advancing across recognizable terrain and built context",
+      "eventPhase": "inundation",
+      "aftermathSimulationTimeS": 3600,
+      "targetRegion": { "x": 0.1, "y": 0.16, "width": 0.8, "height": 0.76 },
+      "requiredScaleCue": "Coastline, terrain, and inundated extent are visible together.",
+      "forbiddenFailureCues": ["flat color wash", "missing city context", "field seam", "off-screen wet front"],
+      "thresholds": { "minDynamicRange": 18, "minEdgeEnergy": 0.45, "maxFlatBlockRatio": 0.96, "minChangedPixelRatio": 0.002, "minMeanColorDelta": 0.15, "minTargetChangeCoverage": 0.4 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current frame lacks recognizable urban scale and reads as a flat analytical overlay.",
+        "reviewedAt": "2026-07-11"
+      }
+    },
+    "fjord-runup": {
+      "subject": "Lituya Bay runup climbing the fjord walls at legible local scale",
+      "eventPhase": "runup",
+      "aftermathSimulationTimeS": 600,
+      "targetRegion": { "x": 0.12, "y": 0.12, "width": 0.76, "height": 0.8 },
+      "requiredScaleCue": "The fjord walls, shoreline, and runup extent are visible together.",
+      "forbiddenFailureCues": ["flat terrain", "missing shoreline", "off-screen runup", "color bar only"],
+      "thresholds": { "minDynamicRange": 18, "minEdgeEnergy": 0.45, "maxFlatBlockRatio": 0.96, "minChangedPixelRatio": 0.001, "minMeanColorDelta": 0.1, "minTargetChangeCoverage": 0.4 },
+      "review": {
+        "status": "blocked",
+        "approver": "SysAdminDoc",
+        "reason": "The current ellipsoid/offline terrain cannot communicate the recorded 524 m runup convincingly.",
+        "reviewedAt": "2026-07-11"
+      }
+    }
+  }
+}

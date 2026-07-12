@@ -1,6 +1,6 @@
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.8.3-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.4-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -10,7 +10,7 @@
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
 
-> **Migration status (v0.8.3):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Rust is the sole authority for direct asteroid and nuclear results, including effect geometry, casualties, fallout dimensions, and event timelines. Cesium rendering now runs through generation-owned, deterministic systems with leak-tested teardown and runtime GPU quality budgets. The remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
+> **Migration status (v0.8.4):** tsunami, asteroid, earthquake, landslide, and nuclear source models are live behind a unified professional simulator workspace. Rust is the sole authority for direct asteroid and nuclear results, including effect geometry, casualties, fallout dimensions, and event timelines. Cesium rendering now runs through generation-owned, deterministic systems with leak-tested teardown, runtime GPU quality budgets, and perceptual gates that prevent weak reference frames from being reused as highlight assets. The remaining cinematic rendering work (volumetric fireballs, physically displaced ocean, atmospheric entry, fallout, and inundation) is sequenced in [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -156,7 +156,7 @@ and writes adapter plus frame-time evidence to
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.8.3 Windows installers are
+an MSI package and an NSIS setup executable. The v0.8.4 Windows installers are
 locally built from this repository and are currently unsigned until a Windows
 code-signing certificate is configured, so Windows may show an unknown-publisher
 warning. macOS and Linux remain supported source-build targets; platform
@@ -168,12 +168,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\Cataclysm_0.8.3_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.8.4_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile Cataclysm_0.8.3_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.8.4_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full
@@ -222,6 +222,7 @@ npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
 npm run verify:render-protocol # independent binary replay and ECEF conformance gate
 npm run capture:references # regenerate 12-scene 1440p/4K visual candidates + telemetry
+npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # require opener/thumbnail quality
 npm run tauri:build        # verified GPU-enabled installer(s) + signed artifact manifest
 ```
 
@@ -249,6 +250,14 @@ npm run approve:reference -- --scene orbit-global --resolution 1440p --approve o
 Wildcard, multi-frame, mismatched, and reason-free approvals fail before
 rendering. Browser-only direct-effect reference frames consume tracked binary
 recordings serialized by Rust and decoded through the same protocol client.
+
+Each reference scene also declares its subject, event phase, target region,
+required scale cue, forbidden failure cues, and perceptual thresholds in
+`src/data/reference-visual-quality.json`. Event scenes emit labelled
+Before / Event / Aftermath review sheets. A stable analytical baseline may be
+explicitly blocked from highlight use; `verify:highlight-assets` fails unless
+both the metrics and the dated human review approve that exact scene for the
+launch opener, scenario thumbnails, or other promotional presentation.
 
 To bake a Cesium ion token at build time, `cp .env.example .env` and paste
 it in; otherwise leave it blank and paste at runtime in **Settings**.

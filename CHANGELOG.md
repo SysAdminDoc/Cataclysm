@@ -4,6 +4,22 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.8.4] — 2026-07-11 — Perceptual visual-quality gate
+
+- Added scene-specific perceptual contracts for all 12 deterministic reference
+  scenes: named subjects and phases, central target regions, scale cues,
+  forbidden failure cues, measurable detail/change thresholds, and dated
+  approved-or-blocked review decisions.
+- Reference captures now produce Before / Event / Aftermath frames and a labelled
+  review contact sheet while preserving the locked event-frame hashes.
+- Added sharpness, dynamic-range, flat-region, changed-pixel, color-delta, and
+  target-coverage measurements with synthetic unit tests.
+- Added a fail-closed highlight gate so weak analytical captures remain available
+  for regression testing but cannot be reused by the opener, scenario library,
+  thumbnails, or promotional exports.
+- Made direct-effect reference playback seek the Rust-authored frame stream by
+  the requested capture phase, enabling deterministic multi-phase review.
+
 ## [0.8.3] — 2026-07-11 — Usability and recovery audit
 
 - Fixed solver lifecycle ownership so changing inspector tabs preserves completed

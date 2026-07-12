@@ -4,16 +4,23 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
+import {
+  analyzeReferenceFrame,
+  createPhaseContactSheet,
+  evaluateReferenceFrame,
+} from "./reference-visual-quality.mjs";
 
 const root = process.cwd();
 const scenePath = path.join(root, "src", "data", "reference-scenes.json");
 const fixturePath = path.join(root, "src", "data", "direct-hazard-capture-fixtures.json");
 const registryPath = path.join(root, "src", "data", "earth-assets.json");
 const baselinePath = path.join(root, "tests", "reference-baselines.json");
+const qualityPath = path.join(root, "src", "data", "reference-visual-quality.json");
 const outputDir = path.join(root, "artifacts", "visual-reference", "latest");
 const args = process.argv.slice(2);
 const mode = args.includes("--record") ? "record" : "verify";
 const skipBuild = args.includes("--skip-build");
+const requireSpectacle = args.includes("--require-spectacle");
 const filterValue = (name) => {
   const index = args.indexOf(name);
   return index >= 0 ? args[index + 1] : null;
@@ -104,6 +111,34 @@ function validateContract(contract, registry, fixtures) {
   }
 }
 
+function validateQualityContract(contract, qualityContract) {
+  if (qualityContract.schemaVersion !== 1 || qualityContract.contractVersion !== "1.0.0") {
+    throw new Error("Unsupported reference visual-quality contract.");
+  }
+  const sceneIds = new Set(contract.scenes.map((scene) => scene.id));
+  const qualityIds = Object.keys(qualityContract.scenes);
+  if (qualityIds.length !== sceneIds.size || qualityIds.some((id) => !sceneIds.has(id))) {
+    throw new Error("Visual-quality contract must cover exactly the reference-scene IDs.");
+  }
+  for (const [sceneId, quality] of Object.entries(qualityContract.scenes)) {
+    if (!quality.subject?.trim() || !quality.eventPhase?.trim() || !quality.requiredScaleCue?.trim()) {
+      throw new Error(`${sceneId}: visual-quality subject, phase, and scale cue are required.`);
+    }
+    if (!Array.isArray(quality.forbiddenFailureCues) || quality.forbiddenFailureCues.length === 0) {
+      throw new Error(`${sceneId}: at least one forbidden visual failure cue is required.`);
+    }
+    if (!quality.thresholds || Object.keys(quality.thresholds).length === 0) {
+      throw new Error(`${sceneId}: perceptual thresholds are required.`);
+    }
+    if (!["approved", "blocked"].includes(quality.review?.status)
+      || !quality.review?.approver?.trim()
+      || !quality.review?.reason?.trim()
+      || !Number.isFinite(Date.parse(quality.review?.reviewedAt))) {
+      throw new Error(`${sceneId}: a dated approved/blocked visual review with rationale is required.`);
+    }
+  }
+}
+
 function pngDimensions(buffer) {
   if (buffer.toString("ascii", 1, 4) !== "PNG") throw new Error("Capture is not a PNG.");
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
@@ -146,17 +181,6 @@ async function configureWorkflow(page, scene) {
     if (workflow.runSolver) {
       await page.getByRole("button", { name: "Run simulation" }).click();
       await page.getByRole("button", { name: "Re-run simulation" }).waitFor({ state: "visible", timeout: 30_000 });
-      const solverTimeline = page.locator('.swe__row input[aria-label="Simulation timeline scrubber"]');
-      if (await solverTimeline.count()) {
-        const max = Number(await solverTimeline.getAttribute("max"));
-        const frame = Math.round((scene.simulationTimeS / 3_600) * max);
-        await solverTimeline.evaluate((element, value) => {
-          const input = element;
-          input.value = String(value);
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.dispatchEvent(new Event("change", { bubbles: true }));
-        }, frame);
-      }
     }
   } else if (workflow.kind.startsWith("direct-")) {
     const nuclear = workflow.kind === "direct-nuclear";
@@ -172,6 +196,20 @@ async function configureWorkflow(page, scene) {
     await page.getByRole("tab", { name: "Results" }).click();
     await page.locator(".hazard__results").waitFor({ state: "visible" });
   }
+}
+
+async function setWorkflowTime(page, simulationTimeS) {
+  const solverTimeline = page.locator('.swe__row input[aria-label="Simulation timeline scrubber"]');
+  if (await solverTimeline.count()) {
+    const max = Number(await solverTimeline.getAttribute("max"));
+    const frame = Math.min(max, Math.max(0, Math.round((simulationTimeS / 3_600) * max)));
+    await solverTimeline.evaluate((element, value) => {
+      const input = element;
+      input.value = String(value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, frame);
+  }
   const transport = page.locator('.simulation-transport input[aria-label="Scenario timeline scrubber"]');
   if (await transport.count()) {
     await transport.evaluate((element, value) => {
@@ -179,19 +217,28 @@ async function configureWorkflow(page, scene) {
       input.value = String(value);
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new Event("change", { bubbles: true }));
-    }, scene.simulationTimeS);
+    }, simulationTimeS);
   }
 }
 
-async function applyCaptureView(page, contract, scene) {
+async function triggerDirectEffect(page, scene) {
+  if (!scene.workflow.kind.startsWith("direct-")) return;
+  await page.evaluate(() => {
+    const button = document.querySelector(".hazard__detonate");
+    if (!(button instanceof HTMLButtonElement)) throw new Error("Detonation control unavailable.");
+    button.click();
+  });
+}
+
+async function applyCaptureView(page, contract, scene, overrides = {}) {
   const view = {
     sceneId: scene.id,
     utc: scene.utc,
     seed: scene.seed,
     qualityTier: scene.qualityTier,
     exposure: scene.exposure,
-    simulationTimeS: scene.simulationTimeS,
-    effectTimeMs: scene.effectTimeMs,
+    simulationTimeS: overrides.simulationTimeS ?? scene.simulationTimeS,
+    effectTimeMs: overrides.effectTimeMs ?? scene.effectTimeMs,
     camera: { ...scene.camera, verticalFovDeg: contract.defaultVerticalFovDeg },
   };
   await page.waitForFunction(() => document.documentElement.dataset.referenceBridgeReady === "true");
@@ -210,21 +257,18 @@ async function applyCaptureView(page, contract, scene) {
   if (bridgeDebug.received !== scene.id || bridgeDebug.capture?.ready !== true) {
     throw new Error(`${scene.id}: capture bridge did not apply the requested view.`);
   }
-  if (scene.workflow.kind.startsWith("direct-") && scene.effectTimeMs > 0) {
-    await page.evaluate(() => {
-      const button = document.querySelector(".hazard__detonate");
-      if (!(button instanceof HTMLButtonElement)) throw new Error("Detonation control unavailable.");
-      button.click();
-    });
-    const reapplied = await page.evaluate((detail) => {
-      window.__CATACLYSM_APPLY_REFERENCE_VIEW__(detail);
-      return window.__CATACLYSM_REFERENCE_CAPTURE__;
-    }, view);
-    if (reapplied?.ready !== true || reapplied.sceneId !== scene.id) {
-      throw new Error(`${scene.id}: capture view did not reapply after the deterministic effect phase.`);
-    }
-  }
   return view;
+}
+
+async function preparePhase(page, contract, scene, { simulationTimeS, effectTimeMs }) {
+  await setWorkflowTime(page, simulationTimeS);
+  await applyCaptureView(page, contract, scene, { simulationTimeS, effectTimeMs });
+  await page.waitForTimeout(250);
+}
+
+async function capturePhase(page, contract, scene, phase) {
+  await preparePhase(page, contract, scene, phase);
+  return page.screenshot({ animations: "disabled" });
 }
 
 async function collectRuntime(page) {
@@ -266,7 +310,9 @@ const contract = JSON.parse(await readFile(scenePath, "utf8"));
 const registry = JSON.parse(await readFile(registryPath, "utf8"));
 const fixtures = JSON.parse(await readFile(fixturePath, "utf8"));
 const baselines = JSON.parse(await readFile(baselinePath, "utf8"));
+const qualityContract = JSON.parse(await readFile(qualityPath, "utf8"));
 validateContract(contract, registry, fixtures);
+validateQualityContract(contract, qualityContract);
 
 if (!skipBuild) run(process.platform === "win32" ? "cmd.exe" : "npm", process.platform === "win32" ? ["/d", "/c", "npm", "run", "build"] : ["run", "build"]);
 if (!sceneFilter && !resolutionFilter) await rm(outputDir, { recursive: true, force: true });
@@ -302,10 +348,25 @@ try {
       if (await page.locator('.app__globe-status[data-status="failed"]').count()) {
         throw new Error(`${scene.id}: Earth imagery failed before capture.`);
       }
+      const quality = qualityContract.scenes[scene.id];
       await configureWorkflow(page, scene);
-      await applyCaptureView(page, contract, scene);
-      await page.waitForTimeout(250);
+      await triggerDirectEffect(page, scene);
+      const requiresPhases = quality.eventPhase !== "environment";
+      const beforeImage = requiresPhases
+        ? await capturePhase(page, contract, scene, { simulationTimeS: 0, effectTimeMs: 0 })
+        : null;
+      await preparePhase(page, contract, scene, {
+        simulationTimeS: scene.simulationTimeS,
+        effectTimeMs: scene.effectTimeMs,
+      });
       const runtime = await collectRuntime(page);
+      const image = await page.screenshot({ animations: "disabled" });
+      const aftermathImage = requiresPhases
+        ? await capturePhase(page, contract, scene, {
+            simulationTimeS: quality.aftermathSimulationTimeS ?? scene.simulationTimeS,
+            effectTimeMs: quality.aftermathEffectTimeMs ?? scene.effectTimeMs,
+          })
+        : null;
       const sortedFrames = [...runtime.frameIntervalsMs].sort((left, right) => left - right);
       if (runtime.page.innerWidth !== viewport.width || runtime.page.innerHeight !== viewport.height || runtime.page.scrollWidth !== viewport.width || runtime.page.scrollHeight !== viewport.height) {
         throw new Error(`${scene.id}@${resolution}: viewport overflow or size mismatch.`);
@@ -322,12 +383,24 @@ try {
       ) {
         throw new Error(`${scene.id}@${resolution}: active Earth session does not match the approved assets: ${JSON.stringify(earthSession)}.`);
       }
-      const image = await page.screenshot({ animations: "disabled" });
       const dimensions = pngDimensions(image);
       if (dimensions.width !== viewport.width || dimensions.height !== viewport.height) throw new Error(`${scene.id}@${resolution}: PNG dimensions disagree.`);
       const key = `${scene.id}@${resolution}`;
       const sceneHash = sha256(Buffer.from(JSON.stringify(scene)));
       const imageHash = sha256(image);
+      const imagePath = path.join(outputDir, `${key}.png`);
+      await writeFile(imagePath, image);
+      const qualityContractHash = sha256(Buffer.from(JSON.stringify(quality)));
+      const visualMetrics = await analyzeReferenceFrame(image, {
+        ...qualityContract.sampling,
+        targetRegion: quality.targetRegion,
+        controlImage: beforeImage,
+      });
+      const visualEvaluation = evaluateReferenceFrame(visualMetrics, quality.thresholds);
+      const highlightEligible = quality.review.status === "approved" && visualEvaluation.passed;
+      if (quality.review.status === "approved" && !visualEvaluation.passed) {
+        throw new Error(`${key}: approved highlight scene failed perceptual checks: ${visualEvaluation.failures.join("; ")}`);
+      }
       const software = /swiftshader|llvmpipe|software/i.test([runtime.gpu.renderer, runtime.gpu.unmaskedRenderer].filter(Boolean).join(" "));
       const metadata = {
         schemaVersion: 1, captureContractVersion: contract.captureContractVersion, sceneId: scene.id, resolution,
@@ -341,9 +414,30 @@ try {
         frameTimingMs: { samples: sortedFrames.length, p50: percentile(sortedFrames, 0.5), p95: percentile(sortedFrames, 0.95), max: sortedFrames.at(-1) },
         softwareRenderer: software, sourceRefs: scene.sourceRefs, expectedVisualAssetIds: scene.visualAssetIds,
         requestSha256: sha256(Buffer.from(JSON.stringify(scene.workflow))), fixtureSha256: scene.workflow.fixtureId ? sha256(Buffer.from(JSON.stringify(fixtures[scene.workflow.fixtureId]))) : null,
+        visualQuality: {
+          contractVersion: qualityContract.contractVersion,
+          contractSha256: qualityContractHash,
+          subject: quality.subject,
+          eventPhase: quality.eventPhase,
+          requiredScaleCue: quality.requiredScaleCue,
+          forbiddenFailureCues: quality.forbiddenFailureCues,
+          thresholds: quality.thresholds,
+          metrics: visualMetrics,
+          evaluation: visualEvaluation,
+          review: quality.review,
+          highlightEligible,
+        },
       };
-      const imagePath = path.join(outputDir, `${key}.png`);
-      await writeFile(imagePath, image);
+      if (beforeImage && aftermathImage) {
+        await writeFile(path.join(outputDir, `${key}@before.png`), beforeImage);
+        await writeFile(path.join(outputDir, `${key}@aftermath.png`), aftermathImage);
+        const reviewSheet = await createPhaseContactSheet([
+          { label: "Before", image: beforeImage },
+          { label: "Event", image },
+          { label: "Aftermath", image: aftermathImage },
+        ]);
+        await writeFile(path.join(outputDir, `${key}@review.png`), reviewSheet);
+      }
       await writeFile(path.join(outputDir, `${key}.json`), `${JSON.stringify(metadata, null, 2)}\n`);
       runManifest.push(metadata);
       if (mode === "verify") {
@@ -351,8 +445,15 @@ try {
         if (!approved) throw new Error(`${key}: no approved baseline. Review the candidate and approve only this scene/resolution.`);
         if (approved.pngSha256 !== imageHash || approved.sceneSha256 !== sceneHash) throw new Error(`${key}: visual or scene contract drifted from its reviewed baseline.`);
       }
+      if (requireSpectacle && !highlightEligible) {
+        const reasons = [
+          quality.review.status === "approved" ? null : `review status is ${quality.review.status}: ${quality.review.reason}`,
+          ...visualEvaluation.failures,
+        ].filter(Boolean);
+        throw new Error(`${key}: not eligible for opener, thumbnail, or promotional use: ${reasons.join("; ")}`);
+      }
       await context.close();
-      console.log(`${mode === "verify" ? "verified" : "recorded"} ${key} ${imageHash}`);
+      console.log(`${mode === "verify" ? "verified" : "recorded"} ${key} ${imageHash} [highlight ${highlightEligible ? "approved" : "blocked"}]`);
     }
   }
   let priorCaptures = [];
@@ -380,6 +481,9 @@ try {
       review: {
         reason: approvalReason.trim(), approver, approvedAt: new Date().toISOString(),
         previousPngSha256: previous?.pngSha256 ?? null, commit: gitCommit,
+        visualQualityStatus: candidate.visualQuality.review.status,
+        visualQualityContractSha256: candidate.visualQuality.contractSha256,
+        requiredScaleCue: candidate.visualQuality.requiredScaleCue,
       },
     };
     await writeFile(baselinePath, `${JSON.stringify(baselines, null, 2)}\n`);

@@ -401,6 +401,7 @@ if (docsOnly) {
   process.exit(0);
 }
 runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"]);
+runNpm("Reference perceptual-quality unit gate", ["run", "test:reference-quality"]);
 runNpm("HR-00 reference baseline contract", ["run", "verify:reference-locks"]);
 runNpm("HR-01 renderer protocol conformance", ["run", "verify:render-protocol"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);
