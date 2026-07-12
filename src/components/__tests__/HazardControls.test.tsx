@@ -32,6 +32,7 @@ const nuclearResult: HazardResult = {
     waveHeight: 0,
     fallout: null,
     timeline: [{ time: "0 ms", description: "Detonation.", category: "radiation" }],
+    latentCancer: { exposed: 50000, cancers10yr: 800, cancers30yr: 2100, geneticEffects: 50 },
   },
 };
 
@@ -80,6 +81,9 @@ describe("HazardControls", () => {
     expect(screen.getByText("Fireball radius")).toBeInTheDocument();
     // casualties block renders fatalities
     expect(screen.getByText(/fatalities/i)).toBeInTheDocument();
+    // latent cancer readout renders the BEIR VII estimate
+    expect(screen.getByText(/latent\s*cancer deaths over 30 yr/i)).toBeInTheDocument();
+    expect(screen.getByText(/BEIR VII/i)).toBeInTheDocument();
     // one legend entry per ring
     expect(screen.getByText("Fireball")).toBeInTheDocument();
   });

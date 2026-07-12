@@ -65,6 +65,13 @@ export interface TimelineEvent {
   category: string;
 }
 
+export interface LatentCancerEstimate {
+  exposed: number;
+  cancers10yr: number;
+  cancers30yr: number;
+  geneticEffects: number;
+}
+
 export interface NuclearDetail {
   yieldKt: number;
   isSurface: boolean;
@@ -84,6 +91,7 @@ export interface NuclearDetail {
   waveHeight: number;
   fallout: FalloutPlume | null;
   timeline: TimelineEvent[];
+  latentCancer: LatentCancerEstimate | null;
 }
 
 export interface AsteroidDetail {

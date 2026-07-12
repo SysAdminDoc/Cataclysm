@@ -718,6 +718,17 @@ pub struct TimelineEvent {
     pub category: String,
 }
 
+/// Latent (delayed) cancer fatalities among blast/thermal survivors, BEIR VII
+/// (2006) linear-no-threshold model at ~5.5% excess cancer mortality per Sv.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LatentCancerEstimate {
+    pub exposed: u64,
+    pub cancers_10yr: u64,
+    pub cancers_30yr: u64,
+    pub genetic_effects: u64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NuclearDetail {
@@ -739,6 +750,7 @@ pub struct NuclearDetail {
     pub wave_height: f64,
     pub fallout: Option<FalloutPlume>,
     pub timeline: Vec<TimelineEvent>,
+    pub latent_cancer: Option<LatentCancerEstimate>,
 }
 
 #[derive(Clone)]
@@ -1052,6 +1064,43 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
     }
 }
 
+/// Delayed cancer fatalities among survivors, ported from the NukeMap
+/// `estimateLatentCancer` model. BEIR VII (2006) linear-no-threshold:
+/// ~5.5% excess cancer mortality per sievert. Dose zones are approximated from
+/// Glasstone & Dolan radiation scaling; ~50% of the population in the outer
+/// dose rings is assumed to survive the prompt blast/thermal effects.
+fn latent_cancer(effects: &NuclearEffects, density: f64) -> LatentCancerEstimate {
+    // (radius_km, whole-body dose in Sv) from innermost to outermost.
+    let zones = [
+        (effects.radiation, 5.0), // ~500 rem at the 500-rem radius edge
+        (effects.psi_1, 0.5),     // ~50 rem near the 1 psi boundary
+        (effects.thermal_1, 0.1), // ~10 rem near the 1st-degree burn edge
+    ];
+    let mut exposed = 0.0;
+    let mut cancers_10 = 0.0;
+    let mut cancers_30 = 0.0;
+    let mut prev_area = 0.0;
+    for (radius, dose) in zones {
+        if radius < 0.001 {
+            continue;
+        }
+        let area = std::f64::consts::PI * radius * radius;
+        let ring = (area - prev_area).max(0.0);
+        let pop = ring * density * 0.5; // survivors only
+        let cancer_rate = dose * 0.055; // BEIR VII: 5.5% per Sv
+        exposed += pop;
+        cancers_10 += pop * cancer_rate * 0.3; // ~30% manifest within 10 years
+        cancers_30 += pop * cancer_rate * 0.8; // ~80% manifest within 30 years
+        prev_area = area;
+    }
+    LatentCancerEstimate {
+        exposed: exposed.max(0.0).round() as u64,
+        cancers_10yr: cancers_10.max(0.0).round() as u64,
+        cancers_30yr: cancers_30.max(0.0).round() as u64,
+        genetic_effects: (exposed * 0.001).max(0.0).round() as u64, // ~0.1% per UNSCEAR
+    }
+}
+
 pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardResult, String> {
     validate_center(request.center)?;
     validate_range("yield_kt", request.yield_kt, 0.001, 1e7)?;
@@ -1188,6 +1237,8 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         wave_height: effects.wave_height,
         fallout: effects.fallout.clone(),
         timeline,
+        latent_cancer: (request.population_density > 0.0)
+            .then(|| latent_cancer(&effects, request.population_density)),
     };
     Ok(HazardResult {
         kind: "nuclear".to_string(),
@@ -1602,4 +1653,42 @@ mod tests {
             assert_fixture(&expected[id], &actual, id);
         }
     }
+
+    #[test]
+    fn latent_cancer_scales_with_yield_and_density_and_is_zero_without_population() {
+        let effects = |yield_kt| {
+            nuclear_effects(&NuclearHazardRequest {
+                center: center(),
+                yield_kt,
+                burst_type: NuclearBurstType::Surface,
+                height_m: None,
+                fission_pct: 50.0,
+                population_density: 5_000.0,
+            })
+        };
+        let small = latent_cancer(&effects(10.0), 5_000.0);
+        let big = latent_cancer(&effects(1_000.0), 5_000.0);
+        assert!(big.cancers_30yr > small.cancers_30yr);
+        assert!(big.cancers_30yr >= big.cancers_10yr);
+        assert!(big.exposed > 0);
+        // No population means no latent cancers.
+        let empty = latent_cancer(&effects(1_000.0), 0.0);
+        assert_eq!(empty.exposed, 0);
+        assert_eq!(empty.cancers_30yr, 0);
+        // Nuclear results omit the estimate entirely when density is zero.
+        let result = simulate_nuclear_hazard(NuclearHazardRequest {
+            center: center(),
+            yield_kt: 100.0,
+            burst_type: NuclearBurstType::Surface,
+            height_m: None,
+            fission_pct: 50.0,
+            population_density: 0.0,
+        })
+        .unwrap();
+        let HazardDetail::Nuclear(detail) = result.detail else {
+            panic!("wrong detail");
+        };
+        assert!(detail.latent_cancer.is_none());
+    }
+
 }

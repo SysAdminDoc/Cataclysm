@@ -280,6 +280,17 @@ export function HazardControls({
               </span>
             </div>
           )}
+          {nuclearEffects?.latentCancer && (
+            <div className="hazard__casualties">
+              <strong>{nuclearEffects.latentCancer.cancers30yr.toLocaleString()}</strong> est. latent
+              cancer deaths over 30 yr ·{" "}
+              <strong>{nuclearEffects.latentCancer.cancers10yr.toLocaleString()}</strong> within 10 yr
+              <span className="hazard__casualties-note">
+                BEIR VII linear-no-threshold (~5.5%/Sv) among {nuclearEffects.latentCancer.exposed.toLocaleString()} survivors;
+                ~{nuclearEffects.latentCancer.geneticEffects.toLocaleString()} hereditary effects (educational estimate)
+              </span>
+            </div>
+          )}
           <ul className="hazard__ring-legend">
             {result.rings.map((ring) => (
               <li key={ring.label}>

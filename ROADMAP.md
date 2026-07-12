@@ -25,8 +25,8 @@ remain safe in-tree under `legacy/` while this section reaches parity.
   Remaining sub-item: detonation timeline (port `NM.calcTimeline`).
 - **UNI-05** Fallout plume overlay (wind angle/speed) as a Cesium polygon —
   port `NM.Effects.drawFallout`.
-- **UNI-06** Shelter advisor (port `js/shelter.js`, already pure) + latent-cancer
-  readout (`estimateLatentCancer`).
+- **UNI-06** Shelter advisor (port `js/shelter.js`, already pure): per-shelter-type
+  survival probability at key radii from blast/thermal/radiation interpolation.
 
 ### P2 — Impact mode + data
 - ✅ **UNI-07** Asteroid input panel (diameter/velocity/angle/density/target) wired
