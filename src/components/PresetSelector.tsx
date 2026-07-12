@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { UiIcon } from "./UiIcon";
 import { TimelineView } from "./TimelineView";
 import { GUIDED_LESSONS, type GuidedLesson } from "../lib/guided-lessons";
+import type { DirectScenarioTemplate } from "../lib/scenario-library";
 import type { Preset } from "../types/scenario";
 
 type Props = {
@@ -11,16 +12,25 @@ type Props = {
   busyId?: string | null;
   onStartLesson?: (lesson: GuidedLesson) => void;
   completedLessons?: Record<string, string>;
+  directScenarios?: readonly DirectScenarioTemplate[];
+  activeDirectId?: string | null;
+  onSelectDirect?: (scenario: DirectScenarioTemplate) => void;
+  onCreateScenario?: () => void;
+  onRunActive?: () => void;
+  recentIds?: string[];
+  favoriteIds?: string[];
+  onToggleFavorite?: (id: string) => void;
 };
 
 type ViewMode = "cards" | "timeline";
-type LibraryFilter = "all" | "historical" | "hypothetical";
+type LibraryFilter = "all" | "historical" | "hypothetical" | "favorites";
 
 type PresetGroup = {
   id: "recorded" | "what-if";
   label: string;
   description: string;
   presets: Preset[];
+  directScenarios: readonly DirectScenarioTemplate[];
 };
 
 function sortKey(p: Preset): number {
@@ -51,6 +61,23 @@ function sourceDetail(preset: Preset): string {
         : formatCompact(preset.source.source.yield_kt, 1, "kt yield") ?? "Burst model";
     case "Landslide":
       return formatCompact(preset.source.source.volume_m3, 1_000_000, "Mm³ slide") ?? "Slide model";
+  }
+}
+
+function presetLibraryId(presetId: string): string {
+  return `preset:${presetId}`;
+}
+
+function directSourceKind(scenario: DirectScenarioTemplate): Preset["source"]["kind"] {
+  return scenario.domain === "asteroid" ? "Asteroid" : "Nuclear";
+}
+
+function presetHighlights(preset: Preset): string[] {
+  switch (preset.source.kind) {
+    case "Earthquake": return ["Fault uplift", "Ocean propagation", "Coastal arrival"];
+    case "Landslide": return ["Slide source", "Confined wave", "Runup estimate"];
+    case "Asteroid": return ["Impact source", "Basin propagation", "Coastal runup"];
+    case "Nuclear": return ["Underwater source", "Wave attenuation", "Coastal arrival"];
   }
 }
 
@@ -87,6 +114,14 @@ export function PresetSelector({
   busyId,
   onStartLesson,
   completedLessons = {},
+  directScenarios = [],
+  activeDirectId = null,
+  onSelectDirect,
+  onCreateScenario,
+  onRunActive,
+  recentIds = [],
+  favoriteIds = [],
+  onToggleFavorite,
 }: Props) {
   const instanceId = useId();
   const [query, setQuery] = useState("");
@@ -94,10 +129,25 @@ export function PresetSelector({
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
+  const totalCount = sorted.length + directScenarios.length;
+  const activeLibraryId = activeDirectId ?? (activeId ? presetLibraryId(activeId) : null);
   const normalizedQuery = query.trim().toLowerCase();
   const filtered = useMemo(
-    () => sorted.filter((preset) => filter === "all" || (filter === "historical" ? !preset.is_speculative : preset.is_speculative)),
-    [filter, sorted],
+    () => sorted.filter((preset) => {
+      if (filter === "all") return true;
+      if (filter === "historical") return !preset.is_speculative;
+      if (filter === "hypothetical") return preset.is_speculative;
+      return favoriteIds.includes(presetLibraryId(preset.id));
+    }),
+    [favoriteIds, filter, sorted],
+  );
+  const filteredDirect = useMemo(
+    () => directScenarios.filter((scenario) => {
+      if (filter === "historical") return false;
+      if (filter === "favorites") return favoriteIds.includes(scenario.id);
+      return true;
+    }),
+    [directScenarios, favoriteIds, filter],
   );
   const visible = useMemo(
     () =>
@@ -114,23 +164,45 @@ export function PresetSelector({
   const groups = useMemo<PresetGroup[]>(() => {
     const recorded = visible.filter((preset) => !preset.is_speculative);
     const whatIf = visible.filter((preset) => preset.is_speculative);
+    const visibleDirect = normalizedQuery
+      ? filteredDirect.filter((scenario) =>
+          [scenario.name, scenario.date, scenario.blurb, scenario.detail, scenario.reference, scenario.domain]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedQuery),
+        )
+      : filteredDirect;
     return [
       {
         id: "recorded",
         label: "Recorded events",
         description: "Historical and observed scenarios",
         presets: recorded,
+        directScenarios: [],
       },
       {
         id: "what-if",
         label: "What-if studies",
         description: "Hypothetical or contested scenarios",
         presets: whatIf,
+        directScenarios: visibleDirect,
       },
-    ].filter((group) => group.presets.length > 0) as PresetGroup[];
-  }, [visible]);
+    ].filter((group) => group.presets.length + group.directScenarios.length > 0) as PresetGroup[];
+  }, [filteredDirect, normalizedQuery, visible]);
+  const visibleCount = groups.reduce((count, group) => count + group.presets.length + group.directScenarios.length, 0);
   const timelinePresets = useMemo(() => visible.filter(hasTimelineDate), [visible]);
-  if (sorted.length === 0) {
+  const famousPreset = sorted.find((preset) => preset.id === "tohoku_2011")
+    ?? sorted.find((preset) => !preset.is_speculative)
+    ?? null;
+  const whatIfScenario = directScenarios.find((scenario) => scenario.id === "direct:asteroid-tokyo")
+    ?? directScenarios[0]
+    ?? null;
+  const recentId = recentIds.find((id) =>
+    id.startsWith("preset:")
+      ? sorted.some((preset) => presetLibraryId(preset.id) === id)
+      : directScenarios.some((scenario) => scenario.id === id),
+  ) ?? null;
+  if (totalCount === 0) {
     return (
       <div className="section">
         <div className="section__title">Scenario library</div>
@@ -148,8 +220,8 @@ export function PresetSelector({
     <div className="section preset-library">
       <div className="preset-library__header">
         <div className="preset-library__identity">
-          <span>Scenario library</span>
-          <strong>Reference events</strong>
+          <span>Universal library</span>
+          <strong>Browse</strong>
         </div>
         <div className="preset-library__actions">
           <div className="preset-view-toggle" role="group" aria-label="View mode">
@@ -168,9 +240,84 @@ export function PresetSelector({
               Timeline
             </button>
           </div>
-          <span className="section__count" aria-label={`${visible.length} of ${sorted.length} scenarios shown`}>{visible.length}/{sorted.length}</span>
+          {onToggleFavorite && (
+            <button
+              className="preset-library__favorite"
+              type="button"
+              disabled={!activeLibraryId}
+              aria-label={activeLibraryId && favoriteIds.includes(activeLibraryId) ? "Remove selected scenario from favorites" : "Favorite selected scenario"}
+              aria-pressed={Boolean(activeLibraryId && favoriteIds.includes(activeLibraryId))}
+              onClick={() => activeLibraryId && onToggleFavorite(activeLibraryId)}
+              title={activeLibraryId ? "Toggle favorite for the selected scenario" : "Select a scenario to favorite it"}
+            >
+              {activeLibraryId && favoriteIds.includes(activeLibraryId) ? "★" : "☆"}
+            </button>
+          )}
+          <span className="section__count" aria-label={`${visibleCount} of ${totalCount} scenarios shown`}>{visibleCount}/{totalCount}</span>
         </div>
       </div>
+
+      <section className="quick-start" aria-labelledby={`${instanceId}-quick-start-title`}>
+        <div className="quick-start__heading">
+          <span>Quick start</span>
+          <strong id={`${instanceId}-quick-start-title`}>Choose the experience, not the tool</strong>
+        </div>
+        <div className="quick-start__grid">
+          <button
+            type="button"
+            data-intent="famous"
+            disabled={!famousPreset}
+            onClick={() => famousPreset && onSelect(famousPreset.id)}
+          >
+            <UiIcon name="play" size={15} />
+            <span><strong>Watch a famous event</strong><small>Curated historical scenario</small></span>
+          </button>
+          <button
+            type="button"
+            data-intent="what-if"
+            disabled={!whatIfScenario || !onSelectDirect}
+            onClick={() => whatIfScenario && onSelectDirect?.(whatIfScenario)}
+          >
+            <UiIcon name="mapPin" size={15} />
+            <span><strong>Explore a what-if</strong><small>Direct-effects study</small></span>
+          </button>
+          <button type="button" data-intent="custom" disabled={!onCreateScenario} onClick={onCreateScenario}>
+            <UiIcon name="reset" size={15} />
+            <span><strong>Create my own</strong><small>Build a custom source</small></span>
+          </button>
+          <button
+            type="button"
+            data-intent="recent"
+            disabled={!recentId}
+            onClick={() => {
+              if (!recentId) return;
+              if (recentId.startsWith("preset:")) onSelect(recentId.slice("preset:".length));
+              else {
+                const direct = directScenarios.find((scenario) => scenario.id === recentId);
+                if (direct) onSelectDirect?.(direct);
+              }
+            }}
+          >
+            <UiIcon name="refresh" size={15} />
+            <span><strong>Continue recent</strong><small>{recentId ? "Return to the last setup" : "No recent scenario yet"}</small></span>
+          </button>
+        </div>
+      </section>
+
+      {activeLibraryId && onRunActive && (
+        <div className="preset-active-action" role="status">
+          <span>
+            <small>Selected scenario</small>
+            <strong>{activeDirectId
+              ? directScenarios.find((scenario) => scenario.id === activeDirectId)?.name ?? "Direct effects"
+              : sorted.find((preset) => preset.id === activeId)?.name ?? "Reference event"}</strong>
+          </span>
+          <button type="button" onClick={onRunActive}>
+            <UiIcon name="play" size={14} />
+            Run &amp; Watch
+          </button>
+        </div>
+      )}
 
       <div className="preset-search">
         <UiIcon name="search" size={14} className="preset-search__icon" />
@@ -194,7 +341,7 @@ export function PresetSelector({
       </div>
 
       <div className="preset-library-tabs" role="group" aria-label="Scenario library filter">
-        {(["all", "historical", "hypothetical"] as const).map((item) => (
+        {(["all", "historical", "hypothetical", "favorites"] as const).map((item) => (
           <button
             type="button"
             key={item}
@@ -202,7 +349,7 @@ export function PresetSelector({
             data-active={filter === item ? "true" : "false"}
             onClick={() => setFilter(item)}
           >
-            {item === "all" ? "All" : item === "historical" ? "Recorded" : "What-if"}
+            {item === "all" ? "All" : item === "historical" ? "Recorded" : item === "hypothetical" ? "What-if" : "Favorites"}
           </button>
         ))}
       </div>
@@ -257,7 +404,7 @@ export function PresetSelector({
       ) : (
         <>
           <div className="preset-groups">
-            {visible.length === 0 && (
+            {visibleCount === 0 && (
               <div className="empty-state empty-state--compact" role="status">
                 <span className="empty-state__icon" aria-hidden />
                 <div>
@@ -276,7 +423,7 @@ export function PresetSelector({
                     <h3 id={`${instanceId}-preset-group-${group.id}`}>{group.label}</h3>
                     <small>{group.description}</small>
                   </span>
-                  <b aria-label={`${group.presets.length} ${group.presets.length === 1 ? "scenario" : "scenarios"}`}>{group.presets.length}</b>
+                  <b aria-label={`${group.presets.length + group.directScenarios.length} ${group.presets.length + group.directScenarios.length === 1 ? "scenario" : "scenarios"}`}>{group.presets.length + group.directScenarios.length}</b>
                 </header>
                 <div className="preset-list">
                   {group.presets.map((p) => {
@@ -313,6 +460,9 @@ export function PresetSelector({
                             <span className="preset-card__detail">{sourceDetail(p)}</span>
                           </span>
                           <span className="preset-card__blurb">{p.blurb}</span>
+                          <span className="preset-card__highlights">
+                            {p.is_speculative ? "Exploratory" : "Reference scenario"} · 60 min · {presetHighlights(p).join(" · ")}
+                          </span>
                           {p.is_speculative && (
                             <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
                           )}
@@ -323,6 +473,42 @@ export function PresetSelector({
                       </button>
                     );
                   })}
+                  {group.directScenarios.map((scenario) => (
+                    <button
+                      key={scenario.id}
+                      className="preset-card"
+                      data-active={activeDirectId === scenario.id ? "true" : "false"}
+                      data-speculative="true"
+                      aria-pressed={activeDirectId === scenario.id}
+                      onClick={() => onSelectDirect?.(scenario)}
+                      title={scenario.reference}
+                      type="button"
+                    >
+                      <SourceGlyph kind={directSourceKind(scenario)} />
+                      <span className="preset-card__content">
+                        <span className="preset-card__name">
+                          <span>{scenario.name}</span>
+                          {activeDirectId === scenario.id && (
+                            <span className="preset-card__active" aria-label="Selected">
+                              <UiIcon name="check" size={13} />
+                            </span>
+                          )}
+                        </span>
+                        <span className="preset-card__meta">
+                          <span className="preset-card__date">{scenario.date}</span>
+                          <span aria-hidden>·</span>
+                          <span className="preset-card__source">{scenario.domain === "asteroid" ? "Impact" : "Nuclear"}</span>
+                          <span aria-hidden>·</span>
+                          <span className="preset-card__detail">{scenario.detail}</span>
+                        </span>
+                        <span className="preset-card__blurb">{scenario.blurb}</span>
+                        <span className="preset-card__highlights">
+                          {scenario.confidence} · {scenario.durationS < 60 ? `${scenario.durationS} s` : `${Math.round(scenario.durationS / 60)} min`} · {scenario.expectedHighlights.join(" · ")}
+                        </span>
+                        <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </section>
             ))}

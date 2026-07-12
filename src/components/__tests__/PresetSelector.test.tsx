@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { PresetSelector } from "../PresetSelector";
 import type { Preset } from "../../types/scenario";
+import { DIRECT_SCENARIOS } from "../../lib/scenario-library";
 
 const PRESETS: Preset[] = [
   {
@@ -165,5 +166,78 @@ describe("PresetSelector", () => {
     });
     expect(completedLesson).toHaveAttribute("data-complete", "true");
     expect(screen.getByLabelText("Lesson completed")).toHaveTextContent("Done");
+  });
+
+  it("exposes the three Quick Start choices and a disabled recent action", () => {
+    render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} directScenarios={DIRECT_SCENARIOS} />);
+
+    expect(screen.getByRole("button", { name: /Watch a famous event/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Explore a what-if/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Create my own/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Continue recent/i })).toBeDisabled();
+  });
+
+  it("previews direct scenarios without running until the primary action is used", async () => {
+    const user = userEvent.setup();
+    const onSelectDirect = vi.fn();
+    const onRunActive = vi.fn();
+    const scenario = DIRECT_SCENARIOS[0];
+    const { rerender } = render(
+      <PresetSelector
+        presets={PRESETS}
+        activeId={null}
+        onSelect={() => {}}
+        directScenarios={[scenario]}
+        onSelectDirect={onSelectDirect}
+        onRunActive={onRunActive}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: new RegExp(scenario.name, "i") }));
+    expect(onSelectDirect).toHaveBeenCalledWith(scenario);
+    expect(onRunActive).not.toHaveBeenCalled();
+
+    rerender(
+      <PresetSelector
+        presets={PRESETS}
+        activeId={null}
+        activeDirectId={scenario.id}
+        onSelect={() => {}}
+        directScenarios={[scenario]}
+        onSelectDirect={onSelectDirect}
+        onRunActive={onRunActive}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Run & Watch" }));
+    expect(onRunActive).toHaveBeenCalledTimes(1);
+  });
+
+  it("favorites the selected scenario and filters to saved choices", async () => {
+    const user = userEvent.setup();
+    const onToggleFavorite = vi.fn();
+    const { rerender } = render(
+      <PresetSelector
+        presets={PRESETS}
+        activeId="chicxulub"
+        onSelect={() => {}}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Favorite selected scenario" }));
+    expect(onToggleFavorite).toHaveBeenCalledWith("preset:chicxulub");
+
+    rerender(
+      <PresetSelector
+        presets={PRESETS}
+        activeId="chicxulub"
+        onSelect={() => {}}
+        favoriteIds={["preset:chicxulub"]}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(screen.getByText("Chicxulub Impact")).toBeInTheDocument();
+    expect(screen.queryByText("Poseidon")).not.toBeInTheDocument();
   });
 });

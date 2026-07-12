@@ -201,4 +201,19 @@ describe("SwePlayback", () => {
     expect(screen.getByRole("button", { name: "Re-run simulation" })).toBeInTheDocument();
     expect(screen.getByText(/Frame\s+1\/2/i)).toBeInTheDocument();
   });
+
+  it("starts automatically when Run & Watch is requested", async () => {
+    tauriApi.simulateGridStreaming.mockResolvedValue({
+      dt_s: 2,
+      nx: 2,
+      ny: 2,
+      used_gpu: true,
+      n_snapshots: 0,
+      cancelled: false,
+    });
+
+    render(<SwePlayback initial={INITIAL} runAndWatchNonce={1} />);
+
+    await waitFor(() => expect(tauriApi.simulateGridStreaming).toHaveBeenCalledTimes(1));
+  });
 });

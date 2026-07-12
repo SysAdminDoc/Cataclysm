@@ -108,6 +108,15 @@ type Props = {
   /** Which authoritative direct-hazard frame family should render. */
   impactKind?: "asteroid" | "nuclear" | null;
   directRenderFrame: RendererNeutralFrameView | null;
+  /** Camera-only scenario preview. It never creates physics or effect state. */
+  previewCamera?: {
+    targetLat: number;
+    targetLon: number;
+    rangeM: number;
+    headingDeg: number;
+    pitchDeg: number;
+  } | null;
+  previewLabel?: string | null;
   /** Lightweight camera telemetry for the desktop viewport HUD. */
   onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => void;
 };
@@ -224,6 +233,8 @@ export function Globe({
   hazardPolygons,
   impactKind,
   directRenderFrame,
+  previewCamera,
+  previewLabel,
   onCameraTelemetry,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -724,6 +735,26 @@ export function Globe({
 
   useEffect(() => {
     const viewer = viewerRef.current;
+    if (!viewer || !previewCamera || referenceCaptureEnabled()) return;
+    viewer.camera.cancelFlight();
+    viewer.camera.flyToBoundingSphere(
+      new Cesium.BoundingSphere(
+        Cesium.Cartesian3.fromDegrees(previewCamera.targetLon, previewCamera.targetLat, 0),
+        Math.max(1_000, previewCamera.rangeM / 3),
+      ),
+      {
+        duration: 0.8,
+        offset: new Cesium.HeadingPitchRange(
+          Cesium.Math.toRadians(previewCamera.headingDeg),
+          Cesium.Math.toRadians(previewCamera.pitchDeg),
+          Math.max(20_000, previewCamera.rangeM),
+        ),
+      },
+    );
+  }, [previewCamera, viewerEpoch]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
     const controller = directEffectsControllerRef.current;
     if (!viewer || !controller) return;
     controller.update(impactKind ?? null, directRenderFrame);
@@ -915,10 +946,12 @@ export function Globe({
       )}
       {!initial && !hazardCenter && ["ready", "degraded", "fallback"].includes(imageryStatus) && (
         <div className="app__globe-hint" role="status" aria-live="polite">
-          <span className="app__globe-hint-kicker">{domain === "tsunami" ? "Ready for a source" : "Ready for a target"}</span>
-          <strong>{domain === "tsunami" ? "Select a preset or simulate a custom source." : "Choose an effects origin."}</strong>
+          <span className="app__globe-hint-kicker">{previewLabel ? "Scenario preview" : domain === "tsunami" ? "Ready for a source" : "Ready for a target"}</span>
+          <strong>{previewLabel ?? (domain === "tsunami" ? "Select a preset or simulate a custom source." : "Choose an effects origin.")}</strong>
           <span>
-            {domain === "tsunami"
+            {previewLabel
+              ? "Review the framing, then choose Run & Watch to start the model."
+              : domain === "tsunami"
               ? "Wavefronts, runup bars, exports, and inspection unlock after a scenario is active."
               : `Pick a location to calculate ${domain === "nuclear" ? "blast, thermal, radiation, and fallout" : "entry, crater, blast, and thermal"} effects.`}
           </span>

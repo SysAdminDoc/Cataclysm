@@ -4,6 +4,23 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.9.0] â€” 2026-07-11 â€” Universal scenario library
+
+- Replaced the domain-specific empty rail with one persistent library spanning
+  tsunami reference events and complete direct asteroid/nuclear what-if scenes.
+- Added Quick Start choices for a famous event, a what-if, and custom creation,
+  plus bounded recent history, favorites, cross-domain search, and filters.
+- Scenario cards now preview deterministic camera framing without starting
+  physics; one separate Run & Watch action dispatches exact typed inputs and
+  begins tsunami solver playback or direct-effect animation.
+- Direct scenario inputs and cameras are derived from the locked reference-scene
+  contract instead of maintaining a second copy of source parameters.
+- Kept the universal rail mounted while switching hazard domains, deferred the
+  long onboarding tour so it cannot cover Quick Start, and rejected unknown
+  preset links instead of silently loading a different demo.
+- Added keyboard, dark/light WCAG, persistence, adapter, preview-camera, direct
+  what-if, visual-regression, and cross-domain journey coverage.
+
 ## [0.8.5] â€” 2026-07-11 â€” Live-Earth launch cinematic
 
 - Added a skippable five-second launch sequence over the already-mounted live

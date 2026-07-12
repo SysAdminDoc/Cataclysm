@@ -26,6 +26,7 @@ type Props = {
   playbackTimeS?: number;
   onPlaybackTimeChange?: (timeS: number) => void;
   slotLabel?: string;
+  runAndWatchNonce?: number;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
@@ -103,7 +104,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0 }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -130,6 +131,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const runIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const gaugeCounter = useRef(0);
+  const handledRunAndWatchNonce = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -306,7 +308,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     onRenderFrame?.(null);
   }, [onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (autoPlay = false) => {
     if (!initial) return;
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
@@ -406,6 +408,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         onSnapshotsReady?.(streamSnaps);
         setMaxField(meta.max_field ?? null);
         onMaxField?.(meta.max_field ?? null);
+        if (autoPlay) setIsPlaying(true);
       } else {
         const resp = simulateDemoGrid(initial, {
           boxHalfSizeDeg: halfDeg,
@@ -419,6 +422,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(resp.snapshots);
+        if (autoPlay) setIsPlaying(true);
       }
     } catch (err) {
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
@@ -428,6 +432,12 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setStatus("error");
     }
   }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRenderFrame]);
+
+  useEffect(() => {
+    if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
+    handledRunAndWatchNonce.current = runAndWatchNonce;
+    void run(true);
+  }, [initial, run, runAndWatchNonce]);
 
   if (!initial) return null;
 
@@ -461,7 +471,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       <div className="swe__row swe__row--primary">
         <button
           className="primary"
-          onClick={run}
+          onClick={() => void run(false)}
           disabled={status === "running"}
           type="button"
         >

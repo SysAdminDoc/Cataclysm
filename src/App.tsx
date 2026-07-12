@@ -26,6 +26,15 @@ import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance"
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams, type ScenarioInput } from "./lib/scenario-schema";
+import {
+  DIRECT_SCENARIOS,
+  loadScenarioLibraryPreferences,
+  recordRecentScenario,
+  saveScenarioLibraryPreferences,
+  toggleFavoriteScenario,
+  type DirectScenarioTemplate,
+  type ScenarioLibraryPreferences,
+} from "./lib/scenario-library";
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
@@ -60,6 +69,9 @@ import {
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
 type DirectHazardMode = Exclude<HazardMode, "tsunami">;
 type InspectorTab = "setup" | "results" | "layers";
+type LibraryPreview =
+  | { kind: "preset"; presetId: string }
+  | { kind: "direct"; scenario: DirectScenarioTemplate };
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -286,6 +298,11 @@ export default function App() {
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [presetsError, setPresetsError] = useState<string | null>(null);
   const [showLog, setShowLog] = useState(false);
+  const [libraryPreview, setLibraryPreview] = useState<LibraryPreview | null>(null);
+  const [libraryPreviewPending, setLibraryPreviewPending] = useState(false);
+  const [libraryPreferences, setLibraryPreferences] = useState<ScenarioLibraryPreferences>(loadScenarioLibraryPreferences);
+  const [sweRunAndWatchNonce, setSweRunAndWatchNonce] = useState(0);
+  const [pendingRunPresetId, setPendingRunPresetId] = useState<string | null>(null);
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
@@ -305,6 +322,8 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get("referenceScene"),
     [],
   );
+  const startupScenario = useMemo(() => scenarioFromUrl(window.location.search), []);
+  const startupScenarioHandled = useRef(false);
   const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -322,6 +341,22 @@ export default function App() {
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
   const timelineDurationS = sweSnapshots?.at(-1)?.time_s ?? 6 * 3600;
+
+  useEffect(() => {
+    if (!pendingRunPresetId) return;
+    if (slotA.error) {
+      setPendingRunPresetId(null);
+      return;
+    }
+    if (
+      slotA.activePresetId === pendingRunPresetId
+      && slotA.busyPresetId === null
+      && slotA.initial !== null
+    ) {
+      setPendingRunPresetId(null);
+      setSweRunAndWatchNonce((nonce) => nonce + 1);
+    }
+  }, [pendingRunPresetId, slotA.activePresetId, slotA.busyPresetId, slotA.error, slotA.initial]);
 
   // Ephemeral status toast for actions that otherwise fail silently
   // (exports, IPC errors). Auto-dismisses; replaced by the next message.
@@ -429,43 +464,33 @@ export default function App() {
   }, []);
 
   // Restore scenario from URL query params (?preset=id or ?scenario=base64).
+  // Preset IDs wait for the live registry so an unknown link cannot silently
+  // fall back to a different demo scenario.
   useEffect(() => {
-    const result = scenarioFromUrl(window.location.search);
-    if (result.type === "preset") {
-      slotA.setActivePresetId(result.presetId);
-    } else if (result.type === "scenario") {
-      slotA.simulate(result.scenario);
+    if (startupScenarioHandled.current) return;
+    if (startupScenario.type === "scenario") {
+      startupScenarioHandled.current = true;
+      slotA.simulate(startupScenario.scenario);
+      return;
+    }
+    if (startupScenario.type !== "preset" || presets.length === 0) return;
+    startupScenarioHandled.current = true;
+    if (presets.some((preset) => preset.id === startupScenario.presetId)) {
+      setLibraryPreview({ kind: "preset", presetId: startupScenario.presetId });
+      setLibraryPreviewPending(false);
+      slotA.setActivePresetId(startupScenario.presetId);
+    } else {
+      showToast(`Scenario link not found: ${startupScenario.presetId}`, "error");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [presets, startupScenario]);
 
-  // First-run tour: trigger after the disclaimer is acknowledged (or
-  // already-acknowledged) the first time the user reaches the app.
-  // Settings → 'Show tour again' clears the flag so this fires again.
+  // Quick Start is the first usable surface after the safety acknowledgement.
+  // Settings can explicitly request the longer tour without obscuring launch.
   useEffect(() => {
-    let cancelled = false;
-    Promise.all([settings.getDisclaimerAcknowledged(), settings.getTourCompleted()])
-      .then(([disclaimer, tour]) => {
-        if (cancelled) return;
-        if (disclaimer && !tour) setTourOpen(true);
-      })
-      .catch((err) => console.warn("[tour] failed to read first-run state", err));
-    const onSaved = () => {
-      // Re-evaluate after Settings save or first-run acknowledgement.
-      Promise.all([settings.getDisclaimerAcknowledged(), settings.getTourCompleted()])
-        .then(([disclaimer, tour]) => {
-          if (cancelled) return;
-          if (disclaimer && !tour) setTourOpen(true);
-        })
-        .catch((err) => console.warn("[tour] failed to refresh first-run state", err));
-    };
-    window.addEventListener("tsunamisim:settings-saved", onSaved);
-    window.addEventListener("tsunamisim:disclaimer-acknowledged", onSaved);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("tsunamisim:settings-saved", onSaved);
-      window.removeEventListener("tsunamisim:disclaimer-acknowledged", onSaved);
-    };
+    const onRequested = () => setTourOpen(true);
+    window.addEventListener("tsunamisim:tour-requested", onRequested);
+    return () => window.removeEventListener("tsunamisim:tour-requested", onRequested);
   }, []);
 
   useEffect(() => {
@@ -510,6 +535,34 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+  const libraryPreviewCamera = useMemo(() => {
+    if (!libraryPreview) return null;
+    if (libraryPreview.kind === "direct") {
+      const { scenario } = libraryPreview;
+      return {
+        targetLat: scenario.center.lat,
+        targetLon: scenario.center.lon,
+        rangeM: scenario.camera.altitudeM,
+        headingDeg: scenario.camera.headingDeg,
+        pitchDeg: scenario.camera.pitchDeg,
+      };
+    }
+    const preset = presets.find((candidate) => candidate.id === libraryPreview.presetId);
+    if (!preset) return null;
+    const camera = preset.camera_view ?? { heading_deg: 0, pitch_deg: -55, range_m: 2_000_000 };
+    return {
+      targetLat: preset.source.source.location.lat_deg,
+      targetLon: preset.source.source.location.lon_deg,
+      rangeM: camera.range_m,
+      headingDeg: camera.heading_deg,
+      pitchDeg: camera.pitch_deg,
+    };
+  }, [libraryPreview, presets]);
+  const libraryPreviewLabel = libraryPreview?.kind === "direct"
+    ? libraryPreview.scenario.name
+    : libraryPreview?.kind === "preset"
+      ? presets.find((preset) => preset.id === libraryPreview.presetId)?.name ?? null
+      : null;
   const activeScenarioKindA = activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? null;
   const activeScenarioKindB = activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? null;
   const directHazardMode: DirectHazardMode | null = hazardMode === "tsunami" ? null : hazardMode;
@@ -675,6 +728,9 @@ export default function App() {
       ? "Nuclear detonation"
       : "Asteroid impact"
     : activeSourceLabel;
+  const viewportSourceLabel = libraryPreviewPending && libraryPreviewLabel && !slotA.initial && !hazardCenter
+    ? `Preview · ${libraryPreviewLabel}`
+    : activeWorkspaceLabel;
   const sourceRequiredReason = inHazardMode
     ? "Tsunami inspection and exports are unavailable in direct hazard workspaces."
     : "Select a preset or simulate a custom source first.";
@@ -778,6 +834,7 @@ export default function App() {
 
   function selectHazardMode(mode: HazardMode) {
     setHazardMode(mode);
+    setLibraryPreviewPending(false);
     if (mode !== "tsunami") {
       setDetonateNonces((current) => ({ ...current, [mode]: 0 }));
     }
@@ -788,6 +845,75 @@ export default function App() {
     setTimelinePlaying(false);
     setPendingGauge(null);
     setInspectorTab("setup");
+  }
+
+  function updateLibraryPreferences(
+    transform: (current: ScenarioLibraryPreferences) => ScenarioLibraryPreferences,
+  ) {
+    setLibraryPreferences((current) => {
+      const next = transform(current);
+      saveScenarioLibraryPreferences(next);
+      return next;
+    });
+  }
+
+  function previewPreset(presetId: string) {
+    setLibraryPreview({ kind: "preset", presetId });
+    setLibraryPreviewPending(true);
+  }
+
+  function previewDirectScenario(scenario: DirectScenarioTemplate) {
+    setLibraryPreview({ kind: "direct", scenario });
+    setLibraryPreviewPending(true);
+  }
+
+  function runPresetFromLibrary(presetId: string) {
+    selectHazardMode("tsunami");
+    setLibraryPreview({ kind: "preset", presetId });
+    setLibraryPreviewPending(false);
+    slotA.setActivePresetId(presetId);
+    setPendingRunPresetId(presetId);
+    setInspectorTab("setup");
+    updateLibraryPreferences((current) => recordRecentScenario(current, `preset:${presetId}`));
+  }
+
+  function runLibraryPreview() {
+    if (!libraryPreview) return;
+    setLibraryPreviewPending(false);
+    if (libraryPreview.kind === "preset") {
+      runPresetFromLibrary(libraryPreview.presetId);
+      return;
+    }
+
+    const scenario = libraryPreview.scenario;
+    selectHazardMode(scenario.domain);
+    setHazardResult(null);
+    setDirectRenderReplay(null);
+    setDirectRenderFrame(null);
+    if (scenario.domain === "asteroid" && scenario.asteroid) {
+      setAsteroidInput({ ...scenario.asteroid });
+    } else if (scenario.domain === "nuclear" && scenario.nuclear) {
+      setNuclearInput({ ...scenario.nuclear });
+    }
+    setHazardCenters((current) => ({ ...current, [scenario.domain]: { ...scenario.center } }));
+    setDetonateNonces((current) => ({
+      ...current,
+      [scenario.domain]: current[scenario.domain] + 1,
+    }));
+    setInspectorTab("results");
+    updateLibraryPreferences((current) => recordRecentScenario(current, scenario.id));
+  }
+
+  function createCustomScenario() {
+    setLibraryPreview(null);
+    setLibraryPreviewPending(false);
+    selectHazardMode("tsunami");
+    setInspectorTab("setup");
+    window.requestAnimationFrame(() => {
+      const editor = document.querySelector<HTMLElement>(".scenario-form");
+      editor?.scrollIntoView({ block: "start", behavior: "smooth" });
+      editor?.querySelector<HTMLElement>("button, input, select")?.focus();
+    });
   }
 
   function detonateActiveHazard() {
@@ -1123,7 +1249,7 @@ export default function App() {
       </header>
 
       <aside className="app__panel" aria-label={inHazardMode ? "Direct effects workspace" : "Preset scenarios"}>
-        {!inHazardMode && presetsError && (
+        {presetsError && (
           <div className="panel-error" role="status" aria-live="polite">
             <span>Couldn't load presets: {presetsError}</span>
             <button
@@ -1140,17 +1266,25 @@ export default function App() {
             </button>
           </div>
         )}
-        {!inHazardMode && <PresetSelector
+        <PresetSelector
             presets={presets}
-            activeId={slotA.activePresetId}
-            onSelect={(id) => {
-              slotA.setActivePresetId(id);
-              setInspectorTab("setup");
-            }}
+            activeId={libraryPreview?.kind === "preset" ? libraryPreview.presetId : null}
+            activeDirectId={libraryPreview?.kind === "direct" ? libraryPreview.scenario.id : null}
+            onSelect={previewPreset}
+            directScenarios={DIRECT_SCENARIOS}
+            onSelectDirect={previewDirectScenario}
+            onCreateScenario={createCustomScenario}
+            onRunActive={runLibraryPreview}
+            recentIds={libraryPreferences.recentIds}
+            favoriteIds={libraryPreferences.favoriteIds}
+            onToggleFavorite={(id) => updateLibraryPreferences((current) => toggleFavoriteScenario(current, id))}
             busyId={slotA.busyPresetId}
-            onStartLesson={setActiveLesson}
+            onStartLesson={(lesson) => {
+              runPresetFromLibrary(lesson.presetId);
+              setActiveLesson(lesson);
+            }}
             completedLessons={lessonCompletions}
-          />}
+          />
         {!inHazardMode && compareMode && (
           <div className="app__compare-picker">
             <label htmlFor="compare-source-b">Compare against</label>
@@ -1215,6 +1349,8 @@ export default function App() {
                 hazardPolygons={hazardPolygons}
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 directRenderFrame={directRenderFrame}
+                previewCamera={libraryPreviewPending ? libraryPreviewCamera : null}
+                previewLabel={libraryPreviewPending ? libraryPreviewLabel : null}
                 onCameraTelemetry={handleCameraTelemetry}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
@@ -1237,7 +1373,7 @@ export default function App() {
           </div>
         </Suspense>
         <div className="app__viewport-hud app__viewport-hud--source">
-          <span>{activeWorkspaceLabel}</span>
+          <span>{viewportSourceLabel}</span>
           {inHazardMode && hazardCenter && <strong>{hazardCenter.lat.toFixed(2)}°, {hazardCenter.lon.toFixed(2)}°</strong>}
           {!inHazardMode && slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}°, {slotA.initial.center.lon_deg.toFixed(2)}°</strong>}
         </div>
@@ -1359,6 +1495,7 @@ export default function App() {
             playbackTimeS={timeS}
             onPlaybackTimeChange={setTimeS}
             slotLabel={compareMode ? "Slot A" : undefined}
+            runAndWatchNonce={sweRunAndWatchNonce}
           />
           <div hidden={!compareMode} aria-label="Comparison slot B solver">
             <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />

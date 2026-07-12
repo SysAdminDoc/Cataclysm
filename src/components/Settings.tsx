@@ -481,7 +481,7 @@ export function Settings({ onClose }: Props) {
                 onClick={async () => {
                   await settings.clearTourCompleted();
                   if (typeof window !== "undefined") {
-                    window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+                    window.dispatchEvent(new CustomEvent("tsunamisim:tour-requested"));
                   }
                   setStatusMsg("Tour will replay shortly.");
                   onClose();

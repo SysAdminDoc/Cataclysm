@@ -72,6 +72,7 @@ test.describe("Cataclysm browser preview", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Run & Watch" }).click();
 
     const globe = page.locator(".app__globe-mount");
     await expect(globe).toHaveAttribute("data-imagery-status", "fallback", { timeout: 20_000 });
@@ -92,11 +93,46 @@ test.describe("Cataclysm browser preview", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
+  test("keeps Quick Start unobstructed when the long tour has not been completed", async ({ page }) => {
+    await page.addInitScript(() => localStorage.removeItem("tsunamisim.tour_completed_at"));
+    await page.goto("/");
+
+    await expect(page.getByText("Choose the experience, not the tool")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: /Welcome to Cataclysm/i })).toHaveCount(0);
+  });
+
+  test("Quick Start previews without computing and runs direct what-if scenarios explicitly", async ({ page }) => {
+    await page.goto("/");
+    const app = page.locator(".app");
+    await expect(page.getByRole("button", { name: /Watch a famous event/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Explore a what-if/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Create my own/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Continue recent/i })).toBeDisabled();
+
+    await page.getByRole("button", { name: /Explore a what-if/i }).click();
+    await expect(app).toHaveAttribute("data-domain", "tsunami");
+    await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible();
+    await expect(page.locator(".app__viewport-telemetry")).toContainText(/35\.\d+° N/, { timeout: 10_000 });
+
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(app).toHaveAttribute("data-domain", "asteroid");
+    await expect(page.getByText("Universal library", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Continue recent/i })).toBeEnabled();
+  });
+
+  test("rejects unknown preset links without loading an unrelated fallback", async ({ page }) => {
+    await page.goto("/?preset=missing-scenario");
+
+    await expect(page.getByRole("alert")).toContainText("Scenario link not found: missing-scenario");
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("No source selected");
+  });
+
   test("selecting Chicxulub loads source readout", async ({ page }) => {
     await page.goto("/");
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
 
     await page.getByRole("tab", { name: "Results" }).click();
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
@@ -140,13 +176,14 @@ test.describe("Cataclysm browser preview", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Run & Watch" }).click();
     await page.getByRole("button", { name: "Compare", exact: true }).click();
     await expect(app).toHaveAttribute("data-compare", "true");
 
     await page.getByRole("button", { name: "Nuclear", exact: true }).click();
     await expect(app).toHaveAttribute("data-domain", "nuclear");
     await expect(app).toHaveAttribute("data-compare", "false");
-    await expect(page.locator(".preset-card")).toHaveCount(0);
+    await expect(page.locator(".preset-card").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Compare", exact: true })).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("button", { name: "Inspect", exact: true })).toHaveAttribute("aria-disabled", "true");
     await expect(page.locator(".app__viewport-hud--source")).toContainText("Nuclear detonation");
@@ -160,7 +197,7 @@ test.describe("Cataclysm browser preview", () => {
     await page.getByRole("button", { name: "Impact", exact: true }).click();
     await expect(app).toHaveAttribute("data-domain", "asteroid");
     await expect(page.locator(".app__viewport-hud--source")).toContainText("Asteroid impact");
-    await expect(page.locator(".preset-card")).toHaveCount(0);
+    await expect(page.locator(".preset-card").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Tsunami", exact: true }).click();
     await expect(app).toHaveAttribute("data-domain", "tsunami");
@@ -266,6 +303,7 @@ test.describe("Accessibility (axe-core WCAG A/AA)", () => {
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
     await page.getByRole("tab", { name: "Results" }).click();
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
 

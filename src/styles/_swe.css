@@ -127,7 +127,7 @@
 
 .swe__resolution em {
   grid-column: 1 / -1;
-  color: var(--overlay);
+  color: var(--subtext);
   font-style: normal;
   font-size: 11px;
 }

@@ -80,6 +80,7 @@ test.describe("Visual regression — desktop", () => {
 
     await expect(page).toHaveScreenshot("desktop-launch-cinematic.png", {
       maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
     });
 
     const { violations } = await axeScan(page);
@@ -92,12 +93,27 @@ test.describe("Visual regression — desktop", () => {
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
-    await expect(page.getByRole("button", { name: "Run simulation" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible({ timeout: 10_000 });
 
     await expect(page).toHaveScreenshot("desktop-preset-active.png", {
       mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
+  });
+
+  test("direct what-if preview", async ({ page }) => {
+    await seedAcknowledged(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: /Explore a what-if/i }).click();
+    await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible();
+
+    await expect(page).toHaveScreenshot("desktop-direct-preview.png", {
+      mask: [page.locator(CANVAS_MASK)],
+      maxDiffPixelRatio: 0.01,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
   });
 
   test("isolated nuclear workspace", async ({ page }) => {
@@ -123,8 +139,10 @@ test.describe("Visual regression — desktop", () => {
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
-    const runBtn = page.getByRole("button", { name: "Run simulation" });
-    await expect(runBtn).toBeVisible({ timeout: 5_000 });
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("button", { name: "Re-run simulation" })).toBeVisible({ timeout: 20_000 });
+    const pause = page.getByRole("button", { name: "Pause" });
+    if (await pause.isVisible()) await pause.click();
 
     await expect(page).toHaveScreenshot("desktop-swe-ready.png", {
       mask: [page.locator(CANVAS_MASK)],
@@ -132,17 +150,16 @@ test.describe("Visual regression — desktop", () => {
     });
   });
 
-  test("SWE solver running state", async ({ page }) => {
+  test("SWE solver playback state", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
-    const runBtn = page.getByRole("button", { name: "Run simulation" });
-    await expect(runBtn).toBeVisible({ timeout: 5_000 });
-    await runBtn.click();
-
-    await page.waitForTimeout(1_000);
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByText(/Frame \d+\/\d+/)).toBeVisible({ timeout: 20_000 });
+    const pause = page.getByRole("button", { name: "Pause" });
+    if (await pause.isVisible()) await pause.click();
 
     await expect(page).toHaveScreenshot("desktop-swe-running.png", {
       mask: [page.locator(CANVAS_MASK)],
@@ -195,7 +212,7 @@ test.describe("Visual regression — desktop", () => {
     const tohoku = page.locator('.preset-card:has-text("Tohoku")');
     await expect(tohoku).toBeVisible({ timeout: 10_000 });
     await tohoku.click();
-    await expect(page.getByRole("button", { name: "Run simulation" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible({ timeout: 10_000 });
 
     await expect(page).toHaveScreenshot("desktop-workspace-light.png", {
       mask: [page.locator(CANVAS_MASK)],

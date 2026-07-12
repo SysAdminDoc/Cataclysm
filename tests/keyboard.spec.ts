@@ -23,7 +23,7 @@ test.describe("Keyboard-only golden path", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
   });
 
-  test("preset → run simulation → scrub → export without pointer events", async ({ page }) => {
+  test("preset → Run & Watch → scrub → export without pointer events", async ({ page }) => {
     await page.goto("/");
 
     // 1. Activate the Chicxulub preset card from the keyboard.
@@ -31,23 +31,19 @@ test.describe("Keyboard-only golden path", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.focus();
     await page.keyboard.press("Enter");
-    const resultsTab = page.getByRole("tab", { name: "Results" });
-    await resultsTab.focus();
-    await page.keyboard.press("Enter");
-    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
-
-    // 2. Run the SWE solver (browser preview computes demo frames instantly).
-    const setupTab = page.getByRole("tab", { name: "Setup" });
-    await setupTab.focus();
-    await page.keyboard.press("Enter");
-    const run = page.getByRole("button", { name: /Run simulation/ });
+    const run = page.getByRole("button", { name: "Run & Watch" });
     await expect(run).toBeVisible({ timeout: 10_000 });
     await run.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByText(/Frame \d+\/\d+/)).toBeVisible({ timeout: 20_000 });
 
-    // 3. Scrub the timeline with arrow keys.
-    const scrubber = page.getByRole("slider", { name: "Simulation timeline scrubber" });
+    const resultsTab = page.getByRole("tab", { name: "Results" });
+    await resultsTab.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
+
+    // 2. Scrub the timeline with arrow keys.
+    const scrubber = page.getByRole("slider", { name: "Scenario timeline scrubber" });
     await scrubber.focus();
     const before = await scrubber.inputValue();
     await page.keyboard.press("ArrowRight");
@@ -55,7 +51,7 @@ test.describe("Keyboard-only golden path", () => {
     const after = await scrubber.inputValue();
     expect(Number(after)).not.toBe(Number(before));
 
-    // 4. Export the text report from the keyboard.
+    // 3. Export the text report from the keyboard.
     const exportMenu = page.getByRole("button", { name: "Export", exact: true });
     await exportMenu.focus();
     await page.keyboard.press("Enter");
