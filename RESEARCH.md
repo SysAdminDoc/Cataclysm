@@ -1,167 +1,244 @@
 # Research — Cataclysm
 
-Date: 2026-07-11
+Date: 2026-07-12 (supersedes the 2026-07-11 pass)
 
 ## Executive Summary
 
-Cataclysm v0.8.0 is a desktop scientific-hazard simulator built with Tauri, React, CesiumJS, and a Rust shallow-water backend. Its strongest current shape is unusually coherent for an educational simulator: cited source models, CPU/GPU solver code, DART comparison, runup products, scenario migration, accessibility checks, and a professional three-pane workspace already exist. The existing HR-00–HR-53 and living-Earth roadmap correctly covers the visual ambition—physically based Earth, ocean, atmosphere, asteroid, nuclear, tsunami, terrain, cinematic rendering, audio, replay, provenance, offline assets, and temporal validation—and should not be duplicated. The highest-value direction is to make the shipped scientific and desktop contract trustworthy before adding more spectacle: ensure release artifacts contain the GPU backend they advertise, make maxima and arrivals independent of display sampling, isolate direct-hazard workspaces from stale tsunami state, fix offline fallback, harden persistence/export boundaries, and turn the current layer inventory into a real simulator layer controller.
+Cataclysm v0.10.0 is a desktop, scientifically-grounded multi-hazard disaster
+simulator (asteroid impact, nuclear detonation, seafloor earthquake, landslide,
+and the tsunamis they generate) built on Tauri 2 + React 19 + CesiumJS with a
+Rust physics core. Since the 2026-07-11 research pass the team shipped nearly all
+of that pass's top-10 "trust and correctness" opportunities: GPU-enabled release
+packaging (`9204a6a`), solver-step-cadence maxima decoupling (`311271b`), hazard
+workspace isolation (`429a02b`), offline imagery fallback (`45a6392`), CSV formula
+neutralization (`1514dd0`), accessible states (`cf7fa53`), scoped Compare
+cancellation and settings/effect recovery (v0.8.3, `ae5bbe7`). A fresh code audit
+of the current tree found **no P0/P1 defects** — the codebase is unusually hardened
+(checked IPC bounds, SHA-verified render protocol, revoked object URLs, keychain
+token storage, tight CSP). The strongest current shape is therefore its
+scientific integrity and the new progressively-disclosed Simple/Customize/Advanced
+workspace.
 
-Top opportunities, in priority order:
+The highest-value direction now shifts from "fix the shipped contract" to
+**closing feature and data gaps that the field considers table stakes and that the
+existing roadmap does not yet cover** — most of the previous pass's roadmap items
+remain open and should be executed as-written; this pass adds what they miss.
 
-1. **Verified — ship and prove the GPU backend.** v0.8.0 Windows package fingerprints show no Cargo features even though the UI and README describe GPU compute.
-2. **Verified — compute scientific maxima and arrivals at solver-step cadence.** `MaxFieldAccumulator` currently samples emitted frames, so changing `n_snapshots` changes quantitative results.
-3. **Verified — isolate tsunami, asteroid, and nuclear workspace state.** Direct modes can render unrelated tsunami fields and can re-enable a mixed-domain Compare view.
-4. **Verified — repair offline imagery fallback.** imagery failure retries the network-dependent default instead of the bundled Natural Earth fallback.
-5. **Verified — close current trust defects.** CSV formula injection, silent settings-write failures, partial settings imports, and unsupported-schema downgrades are present.
-6. **Verified — enforce a real release feature matrix.** default, `gpu`, `validation`, and combined Rust builds/tests are not all exercised before packaging.
-7. **Verified — correct spherical SWE metrics.** one longitude scale is applied to every latitude row in domains that may span 120 degrees.
-8. **Verified — make jobs request-scoped.** global cancellation can cancel both comparison runs and has no memory/concurrency admission policy.
-9. **Verified — meet WCAG AA in every desktop state.** live light-theme inspection found 30 contrast failures; Compare also has contrast and duplicate-ID defects.
-10. **Verified — add controllable layers and durable recovery.** the Layers tab cannot hide, reorder, or adjust overlays, while crash evidence disappears on reload.
+Top opportunities, in priority order (all new this pass unless noted):
+
+1. **Verified** — Re-validate persisted scenarios on read (audit: `readScenarios`
+   trusts the store). Small, pure trust fix.
+2. **Verified** — Unify front-end/back-end input bounds from one table (audit:
+   `mw`/`rake` diverge between `scenario-schema.ts` and `commands.rs`).
+3. **Verified/Likely** — Replace the flat casualty population scalar with a real
+   offline density grid (GHS-POP); casualties currently ignore location.
+4. **Likely** — Metric/imperial units + comparison anchors (the single most
+   repeated user complaint about this class of tool).
+5. **Likely** — Event recurrence/frequency context after each run (calibrates dread
+   with probability; core to the education mission).
+6. **Likely** — Multiple selectable casualty models with visible disagreement
+   (NUKEMAP's own 2026 direction).
+7. **Verified** — 0.25 psi light-damage ring + extended-validity sources (rings
+   currently floor at 1 psi).
+8. **Likely** — Live USGS earthquake seeding + ShakeMap/PAGER comparison (real
+   events + free validation, no new physics).
+9. **Likely** — Drape analytical overlays onto real terrain (Cesium 1.135 3D-Tiles
+   terrain; answers the "mountains should block this" complaint at analytical level).
+10. **Verified** — Publish build provenance/SBOM/reproducibility as the unsigned-app
+    trust substitute (fits the no-code-signing policy).
 
 ## Product Map
 
-- **Core workflows:** select or author a cited source; run analytical and SWE propagation; inspect wave, runup, gauge, DART, asteroid, or nuclear outputs; compare scenarios; export visual and machine-readable results.
-- **User personas:** educators and students; science communicators; technically literate hazard enthusiasts; researchers using Cataclysm for exploratory or illustrative—not operational—analysis.
-- **Platforms and distribution:** Tauri desktop application with a 1200×800 minimum; Windows MSI/NSIS is the verified shipped platform. macOS and Linux are source targets but do not have equivalent current release proof. Mobile is intentionally excluded.
-- **Key integrations and data flows:** Rust IPC owns tsunami physics and diagnostics; CesiumJS projects backend fields onto WGS84; Esri/Cesium providers supply online Earth imagery/terrain; bundled JSON supplies presets, coasts, and DART records; keyring protects the Cesium token; exports include PNG, video, text, CZML, GeoJSON, KML, CSV, and share URLs.
+- **Core workflows:** pick or author a cited source (asteroid/nuclear/quake/slide);
+  run analytical + shallow-water propagation; watch the guided Prepare → Calculate →
+  Watch → Understand journey; inspect wave/runup/gauge/DART/direct-effect outputs;
+  compare scenarios; export visual and machine-readable products.
+- **Progressive disclosure (v0.10.0):** Simple (globe/scenario/journey/timeline/
+  outcomes dominant) → Customize (rerun, ocean depth, atmospheric-wave) → Advanced
+  (grids, gauges, confidence, diagnostics). Selection and computed fields survive
+  mode switches.
+- **User personas:** educators/students; science communicators; hazard enthusiasts;
+  researchers using it for exploratory/illustrative — not operational — work.
+- **Platforms/distribution:** Tauri desktop, Windows MSI/NSIS is the verified
+  shipped platform (unsigned by policy); macOS/Linux are source targets. Mobile is
+  intentionally excluded.
+- **Integrations/data flow:** Rust IPC owns all physics and direct-hazard results;
+  CesiumJS projects backend fields onto WGS84 via a renderer-neutral, checksummed
+  frame protocol; Esri/Cesium/OSM providers supply online Earth context with a
+  bundled Natural Earth II offline fallback; keychain holds the Cesium token;
+  exports include PNG, video, CZML, GeoJSON, KML, CSV, and share URLs.
 
 ## Competitive Landscape
 
-### GeoClaw / Clawpack
+### NUKEMAP (nuclearsecrecy.com) — the direct nuclear reference
+- Does well: plain-language consequences, historical weapon presets, and a
+  **publicly published Feb-2026 roadmap** naming its own next features.
+- Learn: multiple casualty models, urban land-use density weighting, child/
+  demographic breakouts, humanitarian POI counts, WSEG-10 time-varying fallout dose
+  rate + shelter guidance, a 0.25 psi ring, and an open effects library (AWEL.js).
+- Avoid: 2D-map-only framing and LandScan lock-in (use redistributable GHS-POP).
 
-- Does well: adaptive refinement, wet/dry inundation, spherical grids, restart/checkpoint workflows, every-step gauges, and published validation.
-- Learn: make output cadence independent of scientific accumulation, add spherical conservation fixtures, and retain request/checkpoint identity.
-- Avoid: a code-first Unix workflow and setup burden that would weaken Cataclysm's desktop-first advantage.
+### Asteroid Launcher (neal.fun) / Purdue "Impact: Earth!"
+- Does well: approachable presets, recurrence-interval honesty (Launcher); NASA/DHS-
+  grade formula fidelity with a full consequence chain incl. ejecta thickness and
+  seismic magnitude (Purdue).
+- Learn: recurrence context, named impactor presets, dual simple/expert panels,
+  extinction-scale range, and secondary/long-term effects.
+- Avoid: Launcher's flat-plane, tsunami-free ocean impacts — that omission is
+  literally Cataclysm's thesis (the #1 HN complaint about Launcher).
 
-### ANUGA
+### Celeris-WebGPU / Tsunami-HySEA (2024-2026 solver state of the art)
+- Does well: interactive GPU Boussinesq with breaking/runup (Celeris, 2025);
+  spherical NLSW, nested grids, and dynamic wetting/drying at operational scale
+  (HySEA).
+- Learn: a two-tier standard/high-order model switch and the ML-surrogate-preview +
+  full-solver-refine pattern resolve the interactivity-vs-fidelity tradeoff.
+- Avoid: coupling credibility to one GPU path without a deterministic CPU parity
+  gate; adopting GPL/HPC deps into the MIT desktop core.
 
-- Does well: validated finite-volume flooding/tsunami workflows, checkpointing, logging, Python/TOML scenario configuration, MPI/OpenMP paths, and explicit troubleshooting.
-- Learn: resource admission, restartable jobs, structured configuration validation, and documented memory/performance behavior are simulator features, not merely developer details.
-- Avoid: exposing the full modeling grammar before Cataclysm's current compact scenario model is internally consistent.
+### NASA Eyes on Asteroids / Worldview / OpenSpace / Earth Studio (globe UX)
+- Does well: live NEO catalog with next-5 close approaches + countdown (Eyes);
+  temporal scrubber + deep-linkable time/layer state + live "events" (Worldview);
+  branchable scripted narrative flythroughs (OpenSpace); keyframe cinematic camera
+  export (Earth Studio).
+- Learn: guided lessons should be branchable OpenSpace-style scripts, not linear
+  videos; ship a real temporal scrubber and deep-linkable state; NEO countdown with
+  a "jump to Apophis 2029" hook (2029 = UN Year of Asteroid Awareness).
+- Avoid: unrestricted content/profile systems before CSP/license/checksum
+  enforcement.
 
-### Celeris-WebGPU
-
-- Does well: faster-than-real-time interactive Boussinesq/NLSW simulation, moving shoreline, photorealistic and analytical views, recent spherical-grid and nested-grid work.
-- Learn: ship hardware acceleration by default, make capability/fallback state visible, and keep a live scientific view coupled to a high-quality visual view.
-- Avoid: coupling product credibility to one GPU path without a deterministic CPU fallback and parity gate.
-
-### Tsunami-HySEA / VOLNA-OP2
-
-- Does well: GPU/performance-portable propagation, earthquake and landslide variants, multi-resolution operational-scale work, and explicit hardware targets.
-- Learn: release artifacts must state and test enabled accelerators; large jobs need bounded memory and request-scoped cancellation.
-- Avoid: adopting GPL code or specialized HPC dependencies into the MIT desktop core without a deliberate license boundary.
-
-### OpenQuake Engine
-
-- Does well: distinct scenario workflows, versioned input models, explicit configuration, structured outputs, risk-model provenance, and strong separation between engine and presentation.
-- Learn: direct hazards need their own source/result state and export contract rather than sharing tsunami state opportunistically.
-- Avoid: presenting high-consequence loss numbers with more precision than the model and inputs justify.
-
-### OpenSpace and NASA Worldview
-
-- Does well: ordered layer groups, temporal layers synchronized to global time, opacity/styling controls, bookmarks, offline caches, comparison modes, and data-driven globe profiles.
-- Learn: Cataclysm's Layers tab should control visibility, opacity, order, legends, and time coupling; saved state should include the camera and layer stack.
-- Avoid: an unrestricted content/profile system before provider licenses, CSP, checksums, and scientific semantics are enforceable.
-
-### ArcGIS Earth and Bentley OpenFlows FLOOD
-
-- Does well: online/offline 3D context, scenario alternatives, import/export interoperability, reality meshes, integrated 1D/2D modeling, and professional decision-aid presentation.
-- Learn: honest offline status, scenario isolation, inspectable layer provenance, and failure/recovery states are table stakes for professional simulator software.
-- Avoid: cloud/account dependence and opaque proprietary formats as the only path to high-quality context.
-
-### UNIGINE Sim / Unreal Engine / Cesium
-
-- Does well: planet-scale coordinates, terrain streaming, PBR atmosphere/ocean, volumetric weather, real-time fluids, quality tiers, cinematic capture, and 3D Tiles interoperability.
-- Learn: retain the existing renderer protocol plan and use hero-effect budgets instead of forcing one fidelity level everywhere.
-- Avoid: moving scientific authority into renderer-side effects or replacing reproducible analytical outputs with visual plausibility.
+### JPL SSD/CNEOS & USGS feeds (authoritative live data)
+- Does well: free, keyless JSON APIs — JPL SBDB/CAD/Fireball/Sentry; USGS real-time
+  quake GeoJSON/FDSN + ShakeMap + PAGER.
+- Learn: a **desktop Tauri app is the ideal client** — JPL's CORS/rate rules block
+  websites but not a local cache; seed real events and benchmark casualty estimates
+  against official PAGER output.
+- Avoid: presenting any pulled catalog object as a live warning or a risk claim
+  without the authoritative risk field.
 
 ## Security, Privacy, and Reliability
 
-- **Verified — CSV formula injection:** `src/lib/export.ts` quotes delimiters but does not neutralize gauge names beginning with spreadsheet formula characters. Apply a spreadsheet-safe text policy to every CSV cell and test ASCII/full-width initiators.
-- **Verified — persistence can lie:** `src/lib/settings.ts` suppresses localStorage/plugin-store write and save failures, while `src/components/Settings.tsx` reports success. Propagate failures and preserve the prior durable snapshot.
-- **Verified — import is non-transactional:** settings import applies keys sequentially, has no file-size cap, and stamps a newer schema down to v1. Prevalidate, reject unsupported future schemas, cap input, and commit atomically with rollback.
-- **Verified — mixed hazard state:** `src/App.tsx` leaves tsunami source/field/runup/DART state active in direct modes and permits a mixed-domain Compare view. This can visually misattribute outputs.
-- **Verified — cancellation is global:** `src-tauri/src/commands.rs` stores all tokens in one vector and `cancel_simulation` cancels all active runs. Closed snapshot receivers are ignored and completion metadata can report requested rather than emitted frames.
-- **Verified — ephemeral crash evidence:** `src/lib/diagnosticsLog.ts` is a 500-entry in-memory ring; `src/components/ErrorBoundary.tsx` loses evidence on reload and offers no redacted support-bundle action.
-- **Verified — frontend authority is broader than use:** `src-tauri/capabilities/default.json` grants store enumeration, clear, and reload operations not used by `src/lib/settings.ts`. Restrict plugin permissions and explicitly enumerate application commands.
-- **Verified — audit status:** `npm audit` reports zero vulnerabilities; `cargo deny check advisories` passes. `cargo audit` reports allowed transitive GTK3/unicode maintenance warnings and `glib` unsoundness relevant to a future Linux package, not the current Windows artifact. Track this in platform release proof rather than claiming all desktop targets are equivalent.
-- **Missing guardrails:** per-run memory/concurrency admission; atomic settings import; persistent redacted crash storage; honest offline/provider health; formula-safe CSV; feature-bearing package attestations.
-- **Recovery and rollback:** a failed settings import must restore the previous snapshot; a failed imagery provider must switch to bundled data; a crashed UI must offer reset-visual-settings and copy/save diagnostics; cancellation must identify only the requested run.
+Fresh audit of the current tree (v0.10.0): **no P0/P1 issues.** The previous pass's
+verified defects (CSV injection, silent settings writes, non-transactional import,
+mixed hazard state, global cancellation, ephemeral crash evidence) are shipped-fixed
+or covered by still-open roadmap items. Remaining, lower-severity findings:
+
+- **Verified (P2) — read-path trust gap:** `src/lib/settings.ts` `readScenarios`
+  returns stored records with only an `Array.isArray` check; a corrupted/tampered
+  store or schema change flows unvalidated data to the UI. Validate on read.
+- **Verified (P2) — validation-bound divergence:** `src/lib/scenario-schema.ts`
+  (`mw` [5,10], `rake` [-180,180]) vs `src-tauri/src/commands.rs`
+  `earthquake_initial_conditions` (`mw` [4.0,10.5], no `rake` range check). Derive
+  both from one table.
+- **Verified (P3) — dead cancellation registration:** `api.simulateGrid`
+  (`src/lib/tauri.ts` ~L275) discards its `run_id`, so the non-streaming
+  `simulate_grid` path cannot be cancelled. Return the id or drop the registration.
+- **Verified (P3) — no listener teardown:** `LogViewer.installTauriDiagnosticsListener`
+  never captures its unlisten handle (intentional singleton; harmless but untestable).
+- **Missing guardrails (already roadmapped, still open):** per-run memory/concurrency
+  admission budget; transactional settings import with schema rejection; persisted
+  redacted crash evidence + reset-visual-settings recovery; reduced Tauri capability
+  surface. These remain valid; do not re-file.
+- **Reliability opportunity:** casualties are exact integers from a uniform density
+  scalar — false precision (covered by the open "honest uncertainty" item plus the
+  new population-grid item).
 
 ## Architecture Assessment
 
-- **Build configuration is runtime behavior:** `src-tauri/Cargo.toml`, `package.json`, `scripts/verify.mjs`, and `docs/release/CODESIGNING.md` disagree about GPU delivery. Treat enabled Cargo features as artifact metadata and test the installed artifact's backend status.
-- **Scientific output is coupled to visualization sampling:** move `MaxFieldAccumulator` updates in `src-tauri/src/physics/solver/mod.rs` from emitted-frame branches to every accepted solver step; separately downsample only serialized frames.
-- **Geodesic metric boundary:** replace the box-center longitude scale in `src-tauri/src/physics/solver/mod.rs` with row-aware spherical metrics and geometric source terms; validate conservation and latitude symmetry before broader global runs.
-- **Job boundary:** replace the global cancellation-token vector in `src-tauri/src/commands.rs` with run IDs, per-run state, admission budgets, receiver-closed termination, and actual emitted/cancelled metadata.
-- **Hazard workspace boundary:** `src/App.tsx` should derive globe fields, source HUD, inspect, compare, exports, and left-rail content from one discriminated active-workspace state so stale tsunami data cannot leak into asteroid/nuclear modes.
-- **Provider boundary:** `src/lib/globe-styles.ts` and `src/components/Globe.tsx` need an explicit provider state machine: offline, connecting, ready, degraded, failed, fallback-ready. Do not retry a failed online default as its own fallback.
-- **Settings boundary:** centralize validation, migration, persistence, and rollback in `src/lib/settings.ts`; components should receive a committed result rather than infer success.
-- **Layer boundary:** `src/components/LayerInspector.tsx` is only an activity list. Introduce layer descriptors with visibility, opacity, order, legend, time domain, provenance, and analytical/cinematic classification; bind both Cesium and export state to them.
-- **Error-state boundary:** runup, attenuation, DART, inspect, and SWE failures currently collapse into empty/waiting/no-overlap states. Use typed loading/empty/error/stale states and preserve the last valid result with a visible stale marker.
-- **Documentation truth:** `CONTRIBUTING.md`, `SECURITY.md`, `docs/manual/**`, `docs/science/**`, onboarding, screenshots, and provider copy contain legacy TsunamiSimulator, old version/frame, runtime, repository, or imagery claims. Expand the docs gate beyond missing links/scripts to assert current product/version/default-provider facts.
-- **Refactors already covered:** do not add duplicates for splitting `Globe.tsx`, modularizing `commands.rs`, Rust hazard authority, renderer protocol, offline Earth packs, geodesy/datum contracts, cinematic Earth/ocean/effects, Zarr, i18n, or full-canvas temporal visual tests; those are already actionable in `ROADMAP.md`.
-- **Test gaps:** no release feature matrix; no installed-package GPU assertion; no snapshot-cadence invariance test; no cross-latitude conservation fixture; no compare/direct-mode isolation test; no offline startup/provider-failure test; no light-theme axe gate; no persistence-failure/rollback test; support scripts/config and Playwright files escape normal type/lint coverage; standalone E2E may preview stale `dist`.
-- **Documentation gaps:** current behavior, supported platform truth, provider defaults, numerical limitations, and recovery semantics are not generated or checked from authoritative constants.
+- **Physics authority is clean.** Rust owns all results; the checksummed renderer
+  protocol (`src-tauri/src/render_protocol/**`) and lifecycle-owned Cesium hosts
+  (`src/render/cesium/**`) are well-bounded with leak-cycle tests. No refactor
+  needed here.
+- **Casualty model is the weakest scientific surface.** `direct_hazard.rs`
+  `nuclear_casualties` blends blast/thermal/radiation over ring areas times one flat
+  density; it lacks a real population source, alternative models, and a sub-1-psi
+  band. Address via the three new casualty items (density grid, model picker,
+  0.25 psi ring).
+- **Overlays ignore terrain.** Analytical overlays clamp to the ellipsoid; adopting
+  Cesium 1.135 `Cesium3DTilesTerrainProvider` for draping is a bounded, near-term
+  correctness/legibility win distinct from the P1 hyper-real HR-13 terrain work.
+- **Live-data adapters are absent.** No JPL/USGS/GIBS client exists; a cached,
+  offline-first feed adapter is a reusable module that unlocks NEO discovery
+  (already roadmapped) and USGS seeding (new).
+- **Refactors already covered — do not duplicate:** commands.rs modularization,
+  GeoJsonPrimitive overlay port, WASM physics, spherical SWE metrics, run
+  identity/admission, transactional settings, typed async states, Layers controller,
+  product-truth gate, offline Earth packs, i18n, HazEL browser, meteotsunami, NTHMP
+  benchmarks, Zarr, humanitarian OSM layer, cinematic Earth/ocean/effects. All are
+  open in ROADMAP.md and remain valid.
+- **Test/doc gaps (new):** no read-path scenario-validation fixture; no
+  front/back bounds-parity test; no casualty-vs-real-density regression; no
+  provenance/SBOM release artifact; no winget manifest.
 
 ## Rejected Ideas
 
-- **Operational warning/evacuation product — rejected.** NOAA and mature tsunami codes require validated forecast workflows and operational data Cataclysm does not claim; preserve the educational/exploratory boundary.
-- **Mobile UI — rejected.** The owner explicitly requires desktop-only software; mobile constraints would dilute the dense simulator workspace.
-- **Real-time multi-user editing — rejected.** ArcGIS/Bentley collaboration is valuable commercially, but local scenario files, links, and exports fit this product without adding identity, conflict, and server operations.
-- **Arbitrary runtime plugins — rejected.** Awesome/geospatial ecosystems show breadth, but untrusted providers/renderers would weaken CSP, licensing, deterministic physics, and supportability. Keep narrow reviewed adapters.
-- **Cloud-only simulation — rejected.** Operational/HPC tools gain scale, but mandatory cloud execution contradicts local-first/offline resilience; remote compute can be reconsidered only as an optional protocol client.
-- **Embedded AI modeling copilot — rejected.** OpenFlows exposes this commercially, but no verified project evidence shows it improves scientific correctness; it increases provenance and support burden.
-- **Exact casualty projections — rejected.** OpenQuake supports consequence models with explicit exposure/vulnerability inputs; Cataclysm's current educational direct-hazard estimate lacks that basis. Prefer ranges/uncertainty or the already-roadmapped facility layer.
-- **Replace Rust SWE with GeoClaw/ANUGA/HySEA — rejected.** Their methods inform validation and architecture, but a wholesale engine swap would sacrifice the current cross-platform IPC/API, licensing simplicity, and established tests.
-- **Unreal-only product rewrite — rejected.** UNIGINE/Unreal produce stronger hero visuals, but the existing Cesium analytical client remains necessary for accessibility, deterministic overlays, and broad hardware fallback. Continue the dual-renderer protocol already roadmapped.
-- **Immediate GTK3 rewrite — rejected.** Tauri itself currently carries the same Linux GTK3 maintenance warnings. Monitor and prove Linux packaging separately instead of inventing a local framework fork.
+- **Missile-exchange / WW3 / MIRV modes — deprioritized, not net-new.** Valuable
+  (MISSILEMAP) but already tracked as UNI-11/UNI-12; not re-filed. Source:
+  https://nuclearsecrecy.com/missilemap/.
+- **Live weather-driven fallout plume — deferred.** Compelling (NUKEMAP) but
+  contradicts local-first/offline determinism unless done as an optional cached
+  adapter; the WSEG-10 time-dose item delivers most of the educational value
+  offline first.
+- **Gaussian-splat photoreal cities — deferred to hyper-real track.** Cesium 1.135
+  supports it, but it belongs to the existing HR-10..HR-13 cinematic program, not a
+  separate near-term item.
+- **Operational warning/evacuation product — rejected (unchanged).** Preserve the
+  educational boundary; NOAA/PTWC/NTWC own live warnings.
+- **Mobile UI — rejected (unchanged).** Owner requires desktop-only.
+- **Cloud-only or GitHub-Actions build/provenance — rejected.** Per repo policy,
+  provenance/SBOM must be generated locally, not via CI.
+- **Full ML/PINN replacement of the SWE solver — rejected.** A surrogate is a
+  preview accelerator only; the Rust solver stays authoritative (the surrogate item
+  is explicitly preview-then-refine). Source: https://arxiv.org/html/2406.16236v1.
+- **Real-time multi-user editing, arbitrary runtime plugins — rejected (unchanged).**
 
 ## Sources
 
-### Open-source simulators and adjacent products
+### Direct competitors and community signal
+- https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/
+- https://nuclearsecrecy.com/missilemap/
+- https://outrider.org/nuclear-weapons/interactive/bomb-blast
+- https://neal.fun/asteroid-launcher/
+- https://www.purdue.edu/impactearth/
+- https://news.ycombinator.com/item?id=33870612
+- https://steamcommunity.com/app/230290/discussions/
 
-- https://www.clawpack.org/geoclaw.html
-- https://www.clawpack.org/v5.9.x/sphere_source.html
-- https://www.clawpack.org/v5.12.x/gauges.html
-- https://anuga.readthedocs.io/en/stable/
+### Solver fidelity and techniques (2024-2026)
 - https://github.com/plynett/plynett.github.io
-- https://arxiv.org/abs/1611.05984
-- https://edanya.uma.es/hysea/downloads
-- https://docs.openquake.org/oq-engine/manual/latest/user-guide/index.html
-- https://docs.openspaceproject.com/latest/building-content/globebrowsing/working-with-layers.html
-- https://earthdata.nasa.gov/s3fs-public/2025-03/worldview-booklet.pdf
-- https://github.com/mandli/tsunami-models
-- https://github.com/pka/awesome-3d-tiles
+- https://ascelibrary.org/doi/10.1061/JWPED5.WWENG-2370
+- https://www.researchgate.net/publication/277757438
+- https://gmd.copernicus.org/articles/19/3953/2026/
+- https://nhess.copernicus.org/articles/25/1655/2025/
+- https://academic.oup.com/gji/article/238/1/382/7657823
+- https://www.sciencedirect.com/science/article/pii/S0094576517314996
 
-### Commercial and rendering systems
+### Globe UX and rendering
+- https://cesium.com/blog/2025/11/03/cesium-releases-in-november-2025/
+- https://cesium.com/blog/2025/06/30/draping-imagery-over-3d-tiles-in-cesiumjs/
+- https://www.openspaceproject.com/
+- https://earth.google.com/studio/docs/making-animations/keyframes/
+- https://www.earthdata.nasa.gov/data/tools/worldview
+- https://eyes.nasa.gov/apps/asteroids/
 
-- https://unigine.com/products/sim/overview/
-- https://www.bentley.com/software/openflows-flood/
-- https://www.esri.com/en-us/arcgis/products/arcgis-earth/overview
-- https://cesium.com/platform/cesium-ion/pricing/
-- https://developers.google.com/maps/documentation/tile/overview
-- https://dev.epicgames.com/documentation/unreal-engine/water-system-in-unreal-engine
-- https://dev.epicgames.com/documentation/unreal-engine/niagara-fluids-in-unreal-engine
+### Data sources / APIs
+- https://ssd-api.jpl.nasa.gov/
+- https://earthquake.usgs.gov/earthquakes/feed/
+- https://nctr.pmel.noaa.gov/propagation-database.html
+- https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2024-grid
+- https://human-settlement.emergency.copernicus.eu/ghs_pop2023.php
+- https://protomaps.com/
 
-### Standards, science, and provenance
-
-- https://docs.ogc.org/cs/22-025r4/22-025r4.pdf
-- https://www.khronos.org/gltf/pbr
-- https://stacspec.org/en/about/stac-spec/
-- https://cfconventions.org/cf-conventions/cf-conventions.html
-- https://www.w3.org/TR/WCAG22/
-- https://nctr.pmel.noaa.gov/model.html
-- https://arxiv.org/abs/2606.12162
-- https://arxiv.org/abs/2604.25944
-
-### Dependencies and security
-
-- https://github.com/CesiumGS/cesium/releases/tag/1.143
+### Distribution / trust (unsigned app)
+- https://slsa.dev/spec/v1.0/distributing-provenance
+- https://v2.tauri.app/distribute/
 - https://v2.tauri.app/security/capabilities/
 - https://owasp.org/www-community/attacks/CSV_Injection
 
 ## Open Questions
 
-- None block prioritization or implementation. Code signing credentials and updater endpoints remain explicit external blockers already recorded in `Roadmap_Blocked.md`.
+- **Population-grid packaging size.** A global GHS-POP density raster is large;
+  which resolution ships bundled vs. an optional download? (Blocks the casualty-
+  density item's asset decision, analogous to the blocked GEBCO hosting choice.)
+- No other question blocks prioritization or implementation. Code-signing
+  credentials and updater endpoints remain external blockers already recorded in
+  `Roadmap_Blocked.md`.
