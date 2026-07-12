@@ -366,3 +366,102 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 - [ ] P2 — Latte (light) theme contrast QA pass with a live checker
   Why: several tokens need on-screen WCAG AA verification in the light theme that can't be done headless — `--divider` (#b8c3cf) may be too subtle on `--mantle` (#e6e9ef) so panel separations blur, the `.status-dot` colors want checking on light surfaces, and placeholder text at 0.78 opacity on `--subtext` is borderline.
   Where: `src/styles/_globals.css` (Latte block), `src/styles/_layout.css` (`.status-dot`, `input::placeholder`).
+
+## Research-Driven Additions
+
+### P0
+
+- [ ] P0 — Generate every input validator from one versioned scientific contract
+  Why: TypeScript accepts earthquake Mw 5–10 while Rust accepts 4.0–10.5, so a scenario can be valid in one authority and rejected or represented differently in another.
+  Evidence: `src/lib/scenario-schema.ts` (`SCENARIO_BOUNDS.mw`); `src-tauri/src/commands.rs` (`earthquake_initial_conditions`); `docs/manual/custom-scenarios.md`.
+  Touches: new shared input-contract JSON/schema, TypeScript validators/defaults, Rust validators, field help, manual, parity tests.
+  Acceptance: every source field's type, units, min/max, inclusivity, default, and applicability has one versioned definition; generated/validated TS, Rust, UI, and docs values match; a matrix test exercises every boundary on both sides.
+  Complexity: M
+
+- [ ] P0 — Fail closed on numerical-integrity violations and publish a run-quality record
+  Why: CPU snapshots currently convert non-finite solver cells to transparent/zero pixels, allowing a numerically invalid run to look like valid empty water and remain exportable.
+  Evidence: `src-tauri/src/physics/solver/mod.rs` (`SwGrid::snapshot`); JAGURS wet/dry conservation issue https://github.com/jagurs-admin/jagurs/issues/23; GeoClaw output-order issue https://github.com/clawpack/geoclaw/issues/657.
+  Touches: CPU/GPU steppers, streaming metadata, diagnostics, Results/transport states, all scientific exporters, validation fixtures.
+  Acceptance: each run reports finite-field status, minimum total depth, CFL margin, accepted/rejected steps, and boundary/sponge-adjusted mass and energy drift; hard-limit violations stop the run and ordinary exports with a specific diagnostic; warnings remain visible and are stamped into allowed exports.
+  Complexity: L
+
+- [ ] P0 — Give every coastal runup point auditable slope and depth provenance
+  Why: most offshore depths are nominal 50 m placeholders and the global source list does not identify the source, sample method, datum, resolution, or uncertainty behind each point's quantitative runup.
+  Evidence: `src/data/coastal_points.json`; `src-tauri/src/commands.rs` (`runup_at_points`); NOAA/NTHMP modeling guidance https://vlab.noaa.gov/web/national-tsunami-hazard-mitigation-program/modeling-guidance.
+  Touches: coastal-point schema/data, asset validation, runup result types, Results/inspect UI, CSV/GeoJSON/text provenance.
+  Acceptance: every point carries independent slope/depth source, method, datum, resolution/date, confidence, and uncertainty; placeholders are visibly labelled and cannot receive a high-confidence quantitative label; exports preserve the exact record identifiers.
+  Complexity: M
+
+### P1
+
+- [ ] P1 — Keep GPU max-field accumulation resident and batch solver readback
+  Why: every accepted GPU step currently reuploads host eta/u/v, dispatches one step, then submits, polls, maps, and copies three full fields so CPU max-field code can observe it, serializing the accelerated path.
+  Evidence: `src-tauri/src/commands.rs` (`stream_simulation_dispatch`, `run_simulation_gpu`); `src-tauri/src/physics/solver/gpu.rs` (`step_with_diagnostics`); `physics/solver/max_field.rs`.
+  Touches: WGSL buffers/kernel, `GpuTimeStepper`, GPU dispatcher, max-field encoding, cancellation/diagnostics, solver benchmark.
+  Acceptance: peak, time-of-maximum, arrival, and eta² accumulation update on every accepted GPU step without host readback; eta/u/v read back only at display, cancellation, or completion boundaries; CPU/GPU products stay within declared tolerance and a fixed 4M-cell benchmark records material speedup without extra VRAM beyond budget.
+  Complexity: L
+
+- [ ] P1 — Add Windows forced-colors support and regression coverage
+  Why: the UI relies on gradients, shadows, status dots, and color ramps but has no `forced-colors` handling, so Windows High Contrast can erase boundaries and state distinctions.
+  Evidence: `src/styles/**`; `tests/accessibility.spec.ts`; CSS Color Adjustment https://www.w3.org/TR/css-color-adjust-1/.
+  Touches: semantic styles/tokens, legends/status shapes, focus indicators, Playwright accessibility fixtures.
+  Acceptance: `forced-colors: active` uses system colors and visible borders/focus; status and legend meaning also has text/pattern/shape; command bar, library, inspector, transport, dialogs, and errors pass a Playwright forced-colors fixture without globally disabling adjustment.
+  Complexity: S
+
+- [ ] P1 — Provide an accessible dynamic equivalent for the analytical globe
+  Why: Cesium internals are excluded from axe scans and the application-owned viewport has no concise text alternative for the meaningful active scene.
+  Evidence: `src/components/Globe.tsx`; `tests/accessibility.spec.ts`; WCAG 2.2 non-text content https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.
+  Touches: viewport shell, scene/layer/camera summary model, live-region cadence, coordinate-entry alternatives, screen-reader tests.
+  Acceptance: the viewport has an accessible name and adjacent summary of scenario, region/scale, modeled time, visible analytical layers, selected probe, and renderer fallback/failure; updates are coalesced rather than announced per frame; pick and inspect remain operable through coordinates.
+  Complexity: M
+
+- [ ] P1 — Import local NetCDF-CF and GeoTIFF bathymetry through a strict preflight
+  Why: users cannot escape the coarse basin approximation without the blocked bundled-GEBCO channel, while mature tsunami tools accept local scientific rasters and community evidence identifies preprocessing as a primary barrier.
+  Evidence: `data/bathymetry/README.md`; `src-tauri/src/data/bathymetry.rs`; GeoClaw topology work https://github.com/clawpack/geoclaw/issues/705; CF 1.13 https://cfconventions.org/Data/cf-conventions/cf-conventions-1.13/cf-conventions.html.
+  Touches: bounded raster readers, geodesy/surface contracts, crop/resample preview, cache/manifest, Settings/scenario data picker, diagnostics.
+  Acceptance: a user can preview and import a documented NetCDF-CF/GeoTIFF subset; unknown CRS/datum/axis/units fail closed; resolution, nodata, vertical convention, checksum, rights, crop and resampling are shown before commit; imported data is cached atomically and can be removed/rolled back offline.
+  Complexity: L
+
+- [ ] P1 — Extend Inspect into an explainable all-hazard point probe
+  Why: tsunami inspect reports wave/runup at a click, but asteroid/nuclear users only see concentric regions rather than the effect, arrival, threshold, formula, and uncertainty at a chosen place.
+  Evidence: `src-tauri/src/commands.rs` (`inspect_at_point` is tsunami-only); `src-tauri/src/physics/direct_hazard.rs`; NUKEMAP FAQ https://db.nuclearsecrecy.com/nukemap/faq/.
+  Touches: Rust direct-hazard probe query, globe inspect mode, Results panel, comparison and text/CSV export.
+  Acceptance: one probe works across tsunami, asteroid, and nuclear domains and reports applicable peak/time/dose/threshold values, governing model/citation, assumptions, confidence, and safe unknown states; moving the probe never reruns the full simulation; Compare shows both scenarios at the same coordinate.
+  Complexity: M
+
+- [ ] P1 — Checkpoint authoritative solver state and recover interrupted runs
+  Why: crash reports persist but solver fields and progress do not, so an interrupted high-resolution run restarts from zero.
+  Evidence: streaming paths in `src-tauri/src/commands.rs`; ErrorBoundary recovery in `src/components/ErrorBoundary.tsx`; ANUGA checkpointing https://anuga.readthedocs.io/en/stable/setup_anuga_script/checkpointing.html.
+  Touches: versioned checkpoint codec, solver/run registry, app-data retention, recovery UI, diagnostics, migration/corruption tests.
+  Acceptance: configurable wall-clock checkpoints atomically preserve eta/u/v/depth, tick, source/settings/data digests, max fields, gauges, and solver/protocol versions; restart reproduces an uninterrupted golden run; corrupt/incompatible checkpoints are quarantined with diagnostics; completed/stale checkpoints are bounded and removable.
+  Complexity: L
+
+- [ ] P1 — Add deterministic parameter-sensitivity ensembles with percentile products
+  Why: exact single outcomes hide epistemic input uncertainty; USGS/OpenQuake practice uses ensembles and uncertainty products, which fit education when labelled sensitivity rather than occurrence probability.
+  Evidence: USGS PTHA https://www.usgs.gov/publications/probabilistic-tsunami-hazard-analysis-multiple-sources-and-global-applications; ShakeMap uncertainty https://www.usgs.gov/publications/quantifying-and-qualifying-usgs-shakemap-uncertainty; OpenQuake scenario workflow https://docs.openquake.org/oq-engine/3.22/manual/user-guide/workflows/scenario-hazard.html.
+  Touches: existing run admission/identity item, sampling/seed contract, batch orchestration, percentile fields/gauges, Results/Layers, exports.
+  Acceptance: users select 1–3 inputs and cited bounds; a preflighted local ensemble reports median and 5th/95th percentile peak, arrival, runup, and applicable direct effects; exports include distributions, seed, sample count and failed/cancelled members; UI says sensitivity envelope, not probability/forecast.
+  Complexity: L
+
+### P2
+
+- [ ] P2 — Define portable, non-executable scenario packages
+  Why: share URLs and saved inputs do not carry solver settings, citations, local-data references, results, or migration evidence needed to reopen an exact analysis on another machine.
+  Evidence: current scenario schema/settings/export paths; ParaView portable state pattern https://docs.paraview.org/en/latest/UsersGuide/savingResults.html; Universe Sandbox sharing https://universesandbox.com/faq/.
+  Touches: versioned ZIP manifest/schema, scenario/settings/result serializers, optional embedded assets, import preview/migration, security tests.
+  Acceptance: export/import round-trips inputs, solver settings, layers/camera, citations, provenance, optional checkpoints/results, and relative data references; packages contain no executable content and enforce path, entry-count, compressed/expanded-size, MIME, schema/version, and digest limits; future versions fail without mutation and older versions migrate as copies.
+  Complexity: M
+
+- [ ] P2 — Expose the Rust-authoritative workflow through a headless CLI
+  Why: reproducible batch runs, research automation, regression generation, and independent verification currently require driving the GUI or bespoke scripts.
+  Evidence: `src-tauri/src/lib.rs`/`commands.rs`; OpenSPH GUI/CLI pattern https://github.com/pavelsevecek/OpenSPH; NOAA ComMIT https://nctr.pmel.noaa.gov/ComMIT/.
+  Touches: physics crate boundary, new binary target, scenario/package validation, run/compare/export/benchmark commands, structured progress and exit codes.
+  Acceptance: CLI commands validate, run, resume, compare, inspect, export, and benchmark using the same Rust implementations/contracts as Tauri; JSON output is versioned and deterministic; cancellation and failures use non-zero exit codes; GUI-vs-CLI golden fixtures match.
+  Complexity: L
+
+- [ ] P2 — Offer a separately labelled offline Windows installer
+  Why: Tauri defaults to downloading the WebView2 bootstrapper when the runtime is missing, so the current installer is not fully offline despite the app's classroom/offline posture.
+  Evidence: `src-tauri/tauri.conf.json` (no `webviewInstallMode`); Tauri Windows installer docs https://v2.tauri.app/distribute/windows-installer/; Microsoft Evergreen guidance https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/evergreen-vs-fixed-version.
+  Touches: local release build variants/manifests, installer naming/checksums, release docs, network-blocked VM smoke.
+  Acceptance: the normal small installer remains; an optional `offline` MSI/NSIS embeds the Evergreen offline installer, documents its size tradeoff, and installs in a network-blocked clean Windows sandbox without WebView2; runtime servicing remains Evergreen rather than Fixed Version.
+  Complexity: M
