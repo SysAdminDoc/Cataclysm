@@ -6,6 +6,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Changed
 
+- Settings' "Replay first-run notice" now reopens the educational-use notice
+  **immediately** instead of only scheduling it for the next launch, and is
+  labelled truthfully.
 - The Results panel now opens with a plain-language **"What happened?"** outcome
   lead (source-appropriate headline, peak effect, and energy) instead of raw
   source metrics, and labels are source-aware: earthquakes and landslides show

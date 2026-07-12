@@ -210,11 +210,11 @@ existing Earth, ocean, hazard, or Unreal milestones.
   Acceptance: normal operational text is at least 12 px with readable line height; microtext is restricted to secondary provenance; scenario cards prioritize name/promise over raw metadata; repeated controls share heights, spacing, and focus/hover/selected states; Compact density is explicit and never the first-run default; dark and light 1440p/4K references remain unclipped.
   Complexity: M
 
-- [ ] P1 - UX-10: Make onboarding, disabled actions, and exports explain the next step
-  Why: Show first-run again actually schedules the notice for the next launch, and the empty Export menu exposes eight disabled formats without explaining what unlocks them.
-  Evidence: live Settings/Data & onboarding and empty Export audits; `Settings.tsx`, `App.tsx` export popover, `FirstRunDisclaimer.tsx`; premium desktop tools pair unavailable actions with prerequisites and immediate recovery.
-  Touches: onboarding actions/state, export capability descriptors, disabled-state tooltips/helper rows, empty-state CTA routing, microcopy and Playwright accessibility tests.
-  Acceptance: Replay first-run opens immediately while Show on next launch is labeled truthfully; every unavailable export states whether it needs a source, solver frames, dynamic attribution, or desktop capability and offers the relevant action; export formats are grouped as Image, Replay, Share, and Data with descriptions; no toolbar opens into a wall of unexplained disabled buttons.
+- [ ] P1 - UX-10b: Group the Export menu into labelled Image / Replay / Share / Data sections
+  Why: "Replay first-run notice" now opens the notice immediately (fixed), and each export button already surfaces its unlock reason via a toast, but the eight-plus formats still render as one flat list rather than described, categorised groups.
+  Evidence: `App.tsx` export popover (flat `ToolbarButton` list with `disabledReason`); `FirstRunDisclaimer.tsx`/`Settings.tsx` replay path shipped.
+  Touches: export popover grouping/section labels + short descriptions, `_layout.css`/export styles, Playwright accessibility tests.
+  Acceptance: export formats are grouped as Image, Replay, Share, and Data with a one-line description per group; each unavailable format's prerequisite is discoverable inline (not only on click); no toolbar opens into a wall of unlabelled buttons.
   Complexity: S
 
 - [ ] P1 - UX-11: Add a Near a place I know experience over the UNI-09 location data

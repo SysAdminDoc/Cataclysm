@@ -10,6 +10,7 @@ import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
 import { getEarthAsset, getEarthProvider, getEarthStyleBinding } from "../lib/earth-assets";
+import { REPLAY_DISCLAIMER_EVENT } from "./FirstRunDisclaimer";
 import { UiIcon } from "./UiIcon";
 import {
   RENDERER_QUALITY_BUDGETS,
@@ -467,14 +468,15 @@ export function Settings({ onClose }: Props) {
               </button>
               <button
                 className="scenario-tab"
-                onClick={async () => {
-                  await settings.clearDisclaimerAck();
-                  setStatusMsg("First-run notice will show on next launch.");
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent(REPLAY_DISCLAIMER_EVENT));
+                  setStatusMsg("Reopened the first-run notice.");
+                  onClose();
                 }}
                 type="button"
               >
                 <UiIcon name="info" size={14} />
-                Show first-run again
+                Replay first-run notice
               </button>
               <button
                 className="scenario-tab"

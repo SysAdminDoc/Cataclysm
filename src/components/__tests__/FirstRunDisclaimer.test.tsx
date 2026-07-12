@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FirstRunDisclaimer } from "../FirstRunDisclaimer";
+import { FirstRunDisclaimer, REPLAY_DISCLAIMER_EVENT } from "../FirstRunDisclaimer";
 import { LAUNCH_COMPLETE_EVENT } from "../LaunchExperience";
+import { settings } from "../../lib/settings";
 
 describe("FirstRunDisclaimer", () => {
   beforeEach(() => {
@@ -34,6 +35,17 @@ describe("FirstRunDisclaimer", () => {
     expect(await screen.findByText(/planetary-hazard source physics/i)).toBeInTheDocument();
     expect(screen.getByText(/not observations, forecasts, or official warnings/i)).toBeInTheDocument();
     expect(screen.getByText(/idealized source physics/i)).toBeInTheDocument();
+  });
+
+  it("reopens immediately on a replay event even after acknowledgement", async () => {
+    // Already acknowledged: the modal must not auto-open...
+    await settings.acknowledgeDisclaimer();
+    render(<FirstRunDisclaimer />);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // ...but a replay request opens it right away.
+    window.dispatchEvent(new CustomEvent(REPLAY_DISCLAIMER_EVENT));
+    expect(await screen.findByRole("dialog", { name: /educational model/i })).toBeInTheDocument();
   });
 
   it("waits for the launch cinematic before showing first-run safety guidance", async () => {

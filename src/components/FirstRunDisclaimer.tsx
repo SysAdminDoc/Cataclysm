@@ -3,6 +3,9 @@ import { settings } from "../lib/settings";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { LAUNCH_COMPLETE_EVENT } from "./LaunchExperience";
 
+/** Dispatch to reopen the first-run notice immediately (e.g. from Settings). */
+export const REPLAY_DISCLAIMER_EVENT = "cataclysm:replay-disclaimer";
+
 /**
  * Shown once on first launch. After acknowledgement the timestamp is stored
  * in settings so the modal never appears again on subsequent runs.
@@ -28,6 +31,18 @@ export function FirstRunDisclaimer() {
       setOpen(ack === null);
     });
   }, [launchReady]);
+
+  // Allow Settings to replay the notice immediately, independent of the
+  // one-time acknowledgement, so "Replay first-run" opens it now rather than
+  // only scheduling it for the next launch.
+  useEffect(() => {
+    const replay = () => {
+      setLaunchReady(true);
+      setOpen(true);
+    };
+    window.addEventListener(REPLAY_DISCLAIMER_EVENT, replay);
+    return () => window.removeEventListener(REPLAY_DISCLAIMER_EVENT, replay);
+  }, []);
 
   if (!open) return null;
 
