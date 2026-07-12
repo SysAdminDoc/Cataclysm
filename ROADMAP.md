@@ -280,13 +280,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
   Acceptance: applicable layers can be shown/hidden, reordered, opacity-adjusted, reset, and inspected for legend/provenance; unavailable layers explain prerequisites; state persists per scenario and is represented in share/export metadata; controls are fully keyboard accessible.
   Complexity: L
 
-- [ ] P1 — Add precise direct-hazard inputs and honest uncertainty
-  Why: critical asteroid/nuclear parameters are range-only, preventing exact simulator entry, while casualty outputs render exact integers from an explicitly educational approximation.
-  Evidence: `src/components/HazardControls.tsx`; OpenQuake consequence workflows require explicit exposure, vulnerability, and consequence models.
-  Touches: hazard controls, validators, direct-hazard result types, uncertainty/limitation copy, accessibility and physics-boundary tests.
-  Acceptance: every continuous parameter has synchronized numeric entry with units, bounds, step, and validation; sliders remain optional coarse controls; educational consequence outputs use justified ranges/precision and expose assumptions rather than false exactness.
-  Complexity: M
-
 - [ ] P1 — Establish an authoritative product-truth and planning-ledger gate
   Why: tracked docs, onboarding, screenshots, and blocked work still contain legacy product names, versions, frame counts, runtime floors, provider defaults, release URLs, and already-shipped blockers.
   Evidence: `CONTRIBUTING.md`, `SECURITY.md`, `docs/manual/**`, `docs/science/**`, `Tour.tsx`, screenshot assets, `Roadmap_Blocked.md`; current `scripts/verify.mjs` docs checks cover only a small subset of drift.

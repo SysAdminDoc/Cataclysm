@@ -1,6 +1,7 @@
 // Direct-hazard controls are presentation-only. Rust supplies every result,
 // including the detonation timeline and fallout dimensions.
 
+import { useEffect, useRef, useState } from "react";
 import {
   WEAPON_PRESETS,
   type AsteroidInput,
@@ -12,6 +13,66 @@ import {
 } from "../hazards";
 import type { WorkspaceMode } from "../lib/settings";
 
+/** Round to `sig` significant figures so educational casualty estimates read as
+ * order-of-magnitude values rather than false-precision exact integers. */
+function roundSig(n: number, sig = 2): number {
+  if (!Number.isFinite(n) || n === 0) return 0;
+  const mag = Math.floor(Math.log10(Math.abs(n)));
+  const factor = Math.pow(10, sig - 1 - mag);
+  return Math.round(n * factor) / factor;
+}
+
+function approxCount(n: number): string {
+  return `~${roundSig(n).toLocaleString()}`;
+}
+
+type NumericEntry = {
+  value: number;
+  min: number;
+  max: number;
+  step: number | "any";
+  unit?: string;
+  onCommit: (v: number) => void;
+};
+
+/** Draft-on-blur numeric input paired with a coarse slider, mirroring the
+ * Scenario Builder pattern: typing is free, values clamp to bounds on commit. */
+function NumberEntry({ value, min, max, step, unit, ariaLabel, onCommit }: NumericEntry & { ariaLabel: string }) {
+  const [draft, setDraft] = useState(() => String(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setDraft(String(value));
+  }, [value]);
+  function commit() {
+    const parsed = Number(draft);
+    if (draft.trim() === "" || !Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    const clamped = Math.min(max, Math.max(min, parsed));
+    onCommit(clamped);
+    setDraft(String(clamped));
+  }
+  return (
+    <span className="hazard__num">
+      <input
+        type="number"
+        className="hazard__number"
+        value={draft}
+        min={min}
+        max={max}
+        step={step}
+        aria-label={ariaLabel}
+        onFocus={() => { focused.current = true; }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { focused.current = false; commit(); }}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      />
+      {unit && <span className="hazard__num-unit">{unit}</span>}
+    </span>
+  );
+}
+
 type HazardMode = "nuclear" | "asteroid";
 
 function Slider({
@@ -22,6 +83,7 @@ function Slider({
   step,
   onChange,
   format,
+  numeric,
 }: {
   label: string;
   value: number;
@@ -30,6 +92,9 @@ function Slider({
   step: number;
   onChange: (v: number) => void;
   format?: (v: number) => string;
+  /** When present, a synchronized exact numeric input in real units replaces
+   * the read-only value; the slider stays as an optional coarse control. */
+  numeric?: NumericEntry;
 }) {
   const formattedValue = format ? format(value) : String(value);
   return (
@@ -46,7 +111,9 @@ function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         className="hazard__slider"
       />
-      <span className="hazard__row-value">{formattedValue}</span>
+      {numeric
+        ? <NumberEntry {...numeric} ariaLabel={`${label} exact value`} />
+        : <span className="hazard__row-value">{formattedValue}</span>}
     </label>
   );
 }
@@ -151,6 +218,14 @@ export function HazardControls({
               const kt = nuclear.yieldKt;
               return kt < 1 ? `${(kt * 1000).toFixed(0)} t` : kt < 1000 ? `${kt.toFixed(0)} kT` : `${(kt / 1000).toFixed(1)} MT`;
             }}
+            numeric={{
+              value: nuclear.yieldKt,
+              min: 0.001,
+              max: 100000,
+              step: "any",
+              unit: "kT",
+              onCommit: (v) => onNuclearChange({ ...nuclear, yieldKt: v }),
+            }}
           />
           {workspaceMode !== "simple" && <label className="hazard__row">
             <span className="hazard__row-label">Burst type</span>
@@ -172,6 +247,14 @@ export function HazardControls({
             step={100}
             onChange={(v) => onNuclearChange({ ...nuclear, populationDensity: v })}
             format={(v) => (v === 0 ? "off" : `${v.toLocaleString()} /km²`)}
+            numeric={{
+              value: nuclear.populationDensity ?? 0,
+              min: 0,
+              max: 20000,
+              step: 1,
+              unit: "/km²",
+              onCommit: (v) => onNuclearChange({ ...nuclear, populationDensity: v }),
+            }}
           />}
           {workspaceMode === "advanced" && hasFallout && (
             <Slider
@@ -182,6 +265,14 @@ export function HazardControls({
               step={1}
               onChange={onWindChange}
               format={(v) => `${v.toFixed(0)}° (${["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(v / 45) % 8]})`}
+              numeric={{
+                value: windFromDeg,
+                min: 0,
+                max: 359,
+                step: 1,
+                unit: "°",
+                onCommit: onWindChange,
+              }}
             />
           )}
         </>
@@ -195,6 +286,14 @@ export function HazardControls({
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, diameterM: v })}
             format={(v) => (v < 1000 ? `${v.toFixed(0)} m` : `${(v / 1000).toFixed(1)} km`)}
+            numeric={{
+              value: asteroid.diameterM,
+              min: 1,
+              max: 20000,
+              step: 1,
+              unit: "m",
+              onCommit: (v) => onAsteroidChange({ ...asteroid, diameterM: v }),
+            }}
           />
           {workspaceMode !== "simple" && <Slider
             label="Velocity"
@@ -204,6 +303,14 @@ export function HazardControls({
             step={0.5}
             onChange={(v) => onAsteroidChange({ ...asteroid, velocityKmS: v })}
             format={(v) => `${v.toFixed(1)} km/s`}
+            numeric={{
+              value: asteroid.velocityKmS,
+              min: 11,
+              max: 72,
+              step: "any",
+              unit: "km/s",
+              onCommit: (v) => onAsteroidChange({ ...asteroid, velocityKmS: v }),
+            }}
           />}
           {workspaceMode !== "simple" && <Slider
             label="Impact angle"
@@ -213,6 +320,14 @@ export function HazardControls({
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, angleDeg: v })}
             format={(v) => `${v.toFixed(0)}°`}
+            numeric={{
+              value: asteroid.angleDeg,
+              min: 5,
+              max: 90,
+              step: 1,
+              unit: "°",
+              onCommit: (v) => onAsteroidChange({ ...asteroid, angleDeg: v }),
+            }}
           />}
           {workspaceMode === "advanced" && <Slider
             label="Density"
@@ -222,6 +337,14 @@ export function HazardControls({
             step={50}
             onChange={(v) => onAsteroidChange({ ...asteroid, densityKgM3: v })}
             format={(v) => `${v.toLocaleString()} kg/m³`}
+            numeric={{
+              value: asteroid.densityKgM3,
+              min: 500,
+              max: 9000,
+              step: 1,
+              unit: "kg/m³",
+              onCommit: (v) => onAsteroidChange({ ...asteroid, densityKgM3: v }),
+            }}
           />}
           <label className="hazard__row">
             <span className="hazard__row-label">Target</span>
@@ -273,21 +396,22 @@ export function HazardControls({
           </div>
           {result.casualties && (
             <div className="hazard__casualties">
-              <strong>{result.casualties.deaths.toLocaleString()}</strong> est. fatalities ·{" "}
-              <strong>{result.casualties.injuries.toLocaleString()}</strong> injuries
+              <strong>{approxCount(result.casualties.deaths)}</strong> est. fatalities ·{" "}
+              <strong>{approxCount(result.casualties.injuries)}</strong> injuries
               <span className="hazard__casualties-note">
-                at {result.casualties.populationDensity.toLocaleString()} /km² (educational estimate)
+                order-of-magnitude estimate at {result.casualties.populationDensity.toLocaleString()} /km²
+                uniform density (educational only)
               </span>
             </div>
           )}
           {nuclearEffects?.latentCancer && (
             <div className="hazard__casualties">
-              <strong>{nuclearEffects.latentCancer.cancers30yr.toLocaleString()}</strong> est. latent
+              <strong>{approxCount(nuclearEffects.latentCancer.cancers30yr)}</strong> est. latent
               cancer deaths over 30 yr ·{" "}
-              <strong>{nuclearEffects.latentCancer.cancers10yr.toLocaleString()}</strong> within 10 yr
+              <strong>{approxCount(nuclearEffects.latentCancer.cancers10yr)}</strong> within 10 yr
               <span className="hazard__casualties-note">
-                BEIR VII linear-no-threshold (~5.5%/Sv) among {nuclearEffects.latentCancer.exposed.toLocaleString()} survivors;
-                ~{nuclearEffects.latentCancer.geneticEffects.toLocaleString()} hereditary effects (educational estimate)
+                BEIR VII linear-no-threshold (~5.5%/Sv) among ~{roundSig(nuclearEffects.latentCancer.exposed).toLocaleString()} survivors;
+                {" "}{approxCount(nuclearEffects.latentCancer.geneticEffects)} hereditary effects (order-of-magnitude estimate)
               </span>
             </div>
           )}

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { HazardControls } from "../HazardControls";
 import type { AsteroidInput, HazardResult, NuclearInput } from "../../hazards";
@@ -194,5 +195,80 @@ describe("HazardControls", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Detonation animation" })).toBeEnabled();
+  });
+
+  it("commits an exact yield from the synchronized numeric input on blur", async () => {
+    const onNuclearChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={onNuclearChange}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+    const input = screen.getByLabelText("Yield exact value");
+    await user.clear(input);
+    await user.type(input, "1234");
+    await user.tab();
+    expect(onNuclearChange).toHaveBeenLastCalledWith(expect.objectContaining({ yieldKt: 1234 }));
+  });
+
+  it("clamps an out-of-range numeric entry to the parameter bounds", async () => {
+    const onNuclearChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={onNuclearChange}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+    const input = screen.getByLabelText("Yield exact value");
+    await user.clear(input);
+    await user.type(input, "999999999");
+    await user.tab();
+    expect(onNuclearChange).toHaveBeenLastCalledWith(expect.objectContaining({ yieldKt: 100000 }));
+  });
+
+  it("presents casualties as order-of-magnitude estimates, not exact integers", () => {
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={{ ...nuclearResult, casualties: { deaths: 112019, injuries: 264055, populationDensity: 5000 } }}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+    // 112,019 -> ~110,000 (2 significant figures)
+    expect(screen.getByText("~110,000")).toBeInTheDocument();
+    expect(screen.queryByText("112,019")).not.toBeInTheDocument();
+    expect(screen.getByText(/order-of-magnitude estimate at/i)).toBeInTheDocument();
   });
 });

@@ -6,6 +6,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Changed
 
+- Direct-hazard casualty and latent-cancer figures are now shown as
+  **order-of-magnitude estimates** (rounded to two significant figures) with the
+  uniform-density assumption stated, replacing false-precision exact integers.
 - Settings' "Replay first-run notice" now reopens the educational-use notice
   **immediately** instead of only scheduling it for the next launch, and is
   labelled truthfully.
@@ -17,6 +20,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Direct-hazard controls now pair every continuous slider (yield, population
+  density, wind, diameter, velocity, angle, density) with a **synchronized exact
+  numeric input** (draft-on-blur, clamped to bounds, with units), so precise
+  values can be entered instead of only dragged.
 - Nuclear results now include a **latent-cancer estimate** (BEIR VII linear
   no-threshold, ~5.5% excess mortality per Sv) — 10- and 30-year delayed cancer
   fatalities plus hereditary effects among survivors — shown beside the prompt
