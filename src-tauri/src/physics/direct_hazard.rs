@@ -520,13 +520,15 @@ fn fmt_energy(megatons: f64) -> String {
 }
 
 pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<HazardResult, String> {
-    validate_center(request.center)?;
-    validate_range("diameter_m", request.diameter_m, 1.0, 100_000.0)?;
-    validate_range("density_kg_m3", request.density_kg_m3, 100.0, 20_000.0)?;
-    validate_range("velocity_km_s", request.velocity_km_s, 0.1, 100.0)?;
-    validate_range("angle_deg", request.angle_deg, 1.0, 90.0)?;
-    validate_range("water_depth_m", request.water_depth_m, 0.0, 12_000.0)?;
-    validate_range("beach_slope_rad", request.beach_slope_rad, 1e-5, 1.0)?;
+    validate_center(request.center, "DirectAsteroid")?;
+    let validate = |field, value| crate::data::source_input_contract::validate_number("DirectAsteroid", field, value);
+    crate::data::source_input_contract::validate_serialized_enum("DirectAsteroid", "target_type", request.target_type)?;
+    validate("diameter_m", request.diameter_m)?;
+    validate("density_kg_m3", request.density_kg_m3)?;
+    validate("velocity_km_s", request.velocity_km_s)?;
+    validate("angle_deg", request.angle_deg)?;
+    validate("water_depth_m", request.water_depth_m)?;
+    validate("beach_slope_rad", request.beach_slope_rad)?;
 
     let velocity_m_s = request.velocity_km_s * 1_000.0;
     let radius = request.diameter_m / 2.0;
@@ -1102,12 +1104,14 @@ fn latent_cancer(effects: &NuclearEffects, density: f64) -> LatentCancerEstimate
 }
 
 pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardResult, String> {
-    validate_center(request.center)?;
-    validate_range("yield_kt", request.yield_kt, 0.001, 1e7)?;
-    validate_range("fission_pct", request.fission_pct, 0.0, 100.0)?;
-    validate_range("population_density", request.population_density, 0.0, 1e7)?;
+    validate_center(request.center, "DirectNuclear")?;
+    let validate = |field, value| crate::data::source_input_contract::validate_number("DirectNuclear", field, value);
+    crate::data::source_input_contract::validate_serialized_enum("DirectNuclear", "burst_type", request.burst_type)?;
+    validate("yield_kt", request.yield_kt)?;
+    validate("fission_pct", request.fission_pct)?;
+    validate("population_density", request.population_density)?;
     if let Some(height) = request.height_m {
-        validate_range("height_m", height, 0.0, 1e7)?;
+        validate("height_m", height)?;
     }
     let effects = nuclear_effects(&request);
     let mut rings = vec![
@@ -1289,17 +1293,9 @@ fn timeline(time: &str, description: &str, category: &str) -> TimelineEvent {
     }
 }
 
-fn validate_center(center: HazardCenter) -> Result<(), String> {
-    validate_range("center latitude", center.lat, -90.0, 90.0)?;
-    validate_range("center longitude", center.lon, -180.0, 180.0)
-}
-
-fn validate_range(name: &str, value: f64, min: f64, max: f64) -> Result<(), String> {
-    if !value.is_finite() || value < min || value > max {
-        Err(format!("{name} must be finite and in [{min}, {max}]"))
-    } else {
-        Ok(())
-    }
+fn validate_center(center: HazardCenter, source: &str) -> Result<(), String> {
+    crate::data::source_input_contract::validate_number(source, "lat_deg", center.lat)?;
+    crate::data::source_input_contract::validate_number(source, "lon_deg", center.lon)
 }
 
 #[cfg(test)]

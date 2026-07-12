@@ -7,9 +7,35 @@ import {
   parseScenarioPayload,
   scenarioFromUrl,
   scenarioToUrlParams,
+  sourceNumericDefault,
+  validateSourceNumber,
+  type ScientificSourceKind,
 } from "../scenario-schema";
+import sourceInputContract from "../../data/source-input-contract.json";
 
 describe("scenario schema", () => {
+  it("enforces every scientific input contract boundary and default", () => {
+    expect(sourceInputContract.contractVersion).toBe(1);
+    expect(sourceInputContract.scenarioSchemaVersion).toBe(SCENARIO_SCHEMA_VERSION);
+    for (const [source, sourceDefinition] of Object.entries(sourceInputContract.sources)) {
+      for (const [field, definition] of Object.entries(sourceDefinition.fields)) {
+        expect(definition.label).not.toBe("");
+        expect(definition.units).toBeDefined();
+        if ("values" in definition) {
+          expect(definition.values).toContain(definition.default);
+          continue;
+        }
+        const sourceKind = source as ScientificSourceKind;
+        expect(validateSourceNumber(sourceKind, field, definition.minimum)).toBeNull();
+        expect(validateSourceNumber(sourceKind, field, definition.maximum)).toBeNull();
+        expect(validateSourceNumber(sourceKind, field, Number.NaN)).not.toBeNull();
+        expect(validateSourceNumber(sourceKind, field, definition.minimum - Math.max(1, Math.abs(definition.maximum - definition.minimum)) * Number.EPSILON * 8)).not.toBeNull();
+        expect(validateSourceNumber(sourceKind, field, definition.maximum + Math.max(1, Math.abs(definition.maximum - definition.minimum)) * Number.EPSILON * 8)).not.toBeNull();
+        expect(validateSourceNumber(sourceKind, field, sourceNumericDefault(sourceKind, field))).toBeNull();
+      }
+    }
+  });
+
   it("migrates legacy unversioned scenario payloads", () => {
     const parsed = parseScenarioPayload({
       kind: "Nuclear",

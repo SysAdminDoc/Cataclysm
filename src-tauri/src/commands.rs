@@ -113,10 +113,6 @@ fn check_finite_nonnegative(name: &str, value: f64) -> Result<(), String> {
 // then produced off-frame Cesium bounding boxes. Keep all callers in one domain.
 const LON_ABS_MAX: f64 = 180.0;
 
-fn check_lat_lon(loc: &GeoPoint) -> Result<(), String> {
-    check_lat_lon_values("location", loc.lat_deg, loc.lon_deg)
-}
-
 fn check_lat_lon_values(prefix: &str, lat: f64, lon: f64) -> Result<(), String> {
     if !lat.is_finite() || lat.abs() > 90.0 {
         return Err(format!("{prefix} latitude {lat} out of range"));
@@ -199,57 +195,41 @@ pub fn simulate_nuclear_hazard_render(
 
 #[tauri::command]
 pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDisplacement, String> {
-    check_finite_positive("diameter_m", input.diameter_m)?;
-    check_finite_positive("density_kg_m3", input.density_kg_m3)?;
-    check_finite_positive("velocity_m_s", input.velocity_m_s)?;
-    check_finite("angle_deg", input.angle_deg)?;
-    if input.angle_deg <= 0.0 || input.angle_deg > 90.0 {
-        return Err(format!(
-            "angle_deg must be in (0, 90] (got {})",
-            input.angle_deg
-        ));
-    }
-    check_finite("water_depth_m", input.water_depth_m)?;
-    if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
-        return Err("water_depth_m must be in [0, 12 000 m]".into());
-    }
-    check_lat_lon(&input.location)?;
+    let validate = |field, value| crate::data::source_input_contract::validate_number("Asteroid", field, value);
+    validate("diameter_m", input.diameter_m)?;
+    validate("density_kg_m3", input.density_kg_m3)?;
+    validate("velocity_m_s", input.velocity_m_s)?;
+    validate("angle_deg", input.angle_deg)?;
+    validate("water_depth_m", input.water_depth_m)?;
+    validate("lat_deg", input.location.lat_deg)?;
+    validate("lon_deg", input.location.lon_deg)?;
     Ok(input.initial_displacement())
 }
 
 #[tauri::command]
 pub fn nuclear_initial_conditions(input: NuclearBurst) -> Result<InitialDisplacement, String> {
-    check_finite_positive("yield_kt", input.yield_kt)?;
-    if input.yield_kt > 1.0e7 {
-        return Err("yield_kt above 10 000 Mt is non-physical".into());
-    }
-    check_finite("burst_depth_m", input.burst_depth_m)?;
-    if input.burst_depth_m < 0.0 || input.burst_depth_m > 12_000.0 {
-        return Err("burst_depth_m must be in [0, 12 000 m]".into());
-    }
-    check_finite("water_depth_m", input.water_depth_m)?;
-    if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
-        return Err("water_depth_m must be in [0, 12 000 m]".into());
-    }
-    check_lat_lon(&input.location)?;
+    let validate = |field, value| crate::data::source_input_contract::validate_number("Nuclear", field, value);
+    crate::data::source_input_contract::validate_serialized_enum("Nuclear", "burst_mode", input.burst_mode)?;
+    validate("yield_kt", input.yield_kt)?;
+    validate("burst_depth_m", input.burst_depth_m)?;
+    validate("water_depth_m", input.water_depth_m)?;
+    validate("lat_deg", input.location.lat_deg)?;
+    validate("lon_deg", input.location.lon_deg)?;
     Ok(input.initial_displacement())
 }
 
 #[tauri::command]
 pub fn landslide_initial_conditions(input: LandslideSource) -> Result<InitialDisplacement, String> {
-    check_finite_positive("volume_m3", input.volume_m3)?;
-    check_finite_positive("density_kg_m3", input.density_kg_m3)?;
-    check_finite("drop_height_m", input.drop_height_m)?;
-    if input.drop_height_m < 0.0 {
-        return Err("drop_height_m must be non-negative".into());
-    }
-    check_finite("slope_deg", input.slope_deg)?;
-    if input.slope_deg < 0.0 || input.slope_deg > 90.0 {
-        return Err("slope_deg must be in [0, 90]".into());
-    }
-    check_finite_positive("water_depth_m", input.water_depth_m)?;
-    check_finite_positive("water_body_width_m", input.water_body_width_m)?;
-    check_lat_lon(&input.location)?;
+    let validate = |field, value| crate::data::source_input_contract::validate_number("Landslide", field, value);
+    crate::data::source_input_contract::validate_serialized_enum("Landslide", "kind", input.kind)?;
+    validate("volume_m3", input.volume_m3)?;
+    validate("density_kg_m3", input.density_kg_m3)?;
+    validate("drop_height_m", input.drop_height_m)?;
+    validate("slope_deg", input.slope_deg)?;
+    validate("water_depth_m", input.water_depth_m)?;
+    validate("water_body_width_m", input.water_body_width_m)?;
+    validate("lat_deg", input.location.lat_deg)?;
+    validate("lon_deg", input.location.lon_deg)?;
     Ok(input.initial_displacement())
 }
 
@@ -257,38 +237,18 @@ pub fn landslide_initial_conditions(input: LandslideSource) -> Result<InitialDis
 pub fn earthquake_initial_conditions(
     input: EarthquakeSource,
 ) -> Result<InitialDisplacement, String> {
-    check_finite("mw", input.mw)?;
-    if input.mw < 4.0 || input.mw > 10.5 {
-        return Err("mw must be in [4.0, 10.5]".into());
-    }
-    check_finite("depth_m", input.depth_m)?;
-    if input.depth_m < 0.0 || input.depth_m > 700_000.0 {
-        return Err("depth_m must be in [0, 700 km]".into());
-    }
-    // Fault orientation angles share the same hard bounds as the frontend
-    // `SCENARIO_BOUNDS` table (src/lib/scenario-schema.ts); keep them in lockstep
-    // so a scenario accepted by one entry path cannot be rejected by the other.
-    check_finite("strike_deg", input.strike_deg)?;
-    if input.strike_deg < 0.0 || input.strike_deg > 360.0 {
-        return Err("strike_deg must be in [0, 360]".into());
-    }
-    check_finite("dip_deg", input.dip_deg)?;
-    if input.dip_deg < 0.0 || input.dip_deg > 90.0 {
-        return Err("dip_deg must be in [0, 90]".into());
-    }
-    check_finite("rake_deg", input.rake_deg)?;
-    if input.rake_deg < -180.0 || input.rake_deg > 180.0 {
-        return Err("rake_deg must be in [-180, 180]".into());
-    }
-    check_finite("slip_m", input.slip_m)?;
-    if input.slip_m < 0.0 {
-        return Err("slip_m must be non-negative".into());
-    }
-    check_finite("water_depth_m", input.water_depth_m)?;
-    if input.water_depth_m < 0.0 || input.water_depth_m > 12_000.0 {
-        return Err("water_depth_m must be in [0, 12 000]".into());
-    }
-    check_lat_lon(&input.location)?;
+    let validate = |field, value| crate::data::source_input_contract::validate_number("Earthquake", field, value);
+    validate("mw", input.mw)?;
+    validate("depth_m", input.depth_m)?;
+    validate("strike_deg", input.strike_deg)?;
+    validate("dip_deg", input.dip_deg)?;
+    validate("rake_deg", input.rake_deg)?;
+    validate("slip_m", input.slip_m)?;
+    validate("fault_length_m", input.fault_length_m)?;
+    validate("fault_width_m", input.fault_width_m)?;
+    validate("water_depth_m", input.water_depth_m)?;
+    validate("lat_deg", input.location.lat_deg)?;
+    validate("lon_deg", input.location.lon_deg)?;
     Ok(input.initial_displacement())
 }
 

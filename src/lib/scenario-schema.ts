@@ -5,6 +5,7 @@ import type {
   LandslideInput,
   NuclearBurstInput,
 } from "../types/scenario";
+import sourceInputContract from "../data/source-input-contract.json";
 
 export const SCENARIO_SCHEMA_VERSION = 1;
 
@@ -22,96 +23,150 @@ export type ScenarioValidationResult =
   | { ok: true; scenario: ScenarioInput; payload: ScenarioPayload; migrated: boolean }
   | { ok: false; reason: string };
 
-export type Bound = { min?: number; max?: number };
+export type Bound = { min?: number; max?: number; minInclusive?: boolean; maxInclusive?: boolean };
+export type ScenarioSourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide";
+export type ScientificSourceKind = ScenarioSourceKind | "DirectAsteroid" | "DirectNuclear";
+type ContractField = {
+  type: "number" | "enum";
+  label: string;
+  units: string | null;
+  default: number | string;
+  minimum?: number;
+  maximum?: number;
+  minimumInclusive?: boolean;
+  maximumInclusive?: boolean;
+  values?: string[];
+  uiValues?: string[];
+};
+type SourceContract = { fields: Record<string, ContractField> };
+const allSources = sourceInputContract.sources as unknown as Record<ScientificSourceKind, SourceContract>;
+const scenarioSourceKinds: ScenarioSourceKind[] = ["Asteroid", "Nuclear", "Earthquake", "Landslide"];
+const scenarioSources = scenarioSourceKinds.map((source) => allSources[source]);
+
+if (sourceInputContract.scenarioSchemaVersion !== SCENARIO_SCHEMA_VERSION) {
+  throw new Error("Source input contract and scenario schema versions do not match.");
+}
+
+export function sourceField(source: ScientificSourceKind, field: string): ContractField | undefined {
+  return allSources[source].fields[field];
+}
+
+export function sourceBound(source: ScientificSourceKind, field: string): Required<Pick<Bound, "min" | "max">> {
+  const definition = sourceField(source, field);
+  if (!definition || definition.type !== "number" || definition.minimum === undefined || definition.maximum === undefined) {
+    throw new Error(`Source input contract has no numeric bounds for ${source}.${field}.`);
+  }
+  return { min: definition.minimum, max: definition.maximum };
+}
+
+export function validateSourceNumber(source: ScientificSourceKind, field: string, value: unknown): string | null {
+  const definition = sourceField(source, field);
+  if (!definition || definition.type !== "number") return `Source input contract has no numeric field ${source}.${field}.`;
+  if (typeof value !== "number" || !Number.isFinite(value)) return `${definition.label} must be a finite number.`;
+  if (definition.minimum !== undefined && (value < definition.minimum || (definition.minimumInclusive === false && value === definition.minimum))) {
+    return `${definition.label} is below its allowed minimum.`;
+  }
+  if (definition.maximum !== undefined && (value > definition.maximum || (definition.maximumInclusive === false && value === definition.maximum))) {
+    return `${definition.label} is above its allowed maximum.`;
+  }
+  return null;
+}
+
+export function sourceNumericDefault(source: ScientificSourceKind, field: string): number {
+  const definition = sourceField(source, field);
+  if (!definition || definition.type !== "number" || typeof definition.default !== "number") {
+    throw new Error(`Source input contract has no numeric default for ${source}.${field}.`);
+  }
+  return definition.default;
+}
+
+export function sourceTextDefault(source: ScientificSourceKind, field: string): string {
+  const definition = sourceField(source, field);
+  if (!definition || definition.type !== "enum" || typeof definition.default !== "string") {
+    throw new Error(`Source input contract has no enum default for ${source}.${field}.`);
+  }
+  return definition.default;
+}
+
+export function sourceEnumValues(source: ScientificSourceKind, field: string, uiOnly = false): string[] {
+  const definition = sourceField(source, field);
+  if (!definition || definition.type !== "enum" || !definition.values) {
+    throw new Error(`Source input contract has no enum values for ${source}.${field}.`);
+  }
+  return uiOnly && definition.uiValues ? definition.uiValues : definition.values;
+}
 
 export const INITIAL_ASTEROID: AsteroidImpactInput = {
-  diameter_m: 500,
-  density_kg_m3: 3000,
-  velocity_m_s: 18_000,
-  angle_deg: 45,
-  water_depth_m: 4_000,
-  location: { lat_deg: 0, lon_deg: -30, depth_m: 4_000 },
+  diameter_m: sourceNumericDefault("Asteroid", "diameter_m"),
+  density_kg_m3: sourceNumericDefault("Asteroid", "density_kg_m3"),
+  velocity_m_s: sourceNumericDefault("Asteroid", "velocity_m_s"),
+  angle_deg: sourceNumericDefault("Asteroid", "angle_deg"),
+  water_depth_m: sourceNumericDefault("Asteroid", "water_depth_m"),
+  location: { lat_deg: sourceNumericDefault("Asteroid", "lat_deg"), lon_deg: sourceNumericDefault("Asteroid", "lon_deg"), depth_m: sourceNumericDefault("Asteroid", "water_depth_m") },
 };
 
 export const INITIAL_NUCLEAR: NuclearBurstInput = {
-  yield_kt: 1000,
-  burst_mode: "DeepOptimal",
-  burst_depth_m: 100,
-  water_depth_m: 4_000,
-  location: { lat_deg: 50, lon_deg: -10, depth_m: 4_000 },
+  yield_kt: sourceNumericDefault("Nuclear", "yield_kt"),
+  burst_mode: sourceTextDefault("Nuclear", "burst_mode") as NuclearBurstInput["burst_mode"],
+  burst_depth_m: sourceNumericDefault("Nuclear", "burst_depth_m"),
+  water_depth_m: sourceNumericDefault("Nuclear", "water_depth_m"),
+  location: { lat_deg: sourceNumericDefault("Nuclear", "lat_deg"), lon_deg: sourceNumericDefault("Nuclear", "lon_deg"), depth_m: sourceNumericDefault("Nuclear", "water_depth_m") },
 };
 
 export const INITIAL_EARTHQUAKE: EarthquakeInput = {
-  mw: 8.5,
-  depth_m: 30_000,
-  strike_deg: 195,
-  dip_deg: 12,
-  rake_deg: 85,
-  slip_m: 15,
-  fault_length_m: 0,
-  fault_width_m: 0,
-  water_depth_m: 2_000,
-  location: { lat_deg: 38.0, lon_deg: 143.0, depth_m: 2_000 },
+  mw: sourceNumericDefault("Earthquake", "mw"),
+  depth_m: sourceNumericDefault("Earthquake", "depth_m"),
+  strike_deg: sourceNumericDefault("Earthquake", "strike_deg"),
+  dip_deg: sourceNumericDefault("Earthquake", "dip_deg"),
+  rake_deg: sourceNumericDefault("Earthquake", "rake_deg"),
+  slip_m: sourceNumericDefault("Earthquake", "slip_m"),
+  fault_length_m: sourceNumericDefault("Earthquake", "fault_length_m"),
+  fault_width_m: sourceNumericDefault("Earthquake", "fault_width_m"),
+  water_depth_m: sourceNumericDefault("Earthquake", "water_depth_m"),
+  location: { lat_deg: sourceNumericDefault("Earthquake", "lat_deg"), lon_deg: sourceNumericDefault("Earthquake", "lon_deg"), depth_m: sourceNumericDefault("Earthquake", "water_depth_m") },
 };
 
 export const INITIAL_LANDSLIDE: LandslideInput = {
-  kind: "Submarine",
-  volume_m3: 1.0e10,
-  density_kg_m3: 2200,
-  drop_height_m: 700,
-  slope_deg: 25,
-  water_depth_m: 1_500,
-  water_body_width_m: 10_000,
-  location: { lat_deg: -20.55, lon_deg: -175.39, depth_m: 1_500 },
+  kind: sourceTextDefault("Landslide", "kind") as LandslideInput["kind"],
+  volume_m3: sourceNumericDefault("Landslide", "volume_m3"),
+  density_kg_m3: sourceNumericDefault("Landslide", "density_kg_m3"),
+  drop_height_m: sourceNumericDefault("Landslide", "drop_height_m"),
+  slope_deg: sourceNumericDefault("Landslide", "slope_deg"),
+  water_depth_m: sourceNumericDefault("Landslide", "water_depth_m"),
+  water_body_width_m: sourceNumericDefault("Landslide", "water_body_width_m"),
+  location: { lat_deg: sourceNumericDefault("Landslide", "lat_deg"), lon_deg: sourceNumericDefault("Landslide", "lon_deg"), depth_m: sourceNumericDefault("Landslide", "water_depth_m") },
 };
 
-export const SCENARIO_BOUNDS: Record<string, Bound> = {
-  diameter_m: { min: 1, max: 50_000 },
-  density_kg_m3: { min: 500, max: 8_000 },
-  velocity_m_s: { min: 1_000, max: 72_000 },
-  angle_deg: { min: 1, max: 90 },
-  water_depth_m: { min: 0, max: 12_000 },
-  yield_kt: { min: 0.001, max: 1_000_000 },
-  burst_depth_m: { min: 0, max: 6_000 },
-  mw: { min: 5, max: 10 },
-  depth_m: { min: 0, max: 100_000 },
-  strike_deg: { min: 0, max: 360 },
-  dip_deg: { min: 0, max: 90 },
-  rake_deg: { min: -180, max: 180 },
-  slip_m: { min: 0, max: 100 },
-  fault_length_m: { min: 0, max: 2_000_000 },
-  fault_width_m: { min: 0, max: 500_000 },
-  volume_m3: { min: 1, max: 1.0e14 },
-  drop_height_m: { min: 0, max: 10_000 },
-  slope_deg: { min: 0, max: 90 },
-  water_body_width_m: { min: 1, max: 1_000_000 },
-  lat_deg: { min: -90, max: 90 },
-  lon_deg: { min: -180, max: 180 },
-};
+export const SCENARIO_BOUNDS: Record<string, Bound> = scenarioSources
+  .flatMap((source) => Object.entries(source.fields))
+  .reduce<Record<string, Bound>>((bounds, [field, definition]) => {
+    if (definition.type === "number") {
+      if (definition.minimum === undefined || definition.maximum === undefined) {
+        throw new Error(`Source input contract numeric field ${field} is missing bounds.`);
+      }
+      const previous = bounds[field];
+      const next = {
+        min: definition.minimum,
+        max: definition.maximum,
+        minInclusive: definition.minimumInclusive,
+        maxInclusive: definition.maximumInclusive,
+      };
+      bounds[field] = previous
+        ? { min: Math.min(previous.min ?? next.min, next.min), max: Math.max(previous.max ?? next.max, next.max), minInclusive: true, maxInclusive: true }
+        : next;
+    }
+    return bounds;
+  }, {});
 
-const LABELS: Record<string, string> = {
-  diameter_m: "Diameter",
-  density_kg_m3: "Density",
-  velocity_m_s: "Velocity",
-  angle_deg: "Impact angle",
-  water_depth_m: "Water depth",
-  yield_kt: "Yield",
-  burst_depth_m: "Burst depth",
-  mw: "Magnitude",
-  depth_m: "Hypocentre depth",
-  strike_deg: "Strike",
-  dip_deg: "Dip",
-  rake_deg: "Rake",
-  slip_m: "Slip",
-  fault_length_m: "Fault length",
-  fault_width_m: "Fault width",
-  volume_m3: "Volume",
-  drop_height_m: "Drop height",
-  slope_deg: "Slope",
-  water_body_width_m: "Receiving body width",
-  lat_deg: "Latitude",
-  lon_deg: "Longitude",
-};
+const LABELS: Record<string, string> = scenarioSources
+  .flatMap((source) => Object.entries(source.fields))
+  .reduce<Record<string, string>>((labels, [field, definition]) => {
+    if (labels[field] && labels[field] !== definition.label) {
+      throw new Error(`Source input contract defines conflicting labels for ${field}.`);
+    }
+    labels[field] = definition.label;
+    return labels;
+  }, {});
 
 type RecordValue = Record<string, unknown>;
 type ParseResult<T> = { ok: true; value: T } | { ok: false; reason: string };
@@ -149,6 +204,13 @@ function numberInRange(obj: RecordValue, field: string): ParseResult<number> {
     return parseFail(`${label} must be at most ${formatBound(bound.max)}.`);
   }
   return { ok: true, value };
+}
+
+function numberInSourceRange(obj: RecordValue, source: ScenarioSourceKind, field: string): ParseResult<number> {
+  const value = obj[field];
+  const failure = validateSourceNumber(source, field, value);
+  if (failure) return parseFail(failure);
+  return { ok: true, value: value as number };
 }
 
 function optionalNumberInRange(obj: RecordValue, field: string, fallback: number): ParseResult<number> {
@@ -297,7 +359,7 @@ function parseLandslide(source: unknown): ParseResult<LandslideInput> {
   if (!dropHeight.ok) return dropHeight;
   const slope = numberInRange(obj.value, "slope_deg");
   if (!slope.ok) return slope;
-  const waterDepth = numberInRange(obj.value, "water_depth_m");
+  const waterDepth = numberInSourceRange(obj.value, "Landslide", "water_depth_m");
   if (!waterDepth.ok) return waterDepth;
   const width = numberInRange(obj.value, "water_body_width_m");
   if (!width.ok) return width;

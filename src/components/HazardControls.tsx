@@ -2,6 +2,7 @@
 // including the detonation timeline and fallout dimensions.
 
 import { useEffect, useRef, useState } from "react";
+import { sourceBound, sourceEnumValues } from "../lib/scenario-schema";
 import {
   WEAPON_PRESETS,
   type AsteroidInput,
@@ -157,6 +158,15 @@ export function HazardControls({
   canAnimate?: boolean;
   workspaceMode?: WorkspaceMode;
 }) {
+  const nuclearYield = sourceBound("DirectNuclear", "yield_kt");
+  const populationDensity = sourceBound("DirectNuclear", "population_density");
+  const windFrom = sourceBound("DirectNuclear", "wind_from_deg");
+  const asteroidDiameter = sourceBound("DirectAsteroid", "diameter_m");
+  const asteroidVelocity = sourceBound("DirectAsteroid", "velocity_km_s");
+  const asteroidAngle = sourceBound("DirectAsteroid", "angle_deg");
+  const asteroidDensity = sourceBound("DirectAsteroid", "density_kg_m3");
+  const nuclearBurstTypes = sourceEnumValues("DirectNuclear", "burst_type", true);
+  const asteroidTargetTypes = sourceEnumValues("DirectAsteroid", "target_type", true);
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
   const timeline = nuclearEffects?.timeline ?? [];
   const hasFallout = Boolean(nuclearEffects?.fallout);
@@ -210,8 +220,8 @@ export function HazardControls({
           <Slider
             label="Yield"
             value={Math.log10(nuclear.yieldKt)}
-            min={-3}
-            max={5}
+            min={Math.log10(nuclearYield.min)}
+            max={Math.log10(nuclearYield.max)}
             step={0.01}
             onChange={(v) => onNuclearChange({ ...nuclear, yieldKt: Math.pow(10, v) })}
             format={() => {
@@ -220,8 +230,8 @@ export function HazardControls({
             }}
             numeric={{
               value: nuclear.yieldKt,
-              min: 0.001,
-              max: 100000,
+              min: nuclearYield.min,
+              max: nuclearYield.max,
               step: "any",
               unit: "kT",
               onCommit: (v) => onNuclearChange({ ...nuclear, yieldKt: v }),
@@ -234,23 +244,23 @@ export function HazardControls({
               value={nuclear.burstType}
               onChange={(e) => onNuclearChange({ ...nuclear, burstType: e.target.value as BurstType })}
             >
-              <option value="airburst">Air burst (optimal height)</option>
-              <option value="surface">Surface</option>
-              <option value="water">Water</option>
+              {nuclearBurstTypes.map((value) => (
+                <option key={value} value={value}>{value === "airburst" ? "Air burst (optimal height)" : value === "surface" ? "Surface" : "Water"}</option>
+              ))}
             </select>
           </label>}
           {workspaceMode === "advanced" && <Slider
             label="Population density"
             value={nuclear.populationDensity ?? 0}
-            min={0}
-            max={20000}
+            min={populationDensity.min}
+            max={populationDensity.max}
             step={100}
             onChange={(v) => onNuclearChange({ ...nuclear, populationDensity: v })}
             format={(v) => (v === 0 ? "off" : `${v.toLocaleString()} /km²`)}
             numeric={{
               value: nuclear.populationDensity ?? 0,
-              min: 0,
-              max: 20000,
+              min: populationDensity.min,
+              max: populationDensity.max,
               step: 1,
               unit: "/km²",
               onCommit: (v) => onNuclearChange({ ...nuclear, populationDensity: v }),
@@ -260,15 +270,15 @@ export function HazardControls({
             <Slider
               label="Wind from"
               value={windFromDeg}
-              min={0}
-              max={359}
+              min={windFrom.min}
+              max={windFrom.max}
               step={1}
               onChange={onWindChange}
               format={(v) => `${v.toFixed(0)}° (${["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(v / 45) % 8]})`}
               numeric={{
                 value: windFromDeg,
-                min: 0,
-                max: 359,
+                min: windFrom.min,
+                max: windFrom.max,
                 step: 1,
                 unit: "°",
                 onCommit: onWindChange,
@@ -281,15 +291,15 @@ export function HazardControls({
           <Slider
             label="Diameter"
             value={asteroid.diameterM}
-            min={1}
-            max={20000}
+            min={asteroidDiameter.min}
+            max={asteroidDiameter.max}
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, diameterM: v })}
             format={(v) => (v < 1000 ? `${v.toFixed(0)} m` : `${(v / 1000).toFixed(1)} km`)}
             numeric={{
               value: asteroid.diameterM,
-              min: 1,
-              max: 20000,
+              min: asteroidDiameter.min,
+              max: asteroidDiameter.max,
               step: 1,
               unit: "m",
               onCommit: (v) => onAsteroidChange({ ...asteroid, diameterM: v }),
@@ -298,15 +308,15 @@ export function HazardControls({
           {workspaceMode !== "simple" && <Slider
             label="Velocity"
             value={asteroid.velocityKmS}
-            min={11}
-            max={72}
+            min={asteroidVelocity.min}
+            max={asteroidVelocity.max}
             step={0.5}
             onChange={(v) => onAsteroidChange({ ...asteroid, velocityKmS: v })}
             format={(v) => `${v.toFixed(1)} km/s`}
             numeric={{
               value: asteroid.velocityKmS,
-              min: 11,
-              max: 72,
+              min: asteroidVelocity.min,
+              max: asteroidVelocity.max,
               step: "any",
               unit: "km/s",
               onCommit: (v) => onAsteroidChange({ ...asteroid, velocityKmS: v }),
@@ -315,15 +325,15 @@ export function HazardControls({
           {workspaceMode !== "simple" && <Slider
             label="Impact angle"
             value={asteroid.angleDeg}
-            min={5}
-            max={90}
+            min={asteroidAngle.min}
+            max={asteroidAngle.max}
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, angleDeg: v })}
             format={(v) => `${v.toFixed(0)}°`}
             numeric={{
               value: asteroid.angleDeg,
-              min: 5,
-              max: 90,
+              min: asteroidAngle.min,
+              max: asteroidAngle.max,
               step: 1,
               unit: "°",
               onCommit: (v) => onAsteroidChange({ ...asteroid, angleDeg: v }),
@@ -332,15 +342,15 @@ export function HazardControls({
           {workspaceMode === "advanced" && <Slider
             label="Density"
             value={asteroid.densityKgM3}
-            min={500}
-            max={9000}
+            min={asteroidDensity.min}
+            max={asteroidDensity.max}
             step={50}
             onChange={(v) => onAsteroidChange({ ...asteroid, densityKgM3: v })}
             format={(v) => `${v.toLocaleString()} kg/m³`}
             numeric={{
               value: asteroid.densityKgM3,
-              min: 500,
-              max: 9000,
+              min: asteroidDensity.min,
+              max: asteroidDensity.max,
               step: 1,
               unit: "kg/m³",
               onCommit: (v) => onAsteroidChange({ ...asteroid, densityKgM3: v }),
@@ -353,9 +363,9 @@ export function HazardControls({
               value={asteroid.targetType}
               onChange={(e) => onAsteroidChange({ ...asteroid, targetType: e.target.value as TargetType })}
             >
-              <option value="sedimentary_rock">Sedimentary rock</option>
-              <option value="crystalline_rock">Crystalline rock</option>
-              <option value="water">Water (ocean)</option>
+              {asteroidTargetTypes.map((value) => (
+                <option key={value} value={value}>{value === "sedimentary_rock" ? "Sedimentary rock" : value === "crystalline_rock" ? "Crystalline rock" : "Water (ocean)"}</option>
+              ))}
             </select>
           </label>
         </>

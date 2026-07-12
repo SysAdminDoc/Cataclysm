@@ -1,0 +1,81 @@
+{
+  "contractVersion": 1,
+  "scenarioSchemaVersion": 1,
+  "defaultApplicability": "always",
+  "sources": {
+    "Asteroid": {
+      "fields": {
+        "diameter_m": { "type": "number", "label": "Diameter", "units": "m", "minimum": 1, "maximum": 50000, "minimumInclusive": true, "maximumInclusive": true, "default": 500 },
+        "density_kg_m3": { "type": "number", "label": "Density", "units": "kg/m³", "minimum": 500, "maximum": 8000, "minimumInclusive": true, "maximumInclusive": true, "default": 3000 },
+        "velocity_m_s": { "type": "number", "label": "Velocity", "units": "m/s", "minimum": 1000, "maximum": 72000, "minimumInclusive": true, "maximumInclusive": true, "default": 18000 },
+        "angle_deg": { "type": "number", "label": "Impact angle", "units": "°", "minimum": 1, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 45 },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 0, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 4000 },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 0 },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": -30 }
+      }
+    },
+    "Nuclear": {
+      "fields": {
+        "yield_kt": { "type": "number", "label": "Yield", "units": "kt TNT", "minimum": 0.001, "maximum": 1000000, "minimumInclusive": true, "maximumInclusive": true, "default": 1000 },
+        "burst_mode": { "type": "enum", "label": "Burst geometry", "units": null, "values": ["Surface", "Shallow", "DeepOptimal", "Abyssal"], "default": "DeepOptimal" },
+        "burst_depth_m": { "type": "number", "label": "Burst depth", "units": "m", "minimum": 0, "maximum": 6000, "minimumInclusive": true, "maximumInclusive": true, "default": 100 },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 0, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 4000 },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 50 },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": -10 }
+      }
+    },
+    "Earthquake": {
+      "fields": {
+        "mw": { "type": "number", "label": "Magnitude", "units": "Mw", "minimum": 5, "maximum": 10, "minimumInclusive": true, "maximumInclusive": true, "default": 8.5 },
+        "depth_m": { "type": "number", "label": "Hypocentre depth", "units": "m", "minimum": 0, "maximum": 100000, "minimumInclusive": true, "maximumInclusive": true, "default": 30000 },
+        "strike_deg": { "type": "number", "label": "Strike", "units": "°", "minimum": 0, "maximum": 360, "minimumInclusive": true, "maximumInclusive": true, "default": 195 },
+        "dip_deg": { "type": "number", "label": "Dip", "units": "°", "minimum": 0, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 12 },
+        "rake_deg": { "type": "number", "label": "Rake", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": 85 },
+        "slip_m": { "type": "number", "label": "Slip", "units": "m", "minimum": 0, "maximum": 100, "minimumInclusive": true, "maximumInclusive": true, "default": 15 },
+        "fault_length_m": { "type": "number", "label": "Fault length", "units": "m", "minimum": 0, "maximum": 2000000, "minimumInclusive": true, "maximumInclusive": true, "default": 0 },
+        "fault_width_m": { "type": "number", "label": "Fault width", "units": "m", "minimum": 0, "maximum": 500000, "minimumInclusive": true, "maximumInclusive": true, "default": 0 },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 0, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 2000 },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 38 },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": 143 }
+      }
+    },
+    "Landslide": {
+      "fields": {
+        "kind": { "type": "enum", "label": "Type", "units": null, "values": ["Subaerial", "Submarine"], "default": "Submarine" },
+        "volume_m3": { "type": "number", "label": "Volume", "units": "m³", "minimum": 1, "maximum": 100000000000000, "minimumInclusive": true, "maximumInclusive": true, "default": 10000000000 },
+        "density_kg_m3": { "type": "number", "label": "Density", "units": "kg/m³", "minimum": 500, "maximum": 8000, "minimumInclusive": true, "maximumInclusive": true, "default": 2200 },
+        "drop_height_m": { "type": "number", "label": "Drop height", "units": "m", "minimum": 0, "maximum": 10000, "minimumInclusive": true, "maximumInclusive": true, "default": 700 },
+        "slope_deg": { "type": "number", "label": "Slope", "units": "°", "minimum": 0, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 25 },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 1, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 1500 },
+        "water_body_width_m": { "type": "number", "label": "Receiving body width", "units": "m", "minimum": 1, "maximum": 1000000, "minimumInclusive": true, "maximumInclusive": true, "default": 10000 },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": -20.55 },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": -175.39 }
+      }
+    },
+    "DirectAsteroid": {
+      "fields": {
+        "diameter_m": { "type": "number", "label": "Diameter", "units": "m", "minimum": 1, "maximum": 20000, "minimumInclusive": true, "maximumInclusive": true, "default": 300 },
+        "density_kg_m3": { "type": "number", "label": "Density", "units": "kg/m³", "minimum": 500, "maximum": 9000, "minimumInclusive": true, "maximumInclusive": true, "default": 4000 },
+        "velocity_km_s": { "type": "number", "label": "Velocity", "units": "km/s", "minimum": 11, "maximum": 72, "minimumInclusive": true, "maximumInclusive": true, "default": 20 },
+        "angle_deg": { "type": "number", "label": "Impact angle", "units": "°", "minimum": 5, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 45 },
+        "target_type": { "type": "enum", "label": "Target", "units": null, "values": ["sedimentary_rock", "crystalline_rock", "water"], "default": "sedimentary_rock" },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 0, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 4000, "applicability": "derived-from-surface" },
+        "beach_slope_rad": { "type": "number", "label": "Beach slope", "units": "rad", "minimum": 0.00001, "maximum": 1, "minimumInclusive": true, "maximumInclusive": true, "default": 0.02, "applicability": "derived-default" },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "placement" },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "placement" }
+      }
+    },
+    "DirectNuclear": {
+      "fields": {
+        "yield_kt": { "type": "number", "label": "Yield", "units": "kt TNT", "minimum": 0.001, "maximum": 100000, "minimumInclusive": true, "maximumInclusive": true, "default": 100 },
+        "burst_type": { "type": "enum", "label": "Burst type", "units": null, "values": ["airburst", "surface", "custom", "hemp", "water"], "uiValues": ["airburst", "surface", "water"], "default": "airburst" },
+        "height_m": { "type": "number", "label": "Burst height", "units": "m", "minimum": 0, "maximum": 10000000, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "optional-custom-burst" },
+        "fission_pct": { "type": "number", "label": "Fission fraction", "units": "%", "minimum": 0, "maximum": 100, "minimumInclusive": true, "maximumInclusive": true, "default": 50, "applicability": "derived-default" },
+        "population_density": { "type": "number", "label": "Population density", "units": "people/km²", "minimum": 0, "maximum": 20000, "minimumInclusive": true, "maximumInclusive": true, "default": 5000 },
+        "wind_from_deg": { "type": "number", "label": "Wind from", "units": "°", "minimum": 0, "maximum": 359, "minimumInclusive": true, "maximumInclusive": true, "default": 270, "applicability": "fallout-presentation" },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "placement" },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "placement" }
+      }
+    }
+  }
+}

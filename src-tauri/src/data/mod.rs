@@ -7,4 +7,5 @@
 
 pub mod bathymetry;
 pub mod geodesy;
+pub mod source_input_contract;
 pub mod surface;

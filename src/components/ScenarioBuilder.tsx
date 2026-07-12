@@ -8,6 +8,8 @@ import {
   INITIAL_NUCLEAR,
   parseScenarioPayload,
   SCENARIO_BOUNDS as BOUNDS,
+  sourceBound,
+  sourceEnumValues,
   type ScenarioInput,
 } from "../lib/scenario-schema";
 import type {
@@ -90,14 +92,16 @@ function NumField({
   value,
   onChange,
   step,
+  bounds,
 }: {
   field: string;
   label: string;
   value: number;
   onChange: (v: number) => void;
   step?: number;
+  bounds?: { min: number; max: number };
 }) {
-  const b = BOUNDS[field];
+  const b = bounds ?? BOUNDS[field];
   const help = PARAM_HELP[field];
   const showSlider = SLIDER_FIELDS.has(field);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -199,6 +203,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [nuclear, setNuclear] = useState(INITIAL_NUCLEAR);
   const [earthquake, setEarthquake] = useState(INITIAL_EARTHQUAKE);
   const [landslide, setLandslide] = useState(INITIAL_LANDSLIDE);
+  const burstModes = sourceEnumValues("Nuclear", "burst_mode", true);
+  const landslideKinds = sourceEnumValues("Landslide", "kind", true);
 
   useEffect(() => {
     if (!editRequest) return;
@@ -407,10 +413,9 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                   setNuclear({ ...nuclear, burst_mode: e.target.value as NuclearBurstInput["burst_mode"] })
                 }
               >
-                <option value="Surface">Surface</option>
-                <option value="Shallow">Shallow underwater</option>
-                <option value="DeepOptimal">Deep (optimal)</option>
-                <option value="Abyssal">Abyssal (overburdened)</option>
+                {burstModes.map((value) => (
+                  <option key={value} value={value}>{value === "Shallow" ? "Shallow underwater" : value === "DeepOptimal" ? "Deep (optimal)" : value === "Abyssal" ? "Abyssal (overburdened)" : "Surface"}</option>
+                ))}
               </select>
             </label>
             <NumField field="burst_depth_m" label="Burst depth (m)" value={nuclear.burst_depth_m}
@@ -447,8 +452,9 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                   setLandslide({ ...landslide, kind: e.target.value as LandslideInput["kind"] })
                 }
               >
-                <option value="Subaerial">Subaerial (rock-fall into water)</option>
-                <option value="Submarine">Submarine (slope failure)</option>
+                {landslideKinds.map((value) => (
+                  <option key={value} value={value}>{value === "Subaerial" ? "Subaerial (rock-fall into water)" : "Submarine (slope failure)"}</option>
+                ))}
               </select>
             </label>
             <NumField field="volume_m3" label="Volume (m³)" value={landslide.volume_m3}
@@ -475,6 +481,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             applyLocation(v, "lon", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide })
           } />
         <NumField field="water_depth_m" label="Water depth (m)"
+          bounds={sourceBound(tab === "asteroid" ? "Asteroid" : tab === "nuclear" ? "Nuclear" : tab === "earthquake" ? "Earthquake" : "Landslide", "water_depth_m")}
           value={currentDepth({ tab, asteroid, nuclear, earthquake, landslide })}
           onChange={(v) =>
             applyDepth(v, { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide })

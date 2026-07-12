@@ -25,7 +25,7 @@ import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exp
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
-import { scenarioFromUrl, scenarioToUrlParams, type ScenarioInput } from "./lib/scenario-schema";
+import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput } from "./lib/scenario-schema";
 import {
   DIRECT_SCENARIOS,
   loadScenarioLibraryPreferences,
@@ -294,18 +294,29 @@ export default function App() {
     asteroid: null,
     nuclear: null,
   });
-  const [nuclearInput, setNuclearInput] = useState<NuclearInput>({ yieldKt: 100, burstType: "airburst", populationDensity: 5000 });
+  const [nuclearInput, setNuclearInput] = useState<NuclearInput>({
+    yieldKt: sourceNumericDefault("DirectNuclear", "yield_kt"),
+    burstType: sourceTextDefault("DirectNuclear", "burst_type") as NuclearInput["burstType"],
+    populationDensity: sourceNumericDefault("DirectNuclear", "population_density"),
+  });
   // Default to a 300 m impactor: reaches the ground and excavates a crater
   // (a 100 m stony airbursts) without continental-scale blast radii, so the
   // default "Impact" is dramatic but the effects still frame nicely.
-  const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({ diameterM: 300, densityKgM3: 4000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 });
+  const [asteroidInput, setAsteroidInput] = useState<AsteroidInput>({
+    diameterM: sourceNumericDefault("DirectAsteroid", "diameter_m"),
+    densityKgM3: sourceNumericDefault("DirectAsteroid", "density_kg_m3"),
+    velocityKmS: sourceNumericDefault("DirectAsteroid", "velocity_km_s"),
+    angleDeg: sourceNumericDefault("DirectAsteroid", "angle_deg"),
+    targetType: sourceTextDefault("DirectAsteroid", "target_type") as AsteroidInput["targetType"],
+    waterDepthM: sourceNumericDefault("DirectAsteroid", "water_depth_m"),
+  });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
   const [hazardError, setHazardError] = useState<string | null>(null);
   const [directRenderReplay, setDirectRenderReplay] = useState<RenderReplayAdapter | null>(null);
   const [directRenderFrame, setDirectRenderFrame] = useState<RendererNeutralFrameView | null>(null);
   const [hazardPending, setHazardPending] = useState(false);
   const hazardRequestId = useRef(0);
-  const [windFromDeg, setWindFromDeg] = useState(270);
+  const [windFromDeg, setWindFromDeg] = useState(sourceNumericDefault("DirectNuclear", "wind_from_deg"));
   const [detonateNonces, setDetonateNonces] = useState<Record<DirectHazardMode, number>>({
     asteroid: 0,
     nuclear: 0,
@@ -694,8 +705,8 @@ export default function App() {
           yield_kt: debouncedNuclearInput.yieldKt,
           burst_type: debouncedNuclearInput.burstType,
           height_m: debouncedNuclearInput.heightM,
-          fission_pct: debouncedNuclearInput.fissionPct ?? 50,
-          population_density: debouncedNuclearInput.populationDensity ?? 0,
+          fission_pct: debouncedNuclearInput.fissionPct ?? sourceNumericDefault("DirectNuclear", "fission_pct"),
+          population_density: debouncedNuclearInput.populationDensity ?? sourceNumericDefault("DirectNuclear", "population_density"),
         };
     const asteroidRequest = {
           center,
@@ -705,7 +716,7 @@ export default function App() {
           angle_deg: debouncedAsteroidInput.angleDeg,
           target_type: debouncedAsteroidInput.targetType,
           water_depth_m: debouncedAsteroidInput.waterDepthM ?? 0,
-          beach_slope_rad: debouncedAsteroidInput.beachSlopeRad ?? 0.02,
+          beach_slope_rad: debouncedAsteroidInput.beachSlopeRad ?? sourceNumericDefault("DirectAsteroid", "beach_slope_rad"),
         };
     const request = hazardMode === "nuclear"
       ? Promise.allSettled([

@@ -4,6 +4,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- Added a versioned scientific input contract shared by all four tsunami source
+  models and both direct-hazard models. TypeScript, UI controls, Rust commands,
+  defaults, enum choices, inclusive bounds, and manual ranges now derive from
+  or validate against the same source, with exhaustive boundary matrix tests.
+
 ### Fixed
 
 - CZML playback export now emits a spec-correct time-tagged image material with
