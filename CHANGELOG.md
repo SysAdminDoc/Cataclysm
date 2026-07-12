@@ -17,6 +17,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - The Results outcome disclaimer used an undefined `--overlay1` CSS variable, so
   its color silently fell back to the inherited text color; it now uses the
   `--subtext` token and renders as intended muted caption text in both themes.
+- The hazard-domain summary paragraph referenced an undefined `--type-small`
+  font-size token (it inherited the wrong size); it now uses `--type-body`.
 - Replaced hardcoded `#006080`/`#ffffff` active-toggle colors (mode and hazard
   switches) with new `--control-active-bg`/`--control-active-fg` theme tokens so
   the selected state stays consistent and theme-aware across Mocha and Latte.
