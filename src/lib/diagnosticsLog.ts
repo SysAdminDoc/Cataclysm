@@ -111,3 +111,87 @@ export function clearDiagnosticsLog() {
   logBuffer.length = 0;
   notify();
 }
+
+// --- Persistent, redacted crash evidence ---------------------------------
+// A crash report must survive a reload (so the failure can still be reviewed)
+// but must never persist secrets, absolute file paths, or private scenario
+// content. Everything written here is passed through `redactSensitive`.
+
+const CRASH_KEY = "tsunamisim.last_crash";
+const CRASH_LOG_TAIL = 40;
+
+export type CrashReport = {
+  at: number;
+  name: string;
+  message: string;
+  componentStack: string | null;
+  recentLogs: LogEntry[];
+  seen: boolean;
+};
+
+/** Strip Cesium ion / JWT tokens, absolute paths, and long hex/base64 blobs. */
+export function redactSensitive(text: string): string {
+  return text
+    .replace(/eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}/g, "[redacted-token]")
+    .replace(/[A-Za-z]:\\[^\s"')]+/g, "[redacted-path]")
+    .replace(/\/(?:Users|home)\/[^\s"')/]+(?:\/[^\s"')]*)?/g, "[redacted-path]")
+    .replace(/\b[A-Fa-f0-9]{32,}\b/g, "[redacted-hex]");
+}
+
+export function persistCrashReport(input: {
+  name: string;
+  message: string;
+  componentStack?: string | null;
+}): void {
+  if (typeof localStorage === "undefined") return;
+  const report: CrashReport = {
+    at: Date.now(),
+    name: redactSensitive(input.name),
+    message: redactSensitive(input.message),
+    componentStack: input.componentStack ? redactSensitive(input.componentStack) : null,
+    recentLogs: logBuffer.slice(-CRASH_LOG_TAIL).map((e) => ({
+      ...e,
+      message: redactSensitive(e.message),
+    })),
+    seen: false,
+  };
+  try {
+    localStorage.setItem(CRASH_KEY, JSON.stringify(report));
+  } catch {
+    // Never let crash persistence throw on top of an existing crash.
+  }
+}
+
+export function readPersistedCrashReport(): CrashReport | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CRASH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CrashReport;
+    if (typeof parsed?.message !== "string") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** Mark the stored report reviewed without deleting it, so a successful restart
+ * does not silently erase evidence of the prior crash. */
+export function markCrashReportSeen(): void {
+  const report = readPersistedCrashReport();
+  if (!report || report.seen) return;
+  try {
+    localStorage.setItem(CRASH_KEY, JSON.stringify({ ...report, seen: true }));
+  } catch {
+    // ignore
+  }
+}
+
+export function clearPersistedCrashReport(): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(CRASH_KEY);
+  } catch {
+    // ignore
+  }
+}

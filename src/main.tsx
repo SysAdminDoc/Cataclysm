@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { primeCesiumToken } from "./lib/cesium";
+import { markCrashReportSeen } from "./lib/diagnosticsLog";
 import { settings } from "./lib/settings";
 import "./styles.css";
 
@@ -42,3 +43,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// A successful start marks any prior crash report as reviewed (but keeps it for
+// inspection) so it is not treated as a fresh failure on the next launch.
+if (typeof window !== "undefined") {
+  window.setTimeout(markCrashReportSeen, 0);
+}

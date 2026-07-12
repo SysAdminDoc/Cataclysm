@@ -20,6 +20,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The fatal-error screen now persists a **redacted crash report** (tokens,
+  absolute paths, and long hashes stripped) that survives a reload, and offers
+  Reset visual settings, Copy diagnostics, and Save diagnostics recovery actions
+  alongside Try again / Reload. A successful restart marks the report reviewed
+  without deleting it.
 - Direct-hazard controls now pair every continuous slider (yield, population
   density, wind, diameter, velocity, angle, density) with a **synchronized exact
   numeric input** (draft-on-blur, clamped to bounds, with units), so precise

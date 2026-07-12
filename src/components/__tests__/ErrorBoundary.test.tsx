@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorBoundary } from "../ErrorBoundary";
+import { readPersistedCrashReport } from "../../lib/diagnosticsLog";
 
 function ThrowingChild(): null {
   throw new Error("Boundary test failure");
 }
 
 describe("ErrorBoundary", () => {
+  beforeEach(() => localStorage.clear());
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -35,5 +37,25 @@ describe("ErrorBoundary", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reload app" })).toBeInTheDocument();
     expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it("persists a crash report and offers recovery actions", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <ErrorBoundary>
+        <ThrowingChild />
+      </ErrorBoundary>,
+    );
+
+    // Recovery actions are all present.
+    expect(screen.getByRole("button", { name: "Reset visual settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy diagnostics" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save diagnostics" })).toBeInTheDocument();
+
+    // A redacted report survives in storage for review after a reload.
+    const report = readPersistedCrashReport();
+    expect(report).not.toBeNull();
+    expect(report?.message).toContain("Boundary test failure");
+    expect(report?.seen).toBe(false);
   });
 });

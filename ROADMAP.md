@@ -287,13 +287,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
   Acceptance: legacy/current product facts are reconciled; shipped and duplicate blocked entries are removed; docs and onboarding derive or validate name/version/runtime/frame/provider facts; verification fails on stale product names, release links, version strings, provider defaults, or completed blockers.
   Complexity: M
 
-- [ ] P1 — Persist redacted crash evidence and add deterministic recovery
-  Why: diagnostics are memory-only and vanish on reload; `Try again` commonly rethrows the same render fault and there is no reset-visual-settings or save/copy support action.
-  Evidence: `src/lib/diagnosticsLog.ts`, `src/components/ErrorBoundary.tsx`, `src/main.tsx`; ANUGA and OpenQuake treat logs and failed-job evidence as first-class outputs.
-  Touches: bounded crash store, redaction, backend/frontend panic hooks, diagnostics bundle, ErrorBoundary recovery actions, crash fixtures.
-  Acceptance: the last bounded crash report survives restart without tokens/paths/private scenario content; fatal UI offers copy/save diagnostics, reset visual settings, retry, and reload; recovery actions are independently tested; successful restart marks but does not silently erase the report.
-  Complexity: M
-
 ### P2
 
 - [ ] P2 — Extend static checks to tests, scripts, configs, and fresh E2E output
