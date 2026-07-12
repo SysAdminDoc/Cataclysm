@@ -4,6 +4,22 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-07-12 — Progressive simulator workspace
+
+- Added persisted Simple, Customize, and Advanced workspace detail levels;
+  Simple is the default and keeps the globe, scenario, journey, timeline, and
+  outcomes dominant.
+- Moved exact solver grids, gauges, model confidence, and scientific
+  diagnostics to Advanced while Customize retains only understandable rerun,
+  ocean-depth, and atmospheric-wave controls.
+- Hid custom-source editors until Create my own or Edit is explicit, and kept
+  selected scenarios, computed frames, and physics inputs intact across mode
+  changes.
+- Applied the same disclosure model to direct asteroid and nuclear controls,
+  with scale and location available before exact physical parameters.
+- Added settings-schema migration, export/import persistence, keyboard,
+  state-preservation, browser, accessibility, and desktop visual coverage.
+
 ## [0.9.1] — 2026-07-12 — Guided Run & Watch
 
 - Turned Run & Watch into one explicit Prepare / Calculate / Watch /

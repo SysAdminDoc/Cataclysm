@@ -100,6 +100,7 @@ test.describe("Keyboard-only golden path", () => {
   test("scenario and inspector tabs use roving focus with arrow, Home, and End keys", async ({ page }) => {
     await seedAcknowledgedPreview(page);
     await page.goto("/");
+    await page.getByRole("button", { name: /Create my own/i }).click();
 
     const scenarioTabs = page.locator(".scenario-tabs");
     const asteroid = scenarioTabs.getByRole("tab", { name: "Asteroid" });

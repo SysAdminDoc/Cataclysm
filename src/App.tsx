@@ -11,7 +11,7 @@ import { GuidedLesson } from "./components/GuidedLesson";
 import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
 import { UiIcon } from "./components/UiIcon";
-import { settings } from "./lib/settings";
+import { settings, type WorkspaceMode } from "./lib/settings";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
@@ -330,6 +330,8 @@ export default function App() {
   const [sweRunAndWatchNonce, setSweRunAndWatchNonce] = useState(0);
   const [pendingRunPresetId, setPendingRunPresetId] = useState<string | null>(null);
   const [runJourney, setRunJourney] = useState<RunJourney | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple");
+  const [customEditorOpen, setCustomEditorOpen] = useState(false);
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
@@ -392,6 +394,18 @@ export default function App() {
     setToast({ msg, tone });
     window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 6000);
+  }, []);
+  const changeWorkspaceMode = useCallback((mode: WorkspaceMode) => {
+    setWorkspaceMode(mode);
+    void settings.setWorkspaceMode(mode).catch((error) => {
+      console.warn("[settings] failed to persist workspace mode", error);
+      showToast("Workspace detail changed for this session, but could not be saved.", "error");
+    });
+  }, [showToast]);
+  useEffect(() => {
+    settings.getWorkspaceMode().then(setWorkspaceMode).catch((error) => {
+      console.warn("[settings] failed to load workspace mode", error);
+    });
   }, []);
   const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
     const now = performance.now();
@@ -917,6 +931,7 @@ export default function App() {
   function previewPreset(presetId: string) {
     setRunJourney(null);
     setTimelinePlaying(false);
+    setCustomEditorOpen(false);
     setLibraryPreview({ kind: "preset", presetId });
     setLibraryPreviewPending(true);
   }
@@ -924,6 +939,7 @@ export default function App() {
   function previewDirectScenario(scenario: DirectScenarioTemplate) {
     setRunJourney(null);
     setTimelinePlaying(false);
+    setCustomEditorOpen(false);
     setLibraryPreview({ kind: "direct", scenario });
     setLibraryPreviewPending(true);
   }
@@ -936,6 +952,7 @@ export default function App() {
     selectHazardMode("tsunami");
     setLibraryPreview({ kind: "preset", presetId });
     setLibraryPreviewPending(false);
+    setCustomEditorOpen(false);
     slotA.setActivePresetId(presetId);
     if (canReuseSnapshots) {
       setPendingRunPresetId(null);
@@ -991,6 +1008,8 @@ export default function App() {
 
   function createCustomScenario() {
     setRunJourney(null);
+    changeWorkspaceMode("customize");
+    setCustomEditorOpen(true);
     setLibraryPreview(null);
     setLibraryPreviewPending(false);
     selectHazardMode("tsunami");
@@ -1015,6 +1034,7 @@ export default function App() {
       className="app"
       data-compare={compareMode ? "true" : "false"}
       data-domain={hazardMode}
+      data-workspace-mode={workspaceMode}
       data-reference-capture={referenceCaptureMode ? "true" : "false"}
     >
       <a className="skip-link" href="#main-globe">Skip to globe</a>
@@ -1494,6 +1514,19 @@ export default function App() {
             <span>Active workspace</span>
             <strong>{inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}</strong>
           </div>
+          <div className="workspace-mode" role="group" aria-label="Workspace detail">
+            {(["simple", "customize", "advanced"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={workspaceMode === mode}
+                data-active={workspaceMode === mode ? "true" : undefined}
+                onClick={() => changeWorkspaceMode(mode)}
+              >
+                {mode[0].toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
           <div className="inspector__tabs" role="tablist" aria-label="Simulation inspector">
             {(["setup", "results", "layers"] as const).map((tab) => (
               <button
@@ -1535,6 +1568,7 @@ export default function App() {
             onManual={() => {
               setRunJourney(null);
               setTimelinePlaying(false);
+              changeWorkspaceMode("customize");
               setInspectorTab("setup");
             }}
           />
@@ -1562,6 +1596,7 @@ export default function App() {
             pending={hazardPending}
             error={hazardError}
             canAnimate={Boolean(directRenderReplay)}
+            workspaceMode={workspaceMode}
           />
         )}
         <div hidden={inspectorTab !== "setup" || inHazardMode}>
@@ -1571,6 +1606,8 @@ export default function App() {
             onEdit={compareMode ? undefined : () => {
               const scenario = activePresetA?.source ?? slotA.lastCustomScenario;
               if (!scenario) return;
+              changeWorkspaceMode("customize");
+              setCustomEditorOpen(true);
               setScenarioEditRequest({ id: Date.now(), scenario });
               window.requestAnimationFrame(() => {
                 const editor = document.querySelector<HTMLElement>(".scenario-form");
@@ -1592,11 +1629,12 @@ export default function App() {
             onPlaybackTimeChange={setTimeS}
             slotLabel={compareMode ? "Slot A" : undefined}
             runAndWatchNonce={sweRunAndWatchNonce}
+            workspaceMode={workspaceMode}
           />
           <div hidden={!compareMode} aria-label="Comparison slot B solver">
             <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
           </div>
-          <div hidden={compareMode}>
+          <div hidden={compareMode || !customEditorOpen || workspaceMode === "simple"}>
             <ScenarioBuilder
             editRequest={scenarioEditRequest}
             onSimulate={(scenario) => {
@@ -1627,6 +1665,7 @@ export default function App() {
           pending={hazardPending}
           error={hazardError}
           canAnimate={Boolean(directRenderReplay)}
+          workspaceMode={workspaceMode}
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} />}
         {inspectorTab === "results" && !inHazardMode && <AttenuationChart

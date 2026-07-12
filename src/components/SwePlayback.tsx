@@ -6,6 +6,7 @@ import { exportGaugeCsv } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
 import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
+import type { WorkspaceMode } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
 
 type Props = {
@@ -27,6 +28,7 @@ type Props = {
   onPlaybackTimeChange?: (timeS: number) => void;
   slotLabel?: string;
   runAndWatchNonce?: number;
+  workspaceMode?: WorkspaceMode;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
@@ -104,7 +106,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0 }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -459,16 +461,16 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           {solverBadge}
         </span>
       </div>
-      <p className="swe__hint">
+      {workspaceMode === "advanced" && <p className="swe__hint">
         Compute one hour of regional ocean propagation. Desktop builds use the
         full solver; browser preview uses deterministic demonstration frames.
-      </p>
-      <div className="swe__meta-grid" aria-label="Solver setup">
+      </p>}
+      {workspaceMode === "advanced" && <div className="swe__meta-grid" aria-label="Solver setup">
         <span><strong>{N_SNAPSHOTS}</strong> frames</span>
         <span><strong>60</strong> min window</span>
         <span><strong>{isTauri() ? "Backend" : "Preview"}</strong> mode</span>
-      </div>
-      <div className="swe__row swe__row--primary">
+      </div>}
+      {(workspaceMode !== "simple" || status === "running" || status === "error") && <div className="swe__row swe__row--primary">
         <button
           className="primary"
           onClick={() => void run(false)}
@@ -488,8 +490,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             Cancel
           </button>
         )}
-      </div>
-      <div className="swe__options" role="group" aria-label="Solver options">
+      </div>}
+      {workspaceMode !== "simple" && <div className="swe__options" role="group" aria-label="Solver options">
         <label className="swe__check">
           <input
             type="checkbox"
@@ -498,9 +500,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           />
           <span>Use simplified ocean-depth model</span>
         </label>
-        <div className="swe__confidence" role="note">
+        {workspaceMode === "advanced" && <div className="swe__confidence" role="note">
           Low confidence: current solver depths are basin means with a shelf taper, not GEBCO_2026/TID-backed terrain.
-        </div>
+        </div>}
         <label className="swe__check">
           <input
             type="checkbox"
@@ -509,7 +511,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           />
           <span>Include atmospheric pressure wave</span>
         </label>
-        <label className="swe__check swe__resolution">
+        {workspaceMode === "advanced" && <label className="swe__check swe__resolution">
           <span>
             Resolution <strong>{cellsPerDeg} cells/°</strong>
             <em>{fidelityLabel}</em>
@@ -524,8 +526,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             aria-label="Grid resolution in cells per degree"
             title="Higher resolution is more accurate but slower. Default is 6."
           />
-        </label>
-      </div>
+        </label>}
+      </div>}
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">
           <span>Streaming frame {streamProgress} / {N_SNAPSHOTS}</span>
@@ -603,12 +605,12 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               />
             )}
           </div>
-          <div className="swe__readout">
+          {workspaceMode !== "simple" && <div className="swe__readout">
             <span>Frame {activeIdx + 1}/{snapshots.length}</span>
             <span>{(snapshots[activeIdx].time_s / 60).toFixed(1)} min</span>
             <span>|<GlossaryTip term="eta">η</GlossaryTip>|max {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
-          </div>
-          {diag && (
+          </div>}
+          {workspaceMode === "advanced" && diag && (
             <div className="swe__readout swe__readout--muted">
               <span>Δt = {diag.dt_s.toFixed(2)} s</span>
               <span>grid {diag.nx}×{diag.ny}</span>
@@ -616,7 +618,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               <span>{diag.used_gpu ? "GPU (wgpu)" : "CPU (rayon)"}</span>
             </div>
           )}
-          {maxField && (
+          {workspaceMode !== "simple" && maxField && (
             <div className="swe__overlay-row" role="group" aria-label="Result overlay">
               <span className="swe__overlay-label">Overlay</span>
               {OVERLAY_OPTIONS.map((opt) => (
@@ -659,11 +661,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           )}
         </>
       )}
-      {!isTauri() && (
+      {workspaceMode === "advanced" && !isTauri() && (
         <div className="swe__notice">Browser preview uses demo SWE frames, not backend physics.</div>
       )}
 
-      <div className="swe__gauges">
+      {workspaceMode === "advanced" && <div className="swe__gauges">
         <div className="section__title">
           <span>Gauges</span>
           <span className="section__badge">{gauges.length}</span>
@@ -748,7 +750,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             Export gauges CSV
           </button>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

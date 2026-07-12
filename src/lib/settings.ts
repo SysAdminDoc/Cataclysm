@@ -17,6 +17,7 @@ export type Theme = "mocha" | "latte";
 export type ColormapId = "diverging" | "cividis" | "viridis";
 export type LessonCompletions = Record<string, string>;
 export type LaunchExperiencePolicy = "first" | "always" | "never";
+export type WorkspaceMode = "simple" | "customize" | "advanced";
 
 export type Settings = {
   cesium_token: string;
@@ -25,6 +26,7 @@ export type Settings = {
   colormap: ColormapId;
   renderer_quality: RendererQualityTier;
   renderer_auto_quality: boolean;
+  workspace_mode: WorkspaceMode;
   launch_experience_policy: LaunchExperiencePolicy;
   launch_experience_seen_at: string | null;
   disclaimer_acknowledged_at: string | null;
@@ -40,7 +42,7 @@ export type Settings = {
   classroom_locked: boolean;
 };
 
-export const SETTINGS_SCHEMA_VERSION = 3;
+export const SETTINGS_SCHEMA_VERSION = 4;
 const SCHEMA_VERSION_KEY = "_settings_schema_version";
 
 const DEFAULTS: Settings = {
@@ -50,6 +52,7 @@ const DEFAULTS: Settings = {
   colormap: "diverging",
   renderer_quality: "High",
   renderer_auto_quality: true,
+  workspace_mode: "simple",
   launch_experience_policy: "first",
   launch_experience_seen_at: null,
   disclaimer_acknowledged_at: null,
@@ -66,6 +69,7 @@ const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
   "colormap",
   "renderer_quality",
   "renderer_auto_quality",
+  "workspace_mode",
   "launch_experience_policy",
   "launch_experience_seen_at",
   "disclaimer_acknowledged_at",
@@ -220,6 +224,11 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
           ? value
           : undefined
       ) as Settings[K] | undefined;
+      break;
+    case "workspace_mode":
+      result = (value === "simple" || value === "customize" || value === "advanced"
+        ? value
+        : undefined) as Settings[K] | undefined;
       break;
     case "launch_experience_policy":
       result = (value === "first" || value === "always" || value === "never"
@@ -485,6 +494,12 @@ export const settings = {
   async setRendererAutoQuality(enabled: boolean): Promise<void> {
     return write("renderer_auto_quality", enabled);
   },
+  async getWorkspaceMode(): Promise<WorkspaceMode> {
+    return read("workspace_mode");
+  },
+  async setWorkspaceMode(mode: WorkspaceMode): Promise<void> {
+    return write("workspace_mode", mode);
+  },
   async getLaunchExperiencePolicy(): Promise<LaunchExperiencePolicy> {
     return read("launch_experience_policy");
   },
@@ -576,6 +591,7 @@ export const settings = {
       colormap: await read("colormap"),
       renderer_quality: await read("renderer_quality"),
       renderer_auto_quality: await read("renderer_auto_quality"),
+      workspace_mode: await read("workspace_mode"),
       launch_experience_policy: await read("launch_experience_policy"),
       launch_experience_seen_at: await read("launch_experience_seen_at"),
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
@@ -596,6 +612,7 @@ export const settings = {
       "colormap",
       "renderer_quality",
       "renderer_auto_quality",
+      "workspace_mode",
       "launch_experience_policy",
       "launch_experience_seen_at",
       "disclaimer_acknowledged_at",

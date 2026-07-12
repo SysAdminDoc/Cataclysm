@@ -10,6 +10,7 @@ import {
   type NuclearInput,
   type TargetType,
 } from "../hazards";
+import type { WorkspaceMode } from "../lib/settings";
 
 type HazardMode = "nuclear" | "asteroid";
 
@@ -68,6 +69,7 @@ export function HazardControls({
   pending = false,
   error = null,
   canAnimate = true,
+  workspaceMode = "advanced",
 }: {
   mode: HazardMode;
   nuclear: NuclearInput;
@@ -86,6 +88,7 @@ export function HazardControls({
   pending?: boolean;
   error?: string | null;
   canAnimate?: boolean;
+  workspaceMode?: WorkspaceMode;
 }) {
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
   const timeline = nuclearEffects?.timeline ?? [];
@@ -149,7 +152,7 @@ export function HazardControls({
               return kt < 1 ? `${(kt * 1000).toFixed(0)} t` : kt < 1000 ? `${kt.toFixed(0)} kT` : `${(kt / 1000).toFixed(1)} MT`;
             }}
           />
-          <label className="hazard__row">
+          {workspaceMode !== "simple" && <label className="hazard__row">
             <span className="hazard__row-label">Burst type</span>
             <select
               className="hazard__select"
@@ -160,8 +163,8 @@ export function HazardControls({
               <option value="surface">Surface</option>
               <option value="water">Water</option>
             </select>
-          </label>
-          <Slider
+          </label>}
+          {workspaceMode === "advanced" && <Slider
             label="Population density"
             value={nuclear.populationDensity ?? 0}
             min={0}
@@ -169,8 +172,8 @@ export function HazardControls({
             step={100}
             onChange={(v) => onNuclearChange({ ...nuclear, populationDensity: v })}
             format={(v) => (v === 0 ? "off" : `${v.toLocaleString()} /km²`)}
-          />
-          {hasFallout && (
+          />}
+          {workspaceMode === "advanced" && hasFallout && (
             <Slider
               label="Wind from"
               value={windFromDeg}
@@ -193,7 +196,7 @@ export function HazardControls({
             onChange={(v) => onAsteroidChange({ ...asteroid, diameterM: v })}
             format={(v) => (v < 1000 ? `${v.toFixed(0)} m` : `${(v / 1000).toFixed(1)} km`)}
           />
-          <Slider
+          {workspaceMode !== "simple" && <Slider
             label="Velocity"
             value={asteroid.velocityKmS}
             min={11}
@@ -201,8 +204,8 @@ export function HazardControls({
             step={0.5}
             onChange={(v) => onAsteroidChange({ ...asteroid, velocityKmS: v })}
             format={(v) => `${v.toFixed(1)} km/s`}
-          />
-          <Slider
+          />}
+          {workspaceMode !== "simple" && <Slider
             label="Impact angle"
             value={asteroid.angleDeg}
             min={5}
@@ -210,8 +213,8 @@ export function HazardControls({
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, angleDeg: v })}
             format={(v) => `${v.toFixed(0)}°`}
-          />
-          <Slider
+          />}
+          {workspaceMode === "advanced" && <Slider
             label="Density"
             value={asteroid.densityKgM3}
             min={500}
@@ -219,7 +222,7 @@ export function HazardControls({
             step={50}
             onChange={(v) => onAsteroidChange({ ...asteroid, densityKgM3: v })}
             format={(v) => `${v.toLocaleString()} kg/m³`}
-          />
+          />}
           <label className="hazard__row">
             <span className="hazard__row-label">Target</span>
             <select

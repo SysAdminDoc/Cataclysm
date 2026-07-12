@@ -224,6 +224,7 @@ test.describe("Cataclysm browser preview", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
 
+    await page.getByRole("button", { name: /Create my own/i }).click();
     await expect(page.getByText("Custom scenario", { exact: true })).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved scenario." })).toBeVisible();
@@ -238,9 +239,39 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("status").filter({ hasText: "Loaded scenario." })).toBeVisible();
   });
 
+  test("progressively discloses simulator controls without discarding state", async ({ page }) => {
+    await page.goto("/");
+    const detail = page.getByRole("group", { name: "Workspace detail" });
+    await expect(detail.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Custom scenario", { exact: true })).toBeHidden();
+
+    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "Manual controls" }).click();
+
+    await expect(detail.getByRole("button", { name: "Customize" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Re-run simulation" })).toBeVisible();
+    await expect(page.getByText("Use simplified ocean-depth model")).toBeVisible();
+    await expect(page.getByLabel("Grid resolution in cells per degree")).toHaveCount(0);
+    await expect(page.getByLabel("Gauge name")).toHaveCount(0);
+
+    await detail.getByRole("button", { name: "Advanced" }).click();
+    await expect(page.getByLabel("Grid resolution in cells per degree")).toBeVisible();
+    await expect(page.getByLabel("Gauge name")).toBeVisible();
+    await detail.getByRole("button", { name: "Simple" }).click();
+    await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Play scenario timeline" })).toBeVisible();
+    await detail.getByRole("button", { name: "Advanced" }).click();
+    await page.reload();
+    await expect(detail.getByRole("button", { name: "Advanced" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("cancelling globe pick mode does not trip the recovery boundary", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
+    await page.getByRole("button", { name: /Create my own/i }).click();
 
     await page.getByRole("button", { name: "Pick on globe" }).click();
     const pickBanner = page.locator(".app__globe-pickbanner");

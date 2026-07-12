@@ -125,6 +125,7 @@ describe("settings schema versioning", () => {
     await settings.setGlobeStyle("osm");
     await settings.setRendererQuality("Cinematic");
     await settings.setRendererAutoQuality(false);
+    await settings.setWorkspaceMode("advanced");
 
     const json = await settings.exportSettings();
     const parsed = JSON.parse(json);
@@ -133,6 +134,7 @@ describe("settings schema versioning", () => {
     expect(parsed.globe_style).toBe("osm");
     expect(parsed.renderer_quality).toBe("Cinematic");
     expect(parsed.renderer_auto_quality).toBe(false);
+    expect(parsed.workspace_mode).toBe("advanced");
     expect(parsed.cesium_token).toBeUndefined();
 
     await settings.resetAll();
@@ -145,6 +147,7 @@ describe("settings schema versioning", () => {
     expect(await settings.getGlobeStyle()).toBe("osm");
     expect(await settings.getRendererQuality()).toBe("Cinematic");
     expect(await settings.getRendererAutoQuality()).toBe(false);
+    expect(await settings.getWorkspaceMode()).toBe("advanced");
   });
 
   it("fails closed to safe renderer defaults for invalid quality values", async () => {

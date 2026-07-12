@@ -38,6 +38,37 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.workspace-mode {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--divider);
+  border-radius: var(--r-sm);
+}
+
+.workspace-mode button {
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 0;
+  border-right: 1px solid var(--divider);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--metric-bg) 70%, transparent);
+  color: var(--subtext);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+}
+
+.workspace-mode button:last-child {
+  border-right: 0;
+}
+
+.workspace-mode button[data-active="true"] {
+  background: color-mix(in srgb, var(--accent-active) 18%, var(--metric-bg));
+  color: var(--accent-text);
+}
+
 .inspector__tabs button {
   position: relative;
   min-height: 36px;
