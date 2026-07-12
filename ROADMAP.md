@@ -327,13 +327,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 
 ### P1
 
-- [ ] P1 — Derive front-end and back-end input bounds from one shared table
-  Why: `SCENARIO_BOUNDS` clamps earthquake `mw` to [5,10] and `rake` to [-180,180], while Rust `earthquake_initial_conditions` accepts `mw` [4.0,10.5] and does not range-check `rake` at all, so URL/JSON-imported scenarios accept/reject inconsistently across the two entry paths.
-  Evidence: `src/lib/scenario-schema.ts` (~L76,L80) vs `src-tauri/src/commands.rs` `earthquake_initial_conditions` (~L261-273); code-audit 2026-07-12.
-  Touches: shared bounds constant (generated or asserted-equal in a test), `scenario-schema.ts`, `commands.rs`, cross-boundary parity test.
-  Acceptance: one authoritative bounds table drives both layers or a test fails when they diverge; identical inputs are accepted/rejected identically through the builder, URL, and IPC paths; `rake` is range-checked in Rust.
-  Complexity: S
-
 - [ ] P1 — Add a units system: metric/imperial plus intuitive comparison anchors
   Why: readouts are SI-only, the single most repeated complaint about impact/blast simulators, and comparison anchors ("Hiroshimas", "Tsar Bombas", city diameters) are what make scale legible to non-experts.
   Evidence: SI-only readouts across `ResultsPanel.tsx`/hazard readouts; HN Asteroid Launcher feedback (https://news.ycombinator.com/item?id=33870612); Outrider comparison framing (https://outrider.org/nuclear-weapons/interactive/bomb-blast).

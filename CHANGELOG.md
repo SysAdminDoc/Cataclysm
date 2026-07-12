@@ -9,6 +9,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Saved scenarios are now re-validated on read with the same schema check used
   on write, so a tampered or corrupted store, or a record from an older schema,
   is dropped with a diagnostic instead of flowing unvalidated into the UI.
+- The `earthquake_initial_conditions` command now range-checks fault strike
+  ([0, 360]) and rake ([-180, 180]) in Rust, matching the frontend
+  `SCENARIO_BOUNDS` table so both entry paths accept and reject the same inputs.
 
 ## [0.10.0] — 2026-07-12 — Progressive simulator workspace
 

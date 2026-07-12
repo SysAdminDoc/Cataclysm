@@ -265,12 +265,21 @@ pub fn earthquake_initial_conditions(
     if input.depth_m < 0.0 || input.depth_m > 700_000.0 {
         return Err("depth_m must be in [0, 700 km]".into());
     }
+    // Fault orientation angles share the same hard bounds as the frontend
+    // `SCENARIO_BOUNDS` table (src/lib/scenario-schema.ts); keep them in lockstep
+    // so a scenario accepted by one entry path cannot be rejected by the other.
     check_finite("strike_deg", input.strike_deg)?;
+    if input.strike_deg < 0.0 || input.strike_deg > 360.0 {
+        return Err("strike_deg must be in [0, 360]".into());
+    }
     check_finite("dip_deg", input.dip_deg)?;
     if input.dip_deg < 0.0 || input.dip_deg > 90.0 {
         return Err("dip_deg must be in [0, 90]".into());
     }
     check_finite("rake_deg", input.rake_deg)?;
+    if input.rake_deg < -180.0 || input.rake_deg > 180.0 {
+        return Err("rake_deg must be in [-180, 180]".into());
+    }
     check_finite("slip_m", input.slip_m)?;
     if input.slip_m < 0.0 {
         return Err("slip_m must be non-negative".into());
@@ -2107,6 +2116,28 @@ mod tests {
             location: good_loc(),
         };
         assert!(earthquake_initial_conditions(bad).is_err());
+    }
+
+    #[test]
+    fn earthquake_validation_enforces_angular_bounds() {
+        let base = EarthquakeSource {
+            mw: 8.0,
+            depth_m: 30_000.0,
+            strike_deg: 0.0,
+            dip_deg: 30.0,
+            rake_deg: 90.0,
+            slip_m: 5.0,
+            fault_length_m: 0.0,
+            fault_width_m: 0.0,
+            water_depth_m: 2000.0,
+            location: good_loc(),
+        };
+        // Matches the frontend SCENARIO_BOUNDS table.
+        assert!(earthquake_initial_conditions(base.clone()).is_ok());
+        assert!(earthquake_initial_conditions(EarthquakeSource { rake_deg: 200.0, ..base.clone() }).is_err());
+        assert!(earthquake_initial_conditions(EarthquakeSource { rake_deg: -200.0, ..base.clone() }).is_err());
+        assert!(earthquake_initial_conditions(EarthquakeSource { strike_deg: 400.0, ..base.clone() }).is_err());
+        assert!(earthquake_initial_conditions(EarthquakeSource { strike_deg: -1.0, ..base }).is_err());
     }
 
     #[test]
