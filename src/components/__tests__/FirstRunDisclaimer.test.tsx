@@ -2,10 +2,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FirstRunDisclaimer } from "../FirstRunDisclaimer";
+import { LAUNCH_COMPLETE_EVENT } from "../LaunchExperience";
 
 describe("FirstRunDisclaimer", () => {
   beforeEach(() => {
     localStorage.clear();
+    delete document.documentElement.dataset.launchExperienceActive;
   });
 
   it("persists acknowledgement and notifies the app to continue onboarding", async () => {
@@ -32,5 +34,16 @@ describe("FirstRunDisclaimer", () => {
     expect(await screen.findByText(/planetary-hazard source physics/i)).toBeInTheDocument();
     expect(screen.getByText(/not observations, forecasts, or official warnings/i)).toBeInTheDocument();
     expect(screen.getByText(/idealized source physics/i)).toBeInTheDocument();
+  });
+
+  it("waits for the launch cinematic before showing first-run safety guidance", async () => {
+    document.documentElement.dataset.launchExperienceActive = "true";
+    render(<FirstRunDisclaimer />);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    window.dispatchEvent(new CustomEvent(LAUNCH_COMPLETE_EVENT));
+
+    expect(await screen.findByRole("dialog", { name: /educational model/i })).toBeInTheDocument();
   });
 });

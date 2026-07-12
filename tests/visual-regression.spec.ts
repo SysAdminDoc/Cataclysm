@@ -15,6 +15,8 @@ function axeScan(page: import("@playwright/test").Page) {
 async function seedAcknowledged(page: { addInitScript: (script: () => void) => Promise<void> }) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
+    localStorage.setItem("tsunamisim._settings_schema_version", "3");
+    localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
     localStorage.setItem("tsunamisim.token_banner_dismissed_at", now);
@@ -25,7 +27,8 @@ async function seedAcknowledged(page: { addInitScript: (script: () => void) => P
 async function seedAcknowledgedLatte(page: { addInitScript: (script: () => void) => Promise<void> }) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "1");
+    localStorage.setItem("tsunamisim._settings_schema_version", "3");
+    localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
     localStorage.setItem("tsunamisim.token_banner_dismissed_at", now);
@@ -42,6 +45,12 @@ async function hideCesiumCanvas(page: import("@playwright/test").Page) {
   });
 }
 
+async function hideCesiumWidget(page: import("@playwright/test").Page) {
+  await page.addStyleTag({
+    content: ".cesium-widget { visibility: hidden !important; }",
+  });
+}
+
 test.describe("Visual regression — desktop", () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(DESKTOP);
@@ -54,6 +63,22 @@ test.describe("Visual regression — desktop", () => {
     await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("desktop-first-run.png", {
+      maxDiffPixelRatio: 0.01,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
+  test("reduced-motion launch cinematic", async ({ page }) => {
+    await page.goto("/?launchExperience=1&launchMotion=reduce&launchHold=1");
+    const dialog = page.getByRole("dialog", { name: "Cataclysm" });
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await expect(dialog).toHaveAttribute("data-reduced-motion", "true");
+    await expect(page.locator('.app__globe-status[data-status="loading"]')).toHaveCount(0, { timeout: 15_000 });
+    await hideCesiumWidget(page);
+
+    await expect(page).toHaveScreenshot("desktop-launch-cinematic.png", {
       maxDiffPixelRatio: 0.01,
     });
 

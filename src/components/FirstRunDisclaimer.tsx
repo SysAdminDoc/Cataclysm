@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { settings } from "../lib/settings";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { LAUNCH_COMPLETE_EVENT } from "./LaunchExperience";
 
 /**
  * Shown once on first launch. After acknowledgement the timestamp is stored
@@ -8,14 +9,25 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
  */
 export function FirstRunDisclaimer() {
   const [open, setOpen] = useState(false);
+  const [launchReady, setLaunchReady] = useState(
+    () => document.documentElement.dataset.launchExperienceActive !== "true",
+  );
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
 
   useEffect(() => {
+    if (launchReady) return;
+    const onLaunchComplete = () => setLaunchReady(true);
+    window.addEventListener(LAUNCH_COMPLETE_EVENT, onLaunchComplete, { once: true });
+    return () => window.removeEventListener(LAUNCH_COMPLETE_EVENT, onLaunchComplete);
+  }, [launchReady]);
+
+  useEffect(() => {
+    if (!launchReady) return;
     settings.getDisclaimerAcknowledged().then((ack) => {
       setOpen(ack === null);
     });
-  }, []);
+  }, [launchReady]);
 
   if (!open) return null;
 

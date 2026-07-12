@@ -1,4 +1,5 @@
 @import './styles/_globals.css';
+@import './styles/_launch.css';
 @import './styles/_tour.css';
 @import './styles/_glossary.css';
 @import './styles/_lesson.css';

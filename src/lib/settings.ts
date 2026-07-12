@@ -16,6 +16,7 @@ export type Theme = "mocha" | "latte";
 
 export type ColormapId = "diverging" | "cividis" | "viridis";
 export type LessonCompletions = Record<string, string>;
+export type LaunchExperiencePolicy = "first" | "always" | "never";
 
 export type Settings = {
   cesium_token: string;
@@ -24,6 +25,8 @@ export type Settings = {
   colormap: ColormapId;
   renderer_quality: RendererQualityTier;
   renderer_auto_quality: boolean;
+  launch_experience_policy: LaunchExperiencePolicy;
+  launch_experience_seen_at: string | null;
   disclaimer_acknowledged_at: string | null;
   tour_completed_at: string | null;
   lessons_completed: LessonCompletions;
@@ -37,7 +40,7 @@ export type Settings = {
   classroom_locked: boolean;
 };
 
-export const SETTINGS_SCHEMA_VERSION = 2;
+export const SETTINGS_SCHEMA_VERSION = 3;
 const SCHEMA_VERSION_KEY = "_settings_schema_version";
 
 const DEFAULTS: Settings = {
@@ -47,6 +50,8 @@ const DEFAULTS: Settings = {
   colormap: "diverging",
   renderer_quality: "High",
   renderer_auto_quality: true,
+  launch_experience_policy: "first",
+  launch_experience_seen_at: null,
   disclaimer_acknowledged_at: null,
   tour_completed_at: null,
   lessons_completed: {},
@@ -61,6 +66,8 @@ const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
   "colormap",
   "renderer_quality",
   "renderer_auto_quality",
+  "launch_experience_policy",
+  "launch_experience_seen_at",
   "disclaimer_acknowledged_at",
   "tour_completed_at",
   "lessons_completed",
@@ -214,6 +221,12 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
           : undefined
       ) as Settings[K] | undefined;
       break;
+    case "launch_experience_policy":
+      result = (value === "first" || value === "always" || value === "never"
+        ? value
+        : undefined) as Settings[K] | undefined;
+      break;
+    case "launch_experience_seen_at":
     case "disclaimer_acknowledged_at":
     case "tour_completed_at":
     case "token_banner_dismissed_at":
@@ -472,6 +485,18 @@ export const settings = {
   async setRendererAutoQuality(enabled: boolean): Promise<void> {
     return write("renderer_auto_quality", enabled);
   },
+  async getLaunchExperiencePolicy(): Promise<LaunchExperiencePolicy> {
+    return read("launch_experience_policy");
+  },
+  async setLaunchExperiencePolicy(policy: LaunchExperiencePolicy): Promise<void> {
+    return write("launch_experience_policy", policy);
+  },
+  async getLaunchExperienceSeen(): Promise<string | null> {
+    return read("launch_experience_seen_at");
+  },
+  async markLaunchExperienceSeen(): Promise<void> {
+    return write("launch_experience_seen_at", new Date().toISOString());
+  },
   async getDisclaimerAcknowledged(): Promise<string | null> {
     return read("disclaimer_acknowledged_at");
   },
@@ -551,6 +576,8 @@ export const settings = {
       colormap: await read("colormap"),
       renderer_quality: await read("renderer_quality"),
       renderer_auto_quality: await read("renderer_auto_quality"),
+      launch_experience_policy: await read("launch_experience_policy"),
+      launch_experience_seen_at: await read("launch_experience_seen_at"),
       disclaimer_acknowledged_at: await read("disclaimer_acknowledged_at"),
       tour_completed_at: await read("tour_completed_at"),
       lessons_completed: await read("lessons_completed"),
@@ -569,6 +596,8 @@ export const settings = {
       "colormap",
       "renderer_quality",
       "renderer_auto_quality",
+      "launch_experience_policy",
+      "launch_experience_seen_at",
       "disclaimer_acknowledged_at",
       "tour_completed_at",
       "lessons_completed",

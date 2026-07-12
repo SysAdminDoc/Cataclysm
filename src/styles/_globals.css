@@ -46,6 +46,16 @@ html[data-theme="mocha"] {
   --warning-text: var(--warning);
   --on-accent: #07111b;
   --viewport-hud: rgba(8, 16, 24, 0.9);
+  --cinematic-bg: #030711;
+  --cinematic-bg-raised: #081423;
+  --cinematic-text: #eef7ff;
+  --cinematic-muted: #9fb5c8;
+  --cinematic-ocean: #0b5d8c;
+  --cinematic-ocean-deep: #031e3b;
+  --cinematic-land: #3d7652;
+  --cinematic-land-light: #779b5d;
+  --cinematic-sky: #78d7ff;
+  --cinematic-warm: #ffae62;
 
   /* Desktop simulator system tokens. */
   --space-1: 4px;

@@ -9,7 +9,8 @@ async function seedWorkspace(page: Page, theme: (typeof THEMES)[number]) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript((selectedTheme) => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "1");
+    localStorage.setItem("tsunamisim._settings_schema_version", "3");
+    localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
     localStorage.setItem("tsunamisim.token_banner_dismissed_at", now);

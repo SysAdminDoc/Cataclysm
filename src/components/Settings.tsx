@@ -4,7 +4,7 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
-import { settings, type Theme, type ColormapId } from "../lib/settings";
+import { settings, type Theme, type ColormapId, type LaunchExperiencePolicy } from "../lib/settings";
 import { downloadBlob } from "../lib/export";
 import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
@@ -27,6 +27,7 @@ type StagedSettings = {
   colormapId: ColormapId;
   rendererQuality: RendererQualityTier;
   rendererAutoQuality: boolean;
+  launchExperiencePolicy: LaunchExperiencePolicy;
 };
 
 type Props = { onClose: () => void };
@@ -41,6 +42,7 @@ export function Settings({ onClose }: Props) {
   const [colormapId, setColormapId] = useState<ColormapId>("diverging");
   const [rendererQuality, setRendererQuality] = useState<RendererQualityTier>("High");
   const [rendererAutoQuality, setRendererAutoQuality] = useState(true);
+  const [launchExperiencePolicy, setLaunchExperiencePolicy] = useState<LaunchExperiencePolicy>("first");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,6 +63,7 @@ export function Settings({ onClose }: Props) {
         setColormapId(s.colormap);
         setRendererQuality(s.renderer_quality);
         setRendererAutoQuality(s.renderer_auto_quality);
+        setLaunchExperiencePolicy(s.launch_experience_policy);
         setClassroomLocked(s.classroom_locked);
         setAppliedSettings({
           token: s.cesium_token,
@@ -69,6 +72,7 @@ export function Settings({ onClose }: Props) {
           colormapId: s.colormap,
           rendererQuality: s.renderer_quality,
           rendererAutoQuality: s.renderer_auto_quality,
+          launchExperiencePolicy: s.launch_experience_policy,
         });
       })
       .catch((err) => {
@@ -110,11 +114,12 @@ export function Settings({ onClose }: Props) {
         settings.setColormap(colormapId),
         settings.setRendererQuality(rendererQuality),
         settings.setRendererAutoQuality(rendererAutoQuality),
+        settings.setLaunchExperiencePolicy(launchExperiencePolicy),
       ]);
       setTokenLocal(trimmedToken);
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
-      setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId, rendererQuality, rendererAutoQuality });
+      setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
       setStatusMsg(`Changes applied at ${new Date().toLocaleTimeString()}`);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
@@ -143,6 +148,7 @@ export function Settings({ onClose }: Props) {
     || colormapId !== appliedSettings.colormapId
     || rendererQuality !== appliedSettings.rendererQuality
     || rendererAutoQuality !== appliedSettings.rendererAutoQuality
+    || launchExperiencePolicy !== appliedSettings.launchExperiencePolicy
   );
 
   function handleBackdropClick() {
@@ -433,7 +439,32 @@ export function Settings({ onClose }: Props) {
           {activeSection === "advanced" && <>
           <section className="settings__section">
             <h3 className="settings__h3">Help &amp; onboarding</h3>
+            <label className="settings__field">
+              <span>Launch cinematic</span>
+              <select
+                value={launchExperiencePolicy}
+                onChange={(event) => setLaunchExperiencePolicy(event.target.value as LaunchExperiencePolicy)}
+              >
+                <option value="first">First launch only</option>
+                <option value="always">Every launch</option>
+                <option value="never">Never</option>
+              </select>
+            </label>
+            <p className="modal__footnote settings__description">
+              The cinematic prewarms the live globe behind the title sequence. Sound remains off unless a future licensed sound pack is enabled.
+            </p>
             <div className="settings__button-row">
+              <button
+                className="scenario-tab"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("cataclysm:preview-launch"));
+                  onClose();
+                }}
+                type="button"
+              >
+                <UiIcon name="play" size={14} />
+                Preview cinematic
+              </button>
               <button
                 className="scenario-tab"
                 onClick={async () => {
@@ -517,6 +548,7 @@ export function Settings({ onClose }: Props) {
                       setColormapId(all.colormap);
                       setRendererQuality(all.renderer_quality);
                       setRendererAutoQuality(all.renderer_auto_quality);
+                      setLaunchExperiencePolicy(all.launch_experience_policy);
                       setClassroomLocked(all.classroom_locked);
                       setAppliedSettings({
                         token: all.cesium_token,
@@ -525,6 +557,7 @@ export function Settings({ onClose }: Props) {
                         colormapId: all.colormap,
                         rendererQuality: all.renderer_quality,
                         rendererAutoQuality: all.renderer_auto_quality,
+                        launchExperiencePolicy: all.launch_experience_policy,
                       });
                       applyTheme(all.theme);
                       setSaveErr(null);
@@ -558,6 +591,7 @@ export function Settings({ onClose }: Props) {
                     setColormapId("diverging");
                     setRendererQuality("High");
                     setRendererAutoQuality(true);
+                    setLaunchExperiencePolicy("first");
                     setClassroomLocked(false);
                     setAppliedSettings({
                       token: "",
@@ -566,6 +600,7 @@ export function Settings({ onClose }: Props) {
                       colormapId: "diverging",
                       rendererQuality: "High",
                       rendererAutoQuality: true,
+                      launchExperiencePolicy: "first",
                     });
                     applyTheme("mocha");
                     primeCesiumToken(null);

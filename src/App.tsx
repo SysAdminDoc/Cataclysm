@@ -5,6 +5,7 @@ import { ResultsPanel } from "./components/ResultsPanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
+import { LaunchExperience } from "./components/LaunchExperience";
 import { Tour } from "./components/Tour";
 import { GuidedLesson } from "./components/GuidedLesson";
 import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
@@ -1442,6 +1443,7 @@ export default function App() {
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <LogViewer open={showLog} onClose={() => setShowLog(false)} />
+      <LaunchExperience />
       <FirstRunDisclaimer />
       <Tour
         open={tourOpen}

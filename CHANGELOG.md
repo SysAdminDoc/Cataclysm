@@ -4,6 +4,19 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.8.5] â€” 2026-07-11 â€” Live-Earth launch cinematic
+
+- Added a skippable five-second launch sequence over the already-mounted live
+  Cesium globe, with ocean, impact, and nuclear visual beats that dissolve
+  directly into the simulator without a second loading surface.
+- Deferred the first-run educational-use notice until after the identity reveal
+  while preserving the safety acknowledgement before any runnable action.
+- Added first-launch, every-launch, and never preferences plus an in-app Preview
+  action in Settings.
+- Added Escape, backdrop, and visible Skip exits, a static reduced-motion path,
+  deterministic capture controls, accessibility checks, and a visual-regression
+  baseline for the opener.
+
 ## [0.8.4] — 2026-07-11 — Perceptual visual-quality gate
 
 - Added scene-specific perceptual contracts for all 12 deterministic reference
