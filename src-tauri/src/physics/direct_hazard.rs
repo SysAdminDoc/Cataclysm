@@ -752,6 +752,7 @@ struct NuclearEffects {
     psi_5: f64,
     psi_3: f64,
     psi_1: f64,
+    psi_0_25: f64,
     thermal_3: f64,
     thermal_1: f64,
     radiation: f64,
@@ -793,6 +794,14 @@ fn nuclear_effects(request: &NuclearHazardRequest) -> NuclearEffects {
         psi_5: factor * 0.71 * cube,
         psi_3: factor * 0.95 * cube,
         psi_1: factor * 2.2 * cube,
+        // 0.25 psi light-damage / window-breakage ring. Coefficient extrapolated
+        // from the same Glasstone-Dolan scaled-overpressure fit as the rings
+        // above (coeff ∝ overpressure^-0.69, fitted from the 20/5/1 psi points):
+        // 2.2 * 0.25^-0.69 ≈ 5.5 km per kt^(1/3). This is the band that
+        // dominates the affected-population count for large yields; see
+        // NUKEMAP's 2026 extension to 0.25 psi citing Capabilities of Nuclear
+        // Weapons (1960/1972).
+        psi_0_25: factor * 5.5 * cube,
         thermal_3: 0.67 * yield_kt.powf(0.41) * attenuation,
         thermal_1: 1.2 * yield_kt.powf(0.38) * attenuation,
         radiation: 1.15 * yield_kt.powf(0.19),
@@ -1011,6 +1020,9 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
             0.3,
         ),
         (effects.psi_1, 0.02, 0.05, 0.0, 0.2, 0.15),
+        // 0.25 psi light-damage annulus: no lethality, a small glass-cut injury
+        // fraction. Ordered after psi_1 so the running annulus stays monotone.
+        (effects.psi_0_25, 0.0, 0.0, 0.0, 0.03, 0.0),
         (effects.thermal_1, 0.0, 0.01, 0.0, 0.05, 0.1),
     ];
     let mut deaths = 0.0;
@@ -1063,6 +1075,13 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
             "#f9e2af",
             "blast",
             "Glass shatters into shrapnel; light injuries widespread.",
+        ),
+        ring_km(
+            "0.25 psi — light damage",
+            effects.psi_0_25,
+            "#fef9c3",
+            "blast",
+            "Most windows break over a wide area; scattered cuts from flying glass.",
         ),
         ring_km(
             "3rd° burns",
@@ -1273,9 +1292,12 @@ mod tests {
         .unwrap();
         assert_eq!(result.authority, "rust");
         let casualties = result.casualties.as_ref().expect("casualty product");
-        // Frozen from the final TypeScript implementation before removal.
+        // Deaths frozen from the final TypeScript implementation before removal.
+        // Injuries were re-frozen when the 0.25 psi light-damage band was added
+        // (glass-cut annulus, zero lethality) — that band dominates the
+        // affected-population count, so injuries rose from 264_055 to 387_883.
         assert_eq!(casualties.deaths, 112_019);
-        assert_eq!(casualties.injuries, 264_055);
+        assert_eq!(casualties.injuries, 387_883);
         let HazardDetail::Nuclear(detail) = result.detail else {
             panic!("wrong detail");
         };

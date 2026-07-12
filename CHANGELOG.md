@@ -4,6 +4,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- Nuclear detonations now render a **0.25 psi light-damage ring** (windows break
+  over a wide area) outside the 1 psi ring, with a matching low-lethality
+  glass-cut casualty band. The coefficient is extrapolated from the same
+  Glasstone–Dolan scaled-overpressure fit as the other rings.
+
 ### Fixed
 
 - Saved scenarios are now re-validated on read with the same schema check used

@@ -17,22 +17,22 @@
       "crater": null,
       "fireballRadiusM": 236.78992995197615,
       "impactorMassKg": 11851501.206034815,
-      "kineticEnergyJ": 2139195967689284.0,
+      "kineticEnergyJ": 2139195967689284,
       "megatons": 0.5112801070003069,
-      "radiusSevereDamageM": 1.0,
-      "radiusTotalDestructionM": 1.0,
-      "radiusWindowBreakageM": 1.0,
+      "radiusSevereDamageM": 1,
+      "radiusTotalDestructionM": 1,
+      "radiusWindowBreakageM": 1,
       "seismicMagnitude": 4.327399799106979,
-      "thermalRadiusFirstDegreeM": 1.0,
-      "thermalRadiusThirdDegreeM": 1.0,
+      "thermalRadiusFirstDegreeM": 1,
+      "thermalRadiusThirdDegreeM": 1,
       "tsunami": {
-        "amplitudeAtDistance": 0.0,
+        "amplitudeAtDistance": 0,
         "applies": false,
-        "arrivalTime": 0.0,
-        "cavityDepth": 0.0,
-        "cavityDiameter": 0.0,
-        "initialAmplitude": 0.0,
-        "runupHeight": 0.0
+        "arrivalTime": 0,
+        "cavityDepth": 0,
+        "cavityDiameter": 0,
+        "initialAmplitude": 0,
+        "runupHeight": 0
       }
     },
     "kind": "asteroid",
@@ -77,35 +77,35 @@
         "color": "#f5c2e7",
         "description": "First-degree burns to exposed skin.",
         "label": "1st° burns",
-        "radiusM": 1.0
+        "radiusM": 1
       },
       {
         "category": "blast",
         "color": "#f9e2af",
         "description": "Glass shatters; light injuries.",
         "label": "Window breakage (1 psi)",
-        "radiusM": 1.0
+        "radiusM": 1
       },
       {
         "category": "thermal",
         "color": "#fab387",
         "description": "Third-degree burns; widespread ignition.",
         "label": "3rd° burns",
-        "radiusM": 1.0
+        "radiusM": 1
       },
       {
         "category": "blast",
         "color": "#cba6f7",
         "description": "Most buildings collapse.",
         "label": "Severe damage (7 psi)",
-        "radiusM": 1.0
+        "radiusM": 1
       },
       {
         "category": "blast",
         "color": "#89b4fa",
         "description": "Reinforced structures destroyed.",
         "label": "Total destruction (20 psi)",
-        "radiusM": 1.0
+        "radiusM": 1
       }
     ]
   },
@@ -118,8 +118,8 @@
     },
     "detail": {
       "atmosphericEntry": {
-        "airburstAltitude": 0.0,
-        "airburstEnergy": 8.474674813161789e+18,
+        "airburstAltitude": 0,
+        "airburstEnergy": 8474674813161789000,
         "breakupAltitude": 32927.74205247725,
         "impactVelocity": 19203.92438194841,
         "reachesGround": true
@@ -131,7 +131,7 @@
       },
       "fireballRadiusM": 4077.597395706634,
       "impactorMassKg": 56548667764.61628,
-      "kineticEnergyJ": 1.1309733552923257e+19,
+      "kineticEnergyJ": 11309733552923257000,
       "megatons": 2703.0911933372986,
       "radiusSevereDamageM": 82790.08495423695,
       "radiusTotalDestructionM": 49985.08806052699,
@@ -140,13 +140,13 @@
       "thermalRadiusFirstDegreeM": 75996.13097063318,
       "thermalRadiusThirdDegreeM": 46461.84360577518,
       "tsunami": {
-        "amplitudeAtDistance": 0.0,
+        "amplitudeAtDistance": 0,
         "applies": false,
-        "arrivalTime": 0.0,
-        "cavityDepth": 0.0,
-        "cavityDiameter": 0.0,
-        "initialAmplitude": 0.0,
-        "runupHeight": 0.0
+        "arrivalTime": 0,
+        "cavityDepth": 0,
+        "cavityDiameter": 0,
+        "initialAmplitude": 0,
+        "runupHeight": 0
       }
     },
     "kind": "asteroid",
@@ -239,13 +239,13 @@
     "authority": "rust",
     "casualties": null,
     "center": {
-      "lat": 0.0,
-      "lon": -140.0
+      "lat": 0,
+      "lon": -140
     },
     "detail": {
       "atmosphericEntry": {
-        "airburstAltitude": 0.0,
-        "airburstEnergy": 3.379252793470104e+19,
+        "airburstAltitude": 0,
+        "airburstEnergy": 33792527934701040000,
         "breakupAltitude": 38825.25106601889,
         "impactVelocity": 19604.18059053095,
         "reachesGround": true
@@ -257,7 +257,7 @@
       },
       "fireballRadiusM": 6466.017705655404,
       "impactorMassKg": 196349540849.36206,
-      "kineticEnergyJ": 3.926990816987241e+19,
+      "kineticEnergyJ": 39269908169872410000,
       "megatons": 9385.73331019895,
       "radiusSevereDamageM": 131283.72009714844,
       "radiusTotalDestructionM": 79263.45665180657,
@@ -266,12 +266,12 @@
       "thermalRadiusFirstDegreeM": 104829.00102125082,
       "thermalRadiusThirdDegreeM": 67796.74582256257,
       "tsunami": {
-        "amplitudeAtDistance": 2000.0,
+        "amplitudeAtDistance": 2000,
         "applies": true,
         "arrivalTime": 5.048187773461523,
-        "cavityDepth": 4000.0,
+        "cavityDepth": 4000,
         "cavityDiameter": 9669.648182463916,
-        "initialAmplitude": 2000.0,
+        "initialAmplitude": 2000,
         "runupHeight": 16833.226712863518
       }
     },
@@ -375,7 +375,7 @@
     },
     "detail": {
       "cloudTopH": 2.0063098156649155,
-      "craterR": 0.0,
+      "craterR": 0,
       "fallout": null,
       "fireball": 0.4164318473569276,
       "gammaRad": 2.3988329190194904,
@@ -431,8 +431,8 @@
           "time": "~10 min"
         }
       ],
-      "waveHeight": 0.0,
-      "yieldKt": 100.0
+      "waveHeight": 0,
+      "yieldKt": 100
     },
     "kind": "nuclear",
     "modelVersion": "nuclear-direct-1.0.0",
@@ -474,6 +474,13 @@
       }
     ],
     "rings": [
+      {
+        "category": "blast",
+        "color": "#fef9c3",
+        "description": "Most windows break over a wide area; scattered cuts from flying glass.",
+        "label": "0.25 psi — light damage",
+        "radiusM": 25528.738584870283
+      },
       {
         "category": "blast",
         "color": "#f9e2af",
@@ -609,8 +616,8 @@
           "time": "~24 hrs"
         }
       ],
-      "waveHeight": 0.0,
-      "yieldKt": 100.0
+      "waveHeight": 0,
+      "yieldKt": 100
     },
     "kind": "nuclear",
     "modelVersion": "nuclear-direct-1.0.0",
@@ -657,6 +664,13 @@
       }
     ],
     "rings": [
+      {
+        "category": "blast",
+        "color": "#fef9c3",
+        "description": "Most windows break over a wide area; scattered cuts from flying glass.",
+        "label": "0.25 psi — light damage",
+        "radiusM": 20422.990867896227
+      },
       {
         "category": "blast",
         "color": "#f9e2af",

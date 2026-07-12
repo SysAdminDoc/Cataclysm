@@ -350,13 +350,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Acceptance: users can select among at least two cited casualty models (e.g. blast-proxy vs combined-effects) and see deaths/injuries update with the model named; a spread/range across models is shown; each model links its source and assumptions.
   Complexity: M
 
-- [ ] P2 — Add a 0.25 psi light-damage ring and extend nuclear-effects validity range
-  Why: nuclear/blast rings currently floor at 1 psi (6.9 kPa window / 20 psi total), omitting the large 0.25 psi window-breakage / light-injury zone that dominates the affected-population count and is standard in modern effects tools.
-  Evidence: blast thresholds in `direct_hazard.rs` (~L546-587) stop at 1 psi; NUKEMAP AWEL.js extends to 0.25 psi citing Capabilities of Nuclear Weapons 1960/1972 (https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/).
-  Touches: `physics::nuclear`/`direct_hazard` overpressure thresholds, ring metadata/legend copy, casualty zones, science derivation note, tests.
-  Acceptance: a cited 0.25 psi ring renders with legend and plain-language effect; the extended-validity source is documented in `docs/science/`; existing ring values are unchanged; casualty zones account for the added band.
-  Complexity: S
-
 - [ ] P2 — Add a time-varying WSEG-10 fallout dose-rate model behind the shelter advisor
   Why: fallout is a static footprint with no time dimension, so the dynamic dose-rate-over-hours decay and cumulative-exposure-vs-shelter-time curve — the actionable civil-defense lesson — cannot be shown; this is the physics layer the UNI-06 shelter-advisor port needs and does not itself provide.
   Evidence: static fallout in `src/hazards/nuclear/fallout.ts` and `App.tsx` fallout rings; the UNI-06 backlog item ports only the static `shelter.js` factor + latent-cancer readout; NUKEMAP WSEG-10 dynamic dose-rate modelling (https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/). Extends UNI-06, does not replace it.
