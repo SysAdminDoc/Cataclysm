@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capability set: core window/event controls, persistent settings store, and shell-open restricted to vetted citation/settings URLs.",
+  "description": "Main-window capability set: explicit Cataclysm application commands, core window/event controls, persistent settings store, and shell-open restricted to vetted citation/settings URLs.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -10,6 +10,11 @@
     "store:allow-set",
     "store:allow-save",
     "store:allow-delete",
+    "scientific-queries",
+    "simulation-runs",
+    "simulation-cancellation",
+    "support-diagnostics",
+    "cesium-credentials",
     {
       "identifier": "shell:allow-open",
       "allow": [

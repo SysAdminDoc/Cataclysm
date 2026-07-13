@@ -1,7 +1,7 @@
 {
   "name": "cataclysm",
   "private": true,
-  "version": "0.10.1",
+  "version": "0.10.2",
   "type": "module",
   "description": "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator: asteroid impacts, nuclear detonations, earthquakes, landslides, and the tsunamis they generate.",
   "license": "MIT",
@@ -24,6 +24,7 @@
     "lint": "eslint src/",
     "test:unit": "vitest run",
     "test:reference-quality": "node --test scripts/reference-visual-quality.test.mjs",
+    "test:reference-lifecycle": "node --test scripts/reference-recorder-lifecycle.test.mjs",
     "test:e2e": "playwright test",
     "capture:screenshots": "node scripts/capture-screenshots.mjs",
     "capture:references": "node scripts/capture-reference-scenes.mjs --record",

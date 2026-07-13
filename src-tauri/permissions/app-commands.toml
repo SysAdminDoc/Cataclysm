@@ -1,0 +1,55 @@
+[[set]]
+identifier = "scientific-queries"
+description = "Read presets, capabilities, probes, and deterministic scientific calculations without starting a long-running solver job."
+permissions = [
+  "allow-asteroid-initial-conditions",
+  "allow-nuclear-initial-conditions",
+  "allow-landslide-initial-conditions",
+  "allow-earthquake-initial-conditions",
+  "allow-far-field-amplitude",
+  "allow-attenuation-curve",
+  "allow-coastal-runup",
+  "allow-runup-at-points",
+  "allow-list-presets",
+  "allow-inspect-at-point",
+  "allow-lamb-wave-sample",
+  "allow-dart-buoy-rmse",
+  "allow-gpu-probe",
+  "allow-render-protocol-capabilities",
+  "allow-surface-probe",
+]
+
+[[set]]
+identifier = "simulation-runs"
+description = "Start authoritative preset, grid, streaming, asteroid, and nuclear simulation work."
+permissions = [
+  "allow-run-preset",
+  "allow-simulate-grid",
+  "allow-simulate-grid-streaming",
+  "allow-simulate-asteroid-hazard",
+  "allow-simulate-asteroid-hazard-render",
+  "allow-simulate-nuclear-hazard",
+  "allow-simulate-nuclear-hazard-render",
+]
+
+[[set]]
+identifier = "simulation-cancellation"
+description = "Cancel a solver run by its validated run identifier."
+permissions = [
+  "allow-cancel-simulation",
+]
+
+[[set]]
+identifier = "support-diagnostics"
+description = "Collect the redacted local diagnostics bundle exposed by the application backend."
+permissions = [
+  "allow-diagnostics-bundle",
+]
+
+[[set]]
+identifier = "cesium-credentials"
+description = "Read and update the Cesium ion token through the operating-system credential store."
+permissions = [
+  "allow-keychain-get-token",
+  "allow-keychain-set-token",
+]

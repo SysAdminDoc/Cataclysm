@@ -9,6 +9,12 @@ import {
   createPhaseContactSheet,
   evaluateReferenceFrame,
 } from "./reference-visual-quality.mjs";
+import {
+  createProgressTracker,
+  deadlineFrom,
+  terminateProcessTree,
+  withDeadline,
+} from "./reference-recorder-lifecycle.mjs";
 
 const root = process.cwd();
 const scenePath = path.join(root, "src", "data", "reference-scenes.json");
@@ -30,6 +36,10 @@ const sceneFilters = sceneFilter ? new Set(sceneFilter.split(",").map((value) =>
 const resolutionFilter = filterValue("--resolution");
 const approveTarget = filterValue("--approve");
 const approvalReason = filterValue("--reason");
+const startupTimeoutMs = deadlineFrom(args, "--startup-timeout-ms", "CATACLYSM_CAPTURE_STARTUP_TIMEOUT_MS", 30_000);
+const phaseTimeoutMs = deadlineFrom(args, "--phase-timeout-ms", "CATACLYSM_CAPTURE_PHASE_TIMEOUT_MS", 90_000);
+const sceneTimeoutMs = deadlineFrom(args, "--scene-timeout-ms", "CATACLYSM_CAPTURE_SCENE_TIMEOUT_MS", 300_000);
+const totalTimeoutMs = deadlineFrom(args, "--total-timeout-ms", "CATACLYSM_CAPTURE_TOTAL_TIMEOUT_MS", 2_700_000);
 const port = 4189;
 const origin = `http://127.0.0.1:${port}`;
 
@@ -157,7 +167,8 @@ function seedPreview() {
 }
 
 async function waitForServer() {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  const deadline = Date.now() + startupTimeoutMs;
+  while (Date.now() < deadline) {
     try {
       const response = await fetch(origin);
       if (response.ok) return;
@@ -166,7 +177,7 @@ async function waitForServer() {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`Timed out waiting for ${origin}.`);
+  throw new Error(`Timed out after ${startupTimeoutMs} ms waiting for ${origin}.`);
 }
 
 const presetLabels = {
@@ -320,20 +331,73 @@ if (!skipBuild) run(process.platform === "win32" ? "cmd.exe" : "npm", process.pl
 if (!sceneFilter && !resolutionFilter) await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
-const server = spawn(process.execPath, [viteBin, "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd: root, stdio: "ignore", windowsHide: true });
 const gitCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", windowsHide: true }).stdout.trim();
 const selectedScenes = contract.scenes.filter((scene) => !sceneFilters || sceneFilters.has(scene.id));
 const selectedViewports = Object.entries(contract.viewports).filter(([id]) => !resolutionFilter || id === resolutionFilter);
 if (!selectedScenes.length || !selectedViewports.length) throw new Error("Scene or resolution filter matched nothing.");
 const runManifest = [];
+const progress = createProgressTracker(path.join(outputDir, "capture-progress.json"), {
+  mode,
+  totalTimeoutMs,
+});
+const progressHeartbeat = setInterval(() => {
+  void progress.update({});
+}, 5_000);
+progressHeartbeat.unref();
+let server;
 let browser;
+let activeContext;
+let interruptCapture;
+const interrupted = new Promise((_, reject) => {
+  interruptCapture = (signal) => reject(new Error(`Reference capture interrupted by ${signal}.`));
+});
+const signalHandlers = new Map(
+  ["SIGINT", "SIGTERM"].map((signal) => {
+    const handler = () => interruptCapture(signal);
+    process.on(signal, handler);
+    return [signal, handler];
+  }),
+);
 
-try {
-  await waitForServer();
+async function runCapture() {
+  await progress.update({
+    status: "starting",
+    phase: "preview-start",
+    startupTimeoutMs,
+    phaseTimeoutMs,
+    sceneTimeoutMs,
+  });
+  server = spawn(
+    process.execPath,
+    [viteBin, "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"],
+    {
+      cwd: root,
+      stdio: "ignore",
+      windowsHide: true,
+      detached: process.platform !== "win32",
+    },
+  );
+  await withDeadline("preview startup", startupTimeoutMs, waitForServer);
+  await progress.update({ status: "running", phase: "browser-launch" });
   browser = await chromium.launch({ headless: true });
   for (const [resolution, viewport] of selectedViewports) {
     for (const scene of selectedScenes) {
+      const key = `${scene.id}@${resolution}`;
+      await withDeadline(`${key} scene`, sceneTimeoutMs, async () => {
+      await progress.update({
+        status: "running",
+        sceneId: scene.id,
+        resolution,
+        phase: "context-create",
+        sceneTimeoutMs,
+      });
       const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce", serviceWorkers: "block" });
+      activeContext = context;
+      const runPhase = async (phase, operation) => {
+        await progress.update({ phase });
+        return withDeadline(`${key}:${phase}`, phaseTimeoutMs, operation);
+      };
+      try {
       await context.addInitScript(seedPreview);
       await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
@@ -345,29 +409,37 @@ try {
       page.on("console", (message) => {
         if (message.type() === "error") console.error(`[capture:${scene.id}]`, message.text());
       });
-      await page.goto(`${origin}/?referenceCapture=1&referenceScene=${encodeURIComponent(scene.id)}`, { waitUntil: "domcontentloaded" });
-      await page.locator('.app__globe-status[data-status="connecting"]').waitFor({ state: "detached", timeout: 20_000 });
+      await runPhase("navigate", async () => {
+        await page.goto(`${origin}/?referenceCapture=1&referenceScene=${encodeURIComponent(scene.id)}`, { waitUntil: "domcontentloaded" });
+        await page.locator('.app__globe-status[data-status="connecting"]').waitFor({ state: "detached", timeout: Math.min(20_000, phaseTimeoutMs) });
+      });
       if (await page.locator('.app__globe-status[data-status="failed"]').count()) {
         throw new Error(`${scene.id}: Earth imagery failed before capture.`);
       }
       const quality = qualityContract.scenes[scene.id];
-      await configureWorkflow(page, scene);
-      await triggerDirectEffect(page, scene);
+      await runPhase("configure-workflow", async () => {
+        await configureWorkflow(page, scene);
+        await triggerDirectEffect(page, scene);
+      });
       const requiresPhases = quality.eventPhase !== "environment";
       const beforeImage = requiresPhases
-        ? await capturePhase(page, contract, scene, { simulationTimeS: 0, effectTimeMs: 0 })
+        ? await runPhase("capture-before", () => capturePhase(page, contract, scene, { simulationTimeS: 0, effectTimeMs: 0 }))
         : null;
-      await preparePhase(page, contract, scene, {
-        simulationTimeS: scene.simulationTimeS,
-        effectTimeMs: scene.effectTimeMs,
+      const { runtime, image } = await runPhase("capture-event", async () => {
+        await preparePhase(page, contract, scene, {
+          simulationTimeS: scene.simulationTimeS,
+          effectTimeMs: scene.effectTimeMs,
+        });
+        return {
+          runtime: await collectRuntime(page),
+          image: await page.screenshot({ animations: "disabled" }),
+        };
       });
-      const runtime = await collectRuntime(page);
-      const image = await page.screenshot({ animations: "disabled" });
       const aftermathImage = requiresPhases
-        ? await capturePhase(page, contract, scene, {
+        ? await runPhase("capture-aftermath", () => capturePhase(page, contract, scene, {
             simulationTimeS: quality.aftermathSimulationTimeS ?? scene.simulationTimeS,
             effectTimeMs: quality.aftermathEffectTimeMs ?? scene.effectTimeMs,
-          })
+          }))
         : null;
       const sortedFrames = [...runtime.frameIntervalsMs].sort((left, right) => left - right);
       if (runtime.page.innerWidth !== viewport.width || runtime.page.innerHeight !== viewport.height || runtime.page.scrollWidth !== viewport.width || runtime.page.scrollHeight !== viewport.height) {
@@ -387,17 +459,17 @@ try {
       }
       const dimensions = pngDimensions(image);
       if (dimensions.width !== viewport.width || dimensions.height !== viewport.height) throw new Error(`${scene.id}@${resolution}: PNG dimensions disagree.`);
-      const key = `${scene.id}@${resolution}`;
       const sceneHash = sha256(Buffer.from(JSON.stringify(scene)));
       const imageHash = sha256(image);
       const imagePath = path.join(outputDir, `${key}.png`);
       await writeFile(imagePath, image);
+      await progress.update({ phase: "analyze", lastCompletedArtifact: path.basename(imagePath) });
       const qualityContractHash = sha256(Buffer.from(JSON.stringify(quality)));
-      const visualMetrics = await analyzeReferenceFrame(image, {
+      const visualMetrics = await runPhase("analyze", () => analyzeReferenceFrame(image, {
         ...qualityContract.sampling,
         targetRegion: quality.targetRegion,
         controlImage: beforeImage,
-      });
+      }));
       const visualEvaluation = evaluateReferenceFrame(visualMetrics, quality.thresholds);
       const highlightEligible = quality.review.status === "approved" && visualEvaluation.passed;
       if (quality.review.status === "approved" && !visualEvaluation.passed) {
@@ -454,8 +526,16 @@ try {
         ].filter(Boolean);
         throw new Error(`${key}: not eligible for opener, thumbnail, or promotional use: ${reasons.join("; ")}`);
       }
-      await context.close();
       console.log(`${mode === "verify" ? "verified" : "recorded"} ${key} ${imageHash} [highlight ${highlightEligible ? "approved" : "blocked"}]`);
+      await progress.update({
+        phase: "scene-complete",
+        lastCompletedArtifact: `${key}.json`,
+      });
+      } finally {
+        await context.close().catch(() => {});
+        if (activeContext === context) activeContext = undefined;
+      }
+      });
     }
   }
   let priorCaptures = [];
@@ -491,7 +571,32 @@ try {
     await writeFile(baselinePath, `${JSON.stringify(baselines, null, 2)}\n`);
     console.log(`approved ${approveTarget}`);
   }
+}
+
+try {
+  await Promise.race([
+    withDeadline("reference capture run", totalTimeoutMs, runCapture),
+    interrupted,
+  ]);
+  await progress.update({
+    status: "complete",
+    sceneId: null,
+    resolution: null,
+    phase: "complete",
+  });
+} catch (error) {
+  const failedPhase = progress.state.phase;
+  await progress.update({
+    status: "failed",
+    failedPhase,
+    error: error instanceof Error ? error.message : String(error),
+  });
+  throw error;
 } finally {
-  await browser?.close();
-  server.kill();
+  clearInterval(progressHeartbeat);
+  for (const [signal, handler] of signalHandlers) process.off(signal, handler);
+  await activeContext?.close().catch(() => {});
+  await withDeadline("browser cleanup", 5_000, () => browser?.close()).catch(() => {});
+  await terminateProcessTree(server);
+  await progress.flush();
 }

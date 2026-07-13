@@ -4,6 +4,28 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.10.2] — 2026-07-12 — Fail-safe desktop trust boundary
+
+### Security
+
+- Declared every custom Tauri IPC command in the application manifest, grouped
+  grants by scientific query, simulation, cancellation, diagnostics, and
+  credential access, and restricted those permissions to the main window.
+- Added build-time parity and runtime-authority tests proving that undeclared
+  commands fail verification and an unprivileged window cannot invoke
+  simulation, cancellation, diagnostics, or keychain mutations.
+
+### Fixed
+
+- The mandatory first-run safety notice now opens with a persistence warning
+  when acknowledgement settings cannot be read instead of silently failing
+  open; a failed write advances only the current session and causes the notice
+  to recur on a later launch.
+- The deterministic reference recorder now enforces configurable startup,
+  phase, scene, and total deadlines; writes an atomic progress heartbeat; closes
+  contexts and browsers on every path; and terminates the owned preview process
+  tree after timeouts, signals, or exceptions.
+
 ### Added
 
 - Added a Rust-authoritative run-quality record with finite-field, minimum

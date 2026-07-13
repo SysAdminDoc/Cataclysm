@@ -58,4 +58,45 @@ describe("FirstRunDisclaimer", () => {
 
     expect(await screen.findByRole("dialog", { name: /educational model/i })).toBeInTheDocument();
   });
+
+  it("fails safe when the acknowledgement setting cannot be read", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(settings, "getDisclaimerAcknowledged").mockRejectedValueOnce(
+      new Error("settings unavailable"),
+    );
+
+    render(<FirstRunDisclaimer />);
+
+    expect(await screen.findByRole("dialog", { name: /educational model/i })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/cannot confirm or save/i);
+    expect(warning).toHaveBeenCalledWith(
+      "[disclaimer] could not read acknowledgement",
+      expect.any(Error),
+    );
+
+    warning.mockRestore();
+  });
+
+  it("continues the current session when acknowledgement cannot be persisted", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(settings, "acknowledgeDisclaimer").mockRejectedValueOnce(
+      new Error("settings unavailable"),
+    );
+    const acknowledged = vi.fn();
+    window.addEventListener("tsunamisim:disclaimer-acknowledged", acknowledged);
+    const user = userEvent.setup();
+
+    render(<FirstRunDisclaimer />);
+    await user.click(await screen.findByRole("button", { name: "I understand" }));
+
+    await waitFor(() => expect(acknowledged).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(warning).toHaveBeenCalledWith(
+      "[disclaimer] could not persist acknowledgement",
+      expect.any(Error),
+    );
+
+    window.removeEventListener("tsunamisim:disclaimer-acknowledged", acknowledged);
+    warning.mockRestore();
+  });
 });

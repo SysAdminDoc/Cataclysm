@@ -70,6 +70,30 @@ test.describe("Visual regression — desktop", () => {
     expect(violations).toEqual([]);
   });
 
+  test("first-run disclaimer when persistence is unavailable", async ({ page }) => {
+    await page.addInitScript(() => {
+      const getItem = Storage.prototype.getItem;
+      Storage.prototype.getItem = function getItemWithDisclaimerFailure(key: string) {
+        if (key === "tsunamisim.disclaimer_acknowledged_at") {
+          throw new Error("fixture: settings unavailable");
+        }
+        return getItem.call(this, key);
+      };
+    });
+    await page.goto("/");
+    const dialog = page.getByRole("dialog", { name: /educational model/i });
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog.getByRole("status")).toContainText(/cannot confirm or save/i);
+    await hideCesiumCanvas(page);
+
+    await expect(page).toHaveScreenshot("desktop-first-run-persistence-error.png", {
+      maxDiffPixelRatio: 0.01,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
   test("reduced-motion launch cinematic", async ({ page }) => {
     await page.goto("/?launchExperience=1&launchMotion=reduce&launchHold=1");
     const dialog = page.getByRole("dialog", { name: "Cataclysm" });

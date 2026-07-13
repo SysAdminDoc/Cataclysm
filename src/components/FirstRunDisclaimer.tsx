@@ -12,6 +12,7 @@ export const REPLAY_DISCLAIMER_EVENT = "cataclysm:replay-disclaimer";
  */
 export function FirstRunDisclaimer() {
   const [open, setOpen] = useState(false);
+  const [persistenceUnavailable, setPersistenceUnavailable] = useState(false);
   const [launchReady, setLaunchReady] = useState(
     () => document.documentElement.dataset.launchExperienceActive !== "true",
   );
@@ -27,9 +28,22 @@ export function FirstRunDisclaimer() {
 
   useEffect(() => {
     if (!launchReady) return;
+    let cancelled = false;
     settings.getDisclaimerAcknowledged().then((ack) => {
+      if (cancelled) return;
+      setPersistenceUnavailable(false);
       setOpen(ack === null);
+    }).catch((err: unknown) => {
+      console.warn("[disclaimer] could not read acknowledgement", err);
+      if (cancelled) return;
+      // The safety notice is mandatory. An unavailable settings store must
+      // never be interpreted as a prior acknowledgement.
+      setPersistenceUnavailable(true);
+      setOpen(true);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [launchReady]);
 
   // Allow Settings to replay the notice immediately, independent of the
@@ -53,9 +67,13 @@ export function FirstRunDisclaimer() {
     setOpen(false);
     try {
       await settings.acknowledgeDisclaimer();
-      window.dispatchEvent(new CustomEvent("tsunamisim:disclaimer-acknowledged"));
     } catch (err) {
+      setPersistenceUnavailable(true);
       console.warn("[disclaimer] could not persist acknowledgement", err);
+    } finally {
+      // Persistence is best-effort; acknowledgement still advances this
+      // session so a broken settings store cannot trap the user.
+      window.dispatchEvent(new CustomEvent("tsunamisim:disclaimer-acknowledged"));
     }
   }
 
@@ -98,6 +116,13 @@ export function FirstRunDisclaimer() {
           <p className="modal__copy modal__copy--muted">
             This notice is shown once. You can show it again from Settings.
           </p>
+          {persistenceUnavailable && (
+            <p className="notice-persistence-warning" role="status">
+              Settings are unavailable, so Cataclysm cannot confirm or save
+              this acknowledgement. You can continue for this session, but
+              this notice may appear again the next time the app starts.
+            </p>
+          )}
           <div className="modal__actions">
             <button className="primary" onClick={acknowledge}>I understand</button>
           </div>

@@ -130,6 +130,17 @@
   line-height: 1.45;
 }
 
+.notice-persistence-warning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  color: var(--warning-text);
+  font-size: 12px;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface0));
+  border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--panel-border));
+  border-radius: 6px;
+}
+
 .modal__actions {
   display: flex;
   justify-content: flex-end;
