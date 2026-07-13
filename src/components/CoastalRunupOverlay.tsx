@@ -78,7 +78,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
         is_impact: isImpact,
         mean_depth_m: 4000,
         time_s: timeS,
-        points,
+        point_ids: points.map((point) => point.id),
       })
       .then((res) => {
         if (!mountedRef.current || reqId !== reqIdRef.current) return;

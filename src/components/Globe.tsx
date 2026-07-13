@@ -847,6 +847,10 @@ export function Globe({
         arrival_time_s: result.arrival_time_s,
         has_arrived: result.has_arrived,
         inundation_extent_m: result.inundation_extent_m,
+        quantitative_confidence: result.quantitative_confidence,
+        quantitative_label: result.quantitative_label,
+        slope_record_id: result.slope_provenance.record_id,
+        depth_record_id: result.depth_provenance.record_id,
       })),
     );
   }, [runupResults, viewerEpoch]);

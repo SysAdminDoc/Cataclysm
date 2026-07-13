@@ -2,6 +2,17 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { AttenuationChart } from "../AttenuationChart";
 import type { InitialDisplacement } from "../../types/scenario";
+import { getCoastalPoints } from "../../lib/data";
+
+const COASTAL = getCoastalPoints()[0];
+const RUNUP_PROVENANCE = {
+  beach_slope_deg: COASTAL.beach_slope_deg,
+  offshore_depth_m: COASTAL.offshore_depth_m,
+  slope_provenance: COASTAL.slope_provenance,
+  depth_provenance: COASTAL.depth_provenance,
+  quantitative_confidence: "low" as const,
+  quantitative_label: "illustrative" as const,
+};
 
 const INITIAL: InitialDisplacement = {
   center: { lat_deg: 21.4, lon_deg: -89.5, depth_m: 1500 },
@@ -36,6 +47,7 @@ describe("AttenuationChart", () => {
   it("renders arrived runup points as circles", () => {
     const runup = [
       {
+        ...RUNUP_PROVENANCE,
         id: "tokyo", name: "Tokyo", lat: 35.65, lon: 139.77,
         range_m: 5_000_000, offshore_amplitude_m: 1.2, runup_m: 3,
         arrival_time_s: 3600, has_arrived: true, inundation_extent_m: 500,
@@ -50,6 +62,7 @@ describe("AttenuationChart", () => {
   it("does not render points that haven't arrived", () => {
     const runup = [
       {
+        ...RUNUP_PROVENANCE,
         id: "far", name: "Far Away", lat: -40, lon: 170,
         range_m: 15_000_000, offshore_amplitude_m: 0.1, runup_m: 0.5,
         arrival_time_s: 36000, has_arrived: false, inundation_extent_m: 10,

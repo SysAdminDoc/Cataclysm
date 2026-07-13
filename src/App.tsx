@@ -1322,6 +1322,12 @@ export default function App() {
                   arrival_time_s: r.arrival_time_s,
                   inundation_extent_m: r.inundation_extent_m,
                   offshore_amplitude_m: r.offshore_amplitude_m,
+                  beach_slope_deg: r.beach_slope_deg,
+                  offshore_depth_m: r.offshore_depth_m,
+                  slope_provenance: r.slope_provenance,
+                  depth_provenance: r.depth_provenance,
+                  quantitative_confidence: r.quantitative_confidence,
+                  quantitative_label: r.quantitative_label,
                 }));
                 const ok = exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null);
                 showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
@@ -1345,6 +1351,12 @@ export default function App() {
                   arrival_time_s: r.arrival_time_s,
                   inundation_extent_m: r.inundation_extent_m,
                   offshore_amplitude_m: r.offshore_amplitude_m,
+                  beach_slope_deg: r.beach_slope_deg,
+                  offshore_depth_m: r.offshore_depth_m,
+                  slope_provenance: r.slope_provenance,
+                  depth_provenance: r.depth_provenance,
+                  quantitative_confidence: r.quantitative_confidence,
+                  quantitative_label: r.quantitative_label,
                 }));
                 const ok = exportKml(exportMetaA(), points);
                 showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
@@ -1683,7 +1695,7 @@ export default function App() {
           canAnimate={Boolean(directRenderReplay)}
           workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
         />}
-        {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindA} />}
+        {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindA} runupResults={slotA.runupResults} />}
         {inspectorTab === "results" && !inHazardMode && <AttenuationChart
           initial={slotA.initial}
           isImpact={activeScenarioKindA === "Asteroid"}
@@ -1693,7 +1705,7 @@ export default function App() {
         {inspectorTab === "results" && compareMode && (
           <div className="app__compare-rail">
             <div className="app__compare-rail-label">Slot B readout</div>
-            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindB} />
+            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindB} runupResults={slotB.runupResults} />
           </div>
         )}
         {inspectorTab === "results" && !inHazardMode && <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />}

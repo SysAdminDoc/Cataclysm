@@ -4,7 +4,7 @@
  * (no extra muxer dependency, works on Chromium/WebView2 and modern WKWebView).
  */
 
-import type { InitialDisplacement, Preset } from "../types/scenario";
+import type { CoastalMeasurementProvenance, InitialDisplacement, Preset } from "../types/scenario";
 import {
   buildModelProvenance,
   provenanceSummary,
@@ -614,6 +614,12 @@ export type RunupPoint = {
   arrival_time_s: number;
   inundation_extent_m: number;
   offshore_amplitude_m: number;
+  beach_slope_deg: number;
+  offshore_depth_m: number;
+  slope_provenance: CoastalMeasurementProvenance;
+  depth_provenance: CoastalMeasurementProvenance;
+  quantitative_confidence: "low" | "medium" | "high";
+  quantitative_label: "illustrative" | "screening_estimate" | "quantitative";
 };
 
 export function exportGeoJson(
@@ -650,6 +656,32 @@ export function exportGeoJson(
         arrival_time_s: round5(p.arrival_time_s),
         inundation_extent_m: round5(p.inundation_extent_m),
         offshore_amplitude_m: round5(p.offshore_amplitude_m),
+        beach_slope_deg: round5(p.beach_slope_deg),
+        offshore_depth_m: round5(p.offshore_depth_m),
+        quantitative_confidence: p.quantitative_confidence,
+        quantitative_label: p.quantitative_label,
+        slope_sample_id: p.slope_provenance.sample_id,
+        slope_record_id: p.slope_provenance.record_id,
+        slope_source: p.slope_provenance.source,
+        slope_method: p.slope_provenance.method,
+        slope_datum: p.slope_provenance.datum,
+        slope_resolution: p.slope_provenance.resolution,
+        slope_observed_or_published: p.slope_provenance.observed_or_published,
+        slope_confidence: p.slope_provenance.confidence,
+        slope_uncertainty_value: p.slope_provenance.uncertainty_value,
+        slope_uncertainty_unit: p.slope_provenance.uncertainty_unit,
+        slope_placeholder: p.slope_provenance.placeholder,
+        depth_sample_id: p.depth_provenance.sample_id,
+        depth_record_id: p.depth_provenance.record_id,
+        depth_source: p.depth_provenance.source,
+        depth_method: p.depth_provenance.method,
+        depth_datum: p.depth_provenance.datum,
+        depth_resolution: p.depth_provenance.resolution,
+        depth_observed_or_published: p.depth_provenance.observed_or_published,
+        depth_confidence: p.depth_provenance.confidence,
+        depth_uncertainty_value: p.depth_provenance.uncertainty_value,
+        depth_uncertainty_unit: p.depth_provenance.uncertainty_unit,
+        depth_placeholder: p.depth_provenance.placeholder,
       },
       geometry: {
         type: "Polygon" as const,
@@ -731,7 +763,13 @@ export function exportKml(
     runupPlacemarks.push(`
     <Placemark>
       <name>${escapeXml(p.name)}</name>
-      <description>Runup: ${p.runup_m.toFixed(1)} m\nArrival: T+${Math.round(p.arrival_time_s / 60)} min\nInundation: ${Math.round(p.inundation_extent_m)} m</description>
+      <description>${escapeXml(`Runup: ~${p.runup_m.toFixed(1)} m\nArrival: T+${Math.round(p.arrival_time_s / 60)} min\nInundation: ${Math.round(p.inundation_extent_m)} m\n${p.quantitative_label}; ${p.quantitative_confidence} confidence\nSlope: ${p.beach_slope_deg} deg (${p.slope_provenance.sample_id}; ${p.slope_provenance.record_id})\nDepth: ${p.offshore_depth_m} m (${p.depth_provenance.sample_id}; ${p.depth_provenance.record_id})`)}</description>
+      <ExtendedData>
+        <Data name="slope_record_id"><value>${escapeXml(p.slope_provenance.record_id)}</value></Data>
+        <Data name="depth_record_id"><value>${escapeXml(p.depth_provenance.record_id)}</value></Data>
+        <Data name="quantitative_label"><value>${p.quantitative_label}</value></Data>
+        <Data name="quantitative_confidence"><value>${p.quantitative_confidence}</value></Data>
+      </ExtendedData>
       <Style><IconStyle><color>ff00aaff</color><scale>0.8</scale></IconStyle></Style>
       <Point><coordinates>${p.lon},${p.lat},0</coordinates></Point>
     </Placemark>`);
@@ -776,6 +814,43 @@ function normaliseLon(lon: number): number {
   if (!Number.isFinite(lon)) return 0;
   const wrapped = ((((lon + 180) % 360) + 360) % 360) - 180;
   return wrapped === -180 && lon > 0 ? 180 : wrapped;
+}
+
+export function exportRunupCsv(points: RunupPoint[]): boolean {
+  if (points.length === 0) return false;
+  const text = (value: string | null) => encodeSpreadsheetSafeCsvText(value ?? "");
+  const header = [
+    "point_id", "name", "lat_deg", "lon_deg", "runup_m", "offshore_amplitude_m",
+    "arrival_time_s", "inundation_extent_m", "beach_slope_deg", "offshore_depth_m",
+    "quantitative_label", "quantitative_confidence", "slope_sample_id", "slope_record_id",
+    "slope_source", "slope_source_url", "slope_method", "slope_datum", "slope_resolution",
+    "slope_observed_or_published", "slope_confidence", "slope_uncertainty_value",
+    "slope_uncertainty_unit", "slope_uncertainty_basis", "slope_placeholder",
+    "depth_sample_id", "depth_record_id", "depth_source", "depth_source_url", "depth_method",
+    "depth_datum", "depth_resolution", "depth_observed_or_published", "depth_confidence",
+    "depth_uncertainty_value", "depth_uncertainty_unit", "depth_uncertainty_basis", "depth_placeholder",
+  ];
+  const rows = [header.join(",")];
+  for (const point of points) {
+    const slope = point.slope_provenance;
+    const depth = point.depth_provenance;
+    rows.push([
+      text(point.id), text(point.name), point.lat, point.lon, point.runup_m,
+      point.offshore_amplitude_m, point.arrival_time_s, point.inundation_extent_m,
+      point.beach_slope_deg, point.offshore_depth_m, text(point.quantitative_label),
+      text(point.quantitative_confidence), text(slope.sample_id), text(slope.record_id),
+      text(slope.source), text(slope.source_url), text(slope.method), text(slope.datum),
+      text(slope.resolution), text(slope.observed_or_published), text(slope.confidence),
+      slope.uncertainty_value ?? "", text(slope.uncertainty_unit), text(slope.uncertainty_basis),
+      slope.placeholder, text(depth.sample_id), text(depth.record_id), text(depth.source),
+      text(depth.source_url), text(depth.method), text(depth.datum), text(depth.resolution),
+      text(depth.observed_or_published), text(depth.confidence), depth.uncertainty_value ?? "",
+      text(depth.uncertainty_unit), text(depth.uncertainty_basis), depth.placeholder,
+    ].join(","));
+  }
+  const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
+  downloadBlob(blob, `cataclysm-coastal-runup-${timestampSuffix()}.csv`);
+  return true;
 }
 
 export function exportGaugeCsv(

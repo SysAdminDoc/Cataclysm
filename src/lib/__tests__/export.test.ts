@@ -1,7 +1,8 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, preflightRunQuality, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, exportRunupCsv, preflightRunQuality, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
+import { getCoastalPoints } from "../data";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -42,6 +43,7 @@ function mockDownload() {
   return () => captured;
 }
 
+const COASTAL = getCoastalPoints()[0];
 const SAMPLE_POINT: RunupPoint = {
   id: "tokyo",
   name: "Tokyo Bay",
@@ -51,6 +53,12 @@ const SAMPLE_POINT: RunupPoint = {
   arrival_time_s: 3600,
   inundation_extent_m: 800,
   offshore_amplitude_m: 1.5,
+  beach_slope_deg: COASTAL.beach_slope_deg,
+  offshore_depth_m: COASTAL.offshore_depth_m,
+  slope_provenance: COASTAL.slope_provenance,
+  depth_provenance: COASTAL.depth_provenance,
+  quantitative_confidence: "low",
+  quantitative_label: "illustrative",
 };
 
 const PROVENANCE_META: ScreenshotMeta = {
@@ -123,6 +131,7 @@ describe("suggestedFilename", () => {
 
     const ok = exportGeoJson(
       [{
+        ...SAMPLE_POINT,
         id: "north-pole",
         name: "North Pole",
         lat: 90,
@@ -162,10 +171,13 @@ describe("suggestedFilename", () => {
 
     expect(ok).toBe(true);
     const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, string | number | null> };
-    expect(fc.properties.app_version).toBe("0.10.0");
+    expect(fc.properties.app_version).toBe("0.10.1");
     expect(fc.properties.generated_at).toBe("2026-06-28T00:00:00.000Z");
     expect(fc.properties.scenario_type).toBe("Asteroid");
     expect(fc.properties.solver_mode).toBe("SWE snapshot playback");
+    const featureCollection = JSON.parse(await getBlob()!.text()) as { features: Array<{ properties: Record<string, unknown> }> };
+    expect(featureCollection.features[0].properties.slope_record_id).toBe("slope:legacy-curated-v1");
+    expect(featureCollection.features[0].properties.depth_record_id).toBe("depth:nominal-isobath-v1");
     expect(fc.properties.citation_url).toBe("https://doi.org/10.1029/2021AV000627");
     expect(fc.properties.bathymetry_source).toContain("Low-confidence coarse basin/shelf approximation");
     expect(fc.properties.bathymetry_source).toContain("GEBCO_2026/TID raster sampling is not bundled");
@@ -198,7 +210,7 @@ describe("exportCzml", () => {
       properties?: Record<string, string | null>;
     }>;
     expect(czml[0].description).toContain("Scenario type: Asteroid");
-    expect(czml[1].properties?.appVersion).toBe("0.10.0");
+    expect(czml[1].properties?.appVersion).toBe("0.10.1");
     expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
     expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
   });
@@ -285,7 +297,9 @@ describe("exportKml", () => {
     exportKml(meta, [SAMPLE_POINT]);
     const kml = await getBlob()!.text();
     expect(kml).toContain("Tokyo Bay");
-    expect(kml).toContain("Runup: 5.2 m");
+    expect(kml).toContain("Runup: ~5.2 m");
+    expect(kml).toContain("slope:legacy-curated-v1");
+    expect(kml).toContain("depth:nominal-isobath-v1");
     expect(kml).toContain("Test &amp; &quot;Quotes&quot;");
     expect(kml).not.toContain("&\"");
   });
@@ -296,7 +310,7 @@ describe("exportKml", () => {
     exportKml(PROVENANCE_META, [SAMPLE_POINT]);
 
     const kml = await getBlob()!.text();
-    expect(kml).toContain("Cataclysm v0.10.0");
+    expect(kml).toContain("Cataclysm v0.10.1");
     expect(kml).toContain("Scenario type: Asteroid");
     expect(kml).toContain("Solver mode: SWE snapshot playback");
     expect(kml).toContain("https://doi.org/10.1029/2021AV000627");
@@ -321,6 +335,17 @@ describe("exportKml", () => {
     ]);
     const blob = getBlob();
     expect(blob).not.toBeNull();
+  });
+});
+
+describe("exportRunupCsv", () => {
+  it("preserves exact slope and depth record identifiers", async () => {
+    const getBlob = mockDownload();
+    expect(exportRunupCsv([SAMPLE_POINT])).toBe(true);
+    const csv = await getBlob()!.text();
+    expect(csv).toContain("slope_sample_id,slope_record_id");
+    expect(csv).toContain("miyako_jp:slope,slope:legacy-curated-v1");
+    expect(csv).toContain("miyako_jp:depth,depth:nominal-isobath-v1");
   });
 });
 

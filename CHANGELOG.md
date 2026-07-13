@@ -91,6 +91,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   ([0, 360]) and rake ([-180, 180]) in Rust, matching the frontend
   `SCENARIO_BOUNDS` table so both entry paths accept and reject the same inputs.
 
+## [0.10.1] — 2026-07-12 — Auditable coastal screening
+
+- Fixed desktop coastal runup failing as a batch when deep-water reference gauges supplied a zero-slope sentinel.
+- Made Rust resolve named coast IDs against the validated bundled database, preventing clients from substituting slope, depth, or provenance records.
+- Added explicit source, method, datum, resolution/date, confidence, uncertainty, placeholder status, and stable sample/record IDs for every runup input.
+- Labelled current legacy/nominal inputs as low-confidence illustrative estimates in Results, globe inspection, CSV, GeoJSON, KML, and text exports.
+
 ## [0.10.0] — 2026-07-12 — Progressive simulator workspace
 
 - Added persisted Simple, Customize, and Advanced workspace detail levels;

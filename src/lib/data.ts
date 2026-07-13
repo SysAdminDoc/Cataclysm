@@ -14,6 +14,8 @@
 import type {
   CoastalPoint,
   CoastalPointDatabase,
+  CoastalMeasurementProvenance,
+  CoastalPointRecord,
   DartDatabase,
 } from "../types/scenario";
 import coastalDbRaw from "../data/coastal_points.json";
@@ -27,8 +29,23 @@ const dartDb = dartDbRaw as unknown as DartDatabase;
  *  coordinates would silently nuke the haversine math in the Rust
  *  command. We drop bad points up front so the rest of the database
  *  still works. Computed once at module load. */
-const VALID_COASTAL_POINTS: readonly CoastalPoint[] = coastalDb.points.filter(
-  (p) =>
+function resolveProvenance(
+  point: CoastalPointRecord,
+  kind: "slope" | "depth",
+): CoastalMeasurementProvenance | null {
+  const recordId = kind === "slope" ? point.slope_provenance_id : point.depth_provenance_id;
+  const record = coastalDb._meta.provenance_records?.[recordId];
+  if (!record || record.record_id !== recordId) return null;
+  if (record.placeholder && record.confidence === "high") return null;
+  return { ...record, sample_id: `${point.id}:${kind}` };
+}
+
+const VALID_COASTAL_POINTS: readonly CoastalPoint[] = coastalDb.points
+  .filter((p) => p.role === "runup")
+  .map((p) => {
+  const slopeProvenance = resolveProvenance(p, "slope");
+  const depthProvenance = resolveProvenance(p, "depth");
+  const valid =
     Number.isFinite(p.lat) &&
     Number.isFinite(p.lon) &&
     p.lat >= -90 &&
@@ -36,8 +53,17 @@ const VALID_COASTAL_POINTS: readonly CoastalPoint[] = coastalDb.points.filter(
     p.lon >= -180 &&
     p.lon <= 180 &&
     Number.isFinite(p.beach_slope_deg) &&
-    Number.isFinite(p.offshore_depth_m),
-);
+    p.beach_slope_deg > 0 &&
+    p.beach_slope_deg <= 90 &&
+    Number.isFinite(p.offshore_depth_m) &&
+    p.offshore_depth_m > 0 &&
+    slopeProvenance !== null &&
+    depthProvenance !== null;
+  if (!valid || slopeProvenance === null || depthProvenance === null) {
+    throw new Error(`Invalid bundled coastal runup point: ${p.id}`);
+  }
+  return { ...p, slope_provenance: slopeProvenance, depth_provenance: depthProvenance };
+});
 
 /** All in-range coastal points. */
 export function getCoastalPoints(): readonly CoastalPoint[] {

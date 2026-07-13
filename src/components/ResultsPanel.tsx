@@ -1,4 +1,6 @@
 import type { InitialDisplacement } from "../types/scenario";
+import type { RunupAtPointResult } from "../lib/tauri";
+import { exportRunupCsv } from "../lib/export";
 import { GlossaryTip } from "./GlossaryTip";
 
 /** The four modelled tsunami source families. `null` covers presets/custom
@@ -13,6 +15,7 @@ type Props = {
   /** Discrete source family, used to label metrics correctly (an earthquake
    * has no impact "cavity") and to lead with a plain-language outcome. */
   sourceKind?: SourceKind;
+  runupResults?: RunupAtPointResult[];
 };
 
 /** Source-aware label for `cavity_radius_m`: a real cavity only exists for
@@ -99,7 +102,7 @@ function formatCoord(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`;
 }
 
-export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true, sourceKind = null }: Props) {
+export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true, sourceKind = null, runupResults = [] }: Props) {
   if (!initial) {
     return (
       <div className="section">
@@ -133,6 +136,10 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
   const outcome = describeOutcome(initial, sourceKind);
   const cavity_label = cavityLabel(sourceKind);
+  const coastalResults = [...runupResults]
+    .filter((result) => result.has_arrived)
+    .sort((left, right) => right.runup_m - left.runup_m)
+    .slice(0, 3);
 
   return (
     <>
@@ -193,6 +200,30 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
           )}
         </div>
       </div>
+
+      {coastalResults.length > 0 && <div className="section">
+        <div className="section__title">
+          <span>Coastal screening estimates</span>
+          <span className="section__badge" data-tone="muted">Low confidence</span>
+        </div>
+        <p className="results__outcome-note">
+          Illustrative values use nominal or legacy inputs. Expand a point to audit the exact records.
+        </p>
+        <button className="results__export" type="button" onClick={() => exportRunupCsv(runupResults)}>
+          Export coastal CSV with provenance
+        </button>
+        {coastalResults.map((result) => <details className="results__provenance" key={result.id}>
+          <summary>{result.name} · ~{result.runup_m.toFixed(1)} m runup</summary>
+          <dl>
+            <dt>Slope</dt><dd>{result.beach_slope_deg}° ± {result.slope_provenance.uncertainty_value ?? "unknown"} {result.slope_provenance.uncertainty_unit}</dd>
+            <dt>Slope record</dt><dd>{result.slope_provenance.sample_id} / {result.slope_provenance.record_id}</dd>
+            <dt>Depth</dt><dd>{result.offshore_depth_m} m ± {result.depth_provenance.uncertainty_value ?? "unknown"} {result.depth_provenance.uncertainty_unit}</dd>
+            <dt>Depth record</dt><dd>{result.depth_provenance.sample_id} / {result.depth_provenance.record_id}</dd>
+            <dt>Source and method</dt><dd>{result.slope_provenance.source}; {result.slope_provenance.method}</dd>
+            <dt>Datum / resolution / date</dt><dd>{result.slope_provenance.datum}; {result.slope_provenance.resolution}; {result.slope_provenance.observed_or_published}</dd>
+          </dl>
+        </details>)}
+      </div>}
 
       {showTimeline && <div className="section">
         <div className="section__title">

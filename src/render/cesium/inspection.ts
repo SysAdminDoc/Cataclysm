@@ -71,5 +71,6 @@ export function formatInspectionLabel(
     `Arrival ${arrivalLabel(result.arrival_time_s)}`,
     `Offshore ${finite(result.offshore_amplitude_m, 2)} m   ·   Runup ${finite(result.runup_m, 1)} m`,
     `Inundation ~${finite(result.inundation_extent_m / 1_000, 2)} km`,
+    "Illustrative · low confidence · nominal 1° slope / 50 m depth",
   ].join("\n");
 }

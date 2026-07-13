@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { ResultsPanel } from "../ResultsPanel";
 import type { InitialDisplacement } from "../../types/scenario";
+import { getCoastalPoints } from "../../lib/data";
+import { demoRunupAtPoints } from "../../lib/demo";
 
 const MOCK_INITIAL: InitialDisplacement = {
   peak_amplitude_m: 1500,
@@ -55,5 +57,22 @@ describe("ResultsPanel", () => {
   it("shows timeline readout", () => {
     render(<ResultsPanel initial={MOCK_INITIAL} timeS={1800} onTimeChange={() => {}} showTimeline />);
     expect(screen.getByText("Timeline")).toBeInTheDocument();
+  });
+
+  it("visibly discloses low-confidence coastal input records", () => {
+    const runupResults = demoRunupAtPoints({
+      source: MOCK_INITIAL.center,
+      initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
+      cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
+      is_impact: true,
+      mean_depth_m: 4_000,
+      time_s: Number.MAX_SAFE_INTEGER,
+      points: [getCoastalPoints()[0]],
+    });
+    render(<ResultsPanel initial={MOCK_INITIAL} timeS={900} onTimeChange={() => {}} runupResults={runupResults} />);
+    expect(screen.getByText("Coastal screening estimates")).toBeInTheDocument();
+    expect(screen.getByText("Low confidence")).toBeInTheDocument();
+    expect(screen.getByText(/miyako_jp:slope/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Export coastal CSV with provenance/i })).toBeInTheDocument();
   });
 });

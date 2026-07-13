@@ -24,6 +24,10 @@ function point(overrides: Partial<RunupOverlayInput> = {}): RunupOverlayInput {
     arrival_time_s: 3_900,
     has_arrived: true,
     inundation_extent_m: 1_000,
+    quantitative_confidence: "low",
+    quantitative_label: "illustrative",
+    slope_record_id: "slope:legacy-curated-v1",
+    depth_record_id: "depth:nominal-isobath-v1",
     ...overrides,
   };
 }
@@ -120,7 +124,9 @@ describe("RunupOverlayController", () => {
       outlineAlpha: 0.7,
       outlineWidth: 2,
     });
-    expect([...labels.values()][0].text).toBe("Alpha\nT+10m  -  0.2 m runup\n1.23 m offshore");
+    expect([...labels.values()][0].text).toBe(
+      "Alpha\nT+10m  -  0.2 m runup\n1.23 m offshore\nillustrative · low confidence\nslope:legacy-curated-v1 · depth:nominal-isobath-v1",
+    );
     expect(controller.diagnostics()).toMatchObject({
       ownedRunupPrimitiveCount: 1,
       ownedInundationPrimitiveCount: 1,

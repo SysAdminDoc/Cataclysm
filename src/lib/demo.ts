@@ -19,6 +19,12 @@ export type DemoRunupAtPointResult = {
   name: string;
   lat: number;
   lon: number;
+  beach_slope_deg: number;
+  offshore_depth_m: number;
+  slope_provenance: CoastalPoint["slope_provenance"];
+  depth_provenance: CoastalPoint["depth_provenance"];
+  quantitative_confidence: "low" | "medium" | "high";
+  quantitative_label: "illustrative" | "screening_estimate" | "quantitative";
   range_m: number;
   offshore_amplitude_m: number;
   runup_m: number;
@@ -459,6 +465,22 @@ export function demoRunupAtPoints(req: {
       name: p.name,
       lat: p.lat,
       lon: p.lon,
+      beach_slope_deg: p.beach_slope_deg,
+      offshore_depth_m: p.offshore_depth_m,
+      slope_provenance: p.slope_provenance,
+      depth_provenance: p.depth_provenance,
+      quantitative_confidence:
+        p.slope_provenance.confidence === "low" || p.depth_provenance.confidence === "low"
+          ? "low"
+          : p.slope_provenance.confidence === "medium" || p.depth_provenance.confidence === "medium"
+            ? "medium"
+            : "high",
+      quantitative_label:
+        p.slope_provenance.placeholder || p.depth_provenance.placeholder
+          ? "illustrative"
+          : p.slope_provenance.confidence === "high" && p.depth_provenance.confidence === "high"
+            ? "quantitative"
+            : "screening_estimate",
       range_m,
       offshore_amplitude_m: offshore,
       runup_m,

@@ -34,6 +34,45 @@
   line-height: 1.35;
 }
 
+.results__provenance {
+  margin-top: 8px;
+  border: 1px solid var(--surface1);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface0) 74%, transparent);
+  padding: 8px 10px;
+  font-size: 0.75rem;
+}
+
+.results__provenance summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.results__provenance dl {
+  display: grid;
+  grid-template-columns: minmax(76px, auto) 1fr;
+  gap: 4px 8px;
+  margin: 10px 0 0;
+}
+
+.results__provenance dt { color: var(--subtext0); }
+.results__provenance dd { margin: 0; overflow-wrap: anywhere; }
+
+.results__export {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--surface2);
+  border-radius: 7px;
+  background: var(--surface0);
+  color: var(--text);
+  padding: 7px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.results__export:hover { border-color: var(--accent); }
+
 .source-summary {
   display: grid;
   grid-template-columns: 1fr auto;

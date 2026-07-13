@@ -3,7 +3,7 @@
 import { invoke, Channel } from "@tauri-apps/api/core";
 import type {
   AsteroidImpactInput,
-  CoastalPoint,
+  CoastalMeasurementProvenance,
   EarthquakeInput,
   GeoPoint,
   InitialDisplacement,
@@ -111,6 +111,12 @@ export type RunupAtPointResult = {
   name: string;
   lat: number;
   lon: number;
+  beach_slope_deg: number;
+  offshore_depth_m: number;
+  slope_provenance: CoastalMeasurementProvenance;
+  depth_provenance: CoastalMeasurementProvenance;
+  quantitative_confidence: "low" | "medium" | "high";
+  quantitative_label: "illustrative" | "screening_estimate" | "quantitative";
   range_m: number;
   offshore_amplitude_m: number;
   runup_m: number;
@@ -208,7 +214,7 @@ export const api = {
     is_impact: boolean;
     mean_depth_m: number;
     time_s: number;
-    points: CoastalPoint[];
+    point_ids: string[];
   }) {
     return invoke<RunupAtPointResult[]>("runup_at_points", { req });
   },

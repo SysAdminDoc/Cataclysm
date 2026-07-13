@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SysAdminDoc/Cataclysm/assets/earth/coastal-points.schema.json",
+  "title": "Cataclysm coastal point provenance database",
+  "type": "object",
+  "required": ["_meta", "points"],
+  "properties": {
+    "_meta": {
+      "type": "object",
+      "required": ["version", "provenance_records"]
+    },
+    "points": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "role", "lat", "lon", "beach_slope_deg", "offshore_depth_m", "slope_provenance_id", "depth_provenance_id"],
+        "properties": {
+          "role": { "enum": ["runup", "deep_water_reference"] },
+          "slope_provenance_id": { "type": "string", "minLength": 1 },
+          "depth_provenance_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

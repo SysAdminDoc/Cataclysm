@@ -63,6 +63,7 @@ describe("formatInspectionLabel", () => {
       "Arrival T+1h31",
       "Offshore 1.23 m   ·   Runup 6.8 m",
       "Inundation ~9.88 km",
+      "Illustrative · low confidence · nominal 1° slope / 50 m depth",
     ].join("\n"));
   });
 

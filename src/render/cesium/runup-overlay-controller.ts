@@ -9,6 +9,10 @@ export interface RunupOverlayInput {
   arrival_time_s: number;
   has_arrived: boolean;
   inundation_extent_m: number;
+  quantitative_confidence: "low" | "medium" | "high";
+  quantitative_label: "illustrative" | "screening_estimate" | "quantitative";
+  slope_record_id: string;
+  depth_record_id: string;
 }
 
 export interface RunupPrimitivePresentation {
@@ -137,7 +141,7 @@ function labelPresentation(input: RunupOverlayInput, heightM: number): RunupLabe
     lat: input.lat,
     lon: input.lon,
     heightM,
-    text: `${input.name}\n${arrivalLabel}  -  ${input.runup_m.toFixed(1)} m runup\n${offshore} m offshore`,
+    text: `${input.name}\n${arrivalLabel}  -  ${input.runup_m.toFixed(1)} m runup\n${offshore} m offshore\n${input.quantitative_label.replace("_", " ")} · ${input.quantitative_confidence} confidence\n${input.slope_record_id} · ${input.depth_record_id}`,
   };
 }
 

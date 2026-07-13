@@ -183,6 +183,27 @@ export type GaugeTimeSeries = {
   samples: GaugeSample[];
 };
 
+export type CoastalProvenanceConfidence = "low" | "medium" | "high";
+
+/** Auditable lineage for one slope or depth value at a coastal point. */
+export type CoastalMeasurementProvenance = {
+  record_id: string;
+  sample_id: string;
+  source: string;
+  source_url: string | null;
+  method: string;
+  datum: string;
+  resolution: string;
+  observed_or_published: string;
+  confidence: CoastalProvenanceConfidence;
+  uncertainty_value: number | null;
+  uncertainty_unit: string;
+  uncertainty_basis: string;
+  placeholder: boolean;
+};
+
+export type CoastalMeasurementProvenanceRecord = Omit<CoastalMeasurementProvenance, "sample_id">;
+
 /** A named coastal point used for Synolakis runup sampling. */
 export type CoastalPoint = {
   id: string;
@@ -192,7 +213,15 @@ export type CoastalPoint = {
   lon: number;
   beach_slope_deg: number;
   offshore_depth_m: number;
+  slope_provenance: CoastalMeasurementProvenance;
+  depth_provenance: CoastalMeasurementProvenance;
   notable?: string;
+};
+
+export type CoastalPointRecord = Omit<CoastalPoint, "slope_provenance" | "depth_provenance"> & {
+  role: "runup" | "deep_water_reference";
+  slope_provenance_id: string;
+  depth_provenance_id: string;
 };
 
 export type CoastalPointDatabase = {
@@ -201,8 +230,9 @@ export type CoastalPointDatabase = {
     description: string;
     sources: string[];
     regions: string[];
+    provenance_records: Record<string, CoastalMeasurementProvenanceRecord>;
   };
-  points: CoastalPoint[];
+  points: CoastalPointRecord[];
 };
 
 export type DartBuoy = {

@@ -8,6 +8,9 @@ use std::sync::{Arc, LazyLock, Mutex, Weak};
 
 use serde::{Deserialize, Serialize};
 
+use crate::data::coastal_points::{
+    MeasurementProvenance, ProvenanceConfidence, resolve_runup_points,
+};
 use crate::physics::{
     GeoPoint, InitialDisplacement,
     asteroid::{AsteroidImpact, far_field_amplitude_m as impact_far_field},
@@ -439,16 +442,6 @@ fn haversine_m(a_lat: f64, a_lon: f64, b_lat: f64, b_lon: f64) -> f64 {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CoastalPoint {
-    pub id: String,
-    pub name: String,
-    pub lat: f64,
-    pub lon: f64,
-    pub beach_slope_deg: f64,
-    pub offshore_depth_m: f64,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct RunupAtPointsRequest {
     /// Source center (typically the preset's initial displacement center).
     pub source: GeoPoint,
@@ -462,7 +455,8 @@ pub struct RunupAtPointsRequest {
     pub mean_depth_m: f64,
     /// Time, seconds, at which to sample (only points whose wave has arrived are returned).
     pub time_s: f64,
-    pub points: Vec<CoastalPoint>,
+    /// Stable IDs resolved against the validated bundled coastal database.
+    pub point_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -471,6 +465,12 @@ pub struct RunupAtPoint {
     pub name: String,
     pub lat: f64,
     pub lon: f64,
+    pub beach_slope_deg: f64,
+    pub offshore_depth_m: f64,
+    pub slope_provenance: MeasurementProvenance,
+    pub depth_provenance: MeasurementProvenance,
+    pub quantitative_confidence: ProvenanceConfidence,
+    pub quantitative_label: String,
     pub range_m: f64,
     pub offshore_amplitude_m: f64,
     pub runup_m: f64,
@@ -489,10 +489,10 @@ pub struct RunupAtPoint {
 /// `CoastalRunupOverlay` Cesium component.
 #[tauri::command]
 pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, String> {
-    if req.points.len() > RUNUP_MAX_POINTS {
+    if req.point_ids.len() > RUNUP_MAX_POINTS {
         return Err(format!(
             "too many coastal points ({}); cap is {}",
-            req.points.len(),
+            req.point_ids.len(),
             RUNUP_MAX_POINTS
         ));
     }
@@ -513,19 +513,8 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
     if req.time_s > SWE_MAX_T_END_S {
         return Err(format!("time_s must be in [0, {}]", SWE_MAX_T_END_S));
     }
-    for p in &req.points {
-        check_lat_lon_values(&format!("coastal point {}", p.id), p.lat, p.lon)?;
-        check_finite("beach_slope_deg", p.beach_slope_deg)?;
-        if p.beach_slope_deg <= 0.0 || p.beach_slope_deg > 90.0 {
-            return Err(format!("coastal point {} slope must be in (0, 90]", p.id));
-        }
-        check_finite_positive("offshore_depth_m", p.offshore_depth_m)?;
-        if p.offshore_depth_m > 12_000.0 {
-            return Err(format!("coastal point {} depth must be ≤ 12 000 m", p.id));
-        }
-    }
-    let out = req
-        .points
+    let points = resolve_runup_points(&req.point_ids)?;
+    let out = points
         .into_iter()
         .map(|p| {
             let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, p.lat, p.lon);
@@ -546,11 +535,38 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
             } else {
                 0.0
             };
+            let quantitative_confidence = match (
+                &p.slope_provenance.record.confidence,
+                &p.depth_provenance.record.confidence,
+            ) {
+                (ProvenanceConfidence::Low, _) | (_, ProvenanceConfidence::Low) => {
+                    ProvenanceConfidence::Low
+                }
+                (ProvenanceConfidence::Medium, _) | (_, ProvenanceConfidence::Medium) => {
+                    ProvenanceConfidence::Medium
+                }
+                _ => ProvenanceConfidence::High,
+            };
+            let quantitative_label = if p.slope_provenance.record.placeholder
+                || p.depth_provenance.record.placeholder
+            {
+                "illustrative"
+            } else if quantitative_confidence == ProvenanceConfidence::High {
+                "quantitative"
+            } else {
+                "screening_estimate"
+            };
             RunupAtPoint {
                 id: p.id,
                 name: p.name,
                 lat: p.lat,
                 lon: p.lon,
+                beach_slope_deg: p.beach_slope_deg,
+                offshore_depth_m: p.offshore_depth_m,
+                slope_provenance: p.slope_provenance,
+                depth_provenance: p.depth_provenance,
+                quantitative_confidence,
+                quantitative_label: quantitative_label.into(),
                 range_m,
                 offshore_amplitude_m: amp,
                 runup_m,
@@ -2322,14 +2338,7 @@ mod tests {
             is_impact: true,
             mean_depth_m: 4_000.0,
             time_s: 0.0,
-            points: vec![CoastalPoint {
-                id: "bad".to_string(),
-                name: "Bad point".to_string(),
-                lat: 95.0,
-                lon: 0.0,
-                beach_slope_deg: 1.0,
-                offshore_depth_m: 50.0,
-            }],
+            point_ids: vec!["bad".to_string()],
         });
         assert!(res.is_err());
     }
@@ -2343,16 +2352,27 @@ mod tests {
             is_impact: true,
             mean_depth_m: 4_000.0,
             time_s: 0.0,
-            points: vec![CoastalPoint {
-                id: "flat".to_string(),
-                name: "Flat coast".to_string(),
-                lat: 0.0,
-                lon: 0.0,
-                beach_slope_deg: 0.0,
-                offshore_depth_m: 50.0,
-            }],
+            point_ids: vec!["tohoku_dart_21413".to_string()],
         });
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn runup_at_points_returns_exact_bundled_provenance() {
+        let res = runup_at_points(RunupAtPointsRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            cavity_radius_m: 1_000.0,
+            is_impact: true,
+            mean_depth_m: 4_000.0,
+            time_s: 0.0,
+            point_ids: vec!["miyako_jp".to_string()],
+        })
+        .expect("bundled runup point should resolve");
+        assert_eq!(res[0].slope_provenance.sample_id, "miyako_jp:slope");
+        assert_eq!(res[0].depth_provenance.sample_id, "miyako_jp:depth");
+        assert_eq!(res[0].quantitative_confidence, ProvenanceConfidence::Low);
+        assert_eq!(res[0].quantitative_label, "illustrative");
     }
 
     #[test]

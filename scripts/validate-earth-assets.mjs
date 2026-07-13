@@ -10,6 +10,8 @@ const geodesySchemaPath = path.join(repoRoot, "assets", "earth", "geodesy-contra
 const geodesyPath = path.join(repoRoot, "src", "data", "geodesy-contract.json");
 const surfaceMaskPath = path.join(repoRoot, "src", "data", "surface-mask.json");
 const surfaceMaskSchemaPath = path.join(repoRoot, "assets", "earth", "surface-mask.schema.json");
+const coastalPointsPath = path.join(repoRoot, "src", "data", "coastal_points.json");
+const coastalPointsSchemaPath = path.join(repoRoot, "assets", "earth", "coastal-points.schema.json");
 const permissionOperations = [
   "interactive_render",
   "transient_http_cache",
@@ -52,6 +54,44 @@ function uniqueById(items, field) {
     ids.add(item.id);
   }
   return ids;
+}
+
+function validateCoastalPoints() {
+  JSON.parse(readFileSync(coastalPointsSchemaPath, "utf8"));
+  const database = JSON.parse(readFileSync(coastalPointsPath, "utf8"));
+  if (database._meta?.version !== 2) fail("coastal point database must use schema version 2");
+  const records = database._meta?.provenance_records;
+  if (!records || typeof records !== "object") fail("coastal point provenance_records must be an object");
+  for (const [key, record] of Object.entries(records)) {
+    for (const field of ["record_id", "source", "method", "datum", "resolution", "observed_or_published", "confidence", "uncertainty_unit", "uncertainty_basis"]) {
+      requiredString(record[field], `coastal provenance ${key}.${field}`);
+    }
+    if (record.record_id !== key) fail(`coastal provenance key ${key} must match record_id`);
+    if (!["low", "medium", "high"].includes(record.confidence)) fail(`coastal provenance ${key} confidence is invalid`);
+    if (record.placeholder === true && record.confidence !== "low") fail(`placeholder coastal provenance ${key} must be low confidence`);
+    if (typeof record.placeholder !== "boolean") fail(`coastal provenance ${key} placeholder must be boolean`);
+    if (record.uncertainty_value !== null && (!Number.isFinite(record.uncertainty_value) || record.uncertainty_value < 0)) {
+      fail(`coastal provenance ${key} uncertainty must be null or non-negative`);
+    }
+  }
+  const ids = new Set();
+  let runupCount = 0;
+  for (const point of database.points ?? []) {
+    requiredString(point.id, "coastal point id");
+    if (ids.has(point.id)) fail(`duplicate coastal point id ${point.id}`);
+    ids.add(point.id);
+    if (!["runup", "deep_water_reference"].includes(point.role)) fail(`coastal point ${point.id} role is invalid`);
+    if (![point.lat, point.lon, point.beach_slope_deg, point.offshore_depth_m].every(Number.isFinite)) fail(`coastal point ${point.id} has non-finite values`);
+    if (point.lat < -90 || point.lat > 90 || point.lon < -180 || point.lon > 180 || point.offshore_depth_m <= 0 || point.offshore_depth_m > 12_000) fail(`coastal point ${point.id} is outside numeric bounds`);
+    if (point.role === "runup") {
+      runupCount += 1;
+      if (point.beach_slope_deg <= 0 || point.beach_slope_deg > 90) fail(`runup point ${point.id} slope must be in (0, 90]`);
+    } else if (point.beach_slope_deg !== 0) fail(`deep-water reference ${point.id} must use the zero-slope sentinel`);
+    for (const field of ["slope_provenance_id", "depth_provenance_id"]) {
+      if (!records[point[field]]) fail(`coastal point ${point.id} references missing ${field}`);
+    }
+  }
+  if (runupCount !== 79) fail(`expected 79 coastal runup points, found ${runupCount}`);
 }
 
 function cspAllowsOrigin(origin, csp) {
@@ -314,6 +354,7 @@ export function validateRegistry(registry, { checkFiles = false } = {}) {
   }
   validateFallbacks(registry, assetIds);
   validateGeodesyAndSurfaceContracts(assetIds);
+  validateCoastalPoints();
   return { providerCount: providerIds.size, assetCount: assetIds.size, styleCount: styleIds.size };
 }
 

@@ -88,6 +88,16 @@ export function generateTextExport(data: TextExportData): string {
       );
     }
     lines.push("");
+    lines.push("Coastal Input Provenance");
+    lines.push("------------------------");
+    for (const r of sorted) {
+      lines.push(`${r.name} [${r.quantitative_label}; ${r.quantitative_confidence} confidence]`);
+      lines.push(`  Slope ${r.beach_slope_deg} deg: ${r.slope_provenance.sample_id} / ${r.slope_provenance.record_id}`);
+      lines.push(`    ${r.slope_provenance.source}; ${r.slope_provenance.method}; ${r.slope_provenance.datum}; ${r.slope_provenance.resolution}; ${r.slope_provenance.observed_or_published}; uncertainty ${r.slope_provenance.uncertainty_value ?? "unknown"} ${r.slope_provenance.uncertainty_unit}`);
+      lines.push(`  Depth ${r.offshore_depth_m} m: ${r.depth_provenance.sample_id} / ${r.depth_provenance.record_id}`);
+      lines.push(`    ${r.depth_provenance.source}; ${r.depth_provenance.method}; ${r.depth_provenance.datum}; ${r.depth_provenance.resolution}; ${r.depth_provenance.observed_or_published}; uncertainty ${r.depth_provenance.uncertainty_value ?? "unknown"} ${r.depth_provenance.uncertainty_unit}`);
+    }
+    lines.push("");
   }
 
   lines.push("---");

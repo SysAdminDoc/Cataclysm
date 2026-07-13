@@ -1,6 +1,6 @@
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.10.1-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -10,7 +10,7 @@
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
 
-> **Migration status (v0.10.0):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. The selected scenario and computed fields survive mode switches, while custom-source editors appear only after Create my own or Edit. Rust remains the sole authority for direct-effect results. The remaining cinematic rendering work is sequenced in [ROADMAP.md](./ROADMAP.md).
+> **Migration status (v0.10.1):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. Coastal screening estimates now expose auditable slope/depth lineage and cannot present legacy placeholders as high-confidence results. Rust remains the sole authority for direct-effect and named-coast inputs.
 
 ---
 
@@ -156,7 +156,7 @@ and writes adapter plus frame-time evidence to
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.10.0 Windows installers are
+an MSI package and an NSIS setup executable. The v0.10.1 Windows installers are
 locally built from this repository and are currently unsigned until a Windows
 code-signing certificate is configured, so Windows may show an unknown-publisher
 warning. macOS and Linux remain supported source-build targets; platform
@@ -168,12 +168,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\Cataclysm_0.10.0_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.10.1_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile Cataclysm_0.10.0_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.10.1_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full

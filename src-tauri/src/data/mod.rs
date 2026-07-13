@@ -6,6 +6,7 @@
 //! storage, and first-run download decisions.
 
 pub mod bathymetry;
+pub mod coastal_points;
 pub mod geodesy;
 pub mod source_input_contract;
 pub mod surface;
