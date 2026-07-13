@@ -125,6 +125,43 @@ test.describe("Visual regression — desktop", () => {
     });
   });
 
+  test("source-aware outcome, science, and validation results", async ({ page }) => {
+    await seedAcknowledged(page);
+    await page.goto("/");
+    const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
+    await expect(tohoku).toBeVisible({ timeout: 10_000 });
+    await tohoku.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("First named-coast arrival")).toBeVisible({ timeout: 10_000 });
+    const pause = page.getByRole("button", { name: "Pause scenario timeline" });
+    if (await pause.isVisible()) await pause.click();
+
+    await expect(page).toHaveScreenshot("desktop-results-outcome.png", {
+      mask: [page.locator(CANVAS_MASK)],
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+
+    await page.getByRole("tab", { name: "Science" }).click();
+    await expect(page.getByText("Source science")).toBeVisible();
+    await expect(page).toHaveScreenshot("desktop-results-science.png", {
+      mask: [page.locator(CANVAS_MASK)],
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+
+    await page.getByRole("tab", { name: "Validation" }).click();
+    await expect(page.getByText("Coastal screening validation")).toBeVisible();
+    await expect(page).toHaveScreenshot("desktop-results-validation.png", {
+      mask: [page.locator(CANVAS_MASK)],
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+  });
+
   test("direct what-if preview", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");

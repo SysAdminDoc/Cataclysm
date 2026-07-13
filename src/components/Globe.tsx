@@ -31,6 +31,11 @@ import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
 import { CameraTelemetryController } from "../render/cesium/camera-telemetry";
 import { CesiumCameraTelemetryHost } from "../render/cesium/cesium-camera-telemetry-host";
+import {
+  OutcomeFocusController,
+  type OutcomeFocusRequest,
+} from "../render/cesium/outcome-focus";
+import { CesiumOutcomeFocusHost } from "../render/cesium/cesium-outcome-focus-host";
 import { configurePlanet } from "../render/cesium/planet";
 import { AsyncResourceCoordinator } from "../render/cesium/async-resource-coordinator";
 import { StaticHazardController } from "../render/cesium/static-hazards";
@@ -117,6 +122,9 @@ type Props = {
     pitchDeg: number;
   } | null;
   previewLabel?: string | null;
+  /** Result-driven place/time focus. The request id makes repeated renders idempotent. */
+  outcomeFocus?: OutcomeFocusRequest | null;
+  onOutcomeFocusTime?: (simulationTimeS: number) => void;
   /** Lightweight camera telemetry for the desktop viewport HUD. */
   onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => void;
 };
@@ -235,6 +243,8 @@ export function Globe({
   directRenderFrame,
   previewCamera,
   previewLabel,
+  outcomeFocus,
+  onOutcomeFocusTime,
   onCameraTelemetry,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -249,6 +259,9 @@ export function Globe({
   const staticHazardControllerRef = useRef<StaticHazardController<Cesium.Entity> | null>(null);
   const tsunamiAnalyticalControllerRef = useRef<TsunamiAnalyticalController<Cesium.Entity> | null>(null);
   const tsunamiSourceControllerRef = useRef<TsunamiSourceController<Cesium.Entity> | null>(null);
+  const outcomeFocusControllerRef = useRef<OutcomeFocusController | null>(null);
+  const outcomeFocusTimeSinkRef = useRef(onOutcomeFocusTime);
+  outcomeFocusTimeSinkRef.current = onOutcomeFocusTime;
   const runupOverlayControllerRef = useRef<
     RunupOverlayController<
       Cesium.BufferPolylineCollection,
@@ -359,6 +372,14 @@ export function Globe({
       viewerGenerationRef.current,
     );
     lifecycle.ownSystem(() => tsunamiSourceControllerRef.current?.destroy());
+    outcomeFocusControllerRef.current = new OutcomeFocusController(
+      new CesiumOutcomeFocusHost(
+        viewer,
+        (timeS) => outcomeFocusTimeSinkRef.current?.(timeS),
+      ),
+      viewerGenerationRef.current,
+    );
+    lifecycle.ownSystem(() => outcomeFocusControllerRef.current?.destroy());
     const runupOverlayController = new RunupOverlayController(
       createCesiumRunupOverlayHost(viewer),
     );
@@ -438,6 +459,7 @@ export function Globe({
       staticHazardControllerRef.current = null;
       tsunamiAnalyticalControllerRef.current = null;
       tsunamiSourceControllerRef.current = null;
+      outcomeFocusControllerRef.current = null;
       if (runupOverlayControllerRef.current === runupOverlayController) {
         runupOverlayControllerRef.current = null;
       }
@@ -752,6 +774,17 @@ export function Globe({
       },
     );
   }, [previewCamera, viewerEpoch]);
+
+  useEffect(() => {
+    const controller = outcomeFocusControllerRef.current;
+    if (!controller) return;
+    controller.update(outcomeFocus ?? null, {
+      reference_capture: referenceCaptureEnabled(),
+      reduced_motion:
+        typeof window !== "undefined"
+        && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+    });
+  }, [outcomeFocus, viewerEpoch]);
 
   useEffect(() => {
     const viewer = viewerRef.current;

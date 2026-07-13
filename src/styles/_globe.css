@@ -3,19 +3,21 @@
   grid-area: left;
   min-width: 0;
   min-height: 0;
-  background: var(--inspector-bg);
-  border-right: 1px solid var(--panel-border);
-  padding: 16px 15px 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-active) 2%, transparent), transparent 180px),
+    var(--inspector-bg);
+  border-right: 1px solid var(--divider);
+  padding: 18px 17px 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .app__panel--right {
   grid-area: right;
   border-right: none;
-  border-left: 1px solid var(--panel-border);
+  border-left: 1px solid var(--divider);
 }
 
 .app__domain-summary {
@@ -53,7 +55,8 @@
   min-width: 0;
   min-height: 0;
   background: var(--workspace-bg);
-  border-inline: 1px solid color-mix(in srgb, var(--divider) 72%, transparent);
+  border-inline: 1px solid var(--divider);
+  box-shadow: inset 0 0 60px color-mix(in srgb, var(--crust) 22%, transparent);
 }
 
 .app__viewport-hud,
@@ -61,10 +64,10 @@
   position: absolute;
   z-index: 45;
   border: 1px solid color-mix(in srgb, var(--divider) 82%, transparent);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--viewport-hud);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--crust) 34%, transparent);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--crust) 38%, transparent);
+  backdrop-filter: blur(14px) saturate(120%);
 }
 
 .app__viewport-legend,
@@ -73,16 +76,16 @@
   z-index: 45;
   bottom: 18px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--viewport-hud);
   box-shadow: 0 12px 30px color-mix(in srgb, var(--crust) 38%, transparent);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(14px) saturate(120%);
 }
 
 .app__viewport-legend {
   left: 18px;
-  width: 220px;
-  padding: 10px 12px 9px;
+  width: 244px;
+  padding: 12px 14px 11px;
   transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
@@ -102,8 +105,8 @@
 }
 
 .app__viewport-legend-ramp {
-  height: 8px;
-  margin: 7px 0 3px;
+  height: 10px;
+  margin: 9px 0 5px;
   border: 1px solid color-mix(in srgb, #ffffff 24%, transparent);
   background: linear-gradient(90deg, #132a74, #1b87c9 27%, #85e5e2 48%, #f2e85b 65%, #f37c30 82%, #b80f42);
 }
@@ -129,8 +132,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 188px;
-  padding: 9px 11px;
+  min-width: 210px;
+  padding: 11px 13px;
 }
 
 .app__viewport-telemetry > div:last-child {
@@ -184,19 +187,63 @@
 }
 
 .app__viewport-hud--source {
-  top: 14px;
-  left: 14px;
+  top: 16px;
+  left: 16px;
   display: flex;
   flex-direction: column;
   max-width: min(360px, calc(100% - 150px));
-  padding: 8px 10px;
+  padding: 11px 13px;
   pointer-events: none;
+}
+
+.app__viewport-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app__viewport-hud--source .app__viewport-time span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border: 1px solid color-mix(in srgb, var(--accent-active) 42%, var(--divider));
+  border-radius: var(--r-sm);
+  color: var(--accent-active);
+  font-size: 17px;
+}
+
+.app__viewport-hud--source .app__viewport-time strong {
+  color: var(--text);
+  font-family: "Segoe UI Variable", "Inter", system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.app__viewport-hud--source > small {
+  margin: -2px 0 4px 34px;
+  color: var(--subtext);
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
+.app__viewport-hud--source .app__viewport-source-name {
+  max-width: 320px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--divider) 76%, transparent);
+  color: var(--subtext);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .app__viewport-hud--source span {
   overflow: hidden;
   color: var(--text);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -205,17 +252,17 @@
 .app__viewport-hud--source strong {
   color: var(--subtext);
   font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-  font-size: 10px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
 .app__viewport-layers {
-  top: 14px;
-  right: 14px;
-  min-height: 34px;
-  padding: 6px 10px;
+  top: 16px;
+  right: 16px;
+  min-height: 38px;
+  padding: 8px 12px;
   color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .app__globe-stack {
@@ -433,6 +480,7 @@
 
 .app__globe-status {
   position: absolute;
+  z-index: 50;
   top: 12px;
   left: 12px;
   padding: 6px 10px;

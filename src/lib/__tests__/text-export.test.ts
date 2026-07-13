@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { generateTextExport } from "../text-export";
 import type { InitialDisplacement } from "../../types/scenario";
+import { getCoastalPoints } from "../data";
+import { demoRunupAtPoints } from "../demo";
 
 const MOCK_INITIAL: InitialDisplacement = {
   peak_amplitude_m: 1500,
@@ -31,7 +33,7 @@ describe("generateTextExport", () => {
     expect(report).toContain("Chicxulub Impact");
     expect(report).toContain("Range 2022");
     expect(report).toContain("Provenance");
-    expect(report).toContain("Cataclysm v0.10.2");
+    expect(report).toContain("Cataclysm v0.10.3");
     expect(report).toContain("Generated: 2026-06-28T00:00:00.000Z");
     expect(report).toContain("Scenario type: Asteroid");
     expect(report).toContain("Solver mode: SWE snapshot playback");
@@ -72,5 +74,39 @@ describe("generateTextExport", () => {
     expect(report).toContain("151.2000° W");
     expect(report).not.toContain("-33");
     expect(report).not.toContain("-151");
+  });
+
+  it("exports the same qualified coastal place, time, reach, and limitation story", () => {
+    const runupResults = demoRunupAtPoints({
+      source: MOCK_INITIAL.center,
+      initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
+      cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
+      is_impact: true,
+      mean_depth_m: 4_000,
+      time_s: Number.MAX_SAFE_INTEGER,
+      points: getCoastalPoints().slice(0, 2),
+    });
+    const report = generateTextExport({
+      initial: MOCK_INITIAL,
+      sourceKind: "Asteroid",
+      timeS: Number.MAX_SAFE_INTEGER,
+      runupResults,
+    });
+    expect(report).toContain("Outcome Summary");
+    expect(report).toContain("Maximum affected named coast");
+    expect(report).toContain("First affected named coast");
+    expect(report).toContain("Nearest affected named coast");
+    expect(report).toContain("Farthest affected named coast in screening set");
+    expect(report).toContain("not a continuous inundation footprint");
+  });
+
+  it("never exports earthquake source geometry as a cavity", () => {
+    const report = generateTextExport({
+      initial: MOCK_INITIAL,
+      sourceKind: "Earthquake",
+      timeS: 0,
+    });
+    expect(report).toContain("Source region radius");
+    expect(report).not.toContain("Cavity radius");
   });
 });

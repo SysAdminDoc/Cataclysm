@@ -36,6 +36,7 @@ import {
   type ScenarioLibraryPreferences,
 } from "./lib/scenario-library";
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
+import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
@@ -346,10 +347,12 @@ export default function App() {
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple");
   const [customEditorOpen, setCustomEditorOpen] = useState(false);
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
+  const [outcomeFocus, setOutcomeFocus] = useState<OutcomeFocusRequest | null>(null);
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const lastCameraUpdateAt = useRef(0);
+  const outcomeFocusRequestId = useRef(0);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -368,6 +371,26 @@ export default function App() {
   const startupScenarioHandled = useRef(false);
   const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
 
+  const handleOutcomeFocus = useCallback((place: {
+    name: string;
+    lat: number;
+    lon: number;
+    range_m: number;
+    arrival_time_s: number;
+  }) => {
+    outcomeFocusRequestId.current += 1;
+    setOutcomeFocus({
+      request_id: `outcome-${outcomeFocusRequestId.current}`,
+      place: {
+        label: place.name,
+        lat_deg: place.lat,
+        lon_deg: place.lon,
+        range_m: Math.max(100_000, Math.min(2_500_000, place.range_m * 0.45)),
+      },
+      simulation_time_s: place.arrival_time_s,
+    });
+  }, []);
+
   useEffect(() => {
     if (!referenceCaptureMode) return;
     const handleReferenceView = (event: Event) => {
@@ -382,6 +405,9 @@ export default function App() {
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
+  useEffect(() => {
+    setOutcomeFocus(null);
+  }, [slotA.initial]);
   const timelineDurationS = sweSnapshots?.at(-1)?.time_s ?? 6 * 3600;
 
   useEffect(() => {
@@ -1099,6 +1125,7 @@ export default function App() {
       )}
       <header className="app__header">
         <div className="app__brand">
+          <span className="app__brand-mark" aria-hidden="true">≋</span>
           <div className="app__brand-copy">
             <h1 className="app__title">Cataclysm</h1>
             <span className="app__tagline">Planetary hazard simulator</span>
@@ -1283,6 +1310,7 @@ export default function App() {
                 const ok = downloadTextExport({
                   ...exportMetaA(),
                   runupResults: slotA.runupResults,
+                  sourceKind: activeScenarioKindA,
                 });
                 showToast(ok ? "Saved text results." : "Export blocked by numerical-integrity checks.", ok ? "info" : "error");
               }}
@@ -1485,6 +1513,8 @@ export default function App() {
                 previewCamera={libraryPreviewPending ? libraryPreviewCamera : null}
                 previewLabel={libraryPreviewPending ? libraryPreviewLabel : null}
                 onCameraTelemetry={handleCameraTelemetry}
+                outcomeFocus={inHazardMode ? null : outcomeFocus}
+                onOutcomeFocusTime={setTimeS}
               />
               {compareMode && <div className="app__globe-tag">Slot A</div>}
             </div>
@@ -1505,8 +1535,13 @@ export default function App() {
             )}
           </div>
         </Suspense>
-        <div className="app__viewport-hud app__viewport-hud--source">
-          <span>{viewportSourceLabel}</span>
+        <div className="app__viewport-hud app__viewport-hud--source" aria-label={`Scenario time T plus ${Math.round(timeS / 60)} minutes`}>
+          <div className="app__viewport-time">
+            <span aria-hidden="true">◷</span>
+            <strong>T+{Math.round(timeS / 60)} min</strong>
+          </div>
+          <small>Scenario time</small>
+          <span className="app__viewport-source-name">{viewportSourceLabel}</span>
           {inHazardMode && hazardCenter && <strong>{hazardCenter.lat.toFixed(2)}°, {hazardCenter.lon.toFixed(2)}°</strong>}
           {!inHazardMode && slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}°, {slotA.initial.center.lon_deg.toFixed(2)}°</strong>}
         </div>
@@ -1695,20 +1730,52 @@ export default function App() {
           canAnimate={Boolean(directRenderReplay)}
           workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
         />}
-        {inspectorTab === "results" && !inHazardMode && <ResultsPanel initial={slotA.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindA} runupResults={slotA.runupResults} />}
-        {inspectorTab === "results" && !inHazardMode && <AttenuationChart
+        {inspectorTab === "results" && !inHazardMode && <ResultsPanel
           initial={slotA.initial}
-          isImpact={activeScenarioKindA === "Asteroid"}
           timeS={timeS}
+          onTimeChange={setTimeS}
+          showTimeline={false}
+          sourceKind={activeScenarioKindA}
           runupResults={slotA.runupResults}
+          onFocusOutcome={handleOutcomeFocus}
+          scienceContent={<AttenuationChart
+            initial={slotA.initial}
+            isImpact={activeScenarioKindA === "Asteroid"}
+            timeS={timeS}
+            runupResults={slotA.runupResults}
+          />}
+          validationContent={<DartOverlay
+            presetId={slotA.activePresetId}
+            timeS={timeS}
+            initial={slotA.initial}
+            sweSnapshots={sweSnapshots}
+          />}
         />}
         {inspectorTab === "results" && compareMode && (
           <div className="app__compare-rail">
             <div className="app__compare-rail-label">Slot B readout</div>
-            <ResultsPanel initial={slotB.initial} timeS={timeS} onTimeChange={setTimeS} showTimeline={false} sourceKind={activeScenarioKindB} runupResults={slotB.runupResults} />
+            <ResultsPanel
+              initial={slotB.initial}
+              timeS={timeS}
+              onTimeChange={setTimeS}
+              showTimeline={false}
+              sourceKind={activeScenarioKindB}
+              runupResults={slotB.runupResults}
+              scienceContent={<AttenuationChart
+                initial={slotB.initial}
+                isImpact={activeScenarioKindB === "Asteroid"}
+                timeS={timeS}
+                runupResults={slotB.runupResults}
+              />}
+              validationContent={<DartOverlay
+                presetId={slotB.activePresetId}
+                timeS={timeS}
+                initial={slotB.initial}
+                sweSnapshots={null}
+              />}
+            />
           </div>
         )}
-        {inspectorTab === "results" && !inHazardMode && <DartOverlay presetId={slotA.activePresetId} timeS={timeS} initial={slotA.initial} sweSnapshots={sweSnapshots} />}
         {inspectorTab === "layers" && <LayerInspector
           domain={hazardMode}
           hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}

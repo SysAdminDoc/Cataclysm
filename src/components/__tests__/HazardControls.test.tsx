@@ -249,7 +249,7 @@ describe("HazardControls", () => {
     expect(onNuclearChange).toHaveBeenLastCalledWith(expect.objectContaining({ yieldKt: 100000 }));
   });
 
-  it("presents casualties as order-of-magnitude estimates, not exact integers", () => {
+  it("presents direct consequences as order-of-magnitude display bands, not confidence intervals", () => {
     render(
       <HazardControls
         mode="nuclear"
@@ -266,9 +266,34 @@ describe("HazardControls", () => {
         onDetonate={noop}
       />,
     );
-    // 112,019 -> ~110,000 (2 significant figures)
-    expect(screen.getByText("~110,000")).toBeInTheDocument();
+    expect(screen.getByText("100,000–200,000")).toBeInTheDocument();
+    expect(screen.getByText("200,000–300,000")).toBeInTheDocument();
     expect(screen.queryByText("112,019")).not.toBeInTheDocument();
-    expect(screen.getByText(/order-of-magnitude estimate at/i)).toBeInTheDocument();
+    expect(screen.getByText(/not statistical confidence intervals/i)).toHaveTextContent(
+      /uniformly distributed, with fixed indoor\/outdoor occupancy and shielding factors/i,
+    );
+  });
+
+  it("labels latent-effect ranges as display bands with their model assumptions", () => {
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={nuclearResult}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+    expect(screen.getByText("2,000–3,000")).toBeInTheDocument();
+    expect(screen.getByText("800–900")).toBeInTheDocument();
+    expect(screen.getByText(/BEIR VII/i)).toHaveTextContent(/not confidence intervals/i);
+    expect(screen.getByText(/BEIR VII/i)).toHaveTextContent(/50% outer-zone survivor assumption/i);
   });
 });

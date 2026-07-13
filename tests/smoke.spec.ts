@@ -82,6 +82,7 @@ test.describe("Cataclysm browser preview", () => {
     await expect(globe).toHaveAttribute("data-imagery-status", "fallback", { timeout: 20_000 });
     await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("tab", { name: "Results" }).click();
+    await page.getByRole("tab", { name: "Science" }).click();
     await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible();
   });
 
@@ -116,7 +117,7 @@ test.describe("Cataclysm browser preview", () => {
 
     await page.getByRole("button", { name: "Run & Watch" }).click();
     await expect(app).toHaveAttribute("data-domain", "asteroid");
-    await expect(page.getByText("Universal library", { exact: true })).toBeVisible();
+    await expect(page.getByText("Scenarios", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Continue recent/i })).toBeEnabled();
   });
 
@@ -141,9 +142,13 @@ test.describe("Cataclysm browser preview", () => {
     await expect(journey).toContainText("Understand");
     await expect(journey).toHaveAttribute("aria-label", "Run and Watch: Understand", { timeout: 10_000 });
     await expect(page.getByRole("tab", { name: "Results" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("What happened?")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("slider", { name: "Scenario timeline scrubber" })).toHaveCount(1);
     await expect(page.getByRole("slider", { name: "Simulation timeline scrubber" })).toHaveCount(0);
+    const storyScrubber = page.getByRole("slider", { name: "Scenario timeline scrubber" });
+    const timeBeforeFocus = await storyScrubber.inputValue();
+    await page.getByRole("button", { name: /First affected named coast/i }).click();
+    await expect.poll(() => storyScrubber.inputValue()).not.toBe(timeBeforeFocus);
 
     await page.getByRole("button", { name: "Run & Watch" }).click();
     await expect(journey).toHaveAttribute("aria-label", "Run and Watch: Watch");
@@ -348,7 +353,7 @@ test.describe("Accessibility (axe-core WCAG A/AA)", () => {
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
     await page.getByRole("tab", { name: "Results" }).click();
-    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("What happened?")).toBeVisible({ timeout: 10_000 });
 
     const { violations } = await axeScan(page);
     expect(violations).toEqual([]);

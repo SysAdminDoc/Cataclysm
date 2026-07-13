@@ -93,8 +93,8 @@ a {
 
 .app {
   display: grid;
-  grid-template-columns: minmax(292px, 306px) minmax(560px, 1fr) minmax(338px, 356px);
-  grid-template-rows: auto 58px minmax(0, 1fr) 86px 30px;
+  grid-template-columns: minmax(306px, 354px) minmax(560px, 1fr) minmax(360px, 394px);
+  grid-template-rows: auto 72px minmax(0, 1fr) 104px 32px;
   grid-template-areas:
     "banner banner banner"
     "header header header"
@@ -107,7 +107,7 @@ a {
 }
 
 .app[data-compare="true"] {
-  grid-template-columns: minmax(230px, 250px) minmax(680px, 1fr) minmax(280px, 312px);
+  grid-template-columns: minmax(250px, 286px) minmax(680px, 1fr) minmax(318px, 350px);
 }
 
 /* HR-00 capture mode is activated only after the runner configures the normal
@@ -143,12 +143,12 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   align-items: center;
   gap: 0;
   min-width: 0;
-  padding: 0 12px;
+  padding: 0 18px;
   overflow: hidden;
   background: var(--chrome-bg);
   border-top: 1px solid var(--divider);
   color: var(--subtext);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
 }
 
@@ -158,7 +158,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   gap: 7px;
   min-width: 0;
   height: 100%;
-  padding: 0 14px;
+  padding: 0 18px;
   border-right: 1px solid color-mix(in srgb, var(--surface1) 38%, transparent);
   white-space: nowrap;
 }
@@ -204,35 +204,37 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 18px;
   min-width: 0;
-  min-height: 60px;
+  min-height: 72px;
   padding: 0 18px;
-  border-bottom: 1px solid var(--panel-border);
-  background: var(--chrome-bg);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--surface2) 22%, transparent);
+  border-bottom: 1px solid var(--divider);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-active) 3%, transparent), transparent 38%),
+    var(--chrome-bg);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--crust) 24%, transparent);
 }
 
 .app__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   flex: 0 0 auto;
-  min-width: max-content;
+  min-width: 286px;
 }
 
 .app__brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--accent-active) 14%, var(--chrome-bg));
-  border: 1px solid color-mix(in srgb, var(--accent-active) 58%, var(--divider));
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-active) 18%, var(--metric-bg)), var(--chrome-bg));
+  border: 1px solid color-mix(in srgb, var(--accent-active) 48%, var(--divider));
   color: var(--accent-active);
   font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-  font-size: 11px;
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -245,7 +247,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 
 .app__title {
   margin: 0;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 780;
   letter-spacing: 0.7px;
   line-height: 1.05;
@@ -254,7 +256,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 
 .app__tagline {
   color: var(--subtext);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 650;
   letter-spacing: 1.25px;
   line-height: 1.2;
@@ -263,7 +265,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 
 .app__version {
   color: var(--subtext);
-  font-size: 10px;
+  font-size: 12px;
   margin-left: 2px;
 }
 
@@ -275,7 +277,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
   flex: 1 1 auto;
   min-width: 0;
   overflow: visible;
@@ -290,18 +292,18 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .app__command-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   flex: 0 0 auto;
   min-width: 0;
-  padding: 3px;
+  padding: 4px;
   border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--inspector-bg) 78%, transparent);
-  border: 1px solid var(--divider);
+  background: color-mix(in srgb, var(--inspector-bg) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--divider) 86%, transparent);
   box-shadow: none;
 }
 
 .app__command-group--hazard {
-  margin-left: clamp(18px, 5vw, 88px);
+  margin-left: 0;
   margin-right: auto;
 }
 
@@ -311,12 +313,12 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 }
 
 .app__export-trigger {
-  min-height: 36px;
-  padding: 7px 11px;
+  min-height: 40px;
+  padding: 8px 13px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--inspector-bg) 78%, transparent);
   border-color: var(--divider);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 680;
 }
 
@@ -350,12 +352,12 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 
 .icon-button {
   flex: 0 0 auto;
-  min-height: 30px;
-  font-size: 12px;
+  min-height: 36px;
+  font-size: 13px;
   font-weight: 650;
-  padding: 6px 9px;
-  background: color-mix(in srgb, var(--surface0) 48%, transparent);
-  border: 1px solid color-mix(in srgb, var(--panel-border) 76%, transparent);
+  padding: 7px 11px;
+  background: color-mix(in srgb, var(--surface0) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 86%, transparent);
   border-radius: var(--r-md);
   color: var(--text);
   cursor: pointer;
@@ -425,15 +427,17 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .simulation-transport {
   grid-area: transport;
   display: grid;
-  grid-template-columns: auto 128px minmax(220px, 1fr) 84px 90px 156px 68px;
+  grid-template-columns: auto 132px minmax(280px, 1fr) 86px 90px 170px 76px;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
-  padding: 10px 16px;
-  background: color-mix(in srgb, var(--chrome-bg) 94%, var(--inspector-bg));
+  padding: 14px 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-active) 2%, transparent), transparent),
+    color-mix(in srgb, var(--chrome-bg) 96%, var(--inspector-bg));
   border-top: 1px solid var(--divider);
   color: var(--subtext);
-  box-shadow: 0 -10px 28px color-mix(in srgb, var(--crust) 22%, transparent);
+  box-shadow: 0 -12px 36px color-mix(in srgb, var(--crust) 36%, transparent);
 }
 
 .simulation-transport__frame {
@@ -449,7 +453,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .simulation-transport__effect-copy > span,
 .simulation-transport__effect-model > span {
   color: var(--subtext);
-  font-size: var(--type-micro);
+  font-size: var(--type-caption);
   font-weight: 760;
   letter-spacing: 0.75px;
   text-transform: uppercase;
@@ -465,7 +469,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .simulation-transport__details {
   min-height: var(--control-md);
   padding-inline: 10px;
-  font-size: var(--type-caption);
+  font-size: var(--type-body);
   font-weight: 700;
 }
 
@@ -518,16 +522,17 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 
 .simulation-transport__play,
 .simulation-transport__reset {
-  width: 42px;
-  min-height: 42px;
+  width: 48px;
+  min-height: 48px;
   padding: 0;
   border-radius: var(--r-sm);
 }
 
 .simulation-transport__play {
-  color: var(--crust);
-  background: var(--accent-active);
+  color: var(--on-accent);
+  background: linear-gradient(145deg, var(--accent-active), var(--sapphire));
   border-color: var(--accent-active);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent-active) 22%, transparent);
 }
 
 .simulation-transport__clock {
@@ -542,7 +547,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .simulation-transport__clock strong {
   color: var(--text);
   font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-  font-size: 20px;
+  font-size: 22px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
   line-height: 1.1;
@@ -551,7 +556,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .simulation-transport__clock span,
 .simulation-transport__speed > span,
 .simulation-transport__solver > div > span {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.85px;
   text-transform: uppercase;
@@ -567,7 +572,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
-  font-size: 10px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -624,7 +629,7 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
 .simulation-transport__solver strong {
   overflow: hidden;
   color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

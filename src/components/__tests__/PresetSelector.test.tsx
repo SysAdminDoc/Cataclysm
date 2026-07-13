@@ -116,11 +116,15 @@ describe("PresetSelector", () => {
   });
 
   it("marks the active preset with aria-pressed", () => {
-    render(<PresetSelector presets={PRESETS} activeId="tohoku" onSelect={() => {}} />);
+    render(<PresetSelector presets={PRESETS} activeId="tohoku" onSelect={() => {}} onRunActive={() => {}} />);
     const pressed = screen.getAllByRole("button", { pressed: true });
     const presetBtn = pressed.find((b) => b.classList.contains("preset-card"));
     expect(presetBtn).toBeDefined();
     expect(presetBtn).toHaveTextContent("Tōhoku 2011");
+    const selectedScenario = screen.getByRole("region", { name: "Selected scenario" });
+    expect(selectedScenario).toHaveTextContent("Tōhoku 2011");
+    expect(selectedScenario).toHaveTextContent("M_w 9.1 · 2011-03-11");
+    expect(selectedScenario).toHaveTextContent("M 9.1 megathrust earthquake off Japan.");
   });
 
   it("shows what-if badge on speculative presets", () => {

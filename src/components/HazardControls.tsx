@@ -14,17 +14,14 @@ import {
 } from "../hazards";
 import type { WorkspaceMode } from "../lib/settings";
 
-/** Round to `sig` significant figures so educational casualty estimates read as
- * order-of-magnitude values rather than false-precision exact integers. */
-function roundSig(n: number, sig = 2): number {
-  if (!Number.isFinite(n) || n === 0) return 0;
-  const mag = Math.floor(Math.log10(Math.abs(n)));
-  const factor = Math.pow(10, sig - 1 - mag);
-  return Math.round(n * factor) / factor;
-}
-
-function approxCount(n: number): string {
-  return `~${roundSig(n).toLocaleString()}`;
+/** Place a point estimate in its one-significant-digit display bucket. This
+ * removes false precision without manufacturing a statistical uncertainty. */
+function magnitudeDisplayBand(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  const magnitude = Math.pow(10, Math.floor(Math.log10(n)));
+  const lower = Math.floor(n / magnitude) * magnitude;
+  const upper = lower + magnitude;
+  return `${lower.toLocaleString()}–${upper.toLocaleString()}`;
 }
 
 type NumericEntry = {
@@ -406,22 +403,26 @@ export function HazardControls({
           </div>
           {result.casualties && (
             <div className="hazard__casualties">
-              <strong>{approxCount(result.casualties.deaths)}</strong> est. fatalities ·{" "}
-              <strong>{approxCount(result.casualties.injuries)}</strong> injuries
+              <strong>{magnitudeDisplayBand(result.casualties.deaths)}</strong> fatalities ·{" "}
+              <strong>{magnitudeDisplayBand(result.casualties.injuries)}</strong> injuries
               <span className="hazard__casualties-note">
-                order-of-magnitude estimate at {result.casualties.populationDensity.toLocaleString()} /km²
-                uniform density (educational only)
+                Order-of-magnitude display bands around one model estimate—not statistical
+                confidence intervals. Assumes {result.casualties.populationDensity.toLocaleString()} people/km²
+                uniformly distributed, with fixed indoor/outdoor occupancy and shielding factors
+                (educational only).
               </span>
             </div>
           )}
           {nuclearEffects?.latentCancer && (
             <div className="hazard__casualties">
-              <strong>{approxCount(nuclearEffects.latentCancer.cancers30yr)}</strong> est. latent
+              <strong>{magnitudeDisplayBand(nuclearEffects.latentCancer.cancers30yr)}</strong> latent
               cancer deaths over 30 yr ·{" "}
-              <strong>{approxCount(nuclearEffects.latentCancer.cancers10yr)}</strong> within 10 yr
+              <strong>{magnitudeDisplayBand(nuclearEffects.latentCancer.cancers10yr)}</strong> within 10 yr
               <span className="hazard__casualties-note">
-                BEIR VII linear-no-threshold (~5.5%/Sv) among ~{roundSig(nuclearEffects.latentCancer.exposed).toLocaleString()} survivors;
-                {" "}{approxCount(nuclearEffects.latentCancer.geneticEffects)} hereditary effects (order-of-magnitude estimate)
+                Order-of-magnitude display bands, not confidence intervals. BEIR VII
+                linear-no-threshold (~5.5%/Sv), fixed dose zones, and a 50% outer-zone
+                survivor assumption; {magnitudeDisplayBand(nuclearEffects.latentCancer.exposed)} exposed
+                and {" "}{magnitudeDisplayBand(nuclearEffects.latentCancer.geneticEffects)} hereditary effects.
               </span>
             </div>
           )}

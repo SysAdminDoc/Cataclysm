@@ -68,9 +68,14 @@ for (const theme of THEMES) {
 
     test("results state", async ({ page }) => {
       await openWorkspace(page);
-      await page.getByRole("tab", { name: "Results" }).click();
+      await page.getByRole("button", { name: "Run & Watch" }).click();
+      await expect(page.getByText("What happened?")).toBeVisible({ timeout: 20_000 });
       await expect(page.locator("#inspector-panel")).toBeVisible();
-      await assertAccessiblePage(page);
+      for (const detail of ["Outcome", "Science", "Validation"]) {
+        await page.getByRole("tab", { name: detail }).click();
+        await expect(page.getByRole("tabpanel", { name: detail })).toBeVisible();
+        await assertAccessiblePage(page);
+      }
     });
 
     test("layers state", async ({ page }) => {

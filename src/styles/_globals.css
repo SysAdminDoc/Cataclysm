@@ -1,16 +1,16 @@
-/* Catppuccin Mocha palette tokens (dark — default). */
+/* Deep-ocean mission-control palette (dark — default). */
 :root,
 html[data-theme="mocha"] {
-  --base: #1e1e2e;
-  --mantle: #181825;
-  --crust: #11111b;
-  --text: #cdd6f4;
-  --subtext: #a6adc8;
-  --overlay: #7f849c;
+  --base: #09121d;
+  --mantle: #0b1521;
+  --crust: #050b12;
+  --text: #e7eef7;
+  --subtext: #a8b8ca;
+  --overlay: #8598aa;
   --overlay0: var(--overlay);
-  --surface0: #313244;
-  --surface1: #45475a;
-  --surface2: #585b70;
+  --surface0: #172636;
+  --surface1: #23374a;
+  --surface2: #354b60;
   --blue: #89b4fa;
   --lavender: #b4befe;
   --sapphire: #74c7ec;
@@ -35,11 +35,11 @@ html[data-theme="mocha"] {
   --focus-ring: color-mix(in srgb, var(--sapphire) 42%, transparent);
   --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.48);
   --shadow-md: 0 12px 36px rgba(0, 0, 0, 0.28);
-  --chrome-bg: #091019;
-  --workspace-bg: #070c12;
-  --inspector-bg: #0e1721;
-  --metric-bg: #14212d;
-  --divider: #263746;
+  --chrome-bg: #07111c;
+  --workspace-bg: #050b12;
+  --inspector-bg: #0b1622;
+  --metric-bg: #101e2c;
+  --divider: #223447;
   --accent-active: #6fd2ff;
   --accent-text: var(--sapphire);
   --success-text: var(--success);
@@ -50,7 +50,7 @@ html[data-theme="mocha"] {
      stays AA-legible; kept as a token so the two themes stay in sync. */
   --control-active-bg: #006080;
   --control-active-fg: #ffffff;
-  --viewport-hud: rgba(8, 16, 24, 0.9);
+  --viewport-hud: rgba(6, 14, 23, 0.88);
   --cinematic-bg: #030711;
   --cinematic-bg-raised: #081423;
   --cinematic-text: #eef7ff;
@@ -68,14 +68,14 @@ html[data-theme="mocha"] {
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
-  --control-sm: 30px;
-  --control-md: 36px;
-  --control-lg: 42px;
-  --type-micro: 9px;
-  --type-caption: 10px;
-  --type-label: 11px;
+  --control-sm: 32px;
+  --control-md: 38px;
+  --control-lg: 44px;
+  --type-micro: 12px;
+  --type-caption: 12px;
+  --type-label: 12px;
   --type-body: 12px;
-  --type-title: 14px;
+  --type-title: 15px;
   --surface-recessed: color-mix(in srgb, var(--crust) 78%, var(--mantle));
   --surface-raised: color-mix(in srgb, var(--metric-bg) 88%, var(--inspector-bg));
   --hairline: color-mix(in srgb, var(--divider) 82%, transparent);
@@ -171,19 +171,19 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 34px;
+  min-height: 36px;
   background: var(--panel-bg-strong);
   border: 1px solid var(--panel-border);
   border-radius: var(--r-md);
-  padding: 7px 12px;
+  padding: 8px 12px;
   cursor: pointer;
   transition: background 140ms ease, transform 100ms ease, border-color 140ms ease,
     box-shadow 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
 button:hover:not(:disabled) {
-  background: var(--surface1);
-  border-color: var(--lavender);
+  background: color-mix(in srgb, var(--surface1) 76%, var(--panel-bg-strong));
+  border-color: color-mix(in srgb, var(--accent-active) 58%, var(--panel-border));
   transform: translateY(-1px);
 }
 

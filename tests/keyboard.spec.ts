@@ -42,7 +42,7 @@ test.describe("Keyboard-only golden path", () => {
     const resultsTab = page.getByRole("tab", { name: "Results" });
     await resultsTab.focus();
     await page.keyboard.press("Enter");
-    await expect(page.locator(".results").filter({ hasText: "Energy" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("What happened?")).toBeVisible({ timeout: 10_000 });
 
     // 2. Scrub the timeline with arrow keys.
     const scrubber = page.getByRole("slider", { name: "Scenario timeline scrubber" });

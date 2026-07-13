@@ -4,10 +4,11 @@
   top: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: -16px -15px 0;
-  padding: 14px 15px 0;
-  background: color-mix(in srgb, var(--inspector-bg) 96%, transparent);
+  gap: 14px;
+  margin: -18px -17px 0;
+  padding: 17px 17px 0;
+  background: color-mix(in srgb, var(--inspector-bg) 97%, transparent);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--divider);
 }
 
@@ -19,7 +20,7 @@
 
 .inspector__identity span {
   color: var(--overlay);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -28,7 +29,7 @@
 .inspector__identity strong {
   overflow: hidden;
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -47,14 +48,14 @@
 }
 
 .workspace-mode button {
-  min-height: 28px;
-  padding: 4px 6px;
+  min-height: 32px;
+  padding: 6px 7px;
   border: 0;
   border-right: 1px solid var(--divider);
   border-radius: 0;
   background: color-mix(in srgb, var(--metric-bg) 70%, transparent);
   color: var(--subtext);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 760;
   letter-spacing: 0.55px;
   text-transform: uppercase;
@@ -71,13 +72,13 @@
 
 .inspector__tabs button {
   position: relative;
-  min-height: 36px;
-  padding: 7px 8px 10px;
+  min-height: 42px;
+  padding: 9px 8px 12px;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--subtext);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.8px;
   text-transform: uppercase;
@@ -111,8 +112,8 @@
 .inspector__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding-top: 16px;
+  gap: 18px;
+  padding-top: 18px;
 }
 
 .journey-progress {
@@ -229,8 +230,8 @@
   grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
-  min-height: 52px;
-  padding: 8px 10px;
+  min-height: 60px;
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--divider) 76%, transparent);
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--metric-bg) 54%, transparent);
@@ -259,20 +260,20 @@
 
 .layer-inspector__row strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .layer-inspector__row small {
   overflow: hidden;
   color: var(--subtext);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .layer-inspector__status {
   color: var(--overlay);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.6px;
   text-transform: uppercase;

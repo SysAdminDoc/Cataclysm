@@ -1,6 +1,12 @@
+import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { InitialDisplacement } from "../types/scenario";
 import type { RunupAtPointResult } from "../lib/tauri";
 import { exportRunupCsv } from "../lib/export";
+import {
+  buildCoastalOutcomeStory,
+  formatOutcomeTime,
+  type CoastalOutcomePlace,
+} from "../lib/result-story";
 import { GlossaryTip } from "./GlossaryTip";
 
 /** The four modelled tsunami source families. `null` covers presets/custom
@@ -12,15 +18,21 @@ type Props = {
   timeS: number;
   onTimeChange: (s: number) => void;
   showTimeline?: boolean;
-  /** Discrete source family, used to label metrics correctly (an earthquake
-   * has no impact "cavity") and to lead with a plain-language outcome. */
+  /** Discrete source family, used to label metrics correctly. */
   sourceKind?: SourceKind;
   runupResults?: RunupAtPointResult[];
+  scienceContent?: ReactNode;
+  validationContent?: ReactNode;
+  onFocusOutcome?: (place: CoastalOutcomePlace) => void;
 };
 
-/** Source-aware label for `cavity_radius_m`: a real cavity only exists for
- * impact/detonation sources; for fault and slide sources the same field is the
- * effective generating-region radius, so calling it a "cavity" is misleading. */
+type ResultView = "outcome" | "science" | "validation";
+const RESULT_VIEWS: { id: ResultView; label: string }[] = [
+  { id: "outcome", label: "Outcome" },
+  { id: "science", label: "Science" },
+  { id: "validation", label: "Validation" },
+];
+
 function cavityLabel(kind: SourceKind): { term: string; text: string } {
   switch (kind) {
     case "Earthquake":
@@ -31,8 +43,6 @@ function cavityLabel(kind: SourceKind): { term: string; text: string } {
   }
 }
 
-/** Plain-language "what happened" lead so Results opens with the outcome rather
- * than internal quantities. Kept honest and source-appropriate. */
 function describeOutcome(
   initial: InitialDisplacement,
   kind: SourceKind,
@@ -60,7 +70,7 @@ function describeOutcome(
       };
     case "Landslide":
       return {
-        headline: `Landslide-generated wave`,
+        headline: "Landslide-generated wave",
         detail: `The moving mass pushes up a ${ampText} initial wave, releasing about ${energyText} (tsunami-equivalent M ${mw}).`,
       };
     default:
@@ -102,7 +112,43 @@ function formatCoord(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`;
 }
 
-export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true, sourceKind = null, runupResults = [] }: Props) {
+function handleTabKeys(
+  event: KeyboardEvent<HTMLButtonElement>,
+  active: ResultView,
+  setActive: (view: ResultView) => void,
+) {
+  const current = RESULT_VIEWS.findIndex((view) => view.id === active);
+  let next = current;
+  if (event.key === "ArrowRight") next = (current + 1) % RESULT_VIEWS.length;
+  else if (event.key === "ArrowLeft") next = (current - 1 + RESULT_VIEWS.length) % RESULT_VIEWS.length;
+  else if (event.key === "Home") next = 0;
+  else if (event.key === "End") next = RESULT_VIEWS.length - 1;
+  else return;
+  event.preventDefault();
+  setActive(RESULT_VIEWS[next].id);
+  const tabs = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+  tabs?.[next]?.focus();
+}
+
+export function ResultsPanel({
+  initial,
+  timeS,
+  onTimeChange,
+  showTimeline = true,
+  sourceKind = null,
+  runupResults = [],
+  scienceContent,
+  validationContent,
+  onFocusOutcome,
+}: Props) {
+  const [view, setView] = useState<ResultView>("outcome");
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const tabsId = useId();
+  useEffect(() => {
+    setView("outcome");
+    setSelectedPlaceId(null);
+  }, [initial]);
+
   if (!initial) {
     return (
       <div className="section">
@@ -130,126 +176,284 @@ export function ResultsPanel({ initial, timeS, onTimeChange, showTimeline = true
   const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m) : null;
   const depth = formatLength(initial.center.depth_m ?? 0);
   const totalT = 6 * 3600;
-  // Coerce a non-finite timeS to 0 so a bad upstream value can't apply
-  // scaleX(NaN) (which collapses the fill bar) or render "NaN minutes".
-  const safeTimeS = Number.isFinite(timeS) ? timeS : 0;
+  const safeTimeS = Number.isFinite(timeS) ? Math.max(0, timeS) : 0;
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
   const outcome = describeOutcome(initial, sourceKind);
   const cavity_label = cavityLabel(sourceKind);
+  const story = buildCoastalOutcomeStory(runupResults, safeTimeS);
   const coastalResults = [...runupResults]
-    .filter((result) => result.has_arrived)
+    .filter((result) => Number.isFinite(result.runup_m) && result.runup_m >= 0.1)
     .sort((left, right) => right.runup_m - left.runup_m)
-    .slice(0, 3);
+    .slice(0, 5);
+  const panelId = `${tabsId}-${view}`;
+
+  const focusOutcome = (place: CoastalOutcomePlace) => {
+    setSelectedPlaceId(place.id);
+    onTimeChange(place.arrival_time_s);
+    onFocusOutcome?.(place);
+  };
 
   return (
     <>
-      <div className="section">
+      <div className="section results__workspace">
         <div className="section__title">
-          <span>What happened?</span>
-          <span className="section__badge" data-tone="success">Ready</span>
-        </div>
-        <div className="results__outcome">
-          <strong className="results__outcome-headline">{outcome.headline}</strong>
-          <p className="results__outcome-detail">{outcome.detail}</p>
-          <span className="results__outcome-note">
-            Modelled first-order tsunami source — educational estimate, not a forecast.
+          <span>Results</span>
+          <span
+            className="section__badge"
+            data-tone={story.confidence === "low" ? "muted" : "success"}
+          >
+            {story.confidence === "unavailable" ? "Source ready" : `${story.confidence} confidence`}
           </span>
         </div>
-        <div className="source-summary" aria-label="Source center">
-          <span>{formatCoord(initial.center.lat_deg, initial.center.lon_deg)}</span>
-          <span>{depth.value} {depth.unit} depth</span>
-        </div>
-        <div className="results">
-          <div className="results__cell" data-tone="primary">
-            <div className="results__label">Energy</div>
-            <div className="results__value">
-              {energy.value}
-              {" "}
-              <span className="results__unit">{energy.unit}</span>
-            </div>
-          </div>
-          <div className="results__cell" data-tone="secondary">
-            <div className="results__label"><GlossaryTip term="mw">Tsunami-equivalent M_w</GlossaryTip></div>
-            <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
-          </div>
-          <div className="results__cell">
-            <div className="results__label"><GlossaryTip term={cavity_label.term}>{cavity_label.text}</GlossaryTip></div>
-            <div className="results__value">
-              {cavity.value}
-              {" "}
-              <span className="results__unit">{cavity.unit}</span>
-            </div>
-          </div>
-          <div className="results__cell">
-            <div className="results__label">Peak source displacement</div>
-            <div className="results__value">
-              {amp.value}
-              {" "}
-              <span className="results__unit">{amp.unit}</span>
-            </div>
-          </div>
-          {wl && (
-            <div className="results__cell results__cell--wide">
-              <div className="results__label">Dominant wavelength</div>
-              <div className="results__value">
-                {wl.value}
-                {" "}
-                <span className="results__unit">{wl.unit}</span>
-              </div>
-            </div>
-          )}
+        <div className="results__tabs" role="tablist" aria-label="Result detail">
+          {RESULT_VIEWS.map((resultView) => {
+            const active = resultView.id === view;
+            return (
+              <button
+                key={resultView.id}
+                id={`${tabsId}-tab-${resultView.id}`}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`${tabsId}-${resultView.id}`}
+                tabIndex={active ? 0 : -1}
+                data-active={active}
+                onClick={() => setView(resultView.id)}
+                onKeyDown={(event) => handleTabKeys(event, view, setView)}
+              >
+                {resultView.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {coastalResults.length > 0 && <div className="section">
-        <div className="section__title">
-          <span>Coastal screening estimates</span>
-          <span className="section__badge" data-tone="muted">Low confidence</span>
-        </div>
-        <p className="results__outcome-note">
-          Illustrative values use nominal or legacy inputs. Expand a point to audit the exact records.
-        </p>
-        <button className="results__export" type="button" onClick={() => exportRunupCsv(runupResults)}>
-          Export coastal CSV with provenance
-        </button>
-        {coastalResults.map((result) => <details className="results__provenance" key={result.id}>
-          <summary>{result.name} · ~{result.runup_m.toFixed(1)} m runup</summary>
-          <dl>
-            <dt>Slope</dt><dd>{result.beach_slope_deg}° ± {result.slope_provenance.uncertainty_value ?? "unknown"} {result.slope_provenance.uncertainty_unit}</dd>
-            <dt>Slope record</dt><dd>{result.slope_provenance.sample_id} / {result.slope_provenance.record_id}</dd>
-            <dt>Depth</dt><dd>{result.offshore_depth_m} m ± {result.depth_provenance.uncertainty_value ?? "unknown"} {result.depth_provenance.uncertainty_unit}</dd>
-            <dt>Depth record</dt><dd>{result.depth_provenance.sample_id} / {result.depth_provenance.record_id}</dd>
-            <dt>Source and method</dt><dd>{result.slope_provenance.source}; {result.slope_provenance.method}</dd>
-            <dt>Datum / resolution / date</dt><dd>{result.slope_provenance.datum}; {result.slope_provenance.resolution}; {result.slope_provenance.observed_or_published}</dd>
-          </dl>
-        </details>)}
-      </div>}
+      <div
+        id={panelId}
+        role="tabpanel"
+        aria-labelledby={`${tabsId}-tab-${view}`}
+        className="results__tabpanel"
+      >
+        {view === "outcome" && (
+          <div className="section">
+            <div className="section__title">
+              <span>What happened?</span>
+              <span className="section__badge" data-tone="success">Ready</span>
+            </div>
+            <article className="results__outcome">
+              <strong className="results__outcome-headline">{outcome.headline}</strong>
+              <p className="results__outcome-detail">{outcome.detail}</p>
+              <span className="results__outcome-note">
+                Modelled first-order tsunami source—educational estimate, not a forecast.
+              </span>
+            </article>
 
-      {showTimeline && <div className="section">
-        <div className="section__title">
-          <span>Timeline</span>
-          <span className="section__badge">{(safeTimeS / 3600).toFixed(2)} h</span>
-        </div>
-        <div className="timeline">
-          <input
-            type="range"
-            min={0}
-            max={totalT}
-            step={60}
-            value={safeTimeS}
-            onChange={(e) => onTimeChange(Number(e.target.value))}
-            aria-label="Scenario timeline scrubber"
-            aria-valuetext={`${Math.round(safeTimeS / 60)} minutes after source event`}
-          />
-          <div className="timeline__bar">
-            <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />
+            <div className="results__key-metrics" aria-label="Outcome summary">
+              {story.maximum && story.maximum.runup_m >= 0.1 ? (
+                <button
+                  type="button"
+                  className="results__metric-card"
+                  data-tone="primary"
+                  aria-label={`Maximum sampled coastal effect, approximately ${story.maximum.runup_m.toFixed(1)} metres at ${story.maximum.name}. Focus place and time.`}
+                  onClick={() => focusOutcome(story.maximum!)}
+                >
+                  <span>Max coastal height</span>
+                  <strong>~{story.maximum.runup_m.toFixed(1)} <small>m</small></strong>
+                  <em>at {story.maximum.name}</em>
+                </button>
+              ) : (
+                <div className="results__metric-card" data-tone="primary">
+                  <span>Peak source displacement</span>
+                  <strong>{amp.value} <small>{amp.unit}</small></strong>
+                  <em>No sampled coast is above 0.1 m</em>
+                </div>
+              )}
+              {story.firstAffected && (
+                <button
+                  type="button"
+                  className="results__metric-card"
+                  data-tone="secondary"
+                  aria-label={`First affected named coast, ${story.firstAffected.name}, ${formatOutcomeTime(story.firstAffected.arrival_time_s)}. Focus place and time.`}
+                  onClick={() => focusOutcome(story.firstAffected!)}
+                >
+                  <span>First named-coast arrival</span>
+                  <strong>{formatOutcomeTime(story.firstAffected.arrival_time_s)}</strong>
+                  <em>{story.firstAffected.name}</em>
+                </button>
+              )}
+              {!story.firstAffected && (
+                <div className="results__metric-card" data-tone="secondary">
+                  <span>First named-coast arrival</span>
+                  <strong>Not available</strong>
+                  <em>Run coastal screening to estimate arrival</em>
+                </div>
+              )}
+            </div>
+
+            <section className="results__places" aria-labelledby={`${panelId}-places-title`}>
+              <div className="results__places-header">
+                <div>
+                  <span id={`${panelId}-places-title`}>Named places</span>
+                  <small>Peak screened coastal height</small>
+                </div>
+                <span>{coastalResults.length} shown</span>
+              </div>
+              {coastalResults.length > 0 ? (
+                <div className="results__places-list">
+                  {coastalResults.map((place) => {
+                    const selected = selectedPlaceId === place.id;
+                    return (
+                      <button
+                        key={place.id}
+                        type="button"
+                        className="results__place"
+                        data-selected={selected}
+                        aria-pressed={selected}
+                        aria-label={`${place.name}, approximately ${place.runup_m.toFixed(1)} metres, ${formatOutcomeTime(place.arrival_time_s)}. Focus place and time.`}
+                        onClick={() => focusOutcome(place)}
+                      >
+                        <span className="results__place-marker" aria-hidden />
+                        <span className="results__place-name">
+                          <strong>{place.name}</strong>
+                          <small>{formatOutcomeTime(place.arrival_time_s)}</small>
+                        </span>
+                        <span className="results__place-value">
+                          <strong>~{place.runup_m.toFixed(1)} m</strong>
+                          <small>{selected ? "Focused" : "Focus on globe"}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="results__places-empty">
+                  Run coastal screening to add named places, arrival times, and peak heights.
+                </p>
+              )}
+            </section>
+
+            <aside className="results__confidence" data-confidence={story.confidence}>
+              <span className="results__confidence-icon" aria-hidden>!</span>
+              <div>
+                <strong>{story.confidence === "unavailable" ? "Screening limits" : `${story.confidence} confidence`}</strong>
+                <p>{story.limitation}</p>
+                <small>
+                  {story.sampledCount > 0
+                    ? `${story.affectedCount} of ${story.sampledCount} named coasts above 0.1 m · ${story.arrivedCount} reached by current time${story.reachM === null ? "" : ` · farthest sampled reach ${(story.reachM / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km`}`
+                    : "Reach describes named screening points, not a continuous inundation footprint."}
+                </small>
+              </div>
+            </aside>
+
+            {showTimeline && (
+              <div className="timeline">
+                <input
+                  type="range"
+                  min={0}
+                  max={totalT}
+                  step={60}
+                  value={safeTimeS}
+                  onChange={(event) => onTimeChange(Number(event.target.value))}
+                  aria-label="Scenario timeline scrubber"
+                  aria-valuetext={`${Math.round(safeTimeS / 60)} minutes after source event`}
+                />
+                <div className="timeline__bar">
+                  <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />
+                </div>
+                <div className="timeline__readout">
+                  <span>{(safeTimeS / 60).toFixed(0)} min after source</span>
+                  <span>{(safeTimeS / 3600).toFixed(2)} h</span>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="timeline__readout">
-            <span>{(safeTimeS / 60).toFixed(0)} min after source</span>
-            <span>{(safeTimeS / 3600).toFixed(2)} h</span>
-          </div>
-        </div>
-      </div>}
+        )}
+
+        {view === "science" && (
+          <>
+            <div className="section">
+              <div className="section__title">
+                <span>Source science</span>
+                <span className="section__badge">Rust-authoritative</span>
+              </div>
+              <div className="source-summary" aria-label="Source center">
+                <span>{formatCoord(initial.center.lat_deg, initial.center.lon_deg)}</span>
+                <span>{depth.value} {depth.unit} depth</span>
+              </div>
+              <div className="results">
+                <div className="results__cell" data-tone="primary">
+                  <div className="results__label">Energy</div>
+                  <div className="results__value">{energy.value} <span className="results__unit">{energy.unit}</span></div>
+                </div>
+                <div className="results__cell" data-tone="secondary">
+                  <div className="results__label"><GlossaryTip term="mw">Tsunami-equivalent M_w</GlossaryTip></div>
+                  <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
+                </div>
+                <div className="results__cell">
+                  <div className="results__label"><GlossaryTip term={cavity_label.term}>{cavity_label.text}</GlossaryTip></div>
+                  <div className="results__value">{cavity.value} <span className="results__unit">{cavity.unit}</span></div>
+                </div>
+                <div className="results__cell">
+                  <div className="results__label">Peak source displacement</div>
+                  <div className="results__value">{amp.value} <span className="results__unit">{amp.unit}</span></div>
+                </div>
+                {wl && (
+                  <div className="results__cell results__cell--wide">
+                    <div className="results__label">Dominant wavelength</div>
+                    <div className="results__value">{wl.value} <span className="results__unit">{wl.unit}</span></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {scienceContent}
+          </>
+        )}
+
+        {view === "validation" && (
+          <>
+            <div className="section">
+              <div className="section__title">
+                <span>Coastal screening validation</span>
+                <span className="section__badge" data-tone="muted">
+                  {coastalResults.length > 0 ? `${story.confidence} confidence` : "Waiting"}
+                </span>
+              </div>
+              {coastalResults.length > 0 ? (
+                <>
+                  <p className="results__outcome-note">
+                    Illustrative values use nominal or legacy inputs. Expand a point to audit the exact records.
+                  </p>
+                  <button className="results__export" type="button" onClick={() => exportRunupCsv(runupResults)}>
+                    Export coastal CSV with provenance
+                  </button>
+                  {coastalResults.map((result) => (
+                    <details className="results__provenance" key={result.id}>
+                      <summary>{result.name} · ~{result.runup_m.toFixed(1)} m runup · {formatOutcomeTime(result.arrival_time_s)}</summary>
+                      <dl>
+                        <dt>Slope</dt><dd>{result.beach_slope_deg}° ± {result.slope_provenance.uncertainty_value ?? "unknown"} {result.slope_provenance.uncertainty_unit}</dd>
+                        <dt>Slope record</dt><dd>{result.slope_provenance.sample_id} / {result.slope_provenance.record_id}</dd>
+                        <dt>Depth</dt><dd>{result.offshore_depth_m} m ± {result.depth_provenance.uncertainty_value ?? "unknown"} {result.depth_provenance.uncertainty_unit}</dd>
+                        <dt>Depth record</dt><dd>{result.depth_provenance.sample_id} / {result.depth_provenance.record_id}</dd>
+                        <dt>Source and method</dt><dd>{result.slope_provenance.source}; {result.slope_provenance.method}</dd>
+                        <dt>Datum / resolution / date</dt><dd>{result.slope_provenance.datum}; {result.slope_provenance.resolution}; {result.slope_provenance.observed_or_published}</dd>
+                      </dl>
+                    </details>
+                  ))}
+                </>
+              ) : (
+                <div className="empty-state empty-state--compact">
+                  <span className="empty-state__icon" aria-hidden />
+                  <div>
+                    <strong>No coastal validation result yet</strong>
+                    <p>Run coastal screening to compare named places, arrival times, and input provenance.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            {validationContent}
+          </>
+        )}
+      </div>
     </>
   );
 }

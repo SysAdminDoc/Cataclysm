@@ -1,6 +1,7 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { buildModelProvenance, provenanceSummary, type ModelProvenanceInput } from "./model-provenance";
 import { preflightRunQuality, safeFilenamePart } from "./export";
+import { buildCoastalOutcomeStory, formatOutcomeTime } from "./result-story";
 import type { RunupAtPointResult } from "./tauri";
 
 export type TextExportData = ModelProvenanceInput & {
@@ -8,6 +9,7 @@ export type TextExportData = ModelProvenanceInput & {
   initial?: InitialDisplacement | null;
   timeS: number;
   runupResults?: RunupAtPointResult[];
+  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
 };
 
 export function generateTextExport(data: TextExportData): string {
@@ -37,6 +39,26 @@ export function generateTextExport(data: TextExportData): string {
 
   if (data.initial) {
     const i = data.initial;
+    const story = buildCoastalOutcomeStory(data.runupResults ?? [], data.timeS);
+    lines.push("Outcome Summary");
+    lines.push("---------------");
+    lines.push(`Maximum source displacement: ${i.peak_amplitude_m.toFixed(2)} m`);
+    if (story.maximum && story.maximum.runup_m >= 0.1) {
+      lines.push(`Maximum affected named coast: ~${story.maximum.runup_m.toFixed(1)} m at ${story.maximum.name} (${formatOutcomeTime(story.maximum.arrival_time_s)})`);
+    }
+    if (story.firstAffected) {
+      lines.push(`First affected named coast: ${story.firstAffected.name} at ${formatOutcomeTime(story.firstAffected.arrival_time_s)}`);
+    }
+    if (story.nearest) {
+      lines.push(`Nearest affected named coast: ${story.nearest.name} at ${(story.nearest.range_m / 1000).toFixed(0)} km from source`);
+    }
+    if (story.reachM !== null) {
+      lines.push(`Farthest affected named coast in screening set: ${(story.reachM / 1000).toFixed(0)} km`);
+    }
+    lines.push(`Coastal confidence: ${story.confidence}. ${story.limitation}`);
+    lines.push("Reach describes named screening points, not a continuous inundation footprint.");
+    lines.push("");
+
     lines.push("Source Parameters");
     lines.push("-----------------");
     lines.push(`Label: ${i.label}`);
@@ -47,7 +69,10 @@ export function generateTextExport(data: TextExportData): string {
       lines.push(`Water depth: ${i.center.depth_m.toFixed(0)} m`);
     }
     lines.push(`Peak amplitude: ${i.peak_amplitude_m.toFixed(2)} m`);
-    lines.push(`Cavity radius: ${i.cavity_radius_m.toFixed(0)} m`);
+    const radiusLabel = data.sourceKind === "Earthquake" || data.sourceKind === "Landslide"
+      ? "Source region radius"
+      : "Cavity radius";
+    lines.push(`${radiusLabel}: ${i.cavity_radius_m.toFixed(0)} m`);
     lines.push(`Source energy: ${formatEnergy(i.source_energy_j)}`);
     lines.push(`Seismic equivalent: Mw ${i.seismic_mw_equivalent.toFixed(1)}`);
     if (i.dominant_wavelength_m) {

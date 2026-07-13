@@ -202,6 +202,10 @@ export function PresetSelector({
       ? sorted.some((preset) => presetLibraryId(preset.id) === id)
       : directScenarios.some((scenario) => scenario.id === id),
   ) ?? null;
+  const selectedPreset = activeId ? sorted.find((preset) => preset.id === activeId) ?? null : null;
+  const selectedDirect = activeDirectId
+    ? directScenarios.find((scenario) => scenario.id === activeDirectId) ?? null
+    : null;
   if (totalCount === 0) {
     return (
       <div className="section">
@@ -220,8 +224,7 @@ export function PresetSelector({
     <div className="section preset-library">
       <div className="preset-library__header">
         <div className="preset-library__identity">
-          <span>Universal library</span>
-          <strong>Browse</strong>
+          <strong>Scenarios</strong>
         </div>
         <div className="preset-library__actions">
           <div className="preset-view-toggle" role="group" aria-label="View mode">
@@ -305,18 +308,23 @@ export function PresetSelector({
       </section>
 
       {activeLibraryId && onRunActive && (
-        <div className="preset-active-action" role="status">
-          <span>
-            <small>Selected scenario</small>
-            <strong>{activeDirectId
-              ? directScenarios.find((scenario) => scenario.id === activeDirectId)?.name ?? "Direct effects"
-              : sorted.find((preset) => preset.id === activeId)?.name ?? "Reference event"}</strong>
-          </span>
+        <section className="preset-active-action" aria-label="Selected scenario">
+          <small className="preset-active-action__eyebrow">Selected scenario</small>
+          <div className="preset-active-action__body">
+            <span className="preset-active-action__visual" data-kind={selectedPreset?.source.kind ?? (selectedDirect ? directSourceKind(selectedDirect) : undefined)}>
+              <SourceGlyph kind={selectedPreset?.source.kind ?? (selectedDirect ? directSourceKind(selectedDirect) : "Earthquake")} />
+            </span>
+            <span className="preset-active-action__copy">
+              <strong>{selectedDirect?.name ?? selectedPreset?.name ?? "Reference event"}</strong>
+              <span>{selectedDirect?.detail ?? (selectedPreset ? `${sourceDetail(selectedPreset)} · ${selectedPreset.date}` : "Ready to configure")}</span>
+              <small>{selectedDirect?.blurb ?? selectedPreset?.blurb ?? "Review the setup before running."}</small>
+            </span>
+          </div>
           <button type="button" onClick={onRunActive}>
             <UiIcon name="play" size={14} />
             Run &amp; Watch
           </button>
-        </div>
+        </section>
       )}
 
       <div className="preset-search">
@@ -353,38 +361,6 @@ export function PresetSelector({
           </button>
         ))}
       </div>
-
-      {onStartLesson && (
-        <div className="lesson-launcher" data-open={lessonsOpen ? "true" : "false"}>
-          <button className="lesson-launcher__toggle" type="button" aria-expanded={lessonsOpen} onClick={() => setLessonsOpen((open) => !open)}>
-            <span><strong>Guided training</strong><small>{GUIDED_LESSONS.length} model walkthroughs</small></span>
-            <UiIcon name={lessonsOpen ? "chevronDown" : "chevronRight"} size={14} />
-          </button>
-          {lessonsOpen && <div className="lesson-launcher__list">
-            {GUIDED_LESSONS.map((lesson) => (
-              <button
-                key={lesson.id}
-                className="lesson-launcher__item"
-                data-complete={completedLessons[lesson.id] ? "true" : "false"}
-                type="button"
-                onClick={() => {
-                  onSelect(lesson.presetId);
-                  onStartLesson(lesson);
-                }}
-                title={lesson.summary}
-              >
-                <span className="lesson-launcher__name">{lesson.title}</span>
-                {completedLessons[lesson.id] && (
-                  <span className="lesson-launcher__complete" aria-label="Lesson completed">
-                    Done
-                  </span>
-                )}
-                <UiIcon name="chevronRight" size={13} />
-              </button>
-            ))}
-          </div>}
-        </div>
-      )}
 
       {viewMode === "timeline" ? (
         timelinePresets.length > 0 ? (
@@ -461,7 +437,7 @@ export function PresetSelector({
                           </span>
                           <span className="preset-card__blurb">{p.blurb}</span>
                           <span className="preset-card__highlights">
-                            {p.is_speculative ? "Exploratory" : "Reference scenario"} · 60 min · {presetHighlights(p).join(" · ")}
+                            {p.is_speculative ? "Exploratory model" : "Reference scenario"} · {presetHighlights(p).join(" → ")}
                           </span>
                           {p.is_speculative && (
                             <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
@@ -514,6 +490,38 @@ export function PresetSelector({
             ))}
           </div>
         </>
+      )}
+
+      {onStartLesson && (
+        <div className="lesson-launcher" data-open={lessonsOpen ? "true" : "false"}>
+          <button className="lesson-launcher__toggle" type="button" aria-expanded={lessonsOpen} onClick={() => setLessonsOpen((open) => !open)}>
+            <span><strong>Guided training</strong><small>{GUIDED_LESSONS.length} model walkthroughs</small></span>
+            <UiIcon name={lessonsOpen ? "chevronDown" : "chevronRight"} size={14} />
+          </button>
+          {lessonsOpen && <div className="lesson-launcher__list">
+            {GUIDED_LESSONS.map((lesson) => (
+              <button
+                key={lesson.id}
+                className="lesson-launcher__item"
+                data-complete={completedLessons[lesson.id] ? "true" : "false"}
+                type="button"
+                onClick={() => {
+                  onSelect(lesson.presetId);
+                  onStartLesson(lesson);
+                }}
+                title={lesson.summary}
+              >
+                <span className="lesson-launcher__name">{lesson.title}</span>
+                {completedLessons[lesson.id] && (
+                  <span className="lesson-launcher__complete" aria-label="Lesson completed">
+                    Done
+                  </span>
+                )}
+                <UiIcon name="chevronRight" size={13} />
+              </button>
+            ))}
+          </div>}
+        </div>
       )}
     </div>
   );

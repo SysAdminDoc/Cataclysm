@@ -4,6 +4,41 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.10.3] — 2026-07-12 — Source-aware result stories
+
+### Added
+
+- Added source-aware Outcome, Science, and Validation result modes. Outcome
+  summarizes the maximum sampled effect, first and nearest affected named
+  coasts, arrival time, screened reach, confidence, and limitations; Science
+  retains model metrics and attenuation; Validation retains coastal records,
+  observations, provenance, and CSV export.
+- Selecting an outcome place now synchronizes scenario time and focuses the
+  Cesium globe with generation-safe camera ownership, reduced-motion support,
+  and deterministic cancellation of competing flights.
+
+### Changed
+
+- Reimagined the desktop workspace as a calmer mission-control interface with a
+  dominant globe, larger operational typography, compact header, balanced
+  scenario/results rails, visual scenario cards, clearer transport/status
+  hierarchy, and refreshed dark/light themes based on an implementation mockup.
+- Redesigned the scenario library around a selected-scenario preview and denser
+  visual source cards, and refreshed the tracked README screenshots from the
+  deterministic Run & Watch workflow.
+- Direct-hazard consequence estimates now use explicit order-of-magnitude
+  display bands and surface their occupancy, shielding, dose-zone, survivor,
+  and linear-no-threshold assumptions instead of presenting exact-looking
+  population counts.
+- Plain-text reports now include the same source-aware coastal story and qualify
+  geographic reach as the named screening set rather than a continuous
+  inundation footprint.
+
+### Fixed
+
+- WebGL recovery alerts now remain above viewport controls, so Reset renderer
+  cannot be obscured by the floating Layers action.
+
 ## [0.10.2] — 2026-07-12 — Fail-safe desktop trust boundary
 
 ### Security

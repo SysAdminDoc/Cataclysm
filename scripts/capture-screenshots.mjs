@@ -65,7 +65,8 @@ function seedPreview(theme = "mocha") {
 }
 
 async function waitForStableWorkspace(page) {
-  await page.getByRole("button", { name: "Run simulation" }).waitFor({ state: "visible" });
+  await page.getByRole("button", { name: "Run & Watch" }).waitFor({ state: "visible" });
+  await page.getByText("What happened?", { exact: true }).waitFor({ state: "visible" });
   await page.locator('.app__globe-status[data-status="loading"]').waitFor({ state: "detached" });
 
   const canvas = page.locator(".cesium-widget canvas");
@@ -110,6 +111,7 @@ try {
     const page = await context.newPage();
     await page.goto(origin, { waitUntil: "networkidle" });
     await page.locator('.preset-card:has-text("Tohoku")').click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
     await waitForStableWorkspace(page);
     await capture(page, theme === "mocha" ? "simulator-workspace-dark.png" : "simulator-workspace-light.png");
 
