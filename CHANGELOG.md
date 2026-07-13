@@ -4,6 +4,21 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.10.4] — 2026-07-13 — Simulation admission fix
+
+### Fixed
+
+- Fixed every affected simulation being rejected before its first frame when
+  the timestep selector and numerical-integrity gate evaluated different CFL
+  definitions. Timestep selection now uses the gate's two-dimensional
+  characteristic-speed CFL, including uplift and velocity.
+- Fixed desktop render streams failing after solver startup because Tauri's
+  WebView2 channel transported raw render packets as validated byte arrays
+  rather than the frontend's declared `ArrayBuffer` shape.
+- Fixed a desktop channel race where the Rust command result could arrive
+  before queued render packets, causing an otherwise healthy run to be marked
+  incomplete while frames were still draining through WebView2.
+
 ## [0.10.3] — 2026-07-12 — Source-aware result stories
 
 ### Added

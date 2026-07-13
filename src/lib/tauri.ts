@@ -37,6 +37,37 @@ export type RenderProtocolCapabilities = {
 
 let simulationRunSequence = 0;
 
+type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
+
+export async function waitForRenderReplay(
+  replay: RenderReplayCompletion,
+  expectedFrameCount: number,
+  currentDecode: () => Promise<void>,
+  currentError: () => unknown,
+  timeoutMs = 120_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    // Channel delivery and packet decoding may enqueue a newer chain while the
+    // Rust command result is already resolving. Re-read it on every turn.
+    await currentDecode();
+    const error = currentError();
+    if (error) throw error;
+    if (replay.complete) {
+      if (replay.frame_count !== expectedFrameCount) {
+        throw new Error(
+          `backend render stream completed with ${replay.frame_count} frames; expected ${expectedFrameCount}`,
+        );
+      }
+      return;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error("timed out waiting for the backend render stream to complete");
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 8));
+  }
+}
+
 export function createSimulationRunId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `run-${crypto.randomUUID()}`;
@@ -351,7 +382,7 @@ export const api = {
   }> {
     const channel = new Channel<import("../types/scenario").GridSnapshot>();
     channel.onmessage = onSnapshot;
-    const renderChannel = new Channel<ArrayBuffer>();
+    const renderChannel = new Channel<ArrayBuffer | Uint8Array | number[]>();
     const replay = new RenderReplayAdapter();
     let decodeChain = Promise.resolve();
     let decodeError: unknown = null;
@@ -378,11 +409,12 @@ export const api = {
       render_frame_count: number;
     }>("simulate_grid_streaming", { runId, req, onSnapshot: channel, onRenderPacket: renderChannel })
       .then(async (meta) => {
-        await decodeChain;
-        if (decodeError) throw decodeError;
-        if (!replay.complete || replay.frame_count !== meta.render_frame_count) {
-          throw new Error("backend render stream ended without a complete matching replay");
-        }
+        await waitForRenderReplay(
+          replay,
+          meta.render_frame_count,
+          () => decodeChain,
+          () => decodeError,
+        );
         return { ...meta, render_replay: replay };
       });
   },

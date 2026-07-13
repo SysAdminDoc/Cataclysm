@@ -33,7 +33,7 @@ describe("generateTextExport", () => {
     expect(report).toContain("Chicxulub Impact");
     expect(report).toContain("Range 2022");
     expect(report).toContain("Provenance");
-    expect(report).toContain("Cataclysm v0.10.3");
+    expect(report).toContain("Cataclysm v0.10.4");
     expect(report).toContain("Generated: 2026-06-28T00:00:00.000Z");
     expect(report).toContain("Scenario type: Asteroid");
     expect(report).toContain("Solver mode: SWE snapshot playback");

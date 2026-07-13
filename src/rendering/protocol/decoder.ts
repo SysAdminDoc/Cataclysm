@@ -128,10 +128,28 @@ function checkedLimits(overrides: Partial<RenderProtocolLimits> | undefined): Re
   return Object.freeze(limits);
 }
 
-function packetBytes(input: unknown): Uint8Array {
+function packetBytes(input: unknown, maximumPacketBytes: number): Uint8Array {
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
-  fail("invalid_input", "Render packet must be an ArrayBuffer or Uint8Array.");
+  // Tauri 2.11/WebView2 channel responses currently arrive as JSON byte
+  // arrays even when Rust sends an ipc::Response with a raw body. Validate
+  // the transport representation before allocating so the protocol's packet
+  // cap remains effective at the IPC boundary.
+  if (Array.isArray(input)) {
+    if (input.length > maximumPacketBytes) {
+      fail("packet_too_large", "Packet exceeds its configured byte cap.");
+    }
+    const bytes = new Uint8Array(input.length);
+    for (let index = 0; index < input.length; index += 1) {
+      const value = input[index];
+      if (!Number.isInteger(value) || value < 0 || value > 255) {
+        fail("invalid_input", "Render packet byte arrays may contain only integers from 0 through 255.");
+      }
+      bytes[index] = value;
+    }
+    return bytes;
+  }
+  fail("invalid_input", "Render packet must be an ArrayBuffer, Uint8Array, or byte array.");
 }
 
 function assertRecord(value: unknown, path: string): JsonRecord {
@@ -586,7 +604,7 @@ function parseHeaderBytes(bytes: Uint8Array): JsonRecord {
 
 export async function decodeRenderPacket(input: unknown, options: RenderProtocolDecoderOptions = {}): Promise<DecodedRenderPacket> {
   const limits = checkedLimits(options.limits);
-  const bytes = packetBytes(input);
+  const bytes = packetBytes(input, limits.max_packet_bytes);
   const prelude = parsePrelude(bytes, limits);
   const headerEnd = RENDER_PROTOCOL_PRELUDE_BYTES + prelude.header_len;
   const record = parseHeaderBytes(bytes.subarray(RENDER_PROTOCOL_PRELUDE_BYTES, headerEnd));

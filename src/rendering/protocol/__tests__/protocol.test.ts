@@ -128,6 +128,18 @@ describe("canonical Rust render protocol fixture", () => {
 });
 
 describe("canonical packet validation", () => {
+  it("accepts the validated byte-array transport emitted by Tauri channels", async () => {
+    const scenario = splitRenderRecording(fixture)[0];
+    await expect(decodeRenderPacket([...scenario])).resolves.toMatchObject({ kind: "scenario" });
+    await expect(decodeRenderPacket([0, 1.5, 256])).rejects.toMatchObject({
+      name: "RenderProtocolDecodeError",
+      code: "invalid_input",
+    });
+    await expect(
+      decodeRenderPacket([...scenario], { limits: { max_packet_bytes: scenario.length - 1 } }),
+    ).rejects.toMatchObject({ name: "RenderProtocolDecodeError", code: "packet_too_large" });
+  });
+
   it("enforces exact prelude framing, caps, reserved bits, and packet_kind agreement", async () => {
     const frame = splitRenderRecording(fixture)[1];
     const { header, payload } = packetParts(frame);

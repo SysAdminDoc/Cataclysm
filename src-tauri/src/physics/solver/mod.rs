@@ -21,7 +21,8 @@
 //!
 //! Discretisation: explicit forward-Euler leapfrog on a regular grid with
 //! cell size derived from the lat/lon span. CFL stability is enforced by
-//! `recommended_dt_s()` (`Δt < 0.4 · min(Δx, Δy) / max √(g·h)`).
+//! `recommended_dt_s()` using the same two-dimensional characteristic-speed
+//! CFL definition enforced by the run-quality gate.
 //!
 //! Boundaries: zero-flux (`u = v = 0`) at the grid edges. This produces some
 //! mild reflection in long runs; a future release will swap for radiation
@@ -256,14 +257,37 @@ impl SwGrid {
             .sqrt()
     }
 
-    /// CFL-safe time step in seconds. Caller-tunable safety factor (default
-    /// 0.4 — leapfrog stability requires ≤ 0.5 for the linearised problem).
+    /// CFL-safe time step in seconds. The requested limit is applied to the
+    /// same dimension-summed characteristic-speed CFL used by the quality
+    /// gate, including the initial displacement and any existing velocity.
+    /// Keeping selection and admission on one definition prevents a timestep
+    /// chosen here from being rejected before the first solver step.
     pub fn recommended_dt_s(&self, cfl: f64) -> f64 {
         let (dx_lon, dy_lat) = self.metres_per_deg();
-        let dx = dx_lon * self.dlon_deg;
-        let dy = dy_lat * self.dlat_deg;
-        let c = self.max_celerity_m_s().max(1.0);
-        cfl * dx.min(dy) / c
+        let dx = (dx_lon * self.dlon_deg).abs().max(f64::MIN_POSITIVE);
+        let dy = (dy_lat * self.dlat_deg).abs().max(f64::MIN_POSITIVE);
+        let rate = self.characteristic_cfl_number(1.0);
+        if rate.is_finite() && rate > 0.0 {
+            cfl.max(0.0) / rate
+        } else {
+            cfl.max(0.0) * dx.min(dy)
+        }
+    }
+
+    pub(crate) fn characteristic_cfl_number(&self, dt_s: f64) -> f64 {
+        let (dx_lon, dy_lat) = self.metres_per_deg();
+        let dx = (dx_lon * self.dlon_deg).abs().max(f64::MIN_POSITIVE);
+        let dy = (dy_lat * self.dlat_deg).abs().max(f64::MIN_POSITIVE);
+        self.h_m
+            .iter()
+            .zip(&self.eta_m)
+            .zip(&self.u_ms)
+            .zip(&self.v_ms)
+            .map(|(((&h, &eta), &u), &v)| {
+                let celerity = (G_EARTH * (h + eta).max(0.0)).sqrt();
+                dt_s * ((u.abs() + celerity) / dx + (v.abs() + celerity) / dy)
+            })
+            .fold(0.0_f64, f64::max)
     }
 
     /// Inject an initial-condition Gaussian bump centred on `(lat, lon)`

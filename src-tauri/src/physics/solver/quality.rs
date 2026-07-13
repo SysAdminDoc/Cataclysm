@@ -171,19 +171,7 @@ impl Metrics {
 }
 
 fn grid_cfl_number(grid: &SwGrid, dt_s: f64) -> f64 {
-    let (dx_m, dy_m) = grid.metres_per_deg();
-    let dx = (dx_m * grid.dlon_deg).abs().max(f64::MIN_POSITIVE);
-    let dy = (dy_m * grid.dlat_deg).abs().max(f64::MIN_POSITIVE);
-    grid.h_m
-        .iter()
-        .zip(&grid.eta_m)
-        .zip(&grid.u_ms)
-        .zip(&grid.v_ms)
-        .map(|(((&h, &eta), &u), &v)| {
-            let celerity = (G_EARTH * (h + eta).max(0.0)).sqrt();
-            dt_s * ((u.abs() + celerity) / dx + (v.abs() + celerity) / dy)
-        })
-        .fold(0.0_f64, f64::max)
+    grid.characteristic_cfl_number(dt_s)
 }
 
 fn percent_change(current: f64, initial: f64, scale: f64) -> f64 {
@@ -209,7 +197,7 @@ mod tests {
         assert!(record.failure.is_none());
         assert!(record.finite_fields);
         assert!(record.minimum_total_depth_m > 0.0);
-        assert!(record.cfl_number > 0.7 && record.cfl_number < 0.9);
+        assert!((record.cfl_number - 0.4).abs() < 1.0e-12);
         assert_eq!(record.accepted_steps, 0);
         assert_eq!(record.rejected_steps, 0);
     }
@@ -240,7 +228,7 @@ mod tests {
     fn cfl_limit_violation_fails_closed() {
         let grid = grid();
         let baseline = QualityBaseline::capture(&grid, BoundaryMode::ZeroFlux);
-        let record = baseline.assess(&grid, grid.recommended_dt_s(0.6));
+        let record = baseline.assess(&grid, grid.recommended_dt_s(1.1));
         assert!(
             record
                 .failure
@@ -254,7 +242,7 @@ mod tests {
         let mut grid = grid();
         let before = grid.clone();
         let baseline = QualityBaseline::capture(&grid, BoundaryMode::ZeroFlux);
-        let stepper = super::super::TimeStepper::new(grid.recommended_dt_s(0.6))
+        let stepper = super::super::TimeStepper::new(grid.recommended_dt_s(1.1))
             .with_boundary(BoundaryMode::ZeroFlux);
         let result = stepper.step_cancellable_checked(&mut grid, 1, None, &baseline, &mut |_| {});
         assert!(result.is_err());
@@ -263,5 +251,18 @@ mod tests {
         assert_eq!(grid.eta_m, before.eta_m);
         assert_eq!(grid.u_ms, before.u_ms);
         assert_eq!(grid.v_ms, before.v_ms);
+    }
+
+    #[test]
+    fn shallow_bathymetry_with_large_initial_uplift_is_admitted() {
+        let mut grid = SwGrid::new(137.0, 34.0, 147.0, 44.0, 0.125, 0.125);
+        grid.fill_uniform_depth(1.0);
+        grid.inject_gaussian(38.3, 142.37, 8.2, 120_000.0);
+        let baseline = QualityBaseline::capture(&grid, BoundaryMode::default_sponge());
+        let dt = grid.recommended_dt_s(0.4);
+        let record = baseline.assess(&grid, dt);
+
+        assert!(record.failure.is_none(), "{:?}", record.failure);
+        assert!((record.cfl_number - 0.4).abs() < 1.0e-12);
     }
 }
