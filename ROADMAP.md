@@ -371,27 +371,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 
 ### P0
 
-- [ ] P0 — Generate every input validator from one versioned scientific contract
-  Why: TypeScript accepts earthquake Mw 5–10 while Rust accepts 4.0–10.5, so a scenario can be valid in one authority and rejected or represented differently in another.
-  Evidence: `src/lib/scenario-schema.ts` (`SCENARIO_BOUNDS.mw`); `src-tauri/src/commands.rs` (`earthquake_initial_conditions`); `docs/manual/custom-scenarios.md`.
-  Touches: new shared input-contract JSON/schema, TypeScript validators/defaults, Rust validators, field help, manual, parity tests.
-  Acceptance: every source field's type, units, min/max, inclusivity, default, and applicability has one versioned definition; generated/validated TS, Rust, UI, and docs values match; a matrix test exercises every boundary on both sides.
-  Complexity: M
-
-- [ ] P0 — Fail closed on numerical-integrity violations and publish a run-quality record
-  Why: CPU snapshots currently convert non-finite solver cells to transparent/zero pixels, allowing a numerically invalid run to look like valid empty water and remain exportable.
-  Evidence: `src-tauri/src/physics/solver/mod.rs` (`SwGrid::snapshot`); JAGURS wet/dry conservation issue https://github.com/jagurs-admin/jagurs/issues/23; GeoClaw output-order issue https://github.com/clawpack/geoclaw/issues/657.
-  Touches: CPU/GPU steppers, streaming metadata, diagnostics, Results/transport states, all scientific exporters, validation fixtures.
-  Acceptance: each run reports finite-field status, minimum total depth, CFL margin, accepted/rejected steps, and boundary/sponge-adjusted mass and energy drift; hard-limit violations stop the run and ordinary exports with a specific diagnostic; warnings remain visible and are stamped into allowed exports.
-  Complexity: L
-
-- [ ] P0 — Give every coastal runup point auditable slope and depth provenance
-  Why: most offshore depths are nominal 50 m placeholders and the global source list does not identify the source, sample method, datum, resolution, or uncertainty behind each point's quantitative runup.
-  Evidence: `src/data/coastal_points.json`; `src-tauri/src/commands.rs` (`runup_at_points`); NOAA/NTHMP modeling guidance https://vlab.noaa.gov/web/national-tsunami-hazard-mitigation-program/modeling-guidance.
-  Touches: coastal-point schema/data, asset validation, runup result types, Results/inspect UI, CSV/GeoJSON/text provenance.
-  Acceptance: every point carries independent slope/depth source, method, datum, resolution/date, confidence, and uncertainty; placeholders are visibly labelled and cannot receive a high-confidence quantitative label; exports preserve the exact record identifiers.
-  Complexity: M
-
 ### P1
 
 - [ ] P1 — Keep GPU max-field accumulation resident and batch solver readback
@@ -465,3 +444,95 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Touches: local release build variants/manifests, installer naming/checksums, release docs, network-blocked VM smoke.
   Acceptance: the normal small installer remains; an optional `offline` MSI/NSIS embeds the Evergreen offline installer, documents its size tradeoff, and installs in a network-blocked clean Windows sandbox without WebView2; runtime servicing remains Evergreen rather than Fixed Version.
   Complexity: M
+
+## Research-Driven Additions
+
+### P0
+
+- [ ] P0 — Put every custom Tauri command behind an explicit capability permission
+  Why: registered application commands are currently callable by every app window/webview by default, including simulation, diagnostics, and keychain operations.
+  Evidence: Verified — `src-tauri/build.rs`; `src-tauri/src/lib.rs`; Tauri capabilities and permissions https://v2.tauri.app/security/capabilities/ and https://v2.tauri.app/security/permissions/.
+  Touches: `src-tauri/build.rs`, generated command permission TOML, `src-tauri/capabilities/default.json`, IPC verification tests.
+  Acceptance: all registered commands are declared through `AppManifest::commands`, grouped into least-privilege read/query, simulation/cancel, diagnostics, and keychain permissions, and explicitly granted to the main window; verification fails on an undeclared command; a test window without those grants receives a denied invocation while the main-window parity suite passes.
+  Complexity: M
+
+- [ ] P0 — Fail safe when the mandatory first-run notice cannot read settings
+  Why: a rejected acknowledgement read leaves the notice closed, so the educational/non-operational warning disappears precisely when persistence is unhealthy.
+  Evidence: Verified — `src/components/FirstRunDisclaimer.tsx:28-33`; mandatory boundary in `README.md`.
+  Touches: `FirstRunDisclaimer.tsx`, settings error state/copy, component tests, launch-experience fixture.
+  Acceptance: pending reads do not expose the main workflow; a rejected read opens the notice with a persistence warning; acknowledgement proceeds best-effort and the notice recurs next launch if the write fails; resolved prior acknowledgement still suppresses the notice.
+  Complexity: S
+
+- [ ] P0 — Bound and instrument the reference-recorder lifecycle
+  Why: strict/reference runs can hang indefinitely and leave Node/Vite workers, making the deterministic release gate non-terminating and contaminating later verification.
+  Evidence: Verified — `scripts/capture-reference-scenes.mjs:319-496`; reproduced 5-, 10-, and 20-minute stalls; Playwright timeouts https://playwright.dev/docs/test-timeouts and Node child-process lifecycle https://nodejs.org/api/child_process.html.
+  Touches: recorder orchestration, preview/browser process ownership, progress manifest, timeout fixtures, strict verification.
+  Acceptance: startup, each scene/phase, and total run have explicit configurable deadlines; progress identifies scene, phase, elapsed time, and last completed artifact; timeout, signal, and exception paths close contexts/browser and terminate the full preview child tree; a fixture-induced hang exits non-zero within its budget and proves no owned worker remains.
+  Complexity: M
+
+### P1
+
+- [ ] P1 — Make SWE wetting and drying well-balanced and positivity-preserving
+  Why: the solver currently detects negative total depth after a step and rolls back, while mature SWE schemes prevent invalid depth and preserve still water over variable topography.
+  Evidence: Verified — `src-tauri/src/physics/solver/quality.rs`; GeoClaw https://www.clawpack.org/geoclaw.html; SWEpy https://github.com/joaquinmeza90/SWEpy.
+  Touches: CPU/GPU flux and wet/dry kernels, quality metrics, validation fixtures, solver documentation.
+  Acceptance: CPU and GPU preserve a constant free surface over strongly varying bathymetry within declared mass/velocity tolerances; advancing and retreating fronts never create negative depth under the documented CFL range; dam-break and NTHMP wet/dry fixtures pass without quality rollback; masks and conserved quantities agree across backends.
+  Complexity: L
+
+- [ ] P1 — Add flow-depth, speed, momentum, momentum-flux, and drawdown maximum fields
+  Why: peak surface displacement alone omits the inundation intensity products used by mature tsunami workflows and is insufficient for point-level consequence interpretation.
+  Evidence: Verified — `src-tauri/src/physics/solver/max_field.rs`; GeoClaw fgmax https://www.clawpack.org/fgmax.html; SWEpy https://github.com/joaquinmeza90/SWEpy.
+  Touches: max-field accumulator and existing GPU-resident buffers, result types, Layers/Inspect/Results, scientific exporters.
+  Acceptance: every accepted step updates maximum total flow depth, speed, momentum, momentum flux, minimum water depth/drawdown, and applicable time-of-maximum; fields carry units, bathymetry/source provenance, and confidence; machine-readable plus visual exports preserve them; CPU/GPU products agree within declared tolerance without per-step readback.
+  Complexity: M
+
+- [ ] P1 — Add a validated radiation/open-boundary mode
+  Why: the solver documents mild long-run sponge reflection, and unmeasured reflected energy can contaminate basin-scale arrival and maximum fields.
+  Evidence: Verified — `src-tauri/src/physics/solver/mod.rs`; OpenFOAM wave damping https://openfoam.org/release/6/; JAGURS boundary/nesting history https://github.com/jagurs-admin/jagurs/releases.
+  Touches: CPU/GPU boundary kernels, solver settings/contracts, run-quality reflection metric, provenance, validation fixtures.
+  Acceptance: a selectable radiation/transmissive mode has CPU/GPU parity; planar and radial outgoing-wave fixtures measure reflected-energy ratio below a declared threshold after boundary crossing; sponge remains selectable for compatibility; mode and measured reflection estimate appear in diagnostics and exports.
+  Complexity: M
+
+- [ ] P1 — Give paired numeric controls valid semantics and visible validation
+  Why: Scenario Builder and direct-hazard rows wrap multiple interactive controls inside one label, and exact direct-hazard entry silently clamps or resets invalid text.
+  Evidence: Verified — `src/components/ScenarioBuilder.tsx:133-196`; `src/components/HazardControls.tsx:35-119`; HTML label rules https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/label.
+  Touches: shared numeric-field primitive, builder/hazard forms, validation styles/copy, component and axe tests.
+  Acceptance: each number input, slider, help button, unit, bound, and error has an explicit programmatic relationship without nested interactive label content; invalid exact input remains editable and shows a specific error instead of silently changing; keyboard and screen-reader tests cover every numeric field in all four source tabs and both direct-hazard modes.
+  Complexity: M
+
+- [ ] P1 — Make saved-scenario deletion undoable and storage-safe
+  Why: deletion is immediate and has no pending, failure, rollback, or recovery path despite removing user-authored state.
+  Evidence: Verified — `src/components/ScenarioBuilder.tsx:532-550`; ParaView autosave/recovery https://docs.paraview.org/en/latest/UsersGuide/savingResults.html.
+  Touches: saved-scenario persistence transaction, scenario list, toast/status system, rejection and undo tests.
+  Acceptance: delete removes the row optimistically with a bounded Undo action; undo restores the same stable scenario ID/order/content; a persistence rejection restores the row and reports the failure; rapid delete/undo sequences cannot overwrite newer saves.
+  Complexity: S
+
+- [ ] P1 — Provide semantic data equivalents for analytical charts and gauges
+  Why: named SVGs still hide the attenuation series, DART observations, gauge thresholds, legend meaning, and active values from non-visual users.
+  Evidence: Verified — `src/components/AttenuationChart.tsx`, `DartOverlay.tsx`, and runup gauge SVG; WCAG 2.2 https://www.w3.org/TR/WCAG22/.
+  Touches: chart/gauge view models, concise summaries and disclosure tables, CSV copy/export, accessibility tests.
+  Acceptance: each chart/gauge has a concise summary and keyboard-accessible table containing series names, units, key extrema/thresholds, active selection, confidence, and provenance; updates are coalesced rather than announced per frame; visual SVG output and numeric exports remain unchanged.
+  Complexity: M
+
+- [ ] P1 — Expand visual/accessibility regression coverage across states and reflow
+  Why: current desktop baselines omit major builder, comparison, layer, coastal-result, export, lesson, recovery, zoom, and narrow-reflow states.
+  Evidence: Verified — `tests/accessibility.spec.ts`, `tests/visual-regression.spec.ts`, `tests/reference-visual.spec.ts`; WCAG 2.2 reflow https://www.w3.org/TR/WCAG22/#reflow.
+  Touches: deterministic fixtures, Playwright projects, screenshot/axe baselines, release verification.
+  Acceptance: both themes cover empty/loading/error/recovery plus custom builder, Compare, Layers, coastal Results, Export, lesson/tour, and direct hazards; 200% zoom and 320-CSS-pixel reflow have no clipped required control or two-dimensional page scroll; forced-colors and semantic-chart checks run in the same deterministic matrix.
+  Complexity: M
+
+### P2
+
+- [ ] P2 — Export optional ParaView-ready VTK XML time series
+  Why: planned Zarr covers chunked storage, but the scientific-visualization ecosystem expects VTK series for immediate independent field inspection.
+  Evidence: Likely — SWEpy VTU output https://github.com/joaquinmeza90/SWEpy; ParaView state/extractor workflow https://docs.paraview.org/en/latest/UsersGuide/savingResults.html.
+  Touches: streaming export adapter, shared quality/provenance preflight, export UI/CLI, interoperability fixture.
+  Acceptance: export streams regular-grid frames as `.vti` plus `.pvd` with eta, depth, u/v, speed, quality, CRS/datum, units, simulation time, and source/data digests; ParaView 6.1 opens correct timesteps/arrays; invalid runs remain blocked; export does not retain another full run in memory.
+  Complexity: M
+
+- [ ] P2 — Compare immutable historical results with normalized current-model reruns
+  Why: model/data corrections are frequent, but reopening an old analysis cannot yet show whether a changed result came from inputs, data, schema, or solver version.
+  Evidence: Likely — current run/provenance types and portable-package roadmap item; Moody's model-version change management https://www.moodys.com/web/en/us/who-we-serve/insurance/intelligent-risk-platform/risk-modeler.html.
+  Touches: run identity, portable package migration, immutable result snapshot, normalized rerun service, Compare/Science UI, delta export.
+  Acceptance: opening an older package preserves its original result; preflight lists solver, schema, source, settings, and data-digest differences; an explicit normalized rerun creates a new linked result; Compare attributes field/gauge/direct-effect deltas to versioned inputs and never mutates the historical artifact.
+  Complexity: L
