@@ -519,22 +519,6 @@ Cesium July-2026; WCAG 2.2). Items already tracked in the sections above
 max-field, casualty-model plurality, USGS/NEO feeds, terrain draping, units,
 recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
-### P1 — verified correctness and security bugs (root-cause fixes)
-
-- [ ] P1 — Route legacy token migration through the OS keychain, never the store
-  Why: the localStorage→store migration writes `cesium_token` (a `SENSITIVE_KEYS`
-  member) into the plaintext plugin-store via `store.set`, defeating the
-  keychain-only token design that the rest of `settings.ts` enforces.
-  Evidence: Verified — `src/lib/settings.ts:353-368` (store branch) vs `:315-335`
-  (correct keychain branch).
-  Touches: `settings.ts` sensitive-key migration path, a migration test asserting
-  the store never receives a sensitive value.
-  Acceptance: migrating a legacy localStorage token moves it to the keychain and
-  purges the WebView copy; the plaintext store never contains a `SENSITIVE_KEYS`
-  value; a test drives the localStorage-present, store-present path and asserts
-  `store.set` is not called for the token.
-  Complexity: S
-
 ### P2 — reliability guards and physical credibility
 
 - [ ] P2 — Guard atmospheric-entry non-convergence and the velocity/mass floor

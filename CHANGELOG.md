@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Legacy sensitive-value migration in settings now routes through the OS keychain
+  instead of writing the Cesium token into the plaintext plugin-store, closing a
+  latent path that could have persisted a `SENSITIVE_KEYS` value outside the
+  keychain-only design.
+
 - Nuclear casualty and latent-cancer estimates now sort effect radii ascending
   before accumulating concentric annuli, so an out-of-order ring (for example
   `thermal_1` falling inside `psi_1` for large airbursts) is no longer dropped by

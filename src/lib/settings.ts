@@ -351,13 +351,15 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
   const mirrored = readLocalMirror(key);
   if (mirrored !== undefined) {
     if (isTauri() && SENSITIVE_KEYS.has(key)) {
-      // One-time migration for tokens written by older builds that mirrored
-      // `cesium_token` into localStorage. Move it into plugin-store when
-      // available, then purge the WebView copy either way.
-      if (store) {
+      // One-time migration for a sensitive value an older build mirrored into
+      // localStorage. Sensitive keys must live ONLY in the OS keychain — never
+      // the plaintext plugin-store — so route it through the keychain and purge
+      // the WebView copy. (cesium_token is the only sensitive key and is
+      // normally handled by the early keychain path above; this is a defensive
+      // fallback that must not leak the value into the store.)
+      if (typeof mirrored === "string" && mirrored !== "") {
         try {
-          await store.set(key, mirrored);
-          await store.save();
+          await writeTokenToKeychain(mirrored);
         } catch (err) {
           console.warn(`[settings] legacy ${String(key)} migration failed`, err);
           removeLocalMirror(key);
@@ -365,7 +367,7 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
         }
       }
       removeLocalMirror(key);
-      return store ? mirrored : DEFAULTS[key];
+      return mirrored;
     }
     return mirrored;
   }
