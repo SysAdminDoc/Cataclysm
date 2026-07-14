@@ -319,9 +319,13 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     const reqId = reqIdRef.current;
     const previousRunId = runIdRef.current;
     if (previousRunId && isTauri()) {
-      void api.cancelSimulation(previousRunId).catch((err) =>
+      // Await the cancel so the backend cancellation flag is set before the new
+      // run starts. Otherwise the superseded CPU worker keeps running to
+      // completion alongside the new one, doubling compute for large grids.
+      await api.cancelSimulation(previousRunId).catch((err) =>
         console.warn("[solver] failed to supersede active simulation", err),
       );
+      if (reqId !== reqIdRef.current) return;
     }
     const runId = createSimulationRunId();
     runIdRef.current = isTauri() ? runId : null;

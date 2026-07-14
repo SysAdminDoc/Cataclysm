@@ -409,6 +409,13 @@ export const api = {
       render_frame_count: number;
     }>("simulate_grid_streaming", { runId, req, onSnapshot: channel, onRenderPacket: renderChannel })
       .then(async (meta) => {
+        if (meta.cancelled) {
+          // A cancelled run may have counted a frame the channel never
+          // delivered; drain any in-flight decode and return promptly instead of
+          // busy-polling to the 120 s deadline on a frame-count mismatch.
+          await decodeChain.catch(() => {});
+          return { ...meta, render_replay: replay };
+        }
         await waitForRenderReplay(
           replay,
           meta.render_frame_count,

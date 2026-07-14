@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Cancelled solver runs now resolve promptly instead of busy-polling the render
+  stream to its 120 s deadline when a counted frame was never delivered, and a
+  superseding run now waits for the previous run's cancellation to register
+  before starting so two full CPU simulations no longer run concurrently.
 - Gauge/DART sampling now reads a value anywhere inside the simulation bbox,
   including the outer half-cell rim, by edge-clamping into the interpolation
   domain. Frame-edge buoys previously returned no reading with no diagnostic.

@@ -521,23 +521,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P2 — reliability guards and physical credibility
 
-- [ ] P2 — Short-circuit cancelled-run replay and prevent duplicate CPU sims
-  Why: on cancel the client still awaits `waitForRenderReplay(replay,
-  render_frame_count, …)`, which busy-polls up to 120 s when a counted frame was
-  dropped, and a superseding run fires only a best-effort `cancelSimulation` while
-  the old CPU worker runs to completion — so a cancelled or rapidly-restarted run
-  can hang the UI and run two full simulations at once.
-  Evidence: Verified — `src/lib/tauri.ts:42-69,411-419`;
-  `src/components/SwePlayback.tsx:321-325,381-436`; distinct frontend slice of the
-  tracked run-identity item.
-  Touches: `tauri.ts` replay wait (cancel-aware deadline), `SwePlayback.tsx`
-  supersede/teardown ordering, a concurrent-supersede test.
-  Acceptance: a cancelled run resolves promptly without a full 120 s poll; a new
-  run does not begin backend compute until the prior run is torn down (or the
-  concurrent window is bounded and documented); a test drives back-to-back runs
-  and asserts no lingering 120 s wait and no unbounded concurrent compute.
-  Complexity: M
-
 - [ ] P2 — Add a cited volcanic-source tsunami module feeding the SWE solver
   Why: README lists caldera collapse as planned, and the 2024 PAGEOPH review
   shows flank-collapse and pyroclastic-flow-into-sea sources reduce to a
