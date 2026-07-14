@@ -244,6 +244,10 @@ async function triggerDirectEffect(page, scene) {
     if (!(button instanceof HTMLButtonElement)) throw new Error("Detonation control unavailable.");
     button.click();
   });
+  await page.waitForFunction(
+    (sceneId) => document.querySelector(".app")?.getAttribute("data-reference-direct-frame-ready") === sceneId,
+    scene.id,
+  );
 }
 
 async function applyCaptureView(page, contract, scene, overrides = {}) {
@@ -520,7 +524,9 @@ async function runCapture() {
       if (mode === "verify") {
         const approved = baselines.entries[key];
         if (!approved) throw new Error(`${key}: no approved baseline. Review the candidate and approve only this scene/resolution.`);
-        if (approved.pngSha256 !== imageHash || approved.sceneSha256 !== sceneHash) throw new Error(`${key}: visual or scene contract drifted from its reviewed baseline.`);
+        if (approved.pngSha256 !== imageHash || approved.sceneSha256 !== sceneHash) {
+          throw new Error(`${key}: visual or scene contract drifted from its reviewed baseline (PNG expected ${approved.pngSha256}, received ${imageHash}; scene expected ${approved.sceneSha256}, received ${sceneHash}).`);
+        }
       }
       if (requireSpectacle && !highlightEligible) {
         const reasons = [

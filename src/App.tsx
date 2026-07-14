@@ -1087,6 +1087,7 @@ export default function App() {
       data-domain={hazardMode}
       data-workspace-mode={workspaceMode}
       data-reference-capture={referenceCaptureMode ? "true" : "false"}
+      data-reference-direct-frame-ready={referenceCaptureMode && directRenderFrame ? referenceCaptureSceneId : undefined}
     >
       <a className="skip-link" href="#main-globe">Skip to globe</a>
       {toast && (
