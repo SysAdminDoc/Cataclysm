@@ -98,7 +98,10 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     simulateReqIdRef.current += 1;
     runPresetReqIdRef.current += 1;
     const reqId = runPresetReqIdRef.current;
-    setBusyPresetId(activePresetId);
+    // Only show the "loading source" state when the preset actually changes.
+    // The wavefront is re-fetched on every timeline tick; without this guard the
+    // busy badge flickers on/off throughout playback and scrubbing.
+    if (sourceChanged) setBusyPresetId(activePresetId);
     setError(null);
     if (!inTauri) {
       window.setTimeout(() => {

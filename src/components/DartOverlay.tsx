@@ -13,7 +13,10 @@ type Props = {
   sweSnapshots?: GridSnapshot[] | null;
 };
 
-type BuoyFit = { kind: "ok"; result: DartRmseResult } | { kind: "no-overlap" };
+type BuoyFit =
+  | { kind: "ok"; result: DartRmseResult }
+  | { kind: "no-overlap" }
+  | { kind: "error" };
 
 /** Model eta series at a buoy from the hidden `dart-<id>` gauge samples. */
 function modelSeriesForBuoy(buoyId: string | number, snapshots: GridSnapshot[]): [number, number][] {
@@ -171,10 +174,17 @@ export function DartOverlay({ presetId, timeS, initial, sweSnapshots }: Props) {
             model_samples: model,
           });
           next[buoy.id] = { kind: "ok", result };
-        } catch {
+        } catch (err) {
           // The solver window (60 min) can end before the wave reaches a
-          // distant buoy — the IPC rejects series with no time overlap.
-          next[buoy.id] = { kind: "no-overlap" };
+          // distant buoy — the IPC rejects series with no time overlap. Only
+          // that documented case is "no-overlap"; any other rejection is a real
+          // failure that must not masquerade as a benign no-comparison state.
+          if (/overlap/i.test(String(err))) {
+            next[buoy.id] = { kind: "no-overlap" };
+          } else {
+            console.error(`dartBuoyRmse failed for ${buoy.id}`, err);
+            next[buoy.id] = { kind: "error" };
+          }
         }
       }
       if (!cancelled) setFits(next);
@@ -239,6 +249,11 @@ export function DartOverlay({ presetId, timeS, initial, sweSnapshots }: Props) {
                 {fit?.kind === "no-overlap" && (
                   <div className="dart__rmse dart__rmse--muted" role="note">
                     Solver window ends before this buoy's observations — no RMSE.
+                  </div>
+                )}
+                {fit?.kind === "error" && (
+                  <div className="dart__rmse dart__rmse--muted" role="note">
+                    Couldn't compute RMSE for this buoy — see the diagnostics log.
                   </div>
                 )}
               </div>

@@ -4,6 +4,19 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- DART buoy RMSE now distinguishes a genuine backend failure from the benign
+  "no time overlap" case instead of labelling every error as no-overlap, and
+  surfaces real failures in the diagnostics log.
+- The "loading source" badge no longer flickers on every timeline tick during
+  playback/scrubbing — it now shows only while a newly selected preset loads.
+- Guarded the direct-effect animation against a zero tick duration and the
+  timeline transport against a zero-length duration, either of which could freeze
+  playback on the first frame.
+- Clamped the nuclear yield slider's log scale so a zero/degenerate yield can no
+  longer feed `-Infinity` into the control.
+
 ### Added
 
 - Nuclear casualty results now show an approximate child (under-15) breakdown of

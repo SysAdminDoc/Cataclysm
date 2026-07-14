@@ -408,7 +408,9 @@ export default function App() {
   useEffect(() => {
     setOutcomeFocus(null);
   }, [slotA.initial]);
-  const timelineDurationS = sweSnapshots?.at(-1)?.time_s ?? 6 * 3600;
+  // Floor the duration so a degenerate single-frame (or t=0) run doesn't make
+  // the transport report a zero-length timeline that stops playback instantly.
+  const timelineDurationS = Math.max(sweSnapshots?.at(-1)?.time_s ?? 6 * 3600, 1);
 
   useEffect(() => {
     if (!pendingRunPresetId) return;
@@ -805,7 +807,9 @@ export default function App() {
     if (!directRenderReplay || !detonateNonce) return;
     const frames = directRenderReplay.frames;
     const lastTick = frames.at(-1)?.header.solver_tick ?? 0;
-    const tickDurationS = directRenderReplay.scenario?.header.tick_duration_s ?? 0.1;
+    // Guard against a zero/negative tick duration (a malformed header would
+    // otherwise divide by zero and snap the animation straight to the last frame).
+    const tickDurationS = Math.max(1e-3, directRenderReplay.scenario?.header.tick_duration_s ?? 0.1);
     if (referenceCaptureMode && referenceCaptureSceneId) {
       const scene = referenceScenes.scenes.find((entry) => entry.id === referenceCaptureSceneId);
       const effectTimeMs = referenceEffectTimeMs ?? scene?.effectTimeMs ?? 0;

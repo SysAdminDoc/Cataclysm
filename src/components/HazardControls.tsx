@@ -216,7 +216,7 @@ export function HazardControls({
           </label>
           <Slider
             label="Yield"
-            value={Math.log10(nuclear.yieldKt)}
+            value={Math.log10(Math.max(nuclear.yieldKt, nuclearYield.min))}
             min={Math.log10(nuclearYield.min)}
             max={Math.log10(nuclearYield.max)}
             step={0.01}
