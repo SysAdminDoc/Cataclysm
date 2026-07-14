@@ -15,6 +15,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- The surface-displacement legend now matches the active solver colormap instead
+  of a fixed rainbow ramp: diverging and cividis show a signed trough↔crest key,
+  viridis shows a sequential magnitude key, and the CVD-safe maps are labelled as
+  such — so a colourblind user is no longer shown a misleading legend.
 - Settings import now applies atomically: if a write fails partway through, the
   keys already written are rolled back to their prior values instead of leaving
   settings in a half-imported state.

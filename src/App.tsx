@@ -11,7 +11,8 @@ import { GuidedLesson } from "./components/GuidedLesson";
 import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
 import { UiIcon } from "./components/UiIcon";
-import { settings, type WorkspaceMode } from "./lib/settings";
+import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
+import { colormapLegend } from "./lib/colormap-legend";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
@@ -326,6 +327,7 @@ export default function App() {
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
+  const [legendColormap, setLegendColormap] = useState<ColormapId>("diverging");
   const [sweMaxField, setSweMaxField] = useState<import("./types/scenario").MaxFieldProduct | null>(null);
   const [sweRunQualityA, setSweRunQualityA] = useState<import("./types/scenario").RunQualityRecord | null>(null);
   const [sweRunQualityB, setSweRunQualityB] = useState<import("./types/scenario").RunQualityRecord | null>(null);
@@ -446,6 +448,9 @@ export default function App() {
   useEffect(() => {
     settings.getWorkspaceMode().then(setWorkspaceMode).catch((error) => {
       console.warn("[settings] failed to load workspace mode", error);
+    });
+    settings.getColormap().then(setLegendColormap).catch(() => {
+      /* keep the default legend */
     });
   }, []);
   const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
@@ -1553,13 +1558,19 @@ export default function App() {
           Layers
           <UiIcon name="chevronDown" size={13} />
         </button>
-        <div className="app__viewport-legend" data-visible={!inHazardMode && slotA.initial ? "true" : "false"} aria-label="Surface displacement legend">
+        <div className="app__viewport-legend" data-visible={!inHazardMode && slotA.initial ? "true" : "false"} aria-label={`Surface displacement legend (${legendColormap})`}>
           <span className="app__viewport-instrument-label">Surface displacement</span>
-          <div className="app__viewport-legend-ramp" aria-hidden />
+          <div
+            className="app__viewport-legend-ramp"
+            style={{ background: colormapLegend(legendColormap).gradient }}
+            aria-hidden
+          />
           <div className="app__viewport-legend-scale" aria-hidden>
-            <span>0</span><span>0.1</span><span>1</span><span>5</span><span>10+</span>
+            {colormapLegend(legendColormap).scale.map((label, i) => (
+              <span key={i}>{label}</span>
+            ))}
           </div>
-          <small>metres · analytical overlay</small>
+          <small>{colormapLegend(legendColormap).caption}</small>
         </div>
         <div className="app__viewport-telemetry" aria-label="Viewport telemetry">
           <div className="app__viewport-north" style={{ transform: `rotate(${-cameraTelemetry.headingDeg}deg)` }} aria-hidden>
@@ -1686,6 +1697,7 @@ export default function App() {
             initial={slotA.initial}
             onSnapshot={slotA.setSweSnapshot}
             onSnapshotsReady={handleSweSnapshotsReady}
+            onColormap={setLegendColormap}
             pendingGauge={pendingGauge}
             dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
             onMaxField={setSweMaxField}

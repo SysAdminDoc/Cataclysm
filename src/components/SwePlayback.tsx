@@ -6,7 +6,7 @@ import { exportGaugeCsv } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
 import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, RunQualityRecord } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
-import type { WorkspaceMode } from "../lib/settings";
+import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
 
 type Props = {
@@ -21,6 +21,9 @@ type Props = {
    *  reset). App uses this for GeoJSON export enrichment. */
   onMaxField?: (product: MaxFieldProduct | null) => void;
   onRunQuality?: (quality: RunQualityRecord | null) => void;
+  /** Fires with the colormap this run's overlay was rendered in, so the
+   *  viewport legend can match the actual overlay rather than a fixed ramp. */
+  onColormap?: (id: ColormapId) => void;
   /** Fires with the arrival-time contours when the "Arrivals" toggle is on
    *  (null when off or reset). App routes these to the globe layer. */
   onIsochrones?: (isochrones: import("../types/scenario").Isochrone[] | null) => void;
@@ -107,7 +110,7 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -349,6 +352,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       );
       const sigmaM = Math.max(initial.cavity_radius_m, 5000);
       const colormap = await settings.getColormap();
+      onColormap?.(colormap);
       const gridReq = {
         source: initial.center,
         initial_amplitude_m: initial.peak_amplitude_m,
@@ -450,7 +454,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onRunQuality?.(null);
       setStatus("error");
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame, playbackTimeS]);
+  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;

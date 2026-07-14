@@ -108,7 +108,8 @@
   height: 10px;
   margin: 9px 0 5px;
   border: 1px solid color-mix(in srgb, #ffffff 24%, transparent);
-  background: linear-gradient(90deg, #132a74, #1b87c9 27%, #85e5e2 48%, #f2e85b 65%, #f37c30 82%, #b80f42);
+  /* Gradient is set inline from the active solver colormap so the legend
+     matches the rendered overlay (see src/lib/colormap-legend.ts). */
 }
 
 .app__viewport-legend-scale {
