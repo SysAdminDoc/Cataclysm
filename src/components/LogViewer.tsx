@@ -227,8 +227,8 @@ export function LogViewer({ open, onClose }: Props) {
               </div>
             </div>
           )}
-          {entries.map((e, i) => (
-            <div key={i} className="log-viewer__entry" data-level={e.level}>
+          {entries.map((e) => (
+            <div key={e.id} className="log-viewer__entry" data-level={e.level}>
               <span className="log-viewer__time">
                 {new Date(e.timestamp).toISOString().slice(11, 23)}
               </span>

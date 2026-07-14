@@ -55,14 +55,22 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
 
   const maxLog = Math.log10(Math.max(...entries.map((e) => e.yearsAgo), 1));
   const minLog = Math.log10(Math.max(Math.min(...entries.map((e) => e.yearsAgo), 1), 0.1));
-  const range = Math.max(maxLog - minLog, 1);
+  const span = maxLog - minLog;
+  const range = Math.max(span, 1);
+  // When every entry shares one age (e.g. a single filtered result), the log
+  // formula collapses all markers to 0%; distribute them evenly instead.
+  const degenerate = span < 1e-9;
 
   return (
     <div className="timeline" role="group" aria-label="Historical event timeline">
       <div className="timeline__track">
         <div className="timeline__line" />
-        {entries.map((e) => {
-          const pct = ((maxLog - Math.log10(Math.max(e.yearsAgo, 0.1))) / range) * 100;
+        {entries.map((e, idx) => {
+          const pct = degenerate
+            ? entries.length > 1
+              ? (idx / (entries.length - 1)) * 100
+              : 50
+            : ((maxLog - Math.log10(Math.max(e.yearsAgo, 0.1))) / range) * 100;
           const color = SOURCE_COLORS[e.preset.source.kind] ?? "var(--accent)";
           const isActive = activeId === e.preset.id;
           const isBusy = busyId === e.preset.id;

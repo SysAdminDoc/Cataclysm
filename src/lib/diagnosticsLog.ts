@@ -1,6 +1,9 @@
 export type LogLevel = "log" | "warn" | "error" | "info";
 
 export type LogEntry = {
+  /** Monotonic id, stable across ring-buffer shifts so UI list keys don't
+   *  reuse DOM nodes for logically different rows once the buffer is full. */
+  id: number;
   level: LogLevel;
   timestamp: number;
   message: string;
@@ -13,6 +16,7 @@ export type SolverDiagnosticPayload = {
 
 const MAX_ENTRIES = 500;
 const logBuffer: LogEntry[] = [];
+let entrySeq = 0;
 let listeners: (() => void)[] = [];
 
 function notify() {
@@ -44,7 +48,7 @@ function formatLogArg(arg: unknown): string {
 }
 
 function pushLogEntry(level: LogLevel, message: string) {
-  logBuffer.push({ level, timestamp: Date.now(), message });
+  logBuffer.push({ id: entrySeq++, level, timestamp: Date.now(), message });
   if (logBuffer.length > MAX_ENTRIES) logBuffer.shift();
   notify();
 }
