@@ -27,6 +27,37 @@ test.describe("Cataclysm browser preview", () => {
     await expect(canvas).toBeVisible({ timeout: 15_000 });
   });
 
+  test("offers an unseen crash report until the user inspects or clears it", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("tsunamisim.last_crash", JSON.stringify({
+        at: Date.parse("2026-07-14T12:00:00.000Z"),
+        source: "unhandled-rejection",
+        name: "Error",
+        message: "Redacted prior failure",
+        componentStack: null,
+        recentLogs: [],
+        seen: false,
+      }));
+    });
+    await page.goto("/");
+
+    const recovery = page.getByRole("status").filter({ hasText: "previous failure" });
+    await expect(recovery).toBeVisible();
+    expect(JSON.parse(await page.evaluate(() => localStorage.getItem("tsunamisim.last_crash") ?? "null")).seen)
+      .toBe(false);
+
+    await recovery.getByRole("button", { name: "Inspect report" }).click();
+    const dialog = page.getByRole("dialog", { name: "Application log" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("region", { name: "Previous crash report" })).toContainText("Redacted prior failure");
+    expect(JSON.parse(await page.evaluate(() => localStorage.getItem("tsunamisim.last_crash") ?? "null")).seen)
+      .toBe(true);
+    await expect(recovery).toHaveCount(0);
+
+    await dialog.getByRole("button", { name: "Clear report" }).click();
+    expect(await page.evaluate(() => localStorage.getItem("tsunamisim.last_crash"))).toBeNull();
+  });
+
   test("surfaces WebGL context loss and rebuilds the renderer without losing the app", async ({ page }) => {
     await page.goto("/");
     const canvas = page.locator(".cesium-widget canvas");

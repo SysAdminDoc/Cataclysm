@@ -3,10 +3,16 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import {
   clearDiagnosticsLog,
+  clearPersistedCrashReport,
   installConsoleLogInterception,
+  markCrashReportSeen,
   pushExternalDiagnostic,
   readDiagnosticsLog,
+  readPersistedCrashReport,
+  redactSensitive,
+  serializeRedactedDiagnostics,
   subscribeDiagnostics,
+  type CrashReport,
   type LogEntry,
   type SolverDiagnosticPayload,
 } from "../lib/diagnosticsLog";
@@ -48,6 +54,7 @@ type Props = {
 
 export function LogViewer({ open, onClose }: Props) {
   const [entries, setEntries] = useState<LogEntry[]>(readDiagnosticsLog());
+  const [crashReport, setCrashReport] = useState<CrashReport | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const dialogRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -59,6 +66,13 @@ export function LogViewer({ open, onClose }: Props) {
     const update = () => setEntries(readDiagnosticsLog());
     return subscribeDiagnostics(update);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const report = readPersistedCrashReport();
+    setCrashReport(report);
+    if (report && !report.seen) markCrashReportSeen();
+  }, [open]);
 
   useEffect(() => {
     if (listRef.current) {
@@ -84,13 +98,13 @@ export function LogViewer({ open, onClose }: Props) {
     const text = entries
       .map((e) => {
         const t = new Date(e.timestamp).toISOString().slice(11, 23);
-        return `[${t}] [${e.level.toUpperCase()}] ${e.message}`;
+        return `[${t}] [${e.level.toUpperCase()}] ${redactSensitive(e.message)}`;
       })
       .join("\n");
     const header = [
       `Cataclysm diagnostics`,
       `Captured: ${new Date().toISOString()}`,
-      `User-Agent: ${navigator.userAgent}`,
+      `User-Agent: ${redactSensitive(navigator.userAgent)}`,
       `Entries: ${entries.length}`,
       `---`,
     ].join("\n");
@@ -99,7 +113,7 @@ export function LogViewer({ open, onClose }: Props) {
       setTransientCopyStatus("error");
       return;
     }
-    writeText.call(navigator.clipboard, `${header}\n${text}`).then(
+    writeText.call(navigator.clipboard, redactSensitive(`${header}\n${text}`)).then(
       () => setTransientCopyStatus("copied"),
       () => setTransientCopyStatus("error"),
     );
@@ -132,20 +146,26 @@ export function LogViewer({ open, onClose }: Props) {
       renderer_quality: getRendererQualityDiagnostics(),
       user_agent: navigator.userAgent,
       backend,
+      previous_crash: crashReport,
       recent_log: entries.slice(-50).map((e) => ({
         t: new Date(e.timestamp).toISOString(),
         level: e.level,
-        message: e.message,
+        message: redactSensitive(e.message),
       })),
     };
-    writeText.call(navigator.clipboard, JSON.stringify(bundle, null, 2)).then(
+    writeText.call(navigator.clipboard, serializeRedactedDiagnostics(bundle)).then(
       () => setTransientCopyStatus("copied"),
       () => setTransientCopyStatus("error"),
     );
-  }, [entries, setTransientCopyStatus]);
+  }, [crashReport, entries, setTransientCopyStatus]);
 
   const clearLog = useCallback(() => {
     clearDiagnosticsLog();
+  }, []);
+
+  const clearCrashReport = useCallback(() => {
+    clearPersistedCrashReport();
+    setCrashReport(null);
   }, []);
 
   if (!open) return null;
@@ -182,6 +202,24 @@ export function LogViewer({ open, onClose }: Props) {
           <span data-level="warn">{counts.warn} warnings</span>
           <span data-level="info">{counts.info} info</span>
         </div>
+        {crashReport && (
+          <section className="log-viewer__crash" aria-label="Previous crash report">
+            <div>
+              <span>Previous crash report</span>
+              <strong>{crashReport.name}: {crashReport.message}</strong>
+              <small>
+                {new Date(crashReport.at).toLocaleString()} · {crashReport.source.replaceAll("-", " ")}
+              </small>
+            </div>
+            <details>
+              <summary>Inspect redacted evidence</summary>
+              <pre>{serializeRedactedDiagnostics(crashReport)}</pre>
+            </details>
+            <button className="log-viewer__btn" type="button" onClick={clearCrashReport}>
+              Clear report
+            </button>
+          </section>
+        )}
         <div className="log-viewer__toolbar">
           <span className="log-viewer__count">{entries.length} entries</span>
           <button

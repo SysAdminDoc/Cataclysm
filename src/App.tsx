@@ -10,6 +10,7 @@ import { Tour } from "./components/Tour";
 import { GuidedLesson } from "./components/GuidedLesson";
 import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
+import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
 import { colormapLegend } from "./lib/colormap-legend";
@@ -1101,37 +1102,40 @@ export default function App() {
           </button>
         </div>
       )}
-      {tokenBannerOpen && (
-        <div className="token-banner" role="status" aria-live="polite">
-          <span className="token-banner__icon" aria-hidden>
-            <UiIcon name="info" size={14} />
-          </span>
-          <span>
-            <strong>Higher-detail online maps are available.</strong> The bundled Earth
-            works offline. Configure optional streamed terrain and imagery when needed.
-          </span>
-          <button
-            className="token-banner__action"
-            onClick={() => setShowSettings(true)}
-            type="button"
-          >
-            Configure maps
-          </button>
-          <button
-            className="token-banner__dismiss"
-            aria-label="Dismiss imagery token notice"
-            type="button"
-            onClick={() => {
-              setTokenBannerOpen(false);
-              settings
-                .dismissTokenBanner()
-                .catch((err) => console.warn("[settings] failed to dismiss token banner", err));
-            }}
-          >
-            <UiIcon name="close" size={14} />
-          </button>
-        </div>
-      )}
+      <div className="app__banner-stack">
+        <CrashRecoveryNotice onInspect={() => setShowLog(true)} />
+        {tokenBannerOpen && (
+          <div className="token-banner" role="status" aria-live="polite">
+            <span className="token-banner__icon" aria-hidden>
+              <UiIcon name="info" size={14} />
+            </span>
+            <span>
+              <strong>Higher-detail online maps are available.</strong> The bundled Earth
+              works offline. Configure optional streamed terrain and imagery when needed.
+            </span>
+            <button
+              className="token-banner__action"
+              onClick={() => setShowSettings(true)}
+              type="button"
+            >
+              Configure maps
+            </button>
+            <button
+              className="token-banner__dismiss"
+              aria-label="Dismiss imagery token notice"
+              type="button"
+              onClick={() => {
+                setTokenBannerOpen(false);
+                settings
+                  .dismissTokenBanner()
+                  .catch((err) => console.warn("[settings] failed to dismiss token banner", err));
+              }}
+            >
+              <UiIcon name="close" size={14} />
+            </button>
+          </div>
+        )}
+      </div>
       <header className="app__header">
         <div className="app__brand">
           <span className="app__brand-mark" aria-hidden="true">≋</span>

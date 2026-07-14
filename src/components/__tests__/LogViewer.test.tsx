@@ -1,7 +1,11 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { pushExternalDiagnostic } from "../../lib/diagnosticsLog";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  persistCrashReport,
+  pushExternalDiagnostic,
+  readPersistedCrashReport,
+} from "../../lib/diagnosticsLog";
 import { LogViewer } from "../LogViewer";
 
 const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
@@ -15,6 +19,10 @@ function restoreClipboard() {
 }
 
 describe("LogViewer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   afterEach(() => {
     restoreClipboard();
   });
@@ -91,5 +99,52 @@ describe("LogViewer", () => {
     expect(bundle.earth_assets.providers).toHaveLength(7);
     expect(bundle.earth_assets.assets).toHaveLength(13);
     expect(JSON.stringify(bundle).toLowerCase()).not.toContain("cesium_token");
+  });
+
+  it("redacts credentials and paths from copied logs and support bundles", async () => {
+    const user = userEvent.setup();
+    const clipboard = { writeText: vi.fn<(text: string) => Promise<void>>().mockResolvedValue() };
+    Object.defineProperty(navigator, "clipboard", { value: clipboard, configurable: true });
+    persistCrashReport({
+      source: "window-error",
+      name: "Error",
+      message: "crash at C:\\Users\\private\\app.ts?token=crash-secret",
+    });
+    render(<LogViewer open onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    act(() => {
+      pushExternalDiagnostic({
+        level: "error",
+        message: "Bearer abcdefghijklmnop123456 at \\\\server\\private\\file.log?access_token=query-secret",
+      });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Copy log" }));
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Copy diagnostics" }));
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledTimes(2));
+
+    for (const [copied] of clipboard.writeText.mock.calls) {
+      expect(copied).not.toContain("abcdefghijklmnop123456");
+      expect(copied).not.toContain("query-secret");
+      expect(copied).not.toContain("crash-secret");
+      expect(copied).not.toContain("C:\\Users\\private");
+      expect(copied).not.toContain("\\\\server\\private");
+    }
+  });
+
+  it("marks an unseen crash reviewed only when diagnostics opens", async () => {
+    const user = userEvent.setup();
+    persistCrashReport({ source: "unhandled-rejection", name: "Error", message: "inspect me" });
+    expect(readPersistedCrashReport()?.seen).toBe(false);
+
+    render(<LogViewer open={false} onClose={() => {}} />);
+    expect(readPersistedCrashReport()?.seen).toBe(false);
+
+    render(<LogViewer open onClose={() => {}} />);
+    expect(await screen.findByRole("region", { name: "Previous crash report" })).toHaveTextContent("inspect me");
+    expect(readPersistedCrashReport()?.seen).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Clear report" }));
+    expect(readPersistedCrashReport()).toBeNull();
   });
 });

@@ -1,5 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { persistCrashReport, readPersistedCrashReport } from "../lib/diagnosticsLog";
+import {
+  persistCrashReport,
+  readPersistedCrashReport,
+  serializeRedactedDiagnostics,
+} from "../lib/diagnosticsLog";
 
 type Props = {
   children: ReactNode;
@@ -34,16 +38,14 @@ export class ErrorBoundary extends Component<Props, State> {
     const componentStack = info.componentStack || null;
     this.setState({ stack: componentStack });
     // Persist a redacted report so it survives the reload the user is about to do.
-    persistCrashReport({ name: error.name, message: error.message, componentStack });
+    persistCrashReport({ source: "react-boundary", name: error.name, message: error.message, componentStack });
   }
 
   private buildReportText(): string {
     const report = readPersistedCrashReport();
-    if (report) return JSON.stringify(report, null, 2);
-    return JSON.stringify(
+    if (report) return serializeRedactedDiagnostics(report);
+    return serializeRedactedDiagnostics(
       { name: this.state.error?.name, message: this.state.error?.message, componentStack: this.state.stack },
-      null,
-      2,
     );
   }
 

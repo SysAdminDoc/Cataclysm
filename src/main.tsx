@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { primeCesiumToken } from "./lib/cesium";
-import { markCrashReportSeen } from "./lib/diagnosticsLog";
+import { installGlobalCrashHandlers } from "./lib/diagnosticsLog";
 import { settings } from "./lib/settings";
 import "./styles.css";
 
@@ -28,12 +28,7 @@ if (typeof window !== "undefined") {
       .then((tok) => primeCesiumToken(tok || null))
       .catch((err) => console.warn("[settings] failed to refresh Cesium token", err));
   });
-  window.addEventListener("error", (event) => {
-    console.error("[app] Unhandled window error", event.error ?? event.message);
-  });
-  window.addEventListener("unhandledrejection", (event) => {
-    console.error("[app] Unhandled promise rejection", event.reason);
-  });
+  installGlobalCrashHandlers(window);
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -43,9 +38,3 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-
-// A successful start marks any prior crash report as reviewed (but keeps it for
-// inspection) so it is not treated as a fresh failure on the next launch.
-if (typeof window !== "undefined") {
-  window.setTimeout(markCrashReportSeen, 0);
-}

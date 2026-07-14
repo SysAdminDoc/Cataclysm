@@ -48,7 +48,7 @@ function formatLogArg(arg: unknown): string {
 }
 
 function pushLogEntry(level: LogLevel, message: string) {
-  logBuffer.push({ id: entrySeq++, level, timestamp: Date.now(), message });
+  logBuffer.push({ id: entrySeq++, level, timestamp: Date.now(), message: redactSensitive(message) });
   if (logBuffer.length > MAX_ENTRIES) logBuffer.shift();
   notify();
 }
@@ -122,10 +122,14 @@ export function clearDiagnosticsLog() {
 // content. Everything written here is passed through `redactSensitive`.
 
 const CRASH_KEY = "tsunamisim.last_crash";
+export const CRASH_REPORT_CHANGED_EVENT = "tsunamisim:crash-report-changed";
 const CRASH_LOG_TAIL = 40;
+
+export type CrashSource = "react-boundary" | "window-error" | "unhandled-rejection";
 
 export type CrashReport = {
   at: number;
+  source: CrashSource;
   name: string;
   message: string;
   componentStack: string | null;
@@ -133,16 +137,41 @@ export type CrashReport = {
   seen: boolean;
 };
 
-/** Strip Cesium ion / JWT tokens, absolute paths, and long hex/base64 blobs. */
+/** Strip credentials and local filesystem locations before diagnostics cross a
+ * persistence, clipboard, or download boundary. */
 export function redactSensitive(text: string): string {
   return text
-    .replace(/eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}/g, "[redacted-token]")
-    .replace(/[A-Za-z]:\\[^\s"')]+/g, "[redacted-path]")
-    .replace(/\/(?:Users|home)\/[^\s"')/]+(?:\/[^\s"')]*)?/g, "[redacted-path]")
-    .replace(/\b[A-Fa-f0-9]{32,}\b/g, "[redacted-hex]");
+    .replace(/\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b/g, "[redacted-token]")
+    .replace(/\b(Bearer\s+)[A-Za-z0-9._~+/-]{8,}={0,2}/gi, "$1[redacted-token]")
+    .replace(/([?&](?:access[_-]?token|token|api[_-]?key|apikey|client[_-]?secret|secret|password)=)[^&#\s]+/gi, "$1[redacted]")
+    .replace(/\b((?:access[_-]?token|api[_-]?key|apikey|client[_-]?secret|password)\s*[:=]\s*)[^\s,;&#]+/gi, "$1[redacted]")
+    .replace(/\b[A-Za-z]:[\\/](?:[^\\/\r\n]+[\\/])*[^\\/\r\n\s,;:]+/g, "[redacted-path]")
+    .replace(/\\\\[^\\\s]+\\[^\\\s]+(?:\\[^\\\r\n\s"'<>|]+)*/g, "[redacted-path]")
+    .replace(/(?<![:/\w])\/(?:[^/\s"'()<>{}[\]]+\/)*[^/\s"'()<>{}[\]]+/g, "[redacted-path]")
+    .replace(/\b[A-Fa-f0-9]{32,}\b/g, "[redacted-long-value]")
+    .replace(/\b(?=[A-Za-z0-9+/_=-]{32,}\b)(?=[A-Za-z0-9+/_=-]*[A-Za-z])(?=[A-Za-z0-9+/_=-]*\d)[A-Za-z0-9+/_=-]+\b/g, "[redacted-long-value]");
+}
+
+/** JSON serialization for clipboard/download boundaries. Strings are redacted
+ * recursively and circular values cannot abort diagnostics export. */
+export function serializeRedactedDiagnostics(value: unknown): string {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(value, (_key, current: unknown) => {
+    if (typeof current === "string") return redactSensitive(current);
+    if (typeof current === "object" && current !== null) {
+      if (seen.has(current)) return "[Circular]";
+      seen.add(current);
+    }
+    return current;
+  }, 2);
+}
+
+function notifyCrashReportChanged(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(CRASH_REPORT_CHANGED_EVENT));
 }
 
 export function persistCrashReport(input: {
+  source?: CrashSource;
   name: string;
   message: string;
   componentStack?: string | null;
@@ -150,6 +179,7 @@ export function persistCrashReport(input: {
   if (typeof localStorage === "undefined") return;
   const report: CrashReport = {
     at: Date.now(),
+    source: input.source ?? "react-boundary",
     name: redactSensitive(input.name),
     message: redactSensitive(input.message),
     componentStack: input.componentStack ? redactSensitive(input.componentStack) : null,
@@ -161,6 +191,7 @@ export function persistCrashReport(input: {
   };
   try {
     localStorage.setItem(CRASH_KEY, JSON.stringify(report));
+    notifyCrashReportChanged();
   } catch {
     // Never let crash persistence throw on top of an existing crash.
   }
@@ -171,9 +202,37 @@ export function readPersistedCrashReport(): CrashReport | null {
   try {
     const raw = localStorage.getItem(CRASH_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CrashReport;
-    if (typeof parsed?.message !== "string") return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as Partial<CrashReport>;
+    if (typeof parsed?.message !== "string" || typeof parsed.name !== "string") return null;
+    const source: CrashSource = parsed.source === "window-error" || parsed.source === "unhandled-rejection"
+      ? parsed.source
+      : "react-boundary";
+    const recentLogs = Array.isArray(parsed.recentLogs)
+      ? parsed.recentLogs.slice(-CRASH_LOG_TAIL).flatMap((entry) => {
+          if (!entry || typeof entry !== "object") return [];
+          const candidate = entry as Partial<LogEntry>;
+          if (typeof candidate.message !== "string") return [];
+          return [{
+            id: Number.isSafeInteger(candidate.id) ? candidate.id as number : 0,
+            level: normalizeLevel(candidate.level),
+            timestamp: typeof candidate.timestamp === "number" && Number.isFinite(candidate.timestamp)
+              ? candidate.timestamp
+              : 0,
+            message: redactSensitive(candidate.message),
+          }];
+        })
+      : [];
+    return {
+      at: typeof parsed.at === "number" && Number.isFinite(parsed.at) ? parsed.at : 0,
+      source,
+      name: redactSensitive(parsed.name),
+      message: redactSensitive(parsed.message),
+      componentStack: typeof parsed.componentStack === "string"
+        ? redactSensitive(parsed.componentStack)
+        : null,
+      recentLogs,
+      seen: parsed.seen === true,
+    };
   } catch {
     return null;
   }
@@ -186,6 +245,7 @@ export function markCrashReportSeen(): void {
   if (!report || report.seen) return;
   try {
     localStorage.setItem(CRASH_KEY, JSON.stringify({ ...report, seen: true }));
+    notifyCrashReportChanged();
   } catch {
     // ignore
   }
@@ -195,7 +255,41 @@ export function clearPersistedCrashReport(): void {
   if (typeof localStorage === "undefined") return;
   try {
     localStorage.removeItem(CRASH_KEY);
+    notifyCrashReportChanged();
   } catch {
     // ignore
   }
+}
+
+export function persistUnhandledFailure(source: Exclude<CrashSource, "react-boundary">, value: unknown): void {
+  const name = value instanceof Error ? value.name : source === "window-error" ? "WindowError" : "UnhandledRejection";
+  const message = value instanceof Error ? value.message : formatLogArg(value);
+  persistCrashReport({ source, name, message });
+}
+
+const installedGlobalHandlers = new WeakMap<Window, () => void>();
+
+/** Capture global failures into the same redacted report used by the React
+ * boundary. Returns a cleanup callback for tests/HMR. */
+export function installGlobalCrashHandlers(target: Window = window): () => void {
+  const existing = installedGlobalHandlers.get(target);
+  if (existing) return existing;
+  const onError = (event: ErrorEvent) => {
+    const failure = event.error ?? event.message;
+    console.error("[app] Unhandled window error", failure);
+    persistUnhandledFailure("window-error", failure);
+  };
+  const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+    console.error("[app] Unhandled promise rejection", event.reason);
+    persistUnhandledFailure("unhandled-rejection", event.reason);
+  };
+  target.addEventListener("error", onError);
+  target.addEventListener("unhandledrejection", onUnhandledRejection);
+  const cleanup = () => {
+    target.removeEventListener("error", onError);
+    target.removeEventListener("unhandledrejection", onUnhandledRejection);
+    installedGlobalHandlers.delete(target);
+  };
+  installedGlobalHandlers.set(target, cleanup);
+  return cleanup;
 }

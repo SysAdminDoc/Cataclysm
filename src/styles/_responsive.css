@@ -91,6 +91,22 @@
     grid-row: 1;
   }
 
+  .crash-recovery-notice {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    padding: 10px 14px;
+  }
+
+  .crash-recovery-notice__inspect {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .crash-recovery-notice__clear {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
   .app__header {
     flex-wrap: wrap;
     min-height: 56px;

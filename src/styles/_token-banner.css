@@ -2,6 +2,15 @@
 /* First-launch dismissible Cesium-token banner. Sits above the header
    until the user pastes a token (auto-dismiss) or clicks ✕. Persists
    the dismissal via settings.dismissTokenBanner. */
+.app__banner-stack {
+  grid-area: banner;
+  display: grid;
+}
+
+.app__banner-stack > .token-banner {
+  grid-area: auto;
+}
+
 .token-banner {
   grid-area: banner;
   display: grid;
@@ -17,6 +26,55 @@
   color: var(--text);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.crash-recovery-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 18px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--yellow) 13%, transparent), transparent 45%),
+    color-mix(in srgb, var(--mantle) 96%, var(--crust));
+  border-bottom: 1px solid color-mix(in srgb, var(--yellow) 38%, var(--panel-border));
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.crash-recovery-notice__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 48%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
+  color: var(--yellow);
+}
+
+.crash-recovery-notice__inspect,
+.crash-recovery-notice__clear {
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: var(--r-md);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crash-recovery-notice__inspect {
+  border: 1px solid transparent;
+  background: var(--yellow);
+  color: var(--crust);
+}
+
+.crash-recovery-notice__clear {
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--subtext);
 }
 
 .token-banner__icon {

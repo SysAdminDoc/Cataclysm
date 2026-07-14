@@ -1,24 +1,46 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   redactSensitive,
   persistCrashReport,
   readPersistedCrashReport,
   markCrashReportSeen,
   clearPersistedCrashReport,
+  installGlobalCrashHandlers,
+  serializeRedactedDiagnostics,
 } from "../diagnosticsLog";
 
 describe("crash evidence store", () => {
+  let cleanupGlobalHandlers: (() => void) | undefined;
   beforeEach(() => localStorage.clear());
+  afterEach(() => {
+    cleanupGlobalHandlers?.();
+    cleanupGlobalHandlers = undefined;
+    vi.restoreAllMocks();
+  });
 
   it("redacts tokens, absolute paths, and long hex blobs", () => {
     const token = "eyJhbGciOi.eyJqdGkiOi.QmFzZTY0U2ln";
     expect(redactSensitive(`ion token ${token} used`)).toBe("ion token [redacted-token] used");
     expect(redactSensitive("failed at C:\\Users\\matt\\repos\\app\\x.ts"))
       .toBe("failed at [redacted-path]");
+    expect(redactSensitive("failed at C:/Users/matt/repos/app/x.ts"))
+      .toBe("failed at [redacted-path]");
     expect(redactSensitive("home /Users/matt/secret/scenario.json here"))
       .toBe("home [redacted-path] here");
     expect(redactSensitive("digest deadbeefdeadbeefdeadbeefdeadbeef01"))
-      .toBe("digest [redacted-hex]");
+      .toBe("digest [redacted-long-value]");
+    expect(redactSensitive("GET https://host.test/x?access_token=super-secret-value&ok=1"))
+      .toBe("GET https://host.test/x?access_token=[redacted]&ok=1");
+    expect(redactSensitive("Authorization: Bearer abcdefghijklmnop123456"))
+      .toBe("Authorization: Bearer [redacted-token]");
+    expect(redactSensitive("api_key=abcdefghijklmnopqrstuvwxyz1234567890"))
+      .toBe("api_key=[redacted]");
+    expect(redactSensitive("UNC \\\\server\\private-share\\scenario.json"))
+      .toBe("UNC [redacted-path]");
+    expect(redactSensitive("tmp /var/tmp/cataclysm/scenario.json here"))
+      .toBe("tmp [redacted-path] here");
+    expect(redactSensitive("workspace /workspace/cataclysm/output.log here"))
+      .toBe("workspace [redacted-path] here");
   });
 
   it("persists a redacted report and reads it back", () => {
@@ -33,6 +55,52 @@ describe("crash evidence store", () => {
     expect(report?.message).toBe("boom at [redacted-path]");
     expect(report?.componentStack).toBe("at Globe ([redacted-path])");
     expect(report?.seen).toBe(false);
+    const raw = localStorage.getItem("tsunamisim.last_crash") ?? "";
+    expect(raw).not.toContain("C:\\Users\\matt");
+    expect(raw).not.toContain("/home/matt");
+  });
+
+  it("redacts every nested string before diagnostics serialization", () => {
+    const serialized = serializeRedactedDiagnostics({
+      backend: { error: "failed at C:\\Users\\matt\\repo\\app.exe" },
+      logs: ["https://host.test/?token=secret-query-value"],
+      auth: "Bearer abcdefghijklmnop123456",
+    });
+    expect(serialized).not.toContain("matt");
+    expect(serialized).not.toContain("secret-query-value");
+    expect(serialized).not.toContain("abcdefghijklmnop123456");
+    expect(serialized).toContain("[redacted-path]");
+  });
+
+  it("persists redacted window errors for inspection after reload", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    cleanupGlobalHandlers = installGlobalCrashHandlers(window);
+    window.dispatchEvent(new ErrorEvent("error", {
+      error: new Error("failure at C:\\Users\\private\\app.ts?access_token=raw-secret"),
+      message: "window failed",
+    }));
+
+    const report = readPersistedCrashReport();
+    expect(report).toMatchObject({ source: "window-error", seen: false });
+    const raw = localStorage.getItem("tsunamisim.last_crash") ?? "";
+    expect(raw).not.toContain("C:\\Users\\private");
+    expect(raw).not.toContain("raw-secret");
+  });
+
+  it("persists redacted unhandled rejections for inspection after reload", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    cleanupGlobalHandlers = installGlobalCrashHandlers(window);
+    const event = new Event("unhandledrejection") as PromiseRejectionEvent;
+    Object.defineProperty(event, "reason", {
+      value: new Error("rejected /home/private/scenario.json with api_key=raw-api-key"),
+    });
+    window.dispatchEvent(event);
+
+    const report = readPersistedCrashReport();
+    expect(report).toMatchObject({ source: "unhandled-rejection", seen: false });
+    const raw = localStorage.getItem("tsunamisim.last_crash") ?? "";
+    expect(raw).not.toContain("/home/private");
+    expect(raw).not.toContain("raw-api-key");
   });
 
   it("marks the report seen without deleting it", () => {

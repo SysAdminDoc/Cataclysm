@@ -15,6 +15,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Diagnostics copied to the clipboard, stored after crashes, or included in a
+  support bundle now redact credentials and local paths. Global errors survive
+  reload, and the next successful launch offers the unseen report until the user
+  explicitly inspects or clears it.
 - The DART buoy sparkline now exposes its observed peak, current model value, and
   model-vs-observed arrival delta in its screen-reader label instead of a generic
   "sparkline" description.

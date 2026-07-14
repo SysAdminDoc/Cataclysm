@@ -49,6 +49,49 @@
   background: color-mix(in srgb, var(--blue) 8%, transparent);
 }
 
+.log-viewer__crash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  margin: 12px 20px 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 34%, var(--panel-border));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--yellow) 7%, var(--mantle));
+}
+
+.log-viewer__crash > div {
+  display: grid;
+  gap: 3px;
+}
+
+.log-viewer__crash span,
+.log-viewer__crash small {
+  color: var(--subtext);
+  font-size: 11px;
+}
+
+.log-viewer__crash details {
+  grid-column: 1 / -1;
+}
+
+.log-viewer__crash summary {
+  color: var(--accent-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.log-viewer__crash pre {
+  max-height: 180px;
+  margin: 8px 0 0;
+  overflow: auto;
+  color: var(--text);
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+  font-size: 10.5px;
+  white-space: pre-wrap;
+}
+
 .log-viewer__toolbar {
   display: flex;
   align-items: center;
