@@ -32,7 +32,13 @@ use crate::physics::{
 use crate::presets::{Preset, all_presets, find_preset};
 use tauri::{AppHandle, Emitter, ipc::Response};
 
-static SIM_CANCEL_TOKENS: LazyLock<Mutex<HashMap<String, Weak<AtomicBool>>>> =
+#[derive(Debug)]
+struct ActiveSimulation {
+    cancel: Weak<AtomicBool>,
+    reserved_memory_bytes: u64,
+}
+
+static ACTIVE_SIMULATIONS: LazyLock<Mutex<HashMap<String, ActiveSimulation>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 static LAST_RUN_QUALITY: LazyLock<Mutex<Option<RunQualityRecord>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -71,28 +77,75 @@ fn validate_run_id(run_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn register_simulation_cancel(run_id: &str, cancel: &Arc<AtomicBool>) -> Result<(), String> {
+fn register_simulation(
+    run_id: &str,
+    cancel: &Arc<AtomicBool>,
+    memory: &SimulationMemoryEstimate,
+) -> Result<(), String> {
     validate_run_id(run_id)?;
-    let mut guard = SIM_CANCEL_TOKENS
+    let mut guard = ACTIVE_SIMULATIONS
         .lock()
         .map_err(|_| "simulation registry is unavailable")?;
-    guard.retain(|_, token| token.strong_count() > 0);
-    if guard.get(run_id).and_then(Weak::upgrade).is_some() {
+    guard.retain(|_, run| run.cancel.strong_count() > 0);
+    if guard
+        .get(run_id)
+        .and_then(|run| run.cancel.upgrade())
+        .is_some()
+    {
         return Err(format!("simulation run '{run_id}' is already active"));
     }
-    guard.insert(run_id.to_owned(), Arc::downgrade(cancel));
+    let active_bytes = guard
+        .values()
+        .map(|run| run.reserved_memory_bytes)
+        .fold(0_u64, u64::saturating_add);
+    if active_bytes.saturating_add(memory.estimated_bytes) > SWE_MEMORY_BUDGET_BYTES {
+        return Err(format!(
+            "simulation run '{run_id}' needs {} for a {}×{} grid ({} cells), but active runs \
+             already reserve {} of the {} solver budget; reduce cells_per_deg, \
+             box_half_size_deg, or concurrent compare runs",
+            format_mib(memory.estimated_bytes),
+            memory.nx,
+            memory.ny,
+            memory.cells,
+            format_mib(active_bytes),
+            format_mib(SWE_MEMORY_BUDGET_BYTES),
+        ));
+    }
+    guard.insert(
+        run_id.to_owned(),
+        ActiveSimulation {
+            cancel: Arc::downgrade(cancel),
+            reserved_memory_bytes: memory.estimated_bytes,
+        },
+    );
     Ok(())
 }
 
-fn unregister_simulation_cancel(run_id: &str, cancel: &Arc<AtomicBool>) {
-    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock()
+fn unregister_simulation(run_id: &str, cancel: &Arc<AtomicBool>) {
+    if let Ok(mut guard) = ACTIVE_SIMULATIONS.lock()
         && guard
             .get(run_id)
-            .and_then(Weak::upgrade)
+            .and_then(|run| run.cancel.upgrade())
             .is_some_and(|registered| Arc::ptr_eq(&registered, cancel))
     {
         guard.remove(run_id);
     }
+}
+
+fn format_mib(bytes: u64) -> String {
+    format!("{:.1} MiB", bytes as f64 / (1024.0 * 1024.0))
+}
+
+fn simulation_resource_status() -> (u32, u64) {
+    let Ok(mut guard) = ACTIVE_SIMULATIONS.lock() else {
+        return (0, 0);
+    };
+    guard.retain(|_, run| run.cancel.strong_count() > 0);
+    let bytes = guard
+        .values()
+        .map(|run| run.reserved_memory_bytes)
+        .fold(0_u64, u64::saturating_add);
+    (guard.len().min(u32::MAX as usize) as u32, bytes)
 }
 
 fn check_finite(name: &str, value: f64) -> Result<(), String> {
@@ -1043,7 +1096,18 @@ fn inject_source_initial_field(grid: &mut SwGrid, req: &SimulateGridRequest) -> 
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SimulationRunLifecycle {
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SimulateGridResponse {
+    pub run_id: String,
+    pub lifecycle: SimulationRunLifecycle,
+    pub emitted_snapshots: u32,
+    pub cancelled: bool,
     pub snapshots: Vec<GridSnapshot>,
     pub dt_s: f64,
     pub nx: u32,
@@ -1062,6 +1126,16 @@ pub struct SimulateGridResponse {
 
 /// Hard cap on the SWE grid size — protects us against runaway requests.
 const SWE_MAX_CELLS: usize = 4_000_000;
+/// Process-wide reservation ceiling for live SWE runs. One maximum-size
+/// streaming run remains admissible; a second comparable run is rejected
+/// before either grid can double the process working set.
+const SWE_MEMORY_BUDGET_BYTES: u64 = 512 * 1024 * 1024;
+/// Peak per-cell residency across the f64 host grid, solver scratch/max-field
+/// arrays, f32 GPU ping-pong/readback buffers, and upload staging.
+const SWE_CORE_BYTES_PER_CELL: u64 = 120;
+/// Conservative retained size for each PNG/base64 snapshot in the
+/// non-streaming response. Streaming responses do not retain prior snapshots.
+const SWE_RETAINED_SNAPSHOT_BYTES_PER_CELL: u64 = 5;
 /// Hard cap on total *work* (grid cells × time steps). The cell cap and the
 /// step cap are each individually bounded, but their product is what actually
 /// determines wall-clock time; without this a request that passes both (e.g.
@@ -1082,6 +1156,76 @@ const WAVEFRONT_MAX_SAMPLES: usize = 2_000;
 /// become unrepresentative; the solver used to silently clamp requests up to
 /// this floor, diverging the simulated depth from the reported one.
 const SWE_MIN_MEAN_DEPTH_M: f64 = 50.0;
+
+#[derive(Debug, Clone, Copy)]
+struct SimulationGridPlan {
+    lat: f64,
+    lon: f64,
+    south: f64,
+    north: f64,
+    west: f64,
+    east: f64,
+    cell_deg: f64,
+    nx: usize,
+    ny: usize,
+    cells: usize,
+}
+
+impl SimulationGridPlan {
+    fn from_request(req: &SimulateGridRequest) -> Result<Self, String> {
+        let lat = req.source.lat_deg.clamp(-80.0, 80.0);
+        let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
+        let half = req.box_half_size_deg;
+        let cell_deg = 1.0 / req.cells_per_deg;
+        let south = (lat - half).max(-89.0);
+        let north = (lat + half).min(89.0);
+        let west = lon - half;
+        let east = lon + half;
+        let nx = ((east - west) / cell_deg).round().max(2.0) as usize;
+        let ny = ((north - south) / cell_deg).round().max(2.0) as usize;
+        let cells = nx.saturating_mul(ny);
+        if cells > SWE_MAX_CELLS {
+            return Err(format!(
+                "grid too large ({nx}×{ny} ≈ {cells} cells) — reduce cells_per_deg or \
+                 box_half_size_deg"
+            ));
+        }
+        Ok(Self {
+            lat,
+            lon,
+            south,
+            north,
+            west,
+            east,
+            cell_deg,
+            nx,
+            ny,
+            cells,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SimulationMemoryEstimate {
+    nx: usize,
+    ny: usize,
+    cells: usize,
+    estimated_bytes: u64,
+}
+
+impl SimulationMemoryEstimate {
+    fn for_plan(plan: &SimulationGridPlan, retained_snapshots: usize) -> Self {
+        let bytes_per_cell = SWE_CORE_BYTES_PER_CELL.saturating_add(
+            SWE_RETAINED_SNAPSHOT_BYTES_PER_CELL.saturating_mul(retained_snapshots as u64),
+        );
+        Self {
+            nx: plan.nx,
+            ny: plan.ny,
+            cells: plan.cells,
+            estimated_bytes: (plan.cells as u64).saturating_mul(bytes_per_cell),
+        }
+    }
+}
 
 fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
@@ -1260,45 +1404,25 @@ pub async fn simulate_grid(
     req: SimulateGridRequest,
 ) -> Result<SimulateGridResponse, String> {
     validate_simulate_grid(&req)?;
+    let plan = SimulationGridPlan::from_request(&req)?;
+    let memory = SimulationMemoryEstimate::for_plan(&plan, req.n_snapshots.max(2));
 
     let cancel = Arc::new(AtomicBool::new(false));
-    register_simulation_cancel(&run_id, &cancel)?;
+    register_simulation(&run_id, &cancel, &memory)?;
     let worker_run_id = run_id.clone();
 
     tauri::async_runtime::spawn_blocking(move || {
+        let response_run_id = worker_run_id.clone();
         let diagnostics = |message: &str| emit_solver_diagnostic(&app, message);
         let result = (|| {
-        // Keep the simulation-box centre off the poles so the lon/lat box is
-        // always well-ordered (north > south). A source beyond ±80° would
-        // otherwise make `(lat - half).max(-80)` exceed `(lat + half).min(80)`,
-        // producing an inverted/degenerate grid that silently renders nothing.
-        let lat = req.source.lat_deg.clamp(-80.0, 80.0);
-        // Normalise longitude into [-180, 180) so the returned snapshot bbox
-        // stays inside the frame Cesium expects (a source at lon 359 must not
-        // build a box spanning [357, 361]).
-        let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
-        let half = req.box_half_size_deg;
-        let cell = 1.0 / req.cells_per_deg;
-
-        let south = (lat - half).max(-89.0);
-        let north = (lat + half).min(89.0);
-        let west = lon - half;
-        let east = lon + half;
-
-        // Cheap cell-count estimate to catch the overflow case before
-        // alloc — usize::MAX / 8 bytes ≈ 2.3 Gcells on 64-bit, so we use
-        // the SWE_MAX_CELLS gate instead of waiting for a panic.
-        let approx_nx = ((east - west) / cell).round().max(2.0) as usize;
-        let approx_ny = ((north - south) / cell).round().max(2.0) as usize;
-        let approx_cells = approx_nx.saturating_mul(approx_ny);
-        if approx_cells > SWE_MAX_CELLS {
-            return Err(format!(
-                "grid too large ({}×{} ≈ {} cells) — reduce cells_per_deg or box_half_size_deg",
-                approx_nx, approx_ny, approx_cells
-            ));
-        }
-
-        let mut grid = SwGrid::new(west, south, east, north, cell, cell);
+        let mut grid = SwGrid::new(
+            plan.west,
+            plan.south,
+            plan.east,
+            plan.north,
+            plan.cell_deg,
+            plan.cell_deg,
+        );
         grid.colormap = match req.colormap.as_str() {
             "cividis" => Colormap::Cividis,
             "viridis" => Colormap::Viridis,
@@ -1346,7 +1470,7 @@ pub async fn simulate_grid(
             // the peak depression. Subsequent step-by-step propagation
             // of the η depression is handled by the SWE solver as the
             // grid relaxes back toward equilibrium.
-            grid.apply_lamb_wave(&lamb, lat, lon, 0.0);
+            grid.apply_lamb_wave(&lamb, plan.lat, plan.lon, 0.0);
         }
 
         let dt = grid.recommended_dt_s(0.4);
@@ -1402,7 +1526,17 @@ pub async fn simulate_grid(
             diagnostics(&format!("numerical-integrity violation: {failure}"));
             return Err(format!("simulation rejected by numerical-integrity gate: {failure}"));
         }
+        let emitted_snapshots = snapshots.len().min(u32::MAX as usize) as u32;
+        let cancelled = cancel.load(Ordering::Acquire);
         Ok(SimulateGridResponse {
+            run_id: response_run_id,
+            lifecycle: if cancelled {
+                SimulationRunLifecycle::Cancelled
+            } else {
+                SimulationRunLifecycle::Completed
+            },
+            emitted_snapshots,
+            cancelled,
             snapshots,
             dt_s: dt,
             nx,
@@ -1412,7 +1546,7 @@ pub async fn simulate_grid(
             run_quality,
         })
         })();
-        unregister_simulation_cancel(&worker_run_id, &cancel);
+        unregister_simulation(&worker_run_id, &cancel);
         result
     })
     .await
@@ -1425,6 +1559,8 @@ pub async fn simulate_grid(
 /// Returns the grid metadata (dt_s, nx, ny, used_gpu) once complete.
 #[derive(Debug, Serialize)]
 pub struct SimulateGridStreamMeta {
+    pub run_id: String,
+    pub lifecycle: SimulationRunLifecycle,
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
@@ -1450,35 +1586,25 @@ pub async fn simulate_grid_streaming(
     on_render_packet: tauri::ipc::Channel<Response>,
 ) -> Result<SimulateGridStreamMeta, String> {
     validate_simulate_grid(&req)?;
+    let plan = SimulationGridPlan::from_request(&req)?;
+    let memory = SimulationMemoryEstimate::for_plan(&plan, 0);
 
     let cancel = Arc::new(AtomicBool::new(false));
-    register_simulation_cancel(&run_id, &cancel)?;
+    register_simulation(&run_id, &cancel, &memory)?;
     let worker_run_id = run_id.clone();
 
     tauri::async_runtime::spawn_blocking(move || {
+        let response_run_id = worker_run_id.clone();
         let diagnostics = |message: &str| emit_solver_diagnostic(&app, message);
         let result = (|| {
-            let lat = req.source.lat_deg.clamp(-80.0, 80.0);
-            let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
-            let half = req.box_half_size_deg;
-            let cell = 1.0 / req.cells_per_deg;
-
-            let south = (lat - half).max(-89.0);
-            let north = (lat + half).min(89.0);
-            let west = lon - half;
-            let east = lon + half;
-
-            let approx_nx = ((east - west) / cell).round().max(2.0) as usize;
-            let approx_ny = ((north - south) / cell).round().max(2.0) as usize;
-            let approx_cells = approx_nx.saturating_mul(approx_ny);
-            if approx_cells > SWE_MAX_CELLS {
-                return Err(format!(
-                    "grid too large ({}×{} ≈ {} cells)",
-                    approx_nx, approx_ny, approx_cells
-                ));
-            }
-
-            let mut grid = SwGrid::new(west, south, east, north, cell, cell);
+            let mut grid = SwGrid::new(
+                plan.west,
+                plan.south,
+                plan.east,
+                plan.north,
+                plan.cell_deg,
+                plan.cell_deg,
+            );
             grid.colormap = match req.colormap.as_str() {
                 "cividis" => Colormap::Cividis,
                 "viridis" => Colormap::Viridis,
@@ -1509,7 +1635,7 @@ pub async fn simulate_grid_streaming(
                 {
                     lamb.source_radius_m = r;
                 }
-                grid.apply_lamb_wave(&lamb, lat, lon, 0.0);
+                grid.apply_lamb_wave(&lamb, plan.lat, plan.lon, 0.0);
             }
 
             let dt = grid.recommended_dt_s(0.4);
@@ -1539,8 +1665,8 @@ pub async fn simulate_grid_streaming(
             render_stream.send_scenario(
                 &canonical_scenario,
                 crate::data::geodesy::GeodeticPosition {
-                    lat_deg: lat,
-                    lon_deg: lon,
+                    lat_deg: plan.lat,
+                    lon_deg: plan.lon,
                     ellipsoid_height_m: 0.0,
                 },
                 req.use_real_bathymetry,
@@ -1603,20 +1729,27 @@ pub async fn simulate_grid_streaming(
                 .into_inner()
                 .into_product(&grid, Some(&diagnostics));
 
+            let cancelled = cancel.load(Ordering::Acquire);
             Ok(SimulateGridStreamMeta {
+                run_id: response_run_id,
+                lifecycle: if cancelled {
+                    SimulationRunLifecycle::Cancelled
+                } else {
+                    SimulationRunLifecycle::Completed
+                },
                 dt_s: dt,
                 nx,
                 ny,
                 used_gpu,
                 n_snapshots: render_stream.frame_count().min(u32::MAX as u64) as u32,
-                cancelled: cancel.load(Ordering::Acquire),
+                cancelled,
                 max_field: Some(max_field),
                 render_scenario_id: Some(scenario_id),
                 render_frame_count: render_stream.frame_count(),
                 run_quality,
             })
         })();
-        unregister_simulation_cancel(&worker_run_id, &cancel);
+        unregister_simulation(&worker_run_id, &cancel);
         result
     })
     .await
@@ -1710,10 +1843,14 @@ pub struct DiagnosticsBundle {
     pub geodesy: crate::data::geodesy::GeodesyDiagnostics,
     pub surface_mask: crate::data::surface::SurfaceMaskDiagnostics,
     pub last_run_quality: Option<RunQualityRecord>,
+    pub active_solver_runs: u32,
+    pub solver_reserved_memory_bytes: u64,
+    pub solver_memory_budget_bytes: u64,
 }
 
 #[tauri::command]
 pub fn diagnostics_bundle() -> DiagnosticsBundle {
+    let (active_solver_runs, solver_reserved_memory_bytes) = simulation_resource_status();
     #[cfg(feature = "gpu")]
     let (gpu_status, gpu_adapter) = {
         use crate::physics::solver::gpu::{GpuAvailability, adapter_summary, probe_adapter};
@@ -1741,15 +1878,18 @@ pub fn diagnostics_bundle() -> DiagnosticsBundle {
         geodesy: crate::data::geodesy::diagnostics(),
         surface_mask: crate::data::surface::diagnostics(),
         last_run_quality: LAST_RUN_QUALITY.lock().ok().and_then(|quality| quality.clone()),
+        active_solver_runs,
+        solver_reserved_memory_bytes,
+        solver_memory_budget_bytes: SWE_MEMORY_BUDGET_BYTES,
     }
 }
 
 #[tauri::command]
 pub fn cancel_simulation(run_id: String) -> Result<bool, String> {
     validate_run_id(&run_id)?;
-    if let Ok(mut guard) = SIM_CANCEL_TOKENS.lock() {
-        guard.retain(|_, token| token.strong_count() > 0);
-        if let Some(token) = guard.get(&run_id).and_then(Weak::upgrade) {
+    if let Ok(mut guard) = ACTIVE_SIMULATIONS.lock() {
+        guard.retain(|_, run| run.cancel.strong_count() > 0);
+        if let Some(token) = guard.get(&run_id).and_then(|run| run.cancel.upgrade()) {
             token.store(true, Ordering::Release);
             return Ok(true);
         }
@@ -2351,16 +2491,58 @@ mod tests {
     fn simulation_cancellation_is_owned_by_run_id() {
         let run_a = Arc::new(AtomicBool::new(false));
         let run_b = Arc::new(AtomicBool::new(false));
-        register_simulation_cancel("test-owned-run-a", &run_a).expect("register run A");
-        register_simulation_cancel("test-owned-run-b", &run_b).expect("register run B");
+        let negligible = SimulationMemoryEstimate {
+            nx: 2,
+            ny: 2,
+            cells: 4,
+            estimated_bytes: 0,
+        };
+        register_simulation("test-owned-run-a", &run_a, &negligible).expect("register run A");
+        register_simulation("test-owned-run-b", &run_b, &negligible).expect("register run B");
 
         assert!(cancel_simulation("test-owned-run-a".into()).expect("cancel run A"));
         assert!(run_a.load(Ordering::Acquire));
         assert!(!run_b.load(Ordering::Acquire));
 
-        unregister_simulation_cancel("test-owned-run-a", &run_a);
-        unregister_simulation_cancel("test-owned-run-b", &run_b);
+        unregister_simulation("test-owned-run-a", &run_a);
+        unregister_simulation("test-owned-run-b", &run_b);
         assert!(!cancel_simulation("test-owned-run-a".into()).expect("run A is gone"));
+    }
+
+    #[test]
+    fn maximum_streaming_run_is_admitted_but_a_concurrent_peer_is_rejected() {
+        let mut request = source_grid_request(None);
+        request.box_half_size_deg = 5.0;
+        request.cells_per_deg = 200.0;
+        let plan = SimulationGridPlan::from_request(&request).expect("maximum grid plan");
+        let memory = SimulationMemoryEstimate::for_plan(&plan, 0);
+        let retained = SimulationMemoryEstimate::for_plan(&plan, 60);
+        assert_eq!((plan.nx, plan.ny, plan.cells), (2_000, 2_000, 4_000_000));
+        assert!(memory.estimated_bytes < SWE_MEMORY_BUDGET_BYTES);
+        assert!(memory.estimated_bytes * 2 > SWE_MEMORY_BUDGET_BYTES);
+        assert!(retained.estimated_bytes > SWE_MEMORY_BUDGET_BYTES);
+
+        let first = Arc::new(AtomicBool::new(false));
+        let second = Arc::new(AtomicBool::new(false));
+        register_simulation("test-memory-run-a", &first, &memory).expect("first run admitted");
+        let error = register_simulation("test-memory-run-b", &second, &memory)
+            .expect_err("second maximum run must exceed the shared budget");
+        assert!(error.contains("2000×2000"), "{error}");
+        assert!(error.contains("MiB"), "{error}");
+        assert!(error.contains("concurrent compare runs"), "{error}");
+        unregister_simulation("test-memory-run-a", &first);
+    }
+
+    #[test]
+    fn simulation_lifecycle_serializes_for_ipc() {
+        assert_eq!(
+            serde_json::to_value(SimulationRunLifecycle::Completed).expect("serialize lifecycle"),
+            serde_json::json!("completed")
+        );
+        assert_eq!(
+            serde_json::to_value(SimulationRunLifecycle::Cancelled).expect("serialize lifecycle"),
+            serde_json::json!("cancelled")
+        );
     }
 
     #[test]
@@ -3183,6 +3365,8 @@ mod tests {
         assert_eq!(diagnostics.surface_mask.mask_version, "1.0.0");
         assert_eq!(diagnostics.surface_mask.horizontal_crs, "EPSG:4326");
         assert!(diagnostics.surface_mask.declared_horizontal_error_m > 100_000.0);
+        assert_eq!(diagnostics.solver_memory_budget_bytes, SWE_MEMORY_BUDGET_BYTES);
+        assert!(diagnostics.solver_reserved_memory_bytes <= SWE_MEMORY_BUDGET_BYTES);
     }
 
     #[cfg(feature = "gpu")]

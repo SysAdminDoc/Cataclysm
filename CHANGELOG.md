@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Solver runs now return their run ID and completed/cancelled lifecycle, expose
+  active-run memory reservations in diagnostics, and share a 512 MiB admission
+  budget. A maximum-resolution streaming run remains valid, while a concurrent
+  peer or oversized retained-snapshot request is rejected before grid allocation
+  with its dimensions, estimated memory, active reservations, and remediation.
 - SWE propagation now uses row-specific spherical cell widths, conservative
   latitude-weighted meridional fluxes, spherical nonlinear metric terms, and
   exact row areas consistently across CPU, GPU, CFL admission, and run-quality

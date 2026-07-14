@@ -417,6 +417,10 @@ export function simulateDemoGrid(
   const tEndS = opts.tEndS ?? 3600;
   const box = opts.boxHalfSizeDeg ?? Math.min(18, Math.max(2, initial.cavity_radius_m / 18_000));
   return {
+    run_id: "demo-browser",
+    lifecycle: "completed",
+    emitted_snapshots: nSnapshots,
+    cancelled: false,
     snapshots: Array.from({ length: nSnapshots }, (_, i) => {
       const time_s = nSnapshots <= 1 ? 0 : (tEndS * i) / (nSnapshots - 1);
       return makeDemoSnapshot(initial, time_s, box, opts.includeLambWave === true);

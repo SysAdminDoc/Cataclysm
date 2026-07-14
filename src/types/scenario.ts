@@ -184,6 +184,10 @@ export type RunQualityRecord = {
 };
 
 export type SimulateGridResponse = {
+  run_id: string;
+  lifecycle: "completed" | "cancelled";
+  emitted_snapshots: number;
+  cancelled: boolean;
   snapshots: GridSnapshot[];
   dt_s: number;
   nx: number;

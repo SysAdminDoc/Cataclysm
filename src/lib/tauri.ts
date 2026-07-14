@@ -355,6 +355,9 @@ export const api = {
     geodesy: Record<string, unknown>;
     surface_mask: Record<string, unknown>;
     last_run_quality: import("../types/scenario").RunQualityRecord | null;
+    active_solver_runs: number;
+    solver_reserved_memory_bytes: number;
+    solver_memory_budget_bytes: number;
   }> {
     return invoke("diagnostics_bundle");
   },
@@ -380,6 +383,8 @@ export const api = {
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
     onRenderPacket?: (packet: DecodedRenderPacket, replay: RenderReplayAdapter) => void,
   ): Promise<{
+    run_id: string;
+    lifecycle: "completed" | "cancelled";
     dt_s: number;
     nx: number;
     ny: number;
@@ -409,6 +414,8 @@ export const api = {
         });
     };
     return invoke<{
+      run_id: string;
+      lifecycle: "completed" | "cancelled";
       dt_s: number;
       nx: number;
       ny: number;
