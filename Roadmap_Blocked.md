@@ -530,3 +530,66 @@ shipped/validated ONNX model, and measured error bounds before it can be trusted
   Touches: offline training pipeline over solver outputs, small ONNX model shipped and run in Rust, preview-then-refine UX, provenance labelling of approximate previews, parity/error bounds vs solver.
   Acceptance: dragging a source shows an instant clearly-labelled approximate preview that the full solver replaces on completion; the surrogate's error vs the solver is measured and bounded; the surrogate is never presented as the authoritative result; the approach is validated on a benchmark before wider rollout.
   Complexity: XL
+
+---
+
+## Moved from ROADMAP.md (2026-07-14 triage — large bets / external gates)
+
+- [ ] P2 — Add a cited volcanic-source tsunami module feeding the SWE solver
+  **Blocker:** research-grade, multi-pass physics. A flank-collapse /
+  pyroclastic-flow source term plus a preset that reproduces published near-field
+  runup (Anak Krakatau 2018, Santorini) needs a staged source model and a
+  validation dataset that cannot land in a single implementation pass.
+  Evidence: PAGEOPH TGV review https://link.springer.com/article/10.1007/s00024-024-03515-y;
+  Santorini reappraisal https://www.nature.com/articles/ncomms13332;
+  lab benchmark https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023JC020796.
+  Touches: new `physics/volcanic.rs` source term, source-input contract + enum,
+  scenario builder tab, cited presets, science note, validation fixtures.
+  Complexity: L
+
+- [ ] P2 — Add meteotsunami / moving atmospheric-pressure forcing (Hunga Tonga)
+  **Blocker:** the Lamb-wave IC injection, Proudman-resonance-depth calculation,
+  and Hunga Tonga 2022 preset already shipped (`physics/lamb_wave.rs`); the
+  remaining work — a *moving* pressure forcing term that continuously pumps the
+  SWE solver and demonstrably amplifies near Proudman resonance — is research-grade
+  and needs an energy/CFL-safe forcing integration plus a resonance validation
+  fixture, which cannot land in a single pass.
+  Evidence: Vilibić et al. 2025 review https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2024RG000867;
+  Proudman resonance https://www.coastalwiki.org/wiki/Proudman_resonance_and_meteo_tsunamis;
+  Hunga Tonga Lamb wave https://www.nature.com/articles/s41598-023-35800-6.
+  Touches: pressure-forcing source term in the solver, moving-source parameters,
+  resonance explainer, validation fixture.
+  Complexity: L
+
+- [ ] P2 — Show institutions/infrastructure inside a hazard zone (OSM)
+  **Blocker:** requires acquiring, filtering, and bundling a large external OSM
+  institution dataset (schools/hospitals/museums) — a data-licensing and hosting
+  decision — before an offline point-in-zone lookup can ship.
+  Evidence: NUKEMAP 2026 roadmap institution lookup
+  https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/.
+  Touches: bundled/queryable OSM institution index (offline-first, cached, stale
+  badge), point-in-zone query against ring/inundation geometry, results list,
+  provenance/attribution, privacy copy.
+  Complexity: M
+
+- [ ] P3 — Add a cited supervolcano ashfall module
+  **Blocker:** research-grade, multi-pass. An Ash3d-style advection-diffusion
+  tephra model with an umbrella cloud plus presets that reproduce published
+  isopachs (Yellowstone/Taupo) needs a validation dataset and staged physics that
+  cannot land in a single pass.
+  Evidence: Yellowstone Ash3d supereruption modeling
+  https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2014GC005469 and
+  https://www.usgs.gov/publications/modeling-ash-fall-distribution-a-yellowstone-supereruption.
+  Touches: new ashfall source/advection model, wind-field input, isopach overlay,
+  presets, science note, uncertainty copy.
+  Complexity: L
+
+- [ ] P3 — Publish to winget, Flathub, and a Homebrew cask
+  **Blocker:** requires maintainer-owned distribution accounts and processes
+  (winget-pkgs PR, Flathub submission/review, a Homebrew tap) plus published
+  releases with stable checksums — external accounts and a maintainer decision.
+  Evidence: Tauri distribution guide https://v2.tauri.app/distribute/;
+  winget via winapp/MSIX https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/guides/tauri.
+  Touches: winget manifest, Flatpak manifest/AppImage, Homebrew cask formula,
+  release docs, per-channel checksums.
+  Complexity: M

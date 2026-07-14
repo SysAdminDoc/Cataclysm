@@ -521,62 +521,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P2 — reliability guards and physical credibility
 
-- [ ] P2 — Add a cited volcanic-source tsunami module feeding the SWE solver
-  Why: README lists caldera collapse as planned, and the 2024 PAGEOPH review
-  shows flank-collapse and pyroclastic-flow-into-sea sources reduce to a
-  few-parameter initial displacement over the existing solver — high reuse, cited
-  physics, and famous teachable cases (Anak Krakatau 2018, Santorini), including
-  the "caldera collapse ≠ simple tsunami" misconception lesson.
-  Evidence: PAGEOPH TGV review https://link.springer.com/article/10.1007/s00024-024-03515-y;
-  Santorini reappraisal https://www.nature.com/articles/ncomms13332;
-  lab benchmark https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023JC020796;
-  existing landslide source pattern in `src-tauri/src/physics/landslide.rs`.
-  Touches: new `physics/volcanic.rs` source term, source-input contract + enum,
-  scenario builder tab, cited presets, science note, validation fixtures.
-  Acceptance: a volcanic source (flank collapse and/or pyroclastic flow) produces
-  a cited initial displacement that feeds the existing SWE grid; at least one
-  historical preset (e.g. Anak Krakatau 2018) reproduces published near-field
-  runup order-of-magnitude; the source cites its paper and states uncertainty; the
-  UI keeps it clearly non-operational.
-  Complexity: L
-
-- [ ] P2 — Add meteotsunami / moving atmospheric-pressure forcing (Hunga Tonga)
-  Why: a moving pressure pulse is a forcing term over the existing SWE solver,
-  not a new solver; Proudman resonance (disturbance speed ≈ √(gh)) is a one-line
-  coupling condition and a compelling interactive knob, and the Hunga Tonga 2022
-  dual-speed Lamb/Pekeris pulse explains the globally-recorded "early" wave — a
-  marquee, well-documented scenario.
-  Evidence: Vilibić et al. 2025 review https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2024RG000867;
-  Proudman resonance https://www.coastalwiki.org/wiki/Proudman_resonance_and_meteo_tsunamis;
-  Hunga Tonga Lamb wave https://www.nature.com/articles/s41598-023-35800-6;
-  existing SWE forcing in `src-tauri/src/physics/solver/mod.rs`.
-  Touches: pressure-forcing source term in the solver, moving-source parameters
-  (speed/amplitude/rise), a Hunga-Tonga preset, science note + resonance
-  explainer, validation fixture.
-  Acceptance: a moving atmospheric-pressure source forces the solver and shows
-  amplified response as disturbance speed approaches √(gh); a Hunga Tonga 2022
-  preset reproduces the fast early-arrival signature qualitatively; the model
-  cites its sources and states its idealizations; sponge/boundary handling is
-  unaffected.
-  Complexity: L
-
-- [ ] P2 — Show institutions/infrastructure inside a hazard zone (OSM)
-  Why: "what named schools/hospitals/museums fall inside the 5 psi ring or the
-  inundation zone" is a NUKEMAP-validated, high-impact humanitarian-framing
-  feature that reuses the geocoding stack and applies to blast and tsunami
-  footprints alike.
-  Evidence: NUKEMAP 2026 roadmap institution lookup
-  https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/; existing OSM/
-  location work in the UNI-09 datasets and `src/lib/data.ts`.
-  Touches: bundled/queryable OSM institution index (offline-first, cached, stale
-  badge), point-in-zone query against ring/inundation geometry, results list,
-  provenance/attribution, privacy copy.
-  Acceptance: for a placed hazard, a labelled list of institutions within selected
-  thresholds appears with type and distance; queries run offline from a packaged
-  index and never transmit; the list is clearly educational and cites its OSM
-  source; empty and stale states are explicit.
-  Complexity: M
-
 - [ ] P2 — Exploit WebGPU subgroups/f16 and add a timestamp-query GPU profiler
   Why: subgroups accelerate the GPU-resident max-field and flux reductions, f16
   storage halves bandwidth on the memory-bound SWE stencil, and timestamp queries
@@ -635,23 +579,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P3 — distribution and larger bets
 
-- [ ] P3 — Add a cited supervolcano ashfall module
-  Why: an Ash3d-style advection-diffusion tephra model with a continent-scale
-  umbrella cloud reuses the plume/advection machinery, is cited and tractable,
-  fits the "cataclysm" brand, and the "umbrella bullseye vs wind-blown plume"
-  contrast is a strong teaching visual.
-  Evidence: Yellowstone Ash3d supereruption modeling
-  https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2014GC005469 and
-  https://www.usgs.gov/publications/modeling-ash-fall-distribution-a-yellowstone-supereruption;
-  existing advection/plume code.
-  Touches: new ashfall source/advection model, wind-field input, isopach overlay,
-  presets (Yellowstone/Taupo), science note, uncertainty copy.
-  Acceptance: an ashfall scenario produces cited isopach thickness contours with
-  a selectable wind field, distinguishing umbrella-driven vs wind-blown
-  distributions; presets reproduce published deposit patterns qualitatively; each
-  effect cites a source and states uncertainty; the mode is labelled educational.
-  Complexity: L
-
 - [ ] P3 — Attach an SBOM and build-provenance attestation to each release
   Why: for a scientific tool, a CycloneDX SBOM plus SLSA-style provenance on each
   GitHub Release strengthens the "why trust this" story and is increasingly
@@ -668,17 +595,3 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
   builder.
   Complexity: S
 
-- [ ] P3 — Publish to winget, Flathub, and a Homebrew cask
-  Why: winget (Windows), Flathub (Linux), and a Homebrew cask (macOS) are the
-  expected install channels for an OSS scientific desktop app and materially
-  expand reach beyond the raw GitHub-release download, all manifest-based and
-  compatible with the unsigned/local-build stance.
-  Evidence: Tauri distribution guide https://v2.tauri.app/distribute/;
-  winget via winapp/MSIX https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/guides/tauri.
-  Touches: winget manifest, Flatpak manifest/AppImage, Homebrew cask formula,
-  release docs, per-channel checksums.
-  Acceptance: the app is installable via `winget install`, from Flathub, and via
-  `brew install --cask`; each manifest points at the corresponding release
-  artifact and checksum; docs list all channels; no channel depends on a remote
-  build runner.
-  Complexity: M
