@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- SWE runs now retain source-specific frame-zero geometry: earthquake inputs
+  propagate the sampled Okada uplift/subsidence field, asteroid and nuclear
+  inputs start from a cavity-rim annulus, and landslides use directional
+  positive/negative displacement lobes. Older responses still fall back to the
+  legacy circular Gaussian.
 - Windows release tags and manual release runs now build on a clean isolated
   runner and gate both MSI and NSIS artifacts on the installed application, not
   the raw build output. Each package must report the expected version, persist a

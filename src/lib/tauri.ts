@@ -7,6 +7,7 @@ import type {
   EarthquakeInput,
   GeoPoint,
   InitialDisplacement,
+  InitialSourceGeometry,
   LandslideInput,
   NuclearBurstInput,
   Preset,
@@ -306,6 +307,7 @@ export const api = {
     source: GeoPoint;
     initial_amplitude_m: number;
     source_sigma_m: number;
+    source_geometry?: InitialSourceGeometry | null;
     mean_depth_m: number;
     use_real_bathymetry?: boolean;
     box_half_size_deg: number;
@@ -362,6 +364,7 @@ export const api = {
       source: GeoPoint;
       initial_amplitude_m: number;
       source_sigma_m: number;
+      source_geometry?: InitialSourceGeometry | null;
       mean_depth_m: number;
       use_real_bathymetry?: boolean;
       box_half_size_deg: number;

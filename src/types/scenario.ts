@@ -13,6 +13,29 @@ export type CameraView = {
   range_m: number;
 };
 
+export type InitialSourceGeometry =
+  | { kind: "cavity_ring"; rim_radius_m: number; rim_width_m: number }
+  | {
+    kind: "landslide";
+    axis_azimuth_deg: number;
+    longitudinal_sigma_m: number;
+    transverse_sigma_m: number;
+  }
+  | {
+    kind: "okada";
+    fault: {
+      center_lat: number;
+      center_lon: number;
+      depth_m: number;
+      length_m: number;
+      width_m: number;
+      strike_deg: number;
+      dip_deg: number;
+      rake_deg: number;
+      slip_m: number;
+    };
+  };
+
 export type InitialDisplacement = {
   center: GeoPoint;
   cavity_radius_m: number;
@@ -28,6 +51,9 @@ export type InitialDisplacement = {
    * historical presets. Custom scenarios leave this `null`/undefined and
    * the frontend falls back to its heuristic auto-clamp. */
   camera_view?: CameraView | null;
+  /** Source-specific t=0 geometry consumed by the SWE solver. Older saved
+   * responses omit it and retain the circular-Gaussian fallback. */
+  source_geometry?: InitialSourceGeometry | null;
 };
 
 export type AsteroidImpactInput = {

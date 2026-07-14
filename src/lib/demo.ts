@@ -584,11 +584,20 @@ export function demoInspectAtPoint(req: {
 
 function initialForPreset(preset: Preset): InitialDisplacement {
   const metrics = DEMO_METRICS[preset.id] ?? DEMO_METRICS.chicxulub;
+  const sourceGeometry = (() => {
+    switch (preset.source.kind) {
+      case "Asteroid": return asteroidInitial(preset.source.source).source_geometry;
+      case "Nuclear": return nuclearInitial(preset.source.source).source_geometry;
+      case "Earthquake": return earthquakeInitial(preset.source.source).source_geometry;
+      case "Landslide": return landslideInitial(preset.source.source).source_geometry;
+    }
+  })();
   return {
     ...metrics,
     center: sourceLocation(preset),
     label: preset.name,
     camera_view: preset.camera_view,
+    source_geometry: sourceGeometry,
   };
 }
 
@@ -609,26 +618,38 @@ function asteroidInitial(input: AsteroidImpactInput): InitialDisplacement {
     seismic_mw_equivalent: energyToMw(energy),
     dominant_wavelength_m: radius * 4.4,
     label: "Custom asteroid impact",
+    source_geometry: {
+      kind: "cavity_ring",
+      rim_radius_m: radius,
+      rim_width_m: Math.max(1, radius * 0.2),
+    },
   };
 }
 
 function nuclearInitial(input: NuclearBurstInput): InitialDisplacement {
   const energy = input.yield_kt * TNT_J_PER_KT;
   const yieldSqrt = Math.sqrt(Math.max(input.yield_kt, 0.001));
+  const radius = Math.max(600, yieldSqrt * 190);
   return {
     center: input.location,
-    cavity_radius_m: Math.max(600, yieldSqrt * 190),
+    cavity_radius_m: radius,
     peak_amplitude_m: Math.max(0.2, yieldSqrt * 0.55),
     source_energy_j: energy,
     seismic_mw_equivalent: energyToMw(energy),
     dominant_wavelength_m: Math.max(1800, yieldSqrt * 900),
     label: "Custom nuclear source",
+    source_geometry: {
+      kind: "cavity_ring",
+      rim_radius_m: radius,
+      rim_width_m: Math.max(1, radius * 0.2),
+    },
   };
 }
 
 function earthquakeInitial(input: EarthquakeInput): InitialDisplacement {
   const energy = 10 ** (1.5 * input.mw + 4.8);
   const length = input.fault_length_m && input.fault_length_m > 0 ? input.fault_length_m : 10 ** (-2.44 + 0.59 * input.mw) * 1000;
+  const width = input.fault_width_m && input.fault_width_m > 0 ? input.fault_width_m : 10 ** (0.32 * input.mw - 1.01) * 1000;
   return {
     center: input.location,
     cavity_radius_m: Math.max(20_000, length * 0.28),
@@ -637,20 +658,41 @@ function earthquakeInitial(input: EarthquakeInput): InitialDisplacement {
     seismic_mw_equivalent: input.mw,
     dominant_wavelength_m: Math.max(60_000, length * 0.55),
     label: "Custom earthquake source",
+    source_geometry: input.slip_m > 0 ? {
+      kind: "okada",
+      fault: {
+        center_lat: input.location.lat_deg,
+        center_lon: input.location.lon_deg,
+        depth_m: input.depth_m,
+        length_m: length,
+        width_m: width,
+        strike_deg: input.strike_deg,
+        dip_deg: input.dip_deg,
+        rake_deg: input.rake_deg,
+        slip_m: input.slip_m,
+      },
+    } : null,
   };
 }
 
 function landslideInitial(input: LandslideInput): InitialDisplacement {
   const energy = input.volume_m3 * input.density_kg_m3 * G * Math.max(input.drop_height_m, 1);
   const scale = Math.cbrt(Math.max(input.volume_m3, 1));
+  const radius = Math.max(500, scale * 2.2);
   return {
     center: input.location,
-    cavity_radius_m: Math.max(500, scale * 2.2),
+    cavity_radius_m: radius,
     peak_amplitude_m: Math.max(0.5, Math.min(350, scale * Math.sin((input.slope_deg * Math.PI) / 180) * 0.09)),
     source_energy_j: energy,
     seismic_mw_equivalent: energyToMw(energy),
     dominant_wavelength_m: Math.max(1200, input.water_body_width_m),
     label: "Custom landslide source",
+    source_geometry: {
+      kind: "landslide",
+      axis_azimuth_deg: 0,
+      longitudinal_sigma_m: radius,
+      transverse_sigma_m: Math.max(1, Math.min(radius, input.water_body_width_m * 0.5)),
+    },
   };
 }
 

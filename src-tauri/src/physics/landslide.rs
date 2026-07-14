@@ -23,7 +23,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::constants::{G_EARTH, RHO_ROCK_CRUST, RHO_SEAWATER};
-use super::{GeoPoint, InitialDisplacement};
+use super::{GeoPoint, InitialDisplacement, InitialSourceGeometry};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum LandslideKind {
@@ -162,6 +162,13 @@ impl LandslideSource {
             ),
             recurrence_note: None,
             camera_view: None,
+            source_geometry: Some(InitialSourceGeometry::Landslide {
+                axis_azimuth_deg: 0.0,
+                longitudinal_sigma_m: self.effective_cavity_radius_m().max(1.0),
+                transverse_sigma_m: (0.5 * self.water_body_width_m)
+                    .min(self.effective_cavity_radius_m())
+                    .max(1.0),
+            }),
         }
     }
 }

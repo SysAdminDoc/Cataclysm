@@ -307,6 +307,26 @@ impl SwGrid {
         }
     }
 
+    /// Add a source-sampled displacement field to the solver state.
+    /// Keeping this primitive geometry-agnostic ensures the CPU and GPU paths
+    /// receive exactly the same t=0 array before their steppers diverge.
+    pub fn inject_field(&mut self, eta_m: &[f64]) -> Result<(), String> {
+        if eta_m.len() != self.eta_m.len() {
+            return Err(format!(
+                "initial field has {} cells; solver grid requires {}",
+                eta_m.len(),
+                self.eta_m.len()
+            ));
+        }
+        if eta_m.iter().any(|value| !value.is_finite()) {
+            return Err("initial field contains a non-finite displacement".into());
+        }
+        for (target, source) in self.eta_m.iter_mut().zip(eta_m) {
+            *target += source;
+        }
+        Ok(())
+    }
+
     /// F4-05 — apply the Hunga-Tonga-class atmospheric Lamb-wave
     /// surface-pressure forcing to the grid for one time step of
     /// duration `dt_s` ending at simulated time `t_s`. The η field
@@ -1171,6 +1191,24 @@ pub fn run_simulation_with_gauge_samples(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn inject_field_rejects_wrong_sized_or_non_finite_inputs() {
+        let mut grid = SwGrid::new(-1.0, -1.0, 1.0, 1.0, 1.0, 1.0);
+        assert!(grid.inject_field(&[1.0]).is_err());
+        let mut field = vec![0.0; grid.nx * grid.ny];
+        field[0] = f64::NAN;
+        assert!(grid.inject_field(&field).is_err());
+        assert!(grid.eta_m.iter().all(|value| *value == 0.0));
+    }
+
+    #[test]
+    fn inject_field_adds_the_same_host_array_consumed_by_cpu_and_gpu_paths() {
+        let mut grid = SwGrid::new(-1.0, -1.0, 1.0, 1.0, 1.0, 1.0);
+        let field = vec![1.25, -0.5, 0.75, -1.0];
+        grid.inject_field(&field).expect("inject valid field");
+        assert_eq!(grid.eta_m, field);
+    }
 
     #[test]
     fn grid_alloc_and_snapshot() {

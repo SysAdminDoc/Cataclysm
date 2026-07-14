@@ -21,7 +21,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::constants::{G_EARTH, J_PER_KT_TNT, NUCLEAR_WAVE_EFFICIENCY, RHO_SEAWATER};
-use super::{GeoPoint, InitialDisplacement};
+use super::{GeoPoint, InitialDisplacement, InitialSourceGeometry};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BurstMode {
@@ -159,6 +159,10 @@ impl NuclearBurst {
             ),
             recurrence_note: None,
             camera_view: None,
+            source_geometry: Some(InitialSourceGeometry::CavityRing {
+                rim_radius_m: r_c,
+                rim_width_m: (0.2 * r_c).max(1.0),
+            }),
         }
     }
 }

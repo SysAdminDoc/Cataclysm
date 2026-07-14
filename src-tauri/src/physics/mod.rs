@@ -68,6 +68,31 @@ pub struct CameraView {
     pub range_m: f64,
 }
 
+/// Source-specific geometry retained for the propagation solver's t=0 field.
+///
+/// Keeping this descriptor beside the scalar summary lets existing consumers
+/// continue to use `InitialDisplacement` while the SWE path can reconstruct
+/// the physically meaningful annulus, directional slide, or Okada field.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum InitialSourceGeometry {
+    CavityRing {
+        rim_radius_m: f64,
+        rim_width_m: f64,
+    },
+    Landslide {
+        /// Clockwise from north. The current source contract has no geographic
+        /// slide azimuth, so legacy/custom sources use the documented northward
+        /// local-axis convention until that input is introduced.
+        axis_azimuth_deg: f64,
+        longitudinal_sigma_m: f64,
+        transverse_sigma_m: f64,
+    },
+    Okada {
+        fault: okada::OkadaFault,
+    },
+}
+
 /// Snapshot of the initial water-surface displacement for the source.
 ///
 /// This is the "t=0" condition that propagation solvers operate on.
@@ -97,4 +122,9 @@ pub struct InitialDisplacement {
     /// frontend falls back to its heuristic auto-clamp.
     #[serde(default)]
     pub camera_view: Option<CameraView>,
+    /// Optional source geometry used by the SWE initial-condition injector.
+    /// Missing values preserve compatibility with older scenario responses and
+    /// fall back to the legacy circular Gaussian.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_geometry: Option<InitialSourceGeometry>,
 }

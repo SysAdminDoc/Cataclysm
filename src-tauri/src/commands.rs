@@ -12,7 +12,7 @@ use crate::data::coastal_points::{
     MeasurementProvenance, ProvenanceConfidence, resolve_runup_points,
 };
 use crate::physics::{
-    GeoPoint, InitialDisplacement,
+    GeoPoint, InitialDisplacement, InitialSourceGeometry,
     asteroid::{AsteroidImpact, far_field_amplitude_m as impact_far_field},
     constants::{G_EARTH, R_EARTH_M},
     earthquake::EarthquakeSource,
@@ -932,6 +932,10 @@ pub struct SimulateGridRequest {
     pub initial_amplitude_m: f64,
     /// 1-σ radius of the IC bump (m).
     pub source_sigma_m: f64,
+    /// Source-specific t=0 geometry. Older clients may omit this and retain
+    /// the legacy circular Gaussian initial condition.
+    #[serde(default)]
+    pub source_geometry: Option<InitialSourceGeometry>,
     /// Fallback uniform depth (m) when `use_real_bathymetry = false` or
     /// when the bathymetry sampler returns 0 (land).
     pub mean_depth_m: f64,
@@ -968,6 +972,74 @@ pub struct SimulateGridRequest {
     pub colormap: String,
     #[serde(default)]
     pub gauge_points: Vec<GridGaugePoint>,
+}
+
+fn local_offset_m(center_lat: f64, center_lon: f64, lat: f64, lon: f64) -> (f64, f64) {
+    let north_m = (lat - center_lat).to_radians() * R_EARTH_M;
+    let delta_lon = (lon - center_lon + 540.0).rem_euclid(360.0) - 180.0;
+    let east_m = delta_lon.to_radians() * R_EARTH_M * center_lat.to_radians().cos();
+    (east_m, north_m)
+}
+
+fn inject_source_initial_field(grid: &mut SwGrid, req: &SimulateGridRequest) -> Result<(), String> {
+    let Some(geometry) = &req.source_geometry else {
+        grid.inject_gaussian(
+            req.source.lat_deg,
+            req.source.lon_deg,
+            req.initial_amplitude_m,
+            req.source_sigma_m.max(1000.0),
+        );
+        return Ok(());
+    };
+
+    let mut field = Vec::with_capacity(grid.nx * grid.ny);
+    for j in 0..grid.ny {
+        let lat = grid.south_lat + (j as f64 + 0.5) * grid.dlat_deg;
+        for i in 0..grid.nx {
+            let lon = grid.west_lon + (i as f64 + 0.5) * grid.dlon_deg;
+            let value = match geometry {
+                InitialSourceGeometry::CavityRing { rim_radius_m, rim_width_m } => {
+                    let (east_m, north_m) = local_offset_m(
+                        req.source.lat_deg,
+                        req.source.lon_deg,
+                        lat,
+                        lon,
+                    );
+                    let radial_m = east_m.hypot(north_m);
+                    let offset = (radial_m - rim_radius_m) / rim_width_m;
+                    req.initial_amplitude_m * (-0.5 * offset * offset).exp()
+                }
+                InitialSourceGeometry::Landslide {
+                    axis_azimuth_deg,
+                    longitudinal_sigma_m,
+                    transverse_sigma_m,
+                } => {
+                    let (east_m, north_m) = local_offset_m(
+                        req.source.lat_deg,
+                        req.source.lon_deg,
+                        lat,
+                        lon,
+                    );
+                    let azimuth = axis_azimuth_deg.to_radians();
+                    let along = east_m * azimuth.sin() + north_m * azimuth.cos();
+                    let across = east_m * azimuth.cos() - north_m * azimuth.sin();
+                    let x = along / longitudinal_sigma_m;
+                    let y = across / transverse_sigma_m;
+                    // A normalized derivative-of-Gaussian yields the displaced
+                    // positive/negative lobes of a translating slide; |peak| is
+                    // the scalar source amplitude at x=±1, y=0.
+                    req.initial_amplitude_m * x * (0.5 - 0.5 * (x * x + y * y)).exp()
+                }
+                InitialSourceGeometry::Okada { fault } => {
+                    let (east_m, north_m) =
+                        local_offset_m(fault.center_lat, fault.center_lon, lat, lon);
+                    fault.vertical_displacement_at_offset_m(east_m, north_m)
+                }
+            };
+            field.push(value);
+        }
+    }
+    grid.inject_field(&field)
 }
 
 #[derive(Debug, Serialize)]
@@ -1029,6 +1101,61 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     }
     if !req.source_sigma_m.is_finite() || req.source_sigma_m < 0.0 || req.source_sigma_m > 1.0e7 {
         return Err("source_sigma_m must be finite and in [0, 10 000 km]".into());
+    }
+    match &req.source_geometry {
+        Some(InitialSourceGeometry::CavityRing { rim_radius_m, rim_width_m }) => {
+            if !rim_radius_m.is_finite()
+                || !rim_width_m.is_finite()
+                || *rim_radius_m <= 0.0
+                || *rim_width_m <= 0.0
+                || *rim_radius_m > 1.0e7
+                || *rim_width_m > 1.0e7
+            {
+                return Err("cavity-ring radii must be finite and in (0, 10 000 km]".into());
+            }
+        }
+        Some(InitialSourceGeometry::Landslide {
+            axis_azimuth_deg,
+            longitudinal_sigma_m,
+            transverse_sigma_m,
+        }) => {
+            if !axis_azimuth_deg.is_finite() || !(0.0..360.0).contains(axis_azimuth_deg) {
+                return Err("landslide axis_azimuth_deg must be finite and in [0, 360)".into());
+            }
+            if !longitudinal_sigma_m.is_finite()
+                || !transverse_sigma_m.is_finite()
+                || *longitudinal_sigma_m <= 0.0
+                || *transverse_sigma_m <= 0.0
+                || *longitudinal_sigma_m > 1.0e7
+                || *transverse_sigma_m > 1.0e7
+            {
+                return Err("landslide source scales must be finite and in (0, 10 000 km]".into());
+            }
+        }
+        Some(InitialSourceGeometry::Okada { fault }) => {
+            let values = [
+                fault.center_lat,
+                fault.center_lon,
+                fault.depth_m,
+                fault.length_m,
+                fault.width_m,
+                fault.strike_deg,
+                fault.dip_deg,
+                fault.rake_deg,
+                fault.slip_m,
+            ];
+            if values.iter().any(|value| !value.is_finite())
+                || fault.center_lat.abs() > 90.0
+                || fault.center_lon.abs() > LON_ABS_MAX
+                || fault.depth_m <= 0.0
+                || fault.length_m <= 0.0
+                || fault.width_m <= 0.0
+                || fault.slip_m <= 0.0
+            {
+                return Err("Okada source geometry contains invalid fault parameters".into());
+            }
+        }
+        None => {}
     }
     if !req.mean_depth_m.is_finite() || req.mean_depth_m < 0.0 || req.mean_depth_m > 12_000.0 {
         return Err("mean_depth_m must be finite and in [0, 12 000 m]".into());
@@ -1185,12 +1312,7 @@ pub async fn simulate_grid(
         } else {
             grid.fill_uniform_depth(fallback_depth);
         }
-        grid.inject_gaussian(
-            lat,
-            lon,
-            req.initial_amplitude_m,
-            req.source_sigma_m.max(1000.0),
-        );
+        inject_source_initial_field(&mut grid, &req)?;
 
         // F4-05 — when include_lamb_wave is set, apply the atmospheric
         // pressure-driven η contribution at t=0 as a wider IC injection
@@ -1362,12 +1484,7 @@ pub async fn simulate_grid_streaming(
             } else {
                 grid.fill_uniform_depth(fallback_depth);
             }
-            grid.inject_gaussian(
-                lat,
-                lon,
-                req.initial_amplitude_m,
-                req.source_sigma_m.max(1000.0),
-            );
+            inject_source_initial_field(&mut grid, &req)?;
 
             if req.include_lamb_wave {
                 let mut lamb = crate::physics::lamb_wave::LambWaveSource::hunga_tonga_2022();
@@ -2126,6 +2243,101 @@ mod tests {
         }
     }
 
+    fn source_grid_request(source_geometry: Option<InitialSourceGeometry>) -> SimulateGridRequest {
+        SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 4.0,
+            source_sigma_m: 50_000.0,
+            source_geometry,
+            mean_depth_m: 4_000.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 10.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "diverging".into(),
+            gauge_points: vec![],
+        }
+    }
+
+    #[test]
+    fn cavity_geometry_injects_an_annulus_instead_of_a_centered_bump() {
+        let request = source_grid_request(Some(InitialSourceGeometry::CavityRing {
+            rim_radius_m: 100_000.0,
+            rim_width_m: 15_000.0,
+        }));
+        let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.1, 0.1);
+        inject_source_initial_field(&mut grid, &request).expect("inject cavity ring");
+
+        let center = grid.eta_m[(grid.ny / 2) * grid.nx + grid.nx / 2];
+        let peak = grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        assert!(peak > 3.5, "annulus must retain the requested rim peak");
+        assert!(center < peak * 0.05, "annulus centre must remain below the rim");
+    }
+
+    #[test]
+    fn landslide_geometry_injects_directional_positive_and_negative_lobes() {
+        let request = source_grid_request(Some(InitialSourceGeometry::Landslide {
+            axis_azimuth_deg: 0.0,
+            longitudinal_sigma_m: 80_000.0,
+            transverse_sigma_m: 20_000.0,
+        }));
+        let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.05, 0.05);
+        inject_source_initial_field(&mut grid, &request).expect("inject landslide field");
+
+        let peak = grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let trough = grid.eta_m.iter().copied().fold(f64::INFINITY, f64::min);
+        assert!(peak > 3.0, "slide must preserve its positive displacement lobe");
+        assert!(trough < -3.0, "slide must preserve its negative displacement lobe");
+        let east_mid = grid.eta_m[(grid.ny / 2) * grid.nx + (3 * grid.nx / 4)];
+        assert!(east_mid.abs() < 0.05, "cross-axis cells must not form a radial bump");
+    }
+
+    #[test]
+    fn okada_geometry_injects_uplift_and_subsidence_into_frame_zero() {
+        let request = source_grid_request(Some(InitialSourceGeometry::Okada {
+            fault: crate::physics::okada::OkadaFault {
+                center_lat: 0.0,
+                center_lon: 0.0,
+                depth_m: 10_000.0,
+                length_m: 120_000.0,
+                width_m: 60_000.0,
+                strike_deg: 20.0,
+                dip_deg: 25.0,
+                rake_deg: 90.0,
+                slip_m: 5.0,
+            },
+        }));
+        let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.05, 0.05);
+        inject_source_initial_field(&mut grid, &request).expect("inject Okada field");
+
+        let peak = grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let trough = grid.eta_m.iter().copied().fold(f64::INFINITY, f64::min);
+        assert!(peak > 0.01, "Okada field must contain uplift");
+        assert!(trough < -0.01, "Okada field must contain subsidence");
+    }
+
+    #[test]
+    fn source_geometry_validation_rejects_degenerate_scales() {
+        let request = source_grid_request(Some(InitialSourceGeometry::CavityRing {
+            rim_radius_m: 100_000.0,
+            rim_width_m: 0.0,
+        }));
+        assert!(validate_simulate_grid(&request).is_err());
+    }
+
+    #[test]
+    fn legacy_grid_requests_deserialize_without_source_geometry() {
+        let request = source_grid_request(None);
+        let mut value = serde_json::to_value(request).expect("serialize grid request");
+        value.as_object_mut().expect("request object").remove("source_geometry");
+        let decoded: SimulateGridRequest = serde_json::from_value(value).expect("legacy request");
+        assert!(decoded.source_geometry.is_none());
+    }
+
     #[test]
     fn simulation_cancellation_is_owned_by_run_id() {
         let run_a = Arc::new(AtomicBool::new(false));
@@ -2740,6 +2952,7 @@ mod tests {
             source: good_loc(),
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
             box_half_size_deg: 2.0,
@@ -2761,6 +2974,7 @@ mod tests {
             source: good_loc(),
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
             box_half_size_deg: 2.0,
@@ -2782,6 +2996,7 @@ mod tests {
             source: good_loc(),
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
             box_half_size_deg: 2.0,
@@ -2805,6 +3020,7 @@ mod tests {
             source: good_loc(),
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 10.0,
             use_real_bathymetry: false,
             box_half_size_deg: 2.0,
@@ -2823,6 +3039,7 @@ mod tests {
             source: good_loc(),
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 10.0,
             use_real_bathymetry: true,
             box_half_size_deg: 2.0,
@@ -2851,6 +3068,7 @@ mod tests {
             },
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
             box_half_size_deg: 5.0,
@@ -2872,6 +3090,7 @@ mod tests {
             source: good_loc(),
             initial_amplitude_m: 1.0,
             source_sigma_m: 1_000.0,
+            source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
             box_half_size_deg: 2.0,

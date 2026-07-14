@@ -59,6 +59,28 @@ pub struct OkadaDisplacementField {
 }
 
 impl OkadaFault {
+    /// Vertical surface displacement at an east/north offset from the fault
+    /// centre. This is the same Okada kernel used by the standalone field
+    /// generator and lets propagation grids sample their own non-square,
+    /// georeferenced cell layout without an interpolation pass.
+    pub fn vertical_displacement_at_offset_m(&self, east_m: f64, north_m: f64) -> f64 {
+        let strike = self.strike_deg.to_radians();
+        let rake = self.rake_deg.to_radians();
+        let x = east_m * strike.sin() + north_m * strike.cos();
+        let y = -east_m * strike.cos() + north_m * strike.sin();
+        okada_uz_chinnery(
+            x,
+            y,
+            self.depth_m,
+            self.length_m,
+            self.width_m,
+            self.dip_deg.to_radians(),
+            self.slip_m * rake.cos(),
+            self.slip_m * rake.sin(),
+            0.0,
+        )
+    }
+
     /// Compute the surface vertical-displacement field over an `nx × ny`
     /// grid of square cells with spacing `dx_m`, centred on the fault.
     pub fn vertical_displacement_field(
@@ -68,20 +90,6 @@ impl OkadaFault {
         dx_m: f64,
     ) -> OkadaDisplacementField {
         let mut uz_m = vec![0.0f64; nx * ny];
-
-        let strike = self.strike_deg.to_radians();
-        let dip = self.dip_deg.to_radians();
-        let rake = self.rake_deg.to_radians();
-        let l = self.length_m;
-        let w = self.width_m;
-        let d = self.depth_m;
-
-        let u_ss = self.slip_m * rake.cos(); // strike-slip component
-        let u_ds = self.slip_m * rake.sin(); // dip-slip component
-        let u_ts = 0.0; // tensile (opening) — zero for tectonic faults
-
-        let sin_str = strike.sin();
-        let cos_str = strike.cos();
 
         let cx = (nx as f64) * 0.5;
         let cy = (ny as f64) * 0.5;
@@ -93,14 +101,7 @@ impl OkadaFault {
                 let east_m = (i as f64 - cx + 0.5) * dx_m;
                 let north_m = (j as f64 - cy + 0.5) * dx_m;
 
-                // Rotate into the fault-aligned frame: x along strike, y
-                // perpendicular to strike (positive in the down-dip
-                // direction's surface projection).
-                let x = east_m * sin_str + north_m * cos_str;
-                let y = -east_m * cos_str + north_m * sin_str;
-
-                let uz = okada_uz_chinnery(x, y, d, l, w, dip, u_ss, u_ds, u_ts);
-                uz_m[j * nx + i] = uz;
+                uz_m[j * nx + i] = self.vertical_displacement_at_offset_m(east_m, north_m);
             }
         }
 
@@ -124,21 +125,7 @@ impl OkadaFault {
 
     /// Closed-form peak vertical uplift at the centre of the fault footprint.
     pub fn peak_uplift_m(&self) -> f64 {
-        let rake = self.rake_deg.to_radians();
-        let dip = self.dip_deg.to_radians();
-        let u_ss = self.slip_m * rake.cos();
-        let u_ds = self.slip_m * rake.sin();
-        okada_uz_chinnery(
-            0.0,
-            0.0,
-            self.depth_m,
-            self.length_m,
-            self.width_m,
-            dip,
-            u_ss,
-            u_ds,
-            0.0,
-        )
+        self.vertical_displacement_at_offset_m(0.0, 0.0)
     }
 }
 

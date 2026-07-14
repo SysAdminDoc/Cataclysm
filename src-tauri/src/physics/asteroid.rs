@@ -23,7 +23,7 @@ use super::constants::{
     G_EARTH, IMPACT_FAR_FIELD_EXPONENT, J_PER_MT_TNT, RHO_SEAWATER, SCHMIDT_HOLSAPPLE_BETA,
     SCHMIDT_HOLSAPPLE_CT,
 };
-use super::{GeoPoint, InitialDisplacement};
+use super::{GeoPoint, InitialDisplacement, InitialSourceGeometry};
 
 #[cfg(test)]
 use super::constants::RHO_ASTEROID_STONY;
@@ -151,6 +151,10 @@ impl AsteroidImpact {
             ),
             recurrence_note: None,
             camera_view: None,
+            source_geometry: Some(InitialSourceGeometry::CavityRing {
+                rim_radius_m: cavity_r,
+                rim_width_m: (0.2 * cavity_r).max(1.0),
+            }),
         }
     }
 }

@@ -93,6 +93,7 @@ function initialIdentity(initial: InitialDisplacement | null): string | null {
     initial.peak_amplitude_m,
     initial.cavity_radius_m,
     initial.source_energy_j,
+    initial.source_geometry ?? null,
   ]);
 }
 
@@ -357,6 +358,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         source: initial.center,
         initial_amplitude_m: initial.peak_amplitude_m,
         source_sigma_m: sigmaM,
+        source_geometry: initial.source_geometry ?? null,
         mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
         use_real_bathymetry: useBathy,
         box_half_size_deg: halfDeg,

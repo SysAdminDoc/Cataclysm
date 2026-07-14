@@ -30,6 +30,11 @@ const INITIAL: InitialDisplacement = {
   source_energy_j: 1e16,
   seismic_mw_equivalent: 6,
   label: "Test source",
+  source_geometry: {
+    kind: "cavity_ring",
+    rim_radius_m: 10_000,
+    rim_width_m: 2_000,
+  },
 };
 
 const SNAPSHOTS: GridSnapshot[] = [
@@ -104,6 +109,12 @@ describe("SwePlayback", () => {
     await user.click(screen.getByRole("button", { name: "Run simulation" }));
     await screen.findByRole("button", { name: "Cancel" });
     await waitFor(() => expect(pushSnapshot).not.toBeNull());
+    expect(tauriApi.simulateGridStreaming).toHaveBeenCalledWith(
+      "run-test",
+      expect.objectContaining({ source_geometry: INITIAL.source_geometry }),
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     act(() => {
       pushSnapshot?.(SNAPSHOTS[0]);

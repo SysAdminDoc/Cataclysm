@@ -24,7 +24,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::constants::G_EARTH;
-use super::{GeoPoint, InitialDisplacement};
+use super::{GeoPoint, InitialDisplacement, InitialSourceGeometry};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EarthquakeSource {
@@ -136,6 +136,9 @@ impl EarthquakeSource {
             ),
             recurrence_note: Some(gutenberg_richter_recurrence_note(self.mw)),
             camera_view: None,
+            source_geometry: (self.slip_m > 0.0).then(|| InitialSourceGeometry::Okada {
+                fault: self.into(),
+            }),
         }
     }
 }
