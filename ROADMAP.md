@@ -360,6 +360,20 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Why: several tokens need on-screen WCAG AA verification in the light theme that can't be done headless — `--divider` (#b8c3cf) may be too subtle on `--mantle` (#e6e9ef) so panel separations blur, the `.status-dot` colors want checking on light surfaces, and placeholder text at 0.78 opacity on `--subtext` is borderline.
   Where: `src/styles/_globals.css` (Latte block), `src/styles/_layout.css` (`.status-dot`, `input::placeholder`).
 
+## Audit-Driven Additions (2026-07-14)
+
+- [ ] P2 — Add a wavefront-only IPC so timeline playback doesn't refetch the whole preset each frame
+  Why: `useScenarioSlot` re-runs `api.runPreset` on every `timeS` change to update the wavefront ring, so playback/scrubbing round-trips the full preset (initial displacement + 48 wavefront samples) once per tick. The busy-badge flicker is fixed, but the per-tick IPC flood remains; only the time-dependent wavefront actually changes.
+  Where: `src/hooks/useScenarioSlot.ts` (effect at ~L81-130), `src-tauri/src/commands.rs` (`run_preset`) — add a lightweight `sample_preset_wavefront(preset_id, time_s, n_samples)` command and call it from a separate time-only effect.
+
+- [ ] P2 — Key and delete saved scenarios by stable id, not array index
+  Why: `ScenarioBuilder` uses `key={i}` and `deleteScenario(i)` over a list that a concurrent `getSavedScenarios()` can reorder, so a delete can remove the wrong row and index keys reuse inputs/DOM when two saves share a timestamp-derived name.
+  Where: `src/components/ScenarioBuilder.tsx` (saved-scenario list render + delete handler), `src/lib/scenario-library.ts` (ensure each saved scenario carries a stable id).
+
+- [ ] P3 — Enrich the DART sparkline text alternative for screen readers
+  Why: the sparkline `<svg role="img">` has a generic aria-label and its color legend is `aria-hidden`; the model-vs-observed peak/cursor/arrival meaning is only partially available via the RMSE note. A fuller `aria-label`/`<desc>` with peak values and arrival Δ would make the comparison fully non-visual.
+  Where: `src/components/DartOverlay.tsx` (sparkline `<svg>` ~L109-115, legend ~L224).
+
 ## Research-Driven Additions
 
 ### P0
