@@ -584,3 +584,204 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
   builder.
   Complexity: S
 
+## Research-Driven Additions
+
+### P0
+
+- [ ] P0 — Make settings, reset, and sensitive-token migration transactional
+  Why: Apply/Reset can leave keychain, plugin-store, localStorage, and visible state disagreeing after one failed write, and legacy token reads currently succeed even when keychain migration fails.
+  Evidence: `src/components/Settings.tsx:105-140`; `src/lib/settings.ts:313-335`, `378-413`, `648-701`, and the rollback pattern at `783-802`.
+  Touches: `src/components/Settings.tsx`, `src/lib/settings.ts`, Tauri keychain/store wrappers, settings failure fixtures.
+  Acceptance: Apply and Reset snapshot all affected values, sequence writes, and either commit every backend or restore the snapshot with an explicit rollback status; a legacy token is returned to the app only after keychain persistence and plaintext-store blanking both succeed; injected failure at every mutation step leaves no partial state or silent credential fallback.
+  Complexity: M
+
+- [ ] P0 — Make diagnostics redacted, persistent, and inspectable after recovery
+  Why: support bundles copy raw logs despite a no-paths/no-tokens promise, while global failures are not persisted and an earlier crash is marked seen before the user can inspect it.
+  Evidence: `src/components/LogViewer.tsx:83-142`; `src/lib/diagnosticsLog.ts:119-198`; `src/main.tsx:27-51`; OWASP Logging Cheat Sheet https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html.
+  Touches: diagnostics log/redactor, LogViewer, global error handlers, startup recovery banner, crash and leak tests.
+  Acceptance: copied logs/bundles and persisted reports redact JWTs, access-token/query secrets, Windows/UNC/POSIX paths, and long credentials; `error`/`unhandledrejection` evidence survives reload; an unseen report is offered on the next successful launch and becomes seen only after explicit inspection or clearing; fixtures prove raw secrets never reach clipboard or storage.
+  Complexity: M
+
+- [ ] P0 — Derive and label DART validation from actual observation and solver series
+  Why: the sparkline currently labels an observed cursor sample as “model” and substitutes frontend great-circle/`sqrt(g·depth)` timing for an arrival measured from SWE gauge output.
+  Evidence: `src/components/DartOverlay.tsx:34-127`; `src-tauri/src/commands.rs:609-684`; bundled de-tiding provenance in `src/data/dart_buoys.json`; NOAA detection method https://nctr.pmel.noaa.gov/tda_documentation.html.
+  Touches: Rust DART result/IPC types, gauge-series analysis, `DartOverlay.tsx`, visible/a11y copy, DART fixtures.
+  Acceptance: Rust returns observation/model overlap, peaks, declared noise/arrival method and threshold, both arrivals, and residual from actual series; frontend arrival physics is removed; cursor text says observed or model correctly; visible labels and accessible names agree; deterministic fixtures cover no-arrival, no-overlap, early artifact, and known residual cases.
+  Complexity: M
+
+- [ ] P0 — Gate releases on an installed MSI/NSIS desktop journey
+  Why: the current release script probes the raw binary, but the 2026-07-12 WebView2 byte-transport and channel-drain failures escaped browser and raw-binary checks and broke the installed desktop run.
+  Evidence: `scripts/build-release.mjs:62-127`; `CHANGELOG.md:100-110`; Tauri WebDriver https://v2.tauri.app/develop/tests/webdriver/; Microsoft WebView2 WebDriver https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/webdriver.
+  Touches: local release scripts, isolated Windows installer harness, Tauri/WebView2 driver fixtures, release manifest/checklist.
+  Acceptance: the gate installs the emitted package in an isolated Windows profile/VM, verifies installed version, launches the installed binary, completes Tōhoku Run & Watch through 60/60 frames, exercises diagnostics/export/keychain persistence, asserts no renderer/protocol errors, and uninstalls cleanly; an opt-in forward-compatibility variant uses a WebView2 preview channel.
+  Complexity: M
+
+### P1
+
+- [ ] P1 — Reject ambiguous scenario aliases and duplicate physical fields
+  Why: current parsing silently chooses `schemaVersion` over `version` and top-level `water_depth_m` over a disagreeing `location.depth_m`, so imported intent can change while validation reports success.
+  Evidence: `src/lib/scenario-schema.ts:234-248`, `383-429`; existing portable-package and historical-rerun roadmap items depend on deterministic migration.
+  Touches: scenario parser/canonicalizer, saved/import/share paths, migration result type, four-source round-trip fixtures.
+  Acceptance: matching aliases/duplicates canonicalize once; conflicting values reject with field-specific errors and no persistence; alias-only current payloads report the exact migration performed; all four source kinds round-trip canonically; future schemas fail without mutation.
+  Complexity: S
+
+- [ ] P1 — Add an expiring baseline for transitive Rust advisories
+  Why: the 2026-07-14 audit has no vulnerabilities but reports 17 warning-class transitive advisories, and the current workspace-only unmaintained policy can let inherited GTK/glib risk become permanent or change unnoticed.
+  Evidence: `src-tauri/deny.toml`; RUSTSEC-2024-0429 https://rustsec.org/advisories/RUSTSEC-2024-0429.html; Tauri Linux dependency boundary.
+  Touches: machine-readable advisory baseline, `scripts/verify.mjs`, dependency docs/release manifest.
+  Acceptance: each accepted advisory records ID, affected target/dependency path, rationale, upstream issue, owner, and absolute review-by date; verification rejects new warnings, expired exceptions, and stale exceptions whose advisory/path disappeared; Windows-only releases do not pretend Linux advisories are fixed.
+  Complexity: S
+
+- [ ] P1 — Make every export path typed, failure-safe, and retryable
+  Why: canvas, codec, stream, and download operations can throw outside protected handling, producing unhandled rejections or false “no globe” messages instead of a recoverable export failure.
+  Evidence: `src/lib/export.ts:203-508`; `src/App.tsx:1240-1308`; cross-reference the existing typed derived-output-state item.
+  Touches: shared export result/error codes, static/share/compare/video exporters, App toast/actions, stream/object-URL cleanup, failure tests.
+  Acceptance: every exporter returns a typed success or actionable failure code; all timers, tracks, recorders, and object URLs are released in `finally`; UI distinguishes preflight, canvas, codec, clipboard, filesystem/download, and cancellation failures and offers retry; tests force each browser API to throw without leaking resources or creating unhandled rejections.
+  Complexity: M
+
+- [ ] P1 — Automate spatial/temporal convergence and Grid Convergence Index reporting
+  Why: mass/benchmark fixtures do not quantify discretization error, so resolution changes can alter arrival, peak, or runup without an observed-order or uncertainty guard.
+  Evidence: existing solver quality/validation tests; NOAA convergence benchmark https://nctr.pmel.noaa.gov/benchmark/Basic/Basic_Convergence/index.html; NASA GCI guidance https://www.grc.nasa.gov/www/wind/valid/tutorial/spatconv.html.
+  Touches: CPU/GPU solver benchmark harness, analytical and selected NTHMP fixtures, machine-readable convergence report, strict verification.
+  Acceptance: at least three systematically refined grids/timesteps report observed order, Richardson estimate, GCI, and asymptotic-range check for arrival, peak elevation/runup, mass, and energy; CPU/GPU trends agree within declared bands; strict release verification fails on approved-fixture regression while preserving shock/discontinuity caveats.
+  Complexity: L
+
+- [ ] P1 — Add a convergence-calibrated resolution-adequacy preflight
+  Why: “cells per degree” and broad cell-count caps do not tell users whether a fault, source width, or shortest declared feature is resolved, making higher-detail results look equally trustworthy.
+  Evidence: `src/components/SwePlayback.tsx:535-548`; `src-tauri/src/commands.rs:905-1079`; depends on the convergence harness above; TOAST bathymetry-resolution disclosure https://docs.gempa.de/toast/current/base/simulations.html.
+  Touches: run admission/estimator, source geometry metadata, Simple/Advanced solver controls, result quality/provenance, exports.
+  Acceptance: preflight reports physical `dx/dy`, `dt`, cells across each source feature, estimated memory/runtime, and a convergence-calibrated adequacy grade; Simple mode selects a validated affordable grid; Advanced under-resolved overrides remain allowed but visibly marked in results and exports; no grade implies operational fitness.
+  Complexity: M
+
+### P2
+
+- [ ] P2 — Publish machine-readable software citation metadata
+  Why: a scientific educational tool with versioned models and references cannot currently be cited consistently, while peer tsunami software exposes standard citation metadata through GitHub and Zenodo.
+  Evidence: no `CITATION.cff` in the repository; Tsunami-HySEA `CITATION.cff` https://github.com/edanya-uma/Tsunami-HySEA; Citation File Format https://citation-file-format.github.io/.
+  Touches: `CITATION.cff`, version/product-truth validator, release checklist, README citation link.
+  Acceptance: a CFF 1.2 file validates, uses the public manifest author until a preferred identity is supplied, includes title/version/repository/license and a preferred software citation, records `date-released` only from a real tag/release, and renders GitHub's citation control; release verification fails when tagged version/date metadata drifts.
+  Complexity: S
+
+- [ ] P2 — Add a bounded immutable local run archive
+  Why: scenarios and crash evidence persist, but a successful result disappears when the session closes, forcing recomputation and obscuring which model/data version produced an earlier conclusion.
+  Evidence: current settings/scenario persistence; existing checkpoint, portable-package, and normalized-rerun roadmap items; OpenQuake prior-run logs/outputs https://docs.openquake.org/oq-engine/3.19/manual/getting-started/running-calculations/web-ui.html; TOAST incident database https://docs.gempa.de/toast/current/base/import.html.
+  Touches: versioned run-record codec/store, run completion flow, History UI, quota/cleanup, reopen/compare/export integration, corruption/migration tests.
+  Acceptance: accepted runs atomically store immutable inputs, solver/schema/data digests, quality/provenance, summary/maxima/gauges, a redacted log tail, and optional fields/frames; History filters, pins, reopens without recomputation, links reruns, and supports recoverable deletion; a configurable quota uses preview-before-eviction/LRU rules; corrupt or future records are quarantined without mutating originals.
+  Complexity: L
+
+### P3
+
+- [ ] P3 — Export a single bounded GeoPackage for GIS handoff
+  Why: GeoJSON/KML/CZML/CSV exports fragment related vector products, while GeoPackage provides one open, portable, offline container that QGIS/GDAL can inspect without adding a server.
+  Evidence: current export set in `src/lib/export.ts`; OGC GeoPackage 1.4 https://docs.ogc.org/is/12-128r19/12-128r19.html.
+  Touches: Rust SQLite/GeoPackage writer, export IPC/UI/CLI seam, shared provenance preflight, interoperability and adversarial fixtures.
+  Acceptance: one `.gpkg` opens in the QGIS/GDAL versions pinned by an interoperability fixture with source/fault geometry, gauges/runup, arrival isochrones, applicable direct-effect polygons, CRS/datum, units, quality, citations, and source/data digests; table/geometry/row/size limits fail closed; a round-trip fixture verifies geometry and metadata without retaining another full run in memory.
+  Complexity: M
+
+## Research-Driven Additions (2026-07-14 — incremental external scan)
+
+New items only, from a focused net-new sweep of dependency changelogs, competitor/community signal, and standards. Everything already tracked above (units, casualty-model plurality, WSEG-10 fallout, USGS/NEO feeds, HazEL, meteotsunami, terrain draping, extinction-scale effects, humanitarian layer, "why trust this", i18n, WASM physics, NTHMP, ensembles, CLI, VTK/Zarr/GeoPackage, CITATION.cff, SBOM, WebGPU-128 subgroups/f16/timestamp-query, WCAG 2.2 forced-colors/drag/target-size, accessible globe/charts) is NOT repeated. Grounded against v0.10.4 source: video export already exists via `MediaRecorder`, airburst physics already exists in `direct_hazard.rs`, and Tauri `features = []` (no tray-icon/GTK advisory surface) — items are reframed accordingly.
+
+### P1
+
+- [ ] P1 — Surface the asteroid airburst overpressure footprint and airburst-vs-crater outcome
+  Why: `direct_hazard.rs` already integrates atmospheric entry (`airburst_altitude`, `airburst_energy`, fragmentation energy deposition), but the result presents impact/crater framing; the single most-reinforced misconception in impact sims is that every object craters, when most (Chelyabinsk ~500 kt at ~30 km, Tunguska) airburst with zero crater. A live competitor (Universe Sandbox) is building exactly this for 2026.
+  Evidence: `src-tauri/src/physics/direct_hazard.rs:106-107,265-372` (airburst already computed); Universe Sandbox 2026 roadmap https://universesandbox.com/blog/2026/03/universe-sandbox-roadmap-2026/; Chelyabinsk airburst https://www.sciencedirect.com/science/article/pii/S0094576517315229.
+  Touches: asteroid result readouts, ground-overpressure ring rendering from an elevated burst (not a surface crater), Results copy, `ResultsPanel.tsx`, direct-hazard fixtures.
+  Acceptance: an airbursting asteroid shows an overpressure/thermal footprint centered under the burst altitude with no crater ring and a plain-language "airburst — did not reach the ground" statement; a ground-impacting case still shows the crater; the airburst altitude and deposited energy are displayed and cited; fixtures cover a Chelyabinsk-class airburst and a Chicxulub-class ground impact.
+  Complexity: M
+
+- [ ] P1 — Add an overpressure window-glass injury layer (injuries vs. deaths)
+  Why: shattered glass is the dominant injury mechanism in both nuclear blasts and asteroid airbursts (Chelyabinsk: ~1,600 injured, zero deaths), yet results conflate a single casualty number; documented breakage thresholds (~200 Pa light / ~500 Pa heavy) turn overpressure into a legible, teachable "injuries far outnumber deaths" distinction no consumer sim models explicitly. Complements, not duplicates, the tracked casualty-model-plurality item.
+  Evidence: bolide window-damage study https://onlinelibrary.wiley.com/doi/10.1111/maps.13085; overpressure rings already computed for nuclear/asteroid in `src-tauri/src/physics/direct_hazard.rs`.
+  Touches: Rust glass-breakage threshold model keyed to existing overpressure field, a distinct injury overlay/ring, Results injuries-vs-deaths readout, citations, tests.
+  Acceptance: nuclear and airburst results show a cited window-breakage radius (light/heavy thresholds) and an injuries estimate presented separately from deaths with stated assumptions and uncertainty; the layer is labelled educational, not operational; a fixture verifies the threshold radii against the cited curve.
+  Complexity: M
+
+- [ ] P1 — Add a deterministic frame-accurate video encoder (WebCodecs) alongside MediaRecorder
+  Why: `exportGlobeVideo` records the live canvas via `MediaRecorder`, which is real-time and drops frames under load, so it cannot produce the reproducible output the deterministic-replay contract (HR-53 / the tracked highlight-story item) promises; `VideoEncoder` (WebCodecs, available in the Chromium WebView2 runtime) encodes frame-by-frame from rendered timesteps for byte-reproducible, frame-exact MP4.
+  Evidence: `src/lib/export.ts:418-449` (`pickVideoMime`/`exportGlobeVideo` MediaRecorder path); WebCodecs guidance https://developer.chrome.com/docs/web-platform/best-practices/webcodecs; existing deterministic capture bridge in `scripts/capture-reference-scenes.mjs`.
+  Touches: a WebCodecs `VideoEncoder` export path (feature-detected, MediaRecorder fallback), frame-stepped render loop, File System Access streaming write, export UI labelling (real-time vs. deterministic), tests.
+  Acceptance: when `VideoEncoder` is available, a replay exports a deterministic MP4 assembled from stepped frames (identical bytes across two runs of the same scenario); MediaRecorder remains as the real-time fallback and is labelled as approximate; failure preserves the replay and offers retry.
+  Complexity: M
+
+### P2
+
+- [ ] P2 — Preserve Cesium and panel state across hazard-module switches with React `<Activity>`
+  Why: hazard domains are isolated workspaces that park/rebuild state when switching Tsunami/Impact/Nuclear, forcing expensive Cesium re-initialisation and losing panel state; React 19.2's `<Activity mode="hidden">` keeps a subtree mounted (state preserved, effects unmounted) for exactly this "hidden but instant to restore" case, and `useEffectEvent` reads latest sim params without re-subscribing Cesium listeners.
+  Evidence: React 19.2 https://react.dev/blog/2025/10/01/react-19-2 (already on `react ^19.2`); hazard-mode isolation rule in `CLAUDE.md`; mode switch/teardown in `src/App.tsx`.
+  Touches: `src/App.tsx` hazard-mode composition, Globe/panel subtrees wrapped in `<Activity>`, event-listener effects migrated to `useEffectEvent`, visual/interaction tests.
+  Acceptance: switching hazard modules and back restores the prior globe camera, layers, and panel state without a full Cesium re-mount or visible reflash; the parked module runs no effects while hidden; isolation guarantees (null tsunami props, separate nonces) are preserved.
+  Complexity: S
+
+- [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
+  Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
+  Evidence: Cesium June/April 2026 releases https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/ and https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (all ≤ pinned 1.143); overlay rendering in `src/render/cesium/**`, `src/components/Globe.tsx`.
+  Touches: overlay adapters for inundation/rings/gauges, `Globe.tsx`, Playwright visual baselines (deliberately updated).
+  Acceptance: a 500+-cell hazard overlay renders through one buffer collection with no visual regression and measurably better frame time than the per-entity path; the API is feature-detected with an entity fallback while it remains experimental.
+  Complexity: M
+
+- [ ] P2 — Use Cesium async/quadtree picking so inspect stays responsive during playback
+  Why: globe pick/inspect is synchronous and competes with heavy solver playback; Cesium (Dec 2025, ≤ pin) added async scene picking and quadtree-accelerated terrain picking that keep interaction non-blocking during animation.
+  Evidence: Cesium Dec 2025 release https://cesium.com/blog/2025/12/01/cesium-releases-in-december-2025/; pick/inspect handling in `src/components/Globe.tsx`.
+  Touches: `Globe.tsx` pick/inspect path, async picking wiring, interaction tests.
+  Acceptance: clicking to inspect during 60-frame playback returns a result without stalling the animation; picking accuracy over terrain is unchanged; the sync path remains as fallback where async is unavailable.
+  Complexity: S
+
+- [ ] P2 — Add event sonification as an engagement and non-visual accessibility channel
+  Why: the app is heavily visual with no audio; a WebAudio track (seismic rumble/P-S arrival, blast overpressure arrival, wave rumble) synchronised to the timeline is both an engagement feature no competitor offers and a genuine STEM-equity/accessibility win for blind and low-vision users, drawing on established seismic-sonification pedagogy.
+  Evidence: IRIS/Columbia earthquake sonification pedagogy https://www.earth.columbia.edu/videos/view/part-2-of-2-a-deep-dive-into-earthquake-sonification-with-python-grades-10-12; timeline/transport in `src/components/SwePlayback.tsx` and the transport bar.
+  Touches: WebAudio sonification module driven by solver/direct-effect series, transport coupling + mute/volume in Settings, reduced-motion/audio preference, accessibility copy, tests.
+  Acceptance: an opt-in audio layer maps modeled quantities (arrival, amplitude, energy) to sound synced to the scrubber; it is off by default, respects a mute/volume setting, is described in an accessible label, and never implies operational alerting.
+  Complexity: M
+
+- [ ] P2 — Add a firestorm ignition-zone and smoke-loft overlay
+  Why: large nuclear/impact events deposit thermal energy that ignites mass fires whose lofted smoke drives the climate effect, but results stop at a static thermal ring; a distinct ignition-zone + smoke-plume overlay bridges the blast/thermal module to the tracked impact-winter timeline, and NUKEMAP's own 2026 roadmap is adding thermal+conflagration modelling.
+  Evidence: NUKEMAP roadmap (thermal/conflagration) https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/; smoke-injection-height modelling https://docs.nlr.gov/docs/fy22osti/81470.pdf; existing thermal field in `src-tauri/src/physics/direct_hazard.rs`.
+  Touches: cited ignition-threshold + smoke-lofting model in Rust, ignition-zone/smoke overlay, coupling to the extinction-scale timeline item, confidence/limits copy, tests.
+  Acceptance: qualifying nuclear/impact events show a cited fire-ignition radius and a lofted-smoke indicator feeding the long-term climate narrative; each effect cites a source and states uncertainty; small events omit inapplicable effects.
+  Complexity: M
+
+- [ ] P2 — Validate and refresh impact scaling against Svetsov et al. 2025
+  Why: crater/overpressure/wind scaling relies on Collins–Melosh–Marcus 2005; a 2025 peer-reviewed hydrodynamic calculator covers the exact 20 m–3 km range the app models and can either confirm the current formulas within tolerance or update them, strengthening the "why trust this" story.
+  Evidence: Svetsov et al. 2025, Meteoritics & Planetary Science https://onlinelibrary.wiley.com/doi/10.1111/maps.14329; current scaling in `src-tauri/src/physics/direct_hazard.rs` and `docs/science/`.
+  Touches: validation fixtures comparing app outputs to the 2025 model at several sizes, optional coefficient updates with citations, `docs/science/` derivation notes.
+  Acceptance: a feature-gated validation compares crater diameter, peak overpressure, and wind at 3+ impactor sizes to the 2025 model within a documented tolerance; any formula change cites the paper and updates the derivation note; presets remain reproducible.
+  Complexity: M
+
+- [ ] P2 — Harden the npm supply chain in the local release gate
+  Why: `verify.mjs` runs `npm audit` but not signature/provenance verification, and the Sept-2025 chalk/debug/ansi-styles compromise hit transitive deps of the Vite/React/Cesium toolchains; adding `npm audit signatures` and lockfile-pin enforcement closes a real ingestion path consistent with the build-locally posture.
+  Evidence: `scripts/verify.mjs:454` (`npm audit` only); chalk/debug npm compromise https://semgrep.dev/blog/2025/chalk-debug-and-color-on-npm-compromised-in-new-supply-chain-attack/.
+  Touches: `scripts/verify.mjs` (add `npm audit signatures`/provenance check), lockfile-integrity assertion, release docs.
+  Acceptance: the gate fails on unsigned/unverifiable provenance for direct+transitive packages where attestations exist and on lockfile drift; the check runs locally with no CI dependency; a documented allowlist covers packages lacking attestations.
+  Complexity: S
+
+- [ ] P2 — Upgrade wgpu 29→30 and add HDR fireball/thermal surface output
+  Why: wgpu 30 (2026-07-01) adds surface color-space/HDR output and `SHADER_I16`; HDR tone-mapping renders the extreme luminance of a nuclear fireball or thermal field faithfully on capable Windows displays, and i16 packing cuts solver-buffer bandwidth — but v30 carries breaking API changes against the pinned wgpu-hal 29.0.4, so the upgrade must be deliberate.
+  Evidence: wgpu CHANGELOG https://github.com/gfx-rs/wgpu/blob/trunk/CHANGELOG.md; pinned 29.0.4 note in `CLAUDE.md`; GPU path in `src-tauri/src/physics/solver/gpu.rs` and the Cesium HDR presentation.
+  Touches: `src-tauri/Cargo.toml` wgpu/wgpu-hal/gpu-allocator bump, GPU kernel API migration (`VertexState.buffers`, `@interpolate(flat)`, `BufferBinding`), optional HDR surface config + tone-mapping, feature detection/fallback, GPU tests.
+  Acceptance: the app builds and all GPU tests pass on wgpu 30 with CPU/GPU products within declared tolerance; on an HDR-capable Windows display the fireball/thermal surface renders in HDR with a graceful SDR fallback; the dx12-vs-gpu-allocator regression is re-checked before enabling any new backend.
+  Complexity: M
+
+### P3
+
+- [ ] P3 — Add a parameterized volcanic caldera/flank-collapse tsunami source
+  Why: volcanic-collapse tsunamis (Anak Krakatau 2018, Hunga Tonga 2022) are the hottest 2024–2026 tsunami-genesis research vein and a distinct mechanism absent from the four current sources, naturally coupling a volcanic event to the tsunami module; a parameterized initial-displacement source (collapse volume/geometry → initial wave) fits the existing source→IC→SWE pattern, with the dispersive/non-hydrostatic accuracy limit documented rather than claimed.
+  Evidence: PAGEOPH 2024 volcanic-tsunami review https://link.springer.com/article/10.1007/s00024-024-03515-y; NHESS 2026 https://nhess.copernicus.org/articles/26/631/2026/; existing source modules in `src-tauri/src/physics/`.
+  Touches: new Rust collapse source (volume/geometry/duration → initial displacement), `ScenarioBuilder.tsx` fifth source type, cited presets (Anak Krakatau 2018, Hunga Tonga 2022), `docs/science/`, applicability caveat copy.
+  Acceptance: a collapse scenario produces a physically ordered initial wave from cited parameters and propagates through the existing SWE with a visible note that short/steep collapse waves need non-hydrostatic physics for near-field accuracy; presets ship with citations; CPU/GPU parity holds.
+  Complexity: L
+
+- [ ] P3 — Add an asteroid-deflection (kinetic-impactor) teaching mode
+  Why: the asteroid module presents impact as inevitable, but the NGSS-aligned agency lesson is deflection — NASA confirmed (2026) DART altered Dimorphos' heliocentric orbit; a simplified Δv × lead-time → miss-distance calculator converts doom into an engineering-design lesson, distinct from the tracked NEO-discovery surface.
+  Evidence: NASA DART orbit-change result https://www.jpl.nasa.gov/news/nasas-dart-mission-changed-orbit-of-asteroid-didymos-around-sun/; NGSS engineering-design practice; existing asteroid inputs in `ScenarioBuilder.tsx`.
+  Touches: a deflection calculator (impulse + lead time → along-track displacement/miss distance using a documented linearised approximation, explicitly not full n-body), a "deflect it" UI mode, visualization of miss vs. impact, uncertainty/limits copy.
+  Acceptance: users set an impulse and lead time and see the resulting miss distance (or reduced impact) with the linearised assumption stated; the mode is labelled a teaching approximation, never a mission prediction; the underlying impact scenario is unchanged when deflection is off.
+  Complexity: L
+
+- [ ] P3 — Add an NGSS engineering-design "mitigation" mode
+  Why: classroom natural-hazard units (NGSS 4-ESS3-2, TeachEngineering "Survive That Tsunami!") are explicitly design-solution oriented, and letting a user place a barrier/sea wall and re-run makes the app curriculum-adoptable rather than a passive demo.
+  Evidence: TeachEngineering tsunami design activity https://www.teachengineering.org/activities/view/cub_natdis_lesson06_activity1; NGSS 4-ESS3-2 https://thewonderofscience.com/4ess32; solver bathymetry/land-mask handling in `src-tauri/src/physics/solver/`.
+  Touches: user-placed barrier objects that raise local bathymetry / add reflective cells, re-run + before/after comparison, mitigation UI, education copy tying to the standard.
+  Acceptance: a user can place a simple barrier on the coast, re-run, and compare inundation with and without it; the barrier is represented as a documented bathymetry/reflectivity modification with stated simplifications; results are labelled educational.
+  Complexity: L

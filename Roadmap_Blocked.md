@@ -593,3 +593,28 @@ shipped/validated ONNX model, and measured error bounds before it can be trusted
   Touches: winget manifest, Flatpak manifest/AppImage, Homebrew cask formula,
   release docs, per-channel checksums.
   Complexity: M
+
+## Phase 3 — Physics-frontier and web-distribution (from 2026-07-14 incremental scan)
+
+- **P2** — Non-hydrostatic / Boussinesq nearshore run-up mode for phase-resolving wave breaking.
+  Why: shallow-water propagation cannot resolve wave breaking and near-shore
+  run-up the way phase-resolving Boussinesq schemes do; Celeris-WebGPU proves a
+  client-side WebGPU implementation is feasible.
+  Evidence: Celeris-WebGPU https://plynett.github.io/ (extended-Boussinesq breaking + run-up); ASCE JWPED5 https://ascelibrary.org/doi/10.1061/JWPED5.WWENG-2370.
+  Touches: a new dispersive solver alongside the SWE solver, CPU/GPU kernels, validation suite, contracts, extensive documentation.
+  **Blocker:** Research-grade, multi-pass solver rewrite that cannot land in a
+  single implementation pass and needs its own validation programme. Return to
+  ROADMAP.md as scoped sub-milestones once the SWE convergence/GCI harness exists.
+  Complexity: XL
+
+- **P3** — Web/LMS distribution: PhET-style embed + Google Classroom share + offline Chromebook classroom bundle.
+  Why: the education-adoption gold standard is an embeddable web build with an
+  LMS/Classroom share button and an offline pack; teachers expect it, and it is a
+  monetization-free channel into classrooms.
+  Evidence: PhET distribution model https://phet.colorado.edu/en/help-center/getting-started; Chromebook simulation bundles https://www.excelschools.net/en/simulations/category/by-device/chromebook.html.
+  Touches: a web (non-Tauri) build target, embed/iframe surface, Classroom share, offline service-worker/app-cache bundle, licensing/hosting decision.
+  **Blocker:** Depends on the tracked WASM physics port (no web build exists
+  today, since physics is Rust-only) and a maintainer decision on a web hosting/
+  distribution channel. Return to ROADMAP.md once the WASM port lands and a
+  hosting channel is chosen.
+  Complexity: XL
