@@ -791,6 +791,21 @@ export function Globe({
     const controller = directEffectsControllerRef.current;
     if (!viewer || !controller) return;
     controller.update(impactKind ?? null, directRenderFrame);
+    if (referenceCaptureEnabled() && directRenderFrame) {
+      const committedFrame = `${directRenderFrame.scenario_id}:${directRenderFrame.solver_tick}:${directRenderFrame.sequence.toString()}`;
+      delete document.documentElement.dataset.referenceDirectFrameCommitted;
+      viewer.scene.requestRender();
+      // Reference captures run with requestRenderMode enabled. Render the new
+      // authoritative frame synchronously so the harness never screenshots a
+      // camera update paired with the previous direct-effect primitive state.
+      viewer.scene.render(viewer.clock.currentTime);
+      document.documentElement.dataset.referenceDirectFrameCommitted = committedFrame;
+      return () => {
+        if (document.documentElement.dataset.referenceDirectFrameCommitted === committedFrame) {
+          delete document.documentElement.dataset.referenceDirectFrameCommitted;
+        }
+      };
+    }
     viewer.scene.requestRender();
     return () => {
       if (!directRenderFrame) controller.clear();

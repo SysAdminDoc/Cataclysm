@@ -281,7 +281,26 @@ async function applyCaptureView(page, contract, scene, overrides = {}) {
 
 async function preparePhase(page, contract, scene, { simulationTimeS, effectTimeMs }) {
   await setWorkflowTime(page, simulationTimeS);
+  if (scene.workflow.kind.startsWith("direct-")) {
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.referenceDirectFrameCommitted;
+    });
+  }
   await applyCaptureView(page, contract, scene, { simulationTimeS, effectTimeMs });
+  if (scene.workflow.kind.startsWith("direct-")) {
+    try {
+      await page.waitForFunction(
+        () => (document.documentElement.dataset.referenceDirectFrameCommitted?.length ?? 0) > 0,
+      );
+    } catch (error) {
+      const readiness = await page.evaluate(() => ({
+        appFrameReady: document.querySelector(".app")?.getAttribute("data-reference-direct-frame-ready") ?? null,
+        committedFrame: document.documentElement.dataset.referenceDirectFrameCommitted ?? null,
+        receivedScene: document.documentElement.dataset.referenceEventReceived ?? null,
+      }));
+      throw new Error(`${scene.id}: direct frame did not commit after applying the reference view (${JSON.stringify(readiness)}).`, { cause: error });
+    }
+  }
   await page.waitForTimeout(250);
 }
 
