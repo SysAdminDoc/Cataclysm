@@ -521,33 +521,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P2 — reliability guards and physical credibility
 
-- [ ] P2 — Guard atmospheric-entry non-convergence and the velocity/mass floor
-  Why: the RK4 entry integrator caps at 5,000,000 steps and, if exhausted, falls
-  through to `reaches_ground: true` with no flag, and the `1e-12` floors on
-  `v`/`m` let the `θ` derivative blow up near a stopped body, so pathological
-  inputs (shallow angle, extreme drag) yield physically meaningless
-  airburst/impact energies presented as authoritative.
-  Evidence: Verified — `src-tauri/src/physics/direct_hazard.rs:182-197,261,
-  323,338-345`.
-  Touches: the entry integrator loop, result type (`converged` flag), a physical
-  velocity/terminal floor, pathological-input tests.
-  Acceptance: exhausting the loop or dropping below a physical velocity floor ends
-  integration with a labelled non-converged/terminal outcome instead of a spurious
-  energy; results surface the flag; a test with a shallow, dense, high-drag input
-  no longer returns a meaningless airburst energy.
-  Complexity: S
-
-- [ ] P2 — Clamp the gauge bilinear sampler at grid edges
-  Why: `x = (lon-west)/dlon - 0.5` sends a gauge on the outer half-cell rim to
-  `x = nx-0.5`, which fails the `x <= nx-1` test and returns `eta_m: None` with no
-  diagnostic, so frame-edge DART buoys silently go dark.
-  Evidence: Verified — `src-tauri/src/physics/solver/mod.rs:408-436`.
-  Touches: `sample_eta_at` index clamping, an edge-gauge test.
-  Acceptance: a gauge anywhere inside the bbox (including the outer half-cell)
-  returns an interpolated value; only points truly outside the bbox return
-  `None`; a test places a gauge on each edge and asserts a finite reading.
-  Complexity: S
-
 - [ ] P2 — Short-circuit cancelled-run replay and prevent duplicate CPU sims
   Why: on cancel the client still awaits `waitForRenderReplay(replay,
   render_frame_count, …)`, which busy-polls up to 120 s when a counted frame was

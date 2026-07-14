@@ -411,9 +411,18 @@ impl SwGrid {
         }
         let x = ((lon_deg - self.west_lon) / self.dlon_deg) - 0.5;
         let y = ((lat_deg - self.south_lat) / self.dlat_deg) - 0.5;
-        if !(x >= 0.0 && y >= 0.0 && x <= (self.nx - 1) as f64 && y <= (self.ny - 1) as f64) {
+        // Cell-centre coordinates run [0, n-1]; the bbox extends half a cell
+        // beyond the outer centres, so accept any point inside the bbox and
+        // edge-clamp the outer half-cell rim into the interpolation domain. A
+        // gauge on the frame edge (e.g. a DART buoy) now reads the edge value
+        // instead of silently returning None.
+        let x_max = (self.nx - 1) as f64;
+        let y_max = (self.ny - 1) as f64;
+        if x < -0.5 || y < -0.5 || x > x_max + 0.5 || y > y_max + 0.5 {
             return None;
         }
+        let x = x.clamp(0.0, x_max);
+        let y = y.clamp(0.0, y_max);
         let i0 = x.floor().clamp(0.0, (self.nx - 1) as f64) as usize;
         let j0 = y.floor().clamp(0.0, (self.ny - 1) as f64) as usize;
         let i1 = (i0 + 1).min(self.nx - 1);
@@ -1213,6 +1222,26 @@ mod tests {
         assert_eq!(snap.gauge_samples.len(), 1);
         assert_eq!(snap.gauge_samples[0].id, "outside");
         assert_eq!(snap.gauge_samples[0].eta_m, None);
+    }
+
+    #[test]
+    fn gauge_on_frame_edge_reads_edge_value() {
+        let mut g = SwGrid::new(0.0, 0.0, 2.0, 2.0, 1.0, 1.0);
+        // eta[idx(i,j)] with nx=2: (0,0)=1 (1,0)=2 (0,1)=3 (1,1)=4.
+        g.eta_m = vec![1.0, 2.0, 3.0, 4.0];
+        // The north-east corner sits on the outer half-cell rim; it must clamp to
+        // cell (1,1) rather than silently returning None.
+        let corner = g
+            .sample_eta_at(2.0, 2.0)
+            .expect("corner gauge should read the edge value");
+        assert!((corner - 4.0).abs() < 1e-9, "corner {corner}");
+        // The east edge at the south row clamps to cell (1,0) = 2.0.
+        let east = g
+            .sample_eta_at(0.5, 2.0)
+            .expect("east-edge gauge should read");
+        assert!((east - 2.0).abs() < 1e-9, "east {east}");
+        // A point genuinely outside the bbox still returns None.
+        assert_eq!(g.sample_eta_at(0.5, 2.6), None);
     }
 
     #[test]

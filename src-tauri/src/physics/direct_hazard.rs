@@ -251,7 +251,7 @@ fn atmospheric_entry(
     };
     let mut breakup_altitude = -1.0;
     let mut peak_energy_loss_per_m = 0.0;
-    let mut airburst_altitude = 0.0;
+    let mut airburst_altitude: f64 = 0.0;
     let mut previous_energy = initial_energy;
     let mut previous_altitude = state.z;
     let mut past_peak = false;
@@ -263,6 +263,22 @@ fn atmospheric_entry(
             breakup_altitude = state.z;
         }
         state = rk4_entry(state, DT, strength, ablation_heat, density, radius);
+        // A near-stopped body drives the 1/velocity term in the theta
+        // derivative unbounded; if the integrator diverges, stop with the energy
+        // deposited so far rather than emitting a spurious authoritative result.
+        if !(state.v.is_finite()
+            && state.m.is_finite()
+            && state.z.is_finite()
+            && state.theta.is_finite())
+        {
+            return AsteroidAtmosphericDetail {
+                reaches_ground: false,
+                airburst_altitude: airburst_altitude.max(previous_altitude.max(0.0)),
+                airburst_energy: (initial_energy - previous_energy).max(0.0),
+                impact_velocity: 0.0,
+                breakup_altitude,
+            };
+        }
         let current_energy = 0.5 * state.m.max(0.0) * state.v.max(0.0).powi(2);
         let altitude_step = previous_altitude - state.z;
         if altitude_step > 0.0 {
@@ -335,10 +351,15 @@ fn atmospheric_entry(
             };
         }
     }
+    // The integrator ran its full ~100 000 s budget without an airburst or
+    // ground contact — the body is effectively stalled/ablated. Report a
+    // non-ground terminal outcome with the energy deposited so far rather than a
+    // spurious authoritative ground impact.
     AsteroidAtmosphericDetail {
-        reaches_ground: true,
-        airburst_altitude: 0.0,
-        airburst_energy: 0.5 * state.m.max(0.0) * state.v.max(0.0).powi(2),
+        reaches_ground: false,
+        airburst_altitude: airburst_altitude.max(state.z.max(0.0)),
+        airburst_energy: (initial_energy - 0.5 * state.m.max(0.0) * state.v.max(0.0).powi(2))
+            .max(0.0),
         impact_velocity: state.v.max(0.0),
         breakup_altitude,
     }
@@ -1401,6 +1422,31 @@ mod tests {
         );
         // The dose cap keeps the estimate physical (non-inflated).
         assert!(est.cancers_30yr as f64 <= est.exposed as f64);
+    }
+
+    /// Pathological entry inputs (shallow grazing, dense, extreme speed) must
+    /// stay finite and non-negative rather than returning a spurious result from
+    /// a diverged integrator.
+    #[test]
+    fn atmospheric_entry_pathological_inputs_stay_finite() {
+        for (d, rho, v, angle) in [
+            (1000.0, 8000.0, 11_000.0, 1.0), // shallow grazing dense body
+            (0.5, 500.0, 72_000.0, 80.0),    // tiny fragile fast entry
+            (50.0, 3000.0, 20_000.0, 0.5),   // very shallow stony body
+        ] {
+            let detail = atmospheric_entry(d, rho, v, angle);
+            assert!(
+                detail.airburst_energy.is_finite() && detail.airburst_energy >= 0.0,
+                "airburst_energy {} for ({d},{rho},{v},{angle})",
+                detail.airburst_energy
+            );
+            assert!(
+                detail.impact_velocity.is_finite() && detail.impact_velocity >= 0.0,
+                "impact_velocity {}",
+                detail.impact_velocity
+            );
+            assert!(detail.airburst_altitude.is_finite() && detail.airburst_altitude >= 0.0);
+        }
     }
 
     #[test]

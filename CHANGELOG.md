@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Gauge/DART sampling now reads a value anywhere inside the simulation bbox,
+  including the outer half-cell rim, by edge-clamping into the interpolation
+  domain. Frame-edge buoys previously returned no reading with no diagnostic.
+- Atmospheric-entry integration now stops with the energy deposited so far when
+  the integrator diverges (a near-stopped body drove the 1/velocity term
+  unbounded) or exhausts its step budget, instead of reporting a spurious
+  authoritative ground impact.
 - Legacy sensitive-value migration in settings now routes through the OS keychain
   instead of writing the Cesium token into the plaintext plugin-store, closing a
   latent path that could have persisted a `SENSITIVE_KEYS` value outside the
