@@ -121,14 +121,13 @@ struct Metrics {
 
 impl Metrics {
     fn from_grid(grid: &SwGrid, sponge_width_cells: usize) -> Self {
-        let (dx_m, dy_m) = grid.metres_per_deg();
-        let cell_area_m2 = (dx_m * grid.dlon_deg * dy_m * grid.dlat_deg).abs();
         let mut finite_fields = grid.t_s.is_finite();
         let mut minimum_total_depth_m = f64::INFINITY;
         let mut mass_m3 = 0.0;
         let mut mass_scale_m3 = 0.0;
         let mut energy_j = 0.0;
         for j in 0..grid.ny {
+            let cell_area_m2 = grid.row_cell_area_m2(j);
             for i in 0..grid.nx {
                 let index = j * grid.nx + i;
                 let (h, eta, u, v) = (
@@ -264,5 +263,30 @@ mod tests {
 
         assert!(record.failure.is_none(), "{:?}", record.failure);
         assert!((record.cfl_number - 0.4).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn spherical_high_latitude_run_bounds_mass_and_energy_drift() {
+        let mut grid = SwGrid::new(-10.0, 55.0, 10.0, 65.0, 0.25, 0.25);
+        grid.fill_uniform_depth(4_000.0);
+        grid.inject_gaussian(60.0, 0.0, 0.25, 100_000.0);
+        let baseline = QualityBaseline::capture(&grid, BoundaryMode::ZeroFlux);
+        let dt = grid.recommended_dt_s(0.2);
+        super::super::TimeStepper::new(dt)
+            .with_boundary(BoundaryMode::ZeroFlux)
+            .step(&mut grid, 40);
+        let record = baseline.assess(&grid, dt);
+
+        assert!(record.failure.is_none(), "{:?}", record.failure);
+        assert!(
+            record.mass_drift_pct.abs() < 0.01,
+            "mass drift was {}%",
+            record.mass_drift_pct
+        );
+        assert!(
+            record.energy_drift_pct < 5.0,
+            "energy gain was {}%",
+            record.energy_drift_pct
+        );
     }
 }

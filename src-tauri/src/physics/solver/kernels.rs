@@ -22,8 +22,10 @@ pub const SWE_LEAPFROG_WGSL: &str = r#"
 // Reference: Kowalik & Murty 1993 "Numerical Modeling of Ocean Dynamics"
 
 struct Params {
-  dx_m: f32,
-  dy_m: f32,
+  dlon_rad: f32,
+  dlat_rad: f32,
+  south_lat_rad: f32,
+  earth_radius_m: f32,
   dt_s: f32,
   g: f32,
   manning_n: f32,
@@ -32,8 +34,6 @@ struct Params {
   ny: u32,
   sponge_width: u32,
   nonlinear: u32,
-  _pad1: u32,
-  _pad2: u32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -51,6 +51,18 @@ fn idx(i: i32, j: i32) -> i32 {
 
 fn is_wet(i: i32, j: i32) -> bool {
   return h[idx(i, j)] > params.land_threshold_m;
+}
+
+fn row_lat_rad(j: i32) -> f32 {
+  return params.south_lat_rad + (f32(j) + 0.5) * params.dlat_rad;
+}
+
+fn row_cos_lat(j: i32) -> f32 {
+  return max(abs(cos(row_lat_rad(j))), 1.17549435e-38);
+}
+
+fn row_dx_m(j: i32) -> f32 {
+  return max(params.earth_radius_m * abs(params.dlon_rad) * row_cos_lat(j), 1.17549435e-38);
 }
 
 fn sponge_factor(i: i32, j: i32) -> f32 {
@@ -88,8 +100,8 @@ fn cs_leapfrog(@builtin(global_invocation_id) gid: vec3<u32>) {
     return;
   }
 
-  let dx = params.dx_m;
-  let dy = params.dy_m;
+  let dx = row_dx_m(j);
+  let dy = max(params.earth_radius_m * abs(params.dlat_rad), 1.17549435e-38);
   let dt = params.dt_s;
   let g  = params.g;
 
@@ -114,9 +126,12 @@ fn cs_leapfrog(@builtin(global_invocation_id) gid: vec3<u32>) {
   let v_n = select(0.0, v_in[idx(i, j + 1)], wet_n);
   let v_s = select(0.0, v_in[idx(i, j - 1)], wet_s);
 
-  // Continuity: ∂η/∂t = -∂(Hu)/∂x - ∂(Hv)/∂y
+  // Spherical continuity: the meridional face flux is weighted by its
+  // latitude circumference and normalized by the current row circumference.
   let flux_x = (max(h_e + eta_e, 0.0) * u_e - max(h_w + eta_w, 0.0) * u_w) / (2.0 * dx);
-  let flux_y = (max(h_n + eta_n, 0.0) * v_n - max(h_s + eta_s, 0.0) * v_s) / (2.0 * dy);
+  let flux_y = (max(h_n + eta_n, 0.0) * v_n * row_cos_lat(j + 1)
+              - max(h_s + eta_s, 0.0) * v_s * row_cos_lat(j - 1))
+              / (2.0 * dy * row_cos_lat(j));
 
   var new_eta = eta_in[k] - dt * (flux_x + flux_y);
 
@@ -150,8 +165,10 @@ fn cs_leapfrog(@builtin(global_invocation_id) gid: vec3<u32>) {
     let dvdx = select((v_east - v) / dx, (v - v_west) / dx, u >= 0.0);
     let dvdy = select((v_north - v) / dy, (v - v_south) / dy, v >= 0.0);
 
-    adv_u = u * dudx + v * dudy;
-    adv_v = u * dvdx + v * dvdy;
+    let tan_over_radius = tan(row_lat_rad(j)) / params.earth_radius_m;
+
+    adv_u = u * dudx + v * dudy - u * v * tan_over_radius;
+    adv_v = u * dvdx + v * dvdy + u * u * tan_over_radius;
   }
 
   var new_u = u - dt * (adv_u + g * dnedx + fric * u);
@@ -197,5 +214,13 @@ mod tests {
         assert!(SWE_LEAPFROG_WGSL.contains("nonlinear"));
         assert!(SWE_LEAPFROG_WGSL.contains("adv_u"));
         assert!(SWE_LEAPFROG_WGSL.contains("adv_v"));
+    }
+
+    #[test]
+    fn kernel_contains_row_aware_spherical_metrics() {
+        assert!(SWE_LEAPFROG_WGSL.contains("south_lat_rad"));
+        assert!(SWE_LEAPFROG_WGSL.contains("row_dx_m(j)"));
+        assert!(SWE_LEAPFROG_WGSL.contains("row_cos_lat(j + 1)"));
+        assert!(SWE_LEAPFROG_WGSL.contains("tan_over_radius"));
     }
 }

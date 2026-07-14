@@ -6,12 +6,13 @@
 //!
 //! ## Equations
 //!
-//! Linearised SWE in Cartesian (cell-local) form with Manning bottom-friction:
+//! Linearised SWE on a spherical latitude-longitude grid with Manning
+//! bottom-friction:
 //!
 //! ```text
-//! ∂η/∂t + ∂(H u)/∂x + ∂(H v)/∂y = 0
-//! ∂u/∂t + g ∂η/∂x = − g n² |U| u / H^(4/3)
-//! ∂v/∂t + g ∂η/∂y = − g n² |U| v / H^(4/3)
+//! ∂η/∂t + 1/(R cosφ) ∂(H u)/∂λ + 1/(R cosφ) ∂(H v cosφ)/∂φ = 0
+//! ∂u/∂t + g/(R cosφ) ∂η/∂λ = − g n² |U| u / H^(4/3)
+//! ∂v/∂t + g/R ∂η/∂φ = − g n² |U| v / H^(4/3)
 //! ```
 //!
 //! - `η` water-surface elevation (m)
@@ -20,9 +21,11 @@
 //! - `n` Manning roughness
 //!
 //! Discretisation: explicit forward-Euler leapfrog on a regular grid with
-//! cell size derived from the lat/lon span. CFL stability is enforced by
-//! `recommended_dt_s()` using the same two-dimensional characteristic-speed
-//! CFL definition enforced by the run-quality gate.
+//! per-row zonal cell size and spherical meridional flux weights derived from
+//! the latitude/lon span. Nonlinear mode also includes the spherical metric
+//! acceleration terms. CFL stability is enforced by `recommended_dt_s()`
+//! using the same per-row two-dimensional characteristic-speed definition
+//! enforced by the run-quality gate.
 //!
 //! Boundaries: zero-flux (`u = v = 0`) at the grid edges. This produces some
 //! mild reflection in long runs; a future release will swap for radiation
@@ -240,12 +243,37 @@ impl SwGrid {
         }
     }
 
-    /// Approximate metres per degree at the grid's centre latitude.
-    fn metres_per_deg(&self) -> (f64, f64) {
-        let center_lat = self.south_lat + 0.5 * self.dlat_deg * self.ny as f64;
-        let lat_m_per_deg = 2.0 * std::f64::consts::PI * R_EARTH_M / 360.0;
-        let lon_m_per_deg = lat_m_per_deg * center_lat.to_radians().cos().abs().max(0.05);
-        (lon_m_per_deg, lat_m_per_deg)
+    /// Latitude at a row's cell centre, in radians.
+    #[inline]
+    pub(crate) fn row_lat_rad(&self, row: usize) -> f64 {
+        (self.south_lat + (row as f64 + 0.5) * self.dlat_deg).to_radians()
+    }
+
+    /// Physical east-west distance across one cell in a row. Cell centres in
+    /// a valid pole-bounded grid never lie exactly on a pole, so this remains
+    /// finite without the former 0.05 cosine floor that overstated polar cells.
+    #[inline]
+    pub(crate) fn row_dx_m(&self, row: usize) -> f64 {
+        (R_EARTH_M * self.dlon_deg.to_radians().abs() * self.row_lat_rad(row).cos().abs())
+            .max(f64::MIN_POSITIVE)
+    }
+
+    /// Physical north-south distance across one cell.
+    #[inline]
+    pub(crate) fn dy_m(&self) -> f64 {
+        (R_EARTH_M * self.dlat_deg.to_radians().abs()).max(f64::MIN_POSITIVE)
+    }
+
+    /// Exact spherical surface area of one cell in a row.
+    #[inline]
+    pub(crate) fn row_cell_area_m2(&self, row: usize) -> f64 {
+        let south = (self.south_lat + row as f64 * self.dlat_deg).to_radians();
+        let north = south + self.dlat_deg.to_radians();
+        (R_EARTH_M
+            * R_EARTH_M
+            * self.dlon_deg.to_radians().abs()
+            * (north.sin() - south.sin()).abs())
+        .max(f64::MIN_POSITIVE)
     }
 
     /// Maximum long-wave speed in the grid, m/s. Used to set the CFL Δt.
@@ -263,29 +291,31 @@ impl SwGrid {
     /// Keeping selection and admission on one definition prevents a timestep
     /// chosen here from being rejected before the first solver step.
     pub fn recommended_dt_s(&self, cfl: f64) -> f64 {
-        let (dx_lon, dy_lat) = self.metres_per_deg();
-        let dx = (dx_lon * self.dlon_deg).abs().max(f64::MIN_POSITIVE);
-        let dy = (dy_lat * self.dlat_deg).abs().max(f64::MIN_POSITIVE);
         let rate = self.characteristic_cfl_number(1.0);
         if rate.is_finite() && rate > 0.0 {
             cfl.max(0.0) / rate
         } else {
-            cfl.max(0.0) * dx.min(dy)
+            let min_dx = (0..self.ny)
+                .map(|row| self.row_dx_m(row))
+                .fold(f64::INFINITY, f64::min);
+            cfl.max(0.0) * min_dx.min(self.dy_m())
         }
     }
 
     pub(crate) fn characteristic_cfl_number(&self, dt_s: f64) -> f64 {
-        let (dx_lon, dy_lat) = self.metres_per_deg();
-        let dx = (dx_lon * self.dlon_deg).abs().max(f64::MIN_POSITIVE);
-        let dy = (dy_lat * self.dlat_deg).abs().max(f64::MIN_POSITIVE);
-        self.h_m
-            .iter()
-            .zip(&self.eta_m)
-            .zip(&self.u_ms)
-            .zip(&self.v_ms)
-            .map(|(((&h, &eta), &u), &v)| {
-                let celerity = (G_EARTH * (h + eta).max(0.0)).sqrt();
-                dt_s * ((u.abs() + celerity) / dx + (v.abs() + celerity) / dy)
+        let dy = self.dy_m();
+        (0..self.ny)
+            .flat_map(|j| {
+                let dx = self.row_dx_m(j);
+                (0..self.nx).map(move |i| {
+                    let k = idx(i, j, self.nx);
+                    let h = self.h_m[k];
+                    let eta = self.eta_m[k];
+                    let u = self.u_ms[k];
+                    let v = self.v_ms[k];
+                    let celerity = (G_EARTH * (h + eta).max(0.0)).sqrt();
+                    dt_s * ((u.abs() + celerity) / dx + (v.abs() + celerity) / dy)
+                })
             })
             .fold(0.0_f64, f64::max)
     }
@@ -293,15 +323,15 @@ impl SwGrid {
     /// Inject an initial-condition Gaussian bump centred on `(lat, lon)`
     /// with peak amplitude `amp_m` and 1-σ radius `sigma_m`.
     pub fn inject_gaussian(&mut self, center_lat: f64, center_lon: f64, amp_m: f64, sigma_m: f64) {
-        let (lon_m, lat_m) = self.metres_per_deg();
-        let sigma_lon = (sigma_m / lon_m).max(1e-9);
-        let sigma_lat = (sigma_m / lat_m).max(1e-9);
+        let sigma_m = sigma_m.max(f64::MIN_POSITIVE);
         for j in 0..self.ny {
             for i in 0..self.nx {
                 let lon = self.west_lon + (i as f64 + 0.5) * self.dlon_deg;
                 let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;
-                let dx = (lon - center_lon) / sigma_lon;
-                let dy = (lat - center_lat) / sigma_lat;
+                let delta_lon = (lon - center_lon + 540.0).rem_euclid(360.0) - 180.0;
+                let mean_lat = 0.5 * (lat + center_lat);
+                let dx = R_EARTH_M * delta_lon.to_radians() * mean_lat.to_radians().cos() / sigma_m;
+                let dy = R_EARTH_M * (lat - center_lat).to_radians() / sigma_m;
                 self.eta_m[idx(i, j, self.nx)] += amp_m * (-(dx * dx + dy * dy) * 0.5).exp();
             }
         }
@@ -799,9 +829,13 @@ impl TimeStepper {
         let nx = grid.nx;
         let ny = grid.ny;
         let n = nx * ny;
-        let (lon_m, lat_m) = grid.metres_per_deg();
-        let dx = lon_m * grid.dlon_deg;
-        let dy = lat_m * grid.dlat_deg;
+        let row_lat_rad: Vec<f64> = (0..ny).map(|j| grid.row_lat_rad(j)).collect();
+        let row_cos_lat: Vec<f64> = row_lat_rad
+            .iter()
+            .map(|lat| lat.cos().abs().max(f64::MIN_POSITIVE))
+            .collect();
+        let row_dx_m: Vec<f64> = (0..ny).map(|j| grid.row_dx_m(j)).collect();
+        let dy = grid.dy_m();
         let dt = self.dt_s;
         let g = G_EARTH;
         let n2 = self.manning_n * self.manning_n;
@@ -825,6 +859,8 @@ impl TimeStepper {
                 .par_chunks_mut(nx)
                 .enumerate()
                 .for_each(|(j, row)| {
+                    let dx = row_dx_m[j];
+                    let cos_lat = row_cos_lat[j];
                     for i in 0..nx {
                         // Dry cells stay dry — η pinned to 0. Prevents the
                         // "slow spread halo" over continental interiors when
@@ -889,8 +925,13 @@ impl TimeStepper {
                         };
                         let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
                             / (2.0 * dx);
-                        let flux_y = ((h_n + eta_n).max(0.0) * v_n - (h_s + eta_s).max(0.0) * v_s)
-                            / (2.0 * dy);
+                        // On a sphere the north/south face length scales with
+                        // cos(latitude). Weighting the neighbour fluxes before
+                        // dividing by the current row's cosine makes this a
+                        // conservative divergence under spherical cell areas.
+                        let flux_y = ((h_n + eta_n).max(0.0) * v_n * row_cos_lat[j + 1]
+                            - (h_s + eta_s).max(0.0) * v_s * row_cos_lat[j - 1])
+                            / (2.0 * dy * cos_lat);
                         row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
                     }
                 });
@@ -905,6 +946,7 @@ impl TimeStepper {
                 .zip(scratch.v.par_chunks_mut(nx))
                 .enumerate()
                 .for_each(|(j, (u_row, v_row))| {
+                    let dx = row_dx_m[j];
                     for i in 0..nx {
                         // Dry cells carry no momentum (land + rim land both go
                         // to 0 before the boundary fall-through).
@@ -1014,7 +1056,11 @@ impl TimeStepper {
                             } else {
                                 (v_north - v) / dy
                             };
-                            (u * dudx_up + v * dudy_up, u * dvdx_up + v * dvdy_up)
+                            let tan_over_radius = row_lat_rad[j].tan() / R_EARTH_M;
+                            (
+                                u * dudx_up + v * dudy_up - u * v * tan_over_radius,
+                                u * dvdx_up + v * dvdy_up + u * u * tan_over_radius,
+                            )
                         } else {
                             (0.0, 0.0)
                         };
@@ -1208,6 +1254,59 @@ mod tests {
         let field = vec![1.25, -0.5, 0.75, -1.0];
         grid.inject_field(&field).expect("inject valid field");
         assert_eq!(grid.eta_m, field);
+    }
+
+    #[test]
+    fn row_metrics_match_spherical_geometry_through_the_polar_row() {
+        let grid = SwGrid::new(-10.0, 80.0, 10.0, 90.0, 1.0, 1.0);
+        let first_dx = grid.row_dx_m(0);
+        let polar_dx = grid.row_dx_m(grid.ny - 1);
+        assert!(first_dx.is_finite() && polar_dx.is_finite() && polar_dx > 0.0);
+        assert!(polar_dx < first_dx * 0.1, "{polar_dx} vs {first_dx}");
+
+        let integrated_area: f64 = (0..grid.ny)
+            .map(|row| grid.row_cell_area_m2(row) * grid.nx as f64)
+            .sum();
+        let expected_area = R_EARTH_M
+            * R_EARTH_M
+            * 20_f64.to_radians()
+            * (90_f64.to_radians().sin() - 80_f64.to_radians().sin());
+        assert!((integrated_area / expected_area - 1.0).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn physically_equivalent_low_and_high_latitude_grids_choose_matching_dt() {
+        let mut equator = SwGrid::new(-0.5, -0.5, 0.5, 0.5, 0.25, 0.25);
+        let mut high_lat = SwGrid::new(-1.0, 59.5, 1.0, 60.5, 0.5, 0.25);
+        equator.fill_uniform_depth(4_000.0);
+        high_lat.fill_uniform_depth(4_000.0);
+        let equator_dt = equator.recommended_dt_s(0.4);
+        let high_lat_dt = high_lat.recommended_dt_s(0.4);
+        assert!(
+            (equator_dt / high_lat_dt - 1.0).abs() < 0.02,
+            "equator dt {equator_dt}, high-latitude dt {high_lat_dt}"
+        );
+    }
+
+    #[test]
+    fn high_latitude_still_water_remains_exactly_still() {
+        let mut grid = SwGrid::new(-10.0, 55.0, 10.0, 75.0, 0.5, 0.5);
+        grid.fill_uniform_depth(4_000.0);
+        let dt = grid.recommended_dt_s(0.4);
+        TimeStepper::new(dt)
+            .with_boundary(BoundaryMode::ZeroFlux)
+            .step(&mut grid, 20);
+        assert!(grid.eta_m.iter().all(|value| *value == 0.0));
+        assert!(grid.u_ms.iter().all(|value| *value == 0.0));
+        assert!(grid.v_ms.iter().all(|value| *value == 0.0));
+    }
+
+    #[test]
+    fn gaussian_distance_wraps_across_the_dateline() {
+        let mut grid = SwGrid::new(179.0, -1.0, 181.0, 1.0, 0.25, 0.25);
+        grid.inject_gaussian(0.0, -179.5, 1.0, 50_000.0);
+        let peak = grid.eta_m.iter().copied().fold(0.0_f64, f64::max);
+        assert!(peak > 0.8, "wrapped source peak was {peak}");
     }
 
     #[test]

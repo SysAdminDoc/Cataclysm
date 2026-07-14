@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- SWE propagation now uses row-specific spherical cell widths, conservative
+  latitude-weighted meridional fluxes, spherical nonlinear metric terms, and
+  exact row areas consistently across CPU, GPU, CFL admission, and run-quality
+  accounting. High-latitude CPU/GPU parity, still-water, conservation,
+  dateline-distance, and polar-bound fixtures guard the geometry.
 - SWE runs now retain source-specific frame-zero geometry: earthquake inputs
   propagate the sampled Okada uplift/subsidence field, asteroid and nuclear
   inputs start from a cavity-rim annulus, and landslides use directional

@@ -1192,6 +1192,15 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     {
         return Err("box_half_size_deg must be in (0, 60]".into());
     }
+    if req.source.lat_deg - req.box_half_size_deg < -90.0
+        || req.source.lat_deg + req.box_half_size_deg > 90.0
+    {
+        return Err(
+            "simulation box crosses a geographic pole — move the source away from the pole or \
+             reduce box_half_size_deg (polar tiled transport is tracked separately)"
+                .into(),
+        );
+    }
     if !(req.cells_per_deg.is_finite() && req.cells_per_deg > 0.0 && req.cells_per_deg <= 200.0) {
         return Err("cells_per_deg must be in (0, 200]".into());
     }
@@ -3082,6 +3091,15 @@ mod tests {
             gauge_points: vec![],
         });
         assert!(res.is_err(), "antimeridian-crossing box must be rejected");
+    }
+
+    #[test]
+    fn simulate_grid_rejects_pole_crossing_box() {
+        let mut request = source_grid_request(None);
+        request.source.lat_deg = 88.0;
+        request.box_half_size_deg = 5.0;
+        let error = validate_simulate_grid(&request).expect_err("pole-crossing box must fail");
+        assert!(error.contains("geographic pole"), "{error}");
     }
 
     #[test]

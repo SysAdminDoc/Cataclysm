@@ -72,8 +72,10 @@ pub fn adapter_summary() -> Option<String> {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuParams {
-    dx_m: f32,
-    dy_m: f32,
+    dlon_rad: f32,
+    dlat_rad: f32,
+    south_lat_rad: f32,
+    earth_radius_m: f32,
     dt_s: f32,
     g: f32,
     manning_n: f32,
@@ -82,8 +84,6 @@ struct GpuParams {
     ny: u32,
     sponge_width: u32,
     nonlinear: u32,
-    _pad1: u32,
-    _pad2: u32,
 }
 
 /// GPU-side time stepper. Owns the wgpu device/queue, the compiled
@@ -221,12 +221,11 @@ impl GpuTimeStepper {
             source: wgpu::ShaderSource::Wgsl(SWE_LEAPFROG_WGSL.into()),
         });
 
-        let (lon_m, lat_m) = grid.metres_per_deg();
-        let dx_m = lon_m * grid.dlon_deg;
-        let dy_m = lat_m * grid.dlat_deg;
         let params = GpuParams {
-            dx_m: dx_m as f32,
-            dy_m: dy_m as f32,
+            dlon_rad: grid.dlon_deg.to_radians() as f32,
+            dlat_rad: grid.dlat_deg.to_radians() as f32,
+            south_lat_rad: grid.south_lat.to_radians() as f32,
+            earth_radius_m: super::super::constants::R_EARTH_M as f32,
             dt_s: dt_s as f32,
             g: super::super::constants::G_EARTH as f32,
             manning_n: manning_n as f32,
@@ -235,8 +234,6 @@ impl GpuTimeStepper {
             ny: grid.ny as u32,
             sponge_width,
             nonlinear: if nonlinear { 1 } else { 0 },
-            _pad1: 0,
-            _pad2: 0,
         };
 
         // Cast h, η, u, v from f64 → f32 for upload. The numerical
@@ -695,6 +692,45 @@ mod tests {
             max_diff < 5.0e-3,
             "full-physics GPU η disagrees with CPU η by {} m (> 5e-3, IC amplitude 2 m)",
             max_diff
+        );
+    }
+
+    #[test]
+    fn swe_gpu_matches_cpu_with_high_latitude_row_metrics() {
+        let mut g_cpu = SwGrid::new(-8.0, 52.0, 8.0, 68.0, 0.25, 0.25);
+        g_cpu.fill_uniform_depth(4_000.0);
+        g_cpu.inject_gaussian(60.0, 0.0, 1.0, 100_000.0);
+        let mut g_gpu = g_cpu.clone();
+
+        let dt = g_cpu.recommended_dt_s(0.25);
+        TimeStepper::new(dt).step(&mut g_cpu, 40);
+
+        let gpu = match GpuTimeStepper::new(
+            &g_gpu,
+            dt,
+            crate::physics::constants::MANNING_N_COASTAL,
+            super::super::BoundaryMode::DEFAULT_SPONGE_WIDTH as u32,
+            true,
+        ) {
+            Some(gpu) => gpu,
+            None => {
+                println!(
+                    "swe_gpu_matches_cpu_with_high_latitude_row_metrics: no adapter — skipping"
+                );
+                return;
+            }
+        };
+        assert!(gpu.step(&mut g_gpu, 40), "GPU step reported failure");
+
+        let max_diff = g_cpu
+            .eta_m
+            .iter()
+            .zip(&g_gpu.eta_m)
+            .map(|(cpu, gpu)| (cpu - gpu).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(
+            max_diff < 5.0e-3,
+            "high-latitude GPU eta differs from CPU by {max_diff} m"
         );
     }
 
