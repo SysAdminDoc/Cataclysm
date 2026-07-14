@@ -173,13 +173,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ### P0
 
-- [ ] P0 - UX-05b: Expand source-aware Results into place/time/reach storytelling and Science/Validation tabs
-  Why: Results now opens on a plain-language "What happened?" lead with source-correct labels (earthquakes no longer show "Cavity radius"), but it still lacks the first/nearest affected place, arrival time, geographic reach, and a Science/Validation tab split; direct-hazard consequence numbers still read as exact integers.
-  Evidence: `src/components/ResultsPanel.tsx` (`describeOutcome`/`cavityLabel` shipped, no place/time/reach yet); nearest coastal point + arrival data in `src/components/CoastalRunupOverlay.tsx`/`DartOverlay.tsx`; NUKEMAP plain-language consequences (https://db.nuclearsecrecy.com/nukemap/faq/).
-  Touches: result view models, `ResultsPanel.tsx`, attenuation/runup/DART panels, direct-hazard results, confidence copy, export summaries, result fixtures.
-  Acceptance: the outcome lead adds maximum effect, first/nearest affected place, arrival time, geographic reach, and confidence/limitations; Science and Validation tabs retain expert metrics and observations; selecting an outcome focuses the relevant place/time on the globe; direct-hazard consequence estimates use honest ranges and assumptions rather than exact integers.
-  Complexity: M
-
 ### P1
 
 - [ ] P1 - UX-06: Turn guided lessons into interactive globe stories
@@ -449,27 +442,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 
 ### P0
 
-- [ ] P0 — Put every custom Tauri command behind an explicit capability permission
-  Why: registered application commands are currently callable by every app window/webview by default, including simulation, diagnostics, and keychain operations.
-  Evidence: Verified — `src-tauri/build.rs`; `src-tauri/src/lib.rs`; Tauri capabilities and permissions https://v2.tauri.app/security/capabilities/ and https://v2.tauri.app/security/permissions/.
-  Touches: `src-tauri/build.rs`, generated command permission TOML, `src-tauri/capabilities/default.json`, IPC verification tests.
-  Acceptance: all registered commands are declared through `AppManifest::commands`, grouped into least-privilege read/query, simulation/cancel, diagnostics, and keychain permissions, and explicitly granted to the main window; verification fails on an undeclared command; a test window without those grants receives a denied invocation while the main-window parity suite passes.
-  Complexity: M
-
-- [ ] P0 — Fail safe when the mandatory first-run notice cannot read settings
-  Why: a rejected acknowledgement read leaves the notice closed, so the educational/non-operational warning disappears precisely when persistence is unhealthy.
-  Evidence: Verified — `src/components/FirstRunDisclaimer.tsx:28-33`; mandatory boundary in `README.md`.
-  Touches: `FirstRunDisclaimer.tsx`, settings error state/copy, component tests, launch-experience fixture.
-  Acceptance: pending reads do not expose the main workflow; a rejected read opens the notice with a persistence warning; acknowledgement proceeds best-effort and the notice recurs next launch if the write fails; resolved prior acknowledgement still suppresses the notice.
-  Complexity: S
-
-- [ ] P0 — Bound and instrument the reference-recorder lifecycle
-  Why: strict/reference runs can hang indefinitely and leave Node/Vite workers, making the deterministic release gate non-terminating and contaminating later verification.
-  Evidence: Verified — `scripts/capture-reference-scenes.mjs:319-496`; reproduced 5-, 10-, and 20-minute stalls; Playwright timeouts https://playwright.dev/docs/test-timeouts and Node child-process lifecycle https://nodejs.org/api/child_process.html.
-  Touches: recorder orchestration, preview/browser process ownership, progress manifest, timeout fixtures, strict verification.
-  Acceptance: startup, each scene/phase, and total run have explicit configurable deadlines; progress identifies scene, phase, elapsed time, and last completed artifact; timeout, signal, and exception paths close contexts/browser and terminate the full preview child tree; a fixture-induced hang exits non-zero within its budget and proves no owned worker remains.
-  Complexity: M
-
 ### P1
 
 - [ ] P1 — Make SWE wetting and drying well-balanced and positivity-preserving
@@ -536,3 +508,317 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Touches: run identity, portable package migration, immutable result snapshot, normalized rerun service, Compare/Science UI, delta export.
   Acceptance: opening an older package preserves its original result; preflight lists solver, schema, source, settings, and data-digest differences; an explicit normalized rerun creates a new linked result; Compare attributes field/gauge/direct-effect deltas to versioned inputs and never mutates the historical artifact.
   Complexity: L
+
+## Research-Driven Additions (2026-07-14)
+
+New items only. Verified against v0.10.4 source and a 2025-2026 external scan
+(fresh code audit; NUKEMAP Feb-2026 roadmap; 2024 PAGEOPH volcanic-tsunami
+review; Vilibić et al. 2025 meteotsunami review; Celeris-WebGPU; WebGPU 128;
+Cesium July-2026; WCAG 2.2). Items already tracked in the sections above
+(antimeridian tiled transport, run-identity/cancellation, GPU-resident
+max-field, casualty-model plurality, USGS/NEO feeds, terrain draping, units,
+recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
+
+### P1 — verified correctness and security bugs (root-cause fixes)
+
+- [ ] P1 — Fix Okada displacement-field georeferencing origin
+  Why: `origin_lat` is shifted to the grid's south edge but `origin_lon` is left
+  at the grid center and `lat_per_m` is applied to the x/longitude spacing with
+  no `cos(lat)` term, so any consumer treating `(origin_lat, origin_lon)` as the
+  SW corner of `uz_m` misregisters the seafloor uplift by up to half a grid
+  width; latent today but will silently corrupt the SWE initial condition the
+  moment the field is coupled.
+  Evidence: Verified — `src-tauri/src/physics/okada.rs:107-115`; `uz_m` layout at
+  `:88-104`; Okada 1985.
+  Touches: `okada.rs` origin computation, a georeferencing unit test, the future
+  SWE-coupling path.
+  Acceptance: `origin_lon = center_lon - (nx/2)*dx_m*lat_per_m/cos(center_lat)`
+  (and matching lat convention) so cell (0,0) maps to the true SW corner; a new
+  test pins the corner/edge lon-lat of a known fault; peak-uplift location on the
+  globe matches the analytical center within one cell.
+  Complexity: S
+
+- [ ] P1 — Keep the tsunami bounding box inside the ±180 frame
+  Why: only the source-center longitude is normalized, so `west = lon - half` /
+  `east = lon + half` (half up to 60°) yield spans like `[-235, 361]`, exactly
+  the degenerate `bbox` the adjacent comment claims to prevent; it reaches
+  Cesium's `SingleTileImageryProvider` and crops/renders nothing near ±180°.
+  Evidence: Verified — `src-tauri/src/commands.rs:1027-1034` and `:1215-1222`;
+  `SwGrid::snapshot` bbox emission.
+  Touches: `commands.rs` grid-bounds construction, snapshot bbox encoding, an
+  antimeridian fixture; near-term slice of the tracked tiled-transport item.
+  Acceptance: a source at 179.5°E and one at 179.5°W both produce a valid
+  in-frame bbox with no crop or inverted rectangle; an antimeridian test asserts
+  `-180 <= west < east <= 180` (or an explicit two-tile split); solver fields are
+  unchanged.
+  Complexity: S
+
+- [ ] P1 — Reject sub-floor `mean_depth_m` instead of silently clamping it
+  Why: validation accepts `mean_depth_m` in `[0, 12000]`, then the solver does
+  `.max(50.0)`, so a request below 50 m is simulated at 50 m while CFL, celerity,
+  arrival times, gauges, and exports all reflect the substitution and the
+  provenance strip reports the request — a silent divergence that violates the
+  fail-closed rule.
+  Evidence: Verified — `src-tauri/src/commands.rs:943-945` (validation) vs
+  `:1055`/`:1240` (`.max(50.0)`).
+  Touches: `validate_simulate_grid`, error copy, a rejection test.
+  Acceptance: when `!use_real_bathymetry`, a `mean_depth_m` below the documented
+  floor is rejected with an actionable message before allocation; the simulated
+  depth always equals the reported/exported depth; a test asserts a 0 m request
+  is rejected, not clamped.
+  Complexity: S
+
+- [ ] P1 — Order direct-hazard effect rings by radius before annulus accumulation
+  Why: casualty and latent-cancer zones are built from independent radii
+  (`thermal_3.max(psi_3)`, `psi_1`, `thermal_1`, radiation, …) but accumulate a
+  running `previous_area` assuming monotonically decreasing radius; only
+  `psi_0_25` was hand-ordered, so for yields where `thermal_1 > psi_1` or
+  `thermal_3 > psi_20` the `(area - previous_area).max(0.0)` term drops a real
+  ring or overlaps a counted one, changing headline deaths/injuries/cancers.
+  Evidence: Verified — `src-tauri/src/physics/direct_hazard.rs:1023-1061`
+  (casualties) and `:1076-1097` (latent cancer); ring-render path already sorts
+  at `:610`/`:1185`.
+  Touches: `direct_hazard.rs` casualty and cancer accumulators, monotonicity
+  tests across a yield sweep.
+  Acceptance: both accumulators sort zones by radius descending (carrying their
+  lethality tuple) before differencing; a parameterized test over multiple yields
+  asserts every annulus population is non-negative and no region is double-
+  counted; the frozen 100 kt values are preserved.
+  Complexity: S
+
+- [ ] P1 — Route legacy token migration through the OS keychain, never the store
+  Why: the localStorage→store migration writes `cesium_token` (a `SENSITIVE_KEYS`
+  member) into the plaintext plugin-store via `store.set`, defeating the
+  keychain-only token design that the rest of `settings.ts` enforces.
+  Evidence: Verified — `src/lib/settings.ts:353-368` (store branch) vs `:315-335`
+  (correct keychain branch).
+  Touches: `settings.ts` sensitive-key migration path, a migration test asserting
+  the store never receives a sensitive value.
+  Acceptance: migrating a legacy localStorage token moves it to the keychain and
+  purges the WebView copy; the plaintext store never contains a `SENSITIVE_KEYS`
+  value; a test drives the localStorage-present, store-present path and asserts
+  `store.set` is not called for the token.
+  Complexity: S
+
+### P2 — reliability guards and physical credibility
+
+- [ ] P2 — Guard atmospheric-entry non-convergence and the velocity/mass floor
+  Why: the RK4 entry integrator caps at 5,000,000 steps and, if exhausted, falls
+  through to `reaches_ground: true` with no flag, and the `1e-12` floors on
+  `v`/`m` let the `θ` derivative blow up near a stopped body, so pathological
+  inputs (shallow angle, extreme drag) yield physically meaningless
+  airburst/impact energies presented as authoritative.
+  Evidence: Verified — `src-tauri/src/physics/direct_hazard.rs:182-197,261,
+  323,338-345`.
+  Touches: the entry integrator loop, result type (`converged` flag), a physical
+  velocity/terminal floor, pathological-input tests.
+  Acceptance: exhausting the loop or dropping below a physical velocity floor ends
+  integration with a labelled non-converged/terminal outcome instead of a spurious
+  energy; results surface the flag; a test with a shallow, dense, high-drag input
+  no longer returns a meaningless airburst energy.
+  Complexity: S
+
+- [ ] P2 — Clamp the gauge bilinear sampler at grid edges
+  Why: `x = (lon-west)/dlon - 0.5` sends a gauge on the outer half-cell rim to
+  `x = nx-0.5`, which fails the `x <= nx-1` test and returns `eta_m: None` with no
+  diagnostic, so frame-edge DART buoys silently go dark.
+  Evidence: Verified — `src-tauri/src/physics/solver/mod.rs:408-436`.
+  Touches: `sample_eta_at` index clamping, an edge-gauge test.
+  Acceptance: a gauge anywhere inside the bbox (including the outer half-cell)
+  returns an interpolated value; only points truly outside the bbox return
+  `None`; a test places a gauge on each edge and asserts a finite reading.
+  Complexity: S
+
+- [ ] P2 — Short-circuit cancelled-run replay and prevent duplicate CPU sims
+  Why: on cancel the client still awaits `waitForRenderReplay(replay,
+  render_frame_count, …)`, which busy-polls up to 120 s when a counted frame was
+  dropped, and a superseding run fires only a best-effort `cancelSimulation` while
+  the old CPU worker runs to completion — so a cancelled or rapidly-restarted run
+  can hang the UI and run two full simulations at once.
+  Evidence: Verified — `src/lib/tauri.ts:42-69,411-419`;
+  `src/components/SwePlayback.tsx:321-325,381-436`; distinct frontend slice of the
+  tracked run-identity item.
+  Touches: `tauri.ts` replay wait (cancel-aware deadline), `SwePlayback.tsx`
+  supersede/teardown ordering, a concurrent-supersede test.
+  Acceptance: a cancelled run resolves promptly without a full 120 s poll; a new
+  run does not begin backend compute until the prior run is torn down (or the
+  concurrent window is bounded and documented); a test drives back-to-back runs
+  and asserts no lingering 120 s wait and no unbounded concurrent compute.
+  Complexity: M
+
+- [ ] P2 — Add a cited volcanic-source tsunami module feeding the SWE solver
+  Why: README lists caldera collapse as planned, and the 2024 PAGEOPH review
+  shows flank-collapse and pyroclastic-flow-into-sea sources reduce to a
+  few-parameter initial displacement over the existing solver — high reuse, cited
+  physics, and famous teachable cases (Anak Krakatau 2018, Santorini), including
+  the "caldera collapse ≠ simple tsunami" misconception lesson.
+  Evidence: PAGEOPH TGV review https://link.springer.com/article/10.1007/s00024-024-03515-y;
+  Santorini reappraisal https://www.nature.com/articles/ncomms13332;
+  lab benchmark https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023JC020796;
+  existing landslide source pattern in `src-tauri/src/physics/landslide.rs`.
+  Touches: new `physics/volcanic.rs` source term, source-input contract + enum,
+  scenario builder tab, cited presets, science note, validation fixtures.
+  Acceptance: a volcanic source (flank collapse and/or pyroclastic flow) produces
+  a cited initial displacement that feeds the existing SWE grid; at least one
+  historical preset (e.g. Anak Krakatau 2018) reproduces published near-field
+  runup order-of-magnitude; the source cites its paper and states uncertainty; the
+  UI keeps it clearly non-operational.
+  Complexity: L
+
+- [ ] P2 — Add meteotsunami / moving atmospheric-pressure forcing (Hunga Tonga)
+  Why: a moving pressure pulse is a forcing term over the existing SWE solver,
+  not a new solver; Proudman resonance (disturbance speed ≈ √(gh)) is a one-line
+  coupling condition and a compelling interactive knob, and the Hunga Tonga 2022
+  dual-speed Lamb/Pekeris pulse explains the globally-recorded "early" wave — a
+  marquee, well-documented scenario.
+  Evidence: Vilibić et al. 2025 review https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2024RG000867;
+  Proudman resonance https://www.coastalwiki.org/wiki/Proudman_resonance_and_meteo_tsunamis;
+  Hunga Tonga Lamb wave https://www.nature.com/articles/s41598-023-35800-6;
+  existing SWE forcing in `src-tauri/src/physics/solver/mod.rs`.
+  Touches: pressure-forcing source term in the solver, moving-source parameters
+  (speed/amplitude/rise), a Hunga-Tonga preset, science note + resonance
+  explainer, validation fixture.
+  Acceptance: a moving atmospheric-pressure source forces the solver and shows
+  amplified response as disturbance speed approaches √(gh); a Hunga Tonga 2022
+  preset reproduces the fast early-arrival signature qualitatively; the model
+  cites its sources and states its idealizations; sponge/boundary handling is
+  unaffected.
+  Complexity: L
+
+- [ ] P2 — Show institutions/infrastructure inside a hazard zone (OSM)
+  Why: "what named schools/hospitals/museums fall inside the 5 psi ring or the
+  inundation zone" is a NUKEMAP-validated, high-impact humanitarian-framing
+  feature that reuses the geocoding stack and applies to blast and tsunami
+  footprints alike.
+  Evidence: NUKEMAP 2026 roadmap institution lookup
+  https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/; existing OSM/
+  location work in the UNI-09 datasets and `src/lib/data.ts`.
+  Touches: bundled/queryable OSM institution index (offline-first, cached, stale
+  badge), point-in-zone query against ring/inundation geometry, results list,
+  provenance/attribution, privacy copy.
+  Acceptance: for a placed hazard, a labelled list of institutions within selected
+  thresholds appears with type and distance; queries run offline from a packaged
+  index and never transmit; the list is clearly educational and cites its OSM
+  source; empty and stale states are explicit.
+  Complexity: M
+
+- [ ] P2 — Add a child-casualty / demographic breakdown metric
+  Why: NUKEMAP's 2026 roadmap breaks out child casualties as a distinct metric;
+  a demographic slice over the population raster is cheap and pedagogically
+  powerful, and pairs with the institutions-in-zone feature.
+  Evidence: NUKEMAP 2026 roadmap https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/;
+  `src-tauri/src/physics/direct_hazard.rs` casualty model; existing population
+  density input.
+  Touches: cited demographic fraction(s), casualty result type, results view,
+  uncertainty copy, references.
+  Acceptance: casualty results optionally show an estimated child (and/or other
+  cited demographic) breakdown with its assumption and source; the split is
+  labelled approximate with a stated demographic fraction; exports record it; the
+  breakdown never implies precision the model lacks.
+  Complexity: S
+
+- [ ] P2 — Exploit WebGPU subgroups/f16 and add a timestamp-query GPU profiler
+  Why: subgroups accelerate the GPU-resident max-field and flux reductions, f16
+  storage halves bandwidth on the memory-bound SWE stencil, and timestamp queries
+  enable an honest per-pass in-app GPU profiler — all on the existing wgpu path
+  without changing the CPU reference.
+  Evidence: WebGPU 128 subgroups/f16 https://developer.chrome.com/blog/new-in-webgpu-128;
+  timestamp queries https://developer.chrome.com/blog/new-in-webgpu-120;
+  wgpu features https://docs.rs/wgpu/latest/wgpu/struct.Features.html;
+  `src-tauri/src/physics/solver/gpu.rs`.
+  Touches: WGSL kernels/reductions, optional f16 storage buffers, feature
+  detection + fallback, `timestamp-query` pass wiring, diagnostics panel, solver
+  benchmark.
+  Acceptance: when the adapter advertises the features, subgroup reductions and
+  f16 storage are used with graceful fallback and CPU/GPU products within declared
+  tolerance; a fixed-size benchmark records material speedup within VRAM budget;
+  the diagnostics panel reports per-pass GPU timings from timestamp queries.
+  Complexity: M
+
+- [ ] P2 — Hazard-map-literacy design pass on overlays and framing
+  Why: tsunami-communication research shows users read single-scenario maps as
+  certainty and safe zones as guarantees, and that comparison/percentage framings
+  can mislead; leading with arrival time, adopting recognizable IOC symbology
+  (clearly labelled non-operational), and showing uncertainty bands counter
+  documented misreadings.
+  Evidence: MDPI Water 2024 https://www.mdpi.com/2073-4441/16/23/3423;
+  Springer 2025 uncertainty chapter https://link.springer.com/chapter/10.1007/978-3-031-98115-9_8;
+  IOC Tsunami Ready symbology https://tsunami.ioc.unesco.org/en/tsunami-ready;
+  current overlays in `src/render/cesium/**` and results copy.
+  Touches: overlay color/symbology tokens, arrival-time-first result summaries,
+  uncertainty-band presentation, non-operational labelling, misconception
+  callouts, visual baselines.
+  Acceptance: inundation/runup overlays use a documented, official-aligned
+  legend with an explicit "not an evacuation map" label; results lead with
+  arrival time and an uncertainty band rather than a bare single value; at least
+  one misconception (safe-zone false confidence, single-scenario certainty) is
+  actively pre-empted in copy; changes are covered by visual baselines.
+  Complexity: M
+
+- [ ] P2 — Close WCAG 2.2 AA gaps beyond forced-colors
+  Why: a globe leans on drag (pan/rotate/place) and small targets, but there is
+  no non-drag alternative, target-size floor, focus-not-obscured guarantee, or
+  consistent-help affordance; these are the highest-value untracked WCAG 2.2 AA
+  criteria for this UI.
+  Evidence: WCAG 2.2 new criteria https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/;
+  drag-to-place in `src/components/Globe.tsx`/interaction hosts; control sizes in
+  `src/styles/**`.
+  Touches: coordinate/keyboard alternatives for every drag-to-place/pan action,
+  24×24 target-size audit, sticky-header focus-obscuring fixes, a persistent Help
+  affordance, Playwright accessibility fixtures.
+  Acceptance: every dragging interaction (pan, rotate, place marker) has a
+  single-pointer/keyboard/coordinate alternative; interactive targets meet the
+  24×24 minimum or an exception; keyboard focus is never fully obscured by fixed
+  chrome; Help is reachable consistently; new axe/Playwright checks cover 2.5.7,
+  2.5.8, 2.4.11, and 3.2.6.
+  Complexity: M
+
+### P3 — distribution and larger bets
+
+- [ ] P3 — Add a cited supervolcano ashfall module
+  Why: an Ash3d-style advection-diffusion tephra model with a continent-scale
+  umbrella cloud reuses the plume/advection machinery, is cited and tractable,
+  fits the "cataclysm" brand, and the "umbrella bullseye vs wind-blown plume"
+  contrast is a strong teaching visual.
+  Evidence: Yellowstone Ash3d supereruption modeling
+  https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2014GC005469 and
+  https://www.usgs.gov/publications/modeling-ash-fall-distribution-a-yellowstone-supereruption;
+  existing advection/plume code.
+  Touches: new ashfall source/advection model, wind-field input, isopach overlay,
+  presets (Yellowstone/Taupo), science note, uncertainty copy.
+  Acceptance: an ashfall scenario produces cited isopach thickness contours with
+  a selectable wind field, distinguishing umbrella-driven vs wind-blown
+  distributions; presets reproduce published deposit patterns qualitatively; each
+  effect cites a source and states uncertainty; the mode is labelled educational.
+  Complexity: L
+
+- [ ] P3 — Attach an SBOM and build-provenance attestation to each release
+  Why: for a scientific tool, a CycloneDX SBOM plus SLSA-style provenance on each
+  GitHub Release strengthens the "why trust this" story and is increasingly
+  expected, and it is achievable locally with no CI (consistent with the
+  build-locally posture).
+  Evidence: SLSA/reproducible-builds guidance https://reproducible-builds.org/reports/2025-07/;
+  supply-chain toolchain https://github.com/bureado/awesome-software-supply-chain-security;
+  existing local release flow in `scripts/build-release.mjs`.
+  Touches: local SBOM generation (npm + Cargo → CycloneDX/SPDX), a provenance
+  attestation step, release-manifest wiring, release docs.
+  Acceptance: each release includes a machine-readable SBOM covering npm and
+  Cargo dependencies and a provenance attestation of the local build; the release
+  checklist and docs reference them; generation runs locally without a remote
+  builder.
+  Complexity: S
+
+- [ ] P3 — Publish to winget, Flathub, and a Homebrew cask
+  Why: winget (Windows), Flathub (Linux), and a Homebrew cask (macOS) are the
+  expected install channels for an OSS scientific desktop app and materially
+  expand reach beyond the raw GitHub-release download, all manifest-based and
+  compatible with the unsigned/local-build stance.
+  Evidence: Tauri distribution guide https://v2.tauri.app/distribute/;
+  winget via winapp/MSIX https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/guides/tauri.
+  Touches: winget manifest, Flatpak manifest/AppImage, Homebrew cask formula,
+  release docs, per-channel checksums.
+  Acceptance: the app is installable via `winget install`, from Flathub, and via
+  `brew install --cask`; each manifest points at the corresponding release
+  artifact and checksum; docs list all channels; no channel depends on a remote
+  build runner.
+  Complexity: M
