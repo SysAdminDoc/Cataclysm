@@ -36,6 +36,26 @@ export async function withDeadline(label, timeoutMs, operation) {
   }
 }
 
+/**
+ * Flush the WebGL command stream and allow the browser compositor to observe
+ * the completed canvas before Playwright captures it. Fixed sleeps are not a
+ * completion barrier on software-rendered CI hosts.
+ */
+export async function settleCommittedWebGlFrame(page) {
+  return page.evaluate(async () => {
+    const canvas = document.querySelector(".cesium-widget canvas");
+    if (!(canvas instanceof HTMLCanvasElement)) throw new Error("Cesium canvas unavailable.");
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    if (!gl) throw new Error("WebGL unavailable.");
+
+    gl.finish();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    gl.finish();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    gl.finish();
+  });
+}
+
 function isRunning(child) {
   return Boolean(child?.pid) && child.exitCode === null && child.signalCode === null;
 }

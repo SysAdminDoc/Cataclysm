@@ -9,6 +9,7 @@ import {
   RecorderDeadlineError,
   createProgressTracker,
   deadlineFrom,
+  settleCommittedWebGlFrame,
   terminateProcessTree,
   withDeadline,
 } from "./reference-recorder-lifecycle.mjs";
@@ -30,6 +31,40 @@ test("deadline arguments reject invalid values", () => {
     () => deadlineFrom(["--phase-timeout-ms", "0"], "--phase-timeout-ms", "UNSET_TEST_TIMEOUT", 123),
     /positive integer/,
   );
+});
+
+test("committed WebGL frames finish before and across compositor frames", async () => {
+  const operations = [];
+  const previousDocument = globalThis.document;
+  const previousCanvas = globalThis.HTMLCanvasElement;
+  const previousAnimationFrame = globalThis.requestAnimationFrame;
+  class FakeCanvas {
+    getContext(kind) {
+      operations.push(`context:${kind}`);
+      return kind === "webgl2" ? { finish: () => operations.push("finish") } : null;
+    }
+  }
+  globalThis.HTMLCanvasElement = FakeCanvas;
+  globalThis.document = { querySelector: () => new FakeCanvas() };
+  globalThis.requestAnimationFrame = (callback) => {
+    operations.push("animation-frame");
+    queueMicrotask(() => callback(0));
+  };
+  try {
+    await settleCommittedWebGlFrame({ evaluate: (callback) => callback() });
+    assert.deepEqual(operations, [
+      "context:webgl2",
+      "finish",
+      "animation-frame",
+      "finish",
+      "animation-frame",
+      "finish",
+    ]);
+  } finally {
+    globalThis.document = previousDocument;
+    globalThis.HTMLCanvasElement = previousCanvas;
+    globalThis.requestAnimationFrame = previousAnimationFrame;
+  }
 });
 
 test("progress tracker atomically records the active phase and last artifact", async () => {

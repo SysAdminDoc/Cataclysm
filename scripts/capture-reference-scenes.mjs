@@ -12,6 +12,7 @@ import {
 import {
   createProgressTracker,
   deadlineFrom,
+  settleCommittedWebGlFrame,
   terminateProcessTree,
   withDeadline,
 } from "./reference-recorder-lifecycle.mjs";
@@ -301,7 +302,7 @@ async function preparePhase(page, contract, scene, { simulationTimeS, effectTime
       throw new Error(`${scene.id}: direct frame did not commit after applying the reference view (${JSON.stringify(readiness)}).`, { cause: error });
     }
   }
-  await page.waitForTimeout(250);
+  await settleCommittedWebGlFrame(page);
 }
 
 async function capturePhase(page, contract, scene, phase) {
