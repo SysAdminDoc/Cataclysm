@@ -70,7 +70,10 @@ impl LandslideSource {
 
     /// Froude number based on impact velocity and receiving water depth.
     pub fn froude(&self) -> f64 {
-        self.impact_velocity_m_s() / (G_EARTH * self.water_depth_m).sqrt()
+        // Floor the depth (as `slide_thickness_ratio`/`m_rel` do) so a zero or
+        // degenerate water depth can't divide by zero into an infinite Froude
+        // number and NaN-poison the amplitude estimate.
+        self.impact_velocity_m_s() / (G_EARTH * self.water_depth_m.max(1.0)).sqrt()
     }
 
     /// Relative slide thickness (slide vertical extent / water depth).
@@ -226,6 +229,27 @@ mod tests {
         };
         let d = s.initial_displacement();
         assert!(d.seismic_mw_equivalent.is_finite(), "Mw must be finite, got {}", d.seismic_mw_equivalent);
+        assert!(d.peak_amplitude_m.is_finite());
+        assert!(d.source_energy_j.is_finite());
+    }
+
+    /// A subaerial slide into zero-depth water must not divide by zero in the
+    /// Froude number and NaN-poison the amplitude. The depth floor keeps every
+    /// derived quantity finite.
+    #[test]
+    fn zero_water_depth_keeps_subaerial_finite() {
+        let s = LandslideSource {
+            kind: LandslideKind::Subaerial,
+            volume_m3: 3.0e7,
+            density_kg_m3: 2700.0,
+            drop_height_m: 900.0,
+            slope_deg: 40.0,
+            water_depth_m: 0.0,
+            water_body_width_m: 1300.0,
+            location: GeoPoint { lat_deg: 0.0, lon_deg: 0.0, depth_m: 0.0 },
+        };
+        assert!(s.froude().is_finite(), "froude must be finite, got {}", s.froude());
+        let d = s.initial_displacement();
         assert!(d.peak_amplitude_m.is_finite());
         assert!(d.source_energy_j.is_finite());
     }

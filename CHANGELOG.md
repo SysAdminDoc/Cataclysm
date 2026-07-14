@@ -21,6 +21,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   evenly when a filter leaves a single event instead of stacking at the edge.
 - Sub-tonne source energies now render in compact notation with a `t TNT` tier
   instead of raw exponential Joules, matching the rest of the energy ladder.
+- Floored the receiving water depth in the landslide Froude-number calculation so
+  a degenerate zero-depth subaerial slide can no longer divide by zero and
+  NaN-poison the initial-amplitude estimate (matches the existing guards on the
+  thickness-ratio and relative-mass terms).
 
 ### Added
 
