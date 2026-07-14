@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Settings import now applies atomically: if a write fails partway through, the
+  keys already written are rolled back to their prior values instead of leaving
+  settings in a half-imported state.
+
 - DART buoy RMSE now distinguishes a genuine backend failure from the benign
   "no time overlap" case instead of labelling every error as no-overlap, and
   surfaces real failures in the diagnostics log.

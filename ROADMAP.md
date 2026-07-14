@@ -252,13 +252,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
   Acceptance: every run has an ID and lifecycle; cancel-by-ID leaves other runs active; closed receivers terminate work; completion reports actual emitted frames and cancellation; over-budget compare/run requests are rejected before allocation with a calculated explanation.
   Complexity: L
 
-- [ ] P1 — Make settings persistence and import transactional
-  Why: writes can fail while the UI reports success; imports apply key-by-key without rollback or size limits; a future schema is stamped down to v1; early edits and classroom-lock state can be overwritten or remain stale.
-  Evidence: `src/lib/settings.ts` write/migration/import paths; `src/components/Settings.tsx` load/apply/import/reset flows; Tauri Store persists in app data and returns asynchronous operations.
-  Touches: settings schema validator, migration registry, staged snapshot/rollback, file-size cap, Settings loading/commit state, failure tests.
-  Acceptance: the UI is non-editable until the durable snapshot loads; all changes prevalidate and commit atomically; any write failure restores prior durable/in-memory state and shows recovery; future schemas are rejected without mutation; import/reset immediately refresh every dependent setting.
-  Complexity: M
-
 - [ ] P1 — Use typed loading, empty, stale, and error states for derived outputs
   Why: preset, runup, attenuation, inspect, SWE, saved-scenario, and DART failures currently collapse into loading, empty, waiting, or “no overlap,” making failed computations look valid.
   Evidence: `PresetSelector.tsx`, `CoastalRunupOverlay.tsx`, `AttenuationChart.tsx`, `Globe.tsx`, `DartOverlay.tsx`, `ScenarioBuilder.tsx`; professional hazard tools distinguish workflow/output failures.

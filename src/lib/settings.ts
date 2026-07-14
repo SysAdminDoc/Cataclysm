@@ -765,7 +765,27 @@ export const settings = {
         skipped.push(key);
       }
     }
-    for (const [key, value] of pending) await write(key, value);
+    // Apply atomically: snapshot the prior value of every key we are about to
+    // change so a write failure partway through can be rolled back, rather than
+    // leaving settings in a half-imported state.
+    const prior = new Map<keyof Settings, Settings[keyof Settings]>();
+    for (const [key] of pending) prior.set(key, await read(key));
+    const applied: Array<keyof Settings> = [];
+    try {
+      for (const [key, value] of pending) {
+        await write(key, value);
+        applied.push(key);
+      }
+    } catch (err) {
+      for (const key of applied.reverse()) {
+        try {
+          await write(key, prior.get(key) as Settings[keyof Settings]);
+        } catch {
+          // Best-effort rollback; a failing store is already the root problem.
+        }
+      }
+      throw new Error(`Settings import failed and was rolled back: ${String(err)}`);
+    }
     return { applied: pending.length, skipped };
   },
 };
