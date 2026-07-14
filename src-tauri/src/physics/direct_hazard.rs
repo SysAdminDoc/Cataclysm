@@ -556,7 +556,7 @@ fn fmt_energy(megatons: f64) -> String {
 /// `T ≈ 109 · E_Mt^0.78` (Collins, Melosh & Marcus 2005). Order-of-magnitude
 /// only — the impactor flux is uncertain to a factor of a few.
 fn impact_recurrence_interval_years(megatons: f64) -> f64 {
-    if !(megatons > 0.0) {
+    if megatons.is_nan() || megatons <= 0.0 {
         return f64::INFINITY;
     }
     109.0 * megatons.powf(0.78)
