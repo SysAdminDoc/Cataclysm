@@ -348,9 +348,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Why: `useScenarioSlot` re-runs `api.runPreset` on every `timeS` change to update the wavefront ring, so playback/scrubbing round-trips the full preset (initial displacement + 48 wavefront samples) once per tick. The busy-badge flicker is fixed, but the per-tick IPC flood remains; only the time-dependent wavefront actually changes.
   Where: `src/hooks/useScenarioSlot.ts` (effect at ~L81-130), `src-tauri/src/commands.rs` (`run_preset`) — add a lightweight `sample_preset_wavefront(preset_id, time_s, n_samples)` command and call it from a separate time-only effect.
 
-- [ ] P3 — Enrich the DART sparkline text alternative for screen readers
-  Why: the sparkline `<svg role="img">` has a generic aria-label and its color legend is `aria-hidden`; the model-vs-observed peak/cursor/arrival meaning is only partially available via the RMSE note. A fuller `aria-label`/`<desc>` with peak values and arrival Δ would make the comparison fully non-visual.
-  Where: `src/components/DartOverlay.tsx` (sparkline `<svg>` ~L109-115, legend ~L224).
 
 ## Research-Driven Additions
 

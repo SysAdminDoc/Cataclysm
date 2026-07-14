@@ -15,6 +15,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- The DART buoy sparkline now exposes its observed peak, current model value, and
+  model-vs-observed arrival delta in its screen-reader label instead of a generic
+  "sparkline" description.
 - Saved scenarios now carry a stable id and are deleted by id rather than array
   position, so a delete can no longer remove the wrong entry if the list was
   reordered by a concurrent read, and list rows no longer reuse DOM nodes.

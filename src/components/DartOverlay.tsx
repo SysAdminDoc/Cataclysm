@@ -105,6 +105,17 @@ function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; in
   const obsArrX = obsArr != null ? ((obsArr - tMin) / (tMax - tMin || 1)) * w : null;
   const modArrX = modArr != null ? ((modArr - tMin) / (tMax - tMin || 1)) * w : null;
   const arrivalDeltaMin = obsArr != null && modArr != null ? ((modArr - obsArr) / 60) : null;
+  const durationMin = Math.round((tMax - tMin) / 60);
+  const ariaParts = [
+    `${buoy.name} DART water level`,
+    `observed peak ${peak.toFixed(2)} m over ${durationMin} min`,
+  ];
+  if (cur != null && Number.isFinite(cur)) ariaParts.push(`model ${cur.toFixed(2)} m at the current time`);
+  if (arrivalDeltaMin != null) {
+    ariaParts.push(
+      `model arrival ${arrivalDeltaMin >= 0 ? "+" : ""}${arrivalDeltaMin.toFixed(0)} min vs observed`,
+    );
+  }
   return (
     <svg
       width={w}
@@ -112,7 +123,7 @@ function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; in
       viewBox={`0 0 ${w} ${h + 14}`}
       className="dart__spark"
       role="img"
-      aria-label={`${buoy.name} observed DART water level sparkline`}
+      aria-label={ariaParts.join("; ")}
     >
       <line x1={0} x2={w} y1={h * 0.5} y2={h * 0.5} stroke="var(--surface2)" strokeDasharray="2 4" />
       <path d={d} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
