@@ -1,0 +1,85 @@
+name: Installed Windows release gate
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      webview2_preview:
+        description: Prefer an installed WebView2 preview channel over Stable
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installed-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  installed-windows-release:
+    name: MSI and NSIS installed journey
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      CI: "true"
+      CATACLYSM_INSTALL_SMOKE_ISOLATED: "1"
+      CATACLYSM_WEBVIEW2_PREVIEW: ${{ inputs.webview2_preview && '1' || '0' }}
+
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Install Chromium for renderer verification
+        run: npx playwright install chromium
+
+      - name: Install Rust policy and Tauri WebDriver tools
+        shell: pwsh
+        run: |
+          cargo install cargo-audit --locked
+          cargo install cargo-deny --locked
+          cargo install tauri-driver --locked
+          cargo install --git https://github.com/chippers/msedgedriver-tool
+          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
+          $edgeDriver = (Resolve-Path ".\msedgedriver.exe").Path
+          "TAURI_DRIVER_PATH=$HOME/.cargo/bin/tauri-driver.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MSEDGEDRIVER_PATH=$edgeDriver" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build and exercise installed packages
+        run: npm run tauri:build
+
+      - name: Upload installed-journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installed-release-smoke-${{ runner.arch }}
+          path: src-tauri/target/release/bundle/installed-smoke/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload verified Windows packages
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cataclysm-windows-${{ runner.arch }}
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/cataclysm-build-manifest.json
+          if-no-files-found: error
+          retention-days: 14

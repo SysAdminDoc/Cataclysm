@@ -223,7 +223,7 @@ npm run verify:release     # strict default/GPU/validation Rust matrix + policy 
 npm run verify:render-protocol # independent binary replay and ECEF conformance gate
 npm run capture:references # regenerate 12-scene 1440p/4K visual candidates + telemetry
 npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # require opener/thumbnail quality
-npm run tauri:build        # verified GPU-enabled installer(s) + signed artifact manifest
+npm run tauri:build        # isolated installed-package gate + GPU installer manifest
 ```
 
 The browser preview is for deterministic shell and globe development. Direct
@@ -236,6 +236,17 @@ binary with GPU support, performs a non-visual capability smoke, and writes
 Cargo features and SHA-256 digest of every platform artifact. Systems without a
 supported adapter continue through the existing CPU fallback instead of losing
 simulation capability.
+
+On Windows this command is intentionally restricted to a clean disposable
+profile or VM with `CATACLYSM_INSTALL_SMOKE_ISOLATED=1`, `tauri-driver`, and a
+matching `msedgedriver.exe`. It installs the emitted MSI and NSIS packages one at
+a time, verifies the installed version and GPU capability, completes the Tōhoku
+Run & Watch journey through frame 60/60, exercises text export, diagnostics, and
+an OS-keychain restart round trip, then uninstalls each package. The build fails
+before verification if Cataclysm is already installed or running. The
+`Installed Windows release gate` workflow provisions this isolated environment;
+its optional `webview2_preview` input reverses WebView2's channel preference for
+forward-compatibility testing.
 
 The strict release gate also renders 24 unmasked, offline-safe reference frames
 from fixed scenario/time/effect/camera seeds. Candidate PNGs and telemetry are

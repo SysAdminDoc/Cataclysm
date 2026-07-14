@@ -25,6 +25,7 @@
     "test:unit": "vitest run",
     "test:reference-quality": "node --test scripts/reference-visual-quality.test.mjs",
     "test:reference-lifecycle": "node --test scripts/reference-recorder-lifecycle.test.mjs",
+    "test:installed-release": "node --test scripts/installed-release-smoke.test.mjs",
     "test:e2e": "playwright test",
     "capture:screenshots": "node scripts/capture-screenshots.mjs",
     "capture:references": "node scripts/capture-reference-scenes.mjs --record",

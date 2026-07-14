@@ -442,6 +442,7 @@ runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"
 runNpm("Scientific input contract parity gate", ["run", "validate:source-input-contract"]);
 runNpm("Reference perceptual-quality unit gate", ["run", "test:reference-quality"]);
 runNpm("Reference recorder lifecycle gate", ["run", "test:reference-lifecycle"]);
+runNpm("Installed release harness unit gate", ["run", "test:installed-release"]);
 runNpm("HR-00 reference baseline contract", ["run", "verify:reference-locks"]);
 runNpm("HR-01 renderer protocol conformance", ["run", "verify:render-protocol"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);

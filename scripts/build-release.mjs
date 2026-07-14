@@ -12,6 +12,10 @@ import {
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  assertInstalledSmokeHost,
+  runInstalledReleaseSmoke,
+} from "./installed-release-smoke.mjs";
 import { RELEASE_CARGO_FEATURES } from "./release-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -76,7 +80,7 @@ function probeReleaseBinary() {
   return probe;
 }
 
-function buildManifest(probe) {
+function buildManifest(probe, installedSmoke) {
   const tauriConfig = JSON.parse(
     readFileSync(path.join(repoRoot, "src-tauri", "tauri.conf.json"), "utf8"),
   );
@@ -87,13 +91,14 @@ function buildManifest(probe) {
   const rustHost = rustVersion.match(/^host:\s+(.+)$/m)?.[1] ?? "unknown";
   const gitCommit = run("git", ["rev-parse", "HEAD"], { capture: true });
   const manifest = {
-    schema_version: 1,
+    schema_version: 2,
     product: tauriConfig.productName,
     version: tauriConfig.version,
     git_commit: gitCommit,
     rust_host: rustHost,
     cargo_features: RELEASE_CARGO_FEATURES,
     capability_probe: probe,
+    installed_smoke: installedSmoke,
     artifacts: artifactFiles.map((file) => ({
       path: path.relative(bundleRoot, file).replaceAll("\\", "/"),
       bytes: statSync(file).size,
@@ -104,7 +109,10 @@ function buildManifest(probe) {
   return manifest;
 }
 
-function main() {
+async function main() {
+  console.log("==> Installed-package host preflight");
+  assertInstalledSmokeHost();
+
   console.log("==> Cataclysm strict release verification");
   runNpm(["run", "verify:release"]);
 
@@ -122,15 +130,22 @@ function main() {
   mkdirSync(bundleRoot, { recursive: true });
   console.log("\n==> Packaged-binary capability smoke");
   const probe = probeReleaseBinary();
-  const manifest = buildManifest(probe);
+  console.log("\n==> Installed MSI/NSIS desktop journey");
+  const tauriConfig = JSON.parse(
+    readFileSync(path.join(repoRoot, "src-tauri", "tauri.conf.json"), "utf8"),
+  );
+  const installedSmoke = await runInstalledReleaseSmoke({
+    bundleRoot,
+    expectedVersion: tauriConfig.version,
+  });
+  const manifest = buildManifest(probe, installedSmoke);
   console.log(
-    `GPU release ready: ${probe.gpu_status}; ${manifest.artifacts.length} artifact(s); ${manifestPath}`,
+    `GPU release ready: ${probe.gpu_status}; ${installedSmoke.packages.length} installed package journey(s); ` +
+      `${manifest.artifacts.length} artifact(s); ${manifestPath}`,
   );
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   console.error(`\nRelease build failed: ${error instanceof Error ? error.message : String(error)}`);
-  process.exit(1);
-}
+  process.exitCode = 1;
+});

@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Windows release tags and manual release runs now build on a clean isolated
+  runner and gate both MSI and NSIS artifacts on the installed application, not
+  the raw build output. Each package must report the expected version, persist a
+  temporary Cesium token through the OS keychain across restart, complete the
+  Tōhoku solver journey through frame 60/60, exercise text export and desktop
+  diagnostics without renderer/protocol errors, and uninstall cleanly. The
+  workflow also exposes an opt-in WebView2 preview-channel preference.
 - Every run now answers "how often does this happen?": asteroid impacts show an
   order-of-magnitude recurrence interval (Earth Impact Effects Program relation,
   Collins et al. 2005), nuclear results show a Hiroshima-scale context anchor
