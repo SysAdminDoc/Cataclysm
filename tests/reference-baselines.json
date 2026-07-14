@@ -52,16 +52,16 @@
       }
     },
     "asteroid-ocean-impact@1440p": {
-      "pngSha256": "e039eb5bc4d6a4c4abb7bada5603069abd656ad46856df4fd41f8c69e4ef0546",
+      "pngSha256": "6315c30fe1b53795640cf716af49a05e31959bad02f40eab9c90c1e75bd7bb1a",
       "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
       "width": 2560,
       "height": 1440,
       "review": {
-        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "reason": "The committed-WebGL-frame barrier replaces a visibly incomplete SwiftShader capture while preserving the exact reviewed scene contract",
         "approver": "SysAdminDoc",
-        "approvedAt": "2026-07-11T16:28:08.950Z",
-        "previousPngSha256": "adb1acecda727754d92a938d158e8b4b8ddba1db274463abb40ded1da300dce6",
-        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+        "approvedAt": "2026-07-14T23:47:53.147Z",
+        "previousPngSha256": "e039eb5bc4d6a4c4abb7bada5603069abd656ad46856df4fd41f8c69e4ef0546",
+        "commit": "6b10c67f1d47af07be25f5503b807c387dce7a78"
       }
     },
     "nuclear-airburst@1440p": {
