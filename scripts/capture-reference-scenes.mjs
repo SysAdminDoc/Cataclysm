@@ -206,7 +206,10 @@ async function configureWorkflow(page, scene) {
     await coordinates.getByLabel("Latitude").fill(String(workflow.request.center.lat));
     await coordinates.getByLabel("Longitude").fill(String(workflow.request.center.lon));
     await coordinates.getByRole("button", { name: "Go" }).click();
-    await page.getByRole("tab", { name: "Results" }).click();
+    // This tab only mutates local React state. Dispatch the event directly so
+    // Playwright does not attach an unrelated, still-pending Cesium request to
+    // its post-click navigation wait on slower Windows release runners.
+    await page.getByRole("tab", { name: "Results" }).dispatchEvent("click");
     await page.locator(".hazard__results").waitFor({ state: "visible" });
   }
 }
