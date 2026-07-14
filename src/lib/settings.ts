@@ -62,7 +62,7 @@ const DEFAULTS: Settings = {
   classroom_locked: false,
 };
 
-const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
+const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
   "cesium_token",
   "theme",
   "globe_style",
@@ -77,7 +77,8 @@ const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>([
   "lessons_completed",
   "token_banner_dismissed_at",
   "classroom_locked",
-]);
+];
+const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>(SETTINGS_KEY_LIST);
 
 const STORE_FILE = "settings.json";
 const LS_PREFIX = "tsunamisim.";
@@ -88,6 +89,23 @@ type LazyStore = {
   save(): Promise<void>;
   delete?(key: string): Promise<boolean | void>;
 };
+
+export type SettingsRollbackStatus = "complete" | "failed";
+
+export class SettingsTransactionError extends Error {
+  readonly rollbackStatus: SettingsRollbackStatus;
+
+  constructor(operation: string, cause: unknown, rollbackErrors: readonly unknown[]) {
+    const rollbackStatus: SettingsRollbackStatus = rollbackErrors.length === 0 ? "complete" : "failed";
+    const causeMessage = cause instanceof Error ? cause.message : String(cause);
+    const rollbackMessage = rollbackStatus === "complete"
+      ? "All persisted values were restored."
+      : `Rollback failed in ${rollbackErrors.length} storage operation${rollbackErrors.length === 1 ? "" : "s"}; restart Cataclysm before retrying.`;
+    super(`${operation} failed: ${causeMessage} ${rollbackMessage}`, { cause });
+    this.name = "SettingsTransactionError";
+    this.rollbackStatus = rollbackStatus;
+  }
+}
 
 let storePromise: Promise<LazyStore | null> | null = null;
 function getStore(): Promise<LazyStore | null> {
@@ -168,10 +186,15 @@ function migrateLocalStorage(): void {
 function removeLocalMirror(key: keyof Settings): void {
   if (typeof localStorage === "undefined") return;
   try {
-    localStorage.removeItem(LS_PREFIX + key);
+    removeLocalMirrorStrict(key);
   } catch {
     /* ignore */
   }
+}
+
+function removeLocalMirrorStrict(key: keyof Settings): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(LS_PREFIX + key);
 }
 
 function shouldMirrorToLocalStorage(key: keyof Settings): boolean {
@@ -275,38 +298,126 @@ function readLocalMirror<K extends keyof Settings>(key: K): Settings[K] | undefi
 /** Desktop-only: the ion token lives in the OS keychain (Windows
  *  Credential Manager / macOS Keychain / Linux Secret Service), never in
  *  settings.json. Legacy plugin-store copies are migrated in on first read
- *  and blanked. Keychain failures fall back to the store path so a broken
- *  secret service doesn't lock users out of their token. */
+ *  and blanked. Keychain failures fail closed so a plaintext legacy token is
+ *  never treated as successfully migrated. */
 async function readTokenFromKeychain(): Promise<string | undefined> {
   try {
     const { api } = await import("./tauri");
     const token = await api.keychainGetToken();
     return token ?? undefined;
   } catch (err) {
-    console.warn("[settings] keychain read failed — falling back to store", err);
-    return undefined;
+    throw new Error("The operating-system keychain could not be read; the token was not loaded.", { cause: err });
   }
 }
 
-async function writeTokenToKeychain(token: string): Promise<boolean> {
+async function writeTokenToKeychain(token: string): Promise<void> {
   try {
     const { api } = await import("./tauri");
     await api.keychainSetToken(token);
-    return true;
   } catch (err) {
-    console.warn("[settings] keychain write failed — falling back to store", err);
-    return false;
+    throw new Error("The operating-system keychain is unavailable; the token was not stored.", { cause: err });
   }
 }
 
-async function blankStoreToken(): Promise<void> {
-  const store = await getStore();
+async function blankStoreToken(existingStore?: LazyStore | null): Promise<void> {
+  const store = existingStore === undefined ? await getStore() : existingStore;
   if (!store) return;
+  await store.set("cesium_token", "");
+  await store.save();
+}
+
+type PersistenceSnapshot = {
+  keys: readonly string[];
+  localValues: Map<string, string | null> | null;
+  store: LazyStore | null;
+  storeValues: Map<string, unknown>;
+  keychainIncluded: boolean;
+  keychainToken?: string;
+};
+
+async function snapshotPersistence(
+  keys: readonly (keyof Settings)[],
+  includeSchemaVersion = false,
+): Promise<PersistenceSnapshot> {
+  migrateLocalStorage();
+  const persistedKeys = Array.from(new Set<string>([
+    ...keys,
+    ...(includeSchemaVersion ? [SCHEMA_VERSION_KEY] : []),
+  ]));
+  const localValues = typeof localStorage === "undefined"
+    ? null
+    : new Map(persistedKeys.map((key) => [key, localStorage.getItem(LS_PREFIX + key)]));
+  const store = await getStore();
+  const storeValues = new Map<string, unknown>();
+  if (store) {
+    for (const key of persistedKeys) storeValues.set(key, await store.get(key));
+  }
+  const keychainIncluded = isTauri() && keys.includes("cesium_token");
+  const keychainToken = keychainIncluded
+    ? await readTokenFromKeychain()
+    : undefined;
+  return { keys: persistedKeys, localValues, store, storeValues, keychainIncluded, keychainToken };
+}
+
+async function restorePersistence(snapshot: PersistenceSnapshot): Promise<unknown[]> {
+  const errors: unknown[] = [];
+
+  if (snapshot.localValues && typeof localStorage !== "undefined") {
+    for (const [key, value] of snapshot.localValues) {
+      try {
+        if (value === null) localStorage.removeItem(LS_PREFIX + key);
+        else localStorage.setItem(LS_PREFIX + key, value);
+      } catch (err) {
+        errors.push(err);
+      }
+    }
+  }
+
+  if (snapshot.store) {
+    for (const [key, value] of snapshot.storeValues) {
+      try {
+        if (value === undefined) {
+          if (typeof snapshot.store.delete !== "function") {
+            throw new Error(`Desktop settings store cannot restore absent key ${key}.`);
+          }
+          await snapshot.store.delete(key);
+        } else {
+          await snapshot.store.set(key, value);
+        }
+      } catch (err) {
+        errors.push(err);
+      }
+    }
+    try {
+      await snapshot.store.save();
+    } catch (err) {
+      errors.push(err);
+    }
+  }
+
+  if (snapshot.keychainIncluded) {
+    try {
+      await writeTokenToKeychain(snapshot.keychainToken ?? "");
+    } catch (err) {
+      errors.push(err);
+    }
+  }
+  return errors;
+}
+
+async function runSettingsTransaction(
+  operation: string,
+  keys: readonly (keyof Settings)[],
+  mutation: (snapshot: PersistenceSnapshot) => Promise<void>,
+  includeSchemaVersion = false,
+): Promise<void> {
+  if (keys.length === 0) return;
+  const snapshot = await snapshotPersistence(keys, includeSchemaVersion);
   try {
-    await store.set("cesium_token", "");
-    await store.save();
+    await mutation(snapshot);
   } catch (err) {
-    console.warn("[settings] failed to blank legacy store token", err);
+    const rollbackErrors = await restorePersistence(snapshot);
+    throw new SettingsTransactionError(operation, err, rollbackErrors);
   }
 }
 
@@ -320,17 +431,32 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
     // One-time migration: older builds kept the token in plugin-store.
     const legacyStore = await getStore();
     if (legacyStore) {
-      try {
-        const legacy = await legacyStore.get<string>("cesium_token");
-        if (typeof legacy === "string" && legacy !== "") {
-          if (await writeTokenToKeychain(legacy)) {
-            await blankStoreToken();
-          }
-          return legacy as Settings[K];
-        }
-      } catch (err) {
-        console.warn("[settings] legacy token migration read failed", err);
+      const legacy = await legacyStore.get<string>("cesium_token");
+      if (typeof legacy === "string" && legacy !== "") {
+        await runSettingsTransaction(
+          "Legacy token migration",
+          ["cesium_token"],
+          async () => {
+            await writeTokenToKeychain(legacy);
+            await blankStoreToken(legacyStore);
+            removeLocalMirrorStrict("cesium_token");
+          },
+        );
+        return legacy as Settings[K];
       }
+    }
+    const legacyMirror = readLocalMirror("cesium_token");
+    if (typeof legacyMirror === "string" && legacyMirror !== "") {
+      await runSettingsTransaction(
+        "Legacy token migration",
+        ["cesium_token"],
+        async () => {
+          await writeTokenToKeychain(legacyMirror);
+          await blankStoreToken(legacyStore);
+          removeLocalMirrorStrict("cesium_token");
+        },
+      );
+      return legacyMirror as Settings[K];
     }
     return DEFAULTS[key];
   }
@@ -351,23 +477,10 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
   const mirrored = readLocalMirror(key);
   if (mirrored !== undefined) {
     if (isTauri() && SENSITIVE_KEYS.has(key)) {
-      // One-time migration for a sensitive value an older build mirrored into
-      // localStorage. Sensitive keys must live ONLY in the OS keychain — never
-      // the plaintext plugin-store — so route it through the keychain and purge
-      // the WebView copy. (cesium_token is the only sensitive key and is
-      // normally handled by the early keychain path above; this is a defensive
-      // fallback that must not leak the value into the store.)
-      if (typeof mirrored === "string" && mirrored !== "") {
-        try {
-          await writeTokenToKeychain(mirrored);
-        } catch (err) {
-          console.warn(`[settings] legacy ${String(key)} migration failed`, err);
-          removeLocalMirror(key);
-          return DEFAULTS[key];
-        }
-      }
+      // Sensitive values have a dedicated fail-closed migration path above.
+      // Never surface a plaintext mirror from this generic fallback.
       removeLocalMirror(key);
-      return mirrored;
+      return DEFAULTS[key];
     }
     return mirrored;
   }
@@ -375,22 +488,19 @@ async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
   return DEFAULTS[key];
 }
 
-async function write<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
+async function writeUntransactional<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
   migrateLocalStorage();
   if (isTauri() && key === "cesium_token") {
-    removeLocalMirror(key);
-    if (await writeTokenToKeychain(value as string)) {
-      await blankStoreToken();
-      return;
-    }
-    throw new Error("The operating-system keychain is unavailable; the token was not stored.");
-    // Keychain unavailable — fall through to the plugin-store path below.
+    removeLocalMirrorStrict(key);
+    await writeTokenToKeychain(value as string);
+    await blankStoreToken();
+    return;
   }
   if (shouldMirrorToLocalStorage(key) && typeof localStorage !== "undefined") {
     try {
       localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
-    } catch {
-      // Quota/private-mode — ignore.
+    } catch (err) {
+      throw new Error(`Could not persist ${String(key)} in WebView storage.`, { cause: err });
     }
   } else if (isTauri() && SENSITIVE_KEYS.has(key)) {
     removeLocalMirror(key);
@@ -401,15 +511,32 @@ async function write<K extends keyof Settings>(key: K, value: Settings[K]): Prom
       await store.set(key, value);
       await store.save();
     } catch (err) {
-      const suffix = SENSITIVE_KEYS.has(key)
-        ? "value not mirrored to localStorage."
-        : "localStorage mirror kept.";
-      console.warn(`[settings] store.set/save failed for ${String(key)}; ${suffix}`, err);
+      console.warn(`[settings] store.set/save failed for ${String(key)}`, err);
       throw new Error(`Could not persist ${String(key)} in the desktop settings store.`, { cause: err });
     }
   } else if (isTauri() && SENSITIVE_KEYS.has(key)) {
     console.warn(`[settings] Tauri store unavailable; ${String(key)} was not persisted.`);
   }
+}
+
+async function write<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
+  return runSettingsTransaction(
+    `Saving ${String(key)}`,
+    [key],
+    async () => writeUntransactional(key, value),
+  );
+}
+
+type SettingsEntry = [keyof Settings, Settings[keyof Settings]];
+
+async function applyEntriesAtomically(operation: string, entries: readonly SettingsEntry[]): Promise<void> {
+  await runSettingsTransaction(
+    operation,
+    entries.map(([key]) => key),
+    async () => {
+      for (const [key, value] of entries) await writeUntransactional(key, value);
+    },
+  );
 }
 
 const SCENARIOS_KEY = "saved_scenarios";
@@ -642,63 +769,48 @@ export const settings = {
       classroom_locked: await read("classroom_locked"),
     };
   },
+  /** Persist a coherent settings patch. Every affected backend is snapshotted
+   * before the first write; any failure restores keychain, plugin-store, and
+   * localStorage values before an explicit rollback status is returned. */
+  async apply(patch: Partial<Settings>): Promise<void> {
+    const entries: SettingsEntry[] = [];
+    for (const [rawKey, rawValue] of Object.entries(patch)) {
+      if (!SETTINGS_KEYS.has(rawKey)) throw new Error(`Unknown setting ${rawKey}.`);
+      const key = rawKey as keyof Settings;
+      const value = normaliseSetting(key, rawValue);
+      if (value === undefined) throw new Error(`Invalid value for setting ${rawKey}.`);
+      entries.push([key, value]);
+    }
+    await applyEntriesAtomically("Applying settings", entries);
+  },
   /** Clear every persisted key from both the Tauri store and any browser /
    * legacy localStorage copies. Used by Settings → "Reset to defaults".
-   * Preserves the schema version stamp. */
+   * Preserves the schema version stamp and rolls every backend back if any
+   * mutation fails. */
   async resetAll(): Promise<void> {
-    const keys: (keyof Settings)[] = [
-      "cesium_token",
-      "theme",
-      "globe_style",
-      "colormap",
-      "renderer_quality",
-      "renderer_auto_quality",
-      "workspace_mode",
-      "launch_experience_policy",
-      "launch_experience_seen_at",
-      "disclaimer_acknowledged_at",
-      "tour_completed_at",
-      "lessons_completed",
-      "token_banner_dismissed_at",
-      "classroom_locked",
-    ];
-    if (isTauri()) {
-      const { api } = await import("./tauri");
-      await api.keychainSetToken("");
-    }
-    if (typeof localStorage !== "undefined") {
-      for (const k of keys) {
-        try {
-          localStorage.removeItem(LS_PREFIX + k);
-        } catch {
-          /* ignore */
+    await runSettingsTransaction(
+      "Resetting settings",
+      SETTINGS_KEY_LIST,
+      async (snapshot) => {
+        if (isTauri()) await writeTokenToKeychain("");
+        if (typeof localStorage !== "undefined") {
+          for (const key of SETTINGS_KEY_LIST) localStorage.removeItem(LS_PREFIX + key);
+          localStorage.setItem(
+            LS_PREFIX + SCHEMA_VERSION_KEY,
+            JSON.stringify(SETTINGS_SCHEMA_VERSION),
+          );
         }
-      }
-      try {
-        localStorage.setItem(
-          LS_PREFIX + SCHEMA_VERSION_KEY,
-          JSON.stringify(SETTINGS_SCHEMA_VERSION),
-        );
-      } catch {
-        /* ignore */
-      }
-    }
-    const store = await getStore();
-    if (store && typeof store.delete === "function") {
-      for (const k of keys) {
-        try {
-          await store.delete(k);
-        } catch (err) {
-          throw new Error(`Could not delete ${String(k)} from the desktop settings store.`, { cause: err });
+        if (snapshot.store) {
+          for (const key of SETTINGS_KEY_LIST) {
+            if (typeof snapshot.store.delete === "function") await snapshot.store.delete(key);
+            else await snapshot.store.set(key, DEFAULTS[key]);
+          }
+          await snapshot.store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
+          await snapshot.store.save();
         }
-      }
-      try {
-        await store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
-        await store.save();
-      } catch (err) {
-        throw new Error("Could not save the reset desktop settings store.", { cause: err });
-      }
-    }
+      },
+      true,
+    );
   },
   async getSavedScenarios(): Promise<SavedScenario[]> {
     return readScenarios();
@@ -780,27 +892,7 @@ export const settings = {
         skipped.push(key);
       }
     }
-    // Apply atomically: snapshot the prior value of every key we are about to
-    // change so a write failure partway through can be rolled back, rather than
-    // leaving settings in a half-imported state.
-    const prior = new Map<keyof Settings, Settings[keyof Settings]>();
-    for (const [key] of pending) prior.set(key, await read(key));
-    const applied: Array<keyof Settings> = [];
-    try {
-      for (const [key, value] of pending) {
-        await write(key, value);
-        applied.push(key);
-      }
-    } catch (err) {
-      for (const key of applied.reverse()) {
-        try {
-          await write(key, prior.get(key) as Settings[keyof Settings]);
-        } catch {
-          // Best-effort rollback; a failing store is already the root problem.
-        }
-      }
-      throw new Error(`Settings import failed and was rolled back: ${String(err)}`);
-    }
+    await applyEntriesAtomically("Importing settings", pending);
     return { applied: pending.length, skipped };
   },
 };

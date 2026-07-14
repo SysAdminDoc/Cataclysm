@@ -25,9 +25,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   of a fixed rainbow ramp: diverging and cividis show a signed trough↔crest key,
   viridis shows a sequential magnitude key, and the CVD-safe maps are labelled as
   such — so a colourblind user is no longer shown a misleading legend.
-- Settings import now applies atomically: if a write fails partway through, the
-  keys already written are rolled back to their prior values instead of leaving
-  settings in a half-imported state.
+- Settings Apply, Reset, and import now snapshot keychain, plugin-store, and
+  WebView persistence before mutation and report whether rollback completed if
+  any write fails. Legacy Cesium tokens are exposed only after keychain storage
+  and plaintext-store removal both commit; keychain failures no longer silently
+  fall back to plaintext credentials.
 
 - DART buoy RMSE now distinguishes a genuine backend failure from the benign
   "no time overlap" case instead of labelling every error as no-overlap, and

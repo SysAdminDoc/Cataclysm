@@ -79,7 +79,17 @@ export function Settings({ onClose }: Props) {
       .catch((err) => {
         console.warn("[settings] failed to load", err);
         if (!cancelled) {
-          setSaveErr("Your settings could not be loaded, so defaults are shown. Changes you make here will still be saved.");
+          const detail = err instanceof Error ? ` ${err.message}` : "";
+          setSaveErr(`Your settings could not be loaded, so defaults are shown.${detail} Non-token changes can still be saved.`);
+          setAppliedSettings({
+            token: "",
+            theme: "mocha",
+            globeStyle: DEFAULT_STYLE,
+            colormapId: "diverging",
+            rendererQuality: "High",
+            rendererAutoQuality: true,
+            launchExperiencePolicy: "first",
+          });
         }
       })
       .finally(() => {
@@ -106,20 +116,21 @@ export function Settings({ onClose }: Props) {
     if (saving) return;
     setSaving(true);
     setSaveErr(null);
+    setStatusMsg(null);
     const trimmedToken = token.trim();
-    // Apply the token immediately so the next imagery request sees it,
-    // even if the persistence write below races. This makes 'Save' feel
-    // instant even on slow disks.
     try {
-      await Promise.all([
-        settings.setCesiumToken(trimmedToken),
-        settings.setTheme(theme),
-        settings.setGlobeStyle(globeStyle),
-        settings.setColormap(colormapId),
-        settings.setRendererQuality(rendererQuality),
-        settings.setRendererAutoQuality(rendererAutoQuality),
-        settings.setLaunchExperiencePolicy(launchExperiencePolicy),
-      ]);
+      const patch: Parameters<typeof settings.apply>[0] = {
+        theme,
+        globe_style: globeStyle,
+        colormap: colormapId,
+        renderer_quality: rendererQuality,
+        renderer_auto_quality: rendererAutoQuality,
+        launch_experience_policy: launchExperiencePolicy,
+      };
+      if (appliedSettings === null || trimmedToken !== appliedSettings.token) {
+        patch.cesium_token = trimmedToken;
+      }
+      await settings.apply(patch);
       setTokenLocal(trimmedToken);
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
@@ -130,13 +141,10 @@ export function Settings({ onClose }: Props) {
       }
     } catch (err) {
       console.error("[settings] save failed", err);
-      setSaveErr(String(err));
+      setSaveErr(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
-    // Always dispatch — Globe + main.tsx listen for this to re-read the
-    // active style + token. Even if persistence failed the in-memory
-    // values are still useful for the current session.
   }
 
   const needsToken = GLOBE_STYLES.find((s) => s.id === globeStyle)?.requires_token ?? false;

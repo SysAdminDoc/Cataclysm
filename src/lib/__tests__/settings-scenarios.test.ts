@@ -1,9 +1,53 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { settings, SETTINGS_SCHEMA_VERSION } from "../settings";
+import {
+  settings,
+  SETTINGS_SCHEMA_VERSION,
+  SettingsTransactionError,
+  type Settings,
+} from "../settings";
 import { INITIAL_ASTEROID, SCENARIO_SCHEMA_VERSION } from "../scenario-schema";
 
 const LS_PREFIX = "tsunamisim.";
 const SCHEMA_VERSION_KEY = "_settings_schema_version";
+
+const TRANSACTION_BASELINE: Settings = {
+  cesium_token: "old-token",
+  theme: "mocha",
+  globe_style: "osm",
+  colormap: "cividis",
+  renderer_quality: "Low",
+  renderer_auto_quality: true,
+  workspace_mode: "advanced",
+  launch_experience_policy: "first",
+  launch_experience_seen_at: "2026-07-01T00:00:00.000Z",
+  disclaimer_acknowledged_at: "2026-07-02T00:00:00.000Z",
+  tour_completed_at: "2026-07-03T00:00:00.000Z",
+  lessons_completed: { baseline: "2026-07-04T00:00:00.000Z" },
+  token_banner_dismissed_at: "2026-07-05T00:00:00.000Z",
+  classroom_locked: true,
+};
+
+const APPLY_PATCH: Partial<Settings> = {
+  cesium_token: "new-token",
+  theme: "latte",
+  globe_style: "esri-world-imagery",
+  colormap: "viridis",
+  renderer_quality: "Cinematic",
+  renderer_auto_quality: false,
+  launch_experience_policy: "never",
+};
+
+async function expectCompleteRollback(action: () => Promise<void>): Promise<void> {
+  let failure: unknown;
+  try {
+    await action();
+  } catch (err) {
+    failure = err;
+  }
+  expect(failure).toBeInstanceOf(SettingsTransactionError);
+  expect(failure).toMatchObject({ rollbackStatus: "complete" });
+  expect((failure as Error).message).toContain("All persisted values were restored.");
+}
 
 describe("settings scenario storage", () => {
   beforeEach(() => {
@@ -239,5 +283,91 @@ describe("settings schema versioning", () => {
     expect(result.applied).toBe(1);
     expect(Object.prototype).not.toHaveProperty("polluted");
     warnSpy.mockRestore();
+  });
+});
+
+describe("settings browser transactions", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    await settings.apply(TRANSACTION_BASELINE);
+  });
+
+  it.each(Object.keys(APPLY_PATCH))(
+    "rolls back every value when Apply fails while writing %s",
+    async (failedKey) => {
+      const originalSetItem = Storage.prototype.setItem;
+      const setSpy = vi.spyOn(Storage.prototype, "setItem");
+      const failedIndex = Object.keys(APPLY_PATCH).indexOf(failedKey);
+      for (let index = 0; index < failedIndex; index += 1) {
+        setSpy.mockImplementationOnce(originalSetItem);
+      }
+      setSpy.mockImplementationOnce(() => {
+        throw new Error(`injected ${failedKey} write failure`);
+      });
+
+      try {
+        await expectCompleteRollback(() => settings.apply(APPLY_PATCH));
+      } finally {
+        setSpy.mockRestore();
+      }
+      expect(await settings.loadAll()).toEqual(TRANSACTION_BASELINE);
+    },
+  );
+
+  it.each([...Object.keys(TRANSACTION_BASELINE), SCHEMA_VERSION_KEY])(
+    "rolls back reset when clearing %s fails",
+    async (failedKey) => {
+      const isSchemaWrite = failedKey === SCHEMA_VERSION_KEY;
+      if (isSchemaWrite) {
+        const storageSpy = vi.spyOn(Storage.prototype, "setItem");
+        storageSpy.mockImplementationOnce(() => {
+          throw new Error(`injected ${failedKey} reset failure`);
+        });
+        try {
+          await expectCompleteRollback(() => settings.resetAll());
+        } finally {
+          storageSpy.mockRestore();
+        }
+      } else {
+        const originalRemoveItem = Storage.prototype.removeItem;
+        const storageSpy = vi.spyOn(Storage.prototype, "removeItem");
+        const failedIndex = Object.keys(TRANSACTION_BASELINE).indexOf(failedKey);
+        for (let index = 0; index < failedIndex; index += 1) {
+          storageSpy.mockImplementationOnce(originalRemoveItem);
+        }
+        storageSpy.mockImplementationOnce(() => {
+          throw new Error(`injected ${failedKey} reset failure`);
+        });
+        try {
+          await expectCompleteRollback(() => settings.resetAll());
+        } finally {
+          storageSpy.mockRestore();
+        }
+      }
+      expect(await settings.loadAll()).toEqual(TRANSACTION_BASELINE);
+    },
+  );
+
+  it("reports an incomplete rollback instead of claiming recovery", async () => {
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem");
+    storageSpy
+      .mockImplementationOnce(() => {
+        throw new Error("injected primary write failure");
+      })
+      .mockImplementationOnce(() => {
+        throw new Error("injected rollback failure");
+      });
+
+    let failure: unknown;
+    try {
+      await settings.apply(APPLY_PATCH);
+    } catch (err) {
+      failure = err;
+    } finally {
+      storageSpy.mockRestore();
+    }
+    expect(failure).toBeInstanceOf(SettingsTransactionError);
+    expect(failure).toMatchObject({ rollbackStatus: "failed" });
+    expect((failure as Error).message).toContain("Rollback failed in 1 storage operation");
   });
 });
