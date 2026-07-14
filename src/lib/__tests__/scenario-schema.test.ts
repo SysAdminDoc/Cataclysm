@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   INITIAL_ASTEROID,
   INITIAL_EARTHQUAKE,
+  INITIAL_LANDSLIDE,
   INITIAL_NUCLEAR,
   SCENARIO_SCHEMA_VERSION,
   parseScenarioPayload,
@@ -45,6 +46,10 @@ describe("scenario schema", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.migrated).toBe(true);
+    expect(parsed.migrations).toEqual([{
+      code: "schema-version-added",
+      description: `added schemaVersion ${SCENARIO_SCHEMA_VERSION}`,
+    }]);
     expect(parsed.payload.schemaVersion).toBe(SCENARIO_SCHEMA_VERSION);
     expect(parsed.scenario.kind).toBe("Nuclear");
   });
@@ -67,15 +72,100 @@ describe("scenario schema", () => {
   });
 
   it("rejects unsupported schema versions", () => {
-    const parsed = parseScenarioPayload({
+    const payload = {
       schemaVersion: 99,
       kind: "Asteroid",
-      source: INITIAL_ASTEROID,
-    });
+      source: structuredClone(INITIAL_ASTEROID),
+    };
+    const before = structuredClone(payload);
+    const parsed = parseScenarioPayload(payload);
 
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.reason).toMatch(/version 99/i);
+    expect(payload).toEqual(before);
+  });
+
+  it("canonicalizes a matching version alias and reports the exact migration", () => {
+    const parsed = parseScenarioPayload({
+      version: SCENARIO_SCHEMA_VERSION,
+      kind: "Asteroid",
+      source: INITIAL_ASTEROID,
+    });
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.payload).not.toHaveProperty("version");
+    expect(parsed.migrations).toEqual([{
+      code: "version-alias-canonicalized",
+      description: "canonicalized version to schemaVersion",
+    }]);
+  });
+
+  it("removes a redundant matching version alias", () => {
+    const parsed = parseScenarioPayload({
+      schemaVersion: SCENARIO_SCHEMA_VERSION,
+      version: SCENARIO_SCHEMA_VERSION,
+      kind: "Nuclear",
+      source: INITIAL_NUCLEAR,
+    });
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.payload).not.toHaveProperty("version");
+    expect(parsed.migrations.map((migration) => migration.code)).toEqual([
+      "version-alias-canonicalized",
+    ]);
+  });
+
+  it("rejects conflicting version aliases without mutating the payload", () => {
+    const payload = {
+      schemaVersion: SCENARIO_SCHEMA_VERSION,
+      version: SCENARIO_SCHEMA_VERSION + 1,
+      kind: "Asteroid",
+      source: structuredClone(INITIAL_ASTEROID),
+    };
+    const before = structuredClone(payload);
+    const parsed = parseScenarioPayload(payload);
+
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.reason).toMatch(/schemaVersion.*version.*conflict/i);
+    expect(payload).toEqual(before);
+  });
+
+  it("rejects conflicting duplicate water depths", () => {
+    const parsed = parseScenarioPayload({
+      schemaVersion: SCENARIO_SCHEMA_VERSION,
+      kind: "Asteroid",
+      source: {
+        ...INITIAL_ASTEROID,
+        location: { ...INITIAL_ASTEROID.location, depth_m: INITIAL_ASTEROID.water_depth_m + 1 },
+      },
+    });
+
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.reason).toMatch(/water_depth_m.*conflicts.*location\.depth_m/i);
+  });
+
+  it.each([
+    ["Asteroid", INITIAL_ASTEROID],
+    ["Nuclear", INITIAL_NUCLEAR],
+    ["Earthquake", INITIAL_EARTHQUAKE],
+    ["Landslide", INITIAL_LANDSLIDE],
+  ] as const)("round-trips %s payloads canonically", (kind, source) => {
+    const parsed = parseScenarioPayload(JSON.parse(JSON.stringify({
+      schemaVersion: SCENARIO_SCHEMA_VERSION,
+      kind,
+      source,
+    })));
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.migrated).toBe(false);
+    expect(parsed.migrations).toEqual([]);
+    expect(parsed.payload).toEqual({ schemaVersion: SCENARIO_SCHEMA_VERSION, kind, source });
   });
 
   it("rejects non-finite or out-of-range numeric payloads", () => {

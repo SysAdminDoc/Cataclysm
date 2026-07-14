@@ -147,7 +147,9 @@ describe("ScenarioBuilder scenario persistence", () => {
     const onSimulate = renderBuilder();
 
     await user.click(screen.getByRole("button", { name: "Paste" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Pasted legacy scenario.");
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Pasted scenario (added schemaVersion 1).",
+    );
 
     await user.click(screen.getByRole("button", { name: "Simulate" }));
     expect(onSimulate).toHaveBeenCalledWith({
@@ -179,7 +181,9 @@ describe("ScenarioBuilder scenario persistence", () => {
 
     await user.click(await screen.findByRole("button", { name: /Load \(1\)/ }));
     await user.click(screen.getByRole("button", { name: "Old quake" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Loaded legacy scenario.");
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Loaded scenario (added schemaVersion 1).",
+    );
 
     await user.click(screen.getByRole("button", { name: "Simulate" }));
     expect(onSimulate).toHaveBeenCalledWith({

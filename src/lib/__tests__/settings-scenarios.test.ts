@@ -95,6 +95,19 @@ describe("settings scenario storage", () => {
     expect(await settings.getSavedScenarios()).toEqual([]);
   });
 
+  it("rejects conflicting duplicate physical fields before persistence", async () => {
+    await expect(settings.saveScenario("Ambiguous asteroid", {
+      schemaVersion: SCENARIO_SCHEMA_VERSION,
+      kind: "Asteroid",
+      source: {
+        ...INITIAL_ASTEROID,
+        location: { ...INITIAL_ASTEROID.location, depth_m: INITIAL_ASTEROID.water_depth_m + 1 },
+      },
+    })).rejects.toThrow(/water_depth_m.*conflicts.*location\.depth_m/i);
+
+    expect(await settings.getSavedScenarios()).toEqual([]);
+  });
+
   it("drops corrupted or unvalidated records on read", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     localStorage.setItem(

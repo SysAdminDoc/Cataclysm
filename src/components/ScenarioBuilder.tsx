@@ -288,7 +288,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     }
     applyScenario(parsed.scenario);
     setShowSaved(false);
-    showStatus(parsed.migrated ? "Loaded legacy scenario." : "Loaded scenario.", "success");
+    const migration = parsed.migrations.map((entry) => entry.description).join(", ");
+    showStatus(migration ? `Loaded scenario (${migration}).` : "Loaded scenario.", "success");
   }
 
   function deleteScenario(id: string) {
@@ -335,7 +336,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
           return;
         }
         applyScenario(parsed.scenario);
-        showStatus(parsed.migrated ? "Pasted legacy scenario." : "Pasted scenario.", "success");
+        const migration = parsed.migrations.map((entry) => entry.description).join(", ");
+        showStatus(migration ? `Pasted scenario (${migration}).` : "Pasted scenario.", "success");
       } catch {
         showStatus("Paste rejected: clipboard does not contain valid JSON.", "error");
       }

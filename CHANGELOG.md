@@ -37,6 +37,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Scenario imports now reject conflicting `schemaVersion`/`version` aliases and
+  conflicting `source.water_depth_m`/`location.depth_m` values before they can
+  be saved or applied. Matching aliases are canonicalized with an explicit
+  migration report, and all four source kinds round-trip through one schema.
 - Direct-effect reference captures now wait for the authoritative frame to be
   projected and committed through Cesium's full Viewer clock/entity-update path
   before screenshotting. Failed

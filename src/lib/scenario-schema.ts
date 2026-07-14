@@ -19,8 +19,25 @@ export type ScenarioPayload = ScenarioInput & {
   schemaVersion: typeof SCENARIO_SCHEMA_VERSION;
 };
 
+export type ScenarioMigration = Readonly<
+  | {
+      code: "schema-version-added";
+      description: `added schemaVersion ${typeof SCENARIO_SCHEMA_VERSION}`;
+    }
+  | {
+      code: "version-alias-canonicalized";
+      description: "canonicalized version to schemaVersion";
+    }
+>;
+
 export type ScenarioValidationResult =
-  | { ok: true; scenario: ScenarioInput; payload: ScenarioPayload; migrated: boolean }
+  | {
+      ok: true;
+      scenario: ScenarioInput;
+      payload: ScenarioPayload;
+      migrated: boolean;
+      migrations: readonly ScenarioMigration[];
+    }
   | { ok: false; reason: string };
 
 export type Bound = { min?: number; max?: number; minInclusive?: boolean; maxInclusive?: boolean };
@@ -241,6 +258,11 @@ function parseLocation(value: unknown, waterDepthM: number): ParseResult<GeoPoin
   if (obj.value.depth_m !== undefined && obj.value.depth_m !== null) {
     const depth = numberInRange({ water_depth_m: obj.value.depth_m }, "water_depth_m");
     if (!depth.ok) return parseFail(`Location depth ${depth.reason.toLowerCase()}`);
+    if (depth.value !== waterDepthM) {
+      return parseFail(
+        `Source water_depth_m (${waterDepthM}) conflicts with location.depth_m (${depth.value}).`,
+      );
+    }
   }
   return {
     ok: true,
@@ -384,9 +406,40 @@ export function parseScenarioPayload(value: unknown): ScenarioValidationResult {
   const root = asRecord(value, "Scenario");
   if (!root.ok) return fail(root.reason);
 
-  const rawVersion = root.value.schemaVersion ?? root.value.version;
+  const schemaVersion = root.value.schemaVersion;
+  const versionAlias = root.value.version;
+  if (
+    schemaVersion !== undefined
+    && versionAlias !== undefined
+    && schemaVersion !== versionAlias
+  ) {
+    return fail(
+      `Scenario fields schemaVersion (${String(schemaVersion)}) and version (${String(versionAlias)}) conflict.`,
+    );
+  }
+  const rawVersion = schemaVersion ?? versionAlias;
   if (rawVersion !== undefined && rawVersion !== SCENARIO_SCHEMA_VERSION) {
     return fail(`Scenario schema version ${String(rawVersion)} is not supported.`);
+  }
+
+  const migrations: ScenarioMigration[] = [];
+  if (schemaVersion === undefined) {
+    if (versionAlias === SCENARIO_SCHEMA_VERSION) {
+      migrations.push({
+        code: "version-alias-canonicalized",
+        description: "canonicalized version to schemaVersion",
+      });
+    } else {
+      migrations.push({
+        code: "schema-version-added",
+        description: `added schemaVersion ${SCENARIO_SCHEMA_VERSION}`,
+      });
+    }
+  } else if (versionAlias !== undefined) {
+    migrations.push({
+      code: "version-alias-canonicalized",
+      description: "canonicalized version to schemaVersion",
+    });
   }
 
   if (typeof root.value.kind !== "string") {
@@ -425,7 +478,8 @@ export function parseScenarioPayload(value: unknown): ScenarioValidationResult {
       schemaVersion: SCENARIO_SCHEMA_VERSION,
       ...scenario,
     },
-    migrated: root.value.schemaVersion !== SCENARIO_SCHEMA_VERSION,
+    migrated: migrations.length > 0,
+    migrations,
   };
 }
 
