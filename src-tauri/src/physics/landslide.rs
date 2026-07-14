@@ -160,6 +160,7 @@ impl LandslideSource {
                 "{:?} slide V={:.2e} m³, drop {:.0} m, slope {:.0}°",
                 self.kind, self.volume_m3, self.drop_height_m, self.slope_deg
             ),
+            recurrence_note: None,
             camera_view: None,
         }
     }

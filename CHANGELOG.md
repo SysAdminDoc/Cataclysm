@@ -4,6 +4,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- Every run now answers "how often does this happen?": asteroid impacts show an
+  order-of-magnitude recurrence interval (Earth Impact Effects Program relation,
+  Collins et al. 2005), nuclear results show a Hiroshima-scale context anchor
+  (labelled non-recurring because weapon effects have no natural rate), and
+  earthquake tsunami sources show a global Gutenberg–Richter recurrence estimate.
+  All are cited and framed as order-of-magnitude, never predictions.
+
 ### Fixed
 
 - Settings import now applies atomically: if a write fails partway through, the

@@ -299,13 +299,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Acceptance: a persisted units toggle switches every displayed quantity between metric and imperial without touching solver values; energies/yields optionally show comparison anchors; exports record the unit system; no raw SI value leaks when imperial is selected.
   Complexity: S
 
-- [ ] P1 — Show event frequency / recurrence context after every run
-  Why: users repeatedly ask "how often does this happen?"; a calibrated recurrence interval with an uncertainty band turns raw destruction into an honest probability lesson and is core to the educational mission.
-  Evidence: no recurrence output in `ResultsPanel.tsx`/hazard results; Asteroid Launcher recurrence framing (https://neal.fun/asteroid-launcher/); HN frequency-honesty requests (https://news.ycombinator.com/item?id=33870612).
-  Touches: cited recurrence model per source (impactor size→interval, quake Mw→regional rate, yield context), result view models, confidence copy, references.
-  Acceptance: each result states an order-of-magnitude recurrence interval with a source and uncertainty band; speculative/hypothetical cases are labelled as non-statistical; values cite a reference and never imply prediction.
-  Complexity: S
-
 ### P2
 
 - [ ] P2 — Offer multiple selectable casualty models with visible disagreement

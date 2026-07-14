@@ -551,6 +551,48 @@ fn fmt_energy(megatons: f64) -> String {
     }
 }
 
+/// Average interval between impacts delivering at least this energy, in years,
+/// from the Earth Impact Effects Program recurrence relation
+/// `T ≈ 109 · E_Mt^0.78` (Collins, Melosh & Marcus 2005). Order-of-magnitude
+/// only — the impactor flux is uncertain to a factor of a few.
+fn impact_recurrence_interval_years(megatons: f64) -> f64 {
+    if !(megatons > 0.0) {
+        return f64::INFINITY;
+    }
+    109.0 * megatons.powf(0.78)
+}
+
+/// Human-readable "how often" phrasing for a recurrence interval in years.
+fn fmt_recurrence_interval(years: f64) -> String {
+    if !years.is_finite() {
+        return "—".to_string();
+    }
+    if years >= 1.0e6 {
+        format!("~1 in {:.0} million yr", years / 1.0e6)
+    } else if years >= 1.0e3 {
+        format!("~1 in {:.0} thousand yr", years / 1.0e3)
+    } else {
+        format!("~1 in {:.0} yr", years.max(1.0))
+    }
+}
+
+/// Hiroshima "Little Boy" yield (kt TNT), the canonical comparison anchor.
+const HIROSHIMA_YIELD_KT: f64 = 15.0;
+
+/// Yield expressed relative to Hiroshima, e.g. "≈ 6.7× Hiroshima". Weapon
+/// effects have no natural recurrence, so nuclear results state scale context
+/// rather than a return period.
+fn fmt_yield_context(yield_kt: f64) -> String {
+    let ratio = yield_kt / HIROSHIMA_YIELD_KT;
+    if ratio >= 10.0 {
+        format!("≈ {:.0}× Hiroshima", ratio)
+    } else if ratio >= 0.1 {
+        format!("≈ {:.1}× Hiroshima", ratio)
+    } else {
+        format!("≈ {:.2}× Hiroshima", ratio)
+    }
+}
+
 pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<HazardResult, String> {
     validate_center(request.center, "DirectAsteroid")?;
     let validate = |field, value| crate::data::source_input_contract::validate_number("DirectAsteroid", field, value);
@@ -646,6 +688,13 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             "Impact energy",
             fmt_energy(kinetic_energy / MT_TO_JOULES),
             None,
+        ),
+        readout(
+            "Recurrence interval",
+            fmt_recurrence_interval(impact_recurrence_interval_years(
+                kinetic_energy / MT_TO_JOULES,
+            )),
+            Some("order-of-magnitude average; Collins et al. 2005".to_string()),
         ),
         readout(
             "Reaches ground",
@@ -1237,6 +1286,11 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
     let mut readout_items = vec![
         readout("Yield", fmt_yield(effects.yield_kt), None),
         readout(
+            "Yield context",
+            fmt_yield_context(effects.yield_kt),
+            Some("scale anchor; weapon effects have no natural recurrence".to_string()),
+        ),
+        readout(
             "Burst",
             if effects.is_water {
                 "Water"
@@ -1462,6 +1516,36 @@ mod tests {
             );
             assert!(detail.airburst_altitude.is_finite() && detail.airburst_altitude >= 0.0);
         }
+    }
+
+    #[test]
+    fn impact_recurrence_matches_earth_impact_effects_program() {
+        // Collins et al. 2005: T ≈ 109·E_Mt^0.78. Order-of-magnitude checks
+        // against known events.
+        // Tunguska ~12 Mt → several hundred years.
+        let tunguska = impact_recurrence_interval_years(12.0);
+        assert!(
+            (300.0..2_000.0).contains(&tunguska),
+            "Tunguska recurrence {tunguska} yr outside plausible band"
+        );
+        // Chicxulub ~1e8 Mt → ~10^8 years.
+        let chicxulub = impact_recurrence_interval_years(1.0e8);
+        assert!(
+            (1.0e7..1.0e9).contains(&chicxulub),
+            "Chicxulub recurrence {chicxulub} yr outside plausible band"
+        );
+        // Monotonic in energy; non-positive energy is never-recurring.
+        assert!(impact_recurrence_interval_years(100.0) > impact_recurrence_interval_years(10.0));
+        assert!(impact_recurrence_interval_years(0.0).is_infinite());
+        assert!(impact_recurrence_interval_years(-5.0).is_infinite());
+        assert_eq!(fmt_recurrence_interval(f64::INFINITY), "—");
+    }
+
+    #[test]
+    fn yield_context_anchors_on_hiroshima() {
+        assert_eq!(fmt_yield_context(15.0), "≈ 1.0× Hiroshima");
+        assert_eq!(fmt_yield_context(1_000.0), "≈ 67× Hiroshima");
+        assert_eq!(fmt_yield_context(1.5), "≈ 0.1× Hiroshima");
     }
 
     #[test]

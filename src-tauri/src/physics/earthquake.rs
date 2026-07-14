@@ -134,9 +134,28 @@ impl EarthquakeSource {
                 self.mw,
                 self.depth_m / 1000.0
             ),
+            recurrence_note: Some(gutenberg_richter_recurrence_note(self.mw)),
             camera_view: None,
         }
     }
+}
+
+/// Order-of-magnitude "how often" phrasing for an earthquake of at least this
+/// moment magnitude, from the global Gutenberg–Richter frequency law
+/// `log10 N(≥M) ≈ 8 − M` per year (a ≈ 8, b ≈ 1 for global seismicity; Gutenberg
+/// & Richter 1944). This is a global average, not a location-specific rate.
+pub fn gutenberg_richter_recurrence_note(mw: f64) -> String {
+    // T = 1 / N(≥M) years, with N per year = 10^(8 − M).
+    let years = 10_f64.powf((mw - 8.0).clamp(-6.0, 6.0));
+    let interval = if years >= 1.0e3 {
+        format!("~1 in {:.0} thousand yr", years / 1.0e3)
+    } else if years >= 1.0 {
+        format!("~1 in {:.0} yr", years)
+    } else {
+        // Sub-annual: report as events per year instead.
+        format!("~{:.0} per yr", (1.0 / years).max(1.0))
+    };
+    format!("{interval} worldwide (global average; Gutenberg–Richter)")
 }
 
 /// 2011 Tōhoku M_w 9.1 megathrust off the Sanriku coast (Mori et al. 2011;
@@ -214,5 +233,22 @@ mod tests {
         // charts: a tsunami crosses the Pacific in ~22 hours.
         let c = long_wave_speed_m_s(4_000.0);
         assert!((150.0..=250.0).contains(&c));
+    }
+
+    #[test]
+    fn gutenberg_richter_recurrence_is_cited_and_ordered() {
+        // A great (M9) quake: ~1 in 10 yr globally at a=8, b=1.
+        let m9 = gutenberg_richter_recurrence_note(9.0);
+        assert!(m9.contains("Gutenberg"), "note must cite its model: {m9}");
+        assert!(m9.contains("~1 in 10 yr"), "M9 recurrence phrasing: {m9}");
+        // Larger magnitude → rarer.
+        let m95 = gutenberg_richter_recurrence_note(9.5);
+        assert!(m95.contains("~1 in"), "{m95}");
+        // Common (M5) quakes: many per year.
+        let m5 = gutenberg_richter_recurrence_note(5.0);
+        assert!(m5.contains("per yr"), "frequent quakes report a rate: {m5}");
+        // Earthquake sources carry the note; it flows into the displacement.
+        let d = tohoku_2011().initial_displacement();
+        assert!(d.recurrence_note.as_deref().unwrap_or("").contains("Gutenberg"));
     }
 }

@@ -250,6 +250,11 @@ export function ResultsPanel({
             <article className="results__outcome">
               <strong className="results__outcome-headline">{outcome.headline}</strong>
               <p className="results__outcome-detail">{outcome.detail}</p>
+              {initial.recurrence_note && (
+                <p className="results__outcome-recurrence">
+                  <strong>How often:</strong> {initial.recurrence_note}
+                </p>
+              )}
               <span className="results__outcome-note">
                 Modelled first-order tsunami source—educational estimate, not a forecast.
               </span>

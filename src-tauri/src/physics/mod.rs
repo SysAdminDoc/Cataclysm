@@ -87,6 +87,11 @@ pub struct InitialDisplacement {
     pub dominant_wavelength_m: Option<f64>,
     /// Human-readable description of the source.
     pub label: String,
+    /// Optional "how often" context for the source (e.g. a Gutenberg–Richter
+    /// recurrence estimate for a tectonic earthquake). Order-of-magnitude and
+    /// cited; left `None` for sources with no natural recurrence.
+    #[serde(default)]
+    pub recurrence_note: Option<String>,
     /// Optional curated camera framing populated by `run_preset` for
     /// historical presets. Custom scenarios leave this `None` and the
     /// frontend falls back to its heuristic auto-clamp.

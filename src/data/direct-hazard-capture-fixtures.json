@@ -17,22 +17,22 @@
       "crater": null,
       "fireballRadiusM": 236.78992995197615,
       "impactorMassKg": 11851501.206034815,
-      "kineticEnergyJ": 2139195967689284,
+      "kineticEnergyJ": 2139195967689284.0,
       "megatons": 0.5112801070003069,
-      "radiusSevereDamageM": 1,
-      "radiusTotalDestructionM": 1,
-      "radiusWindowBreakageM": 1,
+      "radiusSevereDamageM": 1.0,
+      "radiusTotalDestructionM": 1.0,
+      "radiusWindowBreakageM": 1.0,
       "seismicMagnitude": 4.327399799106979,
-      "thermalRadiusFirstDegreeM": 1,
-      "thermalRadiusThirdDegreeM": 1,
+      "thermalRadiusFirstDegreeM": 1.0,
+      "thermalRadiusThirdDegreeM": 1.0,
       "tsunami": {
-        "amplitudeAtDistance": 0,
+        "amplitudeAtDistance": 0.0,
         "applies": false,
-        "arrivalTime": 0,
-        "cavityDepth": 0,
-        "cavityDiameter": 0,
-        "initialAmplitude": 0,
-        "runupHeight": 0
+        "arrivalTime": 0.0,
+        "cavityDepth": 0.0,
+        "cavityDiameter": 0.0,
+        "initialAmplitude": 0.0,
+        "runupHeight": 0.0
       }
     },
     "kind": "asteroid",
@@ -42,6 +42,11 @@
         "hint": null,
         "label": "Impact energy",
         "value": "511 kt"
+      },
+      {
+        "hint": "order-of-magnitude average; Collins et al. 2005",
+        "label": "Recurrence interval",
+        "value": "~1 in 65 yr"
       },
       {
         "hint": "burst @ 29.01 km",
@@ -77,35 +82,35 @@
         "color": "#f5c2e7",
         "description": "First-degree burns to exposed skin.",
         "label": "1st° burns",
-        "radiusM": 1
+        "radiusM": 1.0
       },
       {
         "category": "blast",
         "color": "#f9e2af",
         "description": "Glass shatters; light injuries.",
         "label": "Window breakage (1 psi)",
-        "radiusM": 1
+        "radiusM": 1.0
       },
       {
         "category": "thermal",
         "color": "#fab387",
         "description": "Third-degree burns; widespread ignition.",
         "label": "3rd° burns",
-        "radiusM": 1
+        "radiusM": 1.0
       },
       {
         "category": "blast",
         "color": "#cba6f7",
         "description": "Most buildings collapse.",
         "label": "Severe damage (7 psi)",
-        "radiusM": 1
+        "radiusM": 1.0
       },
       {
         "category": "blast",
         "color": "#89b4fa",
         "description": "Reinforced structures destroyed.",
         "label": "Total destruction (20 psi)",
-        "radiusM": 1
+        "radiusM": 1.0
       }
     ]
   },
@@ -118,8 +123,8 @@
     },
     "detail": {
       "atmosphericEntry": {
-        "airburstAltitude": 0,
-        "airburstEnergy": 8474674813161789000,
+        "airburstAltitude": 0.0,
+        "airburstEnergy": 8.474674813161789e+18,
         "breakupAltitude": 32927.74205247725,
         "impactVelocity": 19203.92438194841,
         "reachesGround": true
@@ -131,7 +136,7 @@
       },
       "fireballRadiusM": 4077.597395706634,
       "impactorMassKg": 56548667764.61628,
-      "kineticEnergyJ": 11309733552923257000,
+      "kineticEnergyJ": 1.1309733552923257e+19,
       "megatons": 2703.0911933372986,
       "radiusSevereDamageM": 82790.08495423695,
       "radiusTotalDestructionM": 49985.08806052699,
@@ -140,13 +145,13 @@
       "thermalRadiusFirstDegreeM": 75996.13097063318,
       "thermalRadiusThirdDegreeM": 46461.84360577518,
       "tsunami": {
-        "amplitudeAtDistance": 0,
+        "amplitudeAtDistance": 0.0,
         "applies": false,
-        "arrivalTime": 0,
-        "cavityDepth": 0,
-        "cavityDiameter": 0,
-        "initialAmplitude": 0,
-        "runupHeight": 0
+        "arrivalTime": 0.0,
+        "cavityDepth": 0.0,
+        "cavityDiameter": 0.0,
+        "initialAmplitude": 0.0,
+        "runupHeight": 0.0
       }
     },
     "kind": "asteroid",
@@ -156,6 +161,11 @@
         "hint": null,
         "label": "Impact energy",
         "value": "2703.1 Mt"
+      },
+      {
+        "hint": "order-of-magnitude average; Collins et al. 2005",
+        "label": "Recurrence interval",
+        "value": "~1 in 52 thousand yr"
       },
       {
         "hint": null,
@@ -239,13 +249,13 @@
     "authority": "rust",
     "casualties": null,
     "center": {
-      "lat": 0,
-      "lon": -140
+      "lat": 0.0,
+      "lon": -140.0
     },
     "detail": {
       "atmosphericEntry": {
-        "airburstAltitude": 0,
-        "airburstEnergy": 33792527934701040000,
+        "airburstAltitude": 0.0,
+        "airburstEnergy": 3.379252793470104e+19,
         "breakupAltitude": 38825.25106601889,
         "impactVelocity": 19604.18059053095,
         "reachesGround": true
@@ -257,7 +267,7 @@
       },
       "fireballRadiusM": 6466.017705655404,
       "impactorMassKg": 196349540849.36206,
-      "kineticEnergyJ": 39269908169872410000,
+      "kineticEnergyJ": 3.926990816987241e+19,
       "megatons": 9385.73331019895,
       "radiusSevereDamageM": 131283.72009714844,
       "radiusTotalDestructionM": 79263.45665180657,
@@ -266,12 +276,12 @@
       "thermalRadiusFirstDegreeM": 104829.00102125082,
       "thermalRadiusThirdDegreeM": 67796.74582256257,
       "tsunami": {
-        "amplitudeAtDistance": 2000,
+        "amplitudeAtDistance": 2000.0,
         "applies": true,
         "arrivalTime": 5.048187773461523,
-        "cavityDepth": 4000,
+        "cavityDepth": 4000.0,
         "cavityDiameter": 9669.648182463916,
-        "initialAmplitude": 2000,
+        "initialAmplitude": 2000.0,
         "runupHeight": 16833.226712863518
       }
     },
@@ -282,6 +292,11 @@
         "hint": null,
         "label": "Impact energy",
         "value": "9385.7 Mt"
+      },
+      {
+        "hint": "order-of-magnitude average; Collins et al. 2005",
+        "label": "Recurrence interval",
+        "value": "~1 in 137 thousand yr"
       },
       {
         "hint": null,
@@ -375,7 +390,7 @@
     },
     "detail": {
       "cloudTopH": 2.0063098156649155,
-      "craterR": 0,
+      "craterR": 0.0,
       "fallout": null,
       "fireball": 0.4164318473569276,
       "gammaRad": 2.3988329190194904,
@@ -432,8 +447,8 @@
           "time": "~10 min"
         }
       ],
-      "waveHeight": 0,
-      "yieldKt": 100
+      "waveHeight": 0.0,
+      "yieldKt": 100.0
     },
     "kind": "nuclear",
     "modelVersion": "nuclear-direct-1.0.0",
@@ -442,6 +457,11 @@
         "hint": null,
         "label": "Yield",
         "value": "100 kT"
+      },
+      {
+        "hint": "scale anchor; weapon effects have no natural recurrence",
+        "label": "Yield context",
+        "value": "≈ 6.7× Hiroshima"
       },
       {
         "hint": "optimal air-burst height 1.02 km",
@@ -618,8 +638,8 @@
           "time": "~24 hrs"
         }
       ],
-      "waveHeight": 0,
-      "yieldKt": 100
+      "waveHeight": 0.0,
+      "yieldKt": 100.0
     },
     "kind": "nuclear",
     "modelVersion": "nuclear-direct-1.0.0",
@@ -628,6 +648,11 @@
         "hint": null,
         "label": "Yield",
         "value": "100 kT"
+      },
+      {
+        "hint": "scale anchor; weapon effects have no natural recurrence",
+        "label": "Yield context",
+        "value": "≈ 6.7× Hiroshima"
       },
       {
         "hint": "optimal air-burst height 1.02 km",

@@ -21,6 +21,9 @@ export type InitialDisplacement = {
   seismic_mw_equivalent: number;
   dominant_wavelength_m?: number | null;
   label: string;
+  /** Optional order-of-magnitude "how often" context for the source (e.g. a
+   * Gutenberg–Richter recurrence estimate for a tectonic earthquake). */
+  recurrence_note?: string | null;
   /** Optional curated camera framing populated by `run_preset` for
    * historical presets. Custom scenarios leave this `null`/undefined and
    * the frontend falls back to its heuristic auto-clamp. */
