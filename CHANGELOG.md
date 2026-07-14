@@ -16,6 +16,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   playback on the first frame.
 - Clamped the nuclear yield slider's log scale so a zero/degenerate yield can no
   longer feed `-Infinity` into the control.
+- Diagnostics log rows now carry a stable id so the list no longer mis-renders
+  once its 500-entry ring buffer starts shifting; timeline markers distribute
+  evenly when a filter leaves a single event instead of stacking at the edge.
+- Sub-tonne source energies now render in compact notation with a `t TNT` tier
+  instead of raw exponential Joules, matching the rest of the energy ladder.
 
 ### Added
 

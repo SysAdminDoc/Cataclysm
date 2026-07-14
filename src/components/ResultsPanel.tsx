@@ -93,7 +93,14 @@ function formatEnergy(j: number): { value: string; unit: string } {
   }
   const kt = j / 4.184e12;
   if (kt >= 1) return { value: kt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "kt TNT" };
-  return { value: j.toExponential(2), unit: "J" };
+  const tons = j / 4.184e9;
+  if (tons >= 1) return { value: tons.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "t TNT" };
+  // Sub-tonne energies: compact notation stays consistent with the rest of the
+  // ladder (e.g. "3.1B J") rather than raw exponential ("3.14e+9 J").
+  return {
+    value: Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(j),
+    unit: "J",
+  };
 }
 
 function formatLength(m: number): { value: string; unit: string } {
