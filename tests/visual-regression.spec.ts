@@ -160,6 +160,14 @@ test.describe("Visual regression — desktop", () => {
       maxDiffPixelRatio: 0.01,
       timeout: 15_000,
     });
+
+    const dartObservations = page.getByRole("button", { name: "DART buoy observations" });
+    await dartObservations.scrollIntoViewIfNeeded();
+    await expect(dartObservations).toBeVisible();
+    await expect(page.locator("#inspector-panel")).toHaveScreenshot("desktop-results-dart.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
   });
 
   test("direct what-if preview", async ({ page }) => {

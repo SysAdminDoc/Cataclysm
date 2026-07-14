@@ -597,19 +597,101 @@ pub struct DartRmseRequest {
 #[derive(Debug, Serialize)]
 pub struct DartRmseResult {
     /// Time-series RMSE in meters over the overlapping window.
-    pub rmse_m: f64,
+    pub rmse_m: Option<f64>,
     /// Number of paired samples used in the RMSE.
     pub n_samples: usize,
-    /// Observation-series peak amplitude.
+    /// Bounds of the time window shared by both finite series.
+    pub overlap_start_s: Option<f64>,
+    pub overlap_end_s: Option<f64>,
+    /// Peak amplitudes from the actual finite input series.
     pub observed_peak_m: f64,
-    /// Model-series peak amplitude.
     pub model_peak_m: f64,
+    /// NOAA's documented North-Pacific minimum threshold for de-tided DART
+    /// residuals, adopted here as the explicit educational noise floor.
+    pub noise_floor_m: f64,
+    pub noise_method: &'static str,
+    /// Arrival is the first of two consecutive absolute samples at or above
+    /// this threshold. Requiring confirmation screens isolated artifacts in
+    /// these down-sampled historical and solver series.
+    pub arrival_threshold_m: f64,
+    pub arrival_method: &'static str,
+    pub observed_arrival_s: Option<f64>,
+    pub model_arrival_s: Option<f64>,
+    /// Model arrival minus observed arrival; positive means the model is late.
+    pub arrival_residual_s: Option<f64>,
 }
 
-/// F4-06 — compute RMSE between bundled DART observations and a model
-/// time series for a single buoy. The model samples are expected to
-/// be already-interpolated to the buoy location (the frontend extracts
-/// them from the SWE PNG sequence; this command does the arithmetic).
+const DART_NOISE_FLOOR_M: f64 = 0.03;
+const DART_NOISE_METHOD: &str =
+    "fixed 0.03 m NOAA DART North-Pacific minimum for de-tided residuals";
+const DART_ARRIVAL_METHOD: &str = "first of two consecutive |eta| samples at or above threshold; isolated samples are screened as artifacts";
+
+fn normalize_dart_series(samples: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    let mut sorted: Vec<(f64, f64)> = samples
+        .iter()
+        .copied()
+        .filter(|(t, eta)| t.is_finite() && eta.is_finite())
+        .collect();
+    sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
+
+    let mut normalized: Vec<(f64, f64)> = Vec::with_capacity(sorted.len());
+    for sample in sorted {
+        if let Some(last) = normalized.last_mut()
+            && last.0 == sample.0
+        {
+            *last = sample;
+            continue;
+        }
+        normalized.push(sample);
+    }
+    normalized
+}
+
+fn interpolate_dart_series(series: &[(f64, f64)], t: f64) -> Option<f64> {
+    let first = series.first()?;
+    let last = series.last()?;
+    if t < first.0 || t > last.0 {
+        return None;
+    }
+    let i = series.partition_point(|sample| sample.0 <= t);
+    if i == 0 {
+        return Some(first.1);
+    }
+    if i >= series.len() {
+        return Some(last.1);
+    }
+    let (t0, v0) = series[i - 1];
+    let (t1, v1) = series[i];
+    let span = t1 - t0;
+    if span <= 0.0 {
+        return Some(v1);
+    }
+    Some(v0 + (v1 - v0) * ((t - t0) / span))
+}
+
+fn dart_series_peak(series: &[(f64, f64)]) -> f64 {
+    series
+        .iter()
+        .map(|(_, eta)| eta.abs())
+        .fold(0.0_f64, f64::max)
+}
+
+fn dart_series_arrival(series: &[(f64, f64)], threshold_m: f64) -> Option<f64> {
+    series.windows(2).find_map(|pair| {
+        let candidate = pair[0].1.abs();
+        let confirmation = pair[1].1.abs();
+        if candidate >= threshold_m && confirmation >= threshold_m {
+            Some(pair[0].0)
+        } else {
+            None
+        }
+    })
+}
+
+/// F4-06 — compare bundled DART observations with the actual SWE gauge
+/// series at one buoy. Rust owns overlap, interpolation, peaks, and the
+/// declared threshold-based arrival method so the UI cannot substitute a
+/// great-circle travel-time estimate for solver evidence.
 #[tauri::command]
 pub fn dart_buoy_rmse(req: DartRmseRequest) -> Result<DartRmseResult, String> {
     if !req.buoy_lat.is_finite() || req.buoy_lat.abs() > 90.0 {
@@ -624,62 +706,66 @@ pub fn dart_buoy_rmse(req: DartRmseRequest) -> Result<DartRmseResult, String> {
     if req.observations.is_empty() || req.model_samples.is_empty() {
         return Err("observation and model series must both be non-empty".into());
     }
-    // Pair model + obs at each obs timestamp via linear interpolation
-    // of the model series. Skip points outside the model time range.
-    let mut model_sorted: Vec<(f64, f64)> = req
-        .model_samples
-        .iter()
-        .copied()
-        .filter(|(t, eta)| t.is_finite() && eta.is_finite())
-        .collect();
-    if model_sorted.is_empty() {
+    let observations = normalize_dart_series(&req.observations);
+    let model = normalize_dart_series(&req.model_samples);
+    if observations.is_empty() {
+        return Err("observation series has no finite samples".into());
+    }
+    if model.is_empty() {
         return Err("model series has no finite samples".into());
     }
-    model_sorted.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let t_min = model_sorted.first().map(|s| s.0).unwrap_or(0.0);
-    let t_max = model_sorted.last().map(|s| s.0).unwrap_or(0.0);
+
+    let observed_peak_m = dart_series_peak(&observations);
+    let model_peak_m = dart_series_peak(&model);
+    let observed_arrival_s = dart_series_arrival(&observations, DART_NOISE_FLOOR_M);
+    let model_arrival_s = dart_series_arrival(&model, DART_NOISE_FLOOR_M);
+    let arrival_residual_s = observed_arrival_s
+        .zip(model_arrival_s)
+        .map(|(observed, model)| model - observed);
+
+    let candidate_start = observations[0].0.max(model[0].0);
+    let candidate_end = observations[observations.len() - 1]
+        .0
+        .min(model[model.len() - 1].0);
+    let (overlap_start_s, overlap_end_s) = if candidate_start <= candidate_end {
+        (Some(candidate_start), Some(candidate_end))
+    } else {
+        (None, None)
+    };
 
     let mut sum_sq = 0.0;
-    let mut n = 0usize;
-    let mut obs_peak = 0.0_f64;
-    let mut mod_peak = 0.0_f64;
-    for &(t, obs_eta) in &req.observations {
-        if !t.is_finite() || !obs_eta.is_finite() {
-            continue;
+    let mut n_samples = 0usize;
+    // Preserve observation cadence: interpolate the solver at each actual
+    // observation timestamp inside the shared window, never extrapolating.
+    if let (Some(start), Some(end)) = (overlap_start_s, overlap_end_s) {
+        for &(t, observed_eta) in observations
+            .iter()
+            .filter(|(t, _)| *t >= start && *t <= end)
+        {
+            let Some(model_eta) = interpolate_dart_series(&model, t) else {
+                continue;
+            };
+            let residual = model_eta - observed_eta;
+            sum_sq += residual * residual;
+            n_samples += 1;
         }
-        obs_peak = obs_peak.max(obs_eta.abs());
-        if t < t_min || t > t_max {
-            continue;
-        }
-        // Binary search for the bracketing model samples.
-        let i = model_sorted.partition_point(|s| s.0 <= t);
-        let model_eta = if i == 0 {
-            model_sorted[0].1
-        } else if i >= model_sorted.len() {
-            model_sorted[model_sorted.len() - 1].1
-        } else {
-            let (t0, v0) = model_sorted[i - 1];
-            let (t1, v1) = model_sorted[i];
-            let span = (t1 - t0).max(1e-9);
-            v0 + (v1 - v0) * ((t - t0) / span)
-        };
-        if !model_eta.is_finite() {
-            continue;
-        }
-        mod_peak = mod_peak.max(model_eta.abs());
-        let d = model_eta - obs_eta;
-        sum_sq += d * d;
-        n += 1;
     }
-    if n == 0 {
-        return Err("observation and model series have no overlapping finite samples".into());
-    }
-    let rmse_m = (sum_sq / n as f64).sqrt();
+    let rmse_m = (n_samples > 0).then(|| (sum_sq / n_samples as f64).sqrt());
+
     Ok(DartRmseResult {
         rmse_m,
-        n_samples: n,
-        observed_peak_m: obs_peak,
-        model_peak_m: mod_peak,
+        n_samples,
+        overlap_start_s,
+        overlap_end_s,
+        observed_peak_m,
+        model_peak_m,
+        noise_floor_m: DART_NOISE_FLOOR_M,
+        noise_method: DART_NOISE_METHOD,
+        arrival_threshold_m: DART_NOISE_FLOOR_M,
+        arrival_method: DART_ARRIVAL_METHOD,
+        observed_arrival_s,
+        model_arrival_s,
+        arrival_residual_s,
     })
 }
 
@@ -2429,12 +2515,17 @@ mod tests {
             model_samples: model_identical,
         })
         .expect("identical series must succeed");
+        let rmse = res.rmse_m.expect("identical series overlap");
         assert!(
-            res.rmse_m < 1e-9,
+            rmse < 1e-9,
             "identical series RMSE should be 0, got {}",
-            res.rmse_m
+            rmse
         );
         assert_eq!(res.n_samples, 4);
+        assert_eq!(res.overlap_start_s, Some(0.0));
+        assert_eq!(res.overlap_end_s, Some(180.0));
+        assert_eq!(res.arrival_threshold_m, 0.03);
+        assert_eq!(res.noise_floor_m, 0.03);
 
         let model_offset = vec![(0.0, 0.5), (60.0, 1.0), (120.0, 1.5), (180.0, 1.0)];
         let res2 = dart_buoy_rmse(DartRmseRequest {
@@ -2444,10 +2535,11 @@ mod tests {
             model_samples: model_offset,
         })
         .expect("offset series must succeed");
+        let offset_rmse = res2.rmse_m.expect("offset series overlap");
         assert!(
-            (res2.rmse_m - 0.5).abs() < 1e-6,
+            (offset_rmse - 0.5).abs() < 1e-6,
             "offset-by-0.5 series RMSE should be 0.5, got {}",
-            res2.rmse_m
+            offset_rmse
         );
     }
 
@@ -2463,17 +2555,18 @@ mod tests {
     }
 
     #[test]
-    fn dart_buoy_rmse_rejects_no_overlap() {
+    fn dart_buoy_rmse_returns_structured_no_overlap() {
         let res = dart_buoy_rmse(DartRmseRequest {
             buoy_lat: 0.0,
             buoy_lon: 0.0,
             observations: vec![(300.0, 1.0)],
             model_samples: vec![(0.0, 0.0), (60.0, 0.2)],
-        });
-        assert!(
-            res.is_err(),
-            "no-overlap series must not return NaN success"
-        );
+        })
+        .expect("valid disjoint series should return an inspectable comparison");
+        assert_eq!(res.rmse_m, None);
+        assert_eq!(res.n_samples, 0);
+        assert_eq!(res.overlap_start_s, None);
+        assert_eq!(res.overlap_end_s, None);
     }
 
     #[test]
@@ -2485,7 +2578,7 @@ mod tests {
             model_samples: vec![(f64::NAN, 99.0), (0.0, 0.0), (60.0, 2.0)],
         })
         .expect("finite model samples should still be usable");
-        assert!(res.rmse_m < 1e-9);
+        assert!(res.rmse_m.expect("finite series overlap") < 1e-9);
     }
 
     /// I4-06 — observations outside the model time range must be
@@ -2529,11 +2622,70 @@ mod tests {
         })
         .expect("must succeed");
         // Model midpoint at t=30 should be 1.0 → identical to obs → RMSE 0.
+        let rmse = res.rmse_m.expect("interpolated series overlap");
         assert!(
-            res.rmse_m < 1e-9,
+            rmse < 1e-9,
             "interp midpoint should match obs; got RMSE {}",
-            res.rmse_m
+            rmse
         );
+    }
+
+    #[test]
+    fn dart_buoy_rmse_reports_no_arrival_below_declared_threshold() {
+        let quiet = vec![(0.0, 0.0), (60.0, 0.02), (120.0, -0.029), (180.0, 0.01)];
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations: quiet.clone(),
+            model_samples: quiet,
+        })
+        .expect("quiet finite series should compare");
+        assert_eq!(res.observed_arrival_s, None);
+        assert_eq!(res.model_arrival_s, None);
+        assert_eq!(res.arrival_residual_s, None);
+    }
+
+    #[test]
+    fn dart_buoy_rmse_screens_an_early_isolated_artifact() {
+        let observations = vec![(0.0, 0.20), (60.0, 0.0), (120.0, 0.04), (180.0, 0.05)];
+        let model = vec![(0.0, 0.0), (60.0, 0.0), (120.0, 0.03), (180.0, 0.04)];
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations,
+            model_samples: model,
+        })
+        .expect("artifact fixture should compare");
+        assert_eq!(res.observed_arrival_s, Some(120.0));
+        assert_eq!(res.model_arrival_s, Some(120.0));
+    }
+
+    #[test]
+    fn dart_buoy_rmse_derives_known_arrival_residual_from_both_series() {
+        let observations = vec![
+            (0.0, 0.0),
+            (60.0, 0.04),
+            (120.0, 0.06),
+            (180.0, 0.03),
+            (240.0, 0.01),
+        ];
+        let model = vec![
+            (0.0, 0.0),
+            (60.0, 0.01),
+            (120.0, 0.02),
+            (180.0, 0.04),
+            (240.0, 0.05),
+        ];
+        let res = dart_buoy_rmse(DartRmseRequest {
+            buoy_lat: 0.0,
+            buoy_lon: 0.0,
+            observations,
+            model_samples: model,
+        })
+        .expect("known-residual fixture should compare");
+        assert_eq!(res.observed_arrival_s, Some(60.0));
+        assert_eq!(res.model_arrival_s, Some(180.0));
+        assert_eq!(res.arrival_residual_s, Some(120.0));
     }
 
     /// I4-06 — invalid buoy location is rejected at the boundary.

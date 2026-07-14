@@ -15,6 +15,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- DART validation now derives overlap, peaks, RMSE, and sustained-threshold
+  arrivals from the archived observation and actual SWE gauge series in Rust.
+  The chart draws and labels observed/model cursor values separately, reports
+  the explicit NOAA-derived 3 cm noise threshold and method, and no longer uses
+  a frontend great-circle travel-time estimate as model evidence.
 - Diagnostics copied to the clipboard, stored after crashes, or included in a
   support bundle now redact credentials and local paths. Global errors survive
   reload, and the next successful launch offers the unseen report until the user

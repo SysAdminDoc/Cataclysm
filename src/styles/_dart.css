@@ -81,7 +81,9 @@
   border: 1px solid color-mix(in srgb, var(--teal) 24%, transparent);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
+  line-height: 1.4;
   color: var(--subtext);
+  overflow-wrap: anywhere;
 }
 
 .dart__rmse-value {

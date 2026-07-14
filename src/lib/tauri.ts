@@ -122,10 +122,19 @@ export type InspectAtPointResult = {
 };
 
 export type DartRmseResult = {
-  rmse_m: number;
+  rmse_m: number | null;
   n_samples: number;
+  overlap_start_s: number | null;
+  overlap_end_s: number | null;
   observed_peak_m: number;
   model_peak_m: number;
+  noise_floor_m: number;
+  noise_method: string;
+  arrival_threshold_m: number;
+  arrival_method: string;
+  observed_arrival_s: number | null;
+  model_arrival_s: number | null;
+  arrival_residual_s: number | null;
 };
 
 export type LambWaveSampleResult = {

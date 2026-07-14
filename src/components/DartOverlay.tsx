@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { getDartEvents, PRESET_TO_DART_EVENT } from "../lib/data";
 import { api, isTauri, type DartRmseResult } from "../lib/tauri";
-import type { DartBuoy, DartEvent, GridSnapshot, InitialDisplacement } from "../types/scenario";
+import type { DartBuoy, DartEvent, GridSnapshot } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 
 type Props = {
   presetId: string | null;
   timeS: number;
-  initial?: InitialDisplacement | null;
   /** Completed SWE snapshots (slot A). When they carry `dart-<id>` gauge
-   *  samples, model-vs-observed RMSE is computed per buoy via Rust IPC. */
+   * samples, all model-vs-observed metrics are derived by Rust IPC. */
   sweSnapshots?: GridSnapshot[] | null;
 };
 
 type BuoyFit =
   | { kind: "ok"; result: DartRmseResult }
-  | { kind: "no-overlap" }
+  | { kind: "no-overlap"; result: DartRmseResult }
   | { kind: "error" };
 
 /** Model eta series at a buoy from the hidden `dart-<id>` gauge samples. */
@@ -31,52 +30,44 @@ function modelSeriesForBuoy(buoyId: string | number, snapshots: GridSnapshot[]):
 
 const db = getDartEvents();
 
-function sampleEta(buoy: DartBuoy, t_s: number): number {
-  const obs = buoy.observations;
-  if (obs.length === 0) return 0;
-  if (t_s <= obs[0][0]) return obs[0][1];
-  if (t_s >= obs[obs.length - 1][0]) return obs[obs.length - 1][1];
-  for (let i = 1; i < obs.length; i++) {
-    const [t1, v1] = obs[i];
-    if (t1 >= t_s) {
-      const [t0, v0] = obs[i - 1];
-      const u = (t_s - t0) / (t1 - t0 || 1);
+function sampleSeries(series: [number, number][], timeS: number): number | null {
+  if (series.length === 0 || timeS < series[0][0] || timeS > series[series.length - 1][0]) {
+    return null;
+  }
+  for (let i = 1; i < series.length; i++) {
+    const [t1, v1] = series[i];
+    if (t1 >= timeS) {
+      const [t0, v0] = series[i - 1];
+      const u = (timeS - t0) / (t1 - t0 || 1);
       return v0 + (v1 - v0) * u;
     }
   }
-  return 0;
+  return series[series.length - 1][1];
 }
 
-function buoyPeakAbsAmp(buoy: DartBuoy): number {
-  return buoy.observations.reduce((m, [, v]) => Math.max(m, Math.abs(v)), 0);
+function peakAbsAmp(series: [number, number][]): number {
+  return series.reduce((peak, [, value]) => Math.max(peak, Math.abs(value)), 0);
 }
 
-function observedArrivalS(buoy: DartBuoy): number | null {
-  const threshold = buoyPeakAbsAmp(buoy) * 0.05;
-  if (threshold < 1e-4) return null;
-  for (const [t, v] of buoy.observations) {
-    if (Math.abs(v) > threshold) return t;
+function formatElapsed(seconds: number): string {
+  const minutes = seconds / 60;
+  if (Math.abs(minutes) >= 120) {
+    return `${(minutes / 60).toFixed(1)} h`;
   }
-  return null;
+  return `${minutes.toFixed(Math.abs(minutes) < 10 && minutes % 1 !== 0 ? 1 : 0)} min`;
 }
 
-function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6_371_008.8;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function modelArrivalS(buoy: DartBuoy, initial: InitialDisplacement | null | undefined): number | null {
-  if (!initial) return null;
-  const dist = haversineM(initial.center.lat_deg, initial.center.lon_deg, buoy.lat, buoy.lon);
-  const depth = initial.center.depth_m ?? 4000;
-  const c = Math.sqrt(9.81 * Math.max(depth, 50));
-  if (c <= 0) return null;
-  return dist / c;
+function arrivalSummary(result: DartRmseResult): string {
+  const observed = result.observed_arrival_s == null
+    ? "observed not detected"
+    : `observed ${formatElapsed(result.observed_arrival_s)}`;
+  const model = result.model_arrival_s == null
+    ? "model not detected"
+    : `model ${formatElapsed(result.model_arrival_s)}`;
+  const residual = result.arrival_residual_s == null
+    ? "residual unavailable"
+    : `residual ${result.arrival_residual_s >= 0 ? "+" : ""}${formatElapsed(result.arrival_residual_s)} (model − observed)`;
+  return `${observed} · ${model} · ${residual}`;
 }
 
 function formatOrigin(iso: string): string {
@@ -85,36 +76,59 @@ function formatOrigin(iso: string): string {
   return date.toISOString().replace("T", " ").slice(0, 16);
 }
 
-/** Sparkline of a buoy's observation series — observed in red, current-time cursor in blue,
- *  with optional model/observed arrival-time comparison markers. */
-function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; initial?: InitialDisplacement | null }) {
+/** Actual observation and SWE gauge series with a shared timeline cursor. */
+function Sparkline({
+  buoy,
+  timeS,
+  modelSeries,
+  result,
+}: {
+  buoy: DartBuoy;
+  timeS: number;
+  modelSeries: [number, number][];
+  result?: DartRmseResult;
+}) {
   const w = 280;
   const h = 60;
+  const plotTop = 16;
+  const plotBottom = h - 2;
+  const plotHeight = plotBottom - plotTop;
+  const plotCenter = plotTop + plotHeight * 0.5;
   const obs = buoy.observations;
   if (obs.length < 2) return null;
-  const tMin = obs[0][0];
-  const tMax = obs[obs.length - 1][0];
-  const peak = buoyPeakAbsAmp(buoy) || 1;
-  const xs = obs.map(([t]) => ((t - tMin) / (tMax - tMin || 1)) * w);
-  const ys = obs.map(([, v]) => h * 0.5 - (v / peak) * h * 0.45);
-  const d = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  const allSeries = modelSeries.length > 0 ? [...obs, ...modelSeries] : obs;
+  const tMin = Math.min(...allSeries.map(([time]) => time));
+  const tMax = Math.max(...allSeries.map(([time]) => time));
+  const observedPeak = result?.observed_peak_m ?? peakAbsAmp(obs);
+  const modelPeak = result?.model_peak_m ?? peakAbsAmp(modelSeries);
+  const scalePeak = Math.max(observedPeak, modelPeak, 1e-6);
+  const pathFor = (series: [number, number][]) => series
+    .map(([time, value], index) => {
+      const x = ((time - tMin) / (tMax - tMin || 1)) * w;
+      const y = plotCenter - (value / scalePeak) * plotHeight * 0.45;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const observedPath = pathFor(obs);
+  const modelPath = pathFor(modelSeries);
   const cursorX = ((timeS - tMin) / (tMax - tMin || 1)) * w;
-  const cur = sampleEta(buoy, timeS);
-  const obsArr = observedArrivalS(buoy);
-  const modArr = modelArrivalS(buoy, initial);
+  const observedCursor = sampleSeries(obs, timeS);
+  const modelCursor = sampleSeries(modelSeries, timeS);
+  const obsArr = result?.observed_arrival_s ?? null;
+  const modArr = result?.model_arrival_s ?? null;
   const obsArrX = obsArr != null ? ((obsArr - tMin) / (tMax - tMin || 1)) * w : null;
   const modArrX = modArr != null ? ((modArr - tMin) / (tMax - tMin || 1)) * w : null;
-  const arrivalDeltaMin = obsArr != null && modArr != null ? ((modArr - obsArr) / 60) : null;
   const durationMin = Math.round((tMax - tMin) / 60);
   const ariaParts = [
     `${buoy.name} DART water level`,
-    `observed peak ${peak.toFixed(2)} m over ${durationMin} min`,
+    `observed peak ${observedPeak.toFixed(2)} m over ${durationMin} min`,
   ];
-  if (cur != null && Number.isFinite(cur)) ariaParts.push(`model ${cur.toFixed(2)} m at the current time`);
-  if (arrivalDeltaMin != null) {
-    ariaParts.push(
-      `model arrival ${arrivalDeltaMin >= 0 ? "+" : ""}${arrivalDeltaMin.toFixed(0)} min vs observed`,
-    );
+  if (modelSeries.length > 0) ariaParts.push(`model peak ${modelPeak.toFixed(2)} m`);
+  if (observedCursor != null) ariaParts.push(`observed ${observedCursor.toFixed(2)} m at the timeline cursor`);
+  if (modelCursor != null) ariaParts.push(`model ${modelCursor.toFixed(2)} m at the timeline cursor`);
+  if (result) {
+    ariaParts.push(arrivalSummary(result));
+    ariaParts.push(`arrival threshold ${(result.arrival_threshold_m * 100).toFixed(0)} cm; ${result.arrival_method}`);
   }
   return (
     <svg
@@ -125,42 +139,49 @@ function Sparkline({ buoy, timeS, initial }: { buoy: DartBuoy; timeS: number; in
       role="img"
       aria-label={ariaParts.join("; ")}
     >
-      <line x1={0} x2={w} y1={h * 0.5} y2={h * 0.5} stroke="var(--surface2)" strokeDasharray="2 4" />
-      <path d={d} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
+      <line x1={0} x2={w} y1={plotCenter} y2={plotCenter} stroke="var(--surface2)" strokeDasharray="2 4" />
+      <path d={observedPath} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
+      {modelPath && <path d={modelPath} fill="none" stroke="var(--peach)" strokeWidth={1.5} />}
       {Number.isFinite(cursorX) && cursorX >= 0 && cursorX <= w && (
-        <line x1={cursorX} x2={cursorX} y1={0} y2={h} stroke="var(--sapphire)" strokeWidth={1.5} />
+        <line x1={cursorX} x2={cursorX} y1={plotTop} y2={plotBottom} stroke="var(--sapphire)" strokeWidth={1.5} />
       )}
       {obsArrX != null && obsArrX >= 0 && obsArrX <= w && (
         <>
-          <line x1={obsArrX} x2={obsArrX} y1={0} y2={h} stroke="var(--green)" strokeWidth={1} strokeDasharray="3 3" />
-          <text x={obsArrX + 2} y={h - 2} fontSize="8" fill="var(--green)">obs</text>
+          <line x1={obsArrX} x2={obsArrX} y1={plotTop} y2={plotBottom} stroke="var(--green)" strokeWidth={1} strokeDasharray="3 3" />
+          <text x={obsArrX + 2} y={plotBottom - 2} fontSize="8" fill="var(--green)">observed</text>
         </>
       )}
       {modArrX != null && modArrX >= 0 && modArrX <= w && (
         <>
-          <line x1={modArrX} x2={modArrX} y1={0} y2={h} stroke="var(--peach)" strokeWidth={1} strokeDasharray="3 3" />
-          <text x={modArrX + 2} y={10} fontSize="8" fill="var(--peach)">model</text>
+          <line x1={modArrX} x2={modArrX} y1={plotTop} y2={plotBottom} stroke="var(--peach)" strokeWidth={1} strokeDasharray="3 3" />
+          <text x={modArrX + 2} y={plotTop + 8} fontSize="8" fill="var(--peach)">model</text>
         </>
       )}
       <text x={4} y={12} fontSize="10" fill="var(--subtext)">
-        peak {peak.toFixed(2)} m · t-cursor {cur.toFixed(2)} m · {obs.length} samples
+        observed peak {observedPeak.toFixed(2)} m{modelSeries.length > 0 ? ` · model peak ${modelPeak.toFixed(2)} m` : ` · ${obs.length} samples`}
       </text>
-      {arrivalDeltaMin != null && (
-        <text x={4} y={h + 11} fontSize="9" fill="var(--subtext)">
-          arrival Δ {arrivalDeltaMin > 0 ? "+" : ""}{arrivalDeltaMin.toFixed(0)} min (model vs observed)
-        </text>
-      )}
+      <text x={4} y={h + 11} fontSize="9" fill="var(--subtext)">
+        cursor: observed {observedCursor == null ? "—" : `${observedCursor.toFixed(2)} m`}
+        {modelSeries.length > 0 ? ` · model ${modelCursor == null ? "—" : `${modelCursor.toFixed(2)} m`}` : ""}
+      </text>
     </svg>
   );
 }
 
-export function DartOverlay({ presetId, timeS, initial, sweSnapshots }: Props) {
+export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [fits, setFits] = useState<Record<string, BuoyFit>>({});
   const eventKey = presetId ? PRESET_TO_DART_EVENT[presetId] : null;
   const event: DartEvent | null = useMemo(
     () => (eventKey ? db.events[eventKey] ?? null : null),
     [eventKey],
+  );
+  const hasModelEvidence = Boolean(sweSnapshots?.some((snapshot) =>
+    snapshot.gauge_samples?.some((sample) => sample.id.startsWith("dart-") && sample.eta_m != null),
+  ));
+  const hasArrivalEvidence = Object.values(fits).some((fit) =>
+    (fit.kind === "ok" || fit.kind === "no-overlap")
+      && (fit.result.observed_arrival_s != null || fit.result.model_arrival_s != null),
   );
 
   // RMSE per buoy from the Rust dart_buoy_rmse command whenever a completed
@@ -184,18 +205,12 @@ export function DartOverlay({ presetId, timeS, initial, sweSnapshots }: Props) {
             observations: buoy.observations,
             model_samples: model,
           });
-          next[buoy.id] = { kind: "ok", result };
+          next[buoy.id] = result.rmse_m == null || result.n_samples === 0
+            ? { kind: "no-overlap", result }
+            : { kind: "ok", result };
         } catch (err) {
-          // The solver window (60 min) can end before the wave reaches a
-          // distant buoy — the IPC rejects series with no time overlap. Only
-          // that documented case is "no-overlap"; any other rejection is a real
-          // failure that must not masquerade as a benign no-comparison state.
-          if (/overlap/i.test(String(err))) {
-            next[buoy.id] = { kind: "no-overlap" };
-          } else {
-            console.error(`dartBuoyRmse failed for ${buoy.id}`, err);
-            next[buoy.id] = { kind: "error" };
-          }
+          console.error(`dartBuoyRmse failed for ${buoy.id}`, err);
+          next[buoy.id] = { kind: "error" };
         }
       }
       if (!cancelled) setFits(next);
@@ -229,37 +244,50 @@ export function DartOverlay({ presetId, timeS, initial, sweSnapshots }: Props) {
           </div>
           <p className="swe__hint">
             Observed water-surface elevation from NOAA DART buoys for this
-            event. Compare model vs. data: the blue cursor tracks the
-            timeline scrubber.
+            event. When an SWE run is available, the peach series and all fit
+            metrics come from its buoy gauge samples; blue is the timeline cursor.
           </p>
           <div className="chart-legend chart-legend--dart" aria-hidden>
             <span><i data-tone="observed" /> Observed</span>
+            {hasModelEvidence && <span><i data-tone="model" /> SWE model</span>}
             <span><i data-tone="cursor" /> Timeline</span>
-            <span><i data-tone="coast" /> Arrival markers</span>
+            {hasArrivalEvidence && <span><i data-tone="coast" /> Arrival markers</span>}
           </div>
           {event.buoys.map((b) => {
             const fit = fits[b.id];
+            const modelSeries = sweSnapshots ? modelSeriesForBuoy(b.id, sweSnapshots) : [];
+            const fitResult = fit?.kind === "ok" || fit?.kind === "no-overlap" ? fit.result : undefined;
             return (
               <div key={b.id} className="dart__buoy">
                 <div className="dart__name">{b.name}</div>
                 <div className="dart__meta">
                   {b.lat.toFixed(2)}°, {b.lon.toFixed(2)}° · {b.depth_m} m deep
                 </div>
-                <Sparkline buoy={b} timeS={timeS} initial={initial} />
+                <Sparkline buoy={b} timeS={timeS} modelSeries={modelSeries} result={fitResult} />
                 {fit?.kind === "ok" && (
                   <div className="dart__rmse" role="note">
                     <span className="dart__rmse-value">
-                      RMSE {fit.result.rmse_m.toFixed(2)} m
+                      RMSE {fit.result.rmse_m?.toFixed(2)} m
                     </span>
                     <span>
-                      model peak {fit.result.model_peak_m.toFixed(2)} m vs observed{" "}
-                      {fit.result.observed_peak_m.toFixed(2)} m · {fit.result.n_samples} samples
+                      overlap {formatElapsed(fit.result.overlap_start_s ?? 0)}–{formatElapsed(fit.result.overlap_end_s ?? 0)} · {fit.result.n_samples} paired samples
+                    </span>
+                    <span>observed peak {fit.result.observed_peak_m.toFixed(2)} m · model peak {fit.result.model_peak_m.toFixed(2)} m</span>
+                    <span>arrival: {arrivalSummary(fit.result)}</span>
+                    <span>
+                      method: {fit.result.arrival_method}; threshold {(fit.result.arrival_threshold_m * 100).toFixed(0)} cm;
+                      noise: {fit.result.noise_method}
                     </span>
                   </div>
                 )}
                 {fit?.kind === "no-overlap" && (
                   <div className="dart__rmse dart__rmse--muted" role="note">
-                    Solver window ends before this buoy's observations — no RMSE.
+                    <span>No shared observation/model time window — RMSE unavailable.</span>
+                    <span>arrival: {arrivalSummary(fit.result)}</span>
+                    <span>
+                      method: {fit.result.arrival_method}; threshold {(fit.result.arrival_threshold_m * 100).toFixed(0)} cm;
+                      noise: {fit.result.noise_method}
+                    </span>
                   </div>
                 )}
                 {fit?.kind === "error" && (

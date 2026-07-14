@@ -52,6 +52,10 @@
   background: var(--maroon);
 }
 
+.chart-legend i[data-tone="model"] {
+  background: var(--peach);
+}
+
 .chart-legend i[data-tone="cursor"] {
   background: var(--sapphire);
 }

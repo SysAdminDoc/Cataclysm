@@ -1767,7 +1767,6 @@ export default function App() {
           validationContent={<DartOverlay
             presetId={slotA.activePresetId}
             timeS={timeS}
-            initial={slotA.initial}
             sweSnapshots={sweSnapshots}
           />}
         />}
@@ -1790,7 +1789,6 @@ export default function App() {
               validationContent={<DartOverlay
                 presetId={slotB.activePresetId}
                 timeS={timeS}
-                initial={slotB.initial}
                 sweSnapshots={null}
               />}
             />
