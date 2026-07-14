@@ -38,7 +38,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 ### Fixed
 
 - Direct-effect reference captures now wait for the authoritative frame to be
-  projected and synchronously committed by Cesium before screenshotting. Failed
+  projected and committed through Cesium's full Viewer clock/entity-update path
+  before screenshotting. Failed
   Windows release runs also retain the candidate capture evidence, eliminating
   an intermittent camera/new-frame mismatch from the installed-package gate.
 - The deterministic reference-capture harness now submits local-only coordinate

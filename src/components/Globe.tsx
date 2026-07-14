@@ -29,6 +29,7 @@ import type { RendererNeutralFrameView } from "../types/render-protocol";
 import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
+import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
 import { CameraTelemetryController } from "../render/cesium/camera-telemetry";
 import { CesiumCameraTelemetryHost } from "../render/cesium/cesium-camera-telemetry-host";
 import {
@@ -793,18 +794,7 @@ export function Globe({
     controller.update(impactKind ?? null, directRenderFrame);
     if (referenceCaptureEnabled() && directRenderFrame) {
       const committedFrame = `${directRenderFrame.scenario_id}:${directRenderFrame.solver_tick}:${directRenderFrame.sequence.toString()}`;
-      delete document.documentElement.dataset.referenceDirectFrameCommitted;
-      viewer.scene.requestRender();
-      // Reference captures run with requestRenderMode enabled. Render the new
-      // authoritative frame synchronously so the harness never screenshots a
-      // camera update paired with the previous direct-effect primitive state.
-      viewer.scene.render(viewer.clock.currentTime);
-      document.documentElement.dataset.referenceDirectFrameCommitted = committedFrame;
-      return () => {
-        if (document.documentElement.dataset.referenceDirectFrameCommitted === committedFrame) {
-          delete document.documentElement.dataset.referenceDirectFrameCommitted;
-        }
-      };
+      return commitReferenceFrame(viewer, document.documentElement, committedFrame);
     }
     viewer.scene.requestRender();
     return () => {
