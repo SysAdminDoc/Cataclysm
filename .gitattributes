@@ -1,0 +1,4 @@
+# Scientific provenance hashes in src/data/earth-assets.json are byte-exact.
+# Keep their textual targets stable across Windows and Unix checkouts.
+*.json text eol=lf
+*.rs text eol=lf
