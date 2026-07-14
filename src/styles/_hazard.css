@@ -176,6 +176,13 @@
   color: var(--warning-text);
 }
 
+.hazard__casualties-detail {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
 .hazard__casualties-note {
   display: block;
   margin-top: 3px;

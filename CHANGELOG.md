@@ -4,6 +4,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- Nuclear casualty results now show an approximate child (under-15) breakdown of
+  fatalities and injuries, assuming the affected population mirrors the global
+  age structure (~25%, UN World Population Prospects 2024). Labelled a
+  demographic slice, not a differential-vulnerability model.
+
 ### Fixed
 
 - Cancelled solver runs now resolve promptly instead of busy-polling the render

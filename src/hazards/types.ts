@@ -46,6 +46,11 @@ export interface ReadoutItem {
 export interface CasualtyEstimate {
   deaths: number;
   injuries: number;
+  /** Approximate children (under 15) among the fatalities/injuries, assuming the
+   *  affected population mirrors the global age structure (UN WPP 2024, ~25%).
+   *  A demographic slice, not a differential-vulnerability model. */
+  childDeaths: number;
+  childInjuries: number;
   populationDensity: number;
 }
 

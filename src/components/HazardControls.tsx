@@ -405,11 +405,16 @@ export function HazardControls({
             <div className="hazard__casualties">
               <strong>{magnitudeDisplayBand(result.casualties.deaths)}</strong> fatalities ·{" "}
               <strong>{magnitudeDisplayBand(result.casualties.injuries)}</strong> injuries
+              <span className="hazard__casualties-detail">
+                incl. ~<strong>{magnitudeDisplayBand(result.casualties.childDeaths)}</strong> child
+                deaths · ~<strong>{magnitudeDisplayBand(result.casualties.childInjuries)}</strong>{" "}
+                child injuries
+              </span>
               <span className="hazard__casualties-note">
                 Order-of-magnitude display bands around one model estimate—not statistical
                 confidence intervals. Assumes {result.casualties.populationDensity.toLocaleString()} people/km²
-                uniformly distributed, with fixed indoor/outdoor occupancy and shielding factors
-                (educational only).
+                uniformly distributed, with fixed indoor/outdoor occupancy and shielding factors, and
+                a ~25% under-15 share (UN WPP 2024) for the child slice (educational only).
               </span>
             </div>
           )}

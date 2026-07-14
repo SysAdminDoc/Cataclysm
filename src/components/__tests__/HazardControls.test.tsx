@@ -13,7 +13,7 @@ const nuclearResult: HazardResult = {
   center: { lat: 40, lon: -74 },
   rings: [{ label: "Fireball", radiusM: 300, color: "#f5e0dc", category: "fireball" }],
   readout: [{ label: "Fireball radius", value: "300 m" }],
-  casualties: { deaths: 120, injuries: 240, populationDensity: 5000 },
+  casualties: { deaths: 120, injuries: 240, childDeaths: 30, childInjuries: 60, populationDensity: 5000 },
   detail: {
     yieldKt: 100,
     isSurface: false,
@@ -260,7 +260,7 @@ describe("HazardControls", () => {
         center={{ lat: 40, lon: -74 }}
         onTogglePick={noop}
         pickActive={false}
-        result={{ ...nuclearResult, casualties: { deaths: 112019, injuries: 264055, populationDensity: 5000 } }}
+        result={{ ...nuclearResult, casualties: { deaths: 112019, injuries: 264055, childDeaths: 28005, childInjuries: 66014, populationDensity: 5000 } }}
         windFromDeg={270}
         onWindChange={noop}
         onDetonate={noop}

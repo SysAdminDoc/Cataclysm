@@ -40,11 +40,22 @@ pub struct ReadoutItem {
     pub hint: Option<String>,
 }
 
+/// Share of the global population under age 15 (UN World Population Prospects
+/// 2024 revision: ~25%). Used to report an approximate child slice of casualties
+/// assuming the affected population mirrors the global age structure — a
+/// demographic breakdown, not a differential-vulnerability model.
+const GLOBAL_UNDER15_FRACTION: f64 = 0.25;
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CasualtyEstimate {
     pub deaths: u64,
     pub injuries: u64,
+    /// Approximate children (under 15) among the fatalities, assuming the
+    /// affected population mirrors the global age structure. Demographic slice,
+    /// not a separate vulnerability model.
+    pub child_deaths: u64,
+    pub child_injuries: u64,
     pub population_density: f64,
 }
 
@@ -1085,9 +1096,13 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
         injuries += ((outdoor * outdoor_injury + indoor * indoor_injury) * shield).round();
         previous_area = area;
     }
+    let deaths = deaths.max(0.0);
+    let injuries = injuries.max(0.0);
     CasualtyEstimate {
-        deaths: deaths.max(0.0).round() as u64,
-        injuries: injuries.max(0.0).round() as u64,
+        deaths: deaths.round() as u64,
+        injuries: injuries.round() as u64,
+        child_deaths: (deaths * GLOBAL_UNDER15_FRACTION).round() as u64,
+        child_injuries: (injuries * GLOBAL_UNDER15_FRACTION).round() as u64,
         population_density: density,
     }
 }
@@ -1479,6 +1494,9 @@ mod tests {
         // the 4.4–8.2 km thermal band at the 1 psi lethality) to 98_691.
         assert_eq!(casualties.deaths, 98_691);
         assert_eq!(casualties.injuries, 329_644);
+        // Child slice ≈ 25% of the global age structure (UN WPP 2024).
+        assert_eq!(casualties.child_deaths, 24_673);
+        assert_eq!(casualties.child_injuries, 82_411);
         let HazardDetail::Nuclear(detail) = result.detail else {
             panic!("wrong detail");
         };

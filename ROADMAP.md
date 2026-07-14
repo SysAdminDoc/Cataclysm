@@ -577,21 +577,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
   source; empty and stale states are explicit.
   Complexity: M
 
-- [ ] P2 — Add a child-casualty / demographic breakdown metric
-  Why: NUKEMAP's 2026 roadmap breaks out child casualties as a distinct metric;
-  a demographic slice over the population raster is cheap and pedagogically
-  powerful, and pairs with the institutions-in-zone feature.
-  Evidence: NUKEMAP 2026 roadmap https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/;
-  `src-tauri/src/physics/direct_hazard.rs` casualty model; existing population
-  density input.
-  Touches: cited demographic fraction(s), casualty result type, results view,
-  uncertainty copy, references.
-  Acceptance: casualty results optionally show an estimated child (and/or other
-  cited demographic) breakdown with its assumption and source; the split is
-  labelled approximate with a stated demographic fraction; exports record it; the
-  breakdown never implies precision the model lacks.
-  Complexity: S
-
 - [ ] P2 — Exploit WebGPU subgroups/f16 and add a timestamp-query GPU profiler
   Why: subgroups accelerate the GPU-resident max-field and flux reductions, f16
   storage halves bandwidth on the memory-bound SWE stencil, and timestamp queries
