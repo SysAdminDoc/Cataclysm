@@ -104,10 +104,17 @@ impl OkadaFault {
             }
         }
 
+        // Georeference cell (0,0) — the grid's south-west corner (its centre
+        // sits at east/north offset `-(n/2 - 0.5)·dx` from the fault centre).
+        // Latitude and longitude must use the SAME half-grid shift so a
+        // consumer treating `(origin_lat, origin_lon)` as the SW corner does not
+        // misregister the field. Longitude metres convert with a cos(lat) term;
+        // latitude does not.
         let lat_per_m = 360.0 / (2.0 * std::f64::consts::PI * R_EARTH_M);
+        let lon_per_m = lat_per_m / self.center_lat.to_radians().cos().abs().max(1e-6);
         OkadaDisplacementField {
             origin_lat: self.center_lat - (ny as f64 * 0.5) * dx_m * lat_per_m,
-            origin_lon: self.center_lon,
+            origin_lon: self.center_lon - (nx as f64 * 0.5) * dx_m * lon_per_m,
             dx_m,
             nx,
             ny,
@@ -342,6 +349,53 @@ mod tests {
             max_uz
         );
         assert!(min_uz < 0.0, "expected subsidence somewhere on grid");
+    }
+
+    /// The georeferenced `(origin_lat, origin_lon)` must point at the grid's
+    /// south-west corner cell (0,0), with the longitude shift converted through
+    /// cos(lat). Regression for the origin_lon-left-at-centre bug.
+    #[test]
+    fn origin_georeferences_south_west_corner_with_cos_lat() {
+        let f = OkadaFault {
+            center_lat: 38.0,
+            center_lon: 142.0,
+            depth_m: 20_000.0,
+            length_m: 100_000.0,
+            width_m: 50_000.0,
+            strike_deg: 0.0,
+            dip_deg: 20.0,
+            rake_deg: 90.0,
+            slip_m: 5.0,
+        };
+        let (nx, ny, dx) = (40usize, 30usize, 5_000.0);
+        let field = f.vertical_displacement_field(nx, ny, dx);
+        let lat_per_m = 360.0 / (2.0 * std::f64::consts::PI * R_EARTH_M);
+        let lon_per_m = lat_per_m / f.center_lat.to_radians().cos();
+        let expected_lat = f.center_lat - (ny as f64 * 0.5) * dx * lat_per_m;
+        let expected_lon = f.center_lon - (nx as f64 * 0.5) * dx * lon_per_m;
+        assert!(
+            (field.origin_lat - expected_lat).abs() < 1e-9,
+            "origin_lat {} != expected {}",
+            field.origin_lat,
+            expected_lat
+        );
+        assert!(
+            (field.origin_lon - expected_lon).abs() < 1e-9,
+            "origin_lon {} != expected {} (was left at grid centre?)",
+            field.origin_lon,
+            expected_lon
+        );
+        // South-west of centre, and longitude degrees stretch faster than
+        // latitude at 38°N because cos(lat) < 1.
+        assert!(field.origin_lon < f.center_lon && field.origin_lat < f.center_lat);
+        let lon_shift_per_cell = (f.center_lon - field.origin_lon) / (nx as f64 * 0.5);
+        let lat_shift_per_cell = (f.center_lat - field.origin_lat) / (ny as f64 * 0.5);
+        assert!(
+            lon_shift_per_cell > lat_shift_per_cell,
+            "cos(lat) not applied to longitude ({} !> {})",
+            lon_shift_per_cell,
+            lat_shift_per_cell
+        );
     }
 
     /// Strike-slip vertical bound: the surface u_z at the fault centre

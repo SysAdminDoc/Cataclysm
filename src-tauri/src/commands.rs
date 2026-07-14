@@ -920,6 +920,10 @@ const SWE_MAX_T_END_S: f64 = 24.0 * 3600.0;
 const RUNUP_MAX_POINTS: usize = 2_000;
 /// Hard cap on wavefront sample count.
 const WAVEFRONT_MAX_SAMPLES: usize = 2_000;
+/// Minimum analytical-basin depth. Below this the leapfrog CFL and celerity
+/// become unrepresentative; the solver used to silently clamp requests up to
+/// this floor, diverging the simulated depth from the reported one.
+const SWE_MIN_MEAN_DEPTH_M: f64 = 50.0;
 
 fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.source.lat_deg.is_finite() || req.source.lat_deg.abs() > 90.0 {
@@ -942,6 +946,32 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     }
     if !req.mean_depth_m.is_finite() || req.mean_depth_m < 0.0 || req.mean_depth_m > 12_000.0 {
         return Err("mean_depth_m must be finite and in [0, 12 000 m]".into());
+    }
+    // The analytical basin is simulated at exactly `mean_depth_m`; a sub-floor
+    // request was previously clamped to the floor while every readout still
+    // reported the request. Reject it so the simulated depth always equals the
+    // reported/exported depth. Real-bathymetry runs ignore this field.
+    if !req.use_real_bathymetry && req.mean_depth_m < SWE_MIN_MEAN_DEPTH_M {
+        return Err(format!(
+            "mean_depth_m must be at least {} m for the analytical basin (or enable real bathymetry)",
+            SWE_MIN_MEAN_DEPTH_M
+        ));
+    }
+    // A box that crosses the ±180° antimeridian cannot be expressed as a single
+    // in-frame Cesium rectangle; the previous code normalized only the centre
+    // and emitted a degenerate out-of-frame bbox (e.g. west = -235°). Reject it
+    // until seamless dateline transport lands (tracked separately) so the box is
+    // never silently cropped or inverted.
+    {
+        let lon_n = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
+        if lon_n - req.box_half_size_deg < -180.0 || lon_n + req.box_half_size_deg > 180.0 {
+            return Err(
+                "simulation box crosses the ±180° antimeridian — move the source away from the \
+                 dateline or reduce box_half_size_deg (seamless dateline transport is tracked \
+                 separately)"
+                    .into(),
+            );
+        }
     }
     if !(req.box_half_size_deg.is_finite()
         && req.box_half_size_deg > 0.0
@@ -1052,7 +1082,7 @@ pub async fn simulate_grid(
             "viridis" => Colormap::Viridis,
             _ => Colormap::Diverging,
         };
-        let fallback_depth = req.mean_depth_m.max(50.0);
+        let fallback_depth = req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M);
         if req.use_real_bathymetry {
             grid.fill_bathymetry_from(|lat, lon| {
                 let d = crate::data::bathymetry::sample(lat, lon);
@@ -1237,7 +1267,7 @@ pub async fn simulate_grid_streaming(
                 "viridis" => Colormap::Viridis,
                 _ => Colormap::Diverging,
             };
-            let fallback_depth = req.mean_depth_m.max(50.0);
+            let fallback_depth = req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M);
             if req.use_real_bathymetry {
                 grid.fill_bathymetry_from(|lat, lon| {
                     let d = crate::data::bathymetry::sample(lat, lon);
@@ -2613,6 +2643,75 @@ mod tests {
             gauge_points: vec![],
         });
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn simulate_grid_rejects_sub_floor_analytical_depth() {
+        // Below the 50 m floor with the analytical basin: must be rejected, not
+        // silently clamped, so the simulated depth equals the reported one.
+        let res = validate_simulate_grid(&SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 10.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "viridis".to_string(),
+            gauge_points: vec![],
+        });
+        assert!(res.is_err(), "sub-floor analytical depth must be rejected");
+        // The same sub-floor depth is fine when real bathymetry drives the basin.
+        let ok = validate_simulate_grid(&SimulateGridRequest {
+            source: good_loc(),
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 10.0,
+            use_real_bathymetry: true,
+            box_half_size_deg: 2.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "viridis".to_string(),
+            gauge_points: vec![],
+        });
+        assert!(ok.is_ok());
+    }
+
+    #[test]
+    fn simulate_grid_rejects_antimeridian_crossing_box() {
+        // A source at 179°E with a 5° half-box crosses ±180 and cannot form a
+        // single in-frame Cesium rectangle — reject rather than emit a degenerate
+        // out-of-frame bbox.
+        let res = validate_simulate_grid(&SimulateGridRequest {
+            source: GeoPoint {
+                lat_deg: 0.0,
+                lon_deg: 179.0,
+                depth_m: 4_000.0,
+            },
+            initial_amplitude_m: 1.0,
+            source_sigma_m: 1_000.0,
+            mean_depth_m: 4_000.0,
+            use_real_bathymetry: false,
+            box_half_size_deg: 5.0,
+            cells_per_deg: 1.0,
+            t_end_s: 60.0,
+            n_snapshots: 2,
+            include_lamb_wave: false,
+            lamb_wave_peak_pressure_pa: None,
+            lamb_wave_source_radius_m: None,
+            colormap: "viridis".to_string(),
+            gauge_points: vec![],
+        });
+        assert!(res.is_err(), "antimeridian-crossing box must be rejected");
     }
 
     #[test]

@@ -1020,7 +1020,11 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
     } else {
         1.0
     };
-    let zones = [
+    // Effect radii come from independent blast/thermal/radiation scalings and
+    // are NOT guaranteed to be monotone (e.g. thermal_1 can exceed psi_1 for
+    // large airbursts). Sort by radius ascending so the running-annulus
+    // accumulation never drops a real ring or double-counts an overlap.
+    let mut zones = [
         (effects.fireball, 1.0, 1.0, 1.0, 0.0, 0.0),
         (effects.psi_200, 0.98, 0.9, 0.8, 0.02, 0.05),
         (effects.psi_20, 0.85, 0.6, 0.3, 0.12, 0.15),
@@ -1035,10 +1039,11 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
         ),
         (effects.psi_1, 0.02, 0.05, 0.0, 0.2, 0.15),
         // 0.25 psi light-damage annulus: no lethality, a small glass-cut injury
-        // fraction. Ordered after psi_1 so the running annulus stays monotone.
+        // fraction.
         (effects.psi_0_25, 0.0, 0.0, 0.0, 0.03, 0.0),
         (effects.thermal_1, 0.0, 0.01, 0.0, 0.05, 0.1),
     ];
+    zones.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     let mut deaths = 0.0;
     let mut injuries = 0.0;
     let mut previous_area = 0.0;
@@ -1072,20 +1077,29 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
 /// Glasstone & Dolan radiation scaling; ~50% of the population in the outer
 /// dose rings is assumed to survive the prompt blast/thermal effects.
 fn latent_cancer(effects: &NuclearEffects, density: f64) -> LatentCancerEstimate {
-    // (radius_km, whole-body dose in Sv) from innermost to outermost.
-    let zones = [
+    // (radius_km, whole-body dose in Sv). Doses are labelled innermost→outermost
+    // but the radii come from independent scalings and can invert (e.g. the
+    // 500-rem radius can exceed the 1-psi radius for low-yield/enhanced-radiation
+    // cases). Sort by radius ascending so annuli are non-negative, and cap each
+    // ring's dose to be non-increasing outward so a mis-ordered radius cannot
+    // assign a high dose to an outer ring and inflate the cancer estimate.
+    let mut zones: [(f64, f64); 3] = [
         (effects.radiation, 5.0), // ~500 rem at the 500-rem radius edge
         (effects.psi_1, 0.5),     // ~50 rem near the 1 psi boundary
         (effects.thermal_1, 0.1), // ~10 rem near the 1st-degree burn edge
     ];
+    zones.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     let mut exposed = 0.0;
     let mut cancers_10 = 0.0;
     let mut cancers_30 = 0.0;
     let mut prev_area = 0.0;
+    let mut prev_dose = f64::INFINITY;
     for (radius, dose) in zones {
         if radius < 0.001 {
             continue;
         }
+        let dose = dose.min(prev_dose);
+        prev_dose = dose;
         let area = std::f64::consts::PI * radius * radius;
         let ring = (area - prev_area).max(0.0);
         let pop = ring * density * 0.5; // survivors only
@@ -1317,6 +1331,78 @@ mod tests {
         }
     }
 
+    /// A `NuclearEffects` with a deliberate radius inversion: `thermal_1` (5 km)
+    /// is smaller than `psi_0_25` (8 km) yet appears after it in the zone array,
+    /// and `radiation` (8 km) is larger than `psi_1` (2 km). Exercises the
+    /// ring-ordering fix.
+    fn inverted_effects() -> NuclearEffects {
+        NuclearEffects {
+            yield_kt: 100.0,
+            is_surface: false,
+            is_water: false,
+            fireball: 0.1,
+            psi_200: 0.3,
+            psi_20: 0.6,
+            psi_5: 1.0,
+            psi_3: 1.2,
+            psi_1: 2.0,
+            psi_0_25: 8.0,
+            thermal_3: 1.3,
+            thermal_1: 5.0,
+            radiation: 8.0,
+            neutron_rad: 0.0,
+            gamma_rad: 0.0,
+            crater_r: 0.0,
+            cloud_top_h: 0.0,
+            optimal_height: 0.0,
+            wave_height: 0.0,
+            fallout: None,
+            flash_blind_day: 0.0,
+            flash_blind_night: 0.0,
+            firestorm_r: 0.0,
+        }
+    }
+
+    /// Regression: an out-of-order `thermal_1` ring must still be counted rather
+    /// than dropped by a negative `(area - previous_area)` term. Removing
+    /// `thermal_1` must strictly reduce injuries; the old unsorted code counted
+    /// the same value either way.
+    #[test]
+    fn casualty_rings_count_out_of_order_zones() {
+        let density = 1_000.0;
+        let with = nuclear_casualties(&inverted_effects(), density);
+        let mut without = inverted_effects();
+        without.thermal_1 = 0.0;
+        let without = nuclear_casualties(&without, density);
+        assert!(with.injuries >= without.injuries);
+        assert!(
+            with.injuries > without.injuries,
+            "thermal_1 ring was dropped: {} !> {}",
+            with.injuries,
+            without.injuries
+        );
+        assert!(with.deaths < density as u64 * 1_000); // sane, finite
+    }
+
+    /// Regression: latent-cancer rings must partition the whole exposed disc
+    /// (union up to the largest radius) with no dropped negative annulus, so the
+    /// exposed count equals 0.5·density·π·maxR² regardless of zone order.
+    #[test]
+    fn latent_cancer_rings_conserve_exposed_population() {
+        let density = 1_000.0;
+        let est = latent_cancer(&inverted_effects(), density);
+        let max_r = 8.0_f64; // radiation radius, the largest zone
+        let expected = 0.5 * density * std::f64::consts::PI * max_r * max_r;
+        assert!(
+            (est.exposed as f64 - expected).abs() <= expected * 0.001 + 1.0,
+            "exposed {} != conserved {} (dropped ring?)",
+            est.exposed,
+            expected
+        );
+        // The dose cap keeps the estimate physical (non-inflated).
+        assert!(est.cancers_30yr as f64 <= est.exposed as f64);
+    }
+
     #[test]
     fn nuclear_parity_calibrations_and_timeline_are_rust_authoritative() {
         let ten = nuclear_effects(&NuclearHazardRequest {
@@ -1339,12 +1425,14 @@ mod tests {
         .unwrap();
         assert_eq!(result.authority, "rust");
         let casualties = result.casualties.as_ref().expect("casualty product");
-        // Deaths frozen from the final TypeScript implementation before removal.
-        // Injuries were re-frozen when the 0.25 psi light-damage band was added
-        // (glass-cut annulus, zero lethality) — that band dominates the
-        // affected-population count, so injuries rose from 264_055 to 387_883.
-        assert_eq!(casualties.deaths, 112_019);
-        assert_eq!(casualties.injuries, 387_883);
+        // Re-frozen after the ring-ordering fix: effect radii are now sorted
+        // ascending before annulus accumulation, so each band is assigned the
+        // most-severe threshold it actually satisfies and no out-of-order ring
+        // (here thermal_1 < psi_1 with psi_0_25 between them) is dropped or
+        // mis-weighted. Deaths fell from the pre-fix 112_019 (which over-counted
+        // the 4.4–8.2 km thermal band at the 1 psi lethality) to 98_691.
+        assert_eq!(casualties.deaths, 98_691);
+        assert_eq!(casualties.injuries, 329_644);
         let HazardDetail::Nuclear(detail) = result.detail else {
             panic!("wrong detail");
         };

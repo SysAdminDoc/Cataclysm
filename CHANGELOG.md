@@ -4,6 +4,28 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+
+- Nuclear casualty and latent-cancer estimates now sort effect radii ascending
+  before accumulating concentric annuli, so an out-of-order ring (for example
+  `thermal_1` falling inside `psi_1` for large airbursts) is no longer dropped by
+  a negative area term or mis-assigned an inner zone's lethality. Headline
+  numbers change where radii were previously mis-ordered — a 100 kt surface burst
+  at 5 000 /km² now reports 98 691 deaths / 329 644 injuries (was 112 019 /
+  387 883, which over-counted the 4.4–8.2 km thermal band at 1 psi lethality).
+- Rejected sub-floor analytical-basin depths (`mean_depth_m` below 50 m) instead
+  of silently clamping them to 50 m, so the simulated depth — and therefore CFL,
+  celerity, arrival times, gauges, and exports — always matches the reported
+  request. Real-bathymetry runs are unaffected.
+- Rejected simulation boxes that cross the ±180° antimeridian instead of emitting
+  a degenerate out-of-frame Cesium rectangle (previously the box centre was
+  normalized but the span was not, producing west longitudes below −180°).
+  Seamless dateline transport remains tracked separately.
+- Fixed the Okada seafloor displacement field georeferencing its south-west
+  corner: `origin_lon` was left at the grid centre and the longitude spacing
+  omitted the `cos(lat)` term, so a consumer treating `(origin_lat, origin_lon)`
+  as the corner would misregister the uplift by up to half a grid width.
+
 ## [0.10.4] — 2026-07-13 — Simulation admission fix
 
 ### Fixed
