@@ -1173,12 +1173,12 @@ struct SimulationGridPlan {
 
 impl SimulationGridPlan {
     fn from_request(req: &SimulateGridRequest) -> Result<Self, String> {
-        let lat = req.source.lat_deg.clamp(-80.0, 80.0);
+        let lat = req.source.lat_deg.clamp(-90.0, 90.0);
         let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
         let half = req.box_half_size_deg;
         let cell_deg = 1.0 / req.cells_per_deg;
-        let south = (lat - half).max(-89.0);
-        let north = (lat + half).min(89.0);
+        let south = (lat - half).max(-90.0);
+        let north = (lat + half).min(90.0);
         let west = lon - half;
         let east = lon + half;
         let nx = ((east - west) / cell_deg).round().max(2.0) as usize;
@@ -1314,36 +1314,11 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             SWE_MIN_MEAN_DEPTH_M
         ));
     }
-    // A box that crosses the ±180° antimeridian cannot be expressed as a single
-    // in-frame Cesium rectangle; the previous code normalized only the centre
-    // and emitted a degenerate out-of-frame bbox (e.g. west = -235°). Reject it
-    // until seamless dateline transport lands (tracked separately) so the box is
-    // never silently cropped or inverted.
-    {
-        let lon_n = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
-        if lon_n - req.box_half_size_deg < -180.0 || lon_n + req.box_half_size_deg > 180.0 {
-            return Err(
-                "simulation box crosses the ±180° antimeridian — move the source away from the \
-                 dateline or reduce box_half_size_deg (seamless dateline transport is tracked \
-                 separately)"
-                    .into(),
-            );
-        }
-    }
     if !(req.box_half_size_deg.is_finite()
         && req.box_half_size_deg > 0.0
         && req.box_half_size_deg <= 60.0)
     {
         return Err("box_half_size_deg must be in (0, 60]".into());
-    }
-    if req.source.lat_deg - req.box_half_size_deg < -90.0
-        || req.source.lat_deg + req.box_half_size_deg > 90.0
-    {
-        return Err(
-            "simulation box crosses a geographic pole — move the source away from the pole or \
-             reduce box_half_size_deg (polar tiled transport is tracked separately)"
-                .into(),
-        );
     }
     if !(req.cells_per_deg.is_finite() && req.cells_per_deg > 0.0 && req.cells_per_deg <= 200.0) {
         return Err("cells_per_deg must be in (0, 200]".into());
@@ -3247,14 +3222,11 @@ mod tests {
     }
 
     #[test]
-    fn simulate_grid_rejects_antimeridian_crossing_box() {
-        // A source at 179°E with a 5° half-box crosses ±180 and cannot form a
-        // single in-frame Cesium rectangle — reject rather than emit a degenerate
-        // out-of-frame bbox.
-        let res = validate_simulate_grid(&SimulateGridRequest {
+    fn simulate_grid_tiles_antimeridian_crossing_box() {
+        let request = SimulateGridRequest {
             source: GeoPoint {
                 lat_deg: 0.0,
-                lon_deg: 179.0,
+                lon_deg: 179.5,
                 depth_m: 4_000.0,
             },
             initial_amplitude_m: 1.0,
@@ -3271,17 +3243,45 @@ mod tests {
             lamb_wave_source_radius_m: None,
             colormap: "viridis".to_string(),
             gauge_points: vec![],
-        });
-        assert!(res.is_err(), "antimeridian-crossing box must be rejected");
+        };
+        validate_simulate_grid(&request).expect("antimeridian box must be supported");
+        let plan = SimulationGridPlan::from_request(&request).unwrap();
+        let grid = SwGrid::new(
+            plan.west,
+            plan.south,
+            plan.east,
+            plan.north,
+            plan.cell_deg,
+            plan.cell_deg,
+        );
+        let tiles = grid.field_tiles().unwrap();
+        assert_eq!(tiles.len(), 2);
+        assert_eq!(
+            tiles.iter().map(|tile| tile.column_count).sum::<u32>(),
+            grid.nx as u32
+        );
+        assert_eq!(tiles[0].bbox[2], 180.0);
+        assert_eq!(tiles[1].bbox[0], -180.0);
     }
 
     #[test]
-    fn simulate_grid_rejects_pole_crossing_box() {
+    fn simulate_grid_tiles_polar_box() {
         let mut request = source_grid_request(None);
         request.source.lat_deg = 88.0;
-        request.box_half_size_deg = 5.0;
-        let error = validate_simulate_grid(&request).expect_err("pole-crossing box must fail");
-        assert!(error.contains("geographic pole"), "{error}");
+        request.box_half_size_deg = 20.0;
+        validate_simulate_grid(&request).expect("polar box must be supported");
+        let plan = SimulationGridPlan::from_request(&request).unwrap();
+        assert_eq!(plan.north, 90.0);
+        assert!(plan.south <= request.source.lat_deg);
+        let grid = SwGrid::new(
+            plan.west,
+            plan.south,
+            plan.east,
+            plan.north,
+            plan.cell_deg,
+            plan.cell_deg,
+        );
+        assert!(grid.field_tiles().unwrap().len() > 1);
     }
 
     #[test]

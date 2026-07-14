@@ -30,6 +30,7 @@ import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
 import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
+import { resolveSweImageryTiles } from "../render/cesium/swe-field-tiles";
 import { CameraTelemetryController } from "../render/cesium/camera-telemetry";
 import { CesiumCameraTelemetryHost } from "../render/cesium/cesium-camera-telemetry-host";
 import {
@@ -131,8 +132,8 @@ type Props = {
 };
 
 type SweImageryResource = {
-  provider: Cesium.SingleTileImageryProvider;
-  layer: Cesium.ImageryLayer | null;
+  providers: Cesium.SingleTileImageryProvider[];
+  layers: Cesium.ImageryLayer[];
 };
 function CoordEntryForm({
   onSubmit,
@@ -421,10 +422,12 @@ export function Globe({
     lifecycle.ownSystem(() => imageryController.destroy());
     const sweCoordinator = new AsyncResourceCoordinator<SweImageryResource>({
       dispose: (resource) => {
-        if (resource.layer && !viewer.isDestroyed()) {
-          viewer.imageryLayers.remove(resource.layer, true);
+        if (!viewer.isDestroyed()) {
+          for (const layer of resource.layers) {
+            viewer.imageryLayers.remove(layer, true);
+          }
         }
-        resource.layer = null;
+        resource.layers.length = 0;
       },
     });
     sweCoordinatorRef.current = {
@@ -828,40 +831,39 @@ export function Globe({
     const ownership = sweCoordinatorRef.current;
     if (!viewer || !ownership) return;
 
-    if (!sweSnapshot || !sweSnapshot.eta_png_b64) {
+    if (!sweSnapshot || (!sweSnapshot.eta_png_b64 && !sweSnapshot.field_tiles?.length)) {
       ownership.coordinator.invalidate("snapshot_cleared");
       return;
     }
 
-    const [west, south, east, north] = sweSnapshot.bbox;
-    // Cesium.Rectangle requires longitudes in [-180, 180] and lat in [-90, 90].
-    // Clamp defensively so a near-dateline scenario doesn't construct an
-    // invalid rectangle and blank-screen the whole scene.
-    const w = Math.max(-180, Math.min(180, west));
-    const e = Math.max(-180, Math.min(180, east));
-    const s = Math.max(-90, Math.min(90, south));
-    const n = Math.max(-90, Math.min(90, north));
-    // NaN slips through Math.max/min and through `e <= w` (NaN comparisons are
-    // always false), and a NaN rectangle makes Cesium throw / blank the scene.
-    // Require all four edges finite and properly ordered before constructing it.
-    if (![w, e, s, n].every(Number.isFinite) || e <= w || n <= s) return;
-
-    const url = `data:image/png;base64,${sweSnapshot.eta_png_b64}`;
+    const tiles = resolveSweImageryTiles(sweSnapshot);
+    if (tiles.length === 0) {
+      ownership.coordinator.invalidate("invalid_snapshot_tiles");
+      console.warn("[globe] SWE snapshot has no complete non-wrapping imagery layout");
+      return;
+    }
     void ownership.coordinator
       .replace(
         ownership.generation,
         async () => ({
-          provider: await Cesium.SingleTileImageryProvider.fromUrl(url, {
-            rectangle: Cesium.Rectangle.fromDegrees(w, s, e, n),
-          }),
-          layer: null,
+          providers: await Promise.all(tiles.map((tile) => {
+            const [west, south, east, north] = tile.bbox;
+            return Cesium.SingleTileImageryProvider.fromUrl(
+              `data:image/png;base64,${tile.pngBase64}`,
+              { rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north) },
+            );
+          })),
+          layers: [],
         }),
         (resource) => {
           if (viewerRef.current !== viewer || viewer.isDestroyed()) {
             throw new Error("SWE imagery viewer generation is stale.");
           }
-          resource.layer = viewer.imageryLayers.addImageryProvider(resource.provider);
-          resource.layer.alpha = 0.9;
+          for (const provider of resource.providers) {
+            const layer = viewer.imageryLayers.addImageryProvider(provider);
+            layer.alpha = 0.9;
+            resource.layers.push(layer);
+          }
         },
       )
       .catch((err) => {
@@ -900,6 +902,7 @@ export function Globe({
         ref={containerRef}
         data-imagery-status={imageryStatus}
         data-imagery-style={activeImageryStyle ?? "none"}
+        data-swe-field-tiles={sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
       />
       {pickMode && (
         <div className="app__globe-pickbanner">

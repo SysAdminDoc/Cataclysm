@@ -207,8 +207,17 @@ mod tests {
             unreachable!()
         };
         frame.fields[0].grid.nx = 0;
+        frame.fields[0].grid.tiles.clear();
         let forged = forge_packet(&PacketHeaderV1::Frame(frame), &decoded.payload, 1);
         assert!(decode_packet(&forged).unwrap_err().contains("shape"));
+
+        let decoded = golden_frame();
+        let PacketHeaderV1::Frame(mut frame) = decoded.header else {
+            unreachable!()
+        };
+        frame.fields[0].grid.tiles[0].column_count -= 1;
+        let forged = forge_packet(&PacketHeaderV1::Frame(frame), &decoded.payload, 1);
+        assert!(decode_packet(&forged).unwrap_err().contains("tile layout"));
 
         let decoded = golden_frame();
         let PacketHeaderV1::Frame(mut frame) = decoded.header else {
@@ -231,6 +240,55 @@ mod tests {
                 .unwrap_err()
                 .contains("non-finite")
         );
+    }
+
+    #[test]
+    fn dateline_field_tiles_preserve_raw_eta_velocity_and_bathymetry_payloads() {
+        let mut grid = SwGrid::new(174.53, -1.0, 184.53, 1.0, 0.1, 0.5);
+        for index in 0..grid.eta_m.len() {
+            grid.eta_m[index] = index as f64 * 0.125 - 2.0;
+            grid.u_ms[index] = index as f64 * 0.25;
+            grid.v_ms[index] = -(index as f64) * 0.5;
+            grid.h_m[index] = 1_000.0 + index as f64;
+        }
+        let packet = frame_packet_from_grid("dateline", &"a".repeat(64), &grid, 1.0, 1)
+            .expect("encode dateline frame");
+        let decoded = decode_packet(&packet).expect("decode dateline frame");
+        let PacketHeaderV1::Frame(frame) = decoded.header else {
+            panic!("expected frame")
+        };
+        assert!(frame.fields.iter().all(|field| field.grid.tiles.len() == 2));
+        assert!(frame.fields.iter().all(|field| {
+            field
+                .grid
+                .tiles
+                .iter()
+                .map(|tile| tile.column_count)
+                .sum::<u32>()
+                == grid.nx as u32
+        }));
+        for (field_id, source) in [
+            ("eta", grid.eta_m.as_slice()),
+            ("velocity_east", grid.u_ms.as_slice()),
+            ("velocity_north", grid.v_ms.as_slice()),
+            ("bathymetry", grid.h_m.as_slice()),
+        ] {
+            let descriptor = frame
+                .fields
+                .iter()
+                .find(|field| field.id == field_id)
+                .unwrap();
+            let start = descriptor.byte_offset as usize;
+            let values = decoded.payload[start..start + descriptor.byte_length as usize]
+                .chunks_exact(4)
+                .map(|bytes| f32::from_le_bytes(bytes.try_into().unwrap()))
+                .collect::<Vec<_>>();
+            assert_eq!(values.len(), source.len());
+            assert!(values.iter().zip(source).all(|(actual, expected)| {
+                (*actual as f64 - *expected).abs()
+                    <= descriptor.maximum_abs_conversion_error.unwrap()
+            }));
+        }
     }
 
     #[test]

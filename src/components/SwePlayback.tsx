@@ -63,6 +63,16 @@ function overlaySnapshot(product: MaxFieldProduct, choice: OverlayChoice): GridS
     eta_max_m: product.peak_abs_max_m,
     eta_abs_max_m: product.peak_abs_max_m,
     eta_png_b64: png,
+    field_tiles: product.field_tiles?.map((tile) => ({
+      column_offset: tile.column_offset,
+      column_count: tile.column_count,
+      bbox: tile.bbox,
+      eta_png_b64: choice === "peak"
+        ? tile.peak_png_b64
+        : choice === "t_of_max"
+          ? tile.t_of_max_png_b64
+          : tile.energy_png_b64,
+    })),
   };
 }
 

@@ -156,6 +156,35 @@ describe("canonical packet validation", () => {
     await expectDecodeCode(decodeRenderPacket(frame.subarray(0, frame.length - 1)), "length_mismatch");
   });
 
+  it("accepts complete field tile addressing and rejects incomplete coverage", async () => {
+    const frame = splitRenderRecording(fixture)[1];
+    const parts = packetParts(frame);
+    const tiled = clone(parts.header);
+    const grid = ((tiled.fields as Header[])[0]).grid as Header;
+    const nx = grid.nx as number;
+    const ny = grid.ny as number;
+    const dlon = grid.dlon_deg as number;
+    const dlat = grid.dlat_deg as number;
+    const west = (grid.west_cell_center_lon_deg as number) - 0.5 * dlon;
+    const south = (grid.south_cell_center_lat_deg as number) - 0.5 * dlat;
+    grid.tiles = [{
+      column_offset: 0,
+      column_count: nx,
+      bbox: [west, south, west + nx * dlon, south + ny * dlat],
+    }];
+
+    const decoded = await decodeRenderPacket(forgePacket(frame, tiled, parts.payload));
+    if (decoded.kind !== "frame") throw new Error("expected frame");
+    expect(decoded.header.fields[0].grid.tiles).toEqual(grid.tiles);
+
+    const incomplete = clone(tiled);
+    ((((incomplete.fields as Header[])[0]).grid as Header).tiles as Header[])[0].column_count = nx - 1;
+    await expectDecodeCode(
+      decodeRenderPacket(forgePacket(frame, incomplete, parts.payload)),
+      "invalid_grid",
+    );
+  });
+
   it("enforces protocol versions, minimum reader minor, features, and keyframe flags", async () => {
     const frame = splitRenderRecording(fixture)[1];
     const parts = packetParts(frame);

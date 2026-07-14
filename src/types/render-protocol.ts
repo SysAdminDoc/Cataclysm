@@ -114,6 +114,12 @@ export type VerticalDatumV1 =
   | "local_enu";
 export type VerticalAxisV1 = "positive_up" | "positive_down";
 
+export type GeographicFieldTileV1 = Readonly<{
+  column_offset: number;
+  column_count: number;
+  bbox: readonly [number, number, number, number];
+}>;
+
 export type GridGeometryV1 = Readonly<{
   nx: number;
   ny: number;
@@ -124,6 +130,7 @@ export type GridGeometryV1 = Readonly<{
   row_order: string;
   cell_registration: string;
   longitude_wrap: string;
+  tiles: readonly GeographicFieldTileV1[];
 }>;
 
 export type FieldDescriptorV1 = Readonly<{

@@ -725,6 +725,61 @@ function makeDemoWavefront(
   return { time_s: timeS, ranges_m, amplitudes_m };
 }
 
+type DemoFieldTileLayout = {
+  column_offset: number;
+  column_count: number;
+  bbox: [number, number, number, number];
+};
+
+function alignDemoGridWest(west: number, nx: number, dlon: number): number {
+  const width = nx * dlon;
+  while (west + width <= -180) west += 360;
+  while (west >= 180) west -= 360;
+  const boundary = west < -180 ? -180 : west + width > 180 ? 180 : null;
+  if (boundary !== null) {
+    const columns = Math.max(1, Math.min(nx - 1, Math.round((boundary - west) / dlon)));
+    west = boundary - columns * dlon;
+  }
+  return west;
+}
+
+function demoFieldTiles(
+  west: number,
+  south: number,
+  nx: number,
+  ny: number,
+  dlon: number,
+  dlat: number,
+): DemoFieldTileLayout[] {
+  const north = south + ny * dlat;
+  const maximumColumns = Math.max(
+    1,
+    south === -90 || north === 90 || Math.max(Math.abs(south), Math.abs(north)) >= 60
+      ? Math.floor(15 / dlon)
+      : nx,
+  );
+  const normalize = (longitude: number, east: boolean) => {
+    const wrapped = ((longitude + 180) % 360 + 360) % 360 - 180;
+    return east && Math.abs(wrapped + 180) <= 1e-9 ? 180 : wrapped;
+  };
+  const tiles: DemoFieldTileLayout[] = [];
+  let columnOffset = 0;
+  while (columnOffset < nx) {
+    const unwrappedWest = west + columnOffset * dlon;
+    const branchEast = 180 + Math.floor((unwrappedWest + 180) / 360) * 360;
+    const columnsToDateline = Math.max(1, Math.round((branchEast - unwrappedWest) / dlon));
+    const columnCount = Math.min(nx - columnOffset, maximumColumns, columnsToDateline);
+    const unwrappedEast = unwrappedWest + columnCount * dlon;
+    tiles.push({
+      column_offset: columnOffset,
+      column_count: columnCount,
+      bbox: [normalize(unwrappedWest, false), south, normalize(unwrappedEast, true), north],
+    });
+    columnOffset += columnCount;
+  }
+  return tiles;
+}
+
 function makeDemoSnapshot(
   initial: InitialDisplacement,
   timeS: number,
@@ -773,14 +828,38 @@ function makeDemoSnapshot(
 
   ctx.putImageData(img, 0, 0);
   const etaAbsMax = Math.max(Math.abs(etaMin), Math.abs(etaMax));
+  const widthDeg = boxHalfSizeDeg * 2;
+  const dlon = widthDeg / nx;
+  const south = Math.max(-90, initial.center.lat_deg - boxHalfSizeDeg);
+  const north = Math.min(90, initial.center.lat_deg + boxHalfSizeDeg);
+  const dlat = (north - south) / ny;
+  const west = alignDemoGridWest(initial.center.lon_deg - boxHalfSizeDeg, nx, dlon);
+  const layouts = demoFieldTiles(west, south, nx, ny, dlon, dlat);
+  const fieldTiles = layouts.length > 1 ? layouts.map((layout) => {
+    const tileCanvas = document.createElement("canvas");
+    tileCanvas.width = layout.column_count;
+    tileCanvas.height = ny;
+    const tileContext = tileCanvas.getContext("2d");
+    if (!tileContext) throw new Error("Canvas 2D context unavailable");
+    tileContext.drawImage(
+      canvas,
+      layout.column_offset,
+      0,
+      layout.column_count,
+      ny,
+      0,
+      0,
+      layout.column_count,
+      ny,
+    );
+    return {
+      ...layout,
+      eta_png_b64: tileCanvas.toDataURL("image/png").split(",", 2)[1] ?? "",
+    };
+  }) : undefined;
   return {
     time_s: timeS,
-    bbox: [
-      initial.center.lon_deg - boxHalfSizeDeg,
-      initial.center.lat_deg - boxHalfSizeDeg,
-      initial.center.lon_deg + boxHalfSizeDeg,
-      initial.center.lat_deg + boxHalfSizeDeg,
-    ],
+    bbox: [west, south, west + widthDeg, north],
     nx,
     ny,
     height_field: { ...IDEALIZED_SEA_SURFACE_HEIGHT_FIELD },
@@ -788,6 +867,7 @@ function makeDemoSnapshot(
     eta_max_m: etaMax,
     eta_abs_max_m: etaAbsMax,
     eta_png_b64: canvas.toDataURL("image/png").split(",", 2)[1] ?? "",
+    field_tiles: fieldTiles,
   };
 }
 

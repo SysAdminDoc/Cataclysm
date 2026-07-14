@@ -21,6 +21,7 @@ import {
   type FieldSemanticV1,
   type FrameHeaderV1,
   type GeodeticPositionV1,
+  type GeographicFieldTileV1,
   type GeoreferenceV1,
   type GridGeometryV1,
   type PhysicsProvenanceV1,
@@ -383,10 +384,66 @@ function grid(value: unknown, limits: RenderProtocolLimits): { grid: GridGeometr
     record.row_order !== "south_to_north_west_to_east" || record.cell_registration !== "cell_center" ||
     record.longitude_wrap !== "normalized_minus180_180" || south + dlat * (ny - 1) > 90 + 1e-9
   ) fail("invalid_grid", "Field grid metadata is invalid or unsupported.");
+  const tiles = geographicFieldTiles(record.tiles, nx, ny, west, south, dlon, dlat);
   return {
     cells,
-    grid: deepFreeze({ nx, ny, west_cell_center_lon_deg: west, south_cell_center_lat_deg: south, dlon_deg: dlon, dlat_deg: dlat, row_order: "south_to_north_west_to_east", cell_registration: "cell_center", longitude_wrap: "normalized_minus180_180" }),
+    grid: deepFreeze({ nx, ny, west_cell_center_lon_deg: west, south_cell_center_lat_deg: south, dlon_deg: dlon, dlat_deg: dlat, row_order: "south_to_north_west_to_east", cell_registration: "cell_center", longitude_wrap: "normalized_minus180_180", tiles }),
   };
+}
+
+function geographicFieldTiles(
+  value: unknown,
+  nx: number,
+  ny: number,
+  westCenter: number,
+  southCenter: number,
+  dlon: number,
+  dlat: number,
+): GeographicFieldTileV1[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length === 0 || value.length > 256) {
+    fail("invalid_grid", "Field grid tiles must be a bounded non-empty array.");
+  }
+  const southEdge = southCenter - 0.5 * dlat;
+  const northEdge = southCenter + (ny - 0.5) * dlat;
+  const westEdge = westCenter - 0.5 * dlon;
+  let expectedOffset = 0;
+  return value.map((entry, index) => {
+    const record = assertRecord(entry, `field.grid.tiles[${index}]`);
+    const columnOffset = safeInteger(record, "column_offset", 0, nx - 1);
+    const columnCount = safeInteger(record, "column_count", 1, nx);
+    if (columnOffset !== expectedOffset || columnOffset + columnCount > nx) {
+      fail("invalid_grid", "Field grid tiles must cover source columns once in order.");
+    }
+    if (!Array.isArray(record.bbox) || record.bbox.length !== 4) {
+      fail("invalid_grid", "Field grid tile bbox must contain four edges.");
+    }
+    const bbox = record.bbox.map((edge) => {
+      if (typeof edge !== "number" || !Number.isFinite(edge)) {
+        fail("invalid_grid", "Field grid tile bbox must be finite.");
+      }
+      return edge;
+    }) as [number, number, number, number];
+    const expectedWest = normalizeLongitudeEdge(westEdge + columnOffset * dlon, false);
+    const expectedEast = normalizeLongitudeEdge(westEdge + (columnOffset + columnCount) * dlon, true);
+    const tolerance = 1e-9;
+    if (
+      bbox[0] < -180 || bbox[2] > 180 || bbox[1] < -90 || bbox[3] > 90 ||
+      bbox[2] <= bbox[0] || bbox[3] <= bbox[1] ||
+      Math.abs(bbox[0] - expectedWest) > tolerance || Math.abs(bbox[2] - expectedEast) > tolerance ||
+      Math.abs(bbox[1] - southEdge) > tolerance || Math.abs(bbox[3] - northEdge) > tolerance
+    ) fail("invalid_grid", "Field grid tile bounds do not match their source columns.");
+    expectedOffset += columnCount;
+    if (index === value.length - 1 && expectedOffset !== nx) {
+      fail("invalid_grid", "Field grid tiles do not cover every source column.");
+    }
+    return deepFreeze({ column_offset: columnOffset, column_count: columnCount, bbox });
+  });
+}
+
+function normalizeLongitudeEdge(longitude: number, eastEdge: boolean): number {
+  const wrapped = ((longitude + 180) % 360 + 360) % 360 - 180;
+  return eastEdge && Math.abs(wrapped + 180) <= 1e-9 ? 180 : wrapped;
 }
 
 function nullableEnum<T extends string>(record: JsonRecord, key: string, allowed: ReadonlySet<T>): T | null {

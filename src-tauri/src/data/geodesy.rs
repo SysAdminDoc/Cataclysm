@@ -40,6 +40,95 @@ pub struct HeightFieldMetadata {
     pub declared_vertical_error_m: f64,
 }
 
+/// A contiguous column range from a geographic raster, projected into one
+/// non-wrapping WGS 84 rectangle. The source arrays remain in their original
+/// south-to-north, west-to-east order; renderers use these offsets to upload
+/// each tile without resampling or changing authoritative field values.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GeographicFieldTile {
+    pub column_offset: u32,
+    pub column_count: u32,
+    /// `[west, south, east, north]` cell-edge bounds in normalized degrees.
+    pub bbox: [f64; 4],
+}
+
+const POLAR_TILE_LATITUDE_DEG: f64 = 60.0;
+const POLAR_TILE_MAX_LONGITUDE_SPAN_DEG: f64 = 15.0;
+
+/// Partition a regular geographic grid at the antimeridian and, at high
+/// latitudes, into narrower longitudinal strips. Grid edges that cross the
+/// dateline must be cell-aligned; [`crate::physics::solver::SwGrid::new`]
+/// guarantees that alignment for solver grids.
+pub fn geographic_field_tiles(
+    west_edge_lon_deg: f64,
+    south_edge_lat_deg: f64,
+    nx: usize,
+    ny: usize,
+    dlon_deg: f64,
+    dlat_deg: f64,
+) -> Result<Vec<GeographicFieldTile>, String> {
+    let values = [west_edge_lon_deg, south_edge_lat_deg, dlon_deg, dlat_deg];
+    if values.iter().any(|value| !value.is_finite())
+        || nx == 0
+        || ny == 0
+        || dlon_deg <= 0.0
+        || dlat_deg <= 0.0
+    {
+        return Err("geographic tile grid must be finite, positive, and non-empty".into());
+    }
+    let north = south_edge_lat_deg + ny as f64 * dlat_deg;
+    if south_edge_lat_deg < -90.0 - 1.0e-9 || north > 90.0 + 1.0e-9 {
+        return Err("geographic tile grid extends beyond a pole".into());
+    }
+
+    let polar = south_edge_lat_deg.abs().max(north.abs()) >= POLAR_TILE_LATITUDE_DEG;
+    let maximum_columns = if polar {
+        (POLAR_TILE_MAX_LONGITUDE_SPAN_DEG / dlon_deg)
+            .floor()
+            .max(1.0) as usize
+    } else {
+        nx
+    };
+    let mut tiles = Vec::new();
+    let mut column_offset = 0usize;
+    while column_offset < nx {
+        let west_unwrapped = west_edge_lon_deg + column_offset as f64 * dlon_deg;
+        let branch = ((west_unwrapped + 180.0) / 360.0).floor();
+        let branch_east = 180.0 + branch * 360.0;
+        let raw_columns_to_dateline = (branch_east - west_unwrapped) / dlon_deg;
+        let rounded_columns_to_dateline = raw_columns_to_dateline.round();
+        if (raw_columns_to_dateline - rounded_columns_to_dateline).abs() > 1.0e-7 {
+            return Err("geographic grid is not cell-aligned at the antimeridian".into());
+        }
+        let columns_to_dateline = (rounded_columns_to_dateline as usize).max(1);
+        let column_count = (nx - column_offset)
+            .min(maximum_columns)
+            .min(columns_to_dateline);
+        let east_unwrapped = west_unwrapped + column_count as f64 * dlon_deg;
+        let west = normalize_longitude_edge(west_unwrapped, false);
+        let east = normalize_longitude_edge(east_unwrapped, true);
+        if east <= west + 1.0e-12 {
+            return Err("geographic tile rectangle is wrapped or degenerate".into());
+        }
+        tiles.push(GeographicFieldTile {
+            column_offset: column_offset as u32,
+            column_count: column_count as u32,
+            bbox: [west, south_edge_lat_deg, east, north],
+        });
+        column_offset += column_count;
+    }
+    Ok(tiles)
+}
+
+fn normalize_longitude_edge(longitude: f64, east_edge: bool) -> f64 {
+    let wrapped = (longitude + 180.0).rem_euclid(360.0) - 180.0;
+    if east_edge && (wrapped + 180.0).abs() <= 1.0e-9 {
+        180.0
+    } else {
+        wrapped
+    }
+}
+
 pub fn sea_surface_height_field() -> HeightFieldMetadata {
     HeightFieldMetadata {
         horizontal_crs: HORIZONTAL_CRS_GEOGRAPHIC_2D.to_string(),
@@ -320,5 +409,37 @@ mod tests {
             ),
             Err(VerticalConversionError::UnsupportedDatumPair),
         );
+    }
+
+    #[test]
+    fn field_tiles_split_at_the_antimeridian_without_losing_columns() {
+        let tiles = geographic_field_tiles(178.0, -2.0, 16, 8, 0.25, 0.5).unwrap();
+        assert_eq!(tiles.len(), 2);
+        assert_eq!(tiles[0].column_offset, 0);
+        assert_eq!(tiles[0].column_count, 8);
+        assert_eq!(tiles[0].bbox, [178.0, -2.0, 180.0, 2.0]);
+        assert_eq!(tiles[1].column_offset, 8);
+        assert_eq!(tiles[1].column_count, 8);
+        assert_eq!(tiles[1].bbox, [-180.0, -2.0, -178.0, 2.0]);
+        assert_eq!(tiles.iter().map(|tile| tile.column_count).sum::<u32>(), 16);
+    }
+
+    #[test]
+    fn polar_field_tiles_limit_longitudinal_span_and_preserve_order() {
+        let tiles = geographic_field_tiles(-30.0, 75.0, 120, 30, 0.5, 0.5).unwrap();
+        assert_eq!(tiles.len(), 4);
+        assert!(
+            tiles
+                .iter()
+                .all(|tile| tile.bbox[2] - tile.bbox[0] <= 15.0 + 1.0e-9)
+        );
+        assert_eq!(tiles.iter().map(|tile| tile.column_count).sum::<u32>(), 120);
+        for pair in tiles.windows(2) {
+            assert_eq!(
+                pair[0].column_offset + pair[0].column_count,
+                pair[1].column_offset
+            );
+            assert!((pair[0].bbox[2] - pair[1].bbox[0]).abs() < 1.0e-9);
+        }
     }
 }

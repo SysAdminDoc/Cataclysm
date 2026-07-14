@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- SWE grids can now cross the antimeridian and reach the poles without cropping
+  or reordering fields. Snapshots, maximum-field products, and renderer-neutral
+  recordings publish complete column-addressed geographic tiles; Cesium renders
+  those tiles atomically, while legacy non-wrapping snapshots remain compatible.
 - Solver runs now return their run ID and completed/cancelled lifecycle, expose
   active-run memory reservations in diagnostics, and share a 512 MiB admission
   budget. A maximum-resolution streaming run remains valid, while a concurrent

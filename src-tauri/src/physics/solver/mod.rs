@@ -49,6 +49,7 @@ use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
+use crate::data::geodesy::{GeographicFieldTile, geographic_field_tiles};
 
 #[cfg(feature = "gpu")]
 pub mod gpu;
@@ -83,6 +84,14 @@ pub struct GridGaugeSample {
     pub eta_m: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct GridSnapshotTile {
+    pub column_offset: u32,
+    pub column_count: u32,
+    pub bbox: [f64; 4],
+    pub eta_png_b64: String,
+}
+
 /// One snapshot of the propagation field, suitable for IPC transport.
 #[derive(Debug, Clone, Serialize)]
 pub struct GridSnapshot {
@@ -104,6 +113,11 @@ pub struct GridSnapshot {
     /// diverging colormap. Suitable for `data:image/png;base64,…` URIs
     /// passed to Cesium's `SingleTileImageryProvider`.
     pub eta_png_b64: String,
+    /// Non-wrapping renderer tiles. Empty for a single low-latitude rectangle;
+    /// populated for antimeridian and polar fields while `eta_png_b64` remains
+    /// available for backward-compatible export.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub field_tiles: Vec<GridSnapshotTile>,
     #[serde(default)]
     pub gauge_samples: Vec<GridGaugeSample>,
 }
@@ -174,6 +188,7 @@ impl SwGrid {
         let nx = (((east_lon - west_lon) / dlon_deg).round() as usize).max(2);
         let ny = (((north_lat - south_lat) / dlat_deg).round() as usize).max(2);
         let n = nx * ny;
+        let west_lon = align_grid_west_to_antimeridian(west_lon, nx, dlon_deg);
         Self {
             nx,
             ny,
@@ -208,6 +223,17 @@ impl SwGrid {
             velocity_east_m_s: &self.u_ms,
             velocity_north_m_s: &self.v_ms,
         }
+    }
+
+    pub fn field_tiles(&self) -> Result<Vec<GeographicFieldTile>, String> {
+        geographic_field_tiles(
+            self.west_lon,
+            self.south_lat,
+            self.nx,
+            self.ny,
+            self.dlon_deg,
+            self.dlat_deg,
+        )
     }
 
     /// Pack the solver's exact wet/dry decision into one bit per cell. Bit 1
@@ -430,6 +456,27 @@ impl SwGrid {
                 absmax = v.abs();
             }
         }
+        let field_tiles = match self.field_tiles() {
+            Ok(layouts) if layouts.len() > 1 => layouts
+                .into_iter()
+                .map(|tile| GridSnapshotTile {
+                    eta_png_b64: self.encode_eta_png_columns(
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        absmax.max(1e-9),
+                        diagnostics,
+                    ),
+                    column_offset: tile.column_offset,
+                    column_count: tile.column_count,
+                    bbox: tile.bbox,
+                })
+                .collect(),
+            Ok(_) => Vec::new(),
+            Err(error) => {
+                report_diagnostic(diagnostics, format!("SWE field tiling failed: {error}"));
+                Vec::new()
+            }
+        };
         GridSnapshot {
             time_s: self.t_s,
             bbox: [
@@ -445,6 +492,7 @@ impl SwGrid {
             eta_max_m: if hi.is_finite() { hi } else { 0.0 },
             eta_abs_max_m: absmax,
             eta_png_b64: self.encode_eta_png(absmax.max(1e-9), diagnostics),
+            field_tiles,
             gauge_samples: gauges
                 .iter()
                 .map(|g| GridGaugeSample {
@@ -459,7 +507,10 @@ impl SwGrid {
         if !lat_deg.is_finite() || !lon_deg.is_finite() || self.nx < 2 || self.ny < 2 {
             return None;
         }
-        let x = ((lon_deg - self.west_lon) / self.dlon_deg) - 0.5;
+        let grid_center_lon = self.west_lon + 0.5 * self.nx as f64 * self.dlon_deg;
+        let unwrapped_lon =
+            grid_center_lon + (lon_deg - grid_center_lon + 180.0).rem_euclid(360.0) - 180.0;
+        let x = ((unwrapped_lon - self.west_lon) / self.dlon_deg) - 0.5;
         let y = ((lat_deg - self.south_lat) / self.dlat_deg) - 0.5;
         // Cell-centre coordinates run [0, n-1]; the bbox extends half a cell
         // beyond the outer centres, so accept any point inside the bbox and
@@ -498,7 +549,17 @@ impl SwGrid {
     /// white–red colormap scaled by `scale_m`. Returns base64 string ready
     /// to drop into a `data:image/png;base64,…` URI.
     fn encode_eta_png(&self, scale_m: f64, diagnostics: Option<&DiagnosticSink<'_>>) -> String {
-        let mut rgba = Vec::with_capacity(self.nx * self.ny * 4);
+        self.encode_eta_png_columns(0, self.nx, scale_m, diagnostics)
+    }
+
+    fn encode_eta_png_columns(
+        &self,
+        column_offset: usize,
+        column_count: usize,
+        scale_m: f64,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> String {
+        let mut rgba = Vec::with_capacity(column_count * self.ny * 4);
         let safe_scale = if scale_m.is_finite() && scale_m > 0.0 {
             scale_m
         } else {
@@ -506,7 +567,7 @@ impl SwGrid {
         };
         for j in (0..self.ny).rev() {
             // PNG rows are top-to-bottom; our grid is south-to-north, so flip j.
-            for i in 0..self.nx {
+            for i in column_offset..column_offset + column_count {
                 let v = self.eta_m[idx(i, j, self.nx)];
                 // Treat NaN / Inf as transparent black instead of letting them
                 // poison the colormap (which would produce stuck-bright pixels
@@ -524,8 +585,36 @@ impl SwGrid {
                 rgba.extend_from_slice(&[r, g, b, a]);
             }
         }
-        encode_rgba_png(self.nx as u32, self.ny as u32, &rgba, diagnostics)
+        encode_rgba_png(column_count as u32, self.ny as u32, &rgba, diagnostics)
     }
+}
+
+fn align_grid_west_to_antimeridian(west_lon: f64, nx: usize, dlon_deg: f64) -> f64 {
+    if !west_lon.is_finite() || !dlon_deg.is_finite() || dlon_deg <= 0.0 || nx == 0 {
+        return west_lon;
+    }
+    let width = nx as f64 * dlon_deg;
+    let mut west = west_lon;
+    while west + width <= -180.0 {
+        west += 360.0;
+    }
+    while west >= 180.0 {
+        west -= 360.0;
+    }
+    let boundary = if west < -180.0 {
+        Some(-180.0)
+    } else if west + width > 180.0 {
+        Some(180.0)
+    } else {
+        None
+    };
+    if let Some(boundary) = boundary {
+        let columns = ((boundary - west) / dlon_deg)
+            .round()
+            .clamp(1.0, (nx - 1).max(1) as f64);
+        west = boundary - columns * dlon_deg;
+    }
+    west
 }
 
 /// Encode an RGBA byte buffer as a base64 PNG. Shared by the per-snapshot
@@ -1307,6 +1396,49 @@ mod tests {
         grid.inject_gaussian(0.0, -179.5, 1.0, 50_000.0);
         let peak = grid.eta_m.iter().copied().fold(0.0_f64, f64::max);
         assert!(peak > 0.8, "wrapped source peak was {peak}");
+    }
+
+    #[test]
+    fn dateline_grid_sampling_accepts_both_longitude_branches() {
+        let mut grid = SwGrid::new(174.53, -2.0, 184.53, 2.0, 0.1, 0.1);
+        grid.inject_gaussian(0.0, 179.5, 1.0, 80_000.0);
+        let west_branch = grid.sample_eta_at(0.0, -179.5).unwrap();
+        let unwrapped_branch = grid.sample_eta_at(0.0, 180.5).unwrap();
+        assert!((west_branch - unwrapped_branch).abs() < 1.0e-12);
+        let tiles = grid.field_tiles().unwrap();
+        assert_eq!(tiles.len(), 2);
+        assert_eq!(tiles[0].bbox[2], 180.0);
+        assert_eq!(tiles[1].bbox[0], -180.0);
+        assert_eq!(
+            tiles.iter().map(|tile| tile.column_count).sum::<u32>(),
+            grid.nx as u32
+        );
+        let snapshot = grid.snapshot();
+        assert_eq!(snapshot.field_tiles.len(), 2);
+        assert!(
+            snapshot
+                .field_tiles
+                .iter()
+                .all(|tile| !tile.eta_png_b64.is_empty())
+        );
+    }
+
+    #[test]
+    fn high_latitude_tile_layout_preserves_source_column_order() {
+        let grid = SwGrid::new(-30.0, 75.0, 30.0, 90.0, 0.5, 0.5);
+        let tiles = grid.field_tiles().unwrap();
+        assert_eq!(tiles.len(), 4);
+        assert_eq!(tiles[0].column_offset, 0);
+        assert_eq!(
+            tiles.iter().map(|tile| tile.column_count).sum::<u32>(),
+            grid.nx as u32
+        );
+        for pair in tiles.windows(2) {
+            assert_eq!(
+                pair[0].column_offset + pair[0].column_count,
+                pair[1].column_offset
+            );
+        }
     }
 
     #[test]

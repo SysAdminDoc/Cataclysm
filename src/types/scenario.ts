@@ -133,6 +133,13 @@ export type RunPresetResponse = {
 };
 
 /** One snapshot of the SWE simulation field. PNG body lives in eta_png_b64. */
+export type GridSnapshotTile = {
+  column_offset: number;
+  column_count: number;
+  bbox: [number, number, number, number];
+  eta_png_b64: string;
+};
+
 export type GridSnapshot = {
   time_s: number;
   bbox: [number, number, number, number];
@@ -143,6 +150,7 @@ export type GridSnapshot = {
   eta_max_m: number;
   eta_abs_max_m: number;
   eta_png_b64: string;
+  field_tiles?: GridSnapshotTile[];
   gauge_samples?: Array<{ id: string; eta_m: number | null }>;
 };
 
@@ -165,6 +173,14 @@ export type MaxFieldProduct = {
   peak_png_b64: string;
   t_of_max_png_b64: string;
   energy_png_b64: string;
+  field_tiles?: Array<{
+    column_offset: number;
+    column_count: number;
+    bbox: [number, number, number, number];
+    peak_png_b64: string;
+    t_of_max_png_b64: string;
+    energy_png_b64: string;
+  }>;
   isochrones: Isochrone[];
 };
 

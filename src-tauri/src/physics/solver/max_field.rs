@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use super::{
     Colormap, DiagnosticSink, SwGrid, cividis_colormap, diverging_colormap, encode_rgba_png, idx,
-    viridis_colormap,
+    report_diagnostic, viridis_colormap,
 };
 
 /// One contour line set at a fixed arrival time.
@@ -42,8 +42,20 @@ pub struct MaxFieldProduct {
     pub t_of_max_png_b64: String,
     /// Time-integrated η² (qualitative energy/directivity), sqrt-normalised.
     pub energy_png_b64: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub field_tiles: Vec<MaxFieldTile>,
     /// First-arrival isochrones at regular intervals.
     pub isochrones: Vec<Isochrone>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MaxFieldTile {
+    pub column_offset: u32,
+    pub column_count: u32,
+    pub bbox: [f64; 4],
+    pub peak_png_b64: String,
+    pub t_of_max_png_b64: String,
+    pub energy_png_b64: String,
 }
 
 /// Running accumulator. Feed it the grid at t=0 and after every accepted
@@ -157,6 +169,52 @@ impl MaxFieldAccumulator {
             colormap_positive(colormap, t.sqrt())
         });
 
+        let field_tiles = match grid.field_tiles() {
+            Ok(layouts) if layouts.len() > 1 => layouts
+                .into_iter()
+                .map(|tile| MaxFieldTile {
+                    peak_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &self.peak_m,
+                        peak_max.max(1e-9),
+                        |t| colormap_positive(colormap, t),
+                    ),
+                    t_of_max_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &t_of_max_rgba,
+                        t_end,
+                        |t| {
+                            let (r, g, b, _) = viridis_colormap(t);
+                            (r, g, b, 210)
+                        },
+                    ),
+                    energy_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &self.energy_m2s,
+                        energy_max.max(1e-12),
+                        |t| colormap_positive(colormap, t.sqrt()),
+                    ),
+                    column_offset: tile.column_offset,
+                    column_count: tile.column_count,
+                    bbox: tile.bbox,
+                })
+                .collect(),
+            Ok(_) => Vec::new(),
+            Err(error) => {
+                report_diagnostic(diagnostics, format!("SWE max-field tiling failed: {error}"));
+                Vec::new()
+            }
+        };
+
         let isochrones = extract_isochrones(grid, &self.arrival_s, t_end);
 
         MaxFieldProduct {
@@ -178,6 +236,7 @@ impl MaxFieldAccumulator {
             },
             t_of_max_png_b64: t_of_max_png,
             energy_png_b64: energy_png,
+            field_tiles,
             isochrones,
         }
     }
@@ -203,9 +262,21 @@ fn render_field<F: Fn(f64) -> (u8, u8, u8, u8)>(
     scale: f64,
     ramp: F,
 ) -> String {
-    let mut rgba = Vec::with_capacity(nx * ny * 4);
+    render_field_columns(nx, ny, 0, nx, values, scale, ramp)
+}
+
+fn render_field_columns<F: Fn(f64) -> (u8, u8, u8, u8)>(
+    nx: usize,
+    ny: usize,
+    column_offset: usize,
+    column_count: usize,
+    values: &[f64],
+    scale: f64,
+    ramp: F,
+) -> String {
+    let mut rgba = Vec::with_capacity(column_count * ny * 4);
     for j in (0..ny).rev() {
-        for i in 0..nx {
+        for i in column_offset..column_offset + column_count {
             let v = values[idx(i, j, nx)];
             let (r, g, b, a) = if v.is_finite() {
                 ramp((v / scale).clamp(0.0, 1.0))
@@ -215,7 +286,7 @@ fn render_field<F: Fn(f64) -> (u8, u8, u8, u8)>(
             rgba.extend_from_slice(&[r, g, b, a]);
         }
     }
-    encode_rgba_png(nx as u32, ny as u32, &rgba, None)
+    encode_rgba_png(column_count as u32, ny as u32, &rgba, None)
 }
 
 /// Pick isochrone levels: aim for ~5 contours at a "round" interval.
@@ -390,14 +461,7 @@ mod tests {
     use super::*;
 
     fn grid_with(nx: usize, ny: usize) -> SwGrid {
-        SwGrid::new(
-            0.0,
-            0.0,
-            nx as f64 * 0.1,
-            ny as f64 * 0.1,
-            0.1,
-            0.1,
-        )
+        SwGrid::new(0.0, 0.0, nx as f64 * 0.1, ny as f64 * 0.1, 0.1, 0.1)
     }
 
     #[test]
@@ -474,6 +538,32 @@ mod tests {
             assert!(iso.time_s > 0.0 && iso.time_s < 3600.0);
             assert!(iso.lines.iter().all(|l| l.len() >= 2));
         }
+    }
+
+    #[test]
+    fn dateline_product_uses_the_same_complete_tile_layout_for_every_png() {
+        let mut grid = SwGrid::new(174.53, -2.0, 184.53, 2.0, 0.1, 0.5);
+        grid.fill_uniform_depth(1_000.0);
+        let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
+        grid.eta_m.fill(1.0);
+        grid.t_s = 10.0;
+        acc.observe(&grid);
+        let product = acc.into_product(&grid, None);
+
+        assert_eq!(product.field_tiles.len(), 2);
+        assert_eq!(
+            product
+                .field_tiles
+                .iter()
+                .map(|tile| tile.column_count)
+                .sum::<u32>(),
+            grid.nx as u32
+        );
+        assert!(product.field_tiles.iter().all(|tile| {
+            !tile.peak_png_b64.is_empty()
+                && !tile.t_of_max_png_b64.is_empty()
+                && !tile.energy_png_b64.is_empty()
+        }));
     }
 
     #[test]

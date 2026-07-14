@@ -27,6 +27,34 @@ test.describe("Cataclysm browser preview", () => {
     await expect(canvas).toBeVisible({ timeout: 15_000 });
   });
 
+  test("renders an antimeridian SWE field as complete non-wrapping tiles", async ({ page }) => {
+    const payload = {
+      schemaVersion: 1,
+      kind: "Asteroid",
+      source: {
+        diameter_m: 1_000,
+        density_kg_m3: 3_000,
+        velocity_m_s: 20_000,
+        angle_deg: 45,
+        water_depth_m: 4_000,
+        location: { lat_deg: 0, lon_deg: 179.5, depth_m: 4_000 },
+      },
+    };
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
+    await page.goto(`/?scenario=${encodeURIComponent(encoded)}`);
+    const workspace = page.getByRole("group", { name: "Workspace detail" });
+    await workspace.getByRole("button", { name: "Customize" }).click();
+    await expect(page.getByRole("button", { name: "Run simulation", exact: true })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Run simulation", exact: true }).click();
+
+    await expect(page.locator(".app__globe-mount")).toHaveAttribute(
+      "data-swe-field-tiles",
+      "2",
+      { timeout: 20_000 },
+    );
+    await expect(page.getByRole("progressbar", { name: "SWE solver progress" })).toHaveCount(0);
+  });
+
   test("offers an unseen crash report until the user inspects or clears it", async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("tsunamisim.last_crash", JSON.stringify({

@@ -378,10 +378,12 @@ function validateTransformsAndEvents(transforms, events, label, fieldIds = null)
 }
 
 function validateGrid(value, label) {
-  exactKeys(value, [
+  const keys = [
     "nx", "ny", "west_cell_center_lon_deg", "south_cell_center_lat_deg", "dlon_deg", "dlat_deg",
     "row_order", "cell_registration", "longitude_wrap",
-  ], label);
+  ];
+  if (value.tiles !== undefined) keys.push("tiles");
+  exactKeys(value, keys, label);
   integer(value.nx, `${label}.nx`, 0, 0xffff_ffff);
   integer(value.ny, `${label}.ny`, 0, 0xffff_ffff);
   finite(value.west_cell_center_lon_deg, `${label}.west_cell_center_lon_deg`);
@@ -396,6 +398,33 @@ function validateGrid(value, label) {
   assert(value.longitude_wrap === "normalized_minus180_180", `${label} longitude wrap mismatch`);
   const north = value.south_cell_center_lat_deg + value.dlat_deg * Math.max(0, value.ny - 1);
   assert(north <= 90 + 1e-9, `${label} extends north of 90 degrees`);
+  if (value.tiles !== undefined) {
+    assert(Array.isArray(value.tiles) && value.tiles.length > 0 && value.tiles.length <= 256, `${label}.tiles is invalid`);
+    const westEdge = value.west_cell_center_lon_deg - 0.5 * value.dlon_deg;
+    const southEdge = value.south_cell_center_lat_deg - 0.5 * value.dlat_deg;
+    const northEdge = value.south_cell_center_lat_deg + (value.ny - 0.5) * value.dlat_deg;
+    let expectedOffset = 0;
+    value.tiles.forEach((tile, index) => {
+      exactKeys(tile, ["column_offset", "column_count", "bbox"], `${label}.tiles[${index}]`);
+      integer(tile.column_offset, `${label}.tiles[${index}].column_offset`, 0, value.nx - 1);
+      integer(tile.column_count, `${label}.tiles[${index}].column_count`, 1, value.nx);
+      assert(tile.column_offset === expectedOffset && tile.column_offset + tile.column_count <= value.nx, `${label}.tiles source coverage is invalid`);
+      assert(Array.isArray(tile.bbox) && tile.bbox.length === 4, `${label}.tiles[${index}].bbox is invalid`);
+      tile.bbox.forEach((edge, edgeIndex) => finite(edge, `${label}.tiles[${index}].bbox[${edgeIndex}]`));
+      const normalize = (longitude, east) => {
+        const wrapped = ((longitude + 180) % 360 + 360) % 360 - 180;
+        return east && Math.abs(wrapped + 180) <= 1e-9 ? 180 : wrapped;
+      };
+      const expectedWest = normalize(westEdge + tile.column_offset * value.dlon_deg, false);
+      const expectedEast = normalize(westEdge + (tile.column_offset + tile.column_count) * value.dlon_deg, true);
+      const [west, south, east, tileNorth] = tile.bbox;
+      assert(east > west && tileNorth > south, `${label}.tiles[${index}] rectangle is degenerate`);
+      assert(Math.abs(west - expectedWest) <= 1e-9 && Math.abs(east - expectedEast) <= 1e-9, `${label}.tiles[${index}] longitude bounds mismatch`);
+      assert(Math.abs(south - southEdge) <= 1e-9 && Math.abs(tileNorth - northEdge) <= 1e-9, `${label}.tiles[${index}] latitude bounds mismatch`);
+      expectedOffset += tile.column_count;
+    });
+    assert(expectedOffset === value.nx, `${label}.tiles do not cover every source column`);
+  }
 }
 
 function validateField(value, label, payload) {
@@ -683,6 +712,7 @@ function validateSchemaSentinel() {
   assert(schema.$defs?.protocol?.properties?.major?.const === PROTOCOL_MAJOR, "schema major drifted");
   assert(schema.$defs?.protocol?.properties?.minor?.const === PROTOCOL_MINOR, "schema minor drifted");
   assert(schema.$defs?.field?.properties?.data_type?.enum?.includes("bitset_u1"), "schema omits bitset_u1");
+  assert(schema.$defs?.fieldTile?.properties?.bbox?.maxItems === 4, "schema omits field tile layout");
   assert(schema.$defs?.georeference?.properties?.matrix_order?.const === "column_major", "schema matrix order drifted");
   assert(Array.isArray(schema.oneOf) && schema.oneOf.length === 3, "schema must define scenario/frame/end headers");
   exactArray(schema.oneOf.map((entry) => entry.properties?.packet_kind?.const), ["scenario", "frame", "end"], "schema packet kinds");

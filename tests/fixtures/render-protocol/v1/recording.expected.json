@@ -4,14 +4,14 @@
     "major": 1,
     "minor": 0
   },
-  "fixture_sha256": "6bf09f4210826662faffd9f03f182a3b83abc6966d365b6a33b0b2f389d84717",
-  "bytes": 14848,
+  "fixture_sha256": "a40593630aa121eaf862e5e78b5592d3f5c48eaca12bdab58f41e26ffb4f7b8a",
+  "bytes": 15958,
   "packet_count": 5,
   "packet_lengths": [
     1599,
-    4249,
-    4260,
-    4256,
+    4619,
+    4630,
+    4626,
     464
   ],
   "frame_count": 3,

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::data::geodesy::{self, EcefPosition, GeodeticPosition, VerticalAxis, VerticalDatum};
+use crate::data::geodesy::{
+    self, EcefPosition, GeodeticPosition, GeographicFieldTile, VerticalAxis, VerticalDatum,
+};
 
 pub const PROTOCOL_MAJOR: u16 = 1;
 pub const PROTOCOL_MINOR: u16 = 0;
@@ -225,6 +227,10 @@ pub struct GridGeometryV1 {
     pub row_order: String,
     pub cell_registration: String,
     pub longitude_wrap: String,
+    /// Optional additive tiling metadata for non-wrapping/geocentric uploads.
+    /// Empty means a legacy reader should treat the grid as one rectangle.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tiles: Vec<GeographicFieldTile>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

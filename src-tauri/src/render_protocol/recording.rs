@@ -148,16 +148,26 @@ fn encode_grid_fields(
         return Err("wet mask length does not match grid shape".into());
     }
 
+    let west_cell_center_lon_deg =
+        (raw.west_lon_deg + 0.5 * raw.dlon_deg + 180.0).rem_euclid(360.0) - 180.0;
     let geometry = GridGeometryV1 {
         nx: raw.nx as u32,
         ny: raw.ny as u32,
-        west_cell_center_lon_deg: raw.west_lon_deg + 0.5 * raw.dlon_deg,
+        west_cell_center_lon_deg,
         south_cell_center_lat_deg: raw.south_lat_deg + 0.5 * raw.dlat_deg,
         dlon_deg: raw.dlon_deg,
         dlat_deg: raw.dlat_deg,
         row_order: "south_to_north_west_to_east".into(),
         cell_registration: "cell_center".into(),
         longitude_wrap: "normalized_minus180_180".into(),
+        tiles: crate::data::geodesy::geographic_field_tiles(
+            raw.west_lon_deg,
+            raw.south_lat_deg,
+            raw.nx,
+            raw.ny,
+            raw.dlon_deg,
+            raw.dlat_deg,
+        )?,
     };
     let mut payload = Vec::new();
     let mut fields = Vec::new();

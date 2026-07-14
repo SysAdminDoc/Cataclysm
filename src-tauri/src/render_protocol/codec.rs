@@ -503,6 +503,33 @@ fn validate_grid(grid: &GridGeometryV1) -> Result<(), String> {
     if north > 90.0 + 1e-9 {
         return Err("field grid extends north of 90 degrees".into());
     }
+    if !grid.tiles.is_empty() {
+        let expected = geodesy::geographic_field_tiles(
+            grid.west_cell_center_lon_deg - 0.5 * grid.dlon_deg,
+            grid.south_cell_center_lat_deg - 0.5 * grid.dlat_deg,
+            grid.nx as usize,
+            grid.ny as usize,
+            grid.dlon_deg,
+            grid.dlat_deg,
+        )?;
+        if grid.tiles.len() != expected.len()
+            || grid
+                .tiles
+                .iter()
+                .zip(expected.iter())
+                .any(|(actual, expected)| {
+                    actual.column_offset != expected.column_offset
+                        || actual.column_count != expected.column_count
+                        || actual
+                            .bbox
+                            .iter()
+                            .zip(expected.bbox.iter())
+                            .any(|(left, right)| (left - right).abs() > 1.0e-9)
+                })
+        {
+            return Err("field grid tile layout is invalid or incomplete".into());
+        }
+    }
     Ok(())
 }
 
