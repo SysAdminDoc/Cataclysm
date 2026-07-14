@@ -21,6 +21,24 @@ describe("settings scenario storage", () => {
     expect((scenarios[0].data as { schemaVersion?: number }).schemaVersion).toBe(SCENARIO_SCHEMA_VERSION);
   });
 
+  it("deletes the correct saved scenario by stable id, not array position", async () => {
+    await settings.saveScenario("First", { kind: "Asteroid", source: INITIAL_ASTEROID });
+    await settings.saveScenario("Second", { kind: "Asteroid", source: INITIAL_ASTEROID });
+    const before = await settings.getSavedScenarios();
+    expect(before).toHaveLength(2);
+    // Every saved scenario has a stable id.
+    expect(before.every((s) => typeof s.id === "string" && s.id.length > 0)).toBe(true);
+    // Delete the most-recent ("Second", index 0) by id; "First" must remain.
+    const target = before.find((s) => s.name === "Second")!;
+    await settings.deleteScenario(target.id);
+    const after = await settings.getSavedScenarios();
+    expect(after).toHaveLength(1);
+    expect(after[0].name).toBe("First");
+    // Ids are stable across reads (legacy backfill is deterministic).
+    const reread = await settings.getSavedScenarios();
+    expect(reread[0].id).toBe(after[0].id);
+  });
+
   it("rejects invalid scenario payloads before writing to storage", async () => {
     await expect(settings.saveScenario("Bad asteroid", {
       kind: "Asteroid",

@@ -416,10 +416,21 @@ const SCENARIOS_KEY = "saved_scenarios";
 const MAX_SAVED_SCENARIOS = 20;
 
 export type SavedScenario = {
+  /** Stable identity for React keys and deletion. Generated on save; legacy
+   *  records without one get a deterministic fallback derived from their
+   *  timestamp+name so the id is stable across reads. */
+  id: string;
   name: string;
   savedAt: string;
   data: unknown;
 };
+
+function makeScenarioId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `scenario-${crypto.randomUUID()}`;
+  }
+  return `scenario-${new Date().toISOString()}-${SETTINGS_SCHEMA_VERSION}`;
+}
 
 /**
  * Re-validate persisted scenario records on read, mirroring the write-path
@@ -440,7 +451,8 @@ function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
     if (!name || !savedAt) { dropped++; continue; }
     const parsed = parseScenarioPayload(rec.data);
     if (!parsed.ok) { dropped++; continue; }
-    clean.push({ name, savedAt, data: rec.data });
+    const id = typeof rec.id === "string" && rec.id ? rec.id : `${savedAt}::${name}`;
+    clean.push({ id, name, savedAt, data: rec.data });
   }
   if (dropped > 0) {
     console.warn(`[settings] dropped ${dropped} invalid saved scenario(s) on read`);
@@ -695,14 +707,17 @@ export const settings = {
     const parsed = parseScenarioPayload(data);
     if (!parsed.ok) throw new Error(parsed.reason);
     const list = await readScenarios();
-    list.unshift({ name, savedAt: new Date().toISOString(), data: parsed.payload });
+    list.unshift({ id: makeScenarioId(), name, savedAt: new Date().toISOString(), data: parsed.payload });
     return writeScenarios(list);
   },
-  async deleteScenario(index: number): Promise<void> {
+  /** Delete a saved scenario by its stable id. Deleting by id (not array
+   *  position) prevents removing the wrong record if the list was reordered by
+   *  a concurrent read between render and click. */
+  async deleteScenario(id: string): Promise<void> {
     const list = await readScenarios();
-    if (index >= 0 && index < list.length) {
-      list.splice(index, 1);
-      return writeScenarios(list);
+    const next = list.filter((scenario) => scenario.id !== id);
+    if (next.length !== list.length) {
+      return writeScenarios(next);
     }
   },
   /** Clear only the disclaimer-ack timestamp so the first-run modal

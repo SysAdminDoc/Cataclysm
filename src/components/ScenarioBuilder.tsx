@@ -291,8 +291,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     showStatus(parsed.migrated ? "Loaded legacy scenario." : "Loaded scenario.", "success");
   }
 
-  function deleteScenario(idx: number) {
-    settings.deleteScenario(idx).then(() => {
+  function deleteScenario(id: string) {
+    settings.deleteScenario(id).then(() => {
       settings.getSavedScenarios().then(setSavedScenarios);
     });
   }
@@ -531,8 +531,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
         </div>
         {showSaved && savedScenarios.length > 0 && (
           <div className="scenario-saved">
-            {savedScenarios.map((s, i) => (
-              <div key={i} className="scenario-saved__item">
+            {savedScenarios.map((s) => (
+              <div key={s.id} className="scenario-saved__item">
                 <button
                   className="scenario-saved__load"
                   onClick={() => loadScenario(s)}
@@ -542,7 +542,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                 </button>
                 <button
                   className="scenario-saved__del"
-                  onClick={() => deleteScenario(i)}
+                  onClick={() => deleteScenario(s.id)}
                   type="button"
                   aria-label={`Delete ${s.name}`}
                 >

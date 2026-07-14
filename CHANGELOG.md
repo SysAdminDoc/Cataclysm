@@ -15,6 +15,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Saved scenarios now carry a stable id and are deleted by id rather than array
+  position, so a delete can no longer remove the wrong entry if the list was
+  reordered by a concurrent read, and list rows no longer reuse DOM nodes.
 - The surface-displacement legend now matches the active solver colormap instead
   of a fixed rainbow ramp: diverging and cividis show a signed trough↔crest key,
   viridis shows a sequential magnitude key, and the CVD-safe maps are labelled as
