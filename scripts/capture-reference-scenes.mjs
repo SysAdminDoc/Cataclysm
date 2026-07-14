@@ -205,10 +205,11 @@ async function configureWorkflow(page, scene) {
     const coordinates = page.getByRole("form", { name: "Enter coordinates" });
     await coordinates.getByLabel("Latitude").fill(String(workflow.request.center.lat));
     await coordinates.getByLabel("Longitude").fill(String(workflow.request.center.lon));
-    await coordinates.getByRole("button", { name: "Go" }).click();
-    // This tab only mutates local React state. Dispatch the event directly so
-    // Playwright does not attach an unrelated, still-pending Cesium request to
-    // its post-click navigation wait on slower Windows release runners.
+    // These controls only mutate local React state. Dispatch their events
+    // directly so Playwright does not attach unrelated, still-pending Cesium
+    // requests to a post-click navigation wait on slower Windows runners.
+    await coordinates.getByRole("button", { name: "Go" }).dispatchEvent("click");
+    await coordinates.waitFor({ state: "detached" });
     await page.getByRole("tab", { name: "Results" }).dispatchEvent("click");
     await page.locator(".hazard__results").waitFor({ state: "visible" });
   }
@@ -239,11 +240,9 @@ async function setWorkflowTime(page, simulationTimeS) {
 
 async function triggerDirectEffect(page, scene) {
   if (!scene.workflow.kind.startsWith("direct-")) return;
-  await page.evaluate(() => {
-    const button = document.querySelector(".hazard__detonate");
-    if (!(button instanceof HTMLButtonElement)) throw new Error("Detonation control unavailable.");
-    button.click();
-  });
+  const trigger = page.locator(".hazard__detonate:not(:disabled)");
+  await trigger.waitFor({ state: "visible" });
+  await trigger.dispatchEvent("click");
   await page.waitForFunction(
     (sceneId) => document.querySelector(".app")?.getAttribute("data-reference-direct-frame-ready") === sceneId,
     scene.id,

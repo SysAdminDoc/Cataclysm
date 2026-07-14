@@ -22,6 +22,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- The deterministic reference-capture harness now submits local-only coordinate
+  and inspector controls without attaching Cesium requests to Playwright's
+  navigation wait, and it waits for direct-render recordings to decode before
+  starting an impact/detonation. This removes two Windows release-runner races
+  that could fail before the installed MSI/NSIS journey began.
 - DART validation now derives overlap, peaks, RMSE, and sustained-threshold
   arrivals from the archived observation and actual SWE gauge series in Rust.
   The chart draws and labels observed/model cursor values separately, reports
