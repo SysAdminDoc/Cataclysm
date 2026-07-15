@@ -1,10 +1,13 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportKml, exportRunupCsv, preflightRunQuality, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { captureGlobePng, copyExportText, downloadBlob, downloadDataUrl, encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportGlobeVideo, exportKml, exportRunupCsv, preflightRunQuality, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
 import { getCoastalPoints } from "../data";
 
 afterEach(() => {
+  document.body.innerHTML = "";
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -42,6 +45,213 @@ function mockDownload() {
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   return () => captured;
 }
+
+function mountGlobeCanvas(): HTMLCanvasElement {
+  const host = document.createElement("div");
+  host.className = "cesium-widget";
+  const canvas = document.createElement("canvas");
+  host.appendChild(canvas);
+  document.body.appendChild(host);
+  return canvas;
+}
+
+describe("typed export failures and cleanup", () => {
+  it("removes the temporary anchor and revokes the object URL after a successful Blob download", () => {
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cleanup-success");
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    expect(downloadBlob(new Blob(["ok"]), "result.txt")).toEqual({ ok: true });
+    expect(document.querySelector("a[download]")).toBeNull();
+    expect(revoke).toHaveBeenCalledWith("blob:cleanup-success");
+  });
+
+  it("returns a download failure and still releases resources when the browser click throws", () => {
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cleanup-failure");
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {
+      throw new Error("downloads denied");
+    });
+
+    expect(downloadBlob(new Blob(["no"]), "result.txt")).toMatchObject({
+      ok: false,
+      code: "download",
+      retryable: true,
+    });
+    expect(document.querySelector("a[download]")).toBeNull();
+    expect(revoke).toHaveBeenCalledWith("blob:cleanup-failure");
+  });
+
+  it("returns a download failure when object URL allocation throws", () => {
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => {
+      throw new Error("object URLs unavailable");
+    });
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    expect(downloadBlob(new Blob(["no"]), "result.txt")).toMatchObject({ ok: false, code: "download" });
+    expect(revoke).not.toHaveBeenCalled();
+  });
+
+  it("reports a typed download failure when an explicit data-URL download throws", () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {
+      throw new Error("download blocked");
+    });
+
+    expect(downloadDataUrl("data:text/plain,hello", "hello.txt")).toMatchObject({
+      ok: false,
+      code: "download",
+    });
+    expect(document.querySelector("a[download]")).toBeNull();
+  });
+
+  it("classifies canvas serialization failures without throwing", () => {
+    const canvas = mountGlobeCanvas();
+    vi.spyOn(canvas, "toDataURL").mockImplementation(() => {
+      throw new DOMException("tainted", "SecurityError");
+    });
+
+    expect(captureGlobePng()).toMatchObject({ ok: false, code: "canvas", retryable: true });
+  });
+
+  it("classifies clipboard rejection and cancellation without unhandled promises", async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const writeText = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error("permission denied"))
+      .mockRejectedValueOnce(new DOMException("cancelled", "AbortError"));
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    try {
+      await expect(copyExportText("first")).resolves.toMatchObject({ ok: false, code: "clipboard" });
+      await expect(copyExportText("second")).resolves.toMatchObject({ ok: false, code: "cancelled" });
+    } finally {
+      if (original) Object.defineProperty(navigator, "clipboard", original);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("classifies captureStream failures as canvas failures", async () => {
+    const canvas = mountGlobeCanvas();
+    Object.defineProperty(canvas, "captureStream", {
+      configurable: true,
+      value: vi.fn(() => {
+        throw new Error("capture unavailable");
+      }),
+    });
+    class SupportedRecorder {
+      static isTypeSupported() { return true; }
+    }
+    vi.stubGlobal("MediaRecorder", SupportedRecorder);
+
+    await expect(exportGlobeVideo({ timeS: 0 }, { durationMs: 1_000 })).resolves.toMatchObject({
+      ok: false,
+      code: "canvas",
+    });
+  });
+
+  it("returns a non-retryable codec failure when MediaRecorder is unavailable", async () => {
+    mountGlobeCanvas();
+    vi.stubGlobal("MediaRecorder", undefined);
+
+    await expect(exportGlobeVideo({ timeS: 0 })).resolves.toMatchObject({
+      ok: false,
+      code: "codec",
+      retryable: false,
+    });
+  });
+
+  it("stops tracks and clears both timers when recording succeeds", async () => {
+    vi.useFakeTimers();
+    const canvas = mountGlobeCanvas();
+    const stopTrack = vi.fn();
+    Object.defineProperty(canvas, "captureStream", {
+      configurable: true,
+      value: vi.fn(() => ({ getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream)),
+    });
+    class SuccessfulRecorder {
+      static isTypeSupported() { return true; }
+      state: RecordingState = "inactive";
+      ondataavailable: ((event: BlobEvent) => void) | null = null;
+      onstop: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      start() { this.state = "recording"; }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob(["video"]) } as BlobEvent);
+        this.onstop?.();
+      }
+    }
+    vi.stubGlobal("MediaRecorder", SuccessfulRecorder);
+    mockDownload();
+
+    const pending = exportGlobeVideo({ timeS: 0 }, { durationMs: 1_000 });
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(pending).resolves.toMatchObject({ ok: true, ext: "webm" });
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("stops tracks and clears watchdogs when the recorder start call throws", async () => {
+    vi.useFakeTimers();
+    const canvas = mountGlobeCanvas();
+    const stopTrack = vi.fn();
+    Object.defineProperty(canvas, "captureStream", {
+      configurable: true,
+      value: vi.fn(() => ({ getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream)),
+    });
+    class ThrowingRecorder {
+      static isTypeSupported() { return true; }
+      state: RecordingState = "inactive";
+      ondataavailable: ((event: BlobEvent) => void) | null = null;
+      onstop: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      start() { throw new DOMException("unsupported", "NotSupportedError"); }
+      stop() { this.state = "inactive"; }
+    }
+    vi.stubGlobal("MediaRecorder", ThrowingRecorder);
+
+    await expect(exportGlobeVideo({ timeS: 0 }, { durationMs: 1_000 })).resolves.toMatchObject({
+      ok: false,
+      code: "codec",
+      retryable: false,
+    });
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("handles an immediate recorder error without leaking timers, tracks, or a rejection", async () => {
+    vi.useFakeTimers();
+    const canvas = mountGlobeCanvas();
+    const stopTrack = vi.fn();
+    Object.defineProperty(canvas, "captureStream", {
+      configurable: true,
+      value: vi.fn(() => ({ getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream)),
+    });
+    class ErroringRecorder {
+      static isTypeSupported() { return true; }
+      state: RecordingState = "inactive";
+      ondataavailable: ((event: BlobEvent) => void) | null = null;
+      onstop: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      start() {
+        this.state = "recording";
+        this.onerror?.();
+      }
+      stop() {
+        this.state = "inactive";
+        this.onstop?.();
+      }
+    }
+    vi.stubGlobal("MediaRecorder", ErroringRecorder);
+
+    await expect(exportGlobeVideo({ timeS: 0 }, { durationMs: 1_000 })).resolves.toMatchObject({
+      ok: false,
+      code: "codec",
+      retryable: true,
+    });
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
 
 const COASTAL = getCoastalPoints()[0];
 const SAMPLE_POINT: RunupPoint = {
@@ -144,7 +354,7 @@ describe("suggestedFilename", () => {
       { timeS: 0 },
     );
 
-    expect(ok).toBe(true);
+    expect(ok.ok).toBe(true);
     const captured = getBlob();
     expect(captured).not.toBeNull();
     const fc = JSON.parse(await captured!.text()) as {
@@ -169,7 +379,7 @@ describe("suggestedFilename", () => {
 
     const ok = exportGeoJson([SAMPLE_POINT], PROVENANCE_META);
 
-    expect(ok).toBe(true);
+    expect(ok.ok).toBe(true);
     const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, string | number | null> };
     expect(fc.properties.app_version).toBe("0.10.4");
     expect(fc.properties.generated_at).toBe("2026-06-28T00:00:00.000Z");
@@ -203,7 +413,7 @@ describe("exportCzml", () => {
       },
     ]);
 
-    expect(ok).toBe(true);
+    expect(ok.ok).toBe(true);
     const czml = JSON.parse(await getBlob()!.text()) as Array<{
       description?: string;
       id: string;
@@ -240,7 +450,7 @@ describe("exportCzml", () => {
 
 describe("exportKml", () => {
   it("returns false when no source and no runup points", () => {
-    expect(exportKml({ timeS: 0 }, [])).toBe(false);
+    expect(exportKml({ timeS: 0 }, [])).toMatchObject({ ok: false, code: "data", retryable: true });
   });
 
   it("exports source placemark without cavity when radius is small", async () => {
@@ -256,7 +466,7 @@ describe("exportKml", () => {
     };
 
     const ok = exportKml(meta, []);
-    expect(ok).toBe(true);
+    expect(ok.ok).toBe(true);
     const kml = await getBlob()!.text();
     expect(kml).toContain("<?xml");
     expect(kml).toContain("Test Event");
@@ -341,7 +551,7 @@ describe("exportKml", () => {
 describe("exportRunupCsv", () => {
   it("preserves exact slope and depth record identifiers", async () => {
     const getBlob = mockDownload();
-    expect(exportRunupCsv([SAMPLE_POINT])).toBe(true);
+    expect(exportRunupCsv([SAMPLE_POINT]).ok).toBe(true);
     const csv = await getBlob()!.text();
     expect(csv).toContain("slope_sample_id,slope_record_id");
     expect(csv).toContain("miyako_jp:slope,slope:legacy-curated-v1");
@@ -385,7 +595,7 @@ describe("exportGaugeCsv", () => {
     ];
 
     const ok = exportGaugeCsv(series, "Browser preview", "Coarse basin/shelf");
-    expect(ok).toBe(true);
+    expect(ok.ok).toBe(true);
 
     const csv = await getBlob()!.text();
     const lines = csv.trim().split("\n");
@@ -400,7 +610,7 @@ describe("exportGaugeCsv", () => {
 
   it("returns false for empty series", () => {
     const ok = exportGaugeCsv([], "test", "test");
-    expect(ok).toBe(false);
+    expect(ok).toMatchObject({ ok: false, code: "data", retryable: true });
   });
 
   it("escapes commas in gauge names", async () => {

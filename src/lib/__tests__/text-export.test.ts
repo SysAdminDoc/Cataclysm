@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { generateTextExport } from "../text-export";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { downloadTextExport, generateTextExport } from "../text-export";
 import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../data";
 import { demoRunupAtPoints } from "../demo";
@@ -13,6 +13,10 @@ const MOCK_INITIAL: InitialDisplacement = {
   center: { lat_deg: 21.4, lon_deg: -89.5, depth_m: 1500 },
   label: "Chicxulub",
 };
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("generateTextExport", () => {
   it("includes preset name when provided", () => {
@@ -108,5 +112,35 @@ describe("generateTextExport", () => {
     });
     expect(report).toContain("Source region radius");
     expect(report).not.toContain("Cavity radius");
+  });
+
+  it("returns typed preflight and download outcomes", () => {
+    const blocked = downloadTextExport({
+      timeS: 0,
+      runQuality: {
+        status: "failed",
+        finite_fields: false,
+        minimum_total_depth_m: 0,
+        cfl_number: 2,
+        cfl_margin: -1,
+        accepted_steps: 0,
+        rejected_steps: 1,
+        mass_drift_pct: 100,
+        energy_drift_pct: 100,
+        sponge_width_cells: 0,
+        warnings: [],
+        failure: "non-finite field",
+      },
+    });
+    expect(blocked).toMatchObject({ ok: false, code: "preflight", retryable: false });
+
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => {
+      throw new Error("download unavailable");
+    });
+    expect(downloadTextExport({ timeS: 0 })).toMatchObject({
+      ok: false,
+      code: "download",
+      retryable: true,
+    });
   });
 });

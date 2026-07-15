@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { InitialDisplacement } from "../types/scenario";
 import type { RunupAtPointResult } from "../lib/tauri";
-import { exportRunupCsv } from "../lib/export";
+import { exportFailureLabel, exportRunupCsv, type ExportResult } from "../lib/export";
 import {
   buildCoastalOutcomeStory,
   formatOutcomeTime,
@@ -150,11 +150,18 @@ export function ResultsPanel({
 }: Props) {
   const [view, setView] = useState<ResultView>("outcome");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [csvExportFailure, setCsvExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
   const tabsId = useId();
   useEffect(() => {
     setView("outcome");
     setSelectedPlaceId(null);
+    setCsvExportFailure(null);
   }, [initial]);
+
+  const handleCsvExport = () => {
+    const result = exportRunupCsv(runupResults);
+    setCsvExportFailure(result.ok ? null : result);
+  };
 
   if (!initial) {
     return (
@@ -435,9 +442,15 @@ export function ResultsPanel({
                   <p className="results__outcome-note">
                     Illustrative values use nominal or legacy inputs. Expand a point to audit the exact records.
                   </p>
-                  <button className="results__export" type="button" onClick={() => exportRunupCsv(runupResults)}>
+                  <button className="results__export" type="button" onClick={handleCsvExport}>
                     Export coastal CSV with provenance
                   </button>
+                  {csvExportFailure && (
+                    <div className="panel-error" role="alert">
+                      <span>{exportFailureLabel(csvExportFailure.code)}: {csvExportFailure.message}</span>
+                      {csvExportFailure.retryable && <button type="button" onClick={handleCsvExport}>Retry</button>}
+                    </div>
+                  )}
                   {coastalResults.map((result) => (
                     <details className="results__provenance" key={result.id}>
                       <summary>{result.name} · ~{result.runup_m.toFixed(1)} m runup · {formatOutcomeTime(result.arrival_time_s)}</summary>

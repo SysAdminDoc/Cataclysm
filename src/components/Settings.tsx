@@ -5,7 +5,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId, type LaunchExperiencePolicy } from "../lib/settings";
-import { downloadBlob } from "../lib/export";
+import { downloadBlob, exportFailureLabel, type ExportResult } from "../lib/export";
 import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
@@ -46,12 +46,31 @@ export function Settings({ onClose }: Props) {
   const [launchExperiencePolicy, setLaunchExperiencePolicy] = useState<LaunchExperiencePolicy>("first");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [settingsExportFailure, setSettingsExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
   const [saving, setSaving] = useState(false);
   const [gpuStatus, setGpuStatus] = useState<GpuStatus>(isTauri() ? "unknown" : "browser-preview");
   const [classroomLocked, setClassroomLocked] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSection>("visual");
   const [appliedSettings, setAppliedSettings] = useState<StagedSettings | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleSettingsExport = async () => {
+    let result: ExportResult;
+    try {
+      const json = await settings.exportSettings();
+      const blob = new Blob([json], { type: "application/json" });
+      result = downloadBlob(blob, "cataclysm-settings.json");
+    } catch (error) {
+      result = {
+        ok: false,
+        code: "filesystem",
+        message: `Settings could not be read for export: ${error instanceof Error ? error.message : String(error)}`,
+        retryable: true,
+      };
+    }
+    setSettingsExportFailure(result.ok ? null : result);
+    if (result.ok) setStatusMsg("Settings exported.");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -530,12 +549,7 @@ export function Settings({ onClose }: Props) {
             <div className="settings__button-row">
               <button
                 className="scenario-tab"
-                onClick={async () => {
-                  const json = await settings.exportSettings();
-                  const blob = new Blob([json], { type: "application/json" });
-                  downloadBlob(blob, "cataclysm-settings.json");
-                  setStatusMsg("Settings exported.");
-                }}
+                onClick={() => void handleSettingsExport()}
                 type="button"
               >
                 <UiIcon name="download" size={14} />
@@ -632,6 +646,14 @@ export function Settings({ onClose }: Props) {
                 Reset to defaults
               </button>
             </div>
+            {settingsExportFailure && (
+              <div className="panel-error" role="alert">
+                <span>{exportFailureLabel(settingsExportFailure.code)}: {settingsExportFailure.message}</span>
+                {settingsExportFailure.retryable && (
+                  <button type="button" onClick={() => void handleSettingsExport()}>Retry</button>
+                )}
+              </div>
+            )}
           </section>
 
           <p className="modal__footnote">

@@ -11,6 +11,7 @@ const tauriApi = vi.hoisted(() => ({
 }));
 const exportApi = vi.hoisted(() => ({
   exportGaugeCsv: vi.fn(),
+  exportFailureLabel: vi.fn((code: string) => code),
 }));
 
 vi.mock("../../lib/tauri", () => ({
@@ -84,6 +85,7 @@ describe("SwePlayback", () => {
     tauriApi.cancelSimulation.mockReset();
     tauriApi.cancelSimulation.mockResolvedValue(undefined);
     exportApi.exportGaugeCsv.mockReset();
+    exportApi.exportGaugeCsv.mockReturnValue({ ok: true });
   });
 
   it("streams progress and hands snapshots to the parent", async () => {
@@ -195,6 +197,9 @@ describe("SwePlayback", () => {
       finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false, run_quality: RUN_QUALITY });
     });
 
+    exportApi.exportGaugeCsv
+      .mockReturnValueOnce({ ok: false, code: "download", message: "downloads denied", retryable: true })
+      .mockReturnValue({ ok: true });
     await user.click(await screen.findByRole("button", { name: "Export gauges CSV" }));
     expect(exportApi.exportGaugeCsv).toHaveBeenCalledWith(
       [
@@ -210,6 +215,10 @@ describe("SwePlayback", () => {
       "Coarse basin/shelf",
       RUN_QUALITY,
     );
+    expect(await screen.findByRole("alert")).toHaveTextContent("download: downloads denied");
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(exportApi.exportGaugeCsv).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("keeps completed output when an equivalent source object is supplied", async () => {

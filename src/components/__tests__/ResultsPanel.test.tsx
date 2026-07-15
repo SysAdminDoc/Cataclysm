@@ -86,6 +86,38 @@ describe("ResultsPanel", () => {
     expect(screen.getByRole("button", { name: /Export coastal CSV with provenance/i })).toBeInTheDocument();
   });
 
+  it("surfaces a retry when coastal CSV download fails", async () => {
+    const user = userEvent.setup();
+    const runupResults = demoRunupAtPoints({
+      source: MOCK_INITIAL.center,
+      initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
+      cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
+      is_impact: true,
+      mean_depth_m: 4_000,
+      time_s: Number.MAX_SAFE_INTEGER,
+      points: [getCoastalPoints()[0]],
+    });
+    const createUrl = vi.spyOn(URL, "createObjectURL")
+      .mockImplementationOnce(() => { throw new Error("downloads denied"); })
+      .mockReturnValue("blob:retry-success");
+    const revokeUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      render(<ResultsPanel initial={MOCK_INITIAL} timeS={900} onTimeChange={() => {}} runupResults={runupResults} />);
+      await user.click(screen.getByRole("tab", { name: "Validation" }));
+      await user.click(screen.getByRole("button", { name: /Export coastal CSV with provenance/i }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Download failed: Blob download failed");
+      await user.click(screen.getByRole("button", { name: "Retry" }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(createUrl).toHaveBeenCalledTimes(2);
+      expect(revokeUrl).toHaveBeenCalledWith("blob:retry-success");
+    } finally {
+      createUrl.mockRestore();
+      revokeUrl.mockRestore();
+      click.mockRestore();
+    }
+  });
+
   it("uses semantic tabs with roving keyboard focus", async () => {
     const user = userEvent.setup();
     render(<ResultsPanel initial={MOCK_INITIAL} timeS={900} onTimeChange={() => {}} />);

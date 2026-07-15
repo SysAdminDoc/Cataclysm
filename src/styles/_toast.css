@@ -24,6 +24,21 @@
   background: color-mix(in srgb, var(--red) 12%, var(--mantle));
   border-color: color-mix(in srgb, var(--red) 45%, var(--panel-border));
 }
+.app-toast__action {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  background: color-mix(in srgb, var(--surface0) 74%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.app-toast__action:hover {
+  background: var(--surface0);
+}
 .app-toast__dismiss {
   flex: 0 0 auto;
   background: transparent;

@@ -77,6 +77,30 @@ describe("Settings", () => {
     window.removeEventListener("tsunamisim:settings-saved", saved);
   });
 
+  it("offers a retry when the settings download API fails", async () => {
+    const user = userEvent.setup();
+    const createUrl = vi.spyOn(URL, "createObjectURL")
+      .mockImplementationOnce(() => { throw new Error("downloads denied"); })
+      .mockReturnValue("blob:settings-retry");
+    const revokeUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      render(<Settings onClose={() => {}} />);
+      await user.click(await screen.findByRole("button", { name: "Data & onboarding" }));
+      await user.click(screen.getByRole("button", { name: "Export settings" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Download failed: Blob download failed");
+      await user.click(screen.getByRole("button", { name: "Retry" }));
+      expect(await screen.findByText("Settings exported.")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(createUrl).toHaveBeenCalledTimes(2);
+      expect(revokeUrl).toHaveBeenCalledWith("blob:settings-retry");
+    } finally {
+      createUrl.mockRestore();
+      revokeUrl.mockRestore();
+      click.mockRestore();
+    }
+  });
+
   it("does not silently discard staged changes from a backdrop click", async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();

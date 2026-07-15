@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, createSimulationRunId, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
-import { exportGaugeCsv } from "../lib/export";
+import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
 import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, RunQualityRecord } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
@@ -126,6 +126,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [gaugeExportFailure, setGaugeExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
   const [useBathy, setUseBathy] = useState(true);
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -300,7 +301,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     if (gaugeSeries.length === 0) return;
     const mode = isTauri() ? "Backend SWE solver" : "Browser preview (approximate)";
     const bathy = useBathy ? "Coarse basin/shelf" : "Uniform depth";
-    exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality);
+    const result = exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality);
+    setGaugeExportFailure(result.ok ? null : result);
   }, [diag?.quality, gaugeSeries, useBathy]);
 
   const cancel = useCallback(() => {
@@ -779,15 +781,23 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           </div>
         )}
         {gaugeSeries.length > 0 && (
-          <button
-            type="button"
-            onClick={handleGaugeCsvExport}
-            className="swe__gauge-export"
-            title="Export all gauge time series as CSV"
-          >
-            <UiIcon name="download" size={14} />
-            Export gauges CSV
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={handleGaugeCsvExport}
+              className="swe__gauge-export"
+              title="Export all gauge time series as CSV"
+            >
+              <UiIcon name="download" size={14} />
+              Export gauges CSV
+            </button>
+            {gaugeExportFailure && (
+              <div className="panel-error" role="alert">
+                <span>{exportFailureLabel(gaugeExportFailure.code)}: {gaugeExportFailure.message}</span>
+                {gaugeExportFailure.retryable && <button type="button" onClick={handleGaugeCsvExport}>Retry</button>}
+              </div>
+            )}
+          </>
         )}
       </div>}
     </div>

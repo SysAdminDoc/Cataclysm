@@ -23,7 +23,7 @@ import { dartPinsForPreset } from "./lib/dart";
 import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { copyExportText, exportFailureLabel, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
@@ -72,6 +72,8 @@ import {
 type HazardMode = "tsunami" | "nuclear" | "asteroid";
 type DirectHazardMode = Exclude<HazardMode, "tsunami">;
 type InspectorTab = "setup" | "results" | "layers";
+type ToastAction = { label: string; run: () => void };
+type ToastMessage = { msg: string; tone: "error" | "info"; action?: ToastAction };
 type LibraryPreview =
   | { kind: "preset"; presetId: string }
   | { kind: "direct"; scenario: DirectScenarioTemplate };
@@ -351,7 +353,7 @@ export default function App() {
   const [customEditorOpen, setCustomEditorOpen] = useState(false);
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [outcomeFocus, setOutcomeFocus] = useState<OutcomeFocusRequest | null>(null);
-  const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const lastCameraUpdateAt = useRef(0);
@@ -434,11 +436,26 @@ export default function App() {
 
   // Ephemeral status toast for actions that otherwise fail silently
   // (exports, IPC errors). Auto-dismisses; replaced by the next message.
-  const showToast = useCallback((msg: string, tone: "error" | "info" = "info") => {
-    setToast({ msg, tone });
+  const showToast = useCallback((msg: string, tone: "error" | "info" = "info", action?: ToastAction) => {
+    setToast({ msg, tone, action });
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 6000);
+    toastTimer.current = window.setTimeout(() => setToast(null), action ? 12_000 : 6_000);
   }, []);
+  const reportExportResult = useCallback((
+    result: ExportResult,
+    successMessage: string,
+    retry: () => void,
+  ) => {
+    if (result.ok) {
+      showToast(successMessage);
+      return;
+    }
+    showToast(
+      `${exportFailureLabel(result.code)}: ${result.message}`,
+      "error",
+      result.retryable ? { label: "Retry", run: retry } : undefined,
+    );
+  }, [showToast]);
   const changeWorkspaceMode = useCallback((mode: WorkspaceMode) => {
     setWorkspaceMode(mode);
     void settings.setWorkspaceMode(mode).catch((error) => {
@@ -1093,6 +1110,19 @@ export default function App() {
       {toast && (
         <div className="app-toast" data-tone={toast.tone} role="alert" aria-live="assertive">
           <span>{toast.msg}</span>
+          {toast.action && (
+            <button
+              className="app-toast__action"
+              onClick={() => {
+                const action = toast.action;
+                setToast(null);
+                action?.run();
+              }}
+              type="button"
+            >
+              {toast.action.label}
+            </button>
+          )}
           <button
             className="app-toast__dismiss"
             aria-label="Dismiss notification"
@@ -1229,8 +1259,8 @@ export default function App() {
             <ToolbarButton
               icon="image"
               onClick={() => {
-                const ok = exportGlobePng(exportMetaA());
-                showToast(ok ? "Saved globe PNG." : "No globe view to export yet.", ok ? "info" : "error");
+                const run = () => reportExportResult(exportGlobePng(exportMetaA()), "Saved globe PNG.", run);
+                run();
               }}
               title="Save the current globe view as PNG"
               disabled={inHazardMode || !slotA.initial}
@@ -1243,13 +1273,17 @@ export default function App() {
               <ToolbarButton
                 icon="compare"
                 onClick={() => {
-                  const ok = exportComparisonPng({
-                    metaA: exportMetaA(),
-                    metaB: exportMetaB(),
-                    labelA: activePresetA?.name ?? "Slot A",
-                    labelB: activePresetB?.name ?? "Slot B",
-                  });
-                  showToast(ok ? "Saved comparison PNG." : "Both globe views must be visible.", ok ? "info" : "error");
+                  const run = () => reportExportResult(
+                    exportComparisonPng({
+                      metaA: exportMetaA(),
+                      metaB: exportMetaB(),
+                      labelA: activePresetA?.name ?? "Slot A",
+                      labelB: activePresetB?.name ?? "Slot B",
+                    }),
+                    "Saved comparison PNG.",
+                    run,
+                  );
+                  run();
                 }}
                 title="Export both comparison globes side-by-side as a single PNG"
                 disabled={!slotA.initial || !slotB.initial}
@@ -1262,8 +1296,8 @@ export default function App() {
             <ToolbarButton
               icon="share"
               onClick={() => {
-                const ok = exportGlobeShareCard(exportMetaA());
-                showToast(ok ? "Saved share card." : "No globe view to export yet.", ok ? "info" : "error");
+                const run = () => reportExportResult(exportGlobeShareCard(exportMetaA()), "Saved share card.", run);
+                run();
               }}
               title="Save a branded share-card with scenario metadata + citation overlay"
               disabled={inHazardMode || !slotA.initial}
@@ -1281,10 +1315,12 @@ export default function App() {
                   return;
                 }
                 const url = `${window.location.origin}${window.location.pathname}${params}`;
-                navigator.clipboard.writeText(url).then(
-                  () => showToast("Scenario link copied to clipboard.", "info"),
-                  () => showToast("Failed to copy link to clipboard.", "error"),
+                const run = async () => reportExportResult(
+                  await copyExportText(url),
+                  "Scenario link copied to clipboard.",
+                  () => void run(),
                 );
+                void run();
               }}
               title="Copy a shareable URL for the current scenario"
               disabled={inHazardMode || (!slotA.activePresetId && !slotA.lastCustomScenario)}
@@ -1295,21 +1331,21 @@ export default function App() {
             </ToolbarButton>
             <ToolbarButton
               icon="video"
-              onClick={async () => {
-                if (recording) return;
-                setRecording(true);
-                try {
-                  const result = await exportGlobeVideo(
-                    exportMetaA(),
-                    { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
-                  );
-                  showToast(
-                    result.ok ? "Saved globe recording." : `Video export failed: ${result.reason}`,
-                    result.ok ? "info" : "error",
-                  );
-                } finally {
-                  setRecording(false);
-                }
+              onClick={() => {
+                const run = async () => {
+                  if (recording) return;
+                  setRecording(true);
+                  try {
+                    const result = await exportGlobeVideo(
+                      exportMetaA(),
+                      { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
+                    );
+                    reportExportResult(result, "Saved globe recording.", () => void run());
+                  } finally {
+                    setRecording(false);
+                  }
+                };
+                void run();
               }}
               title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
               disabled={inHazardMode || !slotA.initial || recording}
@@ -1321,12 +1357,16 @@ export default function App() {
             <ToolbarButton
               icon="text"
               onClick={() => {
-                const ok = downloadTextExport({
-                  ...exportMetaA(),
-                  runupResults: slotA.runupResults,
-                  sourceKind: activeScenarioKindA,
-                });
-                showToast(ok ? "Saved text results." : "Export blocked by numerical-integrity checks.", ok ? "info" : "error");
+                const run = () => reportExportResult(
+                  downloadTextExport({
+                    ...exportMetaA(),
+                    runupResults: slotA.runupResults,
+                    sourceKind: activeScenarioKindA,
+                  }),
+                  "Saved text results.",
+                  run,
+                );
+                run();
               }}
               title="Export scenario parameters and runup results as a screen-reader-friendly text file"
               disabled={inHazardMode || !slotA.initial}
@@ -1339,8 +1379,12 @@ export default function App() {
               icon="czml"
               onClick={() => {
                 if (sweSnapshots && sweSnapshots.length > 0) {
-                  const ok = exportCzml(exportMetaA(), sweSnapshots);
-                  showToast(ok ? "Saved CZML playback file." : "No snapshots to export.", ok ? "info" : "error");
+                  const run = () => reportExportResult(
+                    exportCzml(exportMetaA(), sweSnapshots),
+                    "Saved CZML playback file.",
+                    run,
+                  );
+                  run();
                 } else {
                   showToast("Run SWE simulation first to export CZML.", "error");
                 }
@@ -1371,8 +1415,12 @@ export default function App() {
                   quantitative_confidence: r.quantitative_confidence,
                   quantitative_label: r.quantitative_label,
                 }));
-                const ok = exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null);
-                showToast(ok ? "Saved GeoJSON inundation file." : "No runup data to export.", ok ? "info" : "error");
+                const run = () => reportExportResult(
+                  exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null),
+                  "Saved GeoJSON inundation file.",
+                  run,
+                );
+                run();
               }}
               title="Export inundation polygons as GeoJSON"
               disabled={inHazardMode || slotA.runupResults.length === 0}
@@ -1400,8 +1448,12 @@ export default function App() {
                   quantitative_confidence: r.quantitative_confidence,
                   quantitative_label: r.quantitative_label,
                 }));
-                const ok = exportKml(exportMetaA(), points);
-                showToast(ok ? "Saved KML file for Google Earth." : "No data to export.", ok ? "info" : "error");
+                const run = () => reportExportResult(
+                  exportKml(exportMetaA(), points),
+                  "Saved KML file for Google Earth.",
+                  run,
+                );
+                run();
               }}
               title="Export source and runup data as KML for Google Earth"
               disabled={inHazardMode || !slotA.initial}

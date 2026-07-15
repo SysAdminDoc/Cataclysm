@@ -16,6 +16,59 @@ import {
   type EarthOperationPreflight,
 } from "./earth-assets";
 
+export type ExportFailureCode =
+  | "preflight"
+  | "canvas"
+  | "codec"
+  | "clipboard"
+  | "filesystem"
+  | "download"
+  | "cancelled"
+  | "data";
+
+export type ExportResult<T extends object = object> =
+  | ({ ok: true } & T)
+  | { ok: false; code: ExportFailureCode; message: string; retryable: boolean };
+
+const EXPORT_FAILURE_LABELS: Record<ExportFailureCode, string> = {
+  preflight: "Preflight blocked",
+  canvas: "Canvas capture failed",
+  codec: "Video codec failed",
+  clipboard: "Clipboard failed",
+  filesystem: "Filesystem failed",
+  download: "Download failed",
+  cancelled: "Export cancelled",
+  data: "Export data unavailable",
+};
+
+export function exportFailureLabel(code: ExportFailureCode): string {
+  return EXPORT_FAILURE_LABELS[code];
+}
+
+function exportFailure(
+  code: ExportFailureCode,
+  message: string,
+  retryable: boolean,
+): { ok: false; code: ExportFailureCode; message: string; retryable: boolean } {
+  return { ok: false, code, message, retryable };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function unexpectedExportFailure(
+  code: ExportFailureCode,
+  action: string,
+  error: unknown,
+): { ok: false; code: ExportFailureCode; message: string; retryable: boolean } {
+  console.error(`[export] ${action} failed`, error);
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return exportFailure("cancelled", `${action} was cancelled.`, true);
+  }
+  return exportFailure(code, `${action} failed: ${errorMessage(error)}`, true);
+}
+
 function preflightMediaExport(
   operation: "static_capture" | "video_capture",
 ): EarthOperationPreflight | null {
@@ -82,42 +135,65 @@ export function suggestedFilename(meta: ScreenshotMeta, ext: "png" | "webm" | "m
   return `cataclysm-${id}-t${t}min-${timestampSuffix()}.${ext}`;
 }
 
-/** Returns the globe canvas contents as a PNG data URL, or null if it's not mountable. */
-export function captureGlobePng(): string | null {
-  if (!preflightMediaExport("static_capture")) return null;
+/** Returns the globe canvas contents as a PNG data URL. */
+export function captureGlobePng(): ExportResult<{ dataUrl: string }> {
+  if (!preflightMediaExport("static_capture")) {
+    return exportFailure("preflight", "Earth asset rights or attribution preflight blocked PNG capture.", false);
+  }
   const canvas = findGlobeCanvas();
-  if (!canvas) return null;
+  if (!canvas) return exportFailure("canvas", "The globe canvas is not mounted yet.", true);
   try {
-    return canvas.toDataURL("image/png");
+    return { ok: true, dataUrl: canvas.toDataURL("image/png") };
   } catch (err) {
-    console.error("Failed to capture globe canvas:", err);
-    return null;
+    return unexpectedExportFailure("canvas", "PNG canvas capture", err);
   }
 }
 
 /** Trigger a download of the data URL using the standard `<a download>` pattern. */
-export function downloadDataUrl(dataUrl: string, filename: string): void {
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = safeFilenamePart(filename);
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+export function downloadDataUrl(dataUrl: string, filename: string): ExportResult {
+  let anchor: HTMLAnchorElement | null = null;
+  try {
+    anchor = document.createElement("a");
+    anchor.href = dataUrl;
+    anchor.download = safeFilenamePart(filename);
+    document.body.appendChild(anchor);
+    anchor.click();
+    return { ok: true };
+  } catch (error) {
+    return unexpectedExportFailure("download", "Browser download", error);
+  } finally {
+    anchor?.remove();
+  }
 }
 
 /** Trigger a download of a Blob using the standard `<a download>` pattern. */
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
+export function downloadBlob(blob: Blob, filename: string): ExportResult {
+  let url: string | null = null;
   try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = safeFilenamePart(filename);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    url = URL.createObjectURL(blob);
+    return downloadDataUrl(url, filename);
+  } catch (error) {
+    return unexpectedExportFailure("download", "Blob download", error);
   } finally {
-    // Yield to the download dispatch then release the object URL.
-    setTimeout(() => URL.revokeObjectURL(url), 5_000);
+    if (url) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.warn("[export] object URL cleanup failed", error);
+      }
+    }
+  }
+}
+
+export async function copyExportText(text: string): Promise<ExportResult> {
+  try {
+    if (!navigator.clipboard?.writeText) {
+      return exportFailure("clipboard", "Clipboard access is unavailable in this WebView.", true);
+    }
+    await navigator.clipboard.writeText(text);
+    return { ok: true };
+  } catch (error) {
+    return unexpectedExportFailure("clipboard", "Clipboard copy", error);
   }
 }
 
@@ -199,17 +275,21 @@ function copyGlobeWithProvenance(
   return offscreen;
 }
 
-/** Full export flow — capture + download. Returns true if a screenshot was produced. */
-export function exportGlobePng(meta: ScreenshotMeta): boolean {
-  if (!preflightRunQuality(meta).ok) return false;
+/** Full export flow — capture + download. */
+export function exportGlobePng(meta: ScreenshotMeta): ExportResult {
+  const quality = preflightRunQuality(meta);
+  if (!quality.ok) return exportFailure("preflight", quality.reason, false);
   const preflight = preflightMediaExport("static_capture");
-  if (!preflight) return false;
+  if (!preflight) return exportFailure("preflight", "Earth asset rights or attribution preflight blocked PNG export.", false);
   const sourceCanvas = findGlobeCanvas();
-  if (!sourceCanvas) return false;
-  const stamped = copyGlobeWithProvenance(sourceCanvas, meta, preflight.attributions);
-  if (!stamped) return false;
-  downloadDataUrl(stamped.toDataURL("image/png"), suggestedFilename(meta, "png"));
-  return true;
+  if (!sourceCanvas) return exportFailure("canvas", "The globe canvas is not mounted yet.", true);
+  try {
+    const stamped = copyGlobeWithProvenance(sourceCanvas, meta, preflight.attributions);
+    if (!stamped) return exportFailure("canvas", "A 2D canvas context could not be created for PNG export.", true);
+    return downloadDataUrl(stamped.toDataURL("image/png"), suggestedFilename(meta, "png"));
+  } catch (error) {
+    return unexpectedExportFailure("canvas", "PNG export", error);
+  }
 }
 
 /** F4-09 — Share-card export. Composites the bare globe canvas with a
@@ -218,13 +298,15 @@ export function exportGlobePng(meta: ScreenshotMeta): boolean {
  *  to a 1200×800 share-card-friendly aspect via an offscreen canvas
  *  (no external library needed). Includes a footer "Educational only —
  *  not for evacuation" trust-signal to preserve product framing. */
-export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
-  if (!preflightRunQuality(meta).ok) return false;
+export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
+  const quality = preflightRunQuality(meta);
+  if (!quality.ok) return exportFailure("preflight", quality.reason, false);
   const preflight = preflightMediaExport("static_capture");
-  if (!preflight) return false;
+  if (!preflight) return exportFailure("preflight", "Earth asset rights or attribution preflight blocked share-card export.", false);
   const sourceCanvas = findGlobeCanvas();
-  if (!sourceCanvas) return false;
+  if (!sourceCanvas) return exportFailure("canvas", "The globe canvas is not mounted yet.", true);
 
+  try {
   const W = 1200;
   const H = 800;
   const HEADER_H = 100;
@@ -234,7 +316,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return false;
+  if (!ctx) return exportFailure("canvas", "A 2D canvas context could not be created for the share card.", true);
 
   // Background — match the Catppuccin Mocha base so the card reads as
   // 'made by the same app' on dark or light social timelines.
@@ -327,8 +409,10 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): boolean {
   }
 
   const dataUrl = canvas.toDataURL("image/png");
-  downloadDataUrl(dataUrl, suggestedFilename(meta, "png").replace(".png", "-share.png"));
-  return true;
+  return downloadDataUrl(dataUrl, suggestedFilename(meta, "png").replace(".png", "-share.png"));
+  } catch (error) {
+    return unexpectedExportFailure("canvas", "Share-card export", error);
+  }
 }
 
 export type ComparisonExportMeta = {
@@ -338,14 +422,18 @@ export type ComparisonExportMeta = {
   labelB?: string;
 };
 
-export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
-  if (!preflightRunQuality(opts.metaA).ok || !preflightRunQuality(opts.metaB).ok) return false;
+export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
+  const qualityA = preflightRunQuality(opts.metaA);
+  const qualityB = preflightRunQuality(opts.metaB);
+  if (!qualityA.ok) return exportFailure("preflight", qualityA.reason, false);
+  if (!qualityB.ok) return exportFailure("preflight", qualityB.reason, false);
   const preflight = preflightMediaExport("static_capture");
-  if (!preflight) return false;
+  if (!preflight) return exportFailure("preflight", "Earth asset rights or attribution preflight blocked comparison export.", false);
   const canvases = findAllGlobeCanvases();
-  if (canvases.length < 2) return false;
+  if (canvases.length < 2) return exportFailure("canvas", "Both comparison globe canvases must be mounted.", true);
   const [srcA, srcB] = canvases;
 
+  try {
   const GAP = 4;
   const LABEL_H = 36;
   const FOOTER_H = 50;
@@ -358,7 +446,7 @@ export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return false;
+  if (!ctx) return exportFailure("canvas", "A 2D canvas context could not be created for comparison export.", true);
 
   ctx.fillStyle = "#1e1e2e";
   ctx.fillRect(0, 0, W, H);
@@ -411,8 +499,10 @@ export function exportComparisonPng(opts: ComparisonExportMeta): boolean {
   );
 
   const dataUrl = canvas.toDataURL("image/png");
-  downloadDataUrl(dataUrl, `cataclysm-compare-${timestampSuffix()}.png`);
-  return true;
+  return downloadDataUrl(dataUrl, `cataclysm-compare-${timestampSuffix()}.png`);
+  } catch (error) {
+    return unexpectedExportFailure("canvas", "Comparison PNG export", error);
+  }
 }
 
 /** Pick the best video MIME the current WebView supports. WebM/VP9 is the
@@ -446,66 +536,93 @@ export type VideoExportOptions = {
 export async function exportGlobeVideo(
   meta: ScreenshotMeta,
   opts: VideoExportOptions = {},
-): Promise<{ ok: true; ext: "webm" | "mp4"; size: number } | { ok: false; reason: string }> {
+): Promise<ExportResult<{ ext: "webm" | "mp4"; size: number }>> {
   const qualityPreflight = preflightRunQuality(meta);
-  if (!qualityPreflight.ok) return { ok: false, reason: qualityPreflight.reason };
+  if (!qualityPreflight.ok) return exportFailure("preflight", qualityPreflight.reason, false);
   const preflight = preflightMediaExport("video_capture");
   if (!preflight) {
-    return { ok: false, reason: "Earth asset rights or live attribution preflight blocked video export" };
+    return exportFailure("preflight", "Earth asset rights or live attribution preflight blocked video export.", false);
   }
   const canvas = findGlobeCanvas();
-  if (!canvas) return { ok: false, reason: "Globe canvas not mounted" };
+  if (!canvas) return exportFailure("canvas", "The globe canvas is not mounted yet.", true);
   const mime = pickVideoMime();
   if (!mime) {
-    return {
-      ok: false,
-      reason: "MediaRecorder unsupported by this WebView — no video codecs available",
-    };
+    return exportFailure("codec", "MediaRecorder is unavailable or no supported video codec was found.", false);
   }
   const fps = Math.min(60, Math.max(1, Math.round(opts.fps ?? 30)));
   const durationMs = Math.min(30_000, Math.max(1_000, Math.round(opts.durationMs ?? 6_000)));
   const bitsPerSecond = Math.min(25_000_000, Math.max(500_000, Math.round(opts.bitsPerSecond ?? 6_000_000)));
-  const stream = canvas.captureStream(fps);
-  const recorder = new MediaRecorder(stream, {
-    mimeType: mime.mime,
-    bitsPerSecond,
-  });
+  let stream: MediaStream | null = null;
+  let recorder: MediaRecorder | null = null;
+  let durationTimer: ReturnType<typeof setTimeout> | undefined;
+  let watchdogTimer: ReturnType<typeof setTimeout> | undefined;
   const chunks: BlobPart[] = [];
-  recorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) chunks.push(e.data);
-  };
-  let settled = false;
-  const stopped = new Promise<void>((resolve, reject) => {
-    const settle = (fn: () => void) => {
-      if (settled) return;
-      settled = true;
-      fn();
-    };
-    recorder.onstop = () => settle(resolve);
-    recorder.onerror = () => settle(() => reject(new Error("MediaRecorder failed while recording")));
-    // Watchdog: some WebView2 codec paths never fire onstop/onerror, which
-    // would hang `await stopped` forever and leave the capture stream live.
-    setTimeout(
-      () => settle(() => reject(new Error("Recording timed out (no stop event from MediaRecorder)"))),
-      durationMs + 5_000,
-    );
-  });
   try {
+    try {
+      stream = canvas.captureStream(fps);
+    } catch (error) {
+      return unexpectedExportFailure("canvas", "Video canvas capture", error);
+    }
+    recorder = new MediaRecorder(stream, {
+      mimeType: mime.mime,
+      bitsPerSecond,
+    });
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) chunks.push(event.data);
+    };
+    let settled = false;
+    const stopped = new Promise<void>((resolve, reject) => {
+      const settle = (operation: () => void) => {
+        if (settled) return;
+        settled = true;
+        operation();
+      };
+      recorder!.onstop = () => settle(resolve);
+      recorder!.onerror = () => settle(() => reject(new Error("MediaRecorder failed while recording")));
+      durationTimer = setTimeout(() => {
+        try {
+          if (recorder!.state !== "inactive") recorder!.stop();
+          else settle(resolve);
+        } catch (error) {
+          settle(() => reject(error));
+        }
+      }, durationMs);
+      watchdogTimer = setTimeout(
+        () => settle(() => reject(new Error("Recording timed out because MediaRecorder emitted no stop event"))),
+        durationMs + 5_000,
+      );
+    });
     recorder.start();
-    await new Promise((r) => setTimeout(r, durationMs));
-    if (recorder.state !== "inactive") recorder.stop();
     await stopped;
-  } catch (err) {
-    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    const blob = new Blob(chunks, { type: mime.mime });
+    if (blob.size === 0) {
+      return exportFailure("codec", "The video encoder produced an empty recording.", true);
+    }
+    const download = downloadBlob(blob, suggestedFilename(meta, mime.ext));
+    if (!download.ok) return download;
+    return { ok: true, ext: mime.ext, size: blob.size };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "NotSupportedError") {
+      return exportFailure("codec", `The selected ${mime.mime} codec could not start.`, false);
+    }
+    return unexpectedExportFailure("codec", "Video export", error);
   } finally {
-    for (const track of stream.getTracks()) track.stop();
+    if (durationTimer) clearTimeout(durationTimer);
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch (error) {
+        console.warn("[export] MediaRecorder cleanup failed", error);
+      }
+    }
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.onerror = null;
+    }
+    for (const track of stream?.getTracks() ?? []) track.stop();
   }
-  const blob = new Blob(chunks, { type: mime.mime });
-  if (blob.size === 0) {
-    return { ok: false, reason: "Video encoder produced an empty recording" };
-  }
-  downloadBlob(blob, suggestedFilename(meta, mime.ext));
-  return { ok: true, ext: mime.ext, size: blob.size };
 }
 
 /** Export SWE simulation snapshots as a CZML document for playback in
@@ -514,9 +631,11 @@ export async function exportGlobeVideo(
 export function exportCzml(
   meta: ScreenshotMeta,
   snapshots: import("../types/scenario").GridSnapshot[],
-): boolean {
-  if (!preflightRunQuality(meta).ok) return false;
-  if (!snapshots.length) return false;
+): ExportResult {
+  const quality = preflightRunQuality(meta);
+  if (!quality.ok) return exportFailure("preflight", quality.reason, false);
+  if (!snapshots.length) return exportFailure("data", "Run the SWE simulation before exporting CZML.", true);
+  try {
   const provenance = buildModelProvenance({
     ...meta,
     solverMode: meta.solverMode ?? "Shallow-water-equation snapshot playback",
@@ -601,8 +720,10 @@ export function exportCzml(
   const json = JSON.stringify(czml, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const presetId = meta.preset?.id ?? "custom-scenario";
-  downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}.czml`);
-  return true;
+  return downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}.czml`);
+  } catch (error) {
+    return unexpectedExportFailure("data", "CZML serialization", error);
+  }
 }
 
 export type RunupPoint = {
@@ -626,9 +747,13 @@ export function exportGeoJson(
   points: RunupPoint[],
   meta: ScreenshotMeta,
   isochrones?: import("../types/scenario").Isochrone[] | null,
-): boolean {
-  if (!preflightRunQuality(meta).ok) return false;
-  if (!points.length && !(isochrones && isochrones.length)) return false;
+): ExportResult {
+  const quality = preflightRunQuality(meta);
+  if (!quality.ok) return exportFailure("preflight", quality.reason, false);
+  if (!points.length && !(isochrones && isochrones.length)) {
+    return exportFailure("data", "No runup points or arrival isochrones are available for GeoJSON export.", true);
+  }
+  try {
   const provenance = buildModelProvenance(meta);
 
   const isochroneFeatures = (isochrones ?? []).map((iso) => ({
@@ -716,15 +841,19 @@ export function exportGeoJson(
   const json = JSON.stringify(fc, null, 2);
   const blob = new Blob([json], { type: "application/geo+json" });
   const presetId = meta.preset?.id ?? "custom-scenario";
-  downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}-inundation.geojson`);
-  return true;
+  return downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}-inundation.geojson`);
+  } catch (error) {
+    return unexpectedExportFailure("data", "GeoJSON serialization", error);
+  }
 }
 
 export function exportKml(
   meta: ScreenshotMeta,
   runupPoints: RunupPoint[],
-): boolean {
-  if (!preflightRunQuality(meta).ok) return false;
+): ExportResult {
+  const quality = preflightRunQuality(meta);
+  if (!quality.ok) return exportFailure("preflight", quality.reason, false);
+  try {
   const provenance = buildModelProvenance(meta);
   const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
   const name = provenance.scenarioName;
@@ -775,7 +904,9 @@ export function exportKml(
     </Placemark>`);
   }
 
-  if (sourcePlacemarks.length === 0 && runupPlacemarks.length === 0) return false;
+  if (sourcePlacemarks.length === 0 && runupPlacemarks.length === 0) {
+    return exportFailure("data", "No source or coastal runup data is available for KML export.", true);
+  }
 
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -793,8 +924,10 @@ export function exportKml(
 
   const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
   const presetId = meta.preset?.id ?? "custom-scenario";
-  downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}.kml`);
-  return true;
+  return downloadBlob(blob, `cataclysm-${safeFilenamePart(presetId)}.kml`);
+  } catch (error) {
+    return unexpectedExportFailure("data", "KML serialization", error);
+  }
 }
 
 function escapeXml(s: string): string {
@@ -816,8 +949,9 @@ function normaliseLon(lon: number): number {
   return wrapped === -180 && lon > 0 ? 180 : wrapped;
 }
 
-export function exportRunupCsv(points: RunupPoint[]): boolean {
-  if (points.length === 0) return false;
+export function exportRunupCsv(points: RunupPoint[]): ExportResult {
+  if (points.length === 0) return exportFailure("data", "No coastal runup points are available for CSV export.", true);
+  try {
   const text = (value: string | null) => encodeSpreadsheetSafeCsvText(value ?? "");
   const header = [
     "point_id", "name", "lat_deg", "lon_deg", "runup_m", "offshore_amplitude_m",
@@ -849,8 +983,10 @@ export function exportRunupCsv(points: RunupPoint[]): boolean {
     ].join(","));
   }
   const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
-  downloadBlob(blob, `cataclysm-coastal-runup-${timestampSuffix()}.csv`);
-  return true;
+  return downloadBlob(blob, `cataclysm-coastal-runup-${timestampSuffix()}.csv`);
+  } catch (error) {
+    return unexpectedExportFailure("data", "Coastal runup CSV serialization", error);
+  }
 }
 
 export function exportGaugeCsv(
@@ -858,10 +994,12 @@ export function exportGaugeCsv(
   solverMode: string,
   bathymetrySource: string,
   runQuality?: import("../types/scenario").RunQualityRecord | null,
-): boolean {
-  if (series.length === 0) return false;
-  if (!preflightRunQuality({ runQuality }).ok) return false;
+): ExportResult {
+  if (series.length === 0) return exportFailure("data", "No gauge samples are available for CSV export.", true);
+  const quality = preflightRunQuality({ runQuality });
+  if (!quality.ok) return exportFailure("preflight", quality.reason, false);
 
+  try {
   const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct";
   const rows: string[] = [header];
   for (const ts of series) {
@@ -879,8 +1017,10 @@ export function exportGaugeCsv(
   }
 
   const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
-  downloadBlob(blob, `cataclysm-gauges-${timestampSuffix()}.csv`);
-  return true;
+  return downloadBlob(blob, `cataclysm-gauges-${timestampSuffix()}.csv`);
+  } catch (error) {
+    return unexpectedExportFailure("data", "Gauge CSV serialization", error);
+  }
 }
 
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n\uFF1D\uFF0B\uFF0D\uFF20]/u;

@@ -57,6 +57,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Exporters now return one typed success/failure contract across PNG, share
+  cards, comparison images, video, text, CZML, GeoJSON, KML, settings, and CSV
+  downloads. Preflight, canvas, codec, clipboard, filesystem, download,
+  cancellation, and data failures are surfaced with retry actions where
+  recovery is possible; anchors, object URLs, recorder handlers, timers, and
+  media tracks are released on both success and forced browser-API failures.
 - Scenario imports now reject conflicting `schemaVersion`/`version` aliases and
   conflicting `source.water_depth_m`/`location.depth_m` values before they can
   be saved or applied. Matching aliases are canonicalized with an explicit

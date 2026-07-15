@@ -1,6 +1,11 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { buildModelProvenance, provenanceSummary, type ModelProvenanceInput } from "./model-provenance";
-import { preflightRunQuality, safeFilenamePart } from "./export";
+import {
+  downloadBlob,
+  preflightRunQuality,
+  safeFilenamePart,
+  type ExportResult,
+} from "./export";
 import { buildCoastalOutcomeStory, formatOutcomeTime } from "./result-story";
 import type { RunupAtPointResult } from "./tauri";
 
@@ -145,18 +150,23 @@ function padRow(cols: string[]): string {
   return cols.map((c, i) => c.padEnd(widths[i] ?? 10)).join("  ");
 }
 
-export function downloadTextExport(data: TextExportData): boolean {
-  if (!preflightRunQuality(data).ok) return false;
-  const text = generateTextExport(data);
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const presetId = safeFilenamePart(data.preset?.id ?? "custom-scenario");
-  a.download = `cataclysm-${presetId}-results.txt`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5_000);
-  return true;
+export function downloadTextExport(data: TextExportData): ExportResult {
+  const quality = preflightRunQuality(data);
+  if (!quality.ok) {
+    return { ok: false, code: "preflight", message: quality.reason, retryable: false };
+  }
+  try {
+    const text = generateTextExport(data);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const presetId = safeFilenamePart(data.preset?.id ?? "custom-scenario");
+    return downloadBlob(blob, `cataclysm-${presetId}-results.txt`);
+  } catch (error) {
+    console.error("[export] Text serialization failed", error);
+    return {
+      ok: false,
+      code: "data",
+      message: `Text serialization failed: ${error instanceof Error ? error.message : String(error)}`,
+      retryable: true,
+    };
+  }
 }
