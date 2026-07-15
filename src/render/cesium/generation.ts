@@ -98,7 +98,10 @@ export class AsyncGenerationOwner<Viewer extends object> {
 
   /**
    * Commits a resolved value only if its token still owns the active context.
-   * Pending diagnostics include both current and stale work until it settles.
+   * Rejections from stale work are consumed as stale outcomes so an obsolete
+   * request cannot overwrite the current UI's error state. A rejection from
+   * the active context still propagates to the caller. Pending diagnostics
+   * include both current and stale work until it settles.
    */
   async guard<Value>(
     token: AsyncGenerationToken<Viewer>,
@@ -108,7 +111,13 @@ export class AsyncGenerationOwner<Viewer extends object> {
   ): Promise<AsyncGenerationResult> {
     this.#pending += 1;
     try {
-      const value = await work;
+      let value: Value;
+      try {
+        value = await work;
+      } catch (error) {
+        if (!this.isCurrent(token)) return "stale";
+        throw error;
+      }
       if (this.isCurrent(token)) {
         commit(value);
         return "committed";

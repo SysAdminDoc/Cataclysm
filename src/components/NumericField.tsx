@@ -91,6 +91,7 @@ export function NumericField({
         min={min}
         max={max}
         step={step}
+        required
         aria-labelledby={`${labelId} ${exactId}`}
         aria-describedby={descriptions}
         aria-invalid={error ? "true" : "false"}
@@ -104,6 +105,7 @@ export function NumericField({
           numberFocused.current = false;
           commit();
         }}
+        onInvalid={() => setError(validationMessage(label, draft, min, max))}
         onKeyDown={(event) => {
           if (event.key === "Enter") event.currentTarget.blur();
         }}
@@ -121,14 +123,16 @@ export function NumericField({
         className={layout === "hazard" ? "hazard__slider" : "scenario-field__slider"}
         min={slider.min}
         max={slider.max}
-        step={slider.step}
+        step="any"
         value={slider.value}
         aria-labelledby={`${labelId} ${sliderLabelId}`}
         aria-describedby={descriptions}
         aria-valuetext={slider.valueText}
         onChange={(event) => {
           setError(null);
-          slider.onChange(Number(event.target.value));
+          const raw = Number(event.target.value);
+          const snapped = slider.min + Math.round((raw - slider.min) / slider.step) * slider.step;
+          slider.onChange(Math.min(slider.max, Math.max(slider.min, Number(snapped.toPrecision(12)))));
         }}
       />
     </>

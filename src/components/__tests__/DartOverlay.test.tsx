@@ -164,6 +164,24 @@ describe("DartOverlay RMSE", () => {
     await waitFor(() => expect(tauriApi.dartBuoyRmse).toHaveBeenCalledTimes(6));
   });
 
+  it("retains successful buoy comparisons when one station fails", async () => {
+    tauriApi.dartBuoyRmse
+      .mockResolvedValueOnce(comparisonResult())
+      .mockRejectedValueOnce(new Error("station timeout"))
+      .mockResolvedValueOnce(comparisonResult({ rmse_m: 0.31 }));
+    render(
+      <DartOverlay
+        presetId="tohoku_2011"
+        timeS={0}
+        sweSnapshots={[snapshotAt(0, 0.1), snapshotAt(3600, 0.2)]}
+      />,
+    );
+
+    expect(await screen.findAllByText(/RMSE 0\.(42|31) m/)).toHaveLength(2);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Successful buoy results remain available/);
+    expect(screen.getByRole("button", { name: "Retry failed comparisons" })).toBeInTheDocument();
+  });
+
   it("retains the last valid comparison as stale when a refresh fails", async () => {
     tauriApi.dartBuoyRmse.mockResolvedValue(comparisonResult());
     const { rerender } = render(

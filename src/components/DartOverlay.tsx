@@ -240,7 +240,7 @@ function Sparkline({
         columns={[
           { key: "series", label: "Series" },
           { key: "selection", label: "Time or selection" },
-          { key: "value", label: "Value" },
+          { key: "value", label: "Value", dataType: "number" },
           { key: "unit", label: "Unit" },
           { key: "significance", label: "Extrema, threshold, or active state" },
           { key: "confidence", label: "Confidence" },
@@ -257,6 +257,7 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [fitResult, setFitResult] = useState<AsyncResult<Record<string, BuoyFit>>>({ status: "idle" });
   const fits = asyncResultValue(fitResult) ?? {};
+  const [fitFailures, setFitFailures] = useState<string[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
   const contextRef = useRef<string | null>(null);
   const eventKey = presetId ? PRESET_TO_DART_EVENT[presetId] : null;
@@ -279,11 +280,13 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
     if (!event || !sweSnapshots || sweSnapshots.length < 2 || !isTauri()) {
       contextRef.current = null;
       setFitResult({ status: "idle" });
+      setFitFailures([]);
       return;
     }
     const retainPrevious = contextRef.current === eventKey;
     contextRef.current = eventKey;
     setFitResult((current) => startAsyncResult(current, retainPrevious));
+    if (!retainPrevious) setFitFailures([]);
     let cancelled = false;
     (async () => {
       const next: Record<string, BuoyFit> = {};
@@ -307,7 +310,8 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
         }
       }
       if (cancelled) return;
-      if (failures.length > 0) {
+      setFitFailures(failures);
+      if (failures.length > 0 && Object.keys(next).length === 0) {
         setFitResult((current) => rejectAsyncResult(current, `Comparison failed for ${failures.join("; ")}`));
       } else {
         setFitResult(resolveAsyncResult(next, (items) => Object.keys(items).length === 0));
@@ -334,11 +338,12 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
         </button>
         <span
           className="section__badge"
-          data-tone={fitResult.status === "error" || fitResult.status === "stale" ? "danger" : fitResult.status === "loading" ? "active" : undefined}
+          data-tone={fitResult.status === "error" || fitResult.status === "stale" ? "danger" : fitFailures.length > 0 ? "warning" : fitResult.status === "loading" ? "active" : undefined}
         >
           {fitResult.status === "loading" ? fitResult.previous ? "Refreshing" : "Comparing"
             : fitResult.status === "stale" ? "Stale"
               : fitResult.status === "error" ? "Error"
+                : fitFailures.length > 0 ? "Partial"
                 : `${event.buoys.length} buoys`}
         </span>
       </div>
@@ -363,6 +368,12 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
             <div className="panel-error" role="alert">
               <span>{fitResult.status === "stale" ? "Showing the last valid DART comparison: " : "Couldn't compute DART comparison: "}{fitResult.error}</span>
               <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry DART comparison</button>
+            </div>
+          )}
+          {fitResult.status !== "error" && fitResult.status !== "stale" && fitFailures.length > 0 && (
+            <div className="panel-error" role="alert">
+              <span>Some DART comparisons failed ({fitFailures.join("; ")}). Successful buoy results remain available.</span>
+              <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry failed comparisons</button>
             </div>
           )}
           {fitResult.status === "empty" && (

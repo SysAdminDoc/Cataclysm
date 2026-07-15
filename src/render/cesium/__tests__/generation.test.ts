@@ -112,6 +112,25 @@ describe("AsyncGenerationOwner", () => {
     expect(dispose).not.toHaveBeenCalled();
   });
 
+  it("consumes a stale rejection so it cannot replace the current result", async () => {
+    const owner = new AsyncGenerationOwner<object>();
+    const viewer = {};
+    const older = deferred<string>();
+    const newer = deferred<string>();
+    const committed: string[] = [];
+
+    const olderToken = owner.setContext(viewer, "inspect", "older");
+    const olderResult = owner.guard(olderToken, older.promise, (value) => committed.push(value));
+    const newerToken = owner.setContext(viewer, "inspect", "newer");
+    const newerResult = owner.guard(newerToken, newer.promise, (value) => committed.push(value));
+
+    newer.resolve("newer result");
+    await expect(newerResult).resolves.toBe("committed");
+    older.reject(new Error("late failure"));
+    await expect(olderResult).resolves.toBe("stale");
+    expect(committed).toEqual(["newer result"]);
+  });
+
   it("makes destruction idempotent and prevents late commits or reuse", async () => {
     const owner = new AsyncGenerationOwner<object>();
     const viewer = {};

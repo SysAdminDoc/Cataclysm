@@ -187,6 +187,13 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.locator(".app__viewport-hud--source")).toContainText("No source selected");
   });
 
+  test("explains malformed shared scenarios without loading fallback physics", async ({ page }) => {
+    await page.goto("/?scenario=not-valid-base64!!!");
+
+    await expect(page.getByRole("alert")).toContainText(/Couldn't open scenario link:.*malformed or corrupted/i);
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("No source selected");
+  });
+
   test("Run & Watch advances to outcomes with one playhead and reuses cached frames", async ({ page }) => {
     await page.goto("/");
     const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
@@ -316,6 +323,19 @@ test.describe("Cataclysm browser preview", () => {
 
     await expect(page.getByRole("tab", { name: "Asteroid" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("status").filter({ hasText: "Loaded scenario." })).toBeVisible();
+  });
+
+  test("keeps numeric help collapsed until its disclosure button is used", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /Create my own/i }).click();
+    const helpButton = page.getByRole("button", { name: "About Diameter (m)" });
+    const helpId = await helpButton.getAttribute("aria-controls");
+    expect(helpId).toBeTruthy();
+    const help = page.locator(`#${helpId}`);
+
+    await expect(help).toBeHidden();
+    await helpButton.click();
+    await expect(help).toBeVisible();
   });
 
   test("progressively discloses simulator controls without discarding state", async ({ page }) => {

@@ -249,13 +249,16 @@ describe("scenarioFromUrl", () => {
     expect(result.scenario.kind).toBe("Nuclear");
   });
 
-  it("returns none for malformed base64 in ?scenario=", () => {
-    expect(scenarioFromUrl("?scenario=not-valid-base64!!!")).toEqual({ type: "none" });
+  it("returns an actionable error for malformed base64 in ?scenario=", () => {
+    expect(scenarioFromUrl("?scenario=not-valid-base64!!!")).toEqual({
+      type: "invalid",
+      reason: "The shared scenario link is malformed or corrupted.",
+    });
   });
 
-  it("returns none for valid base64 but invalid scenario JSON", () => {
+  it("returns an actionable error for valid base64 with invalid scenario JSON", () => {
     const encoded = btoa('{"kind":"Unknown","source":{}}');
-    expect(scenarioFromUrl(`?scenario=${encoded}`)).toEqual({ type: "none" });
+    expect(scenarioFromUrl(`?scenario=${encoded}`)).toMatchObject({ type: "invalid" });
   });
 
   it("round-trips an asteroid scenario through URL encoding", () => {
@@ -270,6 +273,9 @@ describe("scenarioFromUrl", () => {
 
   it("rejects oversized scenario URL params", () => {
     const huge = "?scenario=" + "A".repeat(15_000);
-    expect(scenarioFromUrl(huge)).toEqual({ type: "none" });
+    expect(scenarioFromUrl(huge)).toEqual({
+      type: "invalid",
+      reason: "The shared scenario is larger than the supported URL limit.",
+    });
   });
 });

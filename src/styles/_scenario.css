@@ -65,7 +65,6 @@
   background: var(--surface0);
 }
 .scenario-field__help-text {
-  display: block;
   font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--subtext);

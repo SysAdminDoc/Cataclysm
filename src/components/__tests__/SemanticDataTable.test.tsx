@@ -23,16 +23,16 @@ describe("SemanticDataTable", () => {
         id="chart"
         title="test chart"
         summary="A concise summary."
-        columns={[{ key: "series", label: "Series" }, { key: "value", label: "Value" }]}
-        rows={[{ series: "=unsafe formula", value: 1.25 }]}
+        columns={[{ key: "series", label: "Series" }, { key: "value", label: "Value", dataType: "number" }]}
+        rows={[{ series: "=unsafe formula", value: -1.25 }]}
         filename="test-chart.csv"
       />,
     );
 
-    await user.click(screen.getByText("View test chart data (1 rows)"));
+    await user.click(screen.getByText("View test chart data (1 row)"));
     await user.click(screen.getByRole("button", { name: "Copy test chart CSV" }));
     expect(writeText).toHaveBeenCalledWith(
-      '"Series","Value"\r\n"\'=unsafe formula","1.25"',
+      '"Series","Value"\r\n"\'=unsafe formula",-1.25',
     );
     expect(await screen.findByRole("status")).toHaveTextContent("CSV copied.");
 

@@ -254,4 +254,17 @@ describe("settings desktop transactions", () => {
     await captureTransactionFailure(() => settings.resetAll());
     expectDesktopBaseline();
   });
+
+  it("clears desktop and WebView visual settings without deleting user state", async () => {
+    await settings.resetVisualSettings();
+
+    for (const key of ["theme", "globe_style", "colormap", "renderer_quality", "renderer_auto_quality"]) {
+      expect(desktop.storeValues.has(key)).toBe(false);
+      expect(localStorage.getItem(LS_PREFIX + key)).toBeNull();
+    }
+    expect(desktop.getKeychainToken()).toBe("old-keychain-token");
+    expect(desktop.storeValues.get("workspace_mode")).toBe("advanced");
+    expect(desktop.storeValues.get("disclaimer_acknowledged_at")).toBe("2026-07-02T00:00:00.000Z");
+    expect(desktop.storeValues.get("classroom_locked")).toBe(true);
+  });
 });

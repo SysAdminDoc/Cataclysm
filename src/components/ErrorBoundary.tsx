@@ -4,6 +4,7 @@ import {
   readPersistedCrashReport,
   serializeRedactedDiagnostics,
 } from "../lib/diagnosticsLog";
+import { settings } from "../lib/settings";
 
 type Props = {
   children: ReactNode;
@@ -14,17 +15,6 @@ type State = {
   stack: string | null;
   actionNote: string | null;
 };
-
-// Visual-only settings keys reset by "Reset visual settings" — a common cause
-// of a persistent render fault (e.g. an unsupported renderer tier). Scenario,
-// token, and onboarding state are intentionally preserved.
-const VISUAL_SETTING_KEYS = [
-  "tsunamisim.theme",
-  "tsunamisim.colormap",
-  "tsunamisim.globe_style",
-  "tsunamisim.renderer_quality",
-  "tsunamisim.renderer_auto_quality",
-];
 
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null, stack: null, actionNote: null };
@@ -51,7 +41,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private copyDiagnostics = (): void => {
     const text = this.buildReportText();
-    navigator.clipboard?.writeText(text).then(
+    const writeText = navigator.clipboard?.writeText;
+    if (!writeText) {
+      this.setState({ actionNote: "Clipboard access is unavailable. Save the diagnostics file instead." });
+      return;
+    }
+    void writeText.call(navigator.clipboard, text).then(
       () => this.setState({ actionNote: "Diagnostics copied to clipboard." }),
       () => this.setState({ actionNote: "Could not access the clipboard." }),
     );
@@ -73,12 +68,13 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private resetVisualSettings = (): void => {
-    try {
-      for (const key of VISUAL_SETTING_KEYS) localStorage.removeItem(key);
-    } catch {
-      // ignore — reload still gives the app a clean render attempt
-    }
-    window.location.reload();
+    this.setState({ actionNote: "Resetting visual settings…" });
+    void settings.resetVisualSettings().then(
+      () => window.location.reload(),
+      (error) => this.setState({
+        actionNote: `Could not reset visual settings: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
   };
 
   private retry = (): void => {

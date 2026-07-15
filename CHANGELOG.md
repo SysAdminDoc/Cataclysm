@@ -102,6 +102,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Runtime recovery now clears visual preferences from both WebView and desktop
+  stores before reloading, reports unavailable clipboard access, and preserves
+  user scenarios, onboarding, classroom state, and credentials. Stale point-
+  inspection failures can no longer replace newer results; malformed shared
+  scenarios explain why they were rejected; invalid numeric drafts cannot run
+  hidden last-valid physics; and collapsed field help stays collapsed.
+- DART comparison failures are isolated per buoy so successful stations remain
+  usable, while semantic chart CSV keeps trusted negative/scientific values
+  numeric and still neutralizes untrusted spreadsheet formulas.
 - Ground-zero labels now render as explicit Cesium overlays above translucent
   hazard geometry. Locked reference captures retain the semantic entity and a
   depth-independent point but omit the machine-font glyph atlas, removing both

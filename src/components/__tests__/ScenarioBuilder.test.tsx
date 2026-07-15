@@ -180,6 +180,19 @@ describe("ScenarioBuilder scenario persistence", () => {
     });
   });
 
+  it("blocks simulation when an exact numeric draft is invalid", async () => {
+    const user = setupUser();
+    const onSimulate = renderBuilder();
+    const diameter = screen.getByRole("spinbutton", { name: /Diameter.*exact value/i });
+
+    await user.clear(diameter);
+    await user.type(diameter, "100000");
+    await user.click(screen.getByRole("button", { name: "Simulate" }));
+
+    expect(onSimulate).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Diameter.*between/i);
+  });
+
   it("surfaces unavailable clipboard when pasting", async () => {
     const user = setupUserWithoutClipboard();
     renderBuilder();

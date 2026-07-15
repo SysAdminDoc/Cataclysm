@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { readPersistedCrashReport } from "../../lib/diagnosticsLog";
+import { settings } from "../../lib/settings";
 
 function ThrowingChild(): null {
   throw new Error("Boundary test failure");
@@ -57,5 +59,27 @@ describe("ErrorBoundary", () => {
     expect(report).not.toBeNull();
     expect(report?.message).toContain("Boundary test failure");
     expect(report?.seen).toBe(false);
+  });
+
+  it("explains unavailable clipboard access instead of failing silently", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    render(<ErrorBoundary><ThrowingChild /></ErrorBoundary>);
+
+    await user.click(screen.getByRole("button", { name: "Copy diagnostics" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(/Clipboard access is unavailable/);
+  });
+
+  it("reports a persistent visual-reset failure without reloading", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(settings, "resetVisualSettings").mockRejectedValue(new Error("desktop store unavailable"));
+    const user = userEvent.setup();
+    render(<ErrorBoundary><ThrowingChild /></ErrorBoundary>);
+
+    await user.click(screen.getByRole("button", { name: "Reset visual settings" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/desktop store unavailable/);
   });
 });

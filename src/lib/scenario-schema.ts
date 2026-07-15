@@ -506,6 +506,7 @@ export function scenarioToUrlParams(presetId: string | null, scenario: ScenarioI
 export type UrlScenarioResult =
   | { type: "preset"; presetId: string }
   | { type: "scenario"; scenario: ScenarioInput }
+  | { type: "invalid"; reason: string }
   | { type: "none" };
 
 const MAX_SCENARIO_URL_LENGTH = 10_000;
@@ -515,11 +516,16 @@ export function scenarioFromUrl(search: string): UrlScenarioResult {
   const presetId = params.get("preset");
   if (presetId) return { type: "preset", presetId };
   const encoded = params.get("scenario");
-  if (!encoded || encoded.length > MAX_SCENARIO_URL_LENGTH) return { type: "none" };
+  if (!encoded) return { type: "none" };
+  if (encoded.length > MAX_SCENARIO_URL_LENGTH) {
+    return { type: "invalid", reason: "The shared scenario is larger than the supported URL limit." };
+  }
   try {
-    const json = atob(decodeURIComponent(encoded));
+    const json = atob(encoded);
     const parsed = parseScenarioPayload(JSON.parse(json));
     if (parsed.ok) return { type: "scenario", scenario: parsed.scenario };
-  } catch { /* invalid URL param — ignore silently */ }
-  return { type: "none" };
+    return { type: "invalid", reason: parsed.reason };
+  } catch {
+    return { type: "invalid", reason: "The shared scenario link is malformed or corrupted." };
+  }
 }

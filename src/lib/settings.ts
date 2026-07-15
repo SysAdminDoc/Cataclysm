@@ -79,6 +79,13 @@ const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
   "classroom_locked",
 ];
 const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>(SETTINGS_KEY_LIST);
+const VISUAL_SETTINGS_KEYS: readonly (keyof Settings)[] = [
+  "theme",
+  "globe_style",
+  "colormap",
+  "renderer_quality",
+  "renderer_auto_quality",
+];
 
 const STORE_FILE = "settings.json";
 const LS_PREFIX = "tsunamisim.";
@@ -928,6 +935,28 @@ export const settings = {
         }
       },
       true,
+    );
+  },
+  /** Clear only presentation settings while preserving scientific work,
+   * onboarding state, classroom state, and credentials. Unlike removing the
+   * WebView mirrors alone, this also clears the authoritative desktop store so
+   * an ErrorBoundary recovery reload cannot immediately restore the fault. */
+  async resetVisualSettings(): Promise<void> {
+    await runSettingsTransaction(
+      "Resetting visual settings",
+      VISUAL_SETTINGS_KEYS,
+      async (snapshot) => {
+        if (typeof localStorage !== "undefined") {
+          for (const key of VISUAL_SETTINGS_KEYS) localStorage.removeItem(LS_PREFIX + key);
+        }
+        if (snapshot.store) {
+          for (const key of VISUAL_SETTINGS_KEYS) {
+            if (typeof snapshot.store.delete === "function") await snapshot.store.delete(key);
+            else await snapshot.store.set(key, DEFAULTS[key]);
+          }
+          await snapshot.store.save();
+        }
+      },
     );
   },
   async getSavedScenarios(): Promise<SavedScenario[]> {

@@ -4,6 +4,10 @@ import { downloadBlob, safeFilenamePart, type ExportResult } from "../lib/export
 export type SemanticDataColumn = {
   key: string;
   label: string;
+  /** Trusted analytical numbers bypass spreadsheet text hardening so negative
+   * and scientific values remain machine-readable. All other cells are
+   * treated as untrusted text. */
+  dataType?: "text" | "number";
 };
 
 export type SemanticDataRow = Record<string, string | number | null | undefined>;
@@ -17,19 +21,27 @@ type Props = {
   filename: string;
 };
 
-function csvCell(value: SemanticDataRow[string]): string {
+const FINITE_DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
+
+function csvCell(value: SemanticDataRow[string], dataType: SemanticDataColumn["dataType"] = "text"): string {
   if (value == null) return "";
-  let text = String(value);
+  const text = String(value);
+  if (
+    dataType === "number"
+    && ((typeof value === "number" && Number.isFinite(value)) || (FINITE_DECIMAL.test(text) && Number.isFinite(Number(text))))
+  ) {
+    return text;
+  }
   // Spreadsheet programs may execute cells that begin with these characters.
   // Preserve the displayed text while forcing imported CSV data to stay text.
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
+  const safe = /^[=+\-@\t\r]/u.test(text) ? `'${text}` : text;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 function semanticRowsToCsv(columns: SemanticDataColumn[], rows: SemanticDataRow[]): string {
   return [
     columns.map((column) => csvCell(column.label)).join(","),
-    ...rows.map((row) => columns.map((column) => csvCell(row[column.key])).join(",")),
+    ...rows.map((row) => columns.map((column) => csvCell(row[column.key], column.dataType)).join(",")),
   ].join("\r\n");
 }
 
@@ -68,7 +80,7 @@ export function SemanticDataTable({ id, title, summary, columns, rows, filename 
         {summary}
       </p>
       <details className="chart-data__details">
-        <summary>View {title} data ({rows.length} rows)</summary>
+        <summary>View {title} data ({rows.length} {rows.length === 1 ? "row" : "rows"})</summary>
         <div className="chart-data__actions">
           <button type="button" aria-label={`Copy ${title} CSV`} onClick={() => void copyCsv()}>Copy CSV</button>
           <button type="button" aria-label={`Export ${title} CSV`} onClick={exportCsv}>Export CSV</button>

@@ -401,7 +401,13 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
         )}
       </p>
 
-      <div className="scenario-form">
+      <form
+        className="scenario-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
         {tab === "asteroid" && (
           <>
             <NumField field="diameter_m" label="Diameter (m)" value={asteroid.diameter_m}
@@ -504,13 +510,14 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
           <button
             className="scenario-pick"
             data-active={pickActive ? "true" : "false"}
+            aria-pressed={pickActive}
             onClick={onTogglePick}
             type="button"
           >
             <UiIcon name="mapPin" size={14} />
             {pickActive ? "Picking location" : "Pick on globe"}
           </button>
-          <button className="primary" onClick={submit} type="button">
+          <button className="primary" type="submit">
             Simulate
           </button>
         </div>
@@ -595,7 +602,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             </div>
           </div>
         )}
-      </div>
+      </form>
       </div>
     </div>
   );

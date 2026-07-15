@@ -651,6 +651,11 @@ export default function App() {
   // fall back to a different demo scenario.
   useEffect(() => {
     if (startupScenarioHandled.current) return;
+    if (startupScenario.type === "invalid") {
+      startupScenarioHandled.current = true;
+      showToast(`Couldn't open scenario link: ${startupScenario.reason}`, "error");
+      return;
+    }
     if (startupScenario.type === "scenario") {
       startupScenarioHandled.current = true;
       slotA.simulate(startupScenario.scenario);

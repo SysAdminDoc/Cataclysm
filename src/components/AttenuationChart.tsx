@@ -300,7 +300,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
           columns={[
             { key: "series", label: "Series" },
             { key: "selection", label: "Distance or selection" },
-            { key: "value", label: "Value" },
+            { key: "value", label: "Value", dataType: "number" },
             { key: "unit", label: "Unit" },
             { key: "significance", label: "Extrema, threshold, or active state" },
             { key: "confidence", label: "Confidence" },
