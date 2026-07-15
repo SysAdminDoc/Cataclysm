@@ -190,8 +190,10 @@ const presetLabels = {
 async function configureWorkflow(page, scene) {
   const workflow = scene.workflow;
   if (workflow.kind === "preset") {
-    await page.locator(".preset-card", { hasText: presetLabels[workflow.presetId] }).first().click();
-    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await dispatchLocalStateClick(
+      page.locator(".preset-card", { hasText: presetLabels[workflow.presetId] }).first(),
+    );
+    await dispatchLocalStateClick(page.getByRole("button", { name: "Run & Watch" }));
     await page.getByRole("button", { name: "Run simulation" }).waitFor({ state: "visible" });
     if (workflow.runSolver) {
       await dispatchLocalStateClick(page.getByRole("button", { name: "Run simulation" }));
@@ -199,11 +201,15 @@ async function configureWorkflow(page, scene) {
     }
   } else if (workflow.kind.startsWith("direct-")) {
     const nuclear = workflow.kind === "direct-nuclear";
-    await page.getByRole("button", { name: nuclear ? "Nuclear" : "Impact", exact: true }).click();
+    await dispatchLocalStateClick(
+      page.getByRole("button", { name: nuclear ? "Nuclear" : "Impact", exact: true }),
+    );
     if (nuclear) {
       await page.locator(".hazard__select").filter({ has: page.locator('option[value="airburst"]') }).selectOption(workflow.request.burst_type);
     }
-    await page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }).click();
+    await dispatchLocalStateClick(
+      page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }),
+    );
     const coordinates = page.getByRole("form", { name: "Enter coordinates" });
     await coordinates.getByLabel("Latitude").fill(String(workflow.request.center.lat));
     await coordinates.getByLabel("Longitude").fill(String(workflow.request.center.lon));

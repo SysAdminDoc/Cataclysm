@@ -25,6 +25,12 @@ test("local state clicks bypass Playwright navigation waits", async () => {
   assert.deepEqual(events, ["click"]);
 });
 
+test("reference workflows never attach navigation waits to local state controls", async () => {
+  const source = await readFile(new URL("./capture-reference-scenes.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /\.click\s*\(/);
+  assert.match(source, /dispatchLocalStateClick/);
+});
+
 test("deadline rejects a hanging phase within its budget", async () => {
   const started = Date.now();
   await assert.rejects(

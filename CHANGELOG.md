@@ -102,9 +102,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   and explicitly finish WebGL work across compositor frames before screenshotting.
   Failed Windows release runs also retain the candidate capture evidence, eliminating
   an intermittent camera/new-frame mismatch from the installed-package gate.
-- The deterministic reference-capture harness now submits local-only coordinate,
-  solver, and inspector controls without attaching Cesium requests to Playwright's
-  navigation wait, and it waits for direct-render recordings to decode before
+- The deterministic reference-capture harness now submits every local-only
+  workflow control without attaching Cesium requests to Playwright's navigation
+  wait, and it waits for direct-render recordings to decode before
   starting an impact/detonation. This removes two Windows release-runner races
   that could fail before the installed MSI/NSIS journey began.
 - DART validation now derives overlap, peaks, RMSE, and sustained-threshold
