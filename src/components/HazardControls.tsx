@@ -12,7 +12,9 @@ import {
   type TargetType,
 } from "../hazards";
 import type { WorkspaceMode } from "../lib/settings";
+import { buildDirectResultEvidence } from "../lib/trust-evidence";
 import { NumericField } from "./NumericField";
+import { TrustDisclosure } from "./TrustDisclosure";
 
 /** Place a point estimate in its one-significant-digit display bucket. This
  * removes false precision without manufacturing a statistical uncertainty. */
@@ -368,6 +370,7 @@ export function HazardControls({
 
       {showResults && (result ? (
         <div className="hazard__results">
+          <TrustDisclosure evidence={buildDirectResultEvidence(result)} />
           <div className="hazard__readout">
             {result.readout.map((r) => (
               <div className="hazard__stat" key={r.label} title={r.hint}>

@@ -1,4 +1,6 @@
 import type { InitialDisplacement, Preset } from "../types/scenario";
+import { buildSourceEvidence } from "../lib/trust-evidence";
+import { TrustDisclosure } from "./TrustDisclosure";
 import { UiIcon } from "./UiIcon";
 
 type Props = {
@@ -60,6 +62,7 @@ export function SourceModelSummary({ preset, initial, onEdit }: Props) {
   const source = formatSource(preset);
   const depth = initial.center.depth_m ?? 0;
   const confidence = preset?.is_speculative ? "Scenario" : "Reference";
+  const evidence = buildSourceEvidence(preset, initial, preset?.source.kind ?? null);
 
   return (
     <section className="source-model" data-ready="true" aria-label="Source model summary">
@@ -95,6 +98,9 @@ export function SourceModelSummary({ preset, initial, onEdit }: Props) {
           <span /><span /><span /><span /><span />
         </div>
         <small>{preset?.is_speculative ? "What-if assumptions are preserved in exports." : "Peer-reviewed parameters with documented model limits."}</small>
+      </div>
+      <div className="source-model__trust">
+        <TrustDisclosure evidence={evidence} compact />
       </div>
     </section>
   );

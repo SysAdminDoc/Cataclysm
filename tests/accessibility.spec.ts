@@ -101,6 +101,14 @@ for (const theme of THEMES) {
       for (const detail of ["Outcome", "Science", "Validation"]) {
         await page.getByRole("tab", { name: detail }).click();
         await expect(page.getByRole("tabpanel", { name: detail })).toBeVisible();
+        if (detail === "Outcome") {
+          const trust = page.getByRole("tabpanel", { name: "Outcome" }).locator(".trust-disclosure").first();
+          await trust.locator("summary").click();
+          await expect(trust.getByText("Evidence ID")).toBeVisible();
+          await expect(trust.getByRole("region", { name: "Key assumptions" })).toBeVisible();
+          await expect(trust.getByRole("region", { name: "Limitations" })).toBeVisible();
+          await expect(trust.getByRole("region", { name: "Citations" })).toBeVisible();
+        }
         if (detail === "Science") {
           const summary = page.locator(".chart-data__summary", { hasText: "Modeled decay spans" });
           await expect(summary).toHaveAttribute("aria-live", "off");
@@ -141,6 +149,9 @@ for (const theme of THEMES) {
       await openWorkspace(page);
       await page.getByRole("tab", { name: "Layers" }).click();
       await expect(page.getByText("SWE water field")).toBeVisible();
+      const trust = page.getByLabel("Why trust this? SWE water-field layer");
+      await trust.click();
+      await expect(page.getByText("layer:preset:tohoku_2011:swe-field")).toBeVisible();
       await assertAccessiblePage(page);
     });
 

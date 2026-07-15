@@ -118,9 +118,9 @@ test.describe("Visual regression — desktop", () => {
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible({ timeout: 10_000 });
+    await hideCesiumCanvas(page);
 
     await expect(page).toHaveScreenshot("desktop-preset-active.png", {
-      mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
     });
   });
@@ -144,6 +144,20 @@ test.describe("Visual regression — desktop", () => {
       maxDiffPixelRatio: 0.01,
       timeout: 15_000,
     });
+
+    const trust = page.getByRole("tabpanel", { name: "Outcome" }).locator(".trust-disclosure").first();
+    await trust.locator("summary").click();
+    await expect(trust.getByText("Evidence ID")).toBeVisible();
+    await trust.getByText("Exact citations").scrollIntoViewIfNeeded();
+    const trustCanvasHider = await page.addStyleTag({
+      content: `${CANVAS_MASK} { visibility: hidden !important; }`,
+    });
+    await expect(page).toHaveScreenshot("desktop-results-trust.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+    await trustCanvasHider.evaluate((element) => element.remove());
+    await trust.locator("summary").click();
 
     await page.getByRole("tab", { name: "Science" }).click();
     await expect(page.getByText("Source science")).toBeVisible();

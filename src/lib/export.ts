@@ -241,7 +241,7 @@ function stampProvenanceStrip(
   const citation = p.citationUrl ? p.citationUrl : p.citationReference;
   const line1 = `Cataclysm v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
   const line2 = `${p.bathymetrySource} | ${citation} | ${p.limitation}`;
-  const line3 = `Earth assets ${p.assetRegistryVersion}: ${p.visualAssetIds.join(", ")} | ${attributions.join(" · ")}`;
+  const line3 = `Evidence ${p.evidenceIds.join(", ") || "none"} | Earth assets ${p.assetRegistryVersion}: ${p.visualAssetIds.join(", ")} | ${attributions.join(" · ")}`;
 
   ctx.save();
   ctx.fillStyle = "rgba(17, 17, 27, 0.86)";
@@ -385,7 +385,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
   ctx.font = "12px Inter, system-ui, sans-serif";
   ctx.textBaseline = "top";
   ctx.fillText(
-    `Cataclysm v${provenance.appVersion} | ${provenance.generatedAt} | ${provenance.solverMode}`,
+    `Cataclysm v${provenance.appVersion} | Evidence ${provenance.evidenceIds.join(", ") || "none"} | ${provenance.generatedAt} | ${provenance.solverMode}`,
     24,
     H - FOOTER_H + 10,
   );
@@ -693,6 +693,7 @@ export function exportCzml(
         bathymetrySource: provenance.bathymetrySource,
         citationReference: provenance.citationReference,
         citationUrl: provenance.citationUrl,
+        evidenceIds: provenance.evidenceIds,
         generatedAt: provenance.generatedAt,
         scenarioType: provenance.scenarioType,
         solverMode: provenance.solverMode,
@@ -824,6 +825,7 @@ export function exportGeoJson(
       bathymetry_source: provenance.bathymetrySource,
       citation_reference: provenance.citationReference,
       citation_url: provenance.citationUrl,
+      evidence_ids: provenance.evidenceIds,
       generated_at: provenance.generatedAt,
       geometry_notice: "First-order circular inundation discs from runup and beach-slope estimates.",
       model_notice: provenance.limitation,

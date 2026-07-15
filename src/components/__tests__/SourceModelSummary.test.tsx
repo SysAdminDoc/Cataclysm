@@ -40,10 +40,11 @@ describe("SourceModelSummary", () => {
     expect(screen.getByText("Not configured")).toBeInTheDocument();
   });
 
-  it("renders source provenance and edit action", () => {
+  it("renders source provenance, contextual evidence, and edit action", () => {
     render(<SourceModelSummary preset={preset} initial={initial} onEdit={vi.fn()} />);
     expect(screen.getByText("Tohoku 2011")).toBeInTheDocument();
     expect(screen.getByText("Okada dislocation model")).toBeInTheDocument();
+    expect(screen.getByText("Why trust this?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit source parameters" })).toBeEnabled();
   });
 });

@@ -26,6 +26,14 @@ import { applyTheme, loadTheme } from "./lib/theme";
 import { copyExportText, exportFailureLabel, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import {
+  buildDirectResultEvidence,
+  buildDirectScenarioEvidence,
+  buildLayerEvidence,
+  buildOutcomeEvidence,
+  buildSourceEvidence,
+  evidenceIds,
+} from "./lib/trust-evidence";
+import {
   asyncResultValue,
   rejectAsyncResult,
   resolveAsyncResult,
@@ -705,6 +713,9 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+  const layerEvidencePresetA = activePresetA ?? (
+    libraryPreview?.kind === "preset" ? presetById(presets, libraryPreview.presetId) : null
+  );
   const libraryPreviewCamera = useMemo(() => {
     if (!libraryPreview) return null;
     if (libraryPreview.kind === "direct") {
@@ -941,6 +952,42 @@ export default function App() {
             : slotA.initial
               ? "Source ready"
               : "Awaiting source";
+  const exportEvidenceIdsA = () => {
+    if (inHazardMode) {
+      const scenarioEvidence = libraryPreview?.kind === "direct" && libraryPreview.scenario.domain === directHazardMode
+        ? buildDirectScenarioEvidence(libraryPreview.scenario)
+        : null;
+      return evidenceIds([
+        scenarioEvidence,
+        hazardResult ? buildDirectResultEvidence(hazardResult) : null,
+        hazardResult ? buildLayerEvidence("source", null, null, null, hazardResult, directHazardMode) : null,
+        hazardResult ? buildLayerEvidence("hazard-rings", null, null, null, hazardResult, directHazardMode) : null,
+        directHazardMode === "nuclear" && hazardPolygons?.length
+          ? buildLayerEvidence("fallout-plume", null, null, null, hazardResult, directHazardMode)
+          : null,
+      ]);
+    }
+    return evidenceIds([
+      slotA.initial ? buildSourceEvidence(activePresetA, slotA.initial, activeScenarioKindA) : null,
+      slotA.initial ? buildOutcomeEvidence(activePresetA, slotA.initial, activeScenarioKindA) : null,
+      slotA.initial ? buildLayerEvidence("source", activePresetA, slotA.initial, activeScenarioKindA) : null,
+      slotA.wavefront ? buildLayerEvidence("analytical-wavefront", activePresetA, slotA.initial, activeScenarioKindA) : null,
+      slotA.sweSnapshot ? buildLayerEvidence("swe-field", activePresetA, slotA.initial, activeScenarioKindA) : null,
+      sweMaxField ? buildLayerEvidence("maximum-field", activePresetA, slotA.initial, activeScenarioKindA) : null,
+      sweIsochrones?.length ? buildLayerEvidence("arrival-isochrones", activePresetA, slotA.initial, activeScenarioKindA) : null,
+      slotA.runupResults.length ? buildLayerEvidence("coastal-runup", activePresetA, slotA.initial, activeScenarioKindA) : null,
+      dartPinsForPreset(slotA.activePresetId).length ? buildLayerEvidence("dart-observations", activePresetA, slotA.initial, activeScenarioKindA) : null,
+    ]);
+  };
+  const exportEvidenceIdsB = () => evidenceIds([
+    slotB.initial ? buildSourceEvidence(activePresetB, slotB.initial, activeScenarioKindB) : null,
+    slotB.initial ? buildOutcomeEvidence(activePresetB, slotB.initial, activeScenarioKindB) : null,
+    slotB.initial ? buildLayerEvidence("source", activePresetB, slotB.initial, activeScenarioKindB) : null,
+    slotB.wavefront ? buildLayerEvidence("analytical-wavefront", activePresetB, slotB.initial, activeScenarioKindB) : null,
+    slotB.sweSnapshot ? buildLayerEvidence("swe-field", activePresetB, slotB.initial, activeScenarioKindB) : null,
+    slotB.runupResults.length ? buildLayerEvidence("coastal-runup", activePresetB, slotB.initial, activeScenarioKindB) : null,
+    dartPinsForPreset(slotB.activePresetId).length ? buildLayerEvidence("dart-observations", activePresetB, slotB.initial, activeScenarioKindB) : null,
+  ]);
   const exportMetaA = (): ScreenshotMeta => ({
     preset: activePresetA,
     initial: slotA.initial,
@@ -951,6 +998,7 @@ export default function App() {
       : "Analytical source geometry and coastal runup sampling",
     renderFrame: inHazardMode ? directRenderProvenance : sweRenderFrameA,
     runQuality: sweRunQualityA,
+    evidenceIds: exportEvidenceIdsA(),
   });
 
   const exportMetaB = (): ScreenshotMeta => ({
@@ -963,6 +1011,7 @@ export default function App() {
       : "Analytical source geometry and coastal runup sampling",
     renderFrame: sweRenderFrameB,
     runQuality: sweRunQualityB,
+    evidenceIds: exportEvidenceIdsB(),
   });
 
   async function handlePickGlobe(lat: number, lon: number) {
@@ -1528,7 +1577,7 @@ export default function App() {
             </div>}
           </div>
           <div className="app__command-group app__command-group--utility" role="group" aria-label="References and preferences">
-            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="View references">
+            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="Advanced references and provenance">
               References
             </ToolbarButton>
             <ToolbarButton icon="settings" variant="utility" onClick={() => setShowSettings(true)} title="Settings">
@@ -1615,7 +1664,7 @@ export default function App() {
         )}
         <div className="footer-note">
           <span>Peer-reviewed parameters and local diagnostics.</span>
-          <button type="button" onClick={() => setShowCitations(true)}>View all references</button>
+          <button type="button" onClick={() => setShowCitations(true)}>Advanced bibliography</button>
           <button type="button" onClick={() => setShowLog(true)}>Diagnostics log</button>
         </div>
       </aside>
@@ -1909,6 +1958,7 @@ export default function App() {
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel
           initial={slotA.initial}
+          preset={activePresetA}
           timeS={timeS}
           onTimeChange={setTimeS}
           showTimeline={false}
@@ -1934,6 +1984,7 @@ export default function App() {
             <div className="app__compare-rail-label">Slot B readout</div>
             <ResultsPanel
               initial={slotB.initial}
+              preset={activePresetB}
               timeS={timeS}
               onTimeChange={setTimeS}
               showTimeline={false}
@@ -1965,6 +2016,10 @@ export default function App() {
           runupCount={inHazardMode ? 0 : slotA.runupResults.length}
           dartCount={inHazardMode ? 0 : dartPinsForPreset(slotA.activePresetId).length}
           hasFallout={Boolean(hazardPolygons?.length)}
+          preset={layerEvidencePresetA}
+          initial={slotA.initial}
+          sourceKind={activeScenarioKindA}
+          directResult={hazardResult}
           onOpenSettings={() => setShowSettings(true)}
         />}
         </div>

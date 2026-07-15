@@ -37,6 +37,7 @@ describe("ResultsPanel", () => {
     expect(screen.getByText("What happened?")).toBeInTheDocument();
     expect(screen.getByText(/Asteroid impact releasing/i)).toBeInTheDocument();
     expect(screen.getByText(/Mt TNT/)).toBeInTheDocument();
+    expect(screen.getByText("Why trust this?")).toBeInTheDocument();
   });
 
   it("labels the source region correctly for an earthquake (never 'Cavity radius')", async () => {

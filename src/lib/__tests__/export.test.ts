@@ -292,6 +292,7 @@ const PROVENANCE_META: ScreenshotMeta = {
   scenarioKind: "Asteroid",
   solverMode: "SWE snapshot playback",
   timeS: 900,
+  evidenceIds: ["scenario:preset:chicxulub", "result:preset:chicxulub:outcome"],
 };
 
 describe("suggestedFilename", () => {
@@ -524,6 +525,8 @@ describe("exportKml", () => {
     expect(kml).toContain("Scenario type: Asteroid");
     expect(kml).toContain("Solver mode: SWE snapshot playback");
     expect(kml).toContain("https://doi.org/10.1029/2021AV000627");
+    expect(kml).toContain("scenario:preset:chicxulub");
+    expect(kml).toContain("result:preset:chicxulub:outcome");
     expect(kml).toContain("Educational model only");
   });
 

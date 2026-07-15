@@ -125,6 +125,7 @@ describe("PresetSelector", () => {
     expect(selectedScenario).toHaveTextContent("Tōhoku 2011");
     expect(selectedScenario).toHaveTextContent("M_w 9.1 · 2011-03-11");
     expect(selectedScenario).toHaveTextContent("M 9.1 megathrust earthquake off Japan.");
+    expect(selectedScenario).toHaveTextContent("Why trust this?");
   });
 
   it("shows what-if badge on speculative presets", () => {

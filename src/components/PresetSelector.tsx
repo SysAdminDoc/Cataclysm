@@ -3,7 +3,9 @@ import { UiIcon } from "./UiIcon";
 import { TimelineView } from "./TimelineView";
 import { GUIDED_LESSONS, type GuidedLesson } from "../lib/guided-lessons";
 import type { DirectScenarioTemplate } from "../lib/scenario-library";
+import { buildDirectScenarioEvidence, buildSourceEvidence } from "../lib/trust-evidence";
 import type { Preset } from "../types/scenario";
+import { TrustDisclosure } from "./TrustDisclosure";
 
 type Props = {
   presets: Preset[];
@@ -320,6 +322,8 @@ export function PresetSelector({
               <small>{selectedDirect?.blurb ?? selectedPreset?.blurb ?? "Review the setup before running."}</small>
             </span>
           </div>
+          {selectedPreset && <TrustDisclosure evidence={buildSourceEvidence(selectedPreset)} compact />}
+          {selectedDirect && <TrustDisclosure evidence={buildDirectScenarioEvidence(selectedDirect)} compact />}
           <button type="button" onClick={onRunActive}>
             <UiIcon name="play" size={14} />
             Run &amp; Watch

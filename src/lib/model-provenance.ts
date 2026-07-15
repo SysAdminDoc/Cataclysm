@@ -41,6 +41,7 @@ export type ModelProvenanceInput = {
   visualAssetIds?: string[];
   renderFrame?: RenderFrameProvenance | null;
   runQuality?: RunQualityRecord | null;
+  evidenceIds?: string[];
 };
 
 export type ModelProvenance = {
@@ -61,6 +62,7 @@ export type ModelProvenance = {
   visualAssetIds: string[];
   renderFrame: RenderFrameProvenance | null;
   runQuality: RunQualityRecord | null;
+  evidenceIds: string[];
 };
 
 export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenance {
@@ -88,6 +90,7 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
         }
       : null,
     runQuality: input.runQuality ? { ...input.runQuality, warnings: [...input.runQuality.warnings] } : null,
+    evidenceIds: [...new Set(input.evidenceIds ?? [])].sort(),
   };
 }
 
@@ -107,6 +110,7 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
     `Solver assets: ${p.solverAssetIds.join(", ")}`,
     `Visual assets: ${p.visualAssetIds.join(", ")}`,
     `Citation: ${citation}`,
+    `Evidence IDs: ${p.evidenceIds.length > 0 ? p.evidenceIds.join(", ") : "none"}`,
     `Model limitation: ${p.limitation}`,
   ];
   if (p.renderFrame) {

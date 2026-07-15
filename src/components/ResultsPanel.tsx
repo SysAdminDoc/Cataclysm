@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from "react";
-import type { InitialDisplacement } from "../types/scenario";
+import type { InitialDisplacement, Preset } from "../types/scenario";
 import type { RunupAtPointResult } from "../lib/tauri";
 import { exportFailureLabel, exportRunupCsv, type ExportResult } from "../lib/export";
 import {
@@ -9,6 +9,8 @@ import {
 } from "../lib/result-story";
 import { GlossaryTip } from "./GlossaryTip";
 import { type AsyncResult } from "../lib/async-result";
+import { buildOutcomeEvidence } from "../lib/trust-evidence";
+import { TrustDisclosure } from "./TrustDisclosure";
 
 /** The four modelled tsunami source families. `null` covers presets/custom
  * scenarios whose discrete kind is not known to the caller. */
@@ -21,6 +23,7 @@ type Props = {
   showTimeline?: boolean;
   /** Discrete source family, used to label metrics correctly. */
   sourceKind?: SourceKind;
+  preset?: Preset | null;
   runupResults?: RunupAtPointResult[];
   runupResult?: AsyncResult<RunupAtPointResult[]>;
   onRetryRunup?: () => void;
@@ -146,6 +149,7 @@ export function ResultsPanel({
   onTimeChange,
   showTimeline = true,
   sourceKind = null,
+  preset = null,
   runupResults = [],
   runupResult,
   onRetryRunup,
@@ -198,6 +202,7 @@ export function ResultsPanel({
   const safeTimeS = Number.isFinite(timeS) ? Math.max(0, timeS) : 0;
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
   const outcome = describeOutcome(initial, sourceKind);
+  const evidence = buildOutcomeEvidence(preset, initial, sourceKind);
   const cavity_label = cavityLabel(sourceKind);
   const story = buildCoastalOutcomeStory(runupResults, safeTimeS);
   const coastalState: AsyncResult<RunupAtPointResult[]> = runupResult
@@ -273,6 +278,7 @@ export function ResultsPanel({
                 Modelled first-order tsunami source—educational estimate, not a forecast.
               </span>
             </article>
+            <TrustDisclosure evidence={evidence} />
 
             <div className="results__key-metrics" aria-label="Outcome summary">
               {story.maximum && story.maximum.runup_m >= 0.1 ? (

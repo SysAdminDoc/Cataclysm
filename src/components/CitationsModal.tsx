@@ -62,7 +62,7 @@ export function CitationsModal({ presets, onClose }: Props) {
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
         <header className="modal__header">
           <h2 id="citations-title">
-            {notices ? "Third-party dependency notices" : "References & provenance"}
+            {notices ? "Third-party dependency notices" : "Advanced references & provenance"}
           </h2>
           <button onClick={onClose} aria-label="Close" className="modal__close" type="button">
             <UiIcon name="close" size={16} />
@@ -82,7 +82,7 @@ export function CitationsModal({ presets, onClose }: Props) {
           ) : (
           <>
           <p className="modal__intro">
-            Every preset keeps its citation visible. References open externally
+            This advanced bibliography keeps every preset citation visible. References open externally
             so the model assumptions can be checked against the source material.
           </p>
           <div className="citations__summary" aria-label="Citation summary">

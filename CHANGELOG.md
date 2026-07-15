@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Active scenarios, outcome summaries, direct-hazard results, and every
+  analytical layer now expose one accessible `Why trust this?` disclosure with
+  model/version, assumptions, confidence or validation status, limitations,
+  exact citations, offline/legacy/blocked-link states, and deterministic
+  evidence IDs preserved in export provenance.
 - The Export popover now groups formats into Image, Replay, Share, and Data
   sections with concise purpose copy and inline prerequisites for unavailable
   actions.

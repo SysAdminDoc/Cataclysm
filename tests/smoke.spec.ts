@@ -217,12 +217,10 @@ test.describe("Cataclysm browser preview", () => {
   test("export menu exposes all supported formats", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Export", exact: true }).click();
-    await expect(page.getByRole("button", { name: "PNG", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Share", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Video", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Text", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "KML", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Link", exact: true })).toBeVisible();
+    const menu = page.getByRole("group", { name: "Export current scenario" });
+    for (const label of ["PNG", "Share", "Video", "Text", "KML", "Link"]) {
+      await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s|$)`) })).toBeVisible();
+    }
     await expect(page.getByRole("button", { name: "References", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   });
