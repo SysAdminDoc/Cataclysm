@@ -18,9 +18,9 @@
   padding: 10px 12px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--surface0) 38%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 36%, transparent);
+  border: 0;
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .citations__summary strong {
@@ -30,9 +30,10 @@
 
 .citations__row {
   padding: 13px 14px;
-  border-radius: var(--r-md);
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface0) 56%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 54%, transparent);
+  border: 0;
+  border-bottom: 1px solid var(--divider);
 }
 
 .citations__name {
@@ -48,14 +49,14 @@
 .citations__tag {
   display: inline-flex;
   align-items: center;
-  min-height: 18px;
-  padding: 2px 5px;
+  min-height: auto;
+  padding: 0;
   margin-right: 7px;
   border-radius: var(--r-sm);
   color: var(--warning-text);
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
-  font-size: 9px;
+  background: transparent;
+  border: 0;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -65,7 +66,7 @@
   color: var(--subtext);
   font-weight: 400;
   margin-left: auto;
-  font-size: 11px;
+  font-size: 12px;
   font-family: "JetBrains Mono", "Cascadia Code", monospace;
 }
 
@@ -77,7 +78,7 @@
   align-items: center;
   color: var(--accent-text);
   text-decoration: none;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .citations__blocked {
@@ -102,9 +103,9 @@
   padding: 3px 7px;
   border-radius: var(--r-sm);
   color: var(--peach);
-  background: color-mix(in srgb, var(--peach) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--peach) 28%, transparent);
-  font-size: 10px;
+  background: transparent;
+  border: 0;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -113,12 +114,12 @@
 .citations__open {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 3px 7px;
+  min-height: 28px;
+  padding: 3px 8px;
   border-radius: var(--r-sm);
-  color: var(--crust);
-  background: var(--sapphire);
-  font-size: 10px;
+  color: var(--on-accent);
+  background: var(--accent-active);
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -146,7 +147,7 @@
 
 .citations__note {
   margin-top: 6px;
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--peach);
 }
 
@@ -161,9 +162,10 @@
 .citations__notice-entry {
   margin-top: 14px;
   padding: 13px 14px;
-  border-radius: var(--r-md);
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface0) 56%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 54%, transparent);
+  border: 0;
+  border-left: 3px solid var(--divider);
 }
 
 .citations__notice-entry div {
@@ -175,7 +177,7 @@
 .citations__notice-actions span,
 .citations__notice-help {
   color: var(--subtext);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 
 .citations__notice-help {
@@ -196,7 +198,7 @@
   background: var(--crust);
   border: 1px solid var(--surface1);
   font:
-    11px/1.55 "JetBrains Mono",
+    12px/1.55 "JetBrains Mono",
     "Cascadia Code",
     monospace;
   white-space: pre-wrap;

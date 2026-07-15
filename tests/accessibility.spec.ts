@@ -93,6 +93,57 @@ for (const theme of THEMES) {
       await assertAccessiblePage(page);
     });
 
+    test("desktop density keeps operational text legible and surfaces flat", async ({ page }) => {
+      await openWorkspace(page);
+
+      const selectors = [
+        ".quick-start__grid strong",
+        ".quick-start__grid small",
+        ".preset-search input",
+        ".preset-card__name",
+        ".preset-card__blurb",
+        ".inspector__tabs button",
+      ];
+      const typeSizes = await page.evaluate((targets) => Object.fromEntries(
+        targets.map((selector) => {
+          const element = document.querySelector(selector);
+          return [selector, element ? Number.parseFloat(getComputedStyle(element).fontSize) : 0];
+        }),
+      ), selectors);
+      for (const selector of selectors) {
+        expect(typeSizes[selector], selector).toBeGreaterThanOrEqual(12);
+      }
+
+      const flatBoundaries = await page.evaluate(() => {
+        const borderWidths = (selector: string) => {
+          const style = getComputedStyle(document.querySelector(selector)!);
+          return {
+            bottom: Number.parseFloat(style.borderBottomWidth),
+            left: Number.parseFloat(style.borderLeftWidth),
+            right: Number.parseFloat(style.borderRightWidth),
+            top: Number.parseFloat(style.borderTopWidth),
+          };
+        };
+        return {
+          badge: borderWidths(".section__badge"),
+          card: borderWidths('.preset-card[data-active="true"]'),
+          quickStart: borderWidths(".quick-start"),
+        };
+      });
+      expect(Math.max(...Object.values(flatBoundaries.quickStart))).toBe(0);
+      expect(Math.max(...Object.values(flatBoundaries.badge))).toBe(0);
+      expect(flatBoundaries.card.top).toBe(0);
+      expect(flatBoundaries.card.right).toBe(0);
+      expect(flatBoundaries.card.left).toBeGreaterThanOrEqual(3);
+
+      const scenarioHeading = page.locator(".preset-library__identity strong");
+      await expect(scenarioHeading).toHaveText("Scenarios");
+      const headingIsClipped = await scenarioHeading.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      );
+      expect(headingIsClipped).toBe(false);
+    });
+
     test("results state", async ({ page }) => {
       await openWorkspace(page);
       await page.getByRole("button", { name: "Run & Watch" }).click();

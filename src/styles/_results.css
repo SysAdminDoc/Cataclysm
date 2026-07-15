@@ -6,16 +6,20 @@
 }
 
 .results__workspace .section__title,
-.results__tabpanel .section__title,
+.results__tabpanel .section__title {
+  font-size: 15px;
+}
+
 .results__workspace .section__badge,
 .results__tabpanel .section__badge {
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .results__tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  gap: 0;
+  border-bottom: 1px solid var(--divider);
 }
 
 .results__tabs button {
@@ -23,11 +27,11 @@
   min-height: 36px;
   padding: 8px 6px;
   border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--surface0) 48%, transparent);
+  border-radius: 0;
+  background: transparent;
   color: var(--subtext);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 650;
   cursor: pointer;
 }
@@ -35,13 +39,15 @@
 .results__tabs button:hover,
 .results__tabs button:focus-visible {
   color: var(--text);
-  border-color: var(--accent);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--surface1) 34%, transparent);
 }
 
 .results__tabs button[data-active="true"] {
-  color: var(--control-active-fg);
-  background: var(--control-active-bg);
-  border-color: color-mix(in srgb, var(--accent) 72%, var(--surface2));
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-active) 6%, transparent);
+  border-color: transparent;
+  box-shadow: inset 0 -2px 0 var(--accent-active);
 }
 
 .results__tabpanel:focus {
@@ -51,7 +57,9 @@
 .results__key-metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 1px;
+  overflow: hidden;
+  background: var(--divider);
 }
 
 .results__metric-card {
@@ -63,9 +71,9 @@
   justify-content: center;
   gap: 4px;
   padding: 13px;
-  border: 1px solid color-mix(in srgb, var(--surface1) 58%, transparent);
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--metric-bg) 62%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: var(--inspector-bg);
   color: var(--text);
   font: inherit;
   text-align: left;
@@ -77,28 +85,22 @@ button.results__metric-card {
 
 button.results__metric-card:hover,
 button.results__metric-card:focus-visible {
-  border-color: var(--accent);
   background: color-mix(in srgb, var(--sapphire) 7%, var(--metric-bg));
 }
 
 .results__metric-card[data-tone="primary"] {
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--sapphire) 9%, transparent), transparent 60%),
-    color-mix(in srgb, var(--metric-bg) 68%, transparent);
+  background: color-mix(in srgb, var(--sapphire) 5%, var(--inspector-bg));
 }
 
 .results__metric-card[data-tone="secondary"] {
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--teal) 7%, transparent), transparent 60%),
-    color-mix(in srgb, var(--metric-bg) 68%, transparent);
+  background: color-mix(in srgb, var(--teal) 4%, var(--inspector-bg));
 }
 
 .results__metric-card > span {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .results__metric-card > strong {
@@ -114,15 +116,16 @@ button.results__metric-card:focus-visible {
 
 .results__metric-card > em {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-style: normal;
   line-height: 1.35;
 }
 
 .results__places {
   margin-top: 12px;
-  border: 1px solid color-mix(in srgb, var(--surface1) 62%, transparent);
-  border-radius: var(--r-md);
+  border: 0;
+  border-block: 1px solid var(--divider);
+  border-radius: 0;
   overflow: hidden;
   background: color-mix(in srgb, var(--surface0) 38%, transparent);
 }
@@ -145,16 +148,15 @@ button.results__metric-card:focus-visible {
 
 .results__places-header > div > span {
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .results__places-header small,
 .results__places-header > span {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .results__places-list {
@@ -182,12 +184,12 @@ button.results__metric-card:focus-visible {
 
 .results__place:hover,
 .results__place:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 54%, var(--surface1));
+  border-color: transparent;
   background: color-mix(in srgb, var(--sapphire) 6%, var(--surface0));
 }
 
 .results__place[data-selected="true"] {
-  border-color: var(--accent);
+  border-color: transparent;
   background: color-mix(in srgb, var(--sapphire) 10%, var(--surface0));
   box-shadow: inset 2px 0 0 var(--accent);
 }
@@ -247,7 +249,7 @@ button.results__metric-card:focus-visible {
 .results__place-name small,
 .results__place-value small {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.2;
 }
 
@@ -260,7 +262,7 @@ button.results__metric-card:focus-visible {
   margin: 0;
   padding: 14px;
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-body);
   line-height: 1.5;
 }
 
@@ -270,8 +272,9 @@ button.results__metric-card:focus-visible {
   gap: 9px;
   margin-top: 10px;
   padding: 10px 11px;
-  border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--surface1));
-  border-radius: var(--r-sm);
+  border: 0;
+  border-left: 3px solid var(--warning-text);
+  border-radius: 0;
   background: color-mix(in srgb, var(--warning) 6%, transparent);
   color: var(--subtext);
 }
@@ -290,13 +293,13 @@ button.results__metric-card:focus-visible {
 
 .results__confidence strong {
   color: var(--warning-text);
-  font-size: 12px;
+  font-size: var(--type-caption);
   text-transform: capitalize;
 }
 
 .results__confidence p {
   margin: 3px 0 0;
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 
@@ -304,12 +307,12 @@ button.results__metric-card:focus-visible {
   display: block;
   margin-top: 5px;
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.4;
 }
 
 .results__confidence[data-confidence="high"] {
-  border-color: color-mix(in srgb, var(--success) 30%, var(--surface1));
+  border-left-color: var(--success-text);
   background: color-mix(in srgb, var(--success) 6%, transparent);
 }
 
@@ -328,11 +331,10 @@ button.results__metric-card:focus-visible {
   gap: 7px;
   padding: 14px;
   margin-bottom: 12px;
-  border-radius: var(--r-md);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--sapphire) 10%, transparent), transparent),
-    color-mix(in srgb, var(--surface0) 52%, transparent);
-  border: 1px solid color-mix(in srgb, var(--sapphire) 22%, var(--surface1));
+  border-radius: 0;
+  background: color-mix(in srgb, var(--sapphire) 7%, transparent);
+  border: 0;
+  border-left: 3px solid var(--accent-active);
 }
 
 .results__outcome-headline {
@@ -362,7 +364,7 @@ button.results__metric-card:focus-visible {
 
 .results__outcome-note {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.4;
 }
 
@@ -394,7 +396,7 @@ button.results__metric-card:focus-visible {
 .results__export {
   width: 100%;
   margin-top: 8px;
-  border: 1px solid var(--surface2);
+  border: 0;
   border-radius: 7px;
   background: var(--surface0);
   color: var(--text);
@@ -413,10 +415,10 @@ button.results__metric-card:focus-visible {
   padding: 8px 10px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--surface0) 32%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 34%, transparent);
+  border: 0;
   color: var(--subtext);
   font-family: "JetBrains Mono", "Cascadia Code", monospace;
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.35;
 }
 
@@ -430,14 +432,15 @@ button.results__metric-card:focus-visible {
 .results {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 1px;
+  background: var(--divider);
 }
 
 .results__cell {
   background: color-mix(in srgb, var(--metric-bg) 78%, transparent);
   padding: 12px;
-  border-radius: var(--r-md);
-  border: 1px solid color-mix(in srgb, var(--divider) 72%, transparent);
+  border-radius: 0;
+  border: 0;
 }
 
 .results__cell[data-tone="primary"] {
@@ -458,10 +461,9 @@ button.results__metric-card:focus-visible {
 }
 
 .results__label {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--subtext);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0;
 }
 
 .results__value {
@@ -474,14 +476,14 @@ button.results__metric-card:focus-visible {
 }
 
 .results__unit {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--subtext);
   margin-left: 4px;
 }
 
 .empty-copy {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-body);
   line-height: 1.55;
 }
 
@@ -492,7 +494,7 @@ button.results__metric-card:focus-visible {
   padding: 12px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--surface0) 44%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 42%, transparent);
+  border: 0;
   color: var(--subtext);
 }
 
@@ -515,30 +517,30 @@ button.results__metric-card:focus-visible {
 .empty-state strong {
   display: block;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--type-body);
   margin-bottom: 3px;
 }
 
 .empty-state p {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.5;
 }
 
 .empty-state__action {
-  min-height: 28px;
+  min-height: var(--control-sm);
   margin-top: 8px;
   padding: 4px 9px;
   border-radius: var(--r-sm);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .inline-note {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-body);
   line-height: 1.5;
 }
 
 .results__tabpanel .timeline__readout {
-  font-size: 12px;
+  font-size: var(--type-caption);
 }

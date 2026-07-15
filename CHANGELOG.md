@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The desktop simulator now uses a unified, legible visual system modeled from
+  a dedicated 1600×1000 design study: 13–14 px operational text, 40 px controls,
+  calmer column spacing, flat scenario and result lists, dot-based statuses,
+  restrained dividers, and one clear accent treatment for selected work. Dark,
+  light, direct-hazard, settings, and accessibility regressions enforce the new
+  hierarchy without changing the scientific workflows.
 - Compare now opens a complete two-source story instead of an empty Slot B.
   Three cited scenario pairs load at a shared meaningful time and equal camera
   range, summarize source-scale deltas, retain an Advanced custom source, and

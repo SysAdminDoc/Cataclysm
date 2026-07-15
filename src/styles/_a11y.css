@@ -112,6 +112,10 @@
     backdrop-filter: none;
   }
 
+  .app__command-group {
+    border: 1px solid CanvasText;
+  }
+
   button,
   input,
   select,

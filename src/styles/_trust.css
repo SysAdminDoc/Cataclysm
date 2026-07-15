@@ -1,15 +1,16 @@
 .trust-disclosure {
   width: 100%;
   margin-top: 10px;
-  border: 1px solid color-mix(in srgb, var(--accent-active) 28%, var(--hairline));
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--surface-recessed) 68%, transparent);
+  border: 0;
+  border-block: 1px solid var(--hairline);
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
 }
 
 .trust-disclosure > summary {
   display: flex;
-  min-height: 36px;
+  min-height: var(--control-md);
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -28,7 +29,7 @@
 
 .trust-disclosure > summary small {
   color: var(--subtext);
-  font-size: var(--type-micro);
+  font-size: var(--type-caption);
   font-weight: 680;
   text-align: right;
 }

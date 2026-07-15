@@ -69,15 +69,16 @@ html[data-theme="mocha"] {
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 20px;
+  --space-5: 24px;
+  --space-6: 32px;
   --control-sm: 32px;
-  --control-md: 38px;
-  --control-lg: 44px;
-  --type-micro: 12px;
-  --type-caption: 12px;
-  --type-label: 12px;
-  --type-body: 12px;
-  --type-title: 15px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --type-micro: 11px;
+  --type-caption: 13px;
+  --type-label: 13px;
+  --type-body: 14px;
+  --type-title: 18px;
   --surface-recessed: color-mix(in srgb, var(--crust) 78%, var(--mantle));
   --surface-raised: color-mix(in srgb, var(--metric-bg) 88%, var(--inspector-bg));
   --hairline: color-mix(in srgb, var(--divider) 82%, transparent);
@@ -175,30 +176,24 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 36px;
-  background: var(--panel-bg-strong);
-  border: 1px solid var(--panel-border);
+  min-height: var(--control-md);
+  background: color-mix(in srgb, var(--surface0) 62%, transparent);
+  border: 1px solid transparent;
   border-radius: var(--r-md);
   padding: 8px 12px;
   cursor: pointer;
-  transition: background 140ms ease, transform 100ms ease, border-color 140ms ease,
+  transition: background 140ms ease, border-color 140ms ease,
     box-shadow 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
 button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--surface1) 76%, var(--panel-bg-strong));
-  border-color: color-mix(in srgb, var(--accent-active) 58%, var(--panel-border));
-  transform: translateY(-1px);
-}
-
-button:active:not(:disabled) {
-  transform: translateY(0);
+  background: color-mix(in srgb, var(--surface1) 58%, var(--surface0));
+  border-color: transparent;
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
-  transform: none;
+  opacity: 0.88;
 }
 
 button[data-active="true"]:disabled {

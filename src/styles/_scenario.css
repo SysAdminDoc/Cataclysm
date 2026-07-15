@@ -7,12 +7,13 @@
 
 .scenario-summary {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-body);
   line-height: 1.45;
   padding: 9px 10px;
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--surface0) 34%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 34%, transparent);
+  border: 0;
+  border-left: 3px solid color-mix(in srgb, var(--accent-active) 48%, var(--divider));
 }
 
 .scenario-form__actions {
@@ -24,7 +25,7 @@
 
 .scenario-form__bound {
   color: var(--overlay);
-  font-size: 10px;
+  font-size: 12px;
   text-transform: none;
   letter-spacing: 0.2px;
 }
@@ -51,7 +52,7 @@
   min-width: 24px;
   min-height: 24px;
   border-radius: var(--r-sm);
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--subtext);
   background: color-mix(in srgb, var(--surface0) 60%, transparent);
@@ -65,7 +66,7 @@
 }
 .scenario-field__help-text {
   display: block;
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--subtext);
   padding: 4px 0;
@@ -83,7 +84,7 @@
 }
 .scenario-field__unit {
   color: var(--subtext);
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 .scenario-field__slider {
   width: 100%;
@@ -93,7 +94,7 @@
 }
 .scenario-field__error {
   color: var(--red);
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1.35;
 }
 .scenario-field[data-invalid="true"] input[type="number"] {
@@ -103,17 +104,18 @@
 .scenario-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
+  gap: 0;
+  border-bottom: 1px solid var(--divider);
   margin-bottom: 4px;
 }
 
 .scenario-tab {
-  min-height: 32px;
-  font-size: 12px;
+  min-height: 38px;
+  font-size: var(--type-caption);
   padding: 6px 9px;
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--mantle) 78%, transparent);
-  border: 1px solid var(--panel-border);
+  border-radius: 0;
+  background: transparent;
+  border: 0;
   color: var(--subtext);
   cursor: pointer;
   transition: background 100ms, color 100ms, border-color 100ms;
@@ -125,14 +127,14 @@
 }
 
 .scenario-tab[data-active="true"] {
-  background: color-mix(in srgb, var(--sapphire) 18%, var(--surface0));
+  background: color-mix(in srgb, var(--sapphire) 8%, transparent);
   color: var(--text);
-  border-color: var(--sapphire);
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--sapphire) 45%, transparent);
+  border-color: transparent;
+  box-shadow: inset 0 -2px 0 var(--accent-active);
 }
 
 .scenario-pick {
-  font-size: 12px;
+  font-size: var(--type-caption);
   padding: 8px 10px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--surface0) 58%, transparent);
@@ -162,14 +164,14 @@
 }
 
 .scenario-actions__row > button {
-  min-height: 30px;
+  min-height: var(--control-sm);
   padding: 5px 9px;
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .scenario-actions__clip {
   flex: 1 1 100%;
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--subtext);
 }
 
@@ -212,13 +214,14 @@
 .scenario-saved__load {
   flex: 1;
   text-align: left;
-  font-size: 12px;
-  min-height: 30px;
+  font-size: var(--type-caption);
+  min-height: 36px;
   padding: 5px 8px;
   border-radius: var(--r-sm);
   background: var(--field-bg);
   color: var(--text);
-  border: 1px solid var(--panel-border);
+  border: 0;
+  border-bottom: 1px solid var(--divider);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;

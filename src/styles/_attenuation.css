@@ -7,7 +7,7 @@
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--sapphire) 6%, transparent), transparent 72px),
     color-mix(in srgb, var(--surface0) 36%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 38%, transparent);
+  border: 0;
 }
 
 .attenuation-chart {
@@ -23,7 +23,7 @@
   align-items: center;
   margin-top: 4px;
   color: var(--subtext);
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.3;
 }
 
@@ -67,14 +67,14 @@
 .chart-data__summary {
   margin: 0;
   color: var(--subtext);
-  font-size: 10.5px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 
 .chart-data__details {
   margin-top: 5px;
   color: var(--subtext);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 
 .chart-data__details > summary {
@@ -93,9 +93,9 @@
 }
 
 .chart-data__actions button {
-  min-height: 28px;
+  min-height: var(--control-sm);
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 
 .chart-data__scroll {
@@ -115,7 +115,7 @@
   width: 100%;
   border-collapse: collapse;
   color: var(--text);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
 }
 

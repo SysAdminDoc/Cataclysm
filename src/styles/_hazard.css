@@ -3,9 +3,9 @@
 .app__command-group--hazard {
   display: inline-flex;
   gap: 2px;
-  padding: 2px;
-  background: var(--surface0);
-  border: 1px solid var(--panel-border);
+  padding: 3px;
+  background: color-mix(in srgb, var(--surface0) 74%, transparent);
+  border: 0;
   border-radius: var(--r-md);
 }
 
@@ -15,8 +15,9 @@
   background: transparent;
   color: var(--subtext);
   font: inherit;
-  font-size: 0.82rem;
-  padding: 5px 12px;
+  font-size: var(--type-body);
+  min-height: 36px;
+  padding: 6px 14px;
   border-radius: var(--r-sm);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -49,7 +50,7 @@
   background: transparent;
   color: var(--accent-text);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--type-body);
   padding: 5px 10px;
   border-radius: var(--r-sm);
   cursor: pointer;
@@ -61,7 +62,7 @@
 }
 
 .hazard__coord {
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   color: var(--subtext);
 }
 
@@ -74,12 +75,12 @@
 }
 
 .hazard__row-label {
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   color: var(--subtext);
 }
 
 .hazard__row-value {
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   color: var(--text);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -96,7 +97,7 @@
 .hazard__number {
   width: 68px;
   padding: 3px 6px;
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -117,12 +118,12 @@
 .hazard__number-error {
   grid-column: 2 / 4;
   color: var(--danger);
-  font-size: 0.72rem;
+  font-size: var(--type-caption);
   line-height: 1.35;
 }
 
 .hazard__num-unit {
-  font-size: 0.7rem;
+  font-size: var(--type-caption);
   color: var(--subtext);
   min-width: 34px;
 }
@@ -141,7 +142,7 @@
   border-radius: var(--r-sm);
   padding: 4px 6px;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--type-body);
 }
 
 .hazard__results {
@@ -162,14 +163,13 @@
 }
 
 .hazard__stat-label {
-  font-size: 0.7rem;
+  font-size: var(--type-caption);
   color: var(--subtext);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .hazard__stat-value {
-  font-size: 0.9rem;
+  font-size: var(--type-body);
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
@@ -179,7 +179,7 @@
   padding: 8px 10px;
   background: var(--surface0);
   border-radius: var(--r-sm);
-  font-size: 0.82rem;
+  font-size: var(--type-body);
   color: var(--text);
 }
 
@@ -190,14 +190,14 @@
 .hazard__casualties-detail {
   display: block;
   margin-top: 3px;
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   color: var(--text);
 }
 
 .hazard__casualties-note {
   display: block;
   margin-top: 3px;
-  font-size: 0.72rem;
+  font-size: var(--type-caption);
   color: var(--subtext);
 }
 
@@ -211,7 +211,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   color: var(--text);
   padding: 2px 0;
 }
@@ -231,7 +231,7 @@
 
 .hazard__hint {
   margin-top: 12px;
-  font-size: 0.8rem;
+  font-size: var(--type-body);
   color: var(--subtext);
 }
 
@@ -244,7 +244,7 @@
   background: color-mix(in srgb, var(--peach) 16%, transparent);
   color: var(--warning-text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--type-body);
   font-weight: 600;
   border-radius: var(--r-sm);
   cursor: pointer;
@@ -260,9 +260,8 @@
 }
 
 .hazard__timeline-title {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--type-caption);
+  letter-spacing: 0;
   color: var(--subtext);
   margin-bottom: 6px;
 }
@@ -277,7 +276,7 @@
 .hazard__timeline-list li {
   position: relative;
   padding: 4px 0 6px 12px;
-  font-size: 0.78rem;
+  font-size: var(--type-caption);
   color: var(--text);
 }
 

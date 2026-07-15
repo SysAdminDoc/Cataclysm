@@ -12,9 +12,7 @@
 }
 
 .modal {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface0) 18%, transparent), transparent 180px),
-    color-mix(in srgb, var(--mantle) 94%, var(--surface0));
+  background: color-mix(in srgb, var(--mantle) 94%, var(--surface0));
   border: 1px solid var(--panel-border);
   border-radius: var(--r-lg);
   width: min(720px, 92vw);
@@ -35,13 +33,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 20px;
+  padding: 18px 22px;
   border-bottom: 1px solid var(--panel-border);
   background: color-mix(in srgb, var(--crust) 22%, transparent);
 }
 
 .modal__header h2 {
-  font-size: 16px;
+  font-size: var(--type-title);
   font-weight: 760;
   margin: 0;
 }
@@ -70,7 +68,7 @@
 
 .modal__copy {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.6;
 }
 
@@ -80,7 +78,7 @@
 
 .modal__copy--muted {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .notice-lede {
@@ -126,7 +124,7 @@
 
 .notice-grid__item span {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 
@@ -134,7 +132,7 @@
   margin-top: 12px;
   padding: 10px 12px;
   color: var(--warning-text);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.45;
   background: color-mix(in srgb, var(--warning) 10%, var(--surface0));
   border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--panel-border));
@@ -163,7 +161,7 @@
 
 .modal__footnote {
   color: var(--subtext);
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .modal__footnote code {

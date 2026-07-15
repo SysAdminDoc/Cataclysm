@@ -3,7 +3,7 @@
   background: none;
   border: none;
   color: var(--subtext);
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   letter-spacing: 1.4px;
   text-transform: uppercase;
@@ -24,10 +24,10 @@
   padding: 8px 10px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--surface0) 32%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 34%, transparent);
+  border: 0;
   color: var(--subtext);
   font-family: "JetBrains Mono", "Cascadia Code", monospace;
-  font-size: 10.5px;
+  font-size: var(--type-caption);
   line-height: 1.35;
 }
 
@@ -43,8 +43,9 @@
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--maroon) 5%, transparent), transparent 56px),
     color-mix(in srgb, var(--surface0) 50%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface1) 48%, transparent);
-  border-radius: var(--r-md);
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  border-radius: 0;
   padding: 11px;
   display: flex;
   flex-direction: column;
@@ -52,13 +53,13 @@
 }
 
 .dart__name {
-  font-size: 12px;
+  font-size: var(--type-body);
   font-weight: 720;
   color: var(--text);
 }
 
 .dart__meta {
-  font-size: 10px;
+  font-size: var(--type-caption);
   color: var(--subtext);
   font-family: "JetBrains Mono", monospace;
 }
@@ -78,9 +79,10 @@
   padding: 6px 8px;
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--teal) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--teal) 24%, transparent);
+  border: 0;
+  border-left: 3px solid color-mix(in srgb, var(--teal) 58%, var(--divider));
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--subtext);
   overflow-wrap: anywhere;
@@ -89,7 +91,7 @@
 .dart__rmse-value {
   color: var(--text);
   font-weight: 720;
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 
 .dart__rmse--muted {

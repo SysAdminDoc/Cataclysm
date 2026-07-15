@@ -28,7 +28,7 @@
 }
 
 .lesson-card__badge {
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--on-success);
@@ -39,7 +39,7 @@
 }
 
 .lesson-card__step {
-  font-size: 10px;
+  font-size: var(--type-caption);
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: var(--subtext);
@@ -66,13 +66,13 @@
 }
 
 .lesson-card__title {
-  font-size: 15px;
+  font-size: var(--type-title);
   margin: 0 0 8px;
   color: var(--text);
 }
 
 .lesson-card__body {
-  font-size: 13px;
+  font-size: var(--type-body);
   color: var(--subtext);
   line-height: 1.55;
   margin: 0 0 14px;
@@ -91,9 +91,10 @@
 .lesson-launcher {
   margin-top: 8px;
   margin-bottom: 12px;
-  border: 1px solid color-mix(in srgb, var(--green) 30%, var(--surface1));
-  border-radius: var(--r-md);
-  padding: 8px;
+  border: 0;
+  border-left: 3px solid color-mix(in srgb, var(--green) 54%, var(--divider));
+  border-radius: 0;
+  padding: 10px 8px 10px 12px;
   background: color-mix(in srgb, var(--green) 5%, transparent);
 }
 
@@ -103,7 +104,7 @@
   width: 100%;
   min-height: 46px;
   padding: 8px 10px;
-  border-color: color-mix(in srgb, var(--divider) 86%, transparent);
+  border-color: transparent;
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--metric-bg) 48%, transparent);
 }
@@ -116,12 +117,12 @@
 
 .lesson-launcher__toggle strong {
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--type-body);
 }
 
 .lesson-launcher__toggle small {
   color: var(--subtext);
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 
 .lesson-launcher[data-open="false"] .lesson-launcher__title {
@@ -129,7 +130,7 @@
 }
 
 .lesson-launcher__title {
-  font-size: 11px;
+  font-size: var(--type-caption);
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--green);
@@ -152,7 +153,7 @@
   border: none;
   border-radius: var(--r-sm);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--type-caption);
   cursor: pointer;
   text-align: left;
 }
@@ -171,11 +172,11 @@
 
 .lesson-launcher__complete {
   flex-shrink: 0;
-  border: 1px solid color-mix(in srgb, var(--green) 42%, var(--panel-border));
-  border-radius: var(--r-sm);
-  padding: 2px 5px;
+  border: 0;
+  border-radius: 0;
+  padding: 2px 0;
   color: var(--green);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
