@@ -1478,7 +1478,11 @@ export default function App() {
         </div>
       </header>
 
-      <aside className="app__panel" aria-label={inHazardMode ? "Direct effects workspace" : "Preset scenarios"}>
+      <aside
+        className="app__panel"
+        aria-label={inHazardMode ? "Direct effects workspace" : "Preset scenarios"}
+        inert={exportMenuOpen ? true : undefined}
+      >
         {presetsError && (
           <div className="panel-error" role="status" aria-live="polite">
             <span>Couldn't load presets: {presetsError}</span>
@@ -1546,7 +1550,13 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="app__globe" id="main-globe" tabIndex={-1} aria-label="Interactive globe simulation">
+      <main
+        className="app__globe"
+        id="main-globe"
+        tabIndex={-1}
+        aria-label="Interactive globe simulation"
+        inert={exportMenuOpen ? true : undefined}
+      >
         <Suspense
           fallback={
             <div className="app__globe-empty">
@@ -1650,7 +1660,11 @@ export default function App() {
         </div>
       </main>
 
-      <aside className="app__panel app__panel--right" aria-label="Simulation controls and results">
+      <aside
+        className="app__panel app__panel--right"
+        aria-label="Simulation controls and results"
+        inert={exportMenuOpen ? true : undefined}
+      >
         <div className="inspector__header">
           <div className="inspector__identity">
             <span>Active workspace</span>

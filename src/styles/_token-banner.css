@@ -68,7 +68,7 @@
 .crash-recovery-notice__inspect {
   border: 1px solid transparent;
   background: var(--yellow);
-  color: var(--crust);
+  color: var(--on-warning);
 }
 
 .crash-recovery-notice__clear {

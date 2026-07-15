@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Headless visual and WCAG regression now exercises empty, loading, error,
+  recovery, custom-builder, comparison, layer, coastal-result, export,
+  lesson/tour, and direct-hazard states in both themes. The same deterministic
+  matrix covers semantic chart disclosures, Windows forced colors, 200% zoom,
+  and 320-CSS-pixel reflow without page-level horizontal overflow.
 - Wave attenuation, DART comparison, and user-gauge charts now include concise
   non-live summaries plus focusable disclosure tables with series, units,
   extrema/thresholds, active selection, confidence, and provenance. Each table

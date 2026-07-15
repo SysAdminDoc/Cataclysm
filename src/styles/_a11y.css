@@ -71,6 +71,8 @@
     --success-text: CanvasText;
     --warning-text: CanvasText;
     --on-accent: HighlightText;
+    --on-success: Canvas;
+    --on-warning: Canvas;
     --control-active-bg: Highlight;
     --control-active-fg: HighlightText;
     --viewport-hud: Canvas;
