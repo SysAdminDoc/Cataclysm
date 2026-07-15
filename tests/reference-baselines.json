@@ -52,16 +52,19 @@
       }
     },
     "asteroid-ocean-impact@1440p": {
-      "pngSha256": "6315c30fe1b53795640cf716af49a05e31959bad02f40eab9c90c1e75bd7bb1a",
+      "pngSha256": "3ff983558457e26c772b466ae19f7161d37b755396e6cf81054a77eabf801c39",
       "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
       "width": 2560,
       "height": 1440,
       "review": {
-        "reason": "The committed-WebGL-frame barrier replaces a visibly incomplete SwiftShader capture while preserving the exact reviewed scene contract",
+        "reason": "Ground-zero annotation is now a deterministic overlay above translucent ocean-impact geometry",
         "approver": "SysAdminDoc",
-        "approvedAt": "2026-07-14T23:47:53.147Z",
-        "previousPngSha256": "e039eb5bc4d6a4c4abb7bada5603069abd656ad46856df4fd41f8c69e4ef0546",
-        "commit": "6b10c67f1d47af07be25f5503b807c387dce7a78"
+        "approvedAt": "2026-07-15T05:19:44.340Z",
+        "previousPngSha256": "6315c30fe1b53795640cf716af49a05e31959bad02f40eab9c90c1e75bd7bb1a",
+        "commit": "a4429d3964d01e4da138d850fda1a659722812ed",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "61a910b0252342d74c5cc094165074df0575b60302c418a44e7b41ebf11d49dc",
+        "requiredScaleCue": "The disturbance and surrounding ocean surface are visible together."
       }
     },
     "nuclear-airburst@1440p": {
@@ -166,16 +169,19 @@
       }
     },
     "asteroid-ocean-impact@4k": {
-      "pngSha256": "5a2a98ca5374ce535546f13d7c4b23c3aa7196d1e3d4f118bef67ca06e6c90fa",
+      "pngSha256": "339857fc23b2aa4721f32be7ca9f26dedfb96b59a80c2fb60afcca152c1cb480",
       "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
       "width": 3840,
       "height": 2160,
       "review": {
-        "reason": "HR-01 replaces client-authored hazard timing and geometry with deterministic Rust protocol frames",
+        "reason": "Ground-zero annotation is now a deterministic overlay above translucent ocean-impact geometry",
         "approver": "SysAdminDoc",
-        "approvedAt": "2026-07-11T16:29:04.668Z",
-        "previousPngSha256": "b07f1e4fb1a07777f48dee3886f9c6ea731951ec03594aa41b0ec0f3d177c8c6",
-        "commit": "5a1fc24c1c31c64f4910a0d360b25b2f80ca16f1"
+        "approvedAt": "2026-07-15T05:20:32.846Z",
+        "previousPngSha256": "5a2a98ca5374ce535546f13d7c4b23c3aa7196d1e3d4f118bef67ca06e6c90fa",
+        "commit": "a4429d3964d01e4da138d850fda1a659722812ed",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "61a910b0252342d74c5cc094165074df0575b60302c418a44e7b41ebf11d49dc",
+        "requiredScaleCue": "The disturbance and surrounding ocean surface are visible together."
       }
     },
     "nuclear-airburst@4k": {
