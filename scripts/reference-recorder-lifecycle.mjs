@@ -37,6 +37,15 @@ export async function withDeadline(label, timeoutMs, operation) {
 }
 
 /**
+ * Dispatch a React-local button event without Playwright's post-click
+ * navigation wait. Cesium may keep unrelated requests pending indefinitely on
+ * software-rendered Windows runners even though the state transition finished.
+ */
+export async function dispatchLocalStateClick(locator) {
+  await locator.dispatchEvent("click");
+}
+
+/**
  * Flush the WebGL command stream and allow the browser compositor to observe
  * the completed canvas before Playwright captures it. Fixed sleeps are not a
  * completion barrier on software-rendered CI hosts.

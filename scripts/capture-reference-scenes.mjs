@@ -12,6 +12,7 @@ import {
 import {
   createProgressTracker,
   deadlineFrom,
+  dispatchLocalStateClick,
   settleCommittedWebGlFrame,
   terminateProcessTree,
   withDeadline,
@@ -193,7 +194,7 @@ async function configureWorkflow(page, scene) {
     await page.getByRole("button", { name: "Run & Watch" }).click();
     await page.getByRole("button", { name: "Run simulation" }).waitFor({ state: "visible" });
     if (workflow.runSolver) {
-      await page.getByRole("button", { name: "Run simulation" }).click();
+      await dispatchLocalStateClick(page.getByRole("button", { name: "Run simulation" }));
       await page.getByRole("button", { name: "Re-run simulation" }).waitFor({ state: "visible", timeout: 30_000 });
     }
   } else if (workflow.kind.startsWith("direct-")) {
@@ -209,9 +210,9 @@ async function configureWorkflow(page, scene) {
     // These controls only mutate local React state. Dispatch their events
     // directly so Playwright does not attach unrelated, still-pending Cesium
     // requests to a post-click navigation wait on slower Windows runners.
-    await coordinates.getByRole("button", { name: "Go" }).dispatchEvent("click");
+    await dispatchLocalStateClick(coordinates.getByRole("button", { name: "Go" }));
     await coordinates.waitFor({ state: "detached" });
-    await page.getByRole("tab", { name: "Results" }).dispatchEvent("click");
+    await dispatchLocalStateClick(page.getByRole("tab", { name: "Results" }));
     await page.locator(".hazard__results").waitFor({ state: "visible" });
   }
 }

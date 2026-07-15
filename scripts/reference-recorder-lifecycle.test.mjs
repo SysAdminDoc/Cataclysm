@@ -9,10 +9,21 @@ import {
   RecorderDeadlineError,
   createProgressTracker,
   deadlineFrom,
+  dispatchLocalStateClick,
   settleCommittedWebGlFrame,
   terminateProcessTree,
   withDeadline,
 } from "./reference-recorder-lifecycle.mjs";
+
+test("local state clicks bypass Playwright navigation waits", async () => {
+  const events = [];
+  const locator = {
+    dispatchEvent: async (event) => events.push(event),
+    click: async () => assert.fail("local state controls must not use Playwright click"),
+  };
+  await dispatchLocalStateClick(locator);
+  assert.deepEqual(events, ["click"]);
+});
 
 test("deadline rejects a hanging phase within its budget", async () => {
   const started = Date.now();
