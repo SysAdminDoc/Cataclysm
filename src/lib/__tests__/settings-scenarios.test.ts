@@ -83,6 +83,37 @@ describe("settings scenario storage", () => {
     expect(reread[0].id).toBe(after[0].id);
   });
 
+  it("rolls a saved-scenario deletion back when persistence rejects", async () => {
+    await settings.saveScenario("Keep me", { kind: "Asteroid", source: INITIAL_ASTEROID });
+    const [scenario] = await settings.getSavedScenarios();
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+      throw new Error("injected delete failure");
+    });
+    try {
+      await expectCompleteRollback(() => settings.deleteScenario(scenario.id));
+    } finally {
+      storageSpy.mockRestore();
+    }
+    expect(await settings.getSavedScenarios()).toEqual([scenario]);
+  });
+
+  it("serializes delete, undo, and newer saves without losing identity or order", async () => {
+    await settings.saveScenario("First", { kind: "Asteroid", source: INITIAL_ASTEROID });
+    await settings.saveScenario("Second", { kind: "Asteroid", source: INITIAL_ASTEROID });
+    const before = await settings.getSavedScenarios();
+    const target = before[0];
+
+    await Promise.all([
+      settings.deleteScenario(target.id),
+      settings.saveScenario("Newer", { kind: "Asteroid", source: INITIAL_ASTEROID }),
+      settings.restoreScenario(target, { index: 0, afterId: before[1].id }),
+    ]);
+
+    const after = await settings.getSavedScenarios();
+    expect(after.map((scenario) => scenario.name)).toEqual(["Newer", "Second", "First"]);
+    expect(after[1]).toEqual(target);
+  });
+
   it("rejects invalid scenario payloads before writing to storage", async () => {
     await expect(settings.saveScenario("Bad asteroid", {
       kind: "Asteroid",

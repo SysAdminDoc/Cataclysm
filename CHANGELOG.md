@@ -57,6 +57,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Saved scenarios now delete optimistically with an eight-second Undo action.
+  Scenario writes are serialized and transactional across browser and desktop
+  stores, so rejection restores the row and rapid delete/undo/save sequences
+  preserve stable IDs, content, and ordering instead of overwriting newer work.
 - Deterministic third-party notice inputs now retain LF bytes on Windows
   checkouts, preventing release verification from rejecting digest-pinned
   license overrides solely because Git translated their line endings.

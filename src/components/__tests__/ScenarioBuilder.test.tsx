@@ -105,6 +105,43 @@ describe("ScenarioBuilder scenario persistence", () => {
     expect(screen.getByRole("button", { name: "Load" })).toBeInTheDocument();
   });
 
+  it("undoes deletion with the same saved scenario identity and content", async () => {
+    const user = setupUser();
+    renderBuilder();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Load \(1\)/ })).toBeInTheDocument());
+    const before = localStorage.getItem("tsunamisim.saved_scenarios");
+    await user.click(screen.getByRole("button", { name: /Load \(1\)/ }));
+    await user.click(screen.getByLabelText(/Delete Asteroid/));
+    expect(await screen.findByRole("button", { name: "Undo" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(screen.getByLabelText(/Delete Asteroid/)).toBeInTheDocument());
+    await waitFor(() => expect(localStorage.getItem("tsunamisim.saved_scenarios")).toBe(before));
+    expect(await screen.findByRole("status")).toHaveTextContent(/^Restored Asteroid/);
+  });
+
+  it("restores an optimistically deleted row when persistence rejects", async () => {
+    const user = setupUser();
+    renderBuilder();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Load \(1\)/ })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /Load \(1\)/ }));
+    const before = localStorage.getItem("tsunamisim.saved_scenarios");
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+      throw new Error("injected delete failure");
+    });
+    try {
+      await user.click(screen.getByLabelText(/Delete Asteroid/));
+      expect(await screen.findByRole("alert")).toHaveTextContent(/Delete failed:.*All persisted values were restored/);
+      expect(screen.getByLabelText(/Delete Asteroid/)).toBeInTheDocument();
+      expect(localStorage.getItem("tsunamisim.saved_scenarios")).toBe(before);
+    } finally {
+      storageSpy.mockRestore();
+    }
+  });
+
   it("rejects pasted out-of-range payloads without changing visible scenario state", async () => {
     clipboard.readText.mockResolvedValue(JSON.stringify({
       kind: "Asteroid",

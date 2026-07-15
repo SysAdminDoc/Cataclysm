@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { settings, type SavedScenario } from "../lib/settings";
+import { settings, type SavedScenario, type ScenarioRestorePoint } from "../lib/settings";
 import {
   createScenarioPayload,
   INITIAL_ASTEROID,
@@ -31,7 +31,11 @@ type Props = {
 };
 
 type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide";
-type InlineStatus = { text: string; tone: "info" | "success" | "error" };
+type InlineStatus = {
+  text: string;
+  tone: "info" | "success" | "error";
+  action?: { label: string; run: () => void };
+};
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "asteroid", label: "Asteroid" },
@@ -226,6 +230,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
   const [showSaved, setShowSaved] = useState(false);
   const clipTimer = useRef<number | undefined>(undefined);
+  const scenarioActionVersion = useRef(0);
 
   useEffect(() => {
     settings
@@ -235,10 +240,17 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   }, []);
   useEffect(() => () => window.clearTimeout(clipTimer.current), []);
 
-  function showStatus(text: string, tone: InlineStatus["tone"] = "info") {
-    setClipMsg({ text, tone });
+  function showStatus(
+    text: string,
+    tone: InlineStatus["tone"] = "info",
+    action?: InlineStatus["action"],
+  ) {
+    setClipMsg({ text, tone, action });
     window.clearTimeout(clipTimer.current);
-    clipTimer.current = window.setTimeout(() => setClipMsg(null), tone === "error" ? 5000 : 2200);
+    clipTimer.current = window.setTimeout(
+      () => setClipMsg(null),
+      action ? 8_000 : tone === "error" ? 5_000 : 2_200,
+    );
   }
 
   function currentScenarioData(): ScenarioInput {
@@ -293,8 +305,48 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   }
 
   function deleteScenario(id: string) {
-    settings.deleteScenario(id).then(() => {
-      settings.getSavedScenarios().then(setSavedScenarios);
+    const index = savedScenarios.findIndex((scenario) => scenario.id === id);
+    if (index < 0) return;
+    const scenario = savedScenarios[index];
+    const restorePoint: ScenarioRestorePoint = {
+      index,
+      beforeId: savedScenarios[index - 1]?.id,
+      afterId: savedScenarios[index + 1]?.id,
+    };
+    const version = ++scenarioActionVersion.current;
+    let undoRequested = false;
+    const insertIfMissing = (list: SavedScenario[]) => {
+      if (list.some((entry) => entry.id === scenario.id)) return list;
+      const next = [...list];
+      next.splice(Math.min(index, next.length), 0, scenario);
+      return next;
+    };
+    const undo = () => {
+      if (undoRequested) return;
+      undoRequested = true;
+      setSavedScenarios(insertIfMissing);
+      showStatus(`Restoring ${scenario.name}...`);
+      void settings.restoreScenario(scenario, restorePoint).then(async () => {
+        setSavedScenarios(await settings.getSavedScenarios());
+        if (scenarioActionVersion.current === version) {
+          showStatus(`Restored ${scenario.name}.`, "success");
+        }
+      }).catch(async (error) => {
+        setSavedScenarios(await settings.getSavedScenarios());
+        if (scenarioActionVersion.current === version) {
+          showStatus(`Undo failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+        }
+      });
+    };
+
+    setSavedScenarios((list) => list.filter((entry) => entry.id !== id));
+    showStatus(`Deleted ${scenario.name}.`, "success", { label: "Undo", run: undo });
+    void settings.deleteScenario(id).catch(async (error) => {
+      if (undoRequested) return;
+      setSavedScenarios(await settings.getSavedScenarios());
+      if (scenarioActionVersion.current === version) {
+        showStatus(`Delete failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+      }
     });
   }
 
@@ -528,6 +580,15 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
               aria-live={clipMsg.tone === "error" ? "assertive" : "polite"}
             >
               {clipMsg.text}
+              {clipMsg.action && (
+                <button
+                  className="scenario-actions__status-action"
+                  onClick={clipMsg.action.run}
+                  type="button"
+                >
+                  {clipMsg.action.label}
+                </button>
+              )}
             </span>
           )}
         </div>

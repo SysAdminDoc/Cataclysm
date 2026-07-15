@@ -552,6 +552,12 @@ export type SavedScenario = {
   data: unknown;
 };
 
+export type ScenarioRestorePoint = {
+  index: number;
+  beforeId?: string;
+  afterId?: string;
+};
+
 function makeScenarioId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `scenario-${crypto.randomUUID()}`;
@@ -607,22 +613,118 @@ async function readScenarios(): Promise<SavedScenario[]> {
   return [];
 }
 
-async function writeScenarios(list: SavedScenario[]): Promise<void> {
+let scenarioMutationTail: Promise<void> = Promise.resolve();
+
+async function writeScenarios(operation: string, list: SavedScenario[]): Promise<void> {
   const capped = list.slice(0, MAX_SAVED_SCENARIOS);
-  if (typeof localStorage !== "undefined") {
-    try {
-      localStorage.setItem(LS_PREFIX + SCENARIOS_KEY, JSON.stringify(capped));
-    } catch { /* quota */ }
-  }
+  const localKey = LS_PREFIX + SCENARIOS_KEY;
+  const localAvailable = typeof localStorage !== "undefined";
+  let previousLocal: string | null = null;
   const store = await getStore();
-  if (store) {
-    try {
+  let previousStore: SavedScenario[] | undefined;
+  try {
+    if (localAvailable) previousLocal = localStorage.getItem(localKey);
+    if (store) previousStore = await store.get<SavedScenario[]>(SCENARIOS_KEY);
+  } catch (error) {
+    throw new SettingsTransactionError(operation, error, []);
+  }
+
+  try {
+    if (localAvailable) localStorage.setItem(localKey, JSON.stringify(capped));
+    if (store) {
       await store.set(SCENARIOS_KEY, capped);
       await store.save();
-    } catch (err) {
-      console.warn("[settings] failed to save scenarios", err);
     }
+  } catch (error) {
+    const rollbackErrors: unknown[] = [];
+    if (localAvailable) {
+      try {
+        if (previousLocal === null) localStorage.removeItem(localKey);
+        else localStorage.setItem(localKey, previousLocal);
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    if (store) {
+      try {
+        if (previousStore === undefined) {
+          if (!store.delete) throw new Error("Desktop settings store cannot restore an absent scenario list.");
+          await store.delete(SCENARIOS_KEY);
+        } else {
+          await store.set(SCENARIOS_KEY, previousStore);
+        }
+        await store.save();
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    throw new SettingsTransactionError(operation, error, rollbackErrors);
   }
+}
+
+function mutateScenarios(
+  operation: string,
+  mutation: (list: SavedScenario[]) => SavedScenario[] | null,
+): Promise<void> {
+  const pending = scenarioMutationTail.then(async () => {
+    const list = await readScenarios();
+    const next = mutation(list);
+    if (next) await writeScenarios(operation, next);
+  });
+  scenarioMutationTail = pending.catch(() => {});
+  return pending;
+}
+
+function validateRestoredScenario(scenario: SavedScenario): SavedScenario {
+  const [clean] = sanitizeSavedScenarios([scenario]);
+  if (!clean || clean.id !== scenario.id) {
+    throw new Error("Saved scenario is invalid and cannot be restored.");
+  }
+  return clean;
+}
+
+async function restoreScenarioAt(scenario: SavedScenario, point: ScenarioRestorePoint): Promise<void> {
+  const clean = validateRestoredScenario(scenario);
+  const targetIndex = Number.isInteger(point.index) && point.index >= 0 ? point.index : 0;
+  return mutateScenarios("Restoring saved scenario", (list) => {
+    if (list.some((entry) => entry.id === clean.id)) return null;
+    const next = [...list];
+    const beforeIndex = point.beforeId
+      ? next.findIndex((entry) => entry.id === point.beforeId)
+      : -1;
+    const afterIndex = point.afterId
+      ? next.findIndex((entry) => entry.id === point.afterId)
+      : -1;
+    const chronologicalIndex = next.findIndex((entry) => entry.savedAt <= clean.savedAt);
+    const insertAt = beforeIndex >= 0
+      ? beforeIndex + 1
+      : afterIndex >= 0
+        ? afterIndex
+        : chronologicalIndex >= 0
+          ? chronologicalIndex
+          : Math.min(targetIndex, next.length);
+    next.splice(insertAt, 0, clean);
+    return next;
+  });
+}
+
+async function removeScenarioById(id: string): Promise<void> {
+  return mutateScenarios("Deleting saved scenario", (list) => {
+    const next = list.filter((scenario) => scenario.id !== id);
+    return next.length === list.length ? null : next;
+  });
+}
+
+async function addScenario(name: string, data: unknown): Promise<void> {
+  const parsed = parseScenarioPayload(data);
+  if (!parsed.ok) throw new Error(parsed.reason);
+  const scenario = {
+    id: makeScenarioId(),
+    name,
+    savedAt: new Date().toISOString(),
+    data: parsed.payload,
+  };
+  return mutateScenarios("Saving scenario", (list) => [scenario, ...list]);
 }
 
 export const settings = {
@@ -816,21 +918,18 @@ export const settings = {
     return readScenarios();
   },
   async saveScenario(name: string, data: unknown): Promise<void> {
-    const parsed = parseScenarioPayload(data);
-    if (!parsed.ok) throw new Error(parsed.reason);
-    const list = await readScenarios();
-    list.unshift({ id: makeScenarioId(), name, savedAt: new Date().toISOString(), data: parsed.payload });
-    return writeScenarios(list);
+    return addScenario(name, data);
   },
   /** Delete a saved scenario by its stable id. Deleting by id (not array
    *  position) prevents removing the wrong record if the list was reordered by
    *  a concurrent read between render and click. */
   async deleteScenario(id: string): Promise<void> {
-    const list = await readScenarios();
-    const next = list.filter((scenario) => scenario.id !== id);
-    if (next.length !== list.length) {
-      return writeScenarios(next);
-    }
+    return removeScenarioById(id);
+  },
+  /** Reinsert an optimistically deleted scenario around its surviving stable-ID
+   * neighbours. Serialized mutations keep saves made during the Undo window. */
+  async restoreScenario(scenario: SavedScenario, point: ScenarioRestorePoint): Promise<void> {
+    return restoreScenarioAt(scenario, point);
   },
   /** Clear only the disclaimer-ack timestamp so the first-run modal
    * re-appears on next launch. */
