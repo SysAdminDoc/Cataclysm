@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Windows High Contrast now uses system colors, explicit workspace boundaries,
+  three-pixel keyboard focus, text-backed status shapes, and patterned legend
+  fallbacks. Headless forced-colors coverage exercises errors, commands, the
+  scenario library, inspector, transport, settings, and system-color opt-outs.
 - RustSec warning-class findings now have a machine-readable, expiring baseline
   with exact package versions, dependency paths, affected targets, upstream
   issues, owner, rationale, and review date. Verification rejects new, expired,

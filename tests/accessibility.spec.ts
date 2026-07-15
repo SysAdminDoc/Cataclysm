@@ -54,6 +54,25 @@ async function assertAccessiblePage(page: Page) {
   await assertUniqueIds(page);
 }
 
+async function expectVisibleBoundary(page: Page, selector: string) {
+  const boundary = await page
+    .locator(selector)
+    .first()
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        bottom: Number.parseFloat(style.borderBottomWidth),
+        left: Number.parseFloat(style.borderLeftWidth),
+        right: Number.parseFloat(style.borderRightWidth),
+        top: Number.parseFloat(style.borderTopWidth),
+      };
+    });
+  expect(
+    Math.max(boundary.top, boundary.right, boundary.bottom, boundary.left),
+    selector,
+  ).toBeGreaterThanOrEqual(1);
+}
+
 for (const theme of THEMES) {
   test.describe(`WCAG AA desktop — ${theme}`, () => {
     test.beforeEach(async ({ page }) => {
@@ -137,3 +156,88 @@ for (const theme of THEMES) {
     });
   });
 }
+
+test.describe("Windows forced colors", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedWorkspace(page, "mocha");
+    await page.emulateMedia({ forcedColors: "active" });
+  });
+
+  test("preserves error boundaries without opting out of system colors", async ({
+    page,
+  }) => {
+    await page.goto("/?preset=missing-forced-colors-fixture");
+    const errorToast = page.locator('.app-toast[data-tone="error"]');
+    await expect(errorToast).toContainText("Scenario link not found", {
+      timeout: 10_000,
+    });
+    await expectVisibleBoundary(page, '.app-toast[data-tone="error"]');
+    await expect(errorToast).toHaveCSS("forced-color-adjust", "auto");
+    await assertAccessiblePage(page);
+  });
+
+  test("preserves workspace boundaries, states, legends, focus, and dialogs", async ({
+    page,
+  }) => {
+    const activePreset = await openWorkspace(page);
+    await expectVisibleBoundary(page, ".app__header");
+    await expectVisibleBoundary(page, ".app__command-group");
+    await expectVisibleBoundary(page, ".app__panel");
+    await expectVisibleBoundary(page, ".app__panel--right");
+    await expectVisibleBoundary(page, ".simulation-transport");
+    await expectVisibleBoundary(page, ".preset-card");
+
+    await activePreset.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(activePreset).toBeFocused();
+    const focusStyle = await activePreset.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        colorAdjust: style.forcedColorAdjust,
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+      };
+    });
+    expect(focusStyle.colorAdjust).toBe("auto");
+    expect(focusStyle.outlineStyle).not.toBe("none");
+    expect(focusStyle.outlineWidth).toBeGreaterThanOrEqual(2);
+
+    const viewportLegend = page.locator(".app__viewport-legend");
+    await expect(viewportLegend).toBeVisible();
+    await expect(viewportLegend).toContainText("Surface displacement");
+    expect(
+      await viewportLegend.locator(".app__viewport-legend-scale span").count(),
+    ).toBeGreaterThanOrEqual(3);
+    await expect(
+      viewportLegend.locator(".app__viewport-legend-ramp"),
+    ).toHaveCSS("border-top-style", "solid");
+    await expect(
+      viewportLegend.locator(".app__viewport-legend-ramp"),
+    ).toHaveCSS("forced-color-adjust", "none");
+
+    const modelStatus = page.locator(".statusbar__item--ready");
+    await expect(modelStatus).toContainText(/awaiting source/i);
+    const statusDot = modelStatus.locator(".status-dot");
+    await expect(statusDot).toHaveCSS("border-top-style", "solid");
+    expect(
+      await statusDot.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).borderTopWidth),
+      ),
+    ).toBeGreaterThanOrEqual(2);
+
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expectVisibleBoundary(page, ".modal--settings");
+    await assertAccessiblePage(page);
+    await assertWcagAa(page, ".modal--settings");
+
+    const globalAdjustments = await page
+      .locator("html, body, #root, .app")
+      .evaluateAll((elements) =>
+        elements.map((element) => getComputedStyle(element).forcedColorAdjust),
+      );
+    expect(globalAdjustments).not.toContain("none");
+  });
+});

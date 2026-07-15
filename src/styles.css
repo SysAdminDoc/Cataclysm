@@ -3,7 +3,6 @@
 @import './styles/_tour.css';
 @import './styles/_glossary.css';
 @import './styles/_lesson.css';
-@import './styles/_a11y.css';
 @import './styles/_token-banner.css';
 @import './styles/_toast.css';
 @import './styles/_layout.css';
@@ -26,3 +25,4 @@
 @import './styles/_responsive.css';
 @import './styles/_print.css';
 @import './styles/_animations.css';
+@import './styles/_a11y.css';

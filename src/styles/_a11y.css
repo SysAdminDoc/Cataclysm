@@ -1,4 +1,3 @@
-
 /* WCAG 2.4.1 — Skip-to-content link for keyboard users. Hidden off-
    screen until focused; first Tab from any page state surfaces it
    above the header so screen-reader and keyboard users can jump past
@@ -21,4 +20,249 @@
 .skip-link:focus-visible {
   top: 8px;
   outline: 2px solid var(--accent, #89b4fa);
+}
+
+/* Windows High Contrast / CSS forced-colors. Keep browser and OS color
+   substitution enabled, then replace visual effects that disappear (gradients,
+   translucent fills, shadows) with system-color borders and explicit shapes. */
+@media (forced-colors: active) {
+  :root,
+  html[data-theme="mocha"],
+  html[data-theme="latte"] {
+    --base: Canvas;
+    --mantle: Canvas;
+    --crust: Canvas;
+    --text: CanvasText;
+    --subtext: CanvasText;
+    --overlay: CanvasText;
+    --overlay0: CanvasText;
+    --surface0: Canvas;
+    --surface1: Canvas;
+    --surface2: Canvas;
+    --blue: Highlight;
+    --lavender: Highlight;
+    --sapphire: Highlight;
+    --sky: Highlight;
+    --teal: Highlight;
+    --green: Highlight;
+    --yellow: CanvasText;
+    --peach: CanvasText;
+    --maroon: CanvasText;
+    --red: CanvasText;
+    --pink: Highlight;
+    --mauve: Highlight;
+    --accent: Highlight;
+    --accent-strong: Highlight;
+    --success: Highlight;
+    --warning: CanvasText;
+    --danger: CanvasText;
+    --panel-bg: Canvas;
+    --panel-bg-strong: Canvas;
+    --panel-border: CanvasText;
+    --field-bg: Field;
+    --focus-ring: Highlight;
+    --chrome-bg: Canvas;
+    --workspace-bg: Canvas;
+    --inspector-bg: Canvas;
+    --metric-bg: Canvas;
+    --divider: CanvasText;
+    --accent-active: Highlight;
+    --accent-text: LinkText;
+    --success-text: CanvasText;
+    --warning-text: CanvasText;
+    --on-accent: HighlightText;
+    --control-active-bg: Highlight;
+    --control-active-fg: HighlightText;
+    --viewport-hud: Canvas;
+    --surface-recessed: Canvas;
+    --surface-raised: Canvas;
+    --hairline: CanvasText;
+    --shadow-lg: none;
+    --shadow-md: none;
+  }
+
+  html,
+  body,
+  #root,
+  .app {
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .app__header,
+  .app__panel,
+  .app__statusbar,
+  .simulation-transport,
+  .app__command-group,
+  .app__export-panel,
+  .app__viewport-hud,
+  .app__viewport-layers,
+  .app__viewport-legend,
+  .app__viewport-telemetry,
+  .preset-card,
+  .scenario-saved,
+  .modal,
+  .app-toast,
+  .panel-error {
+    background: Canvas;
+    border-color: CanvasText;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  a,
+  [role="button"] {
+    forced-color-adjust: auto;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    background: ButtonFace;
+    border-color: ButtonText;
+    color: ButtonText;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"],
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
+
+  button[data-active="true"],
+  button[aria-pressed="true"],
+  button[aria-selected="true"],
+  button[aria-current="page"],
+  .preset-card[data-active="true"] {
+    background: Highlight !important;
+    border-color: Highlight !important;
+    color: HighlightText !important;
+  }
+
+  button[data-active="true"] *,
+  button[aria-pressed="true"] *,
+  button[aria-selected="true"] *,
+  button[aria-current="page"] *,
+  .preset-card[data-active="true"] * {
+    color: HighlightText !important;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  .preset-card:focus-visible {
+    outline-color: Highlight !important;
+    outline-offset: 2px !important;
+    outline-style: solid !important;
+    outline-width: 3px !important;
+    border-color: Highlight !important;
+    box-shadow: none !important;
+  }
+
+  .section__count,
+  .section__badge,
+  .settings__status {
+    background: Canvas;
+    border: 1px solid currentColor;
+    color: CanvasText;
+  }
+
+  .section__badge[data-tone="success"]::before,
+  .settings__status[data-tone="success"]::before {
+    content: "\2713\00a0";
+  }
+
+  .section__badge[data-tone="active"]::before {
+    content: "\25b6\00a0";
+  }
+
+  .section__badge[data-tone="danger"]::before,
+  .settings__status[data-tone="danger"]::before,
+  .settings__status[data-tone="warning"]::before {
+    content: "!\00a0";
+    font-weight: 800;
+  }
+
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    background: Canvas;
+    border: 2px solid currentColor;
+    box-shadow: none;
+  }
+
+  [data-ready="true"] > .status-dot,
+  [data-ready="true"] .status-dot,
+  .statusbar__item--ready .status-dot {
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .app__viewport-legend-ramp {
+    forced-color-adjust: none;
+    background: repeating-linear-gradient(
+      135deg,
+      Canvas 0,
+      Canvas 5px,
+      CanvasText 5px,
+      CanvasText 7px
+    ) !important;
+    border: 2px solid CanvasText;
+  }
+
+  .chart-legend i,
+  .hazard__ring-legend i {
+    forced-color-adjust: none;
+    background: Canvas !important;
+    border: 2px solid CanvasText;
+    border-radius: 0;
+    min-height: 8px;
+  }
+
+  .chart-legend i[data-tone="front"],
+  .chart-legend i[data-tone="model"],
+  .hazard__ring-legend li:nth-child(even) i {
+    border-style: dashed;
+  }
+
+  .chart-legend i[data-tone="coast"],
+  .chart-legend i[data-tone="observed"],
+  .hazard__ring-legend li:nth-child(3n) i {
+    border-radius: 50%;
+  }
+
+  .chart-legend i[data-tone="cursor"],
+  .hazard__ring-legend li:nth-child(4n) i {
+    border-style: double;
+  }
+
+  .app-toast[data-tone="error"],
+  .panel-error {
+    border-width: 2px;
+    border-style: solid;
+  }
+
+  .app-toast[data-tone="error"]::before,
+  .panel-error::before {
+    content: "!";
+    display: inline-grid;
+    flex: 0 0 22px;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 2px solid currentColor;
+    font-weight: 800;
+  }
 }
