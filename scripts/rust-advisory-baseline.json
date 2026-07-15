@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "exceptions": [
+    {
+      "advisory": "RUSTSEC-2024-0370", "kind": "unmaintained", "package": "proc-macro-error", "version": "1.0.4",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "gtk3-macros", "proc-macro-error"],
+      "rationale": "Linux-only Tauri GTK3 macro dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/10910", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0411", "kind": "unmaintained", "package": "gdkwayland-sys", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-runtime-wry", "tao", "gdkwayland-sys"],
+      "rationale": "Linux-only Tauri GTK3/Wayland dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0412", "kind": "unmaintained", "package": "gdk", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "gdk"],
+      "rationale": "Linux-only Tauri GTK3 dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0413", "kind": "unmaintained", "package": "atk", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "atk"],
+      "rationale": "Linux-only Tauri GTK3 accessibility dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0414", "kind": "unmaintained", "package": "gdkx11-sys", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-runtime-wry", "tao", "gdkx11-sys"],
+      "rationale": "Linux-only Tauri GTK3/X11 dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0415", "kind": "unmaintained", "package": "gtk", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk"],
+      "rationale": "Linux-only Tauri GTK3 dependency; Windows/macOS packages do not compile it and replacement depends on Tauri's GTK4 migration.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0416", "kind": "unmaintained", "package": "atk-sys", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "atk", "atk-sys"],
+      "rationale": "Linux-only Tauri GTK3 accessibility dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0417", "kind": "unmaintained", "package": "gdkx11", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-runtime-wry", "wry", "gdkx11"],
+      "rationale": "Linux-only Tauri GTK3/X11 dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0418", "kind": "unmaintained", "package": "gdk-sys", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "webkit2gtk", "gdk-sys"],
+      "rationale": "Linux-only Tauri WebKitGTK dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0419", "kind": "unmaintained", "package": "gtk3-macros", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "gtk3-macros"],
+      "rationale": "Linux-only Tauri GTK3 macro dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0420", "kind": "unmaintained", "package": "gtk-sys", "version": "0.18.2",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "gtk-sys"],
+      "rationale": "Linux-only Tauri GTK3 FFI dependency; Cataclysm does not call it directly and Windows/macOS packages do not compile it.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/11942", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2024-0429", "kind": "unsound", "package": "glib", "version": "0.18.5",
+      "affected_targets": ["linux"],
+      "dependency_path": ["cataclysm", "tauri", "gtk", "glib"],
+      "rationale": "Linux-only inherited GTK3 crate; Cataclysm does not use VariantStrIter, but the affected crate remains present pending Tauri's GTK4 migration.",
+      "upstream_issue": "https://github.com/tauri-apps/tauri/issues/12048", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2025-0075", "kind": "unmaintained", "package": "unic-char-range", "version": "0.9.0",
+      "affected_targets": ["all"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-utils", "urlpattern", "unic-ucd-ident", "unic-char-range"],
+      "rationale": "Tauri's URLPattern implementation inherits rust-unic 0.9; this is an unmaintained warning, and Cataclysm cannot select a replacement below Tauri.",
+      "upstream_issue": "https://github.com/rustsec/advisory-db/issues/2414", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2025-0080", "kind": "unmaintained", "package": "unic-common", "version": "0.9.0",
+      "affected_targets": ["all"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-utils", "urlpattern", "unic-ucd-ident", "unic-ucd-version", "unic-common"],
+      "rationale": "Tauri's URLPattern implementation inherits rust-unic 0.9; this is an unmaintained warning, and Cataclysm cannot select a replacement below Tauri.",
+      "upstream_issue": "https://github.com/rustsec/advisory-db/issues/2414", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2025-0081", "kind": "unmaintained", "package": "unic-char-property", "version": "0.9.0",
+      "affected_targets": ["all"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-utils", "urlpattern", "unic-ucd-ident", "unic-char-property"],
+      "rationale": "Tauri's URLPattern implementation inherits rust-unic 0.9; this is an unmaintained warning, and Cataclysm cannot select a replacement below Tauri.",
+      "upstream_issue": "https://github.com/rustsec/advisory-db/issues/2414", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2025-0098", "kind": "unmaintained", "package": "unic-ucd-version", "version": "0.9.0",
+      "affected_targets": ["all"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-utils", "urlpattern", "unic-ucd-ident", "unic-ucd-version"],
+      "rationale": "Tauri's URLPattern implementation inherits rust-unic 0.9; this is an unmaintained warning, and Cataclysm cannot select a replacement below Tauri.",
+      "upstream_issue": "https://github.com/rustsec/advisory-db/issues/2414", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
+      "advisory": "RUSTSEC-2025-0100", "kind": "unmaintained", "package": "unic-ucd-ident", "version": "0.9.0",
+      "affected_targets": ["all"],
+      "dependency_path": ["cataclysm", "tauri", "tauri-utils", "urlpattern", "unic-ucd-ident"],
+      "rationale": "Tauri's URLPattern implementation inherits rust-unic 0.9; this is an unmaintained warning, and Cataclysm cannot select a replacement below Tauri.",
+      "upstream_issue": "https://github.com/rustsec/advisory-db/issues/2414", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    }
+  ]
+}

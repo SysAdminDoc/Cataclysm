@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- RustSec warning-class findings now have a machine-readable, expiring baseline
+  with exact package versions, dependency paths, affected targets, upstream
+  issues, owner, rationale, and review date. Verification rejects new, expired,
+  path-drifted, and stale exceptions, while release manifests identify the
+  reviewed baseline by SHA-256 instead of describing inherited Linux GTK risk
+  as fixed on Windows.
 - Installed packages now bundle a deterministic `THIRD_PARTY_NOTICES.txt` for
   the exact production npm and Rust lock graphs. Verification fails on drift,
   unknown licensing, development-only leakage, or stale digest-pinned

@@ -223,6 +223,7 @@ npm run dev                # browser preview with deterministic demo data
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
+npm run verify:rust-advisories # reject new, expired, stale, or path-drifted RustSec warnings
 npm run verify:render-protocol # independent binary replay and ECEF conformance gate
 npm run capture:references # regenerate 12-scene 1440p/4K visual candidates + telemetry
 npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # require opener/thumbnail quality
@@ -239,6 +240,11 @@ binary with GPU support, performs a non-visual capability smoke, and writes
 Cargo features and SHA-256 digest of every platform artifact. Systems without a
 supported adapter continue through the existing CPU fallback instead of losing
 simulation capability.
+
+RustSec vulnerabilities always fail. Warning-class transitive advisories are
+accepted only through `scripts/rust-advisory-baseline.json`, where every entry
+names its dependency path, affected target, upstream issue, owner, rationale,
+and absolute review date; the release manifest records that baseline's digest.
 
 On Windows this command is intentionally restricted to a clean disposable
 profile or VM with `CATACLYSM_INSTALL_SMOKE_ISOLATED=1`, `tauri-driver`, and a

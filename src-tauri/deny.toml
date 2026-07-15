@@ -6,8 +6,9 @@
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 # cargo-deny 0.20 treats vulnerabilities and notices as errors by default.
-# Fail unmaintained advisories only for direct workspace dependencies; GTK3
-# compatibility crates are transitive platform dependencies of Tauri.
+# Fail unmaintained advisories only for direct workspace dependencies. Every
+# transitive cargo-audit warning is separately path-locked and time-bounded by
+# scripts/rust-advisory-baseline.json; GTK3 remains a Linux Tauri boundary.
 unmaintained = "workspace"
 yanked = "warn"
 

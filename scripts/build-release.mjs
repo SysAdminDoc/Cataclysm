@@ -90,6 +90,8 @@ function buildManifest(probe, installedSmoke) {
   const rustVersion = run("rustc", ["-Vv"], { capture: true });
   const rustHost = rustVersion.match(/^host:\s+(.+)$/m)?.[1] ?? "unknown";
   const gitCommit = run("git", ["rev-parse", "HEAD"], { capture: true });
+  const advisoryBaselinePath = path.join(repoRoot, "scripts", "rust-advisory-baseline.json");
+  const advisoryBaseline = JSON.parse(readFileSync(advisoryBaselinePath, "utf8"));
   const manifest = {
     schema_version: 2,
     product: tauriConfig.productName,
@@ -97,6 +99,11 @@ function buildManifest(probe, installedSmoke) {
     git_commit: gitCommit,
     rust_host: rustHost,
     cargo_features: RELEASE_CARGO_FEATURES,
+    rust_advisory_baseline: {
+      sha256: sha256(advisoryBaselinePath),
+      exception_count: advisoryBaseline.exceptions.length,
+      next_review_by: advisoryBaseline.exceptions.map((entry) => entry.review_by).sort()[0],
+    },
     capability_probe: probe,
     installed_smoke: installedSmoke,
     artifacts: artifactFiles.map((file) => ({
