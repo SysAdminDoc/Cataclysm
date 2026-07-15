@@ -61,6 +61,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- The isolated Windows release gate now fetches the locked application crate
+  graph before strict offline license verification, so a clean runner cannot
+  fail merely because `cargo-about` has not yet cached production dependencies.
 - Saved scenarios now delete optimistically with an eight-second Undo action.
   Scenario writes are serialized and transactional across browser and desktop
   stores, so rejection restores the row and rapid delete/undo/save sequences

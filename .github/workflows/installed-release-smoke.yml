@@ -45,6 +45,9 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Fetch locked Rust dependencies for offline policy checks
+        run: cargo fetch --locked --manifest-path src-tauri/Cargo.toml
+
       - name: Install JavaScript dependencies
         run: npm ci
 
