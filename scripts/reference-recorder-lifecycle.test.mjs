@@ -10,6 +10,7 @@ import {
   createProgressTracker,
   deadlineFrom,
   dispatchLocalStateClick,
+  operationTimeoutForDeadline,
   settleCommittedWebGlFrame,
   terminateProcessTree,
   withDeadline,
@@ -48,6 +49,13 @@ test("deadline arguments reject invalid values", () => {
     () => deadlineFrom(["--phase-timeout-ms", "0"], "--phase-timeout-ms", "UNSET_TEST_TIMEOUT", 123),
     /positive integer/,
   );
+});
+
+test("Playwright operations consume the phase budget without racing its deadline", () => {
+  assert.equal(operationTimeoutForDeadline(180_000), 175_000);
+  assert.equal(operationTimeoutForDeadline(1_000), 900);
+  assert.equal(operationTimeoutForDeadline(1), 1);
+  assert.throws(() => operationTimeoutForDeadline(0), /positive integer/);
 });
 
 test("committed WebGL frames finish before and across compositor frames", async () => {

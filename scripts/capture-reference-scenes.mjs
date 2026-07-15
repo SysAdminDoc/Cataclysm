@@ -13,6 +13,7 @@ import {
   createProgressTracker,
   deadlineFrom,
   dispatchLocalStateClick,
+  operationTimeoutForDeadline,
   settleCommittedWebGlFrame,
   terminateProcessTree,
   withDeadline,
@@ -40,6 +41,7 @@ const approveTarget = filterValue("--approve");
 const approvalReason = filterValue("--reason");
 const startupTimeoutMs = deadlineFrom(args, "--startup-timeout-ms", "CATACLYSM_CAPTURE_STARTUP_TIMEOUT_MS", 30_000);
 const phaseTimeoutMs = deadlineFrom(args, "--phase-timeout-ms", "CATACLYSM_CAPTURE_PHASE_TIMEOUT_MS", 90_000);
+const operationTimeoutMs = operationTimeoutForDeadline(phaseTimeoutMs);
 const sceneTimeoutMs = deadlineFrom(args, "--scene-timeout-ms", "CATACLYSM_CAPTURE_SCENE_TIMEOUT_MS", 300_000);
 const totalTimeoutMs = deadlineFrom(args, "--total-timeout-ms", "CATACLYSM_CAPTURE_TOTAL_TIMEOUT_MS", 2_700_000);
 const port = 4189;
@@ -314,7 +316,7 @@ async function preparePhase(page, contract, scene, { simulationTimeS, effectTime
 
 async function capturePhase(page, contract, scene, phase) {
   await preparePhase(page, contract, scene, phase);
-  return page.screenshot({ animations: "disabled" });
+  return page.screenshot({ animations: "disabled", timeout: operationTimeoutMs });
 }
 
 async function collectRuntime(page) {
@@ -438,6 +440,8 @@ async function runCapture() {
         else await route.continue();
       });
       const page = await context.newPage();
+      page.setDefaultTimeout(operationTimeoutMs);
+      page.setDefaultNavigationTimeout(operationTimeoutMs);
       page.on("pageerror", (error) => console.error(`[capture:${scene.id}]`, error));
       page.on("console", (message) => {
         if (message.type() === "error") console.error(`[capture:${scene.id}]`, message.text());
@@ -465,7 +469,7 @@ async function runCapture() {
         });
         return {
           runtime: await collectRuntime(page),
-          image: await page.screenshot({ animations: "disabled" }),
+          image: await page.screenshot({ animations: "disabled", timeout: operationTimeoutMs }),
         };
       });
       const aftermathImage = requiresPhases

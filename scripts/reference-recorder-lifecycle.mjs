@@ -22,6 +22,14 @@ export function deadlineFrom(args, flag, envName, fallbackMs) {
   return value;
 }
 
+export function operationTimeoutForDeadline(deadlineMs) {
+  if (!Number.isSafeInteger(deadlineMs) || deadlineMs <= 0) {
+    throw new Error("Recorder deadline must be a positive integer number of milliseconds.");
+  }
+  const reserveMs = Math.min(5_000, Math.max(1, Math.floor(deadlineMs / 10)));
+  return Math.max(1, deadlineMs - reserveMs);
+}
+
 export async function withDeadline(label, timeoutMs, operation) {
   let timer;
   try {
