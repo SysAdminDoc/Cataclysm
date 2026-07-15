@@ -57,6 +57,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Deterministic third-party notice inputs now retain LF bytes on Windows
+  checkouts, preventing release verification from rejecting digest-pinned
+  license overrides solely because Git translated their line endings.
 - Exporters now return one typed success/failure contract across PNG, share
   cards, comparison images, video, text, CZML, GeoJSON, KML, settings, and CSV
   downloads. Preflight, canvas, codec, clipboard, filesystem, download,

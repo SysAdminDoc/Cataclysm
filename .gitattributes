@@ -2,3 +2,8 @@
 # Keep their textual targets stable across Windows and Unix checkouts.
 *.json text eol=lf
 *.rs text eol=lf
+# Release notices hash these inputs byte-for-byte. Keep Windows CI from
+# translating the checked-in LF bytes before deterministic regeneration.
+/THIRD_PARTY_NOTICES.txt text eol=lf
+/src-tauri/Cargo.lock text eol=lf
+/scripts/third-party-license-overrides/*.txt text eol=lf
