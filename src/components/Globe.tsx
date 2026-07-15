@@ -427,10 +427,13 @@ export function Globe({
       viewerGenerationRef.current,
       (ownedViewer) => {
         if (ownedViewer.isDestroyed()) return;
+        // Stop Cesium's tick/render loop before destroying the widget. Child
+        // systems have already released every app-owned resource through the
+        // lifecycle; clearing Cesium's collections here races the
+        // DataSourceDisplay visualizers that are still unwinding a tick.
+        ownedViewer.useDefaultRenderLoop = false;
+        ownedViewer.clock.shouldAnimate = false;
         ownedViewer.camera.cancelFlight();
-        ownedViewer.entities.removeAll();
-        ownedViewer.scene.primitives.removeAll();
-        ownedViewer.imageryLayers.removeAll(true);
         ownedViewer.destroy();
       },
     );
@@ -854,7 +857,11 @@ export function Globe({
 
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || !previewCamera || referenceCaptureEnabled()) return;
+    const lifecycle = viewerLifecycleRef.current;
+    if (!viewer || !lifecycle || !previewCamera || referenceCaptureEnabled()) return;
+    const flight = lifecycle.own("rafs", () => {
+      if (!viewer.isDestroyed()) viewer.camera.cancelFlight();
+    });
     viewer.camera.cancelFlight();
     viewer.camera.flyToBoundingSphere(
       new Cesium.BoundingSphere(
@@ -870,6 +877,7 @@ export function Globe({
         ),
       },
     );
+    return () => flight.release();
   }, [previewCamera, viewerEpoch]);
 
   useEffect(() => {

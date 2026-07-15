@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Compare now opens a complete two-source story instead of an empty Slot B.
+  Three cited scenario pairs load at a shared meaningful time and equal camera
+  range, summarize source-scale deltas, retain an Advanced custom source, and
+  carry the story and metrics into comparison PNG provenance.
 - Active scenarios, outcome summaries, direct-hazard results, and every
   analytical layer now expose one accessible `Why trust this?` disclosure with
   model/version, assumptions, confidence or validation status, limitations,

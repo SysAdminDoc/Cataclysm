@@ -282,6 +282,23 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByLabel("Surface displacement legend")).toHaveAttribute("data-visible", "true");
   });
 
+  test("comparison opens a synchronized suggested story before custom Slot B", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    const stories = page.getByRole("region", { name: "Comparison stories" });
+    await expect(stories).toBeVisible();
+    await expect(stories.getByRole("button", { name: /Two ocean-basin megathrusts/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(stories.getByLabel("Compare against")).toHaveValue("indian_ocean_2004");
+    await expect(stories.getByText(/Linked at T\+60 min/i)).toBeVisible();
+    await expect(stories.getByText(/Source energy/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".app__globe-tag", { hasText: "Slot B" })).toBeVisible();
+  });
+
   test("saves and reloads a custom scenario round trip", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");

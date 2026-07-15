@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PresetSelector } from "./components/PresetSelector";
+import { ComparisonStories } from "./components/ComparisonStories";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { CitationsModal } from "./components/CitationsModal";
@@ -52,6 +53,13 @@ import {
   type DirectScenarioTemplate,
   type ScenarioLibraryPreferences,
 } from "./lib/scenario-library";
+import {
+  buildComparisonMetrics,
+  comparisonMetricLines,
+  comparisonStoryForPair,
+  comparisonStoryForPreset,
+  type ComparisonStory,
+} from "./lib/comparison-stories";
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { Preset } from "./types/scenario";
@@ -713,6 +721,11 @@ export default function App() {
 
   const activePresetA = presetById(presets, slotA.activePresetId);
   const activePresetB = presetById(presets, slotB.activePresetId);
+  const activeComparisonStory = comparisonStoryForPair(slotA.activePresetId, slotB.activePresetId);
+  const activeComparisonMetrics = useMemo(
+    () => buildComparisonMetrics(slotA.initial, slotB.initial),
+    [slotA.initial, slotB.initial],
+  );
   const layerEvidencePresetA = activePresetA ?? (
     libraryPreview?.kind === "preset" ? presetById(presets, libraryPreview.presetId) : null
   );
@@ -746,6 +759,28 @@ export default function App() {
       : null;
   const activeScenarioKindA = activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? null;
   const activeScenarioKindB = activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? null;
+  const comparisonCameraA = useMemo(() => (
+    compareMode && activeComparisonStory && slotA.initial
+      ? {
+        targetLat: slotA.initial.center.lat_deg,
+        targetLon: slotA.initial.center.lon_deg,
+        rangeM: activeComparisonStory.cameraRangeM,
+        headingDeg: 0,
+        pitchDeg: -55,
+      }
+      : null
+  ), [activeComparisonStory, compareMode, slotA.initial]);
+  const comparisonCameraB = useMemo(() => (
+    compareMode && activeComparisonStory && slotB.initial
+      ? {
+        targetLat: slotB.initial.center.lat_deg,
+        targetLon: slotB.initial.center.lon_deg,
+        rangeM: activeComparisonStory.cameraRangeM,
+        headingDeg: 0,
+        pitchDeg: -55,
+      }
+      : null
+  ), [activeComparisonStory, compareMode, slotB.initial]);
   const directHazardMode: DirectHazardMode | null = hazardMode === "tsunami" ? null : hazardMode;
   const inHazardMode = directHazardMode !== null;
   const hazardCenter = directHazardMode ? hazardCenters[directHazardMode] : null;
@@ -1182,6 +1217,31 @@ export default function App() {
     }));
   }
 
+  function startComparisonStory(story: ComparisonStory, preservePresetId: string | null = null) {
+    const reverse = preservePresetId === story.rightPresetId;
+    const activePresetId = reverse ? story.rightPresetId : story.leftPresetId;
+    setRunJourney(null);
+    setLibraryPreview({ kind: "preset", presetId: activePresetId });
+    setLibraryPreviewPending(false);
+    setCustomEditorOpen(false);
+    setPickMode(false);
+    setInspectMode(false);
+    setTimelinePlaying(false);
+    setTimeS(story.focusTimeS);
+    slotA.setActivePresetId(activePresetId);
+    slotB.setActivePresetId(reverse ? story.leftPresetId : story.rightPresetId);
+    setCompareMode(true);
+    setInspectorTab("results");
+  }
+
+  function toggleComparisonMode() {
+    if (compareMode) {
+      setCompareMode(false);
+      return;
+    }
+    startComparisonStory(comparisonStoryForPreset(slotA.activePresetId), slotA.activePresetId);
+  }
+
   return (
     <div
       className="app"
@@ -1309,8 +1369,8 @@ export default function App() {
               icon="compare"
               active={compareMode}
               variant="mode"
-              onClick={() => setCompareMode((v) => !v)}
-              title="Toggle side-by-side comparison mode"
+              onClick={toggleComparisonMode}
+              title="Open a side-by-side comparison story"
               disabled={inHazardMode}
               disabledReason="Compare is available only between two tsunami workspaces."
               onUnavailable={(reason) => showToast(reason, "info")}
@@ -1372,6 +1432,8 @@ export default function App() {
                       metaB: exportMetaB(),
                       labelA: activePresetA?.name ?? "Slot A",
                       labelB: activePresetB?.name ?? "Slot B",
+                      storyTitle: activeComparisonStory?.title,
+                      storySummary: comparisonMetricLines(activeComparisonMetrics),
                     }),
                     "Saved comparison PNG.",
                     run,
@@ -1613,6 +1675,24 @@ export default function App() {
             <button type="button" onClick={loadPresets}>Retry presets</button>
           </div>
         )}
+        {!inHazardMode && compareMode && (
+          <ComparisonStories
+            presets={presets}
+            activePresetAId={slotA.activePresetId}
+            activePresetBId={slotB.activePresetId}
+            initialA={slotA.initial}
+            initialB={slotB.initial}
+            busy={slotA.busyPresetId !== null || slotB.busyPresetId !== null}
+            onSelectStory={(story) => startComparisonStory(story)}
+            onSelectCustomB={(presetId) => {
+              setTimelinePlaying(false);
+              slotB.setActivePresetId(presetId);
+            }}
+            error={slotB.sourceResult.status === "error" || slotB.sourceResult.status === "stale" ? slotB.sourceResult.error : null}
+            stale={slotB.sourceResult.status === "stale"}
+            onRetry={slotB.retrySource}
+          />
+        )}
         <PresetSelector
             presets={presets}
             activeId={libraryPreview?.kind === "preset" ? libraryPreview.presetId : null}
@@ -1632,29 +1712,6 @@ export default function App() {
             }}
             completedLessons={lessonCompletions}
           />
-        {!inHazardMode && compareMode && (
-          <div className="app__compare-picker">
-            <label htmlFor="compare-source-b">Compare against</label>
-            <select
-              id="compare-source-b"
-              value={slotB.activePresetId ?? ""}
-              onChange={(event) => slotB.setActivePresetId(event.target.value || null)}
-              disabled={slotB.busyPresetId !== null}
-            >
-              <option value="">Select Slot B source…</option>
-              {presets.map((preset) => (
-                <option key={preset.id} value={preset.id}>{preset.name} · {preset.date}</option>
-              ))}
-            </select>
-            <small>{slotB.busyPresetId ? "Loading comparison source…" : activePresetB?.blurb ?? "Choose a second source without leaving Slot A."}</small>
-            {(slotB.sourceResult.status === "error" || slotB.sourceResult.status === "stale") && (
-              <div className="panel-error" role="alert">
-                <span>{slotB.sourceResult.status === "stale" ? "Slot B is showing its last valid source: " : "Slot B source failed: "}{slotB.sourceResult.error}</span>
-                <button type="button" onClick={slotB.retrySource}>Retry Slot B</button>
-              </div>
-            )}
-          </div>
-        )}
         {inHazardMode && (
           <div className="app__domain-summary" role="status" aria-live="polite">
             <span>Direct effects workspace</span>
@@ -1708,7 +1765,7 @@ export default function App() {
                 hazardPolygons={hazardPolygons}
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 directRenderFrame={directRenderFrame}
-                previewCamera={libraryPreviewPending ? libraryPreviewCamera : null}
+                previewCamera={comparisonCameraA ?? (libraryPreviewPending ? libraryPreviewCamera : null)}
                 previewLabel={libraryPreviewPending ? libraryPreviewLabel : null}
                 onCameraTelemetry={handleCameraTelemetry}
                 accessibleSceneLabel={viewportSourceLabel}
@@ -1730,6 +1787,7 @@ export default function App() {
                   dartBuoys={dartPinsForPreset(slotB.activePresetId)}
                   directRenderFrame={null}
                   primary={false}
+                  previewCamera={comparisonCameraB}
                   accessibleSceneLabel={`Comparison slot B · ${activePresetB?.name ?? slotB.initial?.label ?? "No source selected"}`}
                   simulationTimeS={timeS}
                 />

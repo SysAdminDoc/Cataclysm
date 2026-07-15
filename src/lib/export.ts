@@ -420,6 +420,8 @@ export type ComparisonExportMeta = {
   metaB: ScreenshotMeta;
   labelA?: string;
   labelB?: string;
+  storyTitle?: string;
+  storySummary?: readonly string[];
 };
 
 export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
@@ -435,8 +437,9 @@ export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
 
   try {
   const GAP = 4;
-  const LABEL_H = 36;
-  const FOOTER_H = 50;
+  const LABEL_H = opts.storyTitle ? 60 : 36;
+  const storySummary = opts.storySummary?.slice(0, 2) ?? [];
+  const FOOTER_H = storySummary.length > 0 ? 70 : 50;
   const paneW = Math.max(srcA.width, srcB.width);
   const paneH = Math.max(srcA.height, srcB.height);
   const W = paneW * 2 + GAP;
@@ -455,10 +458,16 @@ export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
   ctx.fillRect(0, 0, W, LABEL_H);
   ctx.font = "bold 16px Inter, system-ui, sans-serif";
   ctx.textBaseline = "middle";
+  if (opts.storyTitle) {
+    ctx.fillStyle = "#cdd6f4";
+    ctx.textAlign = "center";
+    ctx.fillText(ellipsize(ctx, opts.storyTitle, W - 24), W / 2, 16);
+  }
   ctx.fillStyle = "#89b4fa";
   ctx.textAlign = "center";
-  ctx.fillText(opts.labelA ?? "Slot A", paneW / 2, LABEL_H / 2);
-  ctx.fillText(opts.labelB ?? "Slot B", paneW + GAP + paneW / 2, LABEL_H / 2);
+  const labelY = opts.storyTitle ? 43 : LABEL_H / 2;
+  ctx.fillText(opts.labelA ?? "Slot A", paneW / 2, labelY);
+  ctx.fillText(opts.labelB ?? "Slot B", paneW + GAP + paneW / 2, labelY);
 
   ctx.drawImage(srcA, 0, LABEL_H, paneW, paneH);
   ctx.fillStyle = "#313244";
@@ -497,6 +506,15 @@ export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
     W - 12,
     H - FOOTER_H + 26,
   );
+  if (storySummary.length > 0) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#a6e3a1";
+    ctx.fillText(
+      ellipsize(ctx, storySummary.join(" · "), W - 24),
+      12,
+      H - FOOTER_H + 48,
+    );
+  }
 
   const dataUrl = canvas.toDataURL("image/png");
   return downloadDataUrl(dataUrl, `cataclysm-compare-${timestampSuffix()}.png`);
