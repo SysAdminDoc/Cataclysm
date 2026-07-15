@@ -115,6 +115,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   incomplete, inconsistent, or abnormal output; build manifests include only
   actual Tauri packages rather than installed-smoke evidence; and one tested
   version contract rejects drift between runtime, desktop, README, and Git tags.
+- SWE snapshot scheduling now shares one exact step plan across CPU, GPU,
+  streaming, and non-streaming runs. Requests with more frames than solver
+  steps repeat states instead of extending the simulated duration, zero-time
+  runs remain stationary, ambiguous one-frame requests are rejected, and
+  contract-valid surface ruptures reach finite Okada initial conditions.
 - Ground-zero labels now render as explicit Cesium overlays above translucent
   hazard geometry. Locked reference captures retain the semantic entity and a
   depth-independent point but omit the machine-font glyph atlas, removing both

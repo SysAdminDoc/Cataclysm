@@ -1246,6 +1246,45 @@ fn apply_sponge(eta: &mut [f64], u: &mut [f64], v: &mut [f64], nx: usize, ny: us
 /// solver thread for minutes.
 const MAX_TOTAL_STEPS: usize = 1_000_000;
 
+/// Build the number of solver steps between each pair of requested snapshots.
+///
+/// The returned vector has `n_snapshots - 1` entries and always sums to the
+/// rounded number of steps required for `t_end_s`. When callers request more
+/// snapshots than there are solver steps, zero-step intervals deliberately
+/// repeat the current state instead of extending the simulation past `t_end_s`.
+pub(crate) fn snapshot_step_schedule(t_end_s: f64, dt_s: f64, n_snapshots: usize) -> Vec<usize> {
+    let n = n_snapshots.max(2);
+    let intervals = n - 1;
+    let total_steps = if !t_end_s.is_finite() || t_end_s <= 0.0 {
+        0
+    } else {
+        let dt = if dt_s.is_finite() && dt_s > 0.0 {
+            dt_s
+        } else {
+            1.0
+        };
+        let raw_steps = (t_end_s / dt).max(1.0);
+        if raw_steps.is_finite() {
+            raw_steps.round().clamp(1.0, MAX_TOTAL_STEPS as f64) as usize
+        } else {
+            MAX_TOTAL_STEPS
+        }
+    };
+
+    let mut previous_target = 0usize;
+    (1..n)
+        .map(|snapshot_index| {
+            // Use u128 for the intermediate product so this helper remains
+            // exact even if its current public-input caps are raised later.
+            let target =
+                ((snapshot_index as u128 * total_steps as u128) / intervals as u128) as usize;
+            let take = target.saturating_sub(previous_target);
+            previous_target = target;
+            take
+        })
+        .collect()
+}
+
 /// Run a full simulation: inject the IC Gaussian, step to `t_end_s`, emit
 /// `n_snapshots` evenly-spaced snapshots (including t=0 and t_end).
 pub fn run_simulation(
@@ -1295,29 +1334,15 @@ pub fn run_simulation_with_gauge_samples(
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     observe(grid);
-    if !t_end_s.is_finite() || t_end_s <= 0.0 {
+    if !t_end_s.is_finite() || t_end_s < 0.0 {
         return snaps;
     }
-    let dt = if stepper.dt_s.is_finite() && stepper.dt_s > 0.0 {
-        stepper.dt_s
-    } else {
-        1.0
-    };
-    let raw_steps = (t_end_s / dt).max(1.0);
-    let total_steps = if raw_steps.is_finite() && raw_steps < MAX_TOTAL_STEPS as f64 {
-        raw_steps.round() as usize
-    } else {
-        MAX_TOTAL_STEPS
-    };
 
-    for k in 1..n {
+    for take in snapshot_step_schedule(t_end_s, stepper.dt_s, n) {
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
             break;
         }
-        let target_step = (k * total_steps) / (n - 1);
-        let current_step = ((k - 1) * total_steps) / (n - 1);
-        let take = target_step.saturating_sub(current_step).max(1);
-        if !stepper.step_cancellable_observed(grid, take, cancel, observe) {
+        if take > 0 && !stepper.step_cancellable_observed(grid, take, cancel, observe) {
             break;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
@@ -1594,7 +1619,53 @@ mod tests {
         let snaps = run_simulation(&mut g, &stepper, 300.0, 5, None);
         assert_eq!(snaps.len(), 5);
         assert!(snaps[0].time_s == 0.0);
-        assert!(snaps.last().unwrap().time_s >= 200.0);
+        let expected_steps = (300.0 / stepper.dt_s).round() as u64;
+        assert_eq!(g.step_index, expected_steps);
+        assert_eq!(snaps.last().unwrap().time_s, g.t_s);
+        assert!((g.t_s - 300.0).abs() <= stepper.dt_s * 0.5);
+    }
+
+    #[test]
+    fn snapshot_schedule_repeats_frames_without_overshooting_total_steps() {
+        let schedule = snapshot_step_schedule(29.0, 1.0, 60);
+        assert_eq!(schedule.len(), 59);
+        assert_eq!(schedule.iter().sum::<usize>(), 29);
+        assert_eq!(schedule.iter().filter(|&&take| take == 0).count(), 30);
+        assert!(schedule.iter().all(|&take| take <= 1));
+
+        let cumulative: Vec<usize> = schedule
+            .iter()
+            .scan(0usize, |step, &take| {
+                *step += take;
+                Some(*step)
+            })
+            .collect();
+        assert_eq!(cumulative.last(), Some(&29));
+        assert!(cumulative.windows(2).all(|pair| pair[0] <= pair[1]));
+    }
+
+    #[test]
+    fn run_simulation_matches_shared_schedule_when_frames_outnumber_steps() {
+        let mut scheduled = SwGrid::new(-1.0, -1.0, 1.0, 1.0, 0.5, 0.5);
+        scheduled.fill_uniform_depth(50.0);
+        let mut non_streaming = scheduled.clone();
+        let stepper = TimeStepper::new(1.0);
+
+        for take in snapshot_step_schedule(29.0, stepper.dt_s, 60) {
+            stepper.step(&mut scheduled, take);
+        }
+        let snapshots = run_simulation(&mut non_streaming, &stepper, 29.0, 60, None);
+
+        assert_eq!(snapshots.len(), 60);
+        assert_eq!(scheduled.step_index, 29);
+        assert_eq!(non_streaming.step_index, scheduled.step_index);
+        assert_eq!(non_streaming.t_s, scheduled.t_s);
+        assert_eq!(snapshots.last().map(|snapshot| snapshot.time_s), Some(29.0));
+        assert!(
+            snapshots
+                .windows(2)
+                .all(|pair| pair[0].time_s <= pair[1].time_s)
+        );
     }
 
     #[test]
@@ -1603,7 +1674,7 @@ mod tests {
 
         type Fields = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
 
-        fn run(n_snapshots: usize) -> (usize, Fields) {
+        fn run(n_snapshots: usize) -> (usize, u64, f64, Fields) {
             let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
             grid.fill_uniform_depth(4_000.0);
             grid.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
@@ -1612,7 +1683,7 @@ mod tests {
             let snapshots = run_simulation_with_gauge_samples(
                 &mut grid,
                 &stepper,
-                240.0,
+                29.0,
                 n_snapshots,
                 None,
                 None,
@@ -1622,6 +1693,8 @@ mod tests {
             let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
             (
                 snapshots.len(),
+                grid.step_index,
+                grid.t_s,
                 (
                     peak.to_vec(),
                     t_of_max.to_vec(),
@@ -1642,10 +1715,12 @@ mod tests {
             }
         }
 
-        let (count_12, fields_12) = run(12);
-        let (count_60, fields_60) = run(60);
-        let (count_240, fields_240) = run(240);
+        let (count_12, steps_12, time_12, fields_12) = run(12);
+        let (count_60, steps_60, time_60, fields_60) = run(60);
+        let (count_240, steps_240, time_240, fields_240) = run(240);
         assert_eq!((count_12, count_60, count_240), (12, 60, 240));
+        assert_eq!((steps_12, steps_60, steps_240), (29, 29, 29));
+        assert_eq!((time_12, time_60, time_240), (29.0, 29.0, 29.0));
         assert_same(&fields_12.0, &fields_60.0);
         assert_same(&fields_12.0, &fields_240.0);
         assert_same(&fields_12.1, &fields_60.1);

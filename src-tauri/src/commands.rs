@@ -26,7 +26,7 @@ use crate::physics::{
         Colormap, DiagnosticSink, GridGaugePoint, GridSnapshot, SwGrid, TimeStepper,
         max_field::{MaxFieldAccumulator, MaxFieldProduct},
         quality::{QualityBaseline, RunQualityRecord},
-        run_simulation_with_gauge_samples,
+        run_simulation_with_gauge_samples, snapshot_step_schedule,
     },
 };
 use crate::presets::{Preset, all_presets, find_preset};
@@ -1291,7 +1291,7 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             if values.iter().any(|value| !value.is_finite())
                 || fault.center_lat.abs() > 90.0
                 || fault.center_lon.abs() > LON_ABS_MAX
-                || fault.depth_m <= 0.0
+                || fault.depth_m < 0.0
                 || fault.length_m <= 0.0
                 || fault.width_m <= 0.0
                 || fault.slip_m <= 0.0
@@ -1326,8 +1326,8 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     if !req.t_end_s.is_finite() || req.t_end_s < 0.0 || req.t_end_s > SWE_MAX_T_END_S {
         return Err(format!("t_end_s must be in [0, {}]", SWE_MAX_T_END_S));
     }
-    if req.n_snapshots == 0 || req.n_snapshots > SWE_MAX_SNAPSHOTS {
-        return Err(format!("n_snapshots must be in [1, {}]", SWE_MAX_SNAPSHOTS));
+    if req.n_snapshots < 2 || req.n_snapshots > SWE_MAX_SNAPSHOTS {
+        return Err(format!("n_snapshots must be in [2, {}]", SWE_MAX_SNAPSHOTS));
     }
     if let Some(p) = req.lamb_wave_peak_pressure_pa
         && (!p.is_finite() || p <= 0.0 || p > 1.0e6)
@@ -1609,7 +1609,7 @@ pub async fn simulate_grid_streaming(
             let dt = grid.recommended_dt_s(0.4);
             let nx = grid.nx as u32;
             let ny = grid.ny as u32;
-            let n = req.n_snapshots.max(2);
+            let snapshot_schedule = snapshot_step_schedule(req.t_end_s, dt, req.n_snapshots);
             let quality_baseline = QualityBaseline::capture(
                 &grid,
                 crate::physics::solver::BoundaryMode::default_sponge(),
@@ -1669,13 +1669,6 @@ pub async fn simulate_grid_streaming(
             ));
             max_field_acc.borrow_mut().observe(&grid);
 
-            let total_raw = (req.t_end_s / dt).max(1.0);
-            let total_steps = if total_raw.is_finite() && total_raw < 1_000_000.0 {
-                total_raw.round() as usize
-            } else {
-                1_000_000
-            };
-
             let stream_ctx = StreamSimulationContext {
                 cancel: cancel.as_ref(),
                 on_snapshot: &on_snapshot,
@@ -1685,7 +1678,8 @@ pub async fn simulate_grid_streaming(
                 render: Some(&render_stream),
                 quality_baseline: &quality_baseline,
             };
-            let used_gpu = stream_simulation_dispatch(&mut grid, dt, n, total_steps, &stream_ctx)?;
+            let used_gpu =
+                stream_simulation_dispatch(&mut grid, dt, &snapshot_schedule, &stream_ctx)?;
             let run_quality = quality_baseline.assess(&grid, dt);
             publish_run_quality(&run_quality);
             if let Some(failure) = &run_quality.failure {
@@ -1999,54 +1993,55 @@ struct StreamSimulationContext<'a> {
 fn stream_simulation_cpu(
     grid: &mut SwGrid,
     dt_s: f64,
-    n: usize,
-    total_steps: usize,
+    snapshot_schedule: &[usize],
     ctx: &StreamSimulationContext<'_>,
 ) -> Result<(), String> {
-    stream_simulation_cpu_from(grid, dt_s, n, total_steps, 1, None, ctx)
-}
-
-fn scheduled_stream_steps(total_steps: usize, snapshots: usize, snapshot_index: usize) -> usize {
-    let target_step = (snapshot_index * total_steps) / (snapshots - 1);
-    let previous_step = ((snapshot_index - 1) * total_steps) / (snapshots - 1);
-    target_step.saturating_sub(previous_step).max(1)
+    stream_simulation_cpu_from(grid, dt_s, snapshot_schedule, 0, None, ctx)
 }
 
 /// Continue the scheduled snapshot stream from an already-committed solver
 /// state. `first_take_remaining` is used when a GPU failed partway through the
-/// interval for `start_k`; later intervals use the normal deterministic plan.
+/// interval at `start_interval`; later intervals use the shared deterministic
+/// plan.
 fn stream_simulation_cpu_from(
     grid: &mut SwGrid,
     dt_s: f64,
-    n: usize,
-    total_steps: usize,
-    start_k: usize,
+    snapshot_schedule: &[usize],
+    start_interval: usize,
     first_take_remaining: Option<usize>,
     ctx: &StreamSimulationContext<'_>,
 ) -> Result<(), String> {
     let stepper = TimeStepper::new(dt_s);
-    for k in start_k..n {
+    for (interval, &scheduled_take) in snapshot_schedule.iter().enumerate().skip(start_interval) {
         if ctx.cancel.load(Ordering::Acquire) {
             break;
         }
-        let take = if k == start_k {
-            first_take_remaining.unwrap_or_else(|| scheduled_stream_steps(total_steps, n, k))
+        let take = if interval == start_interval {
+            first_take_remaining.unwrap_or(scheduled_take)
         } else {
-            scheduled_stream_steps(total_steps, n, k)
+            scheduled_take
         };
-        match stepper.step_cancellable_checked(
-            grid,
-            take,
-            Some(ctx.cancel),
-            ctx.quality_baseline,
-            &mut |state| ctx.max_field.borrow_mut().observe(state),
-        ) {
-            Ok(true) => {}
-            Ok(false) => break,
-            Err(quality) => {
-                publish_run_quality(&quality);
-                let failure = quality.failure.clone().unwrap_or_else(|| "unknown numerical-integrity violation".to_string());
-                return Err(format!("simulation rejected at step {}: {failure}", quality.accepted_steps));
+        if take > 0 {
+            match stepper.step_cancellable_checked(
+                grid,
+                take,
+                Some(ctx.cancel),
+                ctx.quality_baseline,
+                &mut |state| ctx.max_field.borrow_mut().observe(state),
+            ) {
+                Ok(true) => {}
+                Ok(false) => break,
+                Err(quality) => {
+                    publish_run_quality(&quality);
+                    let failure = quality
+                        .failure
+                        .clone()
+                        .unwrap_or_else(|| "unknown numerical-integrity violation".to_string());
+                    return Err(format!(
+                        "simulation rejected at step {}: {failure}",
+                        quality.accepted_steps
+                    ));
+                }
             }
         }
         if ctx
@@ -2071,8 +2066,7 @@ fn stream_simulation_cpu_from(
 fn stream_simulation_dispatch(
     grid: &mut SwGrid,
     dt_s: f64,
-    n: usize,
-    total_steps: usize,
+    snapshot_schedule: &[usize],
     ctx: &StreamSimulationContext<'_>,
 ) -> Result<bool, String> {
     use crate::physics::solver::BoundaryMode;
@@ -2090,11 +2084,10 @@ fn stream_simulation_dispatch(
         true,
         ctx.diagnostics,
     ) {
-        for k in 1..n {
+        for (interval, &take) in snapshot_schedule.iter().enumerate() {
             if ctx.cancel.load(Ordering::Acquire) {
                 break;
             }
-            let take = scheduled_stream_steps(total_steps, n, k);
             let mut completed = 0usize;
             for _ in 0..take {
                 if ctx.cancel.load(Ordering::Acquire) {
@@ -2105,9 +2098,8 @@ fn stream_simulation_dispatch(
                     stream_simulation_cpu_from(
                         grid,
                         dt_s,
-                        n,
-                        total_steps,
-                        k,
+                        snapshot_schedule,
+                        interval,
                         Some(remaining),
                         ctx,
                     )?;
@@ -2138,7 +2130,7 @@ fn stream_simulation_dispatch(
         }
         return Ok(true);
     }
-    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx)?;
+    stream_simulation_cpu(grid, dt_s, snapshot_schedule, ctx)?;
     Ok(false)
 }
 
@@ -2146,11 +2138,10 @@ fn stream_simulation_dispatch(
 fn stream_simulation_dispatch(
     grid: &mut SwGrid,
     dt_s: f64,
-    n: usize,
-    total_steps: usize,
+    snapshot_schedule: &[usize],
     ctx: &StreamSimulationContext<'_>,
 ) -> Result<bool, String> {
-    stream_simulation_cpu(grid, dt_s, n, total_steps, ctx)?;
+    stream_simulation_cpu(grid, dt_s, snapshot_schedule, ctx)?;
     Ok(false)
 }
 
@@ -2262,32 +2253,18 @@ fn run_simulation_gpu(
     gauges: &[GridGaugePoint],
     observe: &mut dyn FnMut(&SwGrid),
 ) -> Option<Vec<GridSnapshot>> {
-    const MAX_TOTAL_STEPS: usize = 1_000_000;
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     observe(grid);
-    if !t_end_s.is_finite() || t_end_s <= 0.0 {
+    if !t_end_s.is_finite() || t_end_s < 0.0 {
         return Some(snaps);
     }
-    let dt = if dt_s.is_finite() && dt_s > 0.0 {
-        dt_s
-    } else {
-        1.0
-    };
-    let raw_steps = (t_end_s / dt).max(1.0);
-    let total_steps = if raw_steps.is_finite() && raw_steps < MAX_TOTAL_STEPS as f64 {
-        raw_steps.round() as usize
-    } else {
-        MAX_TOTAL_STEPS
-    };
-    for k in 1..n {
+    for take in snapshot_step_schedule(t_end_s, dt_s, n) {
         if cancel.load(Ordering::Acquire) {
             break;
         }
-        let target_step = (k * total_steps) / (n - 1);
-        let current_step = ((k - 1) * total_steps) / (n - 1);
-        let mut remaining = target_step.saturating_sub(current_step).max(1);
+        let mut remaining = take;
         while remaining > 0 {
             if cancel.load(Ordering::Acquire) {
                 return Some(snaps);
@@ -2447,6 +2424,34 @@ mod tests {
     }
 
     #[test]
+    fn surface_earthquake_geometry_composes_with_grid_validation() {
+        let initial = earthquake_initial_conditions(EarthquakeSource {
+            mw: 8.0,
+            depth_m: 0.0,
+            strike_deg: 0.0,
+            dip_deg: 30.0,
+            rake_deg: 90.0,
+            slip_m: 5.0,
+            fault_length_m: 100_000.0,
+            fault_width_m: 50_000.0,
+            water_depth_m: 2_000.0,
+            location: good_loc(),
+        })
+        .expect("the shared earthquake contract permits a surface rupture");
+        let mut request = source_grid_request(initial.source_geometry);
+        assert!(validate_simulate_grid(&request).is_ok());
+        let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.1, 0.1);
+        inject_source_initial_field(&mut grid, &request)
+            .expect("a contract-valid surface rupture must produce a finite solver field");
+
+        let Some(InitialSourceGeometry::Okada { fault }) = request.source_geometry.as_mut() else {
+            panic!("positive-slip earthquake must produce Okada geometry");
+        };
+        fault.depth_m = -f64::EPSILON;
+        assert!(validate_simulate_grid(&request).is_err());
+    }
+
+    #[test]
     fn legacy_grid_requests_deserialize_without_source_geometry() {
         let request = source_grid_request(None);
         let mut value = serde_json::to_value(request).expect("serialize grid request");
@@ -2530,16 +2535,12 @@ mod tests {
         let snapshots = 6;
         let committed_at_failure = 27;
         let completed_in_interval = 7;
-        let first_remaining = scheduled_stream_steps(total_steps, snapshots, 2)
-            .saturating_sub(completed_in_interval);
+        let schedule = snapshot_step_schedule(total_steps as f64, 1.0, snapshots);
+        let first_remaining = schedule[1].saturating_sub(completed_in_interval);
         let mut tick = committed_at_failure;
         let mut emitted = Vec::new();
-        for k in 2..snapshots {
-            tick += if k == 2 {
-                first_remaining
-            } else {
-                scheduled_stream_steps(total_steps, snapshots, k)
-            };
+        for (interval, &take) in schedule.iter().enumerate().skip(1) {
+            tick += if interval == 1 { first_remaining } else { take };
             emitted.push(tick);
         }
         assert_eq!(emitted, vec![40, 60, 80, 100]);
@@ -3128,6 +3129,20 @@ mod tests {
     }
 
     #[test]
+    fn simulate_grid_requires_at_least_two_snapshots() {
+        let mut request = source_grid_request(None);
+        request.n_snapshots = 1;
+        let error = validate_simulate_grid(&request).expect_err("one snapshot is ambiguous");
+        assert!(
+            error.contains("[2,"),
+            "unexpected validation error: {error}"
+        );
+
+        request.n_snapshots = 2;
+        assert!(validate_simulate_grid(&request).is_ok());
+    }
+
+    #[test]
     fn simulate_grid_rejects_unknown_colormap() {
         let res = validate_simulate_grid(&SimulateGridRequest {
             source: good_loc(),
@@ -3370,7 +3385,7 @@ mod tests {
 
         type Fields = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
 
-        fn run(n_snapshots: usize) -> Option<(usize, Fields)> {
+        fn run(n_snapshots: usize) -> Option<(usize, u64, f64, Fields)> {
             let mut grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.5, 0.5);
             grid.fill_uniform_depth(4_000.0);
             grid.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
@@ -3381,7 +3396,7 @@ mod tests {
                 &mut grid,
                 &gpu,
                 1.0,
-                240.0,
+                29.0,
                 n_snapshots,
                 &cancel,
                 None,
@@ -3391,6 +3406,8 @@ mod tests {
             let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
             Some((
                 snapshots.len(),
+                grid.step_index,
+                grid.t_s,
                 (
                     peak.to_vec(),
                     t_of_max.to_vec(),
@@ -3410,13 +3427,17 @@ mod tests {
             }
         }
 
-        let Some((count_12, fields_12)) = run(12) else {
+        let Some((count_12, steps_12, time_12, fields_12)) = run(12) else {
             println!("gpu cadence regression: no adapter — skipping");
             return;
         };
-        let (count_60, fields_60) = run(60).expect("adapter disappeared during cadence test");
-        let (count_240, fields_240) = run(240).expect("adapter disappeared during cadence test");
+        let (count_60, steps_60, time_60, fields_60) =
+            run(60).expect("adapter disappeared during cadence test");
+        let (count_240, steps_240, time_240, fields_240) =
+            run(240).expect("adapter disappeared during cadence test");
         assert_eq!((count_12, count_60, count_240), (12, 60, 240));
+        assert_eq!((steps_12, steps_60, steps_240), (29, 29, 29));
+        assert_eq!((time_12, time_60, time_240), (29.0, 29.0, 29.0));
         assert_same(&fields_12.0, &fields_60.0);
         assert_same(&fields_12.0, &fields_240.0);
         assert_same(&fields_12.1, &fields_60.1);
