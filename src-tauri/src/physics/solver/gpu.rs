@@ -7,7 +7,7 @@
 //!
 //! - [x] wgpu + pollster deps wired behind `[features] gpu`.
 //! - [x] `GpuTimeStepper` exposing `step` matching the CPU surface.
-//! - [x] WGSL kernel reused verbatim from [`super::kernels::SWE_LEAPFROG_WGSL`].
+//! - [x] WGSL kernel reused verbatim from [`super::kernels::SWE_FINITE_VOLUME_WGSL`].
 //! - [x] Buffer-binding plumbing (ping-pong storage buffers for
 //!   `h`, `eta`, `u`, `v`) + dispatch loop + result readback.
 //! - [x] Restartable across multiple `step` calls: the eta/u/v fields
@@ -23,7 +23,7 @@
 //! Structures for Cellular-Automata Tsunami Modeling on GPUs*, arXiv:
 //! 1901.06798 — reports 3.6–6.4× speedup vs. 16-core CPU on GeoClaw.
 
-use super::kernels::SWE_LEAPFROG_WGSL;
+use super::kernels::SWE_FINITE_VOLUME_WGSL;
 use super::{DiagnosticSink, SwGrid, report_diagnostic};
 use wgpu::util::DeviceExt;
 
@@ -68,7 +68,7 @@ pub fn adapter_summary() -> Option<String> {
 }
 
 /// 48-byte Params struct matching the WGSL `struct Params` layout in
-/// [`SWE_LEAPFROG_WGSL`].
+/// [`SWE_FINITE_VOLUME_WGSL`].
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuParams {
@@ -79,7 +79,7 @@ struct GpuParams {
     dt_s: f32,
     g: f32,
     manning_n: f32,
-    land_threshold_m: f32,
+    wet_depth_epsilon_m: f32,
     nx: u32,
     ny: u32,
     sponge_width: u32,
@@ -217,8 +217,8 @@ impl GpuTimeStepper {
             .ok()?;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("swe-leapfrog"),
-            source: wgpu::ShaderSource::Wgsl(SWE_LEAPFROG_WGSL.into()),
+            label: Some("swe-hydrostatic-rusanov"),
+            source: wgpu::ShaderSource::Wgsl(SWE_FINITE_VOLUME_WGSL.into()),
         });
 
         let params = GpuParams {
@@ -229,7 +229,7 @@ impl GpuTimeStepper {
             dt_s: dt_s as f32,
             g: super::super::constants::G_EARTH as f32,
             manning_n: manning_n as f32,
-            land_threshold_m: super::LAND_DEPTH_THRESHOLD_M as f32,
+            wet_depth_epsilon_m: super::WET_DEPTH_EPSILON_M as f32,
             nx: grid.nx as u32,
             ny: grid.ny as u32,
             sponge_width,
@@ -334,7 +334,7 @@ impl GpuTimeStepper {
             label: Some("swe-pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: Some("cs_leapfrog"),
+            entry_point: Some("cs_finite_volume"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
@@ -615,8 +615,8 @@ mod tests {
     }
 
     /// F4-01 regression: with a flat-ocean Gaussian IC, the GPU
-    /// linear-SWE leapfrog should agree with the CPU linear-SWE
-    /// leapfrog to within 1e-3 m on η across the grid after a
+    /// linear-SWE finite-volume update should agree with the CPU path
+    /// to within 1e-3 m on η across the grid after a
     /// short run.
     #[test]
     fn swe_gpu_matches_cpu() {
@@ -653,7 +653,7 @@ mod tests {
     /// Full-physics parity: nonlinear advection + sponge boundary +
     /// Manning friction — the exact configuration `simulate_grid`
     /// dispatches. Locks the 2026-07-01 CPU/GPU eta-divergence fix
-    /// (CPU momentum now uses pre-step η like the GPU leapfrog). The
+    /// (both paths share hydrostatic reconstruction and Rusanov fluxes). The
     /// tolerance is looser than the linear test because the GPU stores
     /// state in f32 and the upwind advection branch amplifies rounding.
     #[test]
@@ -763,38 +763,89 @@ mod tests {
         );
     }
 
-    /// GPU kernel with land masking should keep dry cells at zero.
     #[test]
-    fn swe_gpu_land_stays_dry() {
-        let mut g = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.25, 0.25);
-        g.fill_uniform_depth(4_000.0);
-        // Make western half land (depth = 1.0 m, below LAND_DEPTH_THRESHOLD_M)
-        for j in 0..g.ny {
-            for i in 0..g.nx / 2 {
-                g.h_m[super::super::idx(i, j, g.nx)] = 1.0;
+    fn swe_gpu_preserves_well_balanced_variable_bathymetry() {
+        let mut cpu_grid = SwGrid::new(-2.0, -1.0, 2.0, 1.0, 0.25, 0.25);
+        for j in 0..cpu_grid.ny {
+            for i in 0..cpu_grid.nx {
+                cpu_grid.h_m[super::super::idx(i, j, cpu_grid.nx)] = if i < cpu_grid.nx / 4 {
+                    0.0
+                } else {
+                    20.0 + 100.0 * (i - cpu_grid.nx / 4) as f64
+                };
             }
         }
-        g.inject_gaussian(0.0, 1.0, 1.0, 60_000.0);
+        let mut gpu_grid = cpu_grid.clone();
+        let dt = cpu_grid.recommended_dt_s(0.3);
+        TimeStepper::new(dt)
+            .with_boundary(super::super::BoundaryMode::ZeroFlux)
+            .with_mode(SolverMode::Linear)
+            .step(&mut cpu_grid, 50);
 
-        let dt = g.recommended_dt_s(0.4);
-        let gpu = match GpuTimeStepper::new(&g, dt, 0.0, 0, false) {
+        let gpu = match GpuTimeStepper::new(&gpu_grid, dt, 0.0, 0, false) {
             Some(g) => g,
             None => {
-                println!("swe_gpu_land_stays_dry: no adapter — skipping");
+                println!("swe_gpu_preserves_well_balanced_variable_bathymetry: no adapter — skipping");
                 return;
             }
         };
-        assert!(gpu.step(&mut g, 100), "GPU step reported failure");
+        assert!(gpu.step(&mut gpu_grid, 50), "GPU step reported failure");
 
-        for j in 0..g.ny {
-            for i in 0..g.nx / 2 {
-                let v = g.eta_m[super::super::idx(i, j, g.nx)];
-                assert_eq!(
-                    v, 0.0,
-                    "GPU land cell ({}, {}) bled wave amplitude: {}",
-                    i, j, v
-                );
+        for index in 0..cpu_grid.h_m.len() {
+            let cpu_depth = cpu_grid.h_m[index] + cpu_grid.eta_m[index];
+            let gpu_depth = gpu_grid.h_m[index] + gpu_grid.eta_m[index];
+            assert_eq!(
+                cpu_depth > super::super::WET_DEPTH_EPSILON_M,
+                gpu_depth > super::super::WET_DEPTH_EPSILON_M,
+                "wet-mask mismatch at {index}: CPU {cpu_depth}, GPU {gpu_depth}",
+            );
+        }
+        assert!(gpu_grid.eta_m.iter().all(|eta| eta.abs() < 1.0e-5));
+        assert!(gpu_grid.u_ms.iter().all(|velocity| velocity.abs() < 1.0e-4));
+        assert!(gpu_grid.v_ms.iter().all(|velocity| velocity.abs() < 1.0e-4));
+    }
+
+    #[test]
+    fn swe_gpu_dry_bed_front_matches_cpu_mask_and_fields() {
+        let mut cpu_grid = SwGrid::new(-3.2, -0.2, 3.2, 0.2, 0.1, 0.1);
+        cpu_grid.fill_uniform_depth(0.0);
+        for j in 0..cpu_grid.ny {
+            for i in 0..cpu_grid.nx / 2 {
+                cpu_grid.eta_m[super::super::idx(i, j, cpu_grid.nx)] = 10.0;
             }
         }
+        let mut gpu_grid = cpu_grid.clone();
+        let dt = cpu_grid.recommended_dt_s(0.15);
+        let mut cpu = TimeStepper::new(dt)
+            .with_boundary(super::super::BoundaryMode::ZeroFlux)
+            .with_mode(SolverMode::Linear);
+        cpu.manning_n = 0.0;
+        cpu.step(&mut cpu_grid, 8);
+        let gpu = match GpuTimeStepper::new(&gpu_grid, dt, 0.0, 0, false) {
+            Some(gpu) => gpu,
+            None => {
+                println!("swe_gpu_dry_bed_front_matches_cpu_mask_and_fields: no adapter — skipping");
+                return;
+            }
+        };
+        assert!(gpu.step(&mut gpu_grid, 8), "GPU step reported failure");
+
+        for index in 0..cpu_grid.h_m.len() {
+            let cpu_depth = cpu_grid.h_m[index] + cpu_grid.eta_m[index];
+            let gpu_depth = gpu_grid.h_m[index] + gpu_grid.eta_m[index];
+            assert_eq!(
+                cpu_depth > super::super::WET_DEPTH_EPSILON_M,
+                gpu_depth > super::super::WET_DEPTH_EPSILON_M,
+                "wet-mask mismatch at {index}: CPU {cpu_depth}, GPU {gpu_depth}",
+            );
+        }
+        let eta_error = cpu_grid
+            .eta_m
+            .iter()
+            .zip(&gpu_grid.eta_m)
+            .map(|(cpu, gpu)| (cpu - gpu).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(eta_error < 2.0e-3, "dry-bed eta parity error was {eta_error}");
+        assert!(gpu_grid.h_m.iter().zip(&gpu_grid.eta_m).all(|(h, eta)| h + eta >= 0.0));
     }
 }

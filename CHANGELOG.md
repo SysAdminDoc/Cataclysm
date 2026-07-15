@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- CPU and GPU SWE propagation now share a well-balanced hydrostatic-
+  reconstruction/Rusanov finite-volume update. Dynamic wet/dry masks retain
+  conservative sub-threshold water without momentum, prevent negative depth,
+  preserve still water over variable bathymetry, and pass dry-bed dam-break,
+  plane-beach wetting, retreating-front, and backend-parity fixtures.
 - SWE grids can now cross the antimeridian and reach the poles without cropping
   or reordering fields. Snapshots, maximum-field products, and renderer-neutral
   recordings publish complete column-addressed geographic tiles; Cesium renders

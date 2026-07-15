@@ -36,67 +36,120 @@ use super::landslide::lituya_bay_1958;
 #[cfg(test)]
 use super::shallow_water::synolakis_runup_m;
 #[cfg(test)]
-use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
+use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper, WET_DEPTH_EPSILON_M};
 #[cfg(test)]
 use super::GeoPoint;
 
-/// Stoker 1957 dam-break analytical wave-front position over a uniform
-/// shallow channel. For a depth `h0`, initial step at `x = 0` with
-/// `η(x<0) = 0` and `η(x>0) = -h0` (i.e. dry on the downstream side),
-/// the wave-front advances at velocity `2 √(g h0)`.
-///
-/// We can't run a literal dry-bed problem (our solver pins land cells
-/// to η = 0), so we test the conservative form: a small Gaussian bump
-/// over flat bathymetry propagates outward at the wave celerity
-/// `c = √(g h0)`. After `t` seconds the leading-edge envelope should
-/// reach `r = c · t` ± grid resolution.
+/// Stoker 1957 dry-bed dam break. A 10 m reservoir is released over a flat,
+/// initially dry bed; the analytical leading edge advances at `2 sqrt(g h0)`.
+/// Detection uses the 1% depth contour because a first-order Rusanov flux has a
+/// deliberately diffuse sub-millimetre numerical skirt.
 #[test]
-fn stoker_wavefront_speed_matches_sqrt_gh() {
-    let h0_m = 4_000.0;
-    let c0 = (G_EARTH * h0_m).sqrt();
-
-    let mut g = SwGrid::new(-10.0, -10.0, 10.0, 10.0, 0.1, 0.1);
-    g.fill_uniform_depth(h0_m);
-    // σ = 10 km: the 5% skirt of the Gaussian extends to ~2.45σ ≈ 24.5 km,
-    // well within the wave front's travel distance at c₀ × t. The previous
-    // σ = 30 km placed the skirt at ~73 km, beyond the 300s front (~59 km),
-    // causing the front-detection heuristic to over-read.
-    g.inject_gaussian(0.0, 0.0, 1.0, 10_000.0);
-
-    // 5 minutes — wave should travel c0 * 300 ≈ 60 km.
-    let t_end_s = 300.0;
-    let dt = g.recommended_dt_s(0.4);
-    // Stoker's analytical celerity is for the LINEAR shallow-water
-    // equations; use SolverMode::Linear so the comparison isn't biased
-    // by the v0.4.0 nonlinear advection term.
-    let stepper = TimeStepper::new(dt)
+fn stoker_dry_bed_front_matches_analytical_speed() {
+    let reservoir_depth_m = 10.0;
+    let mut grid = SwGrid::new(-1.0, -0.01, 1.0, 0.01, 0.005, 0.005);
+    grid.fill_uniform_depth(0.0);
+    for j in 0..grid.ny {
+        for i in 0..grid.nx / 2 {
+            grid.eta_m[i + j * grid.nx] = reservoir_depth_m;
+        }
+    }
+    let dt = grid.recommended_dt_s(0.15);
+    let mut stepper = TimeStepper::new(dt)
         .with_boundary(BoundaryMode::ZeroFlux)
         .with_mode(SolverMode::Linear);
-    stepper.step(&mut g, ((t_end_s / dt).round() as usize).max(2));
+    stepper.manning_n = 0.0;
+    let t_end_s = 120.0;
+    stepper.step(&mut grid, (t_end_s / dt).round().max(1.0) as usize);
 
-    // Find the leading-edge along the +x axis: outermost cell whose
-    // amplitude exceeds 5 % of source peak.
-    let row_j = g.ny / 2;
-    let threshold = 0.05;
-    let mut front_i = g.nx / 2;
-    for i in g.nx / 2..g.nx {
-        if g.eta_m[i + row_j * g.nx].abs() > threshold {
+    let row = grid.ny / 2;
+    let mut front_i = grid.nx / 2;
+    for i in grid.nx / 2..grid.nx {
+        if grid.eta_m[i + row * grid.nx] >= reservoir_depth_m * 0.01 {
             front_i = i;
         }
     }
-    let cell_lon_m = 6_371_008.8_f64 * std::f64::consts::PI / 180.0 * g.dlon_deg;
-    let front_dist_m = (front_i as f64 - g.nx as f64 / 2.0) * cell_lon_m;
-    let expected_m = c0 * t_end_s;
-
-    // Wide tolerance: ±25 % to account for source sigma (30 km Gaussian
-    // shoulder) + numerical dispersion of the leapfrog at this resolution.
+    let cell_width_m = 6_371_008.8_f64 * std::f64::consts::PI / 180.0 * grid.dlon_deg;
+    let front_dist_m = (front_i - grid.nx / 2) as f64 * cell_width_m;
+    let expected_m = 2.0 * (G_EARTH * reservoir_depth_m).sqrt() * t_end_s;
     let err = (front_dist_m - expected_m).abs() / expected_m;
     assert!(
-        err < 0.25,
+        err < 0.35,
         "Stoker front position {:.0} km vs analytical {:.0} km — {:.0}% error",
         front_dist_m / 1000.0,
         expected_m / 1000.0,
         err * 100.0
+    );
+    assert!(grid.h_m.iter().zip(&grid.eta_m).all(|(h, eta)| h + eta >= 0.0));
+}
+
+/// NTHMP benchmark problem 1 geometry smoke: a positive pulse crosses a plane
+/// beach and wets cells landward of the still-water shoreline without a
+/// negative water column. Quantitative runup convergence remains in the
+/// dedicated NTHMP benchmark roadmap item.
+#[test]
+fn nthmp_problem_1_plane_beach_wets_positively() {
+    let mut grid = SwGrid::new(-1.0, -0.01, 1.0, 0.01, 0.005, 0.005);
+    for j in 0..grid.ny {
+        for i in 0..grid.nx {
+            grid.h_m[i + j * grid.nx] = if i < 250 {
+                10.0
+            } else if i < 320 {
+                10.0 * (320 - i) as f64 / 70.0
+            } else {
+                -10.0 * (i - 320) as f64 / 70.0
+            };
+        }
+    }
+    grid.inject_gaussian(0.0, 0.55, 1.0, 1_000.0);
+    for k in 0..grid.h_m.len() {
+        let depth_m = grid.h_m[k] + grid.eta_m[k];
+        if grid.h_m[k] > 1.0e-3 && depth_m > 1.0e-3 {
+            // Linear long-wave Riemann invariant for an eastward incident
+            // pulse; NTHMP problem 1 prescribes a travelling solitary wave,
+            // not a motionless surface bump.
+            grid.u_ms[k] = grid.eta_m[k] * (G_EARTH * depth_m).sqrt() / depth_m;
+        }
+    }
+    let initial_mask = grid.wet_mask_bits();
+    let dt = grid.recommended_dt_s(0.12);
+    let mut stepper = TimeStepper::new(dt)
+        .with_boundary(BoundaryMode::ZeroFlux)
+        .with_mode(SolverMode::Linear);
+    stepper.manning_n = 0.0;
+    let mut shoreline_advanced = false;
+    let mut maximum_landward_depth_m = 0.0_f64;
+    let mut maximum_shore_eta_m = 0.0_f64;
+    let mut peak_landward_wet_cells = 0_usize;
+    stepper.step_cancellable_observed(&mut grid, 2_000, None, &mut |state| {
+        shoreline_advanced |= state.wet_mask_bits() != initial_mask;
+        let row = state.ny / 2;
+        maximum_shore_eta_m = maximum_shore_eta_m.max(state.eta_m[319 + row * state.nx]);
+        peak_landward_wet_cells = peak_landward_wet_cells.max(
+            (0..state.ny)
+                .flat_map(|j| (320..state.nx).map(move |i| i + j * state.nx))
+                .filter(|&k| state.h_m[k] + state.eta_m[k] > WET_DEPTH_EPSILON_M)
+                .count(),
+        );
+        for i in 320..state.nx - 1 {
+            maximum_landward_depth_m = maximum_landward_depth_m
+                .max(state.h_m[i + row * state.nx] + state.eta_m[i + row * state.nx]);
+        }
+    });
+
+    assert!(grid.h_m.iter().zip(&grid.eta_m).all(|(h, eta)| h + eta >= 0.0));
+    assert!(grid.u_ms.iter().chain(&grid.v_ms).all(|velocity| velocity.is_finite()));
+    assert!(
+        shoreline_advanced,
+        "shoreline never advanced; maximum eta in the last wet cell was {maximum_shore_eta_m:.6} m"
+    );
+    assert!(
+        maximum_landward_depth_m > 1.0e-3,
+        "landward depth never exceeded the wet threshold"
+    );
+    assert!(
+        peak_landward_wet_cells > 0,
+        "no landward cell crossed the wet threshold"
     );
 }
 

@@ -1,4 +1,4 @@
-//! Shallow-water-equation finite-difference solver on a regular lat-lon grid.
+//! Shallow-water-equation finite-volume solver on a regular lat-lon grid.
 //!
 //! Replaces `shallow_water::sample_wavefront` (the v0.0.x analytical decay
 //! sampler) with a real numerical integration of the depth-averaged
@@ -20,16 +20,15 @@
 //! - `u, v` zonal and meridional depth-averaged velocity (m/s)
 //! - `n` Manning roughness
 //!
-//! Discretisation: explicit forward-Euler leapfrog on a regular grid with
-//! per-row zonal cell size and spherical meridional flux weights derived from
-//! the latitude/lon span. Nonlinear mode also includes the spherical metric
-//! acceleration terms. CFL stability is enforced by `recommended_dt_s()`
-//! using the same per-row two-dimensional characteristic-speed definition
-//! enforced by the run-quality gate.
+//! Discretisation: explicit hydrostatic reconstruction with a local
+//! Lax-Friedrichs (Rusanov) flux, conserved total depth/momenta, a 1 mm dry
+//! tolerance, and per-row spherical face metrics. This preserves a constant
+//! free surface over variable bathymetry and prevents negative water columns;
+//! nonlinear mode retains advective and spherical metric terms. CFL stability
+//! is enforced by `recommended_dt_s()` using the same per-row two-dimensional
+//! characteristic-speed definition enforced by the run-quality gate.
 //!
-//! Boundaries: zero-flux (`u = v = 0`) at the grid edges. This produces some
-//! mild reflection in long runs; a future release will swap for radiation
-//! conditions / sponge layers.
+//! Boundaries: selectable zero-flux (`u = v = 0`) or cosine-tapered sponge.
 //!
 //! ## Implementation
 //!
@@ -240,8 +239,8 @@ impl SwGrid {
     /// means wet; unused high bits in the final byte are always zero.
     pub fn wet_mask_bits(&self) -> Vec<u8> {
         let mut bits = vec![0_u8; self.h_m.len().div_ceil(8)];
-        for (index, depth) in self.h_m.iter().enumerate() {
-            if depth.is_finite() && *depth > LAND_DEPTH_THRESHOLD_M {
+        for (index, (&depth, &eta)) in self.h_m.iter().zip(&self.eta_m).enumerate() {
+            if total_depth_m(depth, eta) > WET_DEPTH_EPSILON_M {
                 bits[index / 8] |= 1 << (index % 8);
             }
         }
@@ -390,7 +389,7 @@ impl SwGrid {
     /// from `LambWaveSource::surface_depression_m` integrated across
     /// each cell's distance from the atmospheric source.
     ///
-    /// Apply this *before* the leapfrog step so the next continuity +
+    /// Apply this *before* the finite-volume step so the next continuity +
     /// momentum update consumes the perturbed η as its IC. For long
     /// runs the caller invokes this every step inside the playback
     /// loop; for IC-only injections (a one-shot Gaussian-equivalent),
@@ -725,14 +724,118 @@ pub(super) fn viridis_colormap(t: f64) -> (u8, u8, u8, u8) {
     (r, g, b, a)
 }
 
-/// Depth threshold (m) below which a cell is treated as dry land. The
-/// `simulate_grid` command substitutes a sentinel `1.0` for the land cells
-/// emitted by the offline bathymetry sampler (which returns 0 for land);
-/// any future GEBCO sampler with a similar 0-for-land convention will
-/// likewise be flagged. Cells under this threshold are excluded from the
-/// leapfrog update so a continent-scale source no longer paints a
-/// "halo" of slow-spreading wave over interior continents (I-V01).
-pub const LAND_DEPTH_THRESHOLD_M: f64 = 1.01;
+/// Total water-column depth below which a cell carries no momentum. Sub-
+/// threshold positive water is retained so conservative face fluxes can
+/// accumulate into an advancing front; only the wet mask and momentum treat
+/// the cell as dry. This avoids both mass deletion and a one-step wetting
+/// barrier while never admitting negative depth.
+pub const WET_DEPTH_EPSILON_M: f64 = 1.0e-3;
+
+#[inline]
+fn total_depth_m(still_water_depth_m: f64, eta_m: f64) -> f64 {
+    nonnegative_depth(still_water_depth_m + eta_m)
+}
+
+#[inline]
+fn nonnegative_depth(value: f64) -> f64 {
+    if value >= 0.0 {
+        value
+    } else if value < 0.0 {
+        0.0
+    } else {
+        value
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct HydrostaticFaceFlux {
+    mass: f64,
+    normal_left: f64,
+    normal_right: f64,
+    tangential: f64,
+}
+
+/// Hydrostatic-reconstruction/Rusanov flux at one cell face. Rebuilding both
+/// face depths above the higher bed and applying the Audusse pressure-source
+/// correction makes a constant free surface an exact steady state even when
+/// neighbouring bathymetry differs or one side is dry.
+#[inline]
+#[allow(clippy::too_many_arguments)]
+fn hydrostatic_face_flux(
+    h_left: f64,
+    eta_left: f64,
+    normal_velocity_left: f64,
+    tangential_velocity_left: f64,
+    h_right: f64,
+    eta_right: f64,
+    normal_velocity_right: f64,
+    tangential_velocity_right: f64,
+    nonlinear: bool,
+) -> HydrostaticFaceFlux {
+    let face_bed_elevation = (-h_left).max(-h_right);
+    let depth_left = nonnegative_depth(eta_left - face_bed_elevation);
+    let depth_right = nonnegative_depth(eta_right - face_bed_elevation);
+    let raw_depth_left = total_depth_m(h_left, eta_left);
+    let raw_depth_right = total_depth_m(h_right, eta_right);
+    let (normal_velocity_left, tangential_velocity_left) = if raw_depth_left
+        > WET_DEPTH_EPSILON_M
+    {
+        (normal_velocity_left, tangential_velocity_left)
+    } else {
+        (0.0, 0.0)
+    };
+    let (normal_velocity_right, tangential_velocity_right) = if raw_depth_right
+        > WET_DEPTH_EPSILON_M
+    {
+        (normal_velocity_right, tangential_velocity_right)
+    } else {
+        (0.0, 0.0)
+    };
+    let normal_discharge_left = depth_left * normal_velocity_left;
+    let normal_discharge_right = depth_right * normal_velocity_right;
+    let tangential_discharge_left = depth_left * tangential_velocity_left;
+    let tangential_discharge_right = depth_right * tangential_velocity_right;
+    let signal_speed = (normal_velocity_left.abs() + (G_EARTH * depth_left).sqrt())
+        .max(normal_velocity_right.abs() + (G_EARTH * depth_right).sqrt());
+    let mass = 0.5 * (normal_discharge_left + normal_discharge_right)
+        - 0.5 * signal_speed * (depth_right - depth_left);
+    let advective_normal_left = if nonlinear {
+        normal_discharge_left * normal_velocity_left
+    } else {
+        0.0
+    };
+    let advective_normal_right = if nonlinear {
+        normal_discharge_right * normal_velocity_right
+    } else {
+        0.0
+    };
+    let shared_normal = 0.5
+        * (advective_normal_left
+            + 0.5 * G_EARTH * depth_left * depth_left
+            + advective_normal_right
+            + 0.5 * G_EARTH * depth_right * depth_right)
+        - 0.5
+            * signal_speed
+            * (normal_discharge_right - normal_discharge_left);
+    let tangential = 0.5
+        * if nonlinear {
+            normal_discharge_left * tangential_velocity_left
+                + normal_discharge_right * tangential_velocity_right
+        } else {
+            0.0
+        }
+        - 0.5
+            * signal_speed
+            * (tangential_discharge_right - tangential_discharge_left);
+    HydrostaticFaceFlux {
+        mass,
+        normal_left: shared_normal
+            + 0.5 * G_EARTH * (raw_depth_left * raw_depth_left - depth_left * depth_left),
+        normal_right: shared_normal
+            + 0.5 * G_EARTH * (raw_depth_right * raw_depth_right - depth_right * depth_right),
+        tangential,
+    }
+}
 
 /// Boundary handling for the SWE solver. Sponge layers absorb outgoing
 /// waves over a configurable rim width so a long-running scenario doesn't
@@ -779,7 +882,7 @@ impl SolverMode {
     }
 }
 
-/// Time-stepping driver. CPU leapfrog with `rayon` row-parallel updates;
+/// Time-stepping driver. CPU finite-volume update with `rayon` row parallelism;
 /// GPU path available behind the `gpu` feature flag.
 #[derive(Debug, Clone, Copy)]
 pub struct TimeStepper {
@@ -900,7 +1003,7 @@ impl TimeStepper {
         Ok(true)
     }
 
-    /// Single explicit leapfrog step with freshly allocated scratch buffers.
+    /// Single explicit finite-volume step with freshly allocated scratch buffers.
     /// Prefer `step_cancellable` for multi-step runs — it reuses buffers.
     pub fn step_one(&self, grid: &mut SwGrid) {
         let n = grid.nx * grid.ny;
@@ -908,9 +1011,8 @@ impl TimeStepper {
         self.step_one_with_scratch(grid, &mut scratch);
     }
 
-    /// Single explicit leapfrog step. Continuity update first, then
-    /// momentum. Rows updated in parallel via rayon — references into the
-    /// existing Vecs are captured by the outer parallel closure.
+    /// Single explicit hydrostatic finite-volume step. Total depth and both
+    /// momenta are updated together; rows are parallelized with rayon.
     ///
     /// Reads from `grid.eta_m / u_ms / v_ms` as the "old" state. Writes
     /// into `scratch.{eta, u, v}` and swaps them into the grid at the end.
@@ -922,6 +1024,14 @@ impl TimeStepper {
         let row_cos_lat: Vec<f64> = row_lat_rad
             .iter()
             .map(|lat| lat.cos().abs().max(f64::MIN_POSITIVE))
+            .collect();
+        let face_cos_lat: Vec<f64> = (0..=ny)
+            .map(|face| {
+                (grid.south_lat + face as f64 * grid.dlat_deg)
+                    .to_radians()
+                    .cos()
+                    .abs()
+            })
             .collect();
         let row_dx_m: Vec<f64> = (0..ny).map(|j| grid.row_dx_m(j)).collect();
         let dy = grid.dy_m();
@@ -942,222 +1052,101 @@ impl TimeStepper {
             let v_in: &[f64] = &grid.v_ms;
             let h: &[f64] = &grid.h_m;
 
-            // Continuity update: rows in parallel.
             scratch
                 .eta
                 .par_chunks_mut(nx)
+                .zip(scratch.u.par_chunks_mut(nx))
+                .zip(scratch.v.par_chunks_mut(nx))
                 .enumerate()
-                .for_each(|(j, row)| {
+                .for_each(|(j, ((eta_row, u_row), v_row))| {
                     let dx = row_dx_m[j];
                     let cos_lat = row_cos_lat[j];
                     for i in 0..nx {
-                        // Dry cells stay dry — η pinned to 0. Prevents the
-                        // "slow spread halo" over continental interiors when
-                        // simulate_grid substitutes 1 m for land bathymetry.
-                        // Runs BEFORE the boundary fall-through so a land-on-
-                        // the-rim cell can't leak a residual IC amplitude.
-                        if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
-                            row[i] = 0.0;
-                            continue;
-                        }
+                        let k = idx(i, j, nx);
                         if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                            row[i] = eta_old[idx(i, j, nx)];
-                            continue;
-                        }
-                        let h_e = h[idx(i + 1, j, nx)];
-                        let h_w = h[idx(i - 1, j, nx)];
-                        let h_n = h[idx(i, j + 1, nx)];
-                        let h_s = h[idx(i, j - 1, nx)];
-                        // Land-neighbour flux substitution: treat dry cells as
-                        // reflective walls — zero the contributing flux term
-                        // rather than letting an η_land × u_water product
-                        // smear amplitude onto land.
-                        let eta_e = if h_e > LAND_DEPTH_THRESHOLD_M {
-                            eta_old[idx(i + 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let eta_w = if h_w > LAND_DEPTH_THRESHOLD_M {
-                            eta_old[idx(i - 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let eta_n = if h_n > LAND_DEPTH_THRESHOLD_M {
-                            eta_old[idx(i, j + 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let eta_s = if h_s > LAND_DEPTH_THRESHOLD_M {
-                            eta_old[idx(i, j - 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let u_e = if h_e > LAND_DEPTH_THRESHOLD_M {
-                            u_in[idx(i + 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let u_w = if h_w > LAND_DEPTH_THRESHOLD_M {
-                            u_in[idx(i - 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let v_n = if h_n > LAND_DEPTH_THRESHOLD_M {
-                            v_in[idx(i, j + 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let v_s = if h_s > LAND_DEPTH_THRESHOLD_M {
-                            v_in[idx(i, j - 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let flux_x = ((h_e + eta_e).max(0.0) * u_e - (h_w + eta_w).max(0.0) * u_w)
-                            / (2.0 * dx);
-                        // On a sphere the north/south face length scales with
-                        // cos(latitude). Weighting the neighbour fluxes before
-                        // dividing by the current row's cosine makes this a
-                        // conservative divergence under spherical cell areas.
-                        let flux_y = ((h_n + eta_n).max(0.0) * v_n * row_cos_lat[j + 1]
-                            - (h_s + eta_s).max(0.0) * v_s * row_cos_lat[j - 1])
-                            / (2.0 * dy * cos_lat);
-                        row[i] = eta_old[idx(i, j, nx)] - dt * (flux_x + flux_y);
-                    }
-                });
-
-            // Momentum update: rows in parallel. Use the PRE-STEP η (eta_old)
-            // for the pressure gradient so CPU matches the GPU leapfrog kernel
-            // (simultaneous update — Mader 1988, Kowalik & Murty 1993).
-            let eta_ref: &[f64] = eta_old;
-            scratch
-                .u
-                .par_chunks_mut(nx)
-                .zip(scratch.v.par_chunks_mut(nx))
-                .enumerate()
-                .for_each(|(j, (u_row, v_row))| {
-                    let dx = row_dx_m[j];
-                    for i in 0..nx {
-                        // Dry cells carry no momentum (land + rim land both go
-                        // to 0 before the boundary fall-through).
-                        if h[idx(i, j, nx)] <= LAND_DEPTH_THRESHOLD_M {
+                            eta_row[i] = eta_old[k];
                             u_row[i] = 0.0;
                             v_row[i] = 0.0;
                             continue;
                         }
-                        if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                        let east = idx(i + 1, j, nx);
+                        let west = idx(i - 1, j, nx);
+                        let north = idx(i, j + 1, nx);
+                        let south = idx(i, j - 1, nx);
+                        let flux_east = hydrostatic_face_flux(
+                            h[k], eta_old[k], u_in[k], v_in[k], h[east], eta_old[east],
+                            u_in[east], v_in[east], nonlinear,
+                        );
+                        let flux_west = hydrostatic_face_flux(
+                            h[west], eta_old[west], u_in[west], v_in[west], h[k], eta_old[k],
+                            u_in[k], v_in[k], nonlinear,
+                        );
+                        let flux_north = hydrostatic_face_flux(
+                            h[k], eta_old[k], v_in[k], u_in[k], h[north], eta_old[north],
+                            v_in[north], u_in[north], nonlinear,
+                        );
+                        let flux_south = hydrostatic_face_flux(
+                            h[south], eta_old[south], v_in[south], u_in[south], h[k], eta_old[k],
+                            v_in[k], u_in[k], nonlinear,
+                        );
+
+                        let divergence_mass_x = (flux_east.mass - flux_west.mass) / dx;
+                        let divergence_mass_y = (flux_north.mass * face_cos_lat[j + 1]
+                            - flux_south.mass * face_cos_lat[j])
+                            / (dy * cos_lat);
+                        let current_depth = total_depth_m(h[k], eta_old[k]);
+                        let updated_depth = nonnegative_depth(
+                            current_depth - dt * (divergence_mass_x + divergence_mass_y),
+                        );
+                        eta_row[i] = updated_depth - h[k];
+                        if updated_depth <= WET_DEPTH_EPSILON_M {
                             u_row[i] = 0.0;
                             v_row[i] = 0.0;
                             continue;
                         }
-                        let eta_e = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            eta_ref[idx(i + 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let eta_w = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            eta_ref[idx(i - 1, j, nx)]
-                        } else {
-                            0.0
-                        };
-                        let eta_n = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            eta_ref[idx(i, j + 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let eta_s = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                            eta_ref[idx(i, j - 1, nx)]
-                        } else {
-                            0.0
-                        };
-                        let dnedx = (eta_e - eta_w) / (2.0 * dx);
-                        let dnedy = (eta_n - eta_s) / (2.0 * dy);
-                        let h_total = (h[idx(i, j, nx)] + eta_ref[idx(i, j, nx)]).max(0.01);
-                        let u = u_in[idx(i, j, nx)];
-                        let v = v_in[idx(i, j, nx)];
 
-                        // F4-02 Nonlinear momentum advection: (u·∇)u with
-                        // first-order upwind differencing for stability across
-                        // the steepening shock front. Land neighbours
-                        // contribute zero velocity (already-masked by the
-                        // continuity step). Linear mode skips the advection
-                        // for the validation harness Stoker comparison.
-                        let (adv_u, adv_v) = if nonlinear {
-                            let u_east = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                u_in[idx(i + 1, j, nx)]
-                            } else {
-                                0.0
-                            };
-                            let u_west = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                u_in[idx(i - 1, j, nx)]
-                            } else {
-                                0.0
-                            };
-                            let u_north = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                u_in[idx(i, j + 1, nx)]
-                            } else {
-                                0.0
-                            };
-                            let u_south = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                u_in[idx(i, j - 1, nx)]
-                            } else {
-                                0.0
-                            };
-                            let v_east = if h[idx(i + 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                v_in[idx(i + 1, j, nx)]
-                            } else {
-                                0.0
-                            };
-                            let v_west = if h[idx(i - 1, j, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                v_in[idx(i - 1, j, nx)]
-                            } else {
-                                0.0
-                            };
-                            let v_north = if h[idx(i, j + 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                v_in[idx(i, j + 1, nx)]
-                            } else {
-                                0.0
-                            };
-                            let v_south = if h[idx(i, j - 1, nx)] > LAND_DEPTH_THRESHOLD_M {
-                                v_in[idx(i, j - 1, nx)]
-                            } else {
-                                0.0
-                            };
-                            // Upwind: take the backward gradient when the
-                            // velocity points east/north, the forward gradient
-                            // when it points west/south.
-                            let dudx_up = if u >= 0.0 {
-                                (u - u_west) / dx
-                            } else {
-                                (u_east - u) / dx
-                            };
-                            let dudy_up = if v >= 0.0 {
-                                (u - u_south) / dy
-                            } else {
-                                (u_north - u) / dy
-                            };
-                            let dvdx_up = if u >= 0.0 {
-                                (v - v_west) / dx
-                            } else {
-                                (v_east - v) / dx
-                            };
-                            let dvdy_up = if v >= 0.0 {
-                                (v - v_south) / dy
-                            } else {
-                                (v_north - v) / dy
-                            };
+                        let current_u = if current_depth > WET_DEPTH_EPSILON_M {
+                            u_in[k]
+                        } else {
+                            0.0
+                        };
+                        let current_v = if current_depth > WET_DEPTH_EPSILON_M {
+                            v_in[k]
+                        } else {
+                            0.0
+                        };
+                        let current_qx = current_depth * current_u;
+                        let current_qy = current_depth * current_v;
+                        let divergence_qx_x = (flux_east.normal_left - flux_west.normal_right) / dx;
+                        let divergence_qx_y = (flux_north.tangential * face_cos_lat[j + 1]
+                            - flux_south.tangential * face_cos_lat[j])
+                            / (dy * cos_lat);
+                        let divergence_qy_x = (flux_east.tangential - flux_west.tangential) / dx;
+                        let divergence_qy_y = (flux_north.normal_left * face_cos_lat[j + 1]
+                            - flux_south.normal_right * face_cos_lat[j])
+                            / (dy * cos_lat);
+                        let pressure_metric = 0.5
+                            * g
+                            * current_depth
+                            * current_depth
+                            * (face_cos_lat[j + 1] - face_cos_lat[j])
+                            / (dy * cos_lat);
+                        let mut next_u = (current_qx - dt * (divergence_qx_x + divergence_qx_y))
+                            / updated_depth;
+                        let mut next_v = (current_qy
+                            - dt * (divergence_qy_x + divergence_qy_y - pressure_metric))
+                            / updated_depth;
+                        if nonlinear {
                             let tan_over_radius = row_lat_rad[j].tan() / R_EARTH_M;
-                            (
-                                u * dudx_up + v * dudy_up - u * v * tan_over_radius,
-                                u * dvdx_up + v * dvdy_up + u * u * tan_over_radius,
-                            )
-                        } else {
-                            (0.0, 0.0)
-                        };
-
-                        let speed = (u * u + v * v).sqrt();
-                        let fric = g * n2 * speed / h_total.powf(4.0 / 3.0);
-                        u_row[i] = u - dt * (adv_u + g * dnedx + fric * u);
-                        v_row[i] = v - dt * (adv_v + g * dnedy + fric * v);
+                            next_u += dt * next_u * next_v * tan_over_radius;
+                            next_v -= dt * next_u * next_u * tan_over_radius;
+                        }
+                        let speed = (next_u * next_u + next_v * next_v).sqrt();
+                        let friction = g * n2 * speed
+                            / updated_depth.max(WET_DEPTH_EPSILON_M).powf(4.0 / 3.0);
+                        let damping = 1.0 + dt * friction;
+                        u_row[i] = next_u / damping;
+                        v_row[i] = next_v / damping;
                     }
                 });
         } // end borrow scope for grid.{eta_m, u_ms, v_ms, h_m}
@@ -1172,6 +1161,19 @@ impl TimeStepper {
                 .min(ny.saturating_sub(1) / 2);
             if w > 0 {
                 apply_sponge(&mut scratch.eta, &mut scratch.u, &mut scratch.v, nx, ny, w);
+            }
+        }
+
+        // Sponge damping and finite-precision roundoff must not leave a
+        // negative water column or momentum in a dry cell.
+        for k in 0..n {
+            let raw_depth = grid.h_m[k] + scratch.eta[k];
+            if raw_depth.is_finite() && raw_depth < 0.0 {
+                scratch.eta[k] = -grid.h_m[k];
+            }
+            if total_depth_m(grid.h_m[k], scratch.eta[k]) <= WET_DEPTH_EPSILON_M {
+                scratch.u[k] = 0.0;
+                scratch.v[k] = 0.0;
             }
         }
 
@@ -1238,7 +1240,7 @@ fn apply_sponge(eta: &mut [f64], u: &mut [f64], v: &mut [f64], nx: usize, ny: us
     }
 }
 
-/// Hard cap on total leapfrog steps. Protects us against pathological
+/// Hard cap on total finite-volume steps. Protects us against pathological
 /// inputs (e.g. `t_end_s = 24h` paired with a `dt_s` driven absurdly low
 /// by an extreme bathymetry corner case) that would otherwise wedge the
 /// solver thread for minutes.
@@ -1386,8 +1388,8 @@ mod tests {
             .with_boundary(BoundaryMode::ZeroFlux)
             .step(&mut grid, 20);
         assert!(grid.eta_m.iter().all(|value| *value == 0.0));
-        assert!(grid.u_ms.iter().all(|value| *value == 0.0));
-        assert!(grid.v_ms.iter().all(|value| *value == 0.0));
+        assert!(grid.u_ms.iter().all(|value| value.abs() < 1.0e-12));
+        assert!(grid.v_ms.iter().all(|value| value.abs() < 1.0e-12));
     }
 
     #[test]
@@ -1547,7 +1549,7 @@ mod tests {
     /// Smoke test: with uniform 4 km bathymetry, a 1 m Gaussian IC at the
     /// origin should propagate outward — after a few minutes the central
     /// amplitude drops and the ring spreads. Conservation isn't perfect for
-    /// forward-Euler leapfrog, but the wavefront should advance at roughly
+    /// first-order Rusanov flux, but the wavefront should advance at roughly
     /// √(gh) ≈ 198 m/s.
     #[test]
     fn flat_ocean_wave_propagates_outward() {
@@ -1654,39 +1656,111 @@ mod tests {
         assert_same(&fields_12.3, &fields_240.3);
     }
 
-    /// I-V01 — land cells (h <= LAND_DEPTH_THRESHOLD_M) must stay dry
-    /// over the whole simulation. Mock a "continent" as a 1-m-deep patch
-    /// in the western half of an otherwise 4-km-deep ocean and inject a
-    /// Gaussian in the east; after 10 minutes the western (land) cells
-    /// must remain at η = 0 instead of the slow "halo" we saw in v0.2.x.
     #[test]
-    fn land_cells_stay_dry() {
-        let mut g = SwGrid::new(-5.0, -5.0, 5.0, 5.0, 0.25, 0.25);
-        g.fill_uniform_depth(4_000.0);
-        // Carve out a "continent" in the western half (i < nx/2): depth 1 m.
+    fn variable_bathymetry_and_dry_land_preserve_still_water_exactly() {
+        let mut g = SwGrid::new(-5.0, -2.0, 5.0, 2.0, 0.25, 0.25);
         for j in 0..g.ny {
-            for i in 0..g.nx / 2 {
-                g.h_m[idx(i, j, g.nx)] = 1.0;
+            for i in 0..g.nx {
+                g.h_m[idx(i, j, g.nx)] = if i < g.nx / 4 {
+                    0.0
+                } else {
+                    25.0 + (i - g.nx / 4) as f64 * 75.0
+                };
             }
         }
-        g.inject_gaussian(0.0, 2.5, 1.0, 50_000.0); // source on the east side
         let dt = g.recommended_dt_s(0.4);
-        let stepper = TimeStepper::new(dt);
-        stepper.step(&mut g, ((600.0 / dt).round() as usize).max(2));
+        TimeStepper::new(dt)
+            .with_boundary(BoundaryMode::ZeroFlux)
+            .step(&mut g, 100);
 
-        // Every western (land) cell stays at exactly 0.0 — the only path
-        // to nonzero amplitude is the leapfrog update, which is masked
-        // off for h <= LAND_DEPTH_THRESHOLD_M.
+        assert!(g.eta_m.iter().all(|value| *value == 0.0));
+        assert!(g.u_ms.iter().all(|value| value.abs() < 1.0e-12));
+        assert!(g.v_ms.iter().all(|value| value.abs() < 1.0e-12));
+        assert_eq!(
+            g.wet_mask_bits().iter().map(|byte| byte.count_ones()).sum::<u32>(),
+            (g.ny * (g.nx - g.nx / 4)) as u32,
+        );
+    }
+
+    #[test]
+    fn dry_bed_dam_break_advances_without_negative_depth_or_rollback() {
+        let mut g = SwGrid::new(-3.2, -0.2, 3.2, 0.2, 0.1, 0.1);
+        g.fill_uniform_depth(0.0);
         for j in 0..g.ny {
             for i in 0..g.nx / 2 {
-                let v = g.eta_m[idx(i, j, g.nx)];
-                assert_eq!(
-                    v, 0.0,
-                    "land cell ({}, {}) bled wave amplitude: {}",
-                    i, j, v
-                );
+                g.eta_m[idx(i, j, g.nx)] = 10.0;
             }
         }
+        let initial_wet = g
+            .wet_mask_bits()
+            .iter()
+            .map(|byte| byte.count_ones())
+            .sum::<u32>();
+        let baseline = quality::QualityBaseline::capture(&g, BoundaryMode::ZeroFlux);
+        let dt = g.recommended_dt_s(0.2);
+        let result = TimeStepper::new(dt)
+            .with_boundary(BoundaryMode::ZeroFlux)
+            .with_mode(SolverMode::Linear)
+            .step_cancellable_checked(&mut g, 30, None, &baseline, &mut |_| {});
+
+        assert!(result.is_ok(), "dry-bed step was rejected: {result:?}");
+        assert!(
+            g.h_m
+                .iter()
+                .zip(&g.eta_m)
+                .all(|(&h, &eta)| h + eta >= -1.0e-12)
+        );
+        let final_wet = g
+            .wet_mask_bits()
+            .iter()
+            .map(|byte| byte.count_ones())
+            .sum::<u32>();
+        assert!(final_wet > initial_wet, "front did not wet a dry cell");
+        assert!(
+            (g.nx / 2..g.nx).any(|i| total_depth_m(g.h_m[idx(i, g.ny / 2, g.nx)], g.eta_m[idx(i, g.ny / 2, g.nx)]) > WET_DEPTH_EPSILON_M),
+            "front never crossed the initial dam"
+        );
+        let quality = baseline.assess(&g, dt);
+        assert!(quality.failure.is_none(), "{:?}", quality.failure);
+        assert_eq!(quality.rejected_steps, 0);
+    }
+
+    #[test]
+    fn translating_shallow_slug_advances_and_recedes_without_negative_depth() {
+        let mut g = SwGrid::new(-4.0, -0.2, 4.0, 0.2, 0.1, 0.1);
+        g.fill_uniform_depth(0.0);
+        let j = g.ny / 2;
+        for i in 12..20 {
+            let k = idx(i, j, g.nx);
+            g.eta_m[k] = 0.2;
+            g.u_ms[k] = 0.5;
+        }
+        let dt = g.recommended_dt_s(0.15);
+        let mut remained_nonnegative = true;
+        let mut front_advanced = false;
+        TimeStepper::new(dt)
+            .with_boundary(BoundaryMode::ZeroFlux)
+            .step_cancellable_observed(&mut g, 800, None, &mut |state| {
+                remained_nonnegative &= state
+                    .h_m
+                    .iter()
+                    .zip(&state.eta_m)
+                    .all(|(&h, &eta)| h + eta >= -1.0e-12);
+                front_advanced |= (20..state.nx - 1).any(|i| {
+                    total_depth_m(
+                        state.h_m[idx(i, j, state.nx)],
+                        state.eta_m[idx(i, j, state.nx)],
+                    ) > WET_DEPTH_EPSILON_M
+                });
+            });
+
+        let tail_depth = total_depth_m(g.h_m[idx(12, j, g.nx)], g.eta_m[idx(12, j, g.nx)]);
+        assert!(
+            tail_depth <= WET_DEPTH_EPSILON_M,
+            "tail did not become dry: depth remained {tail_depth}"
+        );
+        assert!(front_advanced, "front never crossed the initial slug edge");
+        assert!(remained_nonnegative, "front created a negative depth");
     }
 
     /// F-V10 — sponge boundary should absorb outgoing waves so rim cells
@@ -1767,7 +1841,7 @@ mod tests {
         // Centre amplitude evolved in both — wave propagated.
         let lin_centre = g_lin.eta_m[idx(g_lin.nx / 2, g_lin.ny / 2, g_lin.nx)].abs();
         let non_centre = g_non.eta_m[idx(g_non.nx / 2, g_non.ny / 2, g_non.nx)].abs();
-        assert!(lin_centre < 0.09, "linear centre should have spread");
-        assert!(non_centre < 0.09, "nonlinear centre should have spread");
+        assert!(lin_centre < 0.09, "linear centre should have spread: {lin_centre}");
+        assert!(non_centre < 0.09, "nonlinear centre should have spread: {non_centre}");
     }
 }

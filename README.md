@@ -55,7 +55,7 @@ Existing tools each do one piece:
 ### Propagation
 
 - ✅ **Linear long-wave** (deep-ocean, fast preview).
-- ✅ **Shallow-water equations** — depth-averaged 2D leapfrog with `rayon`
+- ✅ **Shallow-water equations** — well-balanced, positivity-preserving 2D finite-volume solver with `rayon`
   row-parallel updates, Manning bottom friction, CFL-safe Δt, snapshots
   rendered as PNG overlays on the Cesium globe.
 - 🔲 **Boussinesq** for dispersive waves (impact-tsunami wavelengths shorter than ocean depth — important for Ward–Asphaug regime).

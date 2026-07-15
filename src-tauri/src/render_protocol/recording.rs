@@ -335,13 +335,25 @@ pub fn golden_recording_packets() -> Result<Vec<Vec<u8>>, String> {
         let mut grid = SwGrid::new(-2.0, -1.5, 2.0, 1.5, 1.0, 1.0);
         for index in 0..12 {
             grid.h_m[index] = if index == 0 {
-                1.0
+                0.0
             } else {
                 100.0 + index as f64 * 25.0
             };
-            grid.eta_m[index] = tick as f64 * 0.25 + (index as f64 - 5.5) * 0.01;
-            grid.u_ms[index] = tick as f64 * 0.1 + index as f64 * 0.001;
-            grid.v_ms[index] = -(tick as f64 * 0.05) - index as f64 * 0.002;
+            grid.eta_m[index] = if index == 0 {
+                tick as f64 * 0.25
+            } else {
+                tick as f64 * 0.25 + (index as f64 - 5.5) * 0.01
+            };
+            grid.u_ms[index] = if index == 0 {
+                0.0
+            } else {
+                tick as f64 * 0.1 + index as f64 * 0.001
+            };
+            grid.v_ms[index] = if index == 0 {
+                0.0
+            } else {
+                -(tick as f64 * 0.05) - index as f64 * 0.002
+            };
         }
         grid.step_index = tick;
         grid.t_s = tick as f64 * 0.5;

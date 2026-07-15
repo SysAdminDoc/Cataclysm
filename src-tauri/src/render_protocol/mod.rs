@@ -136,7 +136,11 @@ mod tests {
                 .iter()
                 .find(|field| field.semantic == FieldSemanticV1::WetMask)
                 .unwrap();
-            assert_eq!(decoded.payload[wet.byte_offset as usize] & 1, 0);
+            assert_eq!(
+                decoded.payload[wet.byte_offset as usize] & 1,
+                u8::from(expected_tick > 0),
+                "golden fixture's first cell should wet after frame zero"
+            );
         }
     }
 

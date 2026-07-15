@@ -1112,7 +1112,7 @@ pub struct SimulateGridResponse {
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
-    /// F4-01 — `true` when the SWE leapfrog ran on the wgpu GPU
+    /// F4-01 — `true` when the SWE finite-volume solver ran on the wgpu GPU
     /// path, `false` for the CPU `rayon` path. Always `false` on
     /// builds compiled without `--features gpu`. Frontend uses this
     /// to surface a "ran on GPU" badge in the playback header.
@@ -1152,7 +1152,7 @@ const SWE_MAX_T_END_S: f64 = 24.0 * 3600.0;
 const RUNUP_MAX_POINTS: usize = 2_000;
 /// Hard cap on wavefront sample count.
 const WAVEFRONT_MAX_SAMPLES: usize = 2_000;
-/// Minimum analytical-basin depth. Below this the leapfrog CFL and celerity
+/// Minimum analytical-basin depth. Below this the solver CFL and celerity
 /// become unrepresentative; the solver used to silently clamp requests up to
 /// this floor, diverging the simulated depth from the reported one.
 const SWE_MIN_MEAN_DEPTH_M: f64 = 50.0;
@@ -1407,15 +1407,9 @@ pub async fn simulate_grid(
         if req.use_real_bathymetry {
             grid.fill_bathymetry_from(|lat, lon| {
                 let d = crate::data::bathymetry::sample(lat, lon);
-                // Solver dislikes zero-depth (CFL = inf). Replace land cells
-                // with a tiny "wet" depth (1 m) so they effectively reflect
-                // the wave rather than acting as deep ocean. A future release
-                // will swap for proper wet/dry handling.
-                if d <= 0.0 {
-                    1.0
-                } else {
-                    d
-                }
+                // Zero is the dry-bed datum. The positivity-preserving solver
+                // can wet and retreat these cells without a synthetic depth.
+                d.max(0.0)
             });
         } else {
             grid.fill_uniform_depth(fallback_depth);
@@ -1472,10 +1466,9 @@ pub async fn simulate_grid(
         // F4-01 — when compiled with `--features gpu`, try the wgpu
         // dispatch path. Fall back to CPU cleanly if no adapter is
         // available (Linux CI, integrated-only laptops without
-        // Vulkan, etc.). Behaviour-identical for the linear-SWE
-        // leapfrog kernel; nonlinear advection (F4-02) is CPU-only
-        // for now, so when the user has selected a nonlinear-class
-        // scenario we stay on CPU even with the feature flag on.
+        // Vulkan, etc.). The finite-volume kernel has CPU/GPU parity for
+        // both linear and nonlinear transport; live runs request nonlinear
+        // mode on either backend.
         let quality_baseline = QualityBaseline::capture(
             &grid,
             crate::physics::solver::BoundaryMode::default_sponge(),
@@ -1589,7 +1582,7 @@ pub async fn simulate_grid_streaming(
             if req.use_real_bathymetry {
                 grid.fill_bathymetry_from(|lat, lon| {
                     let d = crate::data::bathymetry::sample(lat, lon);
-                    if d <= 0.0 { 1.0 } else { d }
+                    d.max(0.0)
                 });
             } else {
                 grid.fill_uniform_depth(fallback_depth);
