@@ -6,6 +6,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The Export popover now groups formats into Image, Replay, Share, and Data
+  sections with concise purpose copy and inline prerequisites for unavailable
+  actions.
 - Preset/source, coastal screening, attenuation, SWE, DART, saved-scenario,
   and point-inspection workflows now distinguish loading, valid-empty, current,
   stale, and failed derived outputs. Safe prior results remain visible with a

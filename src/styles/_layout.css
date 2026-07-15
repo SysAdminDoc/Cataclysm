@@ -333,21 +333,70 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   z-index: 1200;
   top: calc(100% + 8px);
   right: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(116px, 1fr));
-  gap: 6px;
-  width: 286px;
-  padding: 8px;
+  display: block;
+  width: min(390px, calc(100vw - 24px));
+  max-height: min(620px, calc(100vh - 76px));
+  overflow-y: auto;
+  padding: 10px;
   border: 1px solid var(--divider);
   border-radius: var(--r-md);
   background: var(--inspector-bg);
   box-shadow: var(--shadow-lg);
 }
 
+.app__export-group + .app__export-group {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--divider) 76%, transparent);
+}
+
+.app__export-group-header {
+  display: grid;
+  gap: 2px;
+  margin: 0 2px 7px;
+}
+
+.app__export-group-header strong {
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app__export-group-header span {
+  color: var(--subtext);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.app__export-group-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
 .app__export-panel .icon-button {
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  justify-content: stretch;
+  text-align: left;
   width: 100%;
   min-height: 36px;
+  white-space: normal;
+}
+
+.app__export-panel .icon-button__label {
+  align-self: center;
+}
+
+.app__export-panel .icon-button__reason {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  color: var(--subtext);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.3;
 }
 
 .icon-button {

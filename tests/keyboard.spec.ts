@@ -90,6 +90,11 @@ test.describe("Keyboard-only golden path", () => {
     await trigger.click();
     await expect(page.locator(".app__export-panel")).toBeVisible();
     await expect(page.locator(".app__export-panel")).toBeFocused();
+    await expect(page.getByRole("region", { name: "Image" })).toContainText("Capture the current analytical view");
+    await expect(page.getByRole("region", { name: "Replay" })).toContainText("Record the visible timeline");
+    await expect(page.getByRole("region", { name: "Share" })).toContainText("reproducible scenario link");
+    await expect(page.getByRole("region", { name: "Data" })).toContainText("interoperable GIS or Cesium files");
+    await expect(page.locator(".icon-button__reason").first()).toContainText("Requires:");
 
     await page.keyboard.press("Escape");
 

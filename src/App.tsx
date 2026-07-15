@@ -284,8 +284,34 @@ function ToolbarButton({
       type="button"
     >
       <ToolbarIcon name={icon} />
-      <span>{children}</span>
+      <span className="icon-button__label">{children}</span>
+      {variant === "export" && unavailable && disabledReason && (
+        <small className="icon-button__reason">Requires: {disabledReason}</small>
+      )}
     </button>
+  );
+}
+
+function ExportGroup({
+  id,
+  label,
+  description,
+  children,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  children: ReactNode;
+}) {
+  const headingId = `export-group-${id}`;
+  return (
+    <section className="app__export-group" aria-labelledby={headingId}>
+      <header className="app__export-group-header">
+        <strong id={headingId}>{label}</strong>
+        <span>{description}</span>
+      </header>
+      <div className="app__export-group-actions">{children}</div>
+    </section>
   );
 }
 
@@ -1269,6 +1295,11 @@ export default function App() {
                 }
               }}
             >
+            <ExportGroup
+              id="image"
+              label="Image"
+              description="Capture the current analytical view or comparison."
+            >
             <ToolbarButton
               icon="image"
               onClick={() => {
@@ -1306,6 +1337,12 @@ export default function App() {
                 Compare
               </ToolbarButton>
             )}
+            </ExportGroup>
+            <ExportGroup
+              id="share"
+              label="Share"
+              description="Create an attributed card or copy a reproducible scenario link."
+            >
             <ToolbarButton
               icon="share"
               onClick={() => {
@@ -1342,6 +1379,12 @@ export default function App() {
             >
               Link
             </ToolbarButton>
+            </ExportGroup>
+            <ExportGroup
+              id="replay"
+              label="Replay"
+              description="Record the visible timeline as a local media replay."
+            >
             <ToolbarButton
               icon="video"
               onClick={() => {
@@ -1367,6 +1410,12 @@ export default function App() {
             >
               {recording ? "Recording" : "Video"}
             </ToolbarButton>
+            </ExportGroup>
+            <ExportGroup
+              id="data"
+              label="Data"
+              description="Export accessible results and interoperable GIS or Cesium files."
+            >
             <ToolbarButton
               icon="text"
               onClick={() => {
@@ -1475,6 +1524,7 @@ export default function App() {
             >
               KML
             </ToolbarButton>
+            </ExportGroup>
             </div>}
           </div>
           <div className="app__command-group app__command-group--utility" role="group" aria-label="References and preferences">

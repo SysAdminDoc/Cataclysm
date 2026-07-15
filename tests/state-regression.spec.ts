@@ -198,7 +198,7 @@ for (const theme of THEMES) {
       await seedWorkspace(page, theme);
       await page.goto("/");
       await page.getByRole("button", { name: "Export", exact: true }).click();
-      await expect(page.getByRole("button", { name: "PNG", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: /^PNG/ })).toBeVisible();
       await captureState(page, theme, "export");
     });
 

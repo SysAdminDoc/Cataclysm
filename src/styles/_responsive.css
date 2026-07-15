@@ -149,8 +149,11 @@
     position: static;
     width: 100%;
     margin-top: 6px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     box-shadow: none;
+  }
+
+  .app__export-group-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .app__header-actions .icon-button {
@@ -309,6 +312,10 @@
   }
 
   .app__export-panel {
+    max-height: none;
+  }
+
+  .app__export-group-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
