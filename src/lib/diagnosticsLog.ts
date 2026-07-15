@@ -125,7 +125,7 @@ const CRASH_KEY = "tsunamisim.last_crash";
 export const CRASH_REPORT_CHANGED_EVENT = "tsunamisim:crash-report-changed";
 const CRASH_LOG_TAIL = 40;
 
-export type CrashSource = "react-boundary" | "window-error" | "unhandled-rejection";
+export type CrashSource = "react-boundary" | "window-error" | "unhandled-rejection" | "native-panic";
 
 export type CrashReport = {
   at: number;
@@ -135,7 +135,11 @@ export type CrashReport = {
   componentStack: string | null;
   recentLogs: LogEntry[];
   seen: boolean;
+  nativeRecordId?: string;
+  nativeAppVersion?: string;
 };
+
+type NativePanicRecord = import("./tauri").NativePanicRecord;
 
 /** Strip credentials and local filesystem locations before diagnostics cross a
  * persistence, clipboard, or download boundary. */
@@ -175,10 +179,15 @@ export function persistCrashReport(input: {
   name: string;
   message: string;
   componentStack?: string | null;
+  at?: number;
+  nativeRecordId?: string;
+  nativeAppVersion?: string;
 }): void {
   if (typeof localStorage === "undefined") return;
   const report: CrashReport = {
-    at: Date.now(),
+    at: typeof input.at === "number" && Number.isFinite(input.at) && input.at > 0
+      ? input.at
+      : Date.now(),
     source: input.source ?? "react-boundary",
     name: redactSensitive(input.name),
     message: redactSensitive(input.message),
@@ -189,6 +198,12 @@ export function persistCrashReport(input: {
     })),
     seen: false,
   };
+  if (typeof input.nativeRecordId === "string" && /^record-[A-Za-z0-9-]{1,89}$/.test(input.nativeRecordId)) {
+    report.nativeRecordId = input.nativeRecordId;
+  }
+  if (typeof input.nativeAppVersion === "string" && /^[0-9A-Za-z.+-]{1,64}$/.test(input.nativeAppVersion)) {
+    report.nativeAppVersion = input.nativeAppVersion;
+  }
   try {
     localStorage.setItem(CRASH_KEY, JSON.stringify(report));
     notifyCrashReportChanged();
@@ -204,7 +219,9 @@ export function readPersistedCrashReport(): CrashReport | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<CrashReport>;
     if (typeof parsed?.message !== "string" || typeof parsed.name !== "string") return null;
-    const source: CrashSource = parsed.source === "window-error" || parsed.source === "unhandled-rejection"
+    const source: CrashSource = parsed.source === "window-error"
+      || parsed.source === "unhandled-rejection"
+      || parsed.source === "native-panic"
       ? parsed.source
       : "react-boundary";
     const recentLogs = Array.isArray(parsed.recentLogs)
@@ -222,7 +239,7 @@ export function readPersistedCrashReport(): CrashReport | null {
           }];
         })
       : [];
-    return {
+    const report: CrashReport = {
       at: typeof parsed.at === "number" && Number.isFinite(parsed.at) ? parsed.at : 0,
       source,
       name: redactSensitive(parsed.name),
@@ -233,8 +250,96 @@ export function readPersistedCrashReport(): CrashReport | null {
       recentLogs,
       seen: parsed.seen === true,
     };
+    if (source === "native-panic"
+      && typeof parsed.nativeRecordId === "string"
+      && /^record-[A-Za-z0-9-]{1,89}$/.test(parsed.nativeRecordId)) {
+      report.nativeRecordId = parsed.nativeRecordId;
+    }
+    if (source === "native-panic"
+      && typeof parsed.nativeAppVersion === "string"
+      && /^[0-9A-Za-z.+-]{1,64}$/.test(parsed.nativeAppVersion)) {
+      report.nativeAppVersion = parsed.nativeAppVersion;
+    }
+    return report;
   } catch {
     return null;
+  }
+}
+
+function isNativePanicRecord(value: unknown): value is NativePanicRecord {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<NativePanicRecord>;
+  const location = candidate.location;
+  return candidate.schema_version === 1
+    && typeof candidate.id === "string"
+    && /^record-[A-Za-z0-9-]{1,89}$/.test(candidate.id)
+    && typeof candidate.app_version === "string"
+    && /^[0-9A-Za-z.+-]{1,64}$/.test(candidate.app_version)
+    && typeof candidate.timestamp_ms === "number"
+    && Number.isFinite(candidate.timestamp_ms)
+    && candidate.timestamp_ms > 0
+    && typeof candidate.message === "string"
+    && candidate.message.length > 0
+    && candidate.message.length <= 513
+    && (location === null || (
+      typeof location === "object"
+      && typeof location.file === "string"
+      && /^[^\\/]{1,128}$/.test(location.file)
+      && Number.isSafeInteger(location.line)
+      && Number.isSafeInteger(location.column)
+    ));
+}
+
+async function fetchNativePanicRecord(): Promise<NativePanicRecord | null> {
+  const { api } = await import("./tauri");
+  return api.nativePanicRecord();
+}
+
+async function acknowledgeNativeReport(report: CrashReport): Promise<void> {
+  if (report.source !== "native-panic" || !report.nativeRecordId) return;
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return;
+  try {
+    const { api } = await import("./tauri");
+    await api.acknowledgeNativePanicRecord(report.nativeRecordId);
+  } catch (error) {
+    console.warn("[diagnostics] failed to acknowledge native panic record", error);
+  }
+}
+
+/** Import a validated native panic into the existing local recovery notice.
+ * An unseen browser/React report wins, and the native record stays on disk for
+ * a later launch rather than silently overwriting evidence. */
+export async function importNativePanicReport(
+  fetchRecord?: () => Promise<NativePanicRecord | null>,
+): Promise<boolean> {
+  if (!fetchRecord && (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window))) {
+    return false;
+  }
+  try {
+    const record = await (fetchRecord ?? fetchNativePanicRecord)();
+    if (!isNativePanicRecord(record)) return false;
+    const current = readPersistedCrashReport();
+    if (current?.source === "native-panic" && current.nativeRecordId === record.id) {
+      if (current.seen) void acknowledgeNativeReport(current);
+      return false;
+    }
+    if (current && !current.seen) return false;
+    const location = record.location
+      ? `${record.location.file}:${record.location.line}:${record.location.column}`
+      : null;
+    persistCrashReport({
+      source: "native-panic",
+      name: "RustPanic",
+      message: record.message,
+      componentStack: location,
+      at: record.timestamp_ms,
+      nativeRecordId: record.id,
+      nativeAppVersion: record.app_version,
+    });
+    return true;
+  } catch (error) {
+    console.warn("[diagnostics] failed to import native panic record", error);
+    return false;
   }
 }
 
@@ -242,10 +347,15 @@ export function readPersistedCrashReport(): CrashReport | null {
  * does not silently erase evidence of the prior crash. */
 export function markCrashReportSeen(): void {
   const report = readPersistedCrashReport();
-  if (!report || report.seen) return;
+  if (!report) return;
+  if (report.seen) {
+    void acknowledgeNativeReport(report);
+    return;
+  }
   try {
     localStorage.setItem(CRASH_KEY, JSON.stringify({ ...report, seen: true }));
     notifyCrashReportChanged();
+    void acknowledgeNativeReport(report);
   } catch {
     // ignore
   }
@@ -253,15 +363,20 @@ export function markCrashReportSeen(): void {
 
 export function clearPersistedCrashReport(): void {
   if (typeof localStorage === "undefined") return;
+  const report = readPersistedCrashReport();
   try {
     localStorage.removeItem(CRASH_KEY);
     notifyCrashReportChanged();
+    if (report) void acknowledgeNativeReport(report);
   } catch {
     // ignore
   }
 }
 
-export function persistUnhandledFailure(source: Exclude<CrashSource, "react-boundary">, value: unknown): void {
+export function persistUnhandledFailure(
+  source: Extract<CrashSource, "window-error" | "unhandled-rejection">,
+  value: unknown,
+): void {
   const name = value instanceof Error ? value.name : source === "window-error" ? "WindowError" : "UnhandledRejection";
   const message = value instanceof Error ? value.message : formatLogArg(value);
   persistCrashReport({ source, name, message });

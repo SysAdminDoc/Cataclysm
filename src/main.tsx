@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { primeCesiumToken } from "./lib/cesium";
-import { installGlobalCrashHandlers } from "./lib/diagnosticsLog";
+import { importNativePanicReport, installGlobalCrashHandlers } from "./lib/diagnosticsLog";
 import { settings } from "./lib/settings";
 import "./styles.css";
 
@@ -29,6 +29,7 @@ if (typeof window !== "undefined") {
       .catch((err) => console.warn("[settings] failed to refresh Cesium token", err));
   });
   installGlobalCrashHandlers(window);
+  void importNativePanicReport();
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

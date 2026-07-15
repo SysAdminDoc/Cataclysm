@@ -10,6 +10,7 @@ import {
   parseRegistryOutput,
   runtimeErrorLines,
   sanitizeLog,
+  validateNativePanicRecord,
 } from "./installed-release-smoke.mjs";
 
 test("registry output accepts empty, singleton, and array payloads", () => {
@@ -96,4 +97,28 @@ test("runtime error scan is narrow to renderer and protocol failures", () => {
     "unknown error: net::ERR_FAILED",
     "channel closed while dispatching IPC",
   ]);
+});
+
+test("native panic records are bounded, versioned, and path-free", () => {
+  const valid = {
+    schema_version: 1,
+    id: "record-1720000000000-42-0",
+    app_version: "0.10.4",
+    timestamp_ms: 1_720_000_000_000,
+    message: "native panic ([redacted-message])",
+    location: { file: "solver.rs", line: 42, column: 7 },
+  };
+  assert.equal(validateNativePanicRecord(valid, "0.10.4"), valid);
+  assert.throws(
+    () => validateNativePanicRecord({ ...valid, schema_version: 2 }, "0.10.4"),
+    /schema/,
+  );
+  assert.throws(
+    () => validateNativePanicRecord({ ...valid, message: String.raw`panic at C:\Users\private\scenario.json` }, "0.10.4"),
+    /sensitive/,
+  );
+  assert.throws(
+    () => validateNativePanicRecord({ ...valid, location: { file: "src/solver.rs", line: 1, column: 1 } }, "0.10.4"),
+    /location/,
+  );
 });

@@ -36,6 +36,19 @@ export type RenderProtocolCapabilities = {
   maximum_cells: number;
 };
 
+export type NativePanicRecord = {
+  schema_version: number;
+  id: string;
+  app_version: string;
+  timestamp_ms: number;
+  message: string;
+  location: {
+    file: string;
+    line: number;
+    column: number;
+  } | null;
+};
+
 let simulationRunSequence = 0;
 
 type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
@@ -360,6 +373,12 @@ export const api = {
     solver_memory_budget_bytes: number;
   }> {
     return invoke("diagnostics_bundle");
+  },
+  nativePanicRecord(): Promise<NativePanicRecord | null> {
+    return invoke<NativePanicRecord | null>("native_panic_record");
+  },
+  acknowledgeNativePanicRecord(recordId: string): Promise<void> {
+    return invoke<void>("acknowledge_native_panic_record", { recordId });
   },
   simulateGridStreaming(
     runId: string,

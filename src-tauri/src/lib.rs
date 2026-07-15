@@ -5,17 +5,53 @@
 
 pub mod commands;
 pub mod data;
+pub mod native_diagnostics;
 pub mod physics;
 pub mod presets;
 pub mod render_protocol;
 
 use commands::*;
+use native_diagnostics::{
+    NativeDiagnosticsState, acknowledge_native_panic_record, install_native_panic_hook,
+    native_panic_record,
+};
+use std::path::PathBuf;
+use tauri::Manager;
+
+fn native_diagnostics_directory(app: &tauri::App) -> Result<PathBuf, String> {
+    if std::env::var("CATACLYSM_INSTALL_SMOKE_ISOLATED").as_deref() == Ok("1")
+        && std::env::var("CATACLYSM_NATIVE_PANIC_FIXTURE").as_deref() == Ok("1")
+        && let Some(path) = std::env::var_os("CATACLYSM_NATIVE_DIAGNOSTICS_DIR")
+    {
+        return Ok(PathBuf::from(path));
+    }
+    app.path()
+        .app_log_dir()
+        .map_err(|error| format!("failed to resolve application log directory: {error}"))
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .setup(|app| {
+            let state = match native_diagnostics_directory(app) {
+                Ok(directory) => match install_native_panic_hook(directory.clone()) {
+                    Ok(()) => NativeDiagnosticsState::new(directory),
+                    Err(error) => {
+                        eprintln!("Cataclysm native panic persistence is unavailable: {error}");
+                        NativeDiagnosticsState::disabled()
+                    }
+                },
+                Err(error) => {
+                    eprintln!("Cataclysm native panic persistence is unavailable: {error}");
+                    NativeDiagnosticsState::disabled()
+                }
+            };
+            app.manage(state);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             asteroid_initial_conditions,
             nuclear_initial_conditions,
@@ -40,6 +76,8 @@ pub fn run() {
             simulate_nuclear_hazard,
             simulate_nuclear_hazard_render,
             diagnostics_bundle,
+            native_panic_record,
+            acknowledge_native_panic_record,
             keychain_get_token,
             keychain_set_token,
             cancel_simulation,

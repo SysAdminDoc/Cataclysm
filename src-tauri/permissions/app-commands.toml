@@ -44,6 +44,8 @@ identifier = "support-diagnostics"
 description = "Collect the redacted local diagnostics bundle exposed by the application backend."
 permissions = [
   "allow-diagnostics-bundle",
+  "allow-native-panic-record",
+  "allow-acknowledge-native-panic-record",
 ]
 
 [[set]]

@@ -5,6 +5,7 @@ import {
   readPersistedCrashReport,
   markCrashReportSeen,
   clearPersistedCrashReport,
+  importNativePanicReport,
   installGlobalCrashHandlers,
   serializeRedactedDiagnostics,
 } from "../diagnosticsLog";
@@ -114,6 +115,60 @@ describe("crash evidence store", () => {
   it("returns null after an explicit clear", () => {
     persistCrashReport({ name: "Error", message: "x" });
     clearPersistedCrashReport();
+    expect(readPersistedCrashReport()).toBeNull();
+  });
+
+  it("imports a validated native panic into the existing recovery store", async () => {
+    await expect(importNativePanicReport(async () => ({
+      schema_version: 1,
+      id: "record-1720000000000-42-0",
+      app_version: "0.10.4",
+      timestamp_ms: 1_720_000_000_000,
+      message: "native panic ([redacted-message])",
+      location: { file: "solver.rs", line: 42, column: 7 },
+    }))).resolves.toBe(true);
+
+    expect(readPersistedCrashReport()).toMatchObject({
+      at: 1_720_000_000_000,
+      source: "native-panic",
+      name: "RustPanic",
+      message: "native panic ([redacted-message])",
+      componentStack: "solver.rs:42:7",
+      seen: false,
+      nativeRecordId: "record-1720000000000-42-0",
+      nativeAppVersion: "0.10.4",
+    });
+  });
+
+  it("does not overwrite unseen evidence or reset an already reviewed native record", async () => {
+    const nativeRecord = {
+      schema_version: 1,
+      id: "record-1720000000000-42-0",
+      app_version: "0.10.4",
+      timestamp_ms: 1_720_000_000_000,
+      message: "native panic",
+      location: null,
+    } as const;
+    persistCrashReport({ source: "window-error", name: "Error", message: "keep me" });
+    await expect(importNativePanicReport(async () => nativeRecord)).resolves.toBe(false);
+    expect(readPersistedCrashReport()).toMatchObject({ source: "window-error", message: "keep me" });
+
+    clearPersistedCrashReport();
+    await importNativePanicReport(async () => nativeRecord);
+    markCrashReportSeen();
+    await expect(importNativePanicReport(async () => nativeRecord)).resolves.toBe(false);
+    expect(readPersistedCrashReport()).toMatchObject({ source: "native-panic", seen: true });
+  });
+
+  it("rejects malformed or future native panic records", async () => {
+    await expect(importNativePanicReport(async () => ({
+      schema_version: 2,
+      id: "record-1-1-0",
+      app_version: "0.10.4",
+      timestamp_ms: 1,
+      message: "future",
+      location: null,
+    }))).resolves.toBe(false);
     expect(readPersistedCrashReport()).toBeNull();
   });
 });

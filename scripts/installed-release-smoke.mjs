@@ -54,6 +54,28 @@ function invariant(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+export function validateNativePanicRecord(record, expectedVersion) {
+  invariant(record && typeof record === "object", "Native panic fixture did not emit an object record.");
+  invariant(record.schema_version === 1, `Unexpected native panic schema ${record.schema_version}.`);
+  invariant(/^record-[A-Za-z0-9-]{1,89}$/.test(record.id), "Native panic record id is invalid.");
+  invariant(record.app_version === expectedVersion, `Native panic record version ${record.app_version} does not match ${expectedVersion}.`);
+  invariant(Number.isSafeInteger(record.timestamp_ms) && record.timestamp_ms > 0, "Native panic timestamp is invalid.");
+  invariant(typeof record.message === "string" && record.message.length > 0 && record.message.length <= 513,
+    "Native panic message is missing or oversized.");
+  invariant(
+    !/(?:access[_-]?token|api[_-]?key|authorization|bearer\s|password|secret|scenario|request|environment|[A-Za-z]:[\\/]|\\\\|\/(?:Users|home|workspace)\/)/i.test(record.message),
+    "Native panic record exposed sensitive context.",
+  );
+  invariant(record.location === null || (
+    record.location
+    && typeof record.location.file === "string"
+    && /^[^\\/]{1,128}$/.test(record.location.file)
+    && Number.isSafeInteger(record.location.line)
+    && Number.isSafeInteger(record.location.column)
+  ), "Native panic location is invalid or contains a path.");
+  return record;
+}
+
 function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -294,6 +316,30 @@ function probeInstalledBinary(executablePath, expectedVersion, tempRoot) {
   return probe;
 }
 
+function exerciseNativePanicFixture(executablePath, expectedVersion, directory) {
+  mkdirSync(directory, { recursive: true });
+  const result = spawnSync(executablePath, ["--native-panic-fixture", directory], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      CATACLYSM_INSTALL_SMOKE_ISOLATED: "1",
+      CATACLYSM_NATIVE_PANIC_FIXTURE: "1",
+      CATACLYSM_NATIVE_DIAGNOSTICS_DIR: directory,
+    },
+    encoding: "utf8",
+    stdio: "pipe",
+    timeout: 120_000,
+    windowsHide: true,
+  });
+  invariant(!result.error, `Native panic fixture failed to execute: ${result.error?.message}`);
+  invariant(result.status !== 0 && result.status !== null, "Native panic fixture did not preserve a failing exit.");
+  const files = readdirSync(directory).filter((name) => name.endsWith(".json"));
+  invariant(files.length === 1, `Native panic fixture emitted ${files.length} active records; expected one.`);
+  const recordPath = path.join(directory, files[0]);
+  invariant(statSync(recordPath).size <= 4 * 1024, "Native panic fixture record exceeds 4 KiB.");
+  return validateNativePanicRecord(JSON.parse(readFileSync(recordPath, "utf8")), expectedVersion);
+}
+
 function waitForPort(port, child, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
@@ -497,8 +543,17 @@ async function applySettings(baseUrl, sessionId) {
   invariant(!alert, `Settings reported an error: ${alert}`);
 }
 
-async function keychainWriteSession(baseUrl, sessionId) {
+async function keychainWriteSession(baseUrl, sessionId, expectedNativeRecord) {
   await dismissFirstRun(baseUrl, sessionId);
+  await waitForText(baseUrl, sessionId, "A report from the previous failure is available.", 30_000);
+  const imported = await execute(baseUrl, sessionId, `
+    try { return JSON.parse(localStorage.getItem('tsunamisim.last_crash') || 'null'); }
+    catch { return null; }
+  `);
+  invariant(imported?.source === "native-panic", "Installed app did not import the native panic into crash recovery.");
+  invariant(imported?.nativeRecordId === expectedNativeRecord.id, "Installed app imported the wrong native panic record.");
+  invariant(imported?.nativeAppVersion === expectedNativeRecord.app_version, "Installed app lost the native panic version.");
+  invariant(imported?.seen === false, "Installed app marked the native panic reviewed before user review.");
   await installRuntimeErrorHooks(baseUrl, sessionId);
   await openSettings(baseUrl, sessionId);
   await setInputByLabel(baseUrl, sessionId, "Cesium ion token", KEYCHAIN_SENTINEL);
@@ -568,7 +623,15 @@ async function runTohokuJourney(baseUrl, sessionId, screenshotPath, expectedVers
   };
 }
 
-async function runWebdriverSession({ application, tauriDriverPath, edgeDriverPath, profileRoot, preview, action }) {
+async function runWebdriverSession({
+  application,
+  tauriDriverPath,
+  edgeDriverPath,
+  profileRoot,
+  preview,
+  nativeDiagnosticsDir,
+  action,
+}) {
   const port = 4544 + webdriverSessionSequence * 2;
   const nativePort = port + 1;
   webdriverSessionSequence += 1;
@@ -578,6 +641,9 @@ async function runWebdriverSession({ application, tauriDriverPath, edgeDriverPat
   const env = {
     ...process.env,
     WEBVIEW2_USER_DATA_FOLDER: path.join(profileRoot, "webview2"),
+    CATACLYSM_INSTALL_SMOKE_ISOLATED: "1",
+    CATACLYSM_NATIVE_PANIC_FIXTURE: "1",
+    CATACLYSM_NATIVE_DIAGNOSTICS_DIR: nativeDiagnosticsDir,
   };
   if (preview) env.WEBVIEW2_CHANNEL_SEARCH_KIND = "1";
   const driver = spawn(tauriDriverPath, [
@@ -631,7 +697,15 @@ async function runWebdriverSession({ application, tauriDriverPath, edgeDriverPat
   }
 }
 
-async function exerciseInstalledApplication({ executablePath, artifactRoot, profileRoot, preview, expectedVersion }) {
+async function exerciseInstalledApplication({
+  executablePath,
+  artifactRoot,
+  profileRoot,
+  preview,
+  expectedVersion,
+  nativeDiagnosticsDir,
+  nativeRecord,
+}) {
   const tauriDriverPath = executableFromPath("tauri-driver.exe", process.env.TAURI_DRIVER_PATH);
   const edgeDriverPath = executableFromPath("msedgedriver.exe", process.env.MSEDGEDRIVER_PATH);
   const allLogs = [];
@@ -641,7 +715,8 @@ async function exerciseInstalledApplication({ executablePath, artifactRoot, prof
     edgeDriverPath,
     profileRoot,
     preview,
-    action: keychainWriteSession,
+    nativeDiagnosticsDir,
+    action: (baseUrl, sessionId) => keychainWriteSession(baseUrl, sessionId, nativeRecord),
   });
   allLogs.push(...write.logs);
   const journey = await runWebdriverSession({
@@ -650,6 +725,7 @@ async function exerciseInstalledApplication({ executablePath, artifactRoot, prof
     edgeDriverPath,
     profileRoot,
     preview,
+    nativeDiagnosticsDir,
     action: async (baseUrl, sessionId) => {
       await keychainReadAndClear(baseUrl, sessionId);
       return runTohokuJourney(
@@ -661,12 +737,19 @@ async function exerciseInstalledApplication({ executablePath, artifactRoot, prof
     },
   });
   allLogs.push(...journey.logs);
+  await waitFor(
+    () => readdirSync(nativeDiagnosticsDir).every((name) => !name.endsWith(".json")),
+    "Native panic record remained active after explicit diagnostics review.",
+    30_000,
+  );
   const protocolErrors = runtimeErrorLines(allLogs);
   invariant(protocolErrors.length === 0, `tauri-driver/WebView2 emitted protocol errors:\n${protocolErrors.join("\n")}`);
   writeFileSync(path.join(artifactRoot, "webdriver.log"), `${sanitizeLog(allLogs.join("\n"))}\n`);
   return {
     ...journey.result,
     keychain_restart_roundtrip: true,
+    native_panic_imported: true,
+    native_panic_acknowledged: true,
     webview2_preview_preferred: preview,
   };
 }
@@ -710,12 +793,20 @@ export async function runInstalledReleaseSmoke(options = {}) {
           `${pkg.kind.toUpperCase()} registered version ${installed.entry.DisplayVersion}, expected ${expectedVersion}.`,
         );
         const probe = probeInstalledBinary(installed.executablePath, expectedVersion, packageTempRoot);
+        const nativeDiagnosticsDir = path.join(packageTempRoot, "native-diagnostics");
+        const nativeRecord = exerciseNativePanicFixture(
+          installed.executablePath,
+          expectedVersion,
+          nativeDiagnosticsDir,
+        );
         const journey = await exerciseInstalledApplication({
           executablePath: installed.executablePath,
           artifactRoot: packageArtifactRoot,
           profileRoot,
           preview: report.webview2_preview_preferred,
           expectedVersion,
+          nativeDiagnosticsDir,
+          nativeRecord,
         });
         report.packages.push({
           kind: pkg.kind,

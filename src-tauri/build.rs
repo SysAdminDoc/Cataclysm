@@ -26,6 +26,8 @@ fn main() {
         "simulate_nuclear_hazard",
         "simulate_nuclear_hazard_render",
         "diagnostics_bundle",
+        "native_panic_record",
+        "acknowledge_native_panic_record",
         "keychain_get_token",
         "keychain_set_token",
         "cancel_simulation",

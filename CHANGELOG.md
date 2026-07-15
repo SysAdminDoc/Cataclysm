@@ -69,6 +69,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   support bundle now redact credentials and local paths. Global errors survive
   reload, and the next successful launch offers the unseen report until the user
   explicitly inspects or clears it.
+- Native Rust panics now atomically retain one bounded, versioned, aggressively
+  redacted record in the local log directory. The next launch imports it into
+  the same recovery notice and support bundle as browser crashes, quarantines
+  malformed/future records, and removes valid evidence only after explicit
+  review or clearing; isolated MSI/NSIS journeys exercise the complete path.
 - The DART buoy sparkline now exposes its observed peak, current model value, and
   model-vs-observed arrival delta in its screen-reader label instead of a generic
   "sparkline" description.
