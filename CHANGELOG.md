@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Wave attenuation, DART comparison, and user-gauge charts now include concise
+  non-live summaries plus focusable disclosure tables with series, units,
+  extrema/thresholds, active selection, confidence, and provenance. Each table
+  can copy or export formula-safe CSV without changing the visual SVG or the
+  existing gauge export.
 - Scenario Builder and direct-hazard numeric fields now use one accessible
   number/slider primitive with distinct exact and coarse-control names, linked
   bounds, units, help, and errors. Invalid exact text remains editable with a

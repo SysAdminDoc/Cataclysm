@@ -101,6 +101,29 @@ for (const theme of THEMES) {
       for (const detail of ["Outcome", "Science", "Validation"]) {
         await page.getByRole("tab", { name: detail }).click();
         await expect(page.getByRole("tabpanel", { name: detail })).toBeVisible();
+        if (detail === "Science") {
+          const summary = page.locator(".chart-data__summary", { hasText: "Modeled decay spans" });
+          await expect(summary).toHaveAttribute("aria-live", "off");
+          await expect(page.getByRole("img", { name: /Modeled wave amplitude decay/ })).toHaveAttribute(
+            "aria-describedby",
+            await summary.getAttribute("id") ?? "missing-summary",
+          );
+          await page.getByText(/View wave attenuation data/).click();
+          const table = page.getByRole("region", { name: "wave attenuation data table" });
+          await table.focus();
+          await expect(table).toBeFocused();
+          await expect(table.getByRole("columnheader", { name: "Provenance" })).toBeVisible();
+          await expect(page.getByRole("button", { name: "Copy wave attenuation CSV" })).toBeVisible();
+        }
+        if (detail === "Validation") {
+          const firstBuoy = page.locator(".dart__buoy").first();
+          const summary = firstBuoy.locator(".chart-data__summary");
+          await expect(summary).toHaveAttribute("aria-live", "off");
+          await firstBuoy.locator("summary").click();
+          const table = firstBuoy.getByRole("region", { name: /DART comparison data table/ });
+          await expect(table.getByRole("rowheader", { name: "Observed DART water level" }).first()).toBeVisible();
+          await expect(table.getByRole("columnheader", { name: "Confidence" })).toBeVisible();
+        }
         await assertAccessiblePage(page);
       }
       await page.getByRole("button", { name: "Inspect", exact: true }).click();

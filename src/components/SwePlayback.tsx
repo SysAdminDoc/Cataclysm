@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { api, createSimulationRunId, isTauri } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
@@ -8,6 +8,7 @@ import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFiel
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
+import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -773,7 +774,12 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
                     </button>
                   </div>
                   {series && series.samples.length > 0 && (
-                    <GaugeSparkline samples={series.samples} />
+                    <GaugeSparkline
+                      name={g.name}
+                      samples={series.samples}
+                      activeTimeS={snapshots?.[activeIdx]?.time_s ?? playbackTimeS ?? series.samples.at(-1)?.time_s ?? 0}
+                      provenance={isTauri() ? "Rust SWE solver gauge_samples" : "Browser preview demo gauge sampler"}
+                    />
                   )}
                 </div>
               );
@@ -804,7 +810,18 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   );
 }
 
-function GaugeSparkline({ samples }: { samples: import("../types/scenario").GaugeSample[] }) {
+export function GaugeSparkline({
+  name,
+  samples,
+  activeTimeS,
+  provenance,
+}: {
+  name: string;
+  samples: import("../types/scenario").GaugeSample[];
+  activeTimeS: number;
+  provenance: string;
+}) {
+  const semanticId = useId();
   if (samples.length < 2) return null;
   const maxEta = Math.max(...samples.map((s) => Math.abs(s.eta_m)), 0.01);
   const w = 200;
@@ -818,23 +835,79 @@ function GaugeSparkline({ samples }: { samples: import("../types/scenario").Gaug
     })
     .join(" ");
   const peakEta = Math.max(...samples.map((s) => s.eta_m));
+  const troughEta = Math.min(...samples.map((s) => s.eta_m));
+  const peakIndex = samples.findIndex((sample) => sample.eta_m === peakEta);
+  const troughIndex = samples.findIndex((sample) => sample.eta_m === troughEta);
+  const activeIndex = samples.reduce(
+    (nearest, sample, index) => Math.abs(sample.time_s - activeTimeS) < Math.abs(samples[nearest].time_s - activeTimeS) ? index : nearest,
+    0,
+  );
+  const semanticRows: SemanticDataRow[] = [
+    ...samples.map((sample, index) => {
+      const markers = [
+        index === peakIndex ? "Maximum" : null,
+        index === troughIndex ? "Minimum" : null,
+        index === activeIndex ? "Nearest active timeline selection" : null,
+      ].filter(Boolean).join("; ") || "Sample";
+      return {
+        series: `${name} surface elevation`,
+        selection: `T+${sample.time_s.toFixed(0)} s`,
+        value: sample.eta_m.toPrecision(6),
+        unit: "m relative to still-water datum",
+        significance: markers,
+        confidence: "Illustrative Cataclysm SWE result",
+        provenance,
+      };
+    }),
+    {
+      series: "Still-water datum",
+      selection: "Reference threshold",
+      value: 0,
+      unit: "m surface elevation",
+      significance: "Zero crossing / reference datum",
+      confidence: "Model datum, not an alert threshold",
+      provenance,
+    },
+  ];
+  const active = samples[activeIndex];
+  const semanticSummary = `${name} has ${samples.length} ${provenance} samples from T+${samples[0].time_s.toFixed(0)} s to T+${samples.at(-1)!.time_s.toFixed(0)} s. Maximum ${peakEta.toFixed(2)} m; minimum ${troughEta.toFixed(2)} m; nearest sample to the active T+${activeTimeS.toFixed(0)} s selection is ${active.eta_m.toFixed(2)} m at T+${active.time_s.toFixed(0)} s. Values are illustrative surface elevation relative to the model still-water datum.`;
   return (
     <div className="swe__gauge-spark">
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        className="swe__gauge-svg"
-        aria-label="Gauge eta time series"
-      >
-        <line x1={pad} y1={h / 2} x2={w - pad} y2={h / 2} stroke="var(--surface1)" strokeWidth="1" />
-        <polyline
-          points={points}
-          fill="none"
-          stroke="var(--pink)"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <span className="swe__gauge-peak">peak {peakEta.toFixed(2)} m</span>
+      <div className="swe__gauge-visual">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="swe__gauge-svg"
+          role="img"
+          aria-label={`${name} gauge eta time series`}
+          aria-describedby={`${semanticId}-summary`}
+        >
+          <line x1={pad} y1={h / 2} x2={w - pad} y2={h / 2} stroke="var(--surface1)" strokeWidth="1" />
+          <polyline
+            points={points}
+            fill="none"
+            stroke="var(--pink)"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="swe__gauge-peak">peak {peakEta.toFixed(2)} m</span>
+      </div>
+      <SemanticDataTable
+        id={semanticId}
+        title={`${name} gauge`}
+        summary={semanticSummary}
+        columns={[
+          { key: "series", label: "Series" },
+          { key: "selection", label: "Time or selection" },
+          { key: "value", label: "Value" },
+          { key: "unit", label: "Unit" },
+          { key: "significance", label: "Extrema, threshold, or active state" },
+          { key: "confidence", label: "Confidence" },
+          { key: "provenance", label: "Provenance" },
+        ]}
+        rows={semanticRows}
+        filename={`cataclysm-gauge-${name}.csv`}
+      />
     </div>
   );
 }

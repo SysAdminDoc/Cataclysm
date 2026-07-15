@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
 import { AttenuationChart } from "../AttenuationChart";
 import type { InitialDisplacement } from "../../types/scenario";
@@ -83,5 +84,22 @@ describe("AttenuationChart", () => {
   it("shows section title 'Wave attenuation'", () => {
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={0} runupResults={[]} />);
     expect(screen.getByText("Wave attenuation")).toBeInTheDocument();
+  });
+
+  it("provides a non-live summary and keyboard-accessible provenance table", async () => {
+    const user = userEvent.setup();
+    render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={3600} runupResults={[]} />);
+    const summary = screen.getByText(/Modeled decay spans/, { selector: ".chart-data__summary" });
+    expect(summary).toHaveAttribute("aria-live", "off");
+    expect(screen.getByRole("img")).toHaveAttribute("aria-describedby", summary.id);
+
+    await user.click(screen.getByText(/View wave attenuation data/));
+    const tableRegion = screen.getByRole("region", { name: "wave attenuation data table" });
+    expect(tableRegion).toHaveAttribute("tabindex", "0");
+    expect(within(tableRegion).getByRole("columnheader", { name: "Series" })).toBeInTheDocument();
+    expect(within(tableRegion).getByRole("rowheader", { name: "Active wavefront" })).toBeInTheDocument();
+    expect(within(tableRegion).getByText("Current timeline selection")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy wave attenuation CSV" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export wave attenuation CSV" })).toBeInTheDocument();
   });
 });

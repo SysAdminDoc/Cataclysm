@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SwePlayback } from "../SwePlayback";
@@ -196,6 +196,21 @@ describe("SwePlayback", () => {
       });
       finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false, run_quality: RUN_QUALITY });
     });
+
+    const semanticSummary = await screen.findByText(
+      /Harbor has 2 Rust SWE solver gauge_samples samples/,
+      { selector: ".chart-data__summary" },
+    );
+    expect(semanticSummary).toHaveAttribute("aria-live", "off");
+    expect(screen.getByRole("img", { name: "Harbor gauge eta time series" })).toHaveAttribute(
+      "aria-describedby",
+      semanticSummary.id,
+    );
+    await user.click(screen.getByText(/View Harbor gauge data/));
+    const gaugeTable = screen.getByRole("region", { name: "Harbor gauge data table" });
+    expect(gaugeTable).toHaveAttribute("tabindex", "0");
+    expect(within(gaugeTable).getByRole("rowheader", { name: "Still-water datum" })).toBeInTheDocument();
+    expect(within(gaugeTable).getByText(/Nearest active timeline selection/)).toBeInTheDocument();
 
     exportApi.exportGaugeCsv
       .mockReturnValueOnce({ ok: false, code: "download", message: "downloads denied", retryable: true })

@@ -279,10 +279,13 @@
 }
 
 .swe__gauge-spark {
+  margin-top: 4px;
+}
+
+.swe__gauge-visual {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .swe__gauge-svg {

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { getDartEvents, PRESET_TO_DART_EVENT } from "../lib/data";
 import { api, isTauri, type DartRmseResult } from "../lib/tauri";
 import type { DartBuoy, DartEvent, GridSnapshot } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
+import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
 
 type Props = {
   presetId: string | null;
@@ -82,12 +83,15 @@ function Sparkline({
   timeS,
   modelSeries,
   result,
+  eventOriginUtc,
 }: {
   buoy: DartBuoy;
   timeS: number;
   modelSeries: [number, number][];
   result?: DartRmseResult;
+  eventOriginUtc: string;
 }) {
+  const semanticId = useId();
   const w = 280;
   const h = 60;
   const plotTop = 16;
@@ -130,41 +134,116 @@ function Sparkline({
     ariaParts.push(arrivalSummary(result));
     ariaParts.push(`arrival threshold ${(result.arrival_threshold_m * 100).toFixed(0)} cm; ${result.arrival_method}`);
   }
+  const observationPeakIndex = obs.reduce(
+    (peakIndex, [, value], index) => Math.abs(value) > Math.abs(obs[peakIndex][1]) ? index : peakIndex,
+    0,
+  );
+  const modelPeakIndex = modelSeries.length === 0 ? -1 : modelSeries.reduce(
+    (peakIndex, [, value], index) => Math.abs(value) > Math.abs(modelSeries[peakIndex][1]) ? index : peakIndex,
+    0,
+  );
+  const semanticRows: SemanticDataRow[] = [
+    ...obs.map(([sampleTime, value], index) => ({
+      series: "Observed DART water level",
+      selection: `T+${sampleTime.toFixed(0)} s`,
+      value: value.toPrecision(6),
+      unit: "m surface elevation",
+      significance: index === observationPeakIndex ? "Observed peak magnitude" : "Observation sample",
+      confidence: "Bundled, downsampled, de-tided observation",
+      provenance: `NOAA NDBC/NCEI DART archive; event origin ${eventOriginUtc}`,
+    })),
+    ...modelSeries.map(([sampleTime, value], index) => ({
+      series: "SWE model gauge",
+      selection: `T+${sampleTime.toFixed(0)} s`,
+      value: value.toPrecision(6),
+      unit: "m surface elevation",
+      significance: index === modelPeakIndex ? "Model peak magnitude" : "Model sample",
+      confidence: "Illustrative Cataclysm SWE result",
+      provenance: "Rust SWE solver gauge_samples",
+    })),
+    ...(observedCursor == null ? [] : [{
+      series: "Observed timeline selection",
+      selection: `T+${timeS.toFixed(0)} s`,
+      value: observedCursor.toPrecision(6),
+      unit: "m surface elevation",
+      significance: "Current timeline selection; linearly interpolated",
+      confidence: "Bundled, downsampled, de-tided observation",
+      provenance: "NOAA DART samples bracketing the selected time",
+    }]),
+    ...(modelCursor == null ? [] : [{
+      series: "Model timeline selection",
+      selection: `T+${timeS.toFixed(0)} s`,
+      value: modelCursor.toPrecision(6),
+      unit: "m surface elevation",
+      significance: "Current timeline selection; linearly interpolated",
+      confidence: "Illustrative Cataclysm SWE result",
+      provenance: "Rust SWE gauge samples bracketing the selected time",
+    }]),
+    ...(result ? [{
+      series: "Arrival detection threshold",
+      selection: result.arrival_method,
+      value: result.arrival_threshold_m.toPrecision(6),
+      unit: "m absolute surface elevation",
+      significance: "Detection threshold",
+      confidence: `Noise method: ${result.noise_method}`,
+      provenance: "Rust dart_buoy_rmse command",
+    }] : []),
+  ];
+  const semanticSummary = `${ariaParts.join("; ")}. Observed data are bundled NOAA DART observations; model values and comparison metrics come from the Rust SWE and RMSE paths.`;
   return (
-    <svg
-      width={w}
-      height={h + 14}
-      viewBox={`0 0 ${w} ${h + 14}`}
-      className="dart__spark"
-      role="img"
-      aria-label={ariaParts.join("; ")}
-    >
-      <line x1={0} x2={w} y1={plotCenter} y2={plotCenter} stroke="var(--surface2)" strokeDasharray="2 4" />
-      <path d={observedPath} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
-      {modelPath && <path d={modelPath} fill="none" stroke="var(--peach)" strokeWidth={1.5} />}
-      {Number.isFinite(cursorX) && cursorX >= 0 && cursorX <= w && (
-        <line x1={cursorX} x2={cursorX} y1={plotTop} y2={plotBottom} stroke="var(--sapphire)" strokeWidth={1.5} />
-      )}
-      {obsArrX != null && obsArrX >= 0 && obsArrX <= w && (
-        <>
-          <line x1={obsArrX} x2={obsArrX} y1={plotTop} y2={plotBottom} stroke="var(--green)" strokeWidth={1} strokeDasharray="3 3" />
-          <text x={obsArrX + 2} y={plotBottom - 2} fontSize="8" fill="var(--green)">observed</text>
-        </>
-      )}
-      {modArrX != null && modArrX >= 0 && modArrX <= w && (
-        <>
-          <line x1={modArrX} x2={modArrX} y1={plotTop} y2={plotBottom} stroke="var(--peach)" strokeWidth={1} strokeDasharray="3 3" />
-          <text x={modArrX + 2} y={plotTop + 8} fontSize="8" fill="var(--peach)">model</text>
-        </>
-      )}
-      <text x={4} y={12} fontSize="10" fill="var(--subtext)">
-        observed peak {observedPeak.toFixed(2)} m{modelSeries.length > 0 ? ` · model peak ${modelPeak.toFixed(2)} m` : ` · ${obs.length} samples`}
-      </text>
-      <text x={4} y={h + 11} fontSize="9" fill="var(--subtext)">
-        cursor: observed {observedCursor == null ? "—" : `${observedCursor.toFixed(2)} m`}
-        {modelSeries.length > 0 ? ` · model ${modelCursor == null ? "—" : `${modelCursor.toFixed(2)} m`}` : ""}
-      </text>
-    </svg>
+    <>
+      <svg
+        width={w}
+        height={h + 14}
+        viewBox={`0 0 ${w} ${h + 14}`}
+        className="dart__spark"
+        role="img"
+        aria-label={ariaParts.join("; ")}
+        aria-describedby={`${semanticId}-summary`}
+      >
+        <line x1={0} x2={w} y1={plotCenter} y2={plotCenter} stroke="var(--surface2)" strokeDasharray="2 4" />
+        <path d={observedPath} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
+        {modelPath && <path d={modelPath} fill="none" stroke="var(--peach)" strokeWidth={1.5} />}
+        {Number.isFinite(cursorX) && cursorX >= 0 && cursorX <= w && (
+          <line x1={cursorX} x2={cursorX} y1={plotTop} y2={plotBottom} stroke="var(--sapphire)" strokeWidth={1.5} />
+        )}
+        {obsArrX != null && obsArrX >= 0 && obsArrX <= w && (
+          <>
+            <line x1={obsArrX} x2={obsArrX} y1={plotTop} y2={plotBottom} stroke="var(--green)" strokeWidth={1} strokeDasharray="3 3" />
+            <text x={obsArrX + 2} y={plotBottom - 2} fontSize="8" fill="var(--green)">observed</text>
+          </>
+        )}
+        {modArrX != null && modArrX >= 0 && modArrX <= w && (
+          <>
+            <line x1={modArrX} x2={modArrX} y1={plotTop} y2={plotBottom} stroke="var(--peach)" strokeWidth={1} strokeDasharray="3 3" />
+            <text x={modArrX + 2} y={plotTop + 8} fontSize="8" fill="var(--peach)">model</text>
+          </>
+        )}
+        <text x={4} y={12} fontSize="10" fill="var(--subtext)">
+          observed peak {observedPeak.toFixed(2)} m{modelSeries.length > 0 ? ` · model peak ${modelPeak.toFixed(2)} m` : ` · ${obs.length} samples`}
+        </text>
+        <text x={4} y={h + 11} fontSize="9" fill="var(--subtext)">
+          cursor: observed {observedCursor == null ? "—" : `${observedCursor.toFixed(2)} m`}
+          {modelSeries.length > 0 ? ` · model ${modelCursor == null ? "—" : `${modelCursor.toFixed(2)} m`}` : ""}
+        </text>
+      </svg>
+      <SemanticDataTable
+        id={semanticId}
+        title={`${buoy.name} DART comparison`}
+        summary={semanticSummary}
+        columns={[
+          { key: "series", label: "Series" },
+          { key: "selection", label: "Time or selection" },
+          { key: "value", label: "Value" },
+          { key: "unit", label: "Unit" },
+          { key: "significance", label: "Extrema, threshold, or active state" },
+          { key: "confidence", label: "Confidence" },
+          { key: "provenance", label: "Provenance" },
+        ]}
+        rows={semanticRows}
+        filename={`cataclysm-dart-${buoy.id}.csv`}
+      />
+    </>
   );
 }
 
@@ -263,7 +342,7 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
                 <div className="dart__meta">
                   {b.lat.toFixed(2)}°, {b.lon.toFixed(2)}° · {b.depth_m} m deep
                 </div>
-                <Sparkline buoy={b} timeS={timeS} modelSeries={modelSeries} result={fitResult} />
+                <Sparkline buoy={b} timeS={timeS} modelSeries={modelSeries} result={fitResult} eventOriginUtc={event.event_origin_utc} />
                 {fit?.kind === "ok" && (
                   <div className="dart__rmse" role="note">
                     <span className="dart__rmse-value">

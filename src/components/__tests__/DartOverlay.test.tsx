@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DartOverlay } from "../DartOverlay";
 import type { GridSnapshot } from "../../types/scenario";
@@ -58,7 +59,7 @@ describe("DartOverlay RMSE", () => {
 
   it("renders no RMSE row without SWE snapshots", () => {
     render(<DartOverlay presetId="tohoku_2011" timeS={0} />);
-    expect(screen.queryByText(/RMSE/)).not.toBeInTheDocument();
+    expect(document.querySelector(".dart__rmse")).toBeNull();
     expect(screen.queryByText("SWE model")).not.toBeInTheDocument();
     expect(screen.queryByText("Arrival markers")).not.toBeInTheDocument();
     expect(tauriApi.dartBuoyRmse).not.toHaveBeenCalled();
@@ -89,8 +90,8 @@ describe("DartOverlay RMSE", () => {
       }).length,
     ).toBe(3);
     expect(screen.getAllByText(/overlap 0 min–60 min · 12 paired samples/)).toHaveLength(3);
-    expect(screen.getAllByText(/observed 10 min · model 15 min · residual \+5 min/)).toHaveLength(3);
-    expect(screen.getAllByText(/threshold 3 cm; noise: fixed 0\.03 m NOAA/)).toHaveLength(3);
+    expect(screen.getAllByText(/observed 10 min · model 15 min · residual \+5 min/, { selector: ".dart__rmse span" })).toHaveLength(3);
+    expect(screen.getAllByText(/threshold 3 cm; noise: fixed 0\.03 m NOAA/, { selector: ".dart__rmse span" })).toHaveLength(3);
     expect(screen.getByText("SWE model")).toBeInTheDocument();
     expect(screen.getByText("Arrival markers")).toBeInTheDocument();
     expect(
@@ -98,6 +99,32 @@ describe("DartOverlay RMSE", () => {
         name: /observed 0\.00 m at the timeline cursor; model 0\.10 m at the timeline cursor/,
       }),
     ).toHaveLength(3);
+  });
+
+  it("exposes observed/model samples, active selection, threshold, confidence, and provenance", async () => {
+    tauriApi.dartBuoyRmse.mockResolvedValue(comparisonResult());
+    const user = userEvent.setup();
+    render(
+      <DartOverlay
+        presetId="tohoku_2011"
+        timeS={1800}
+        sweSnapshots={[snapshotAt(0, 0.1), snapshotAt(1800, 0.5), snapshotAt(3600, 0.2)]}
+      />,
+    );
+    await screen.findAllByText(/RMSE 0\.42 m/);
+    const summaries = document.querySelectorAll<HTMLElement>(".chart-data__summary");
+    expect(summaries).toHaveLength(3);
+    summaries.forEach((summary) => expect(summary).toHaveAttribute("aria-live", "off"));
+    const firstChart = screen.getAllByRole("img", { name: /DART water level/ })[0];
+    expect(firstChart).toHaveAttribute("aria-describedby", summaries[0].id);
+
+    await user.click(screen.getByText(/View 21413 .* DART comparison data/));
+    const tableRegion = screen.getByRole("region", { name: /21413 .* DART comparison data table/ });
+    expect(within(tableRegion).getAllByRole("rowheader", { name: "Observed DART water level" }).length).toBeGreaterThan(1);
+    expect(within(tableRegion).getAllByRole("rowheader", { name: "SWE model gauge" })).toHaveLength(3);
+    expect(within(tableRegion).getByRole("rowheader", { name: "Arrival detection threshold" })).toBeInTheDocument();
+    expect(within(tableRegion).getByRole("rowheader", { name: "Observed timeline selection" })).toBeInTheDocument();
+    expect(within(tableRegion).getAllByText(/NOAA NDBC\/NCEI DART archive/).length).toBeGreaterThan(1);
   });
 
   it("shows structured no-overlap without misclassifying it as an IPC failure", async () => {

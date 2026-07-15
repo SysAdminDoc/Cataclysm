@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { InitialDisplacement } from "../types/scenario";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import { demoAttenuationCurve } from "../lib/demo";
+import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -32,6 +33,7 @@ function formatAxis(v: number): string {
 
 export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Props) {
   const [curve, setCurve] = useState<Sample[] | null>(null);
+  const semanticId = useId();
 
   // Decay physics come from the Rust `attenuation_curve` command; the JS
   // approximation in demo.ts only serves the watermarked browser preview.
@@ -77,7 +79,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
   const arrivedPoints = useMemo(() => {
     return runupResults
       .filter((r) => r.has_arrived && r.offshore_amplitude_m > 0)
-      .map((r) => ({ range_km: r.range_m / 1000, amplitude_m: r.offshore_amplitude_m, name: r.name }));
+      .map((r) => ({ ...r, range_km: r.range_m / 1000, amplitude_m: r.offshore_amplitude_m }));
   }, [runupResults]);
 
   if (!curve || !initial) {
@@ -125,6 +127,62 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
     { length: Math.min(5, Math.ceil(logMaxR - logMinR) + 1) },
     (_, i) => Math.ceil(logMinR) + i,
   ).filter((v) => v <= logMaxR);
+  const nearestWavefrontIndex = wavefrontRange == null
+    ? -1
+    : curve.reduce((nearest, sample, index) =>
+      Math.abs(sample.range_km - wavefrontRange) < Math.abs(curve[nearest].range_km - wavefrontRange)
+        ? index
+        : nearest, 0);
+  const highestArrived = arrivedPoints.reduce<(typeof arrivedPoints)[number] | null>(
+    (highest, point) => !highest || point.amplitude_m > highest.amplitude_m ? point : highest,
+    null,
+  );
+  const modelProvenance = isTauri()
+    ? "Rust attenuation_curve command"
+    : "Browser preview demo attenuation approximation";
+  const semanticRows: SemanticDataRow[] = [
+    ...curve.map((sample, index) => ({
+      series: "Modeled decay",
+      selection: `${sample.range_km.toFixed(2)} km from source`,
+      value: sample.amplitude_m.toPrecision(6),
+      unit: "m surface amplitude",
+      significance: index === 0 ? "Maximum" : index === curve.length - 1 ? "Minimum" : index === nearestWavefrontIndex ? "Nearest active wavefront" : "Sample",
+      confidence: "Illustrative far-field analytical estimate",
+      provenance: modelProvenance,
+    })),
+    ...(wavefrontRange == null ? [] : [{
+      series: "Active wavefront",
+      selection: `T+${timeS.toFixed(0)} s`,
+      value: wavefrontRange.toFixed(3),
+      unit: "km from source",
+      significance: "Current timeline selection",
+      confidence: "Kinematic shallow-water travel estimate",
+      provenance: `sqrt(g × ${depth.toFixed(0)} m depth) × time`,
+    }]),
+    {
+      series: "Coastal inclusion threshold",
+      selection: "Arrived samples only",
+      value: 0,
+      unit: "m offshore amplitude",
+      significance: "Strictly greater than threshold",
+      confidence: "Display filter, not an alert threshold",
+      provenance: "runup_at_points arrival flag and offshore amplitude",
+    },
+    ...arrivedPoints.map((point) => ({
+      series: `Coastal sample — ${point.name}`,
+      selection: `${point.range_km.toFixed(2)} km from source`,
+      value: point.amplitude_m.toPrecision(6),
+      unit: "m offshore amplitude",
+      significance: point === highestArrived ? "Highest arrived sample" : "Arrived sample",
+      confidence: `${point.quantitative_label}; ${point.quantitative_confidence} confidence`,
+      provenance: `${point.slope_provenance.source}; ${point.depth_provenance.source}`,
+    })),
+  ];
+  const semanticSummary = [
+    `Modeled decay spans ${maxAmp.toPrecision(4)} m at ${minRange.toFixed(2)} km to ${curve[curve.length - 1].amplitude_m.toPrecision(4)} m at ${maxRange.toFixed(0)} km.`,
+    wavefrontRange == null ? "No active wavefront at the source time." : `The active wavefront estimate is ${wavefrontRange.toFixed(1)} km at T+${timeS.toFixed(0)} s.`,
+    highestArrived ? `${arrivedPoints.length} coastal samples have arrived; ${highestArrived.name} is highest at ${highestArrived.amplitude_m.toFixed(2)} m offshore amplitude.` : "No positive arrived coastal sample is active.",
+  ].join(" ");
 
   return (
     <div className="section">
@@ -133,7 +191,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
         <span className="section__badge">{arrivedPoints.length} arrived</span>
       </div>
       <div className="chart-shell">
-        <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label="Modeled wave amplitude decay by distance">
+        <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label="Modeled wave amplitude decay by distance" aria-describedby={`${semanticId}-summary`}>
           {yTicks.map((logV) => {
             const y = toY(10 ** logV);
             return (
@@ -183,6 +241,22 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
           <span><i data-tone="front" /> Wavefront</span>
           <span><i data-tone="coast" /> Coast samples</span>
         </div>
+        <SemanticDataTable
+          id={semanticId}
+          title="wave attenuation"
+          summary={semanticSummary}
+          columns={[
+            { key: "series", label: "Series" },
+            { key: "selection", label: "Distance or selection" },
+            { key: "value", label: "Value" },
+            { key: "unit", label: "Unit" },
+            { key: "significance", label: "Extrema, threshold, or active state" },
+            { key: "confidence", label: "Confidence" },
+            { key: "provenance", label: "Provenance" },
+          ]}
+          rows={semanticRows}
+          filename="cataclysm-wave-attenuation.csv"
+        />
       </div>
     </div>
   );
