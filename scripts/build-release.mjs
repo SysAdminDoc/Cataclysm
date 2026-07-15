@@ -16,6 +16,7 @@ import {
   assertInstalledSmokeHost,
   runInstalledReleaseSmoke,
 } from "./installed-release-smoke.mjs";
+import { selectReleaseArtifactFiles } from "./release-artifact-contract.mjs";
 import { RELEASE_CARGO_FEATURES } from "./release-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -84,7 +85,7 @@ function buildManifest(probe, installedSmoke) {
   const tauriConfig = JSON.parse(
     readFileSync(path.join(repoRoot, "src-tauri", "tauri.conf.json"), "utf8"),
   );
-  const artifactFiles = listFiles(bundleRoot).filter((file) => file !== manifestPath);
+  const artifactFiles = selectReleaseArtifactFiles(listFiles(bundleRoot), bundleRoot);
   if (artifactFiles.length === 0) throw new Error("Tauri produced no bundle artifacts.");
 
   const rustVersion = run("rustc", ["-Vv"], { capture: true });

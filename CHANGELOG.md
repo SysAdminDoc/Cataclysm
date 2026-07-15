@@ -111,6 +111,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - DART comparison failures are isolated per buoy so successful stations remain
   usable, while semantic chart CSV keeps trusted negative/scientific values
   numeric and still neutralizes untrusted spreadsheet formulas.
+- Release verification now fails closed when npm audit returns malformed,
+  incomplete, inconsistent, or abnormal output; build manifests include only
+  actual Tauri packages rather than installed-smoke evidence; and one tested
+  version contract rejects drift between runtime, desktop, README, and Git tags.
 - Ground-zero labels now render as explicit Cesium overlays above translucent
   hazard geometry. Locked reference captures retain the semantic entity and a
   depth-independent point but omit the machine-font glyph atlas, removing both

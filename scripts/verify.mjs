@@ -434,8 +434,9 @@ capabilitySurfaceGate();
 
 console.log("\n==> Docs/script truth gate");
 docsTruthGate();
+runNpm("Version consistency and release-tag gate", ["run", "verify:version-contract"]);
 if (docsOnly) {
-  console.log("\nDocs/script truth gate completed.");
+  console.log("\nDocs/script and version contract gates completed.");
   process.exit(0);
 }
 runNpm("Third-party dependency notices", ["run", "verify:notices"]);
@@ -445,6 +446,7 @@ runNpm("Reference perceptual-quality unit gate", ["run", "test:reference-quality
 runNpm("Reference recorder lifecycle gate", ["run", "test:reference-lifecycle"]);
 runNpm("Rust advisory policy unit gate", ["run", "test:rust-advisory-policy"]);
 runNpm("Installed release harness unit gate", ["run", "test:installed-release"]);
+runNpm("Release contract unit gate", ["run", "test:release-contracts"]);
 runNpm("HR-00 reference baseline contract", ["run", "verify:reference-locks"]);
 runNpm("HR-01 renderer protocol conformance", ["run", "verify:render-protocol"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);

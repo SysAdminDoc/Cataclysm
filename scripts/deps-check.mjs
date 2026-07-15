@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import os from "node:os";
+import { parseNpmAuditResult } from "./deps-check-contract.mjs";
 
 function run(command, args, options = {}) {
   if (process.platform === "win32") {
@@ -34,6 +35,7 @@ console.log(`Platform: ${os.platform()} ${os.release()}\n`);
 const strictRustPolicy = process.argv.includes("--strict");
 let issues = 0;
 let missingRustPolicyTools = 0;
+let auditFailed = false;
 
 // --- npm outdated ---
 console.log("==> npm outdated");
@@ -72,24 +74,13 @@ if (npmResult.stdout && npmResult.stdout.trim() !== "{}") {
 // --- npm audit ---
 console.log("==> npm audit");
 const auditResult = run("npm", ["audit", "--json"]);
-if (auditResult.stdout) {
-  try {
-    const audit = JSON.parse(auditResult.stdout);
-    const total = audit.metadata?.vulnerabilities?.total ?? 0;
-    if (total > 0) {
-      issues += total;
-      const v = audit.metadata.vulnerabilities;
-      console.log(
-        `  ${total} vulnerabilit${total === 1 ? "y" : "ies"}: ` +
-          `${v.critical ?? 0} critical, ${v.high ?? 0} high, ` +
-          `${v.moderate ?? 0} moderate, ${v.low ?? 0} low\n`,
-      );
-    } else {
-      console.log("  No known vulnerabilities.\n");
-    }
-  } catch {
-    console.log("  (could not parse npm audit output)\n");
-  }
+try {
+  const vulnerabilities = parseNpmAuditResult(auditResult);
+  console.log(`  No known vulnerabilities (${vulnerabilities.total} reported).\n`);
+} catch (error) {
+  auditFailed = true;
+  issues++;
+  console.error(`  FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
 }
 
 // --- Cargo tools ---
@@ -138,7 +129,11 @@ Recommended refresh cadence (no Dependabot):
   Quarterly: major version bumps (review changelogs before upgrading)
 `);
 
+if (auditFailed) {
+  console.error("Dependency check failed: npm audit did not complete cleanly.");
+  process.exitCode = 1;
+}
 if (strictRustPolicy && missingRustPolicyTools > 0) {
   console.error("Strict dependency check failed: install cargo-audit and cargo-deny before release verification.");
-  process.exit(1);
+  process.exitCode = 1;
 }
