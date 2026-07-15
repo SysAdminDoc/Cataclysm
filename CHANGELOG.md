@@ -92,6 +92,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Ground-zero labels now render as explicit Cesium overlays above translucent
+  hazard geometry, removing a depth-order race that changed otherwise identical
+  high-resolution reference frames on the Windows release runner.
 - Entering Inspect now pauses active timeline playback so time-dependent point
   probes can complete instead of being invalidated on every playback tick.
 - The isolated Windows release gate now fetches the locked application crate

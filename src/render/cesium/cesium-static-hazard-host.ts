@@ -61,6 +61,7 @@ function applyDescriptor(entity: Cesium.Entity, descriptor: StaticHazardEntityDe
       showBackground: true,
       backgroundColor: color("#1e1e2e", 0.85),
       backgroundPadding: new Cesium.Cartesian2(6, 4),
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
     });
     return;
   }
