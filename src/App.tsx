@@ -1208,7 +1208,10 @@ export default function App() {
               variant="mode"
               onClick={() => {
                 setInspectMode((v) => !v);
-                if (!inspectMode) setPickMode(false);
+                if (!inspectMode) {
+                  setPickMode(false);
+                  setTimelinePlaying(false);
+                }
               }}
               title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
               disabled={inHazardMode || !slotA.initial}
@@ -1579,6 +1582,9 @@ export default function App() {
                 previewCamera={libraryPreviewPending ? libraryPreviewCamera : null}
                 previewLabel={libraryPreviewPending ? libraryPreviewLabel : null}
                 onCameraTelemetry={handleCameraTelemetry}
+                accessibleSceneLabel={viewportSourceLabel}
+                simulationTimeS={timeS}
+                accessibleCameraTelemetry={cameraTelemetry}
                 outcomeFocus={inHazardMode ? null : outcomeFocus}
                 onOutcomeFocusTime={setTimeS}
               />
@@ -1595,6 +1601,8 @@ export default function App() {
                   dartBuoys={dartPinsForPreset(slotB.activePresetId)}
                   directRenderFrame={null}
                   primary={false}
+                  accessibleSceneLabel={`Comparison slot B · ${activePresetB?.name ?? slotB.initial?.label ?? "No source selected"}`}
+                  simulationTimeS={timeS}
                 />
                 <div className="app__globe-tag" data-slot="b">Slot B</div>
               </div>

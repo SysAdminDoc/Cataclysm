@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium } from "../lib/cesium";
 import {
@@ -129,6 +129,10 @@ type Props = {
   onOutcomeFocusTime?: (simulationTimeS: number) => void;
   /** Lightweight camera telemetry for the desktop viewport HUD. */
   onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => void;
+  /** Application-owned text equivalent for the otherwise canvas-only scene. */
+  accessibleSceneLabel?: string;
+  simulationTimeS?: number;
+  accessibleCameraTelemetry?: { lat: number; lon: number; altitudeM: number; headingDeg: number };
 };
 
 type SweImageryResource = {
@@ -248,7 +252,11 @@ export function Globe({
   outcomeFocus,
   onOutcomeFocusTime,
   onCameraTelemetry,
+  accessibleSceneLabel = "Unconfigured planetary hazard scene",
+  simulationTimeS = 0,
+  accessibleCameraTelemetry,
 }: Props) {
+  const sceneSummaryId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const viewerLifecycleRef = useRef<ViewerLifecycle<Cesium.Viewer> | null>(null);
@@ -272,6 +280,7 @@ export function Globe({
     > | null
   >(null);
   const [lastInspectCoord, setLastInspectCoord] = useState<{ lat: number; lon: number } | null>(null);
+  const [lastInspectionSummary, setLastInspectionSummary] = useState<string | null>(null);
   const sweCoordinatorRef = useRef<{
     coordinator: AsyncResourceCoordinator<SweImageryResource>;
     generation: number;
@@ -310,6 +319,71 @@ export function Globe({
     automatic: boolean;
   }>({ tier: "High", automatic: true });
   const [qualityDiagnostics, setQualityDiagnostics] = useState<CesiumQualityDiagnostics | null>(null);
+  const activeLayerLabels = useMemo(() => {
+    const labels = [`${findStyle(resolvedStyle).label} base imagery`];
+    if (initial) labels.push("source geometry");
+    if (wavefront) labels.push("analytical wavefront");
+    if (sweSnapshot) labels.push("SWE water field");
+    if ((isochrones?.length ?? 0) > 0) labels.push("arrival isochrones");
+    if ((runupResults?.length ?? 0) > 0) labels.push("coastal runup samples");
+    if ((dartBuoys?.length ?? 0) > 0) labels.push("DART observations");
+    if (hazardCenter) labels.push("effects origin");
+    if ((hazardRings?.length ?? 0) > 0) labels.push("hazard effect rings");
+    if ((hazardPolygons?.length ?? 0) > 0) labels.push("fallout plume");
+    if (directRenderFrame) labels.push("authoritative direct-effects frame");
+    return labels;
+  }, [
+    dartBuoys,
+    directRenderFrame,
+    hazardCenter,
+    hazardPolygons,
+    hazardRings,
+    initial,
+    isochrones,
+    resolvedStyle,
+    runupResults,
+    sweSnapshot,
+    wavefront,
+  ]);
+  const accessibilitySummary = useMemo(() => {
+    const camera = accessibleCameraTelemetry;
+    const cameraSummary = camera
+      ? `Camera centered at ${Math.abs(camera.lat).toFixed(2)} degrees ${camera.lat >= 0 ? "north" : "south"}, ${Math.abs(camera.lon).toFixed(2)} degrees ${camera.lon >= 0 ? "east" : "west"}, at ${camera.altitudeM >= 1_000_000 ? `${(camera.altitudeM / 1_000_000).toFixed(1)} megametres` : `${(camera.altitudeM / 1_000).toFixed(0)} kilometres`} altitude.`
+      : "Camera position is not available for this comparison pane.";
+    const rendererSummary = rendererError
+      ? `Renderer failed: ${rendererError}`
+      : imageryStatus === "ready"
+        ? "Renderer and base imagery are ready."
+        : `Renderer imagery is ${imageryStatus}: ${imageryMessage}`;
+    const interactionSummary = lastInspectionSummary
+      ?? (inspectMode
+        ? "Inspect mode is active; choose the globe or enter latitude and longitude."
+        : pickMode
+          ? "Location picking is active; choose the globe or enter latitude and longitude."
+          : "Latitude and longitude entry is available when location picking or inspection is active.");
+    return `${accessibleSceneLabel}. ${cameraSummary} Scenario time T plus ${Math.round(simulationTimeS / 60)} minutes. Visible analytical layers: ${activeLayerLabels.join(", ")}. ${rendererSummary} ${interactionSummary}`;
+  }, [
+    accessibleCameraTelemetry,
+    accessibleSceneLabel,
+    activeLayerLabels,
+    imageryMessage,
+    imageryStatus,
+    inspectMode,
+    lastInspectionSummary,
+    pickMode,
+    rendererError,
+    simulationTimeS,
+  ]);
+  const [announcedAccessibilitySummary, setAnnouncedAccessibilitySummary] = useState("");
+  const announcedAccessibilitySummaryRef = useRef("");
+  useEffect(() => {
+    const delayMs = announcedAccessibilitySummaryRef.current ? 1_200 : 0;
+    const timer = window.setTimeout(() => {
+      announcedAccessibilitySummaryRef.current = accessibilitySummary;
+      setAnnouncedAccessibilitySummary(accessibilitySummary);
+    }, delayMs);
+    return () => window.clearTimeout(timer);
+  }, [accessibilitySummary]);
 
   // One-time viewer mount
   useEffect(() => {
@@ -640,6 +714,7 @@ export function Globe({
       !initial
     ) return;
     setLastInspectCoord({ lat, lon });
+    setLastInspectionSummary(`Inspection at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude is in progress.`);
     const request = buildInspectionRequest(initial, lat, lon, {
       isImpact: inspectIsImpact,
       timeS: inspectTimeS,
@@ -655,13 +730,18 @@ export function Globe({
           interactionControllerRef.current !== interactionController ||
           inspectionPresenterRef.current !== inspectionPresenter
         ) return;
+        const text = formatInspectionLabel(lat, lon, result);
         inspectionPresenter.present({
           lat,
           lon,
-          text: formatInspectionLabel(lat, lon, result),
+          text,
         });
+        setLastInspectionSummary(`Inspected point ${text}`);
       })
-      .catch((error) => console.warn("[globe] inspect_at_point failed", error));
+      .catch((error) => {
+        setLastInspectionSummary(`Inspection failed at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude.`);
+        console.warn("[globe] inspect_at_point failed", error);
+      });
   }, [initial, inspectIsImpact, inspectTimeS]);
 
   // Pick and inspect are mutually exclusive, generation-owned interactions.
@@ -676,6 +756,7 @@ export function Globe({
       inspectGeneration.invalidate();
       inspectionPresenter.clear();
       setLastInspectCoord(null);
+      setLastInspectionSummary(null);
       lease = controller.enable({
         kind: "pick",
         onPosition: (lat, lon) => onPick?.(lat, lon),
@@ -692,6 +773,7 @@ export function Globe({
       inspectionPresenter.clear();
       controller.disable();
       setLastInspectCoord(null);
+      setLastInspectionSummary(null);
     }
     interactionLeaseRef.current = lease;
     return () => {
@@ -900,10 +982,25 @@ export function Globe({
       <div
         className="app__globe-mount"
         ref={containerRef}
+        role="region"
+        aria-label={`${accessibleSceneLabel} analytical globe`}
+        aria-describedby={sceneSummaryId}
         data-imagery-status={imageryStatus}
         data-imagery-style={activeImageryStyle ?? "none"}
         data-swe-field-tiles={sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
       />
+      <p id={sceneSummaryId} className="sr-only" data-globe-scene-summary>
+        {accessibilitySummary}
+      </p>
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-globe-scene-announcement
+      >
+        {announcedAccessibilitySummary}
+      </p>
       {pickMode && (
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">

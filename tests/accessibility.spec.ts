@@ -82,6 +82,14 @@ for (const theme of THEMES) {
     test("setup, selected, and hover states", async ({ page }) => {
       const activePreset = await openWorkspace(page);
       await activePreset.hover();
+      const globe = page.getByRole("region", { name: /Tohoku.*analytical globe/i }).first();
+      await expect(globe).toHaveAttribute("aria-describedby", /.+/);
+      const summaryId = await globe.getAttribute("aria-describedby");
+      const sceneSummary = page.locator(`[id="${summaryId}"]`);
+      await expect(sceneSummary).toContainText("Scenario time T plus 15 minutes");
+      await expect(sceneSummary).toContainText("Visible analytical layers:");
+      await expect(sceneSummary).toContainText(/Camera centered at|Camera position is not available/);
+      await expect(page.locator("[data-globe-scene-announcement]").first()).not.toBeEmpty();
       await assertAccessiblePage(page);
     });
 
@@ -95,6 +103,15 @@ for (const theme of THEMES) {
         await expect(page.getByRole("tabpanel", { name: detail })).toBeVisible();
         await assertAccessiblePage(page);
       }
+      await page.getByRole("button", { name: "Inspect", exact: true }).click();
+      const coordinates = page.getByRole("form", { name: "Enter coordinates" });
+      await coordinates.getByLabel("Latitude").fill("35.68");
+      await coordinates.getByLabel("Longitude").fill("139.76");
+      await coordinates.getByRole("button", { name: "Go" }).click();
+      await expect(page.locator("[data-globe-scene-summary]").first()).toContainText(
+        "Inspected point",
+        { timeout: 10_000 },
+      );
     });
 
     test("layers state", async ({ page }) => {
@@ -152,6 +169,9 @@ for (const theme of THEMES) {
       });
       await page.goto("/");
       await expect(page.locator(".app__globe-mount")).toHaveAttribute("data-imagery-status", "fallback", { timeout: 15_000 });
+      await expect(page.locator("[data-globe-scene-summary]").first()).toContainText(
+        "Renderer imagery is fallback",
+      );
       await assertAccessiblePage(page);
     });
   });

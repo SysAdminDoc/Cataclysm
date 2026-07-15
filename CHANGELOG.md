@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The analytical globe now has an application-owned semantic equivalent with
+  scenario, camera scale/region, model time, visible layers, imagery/renderer
+  health, and selected point-probe output. Immediate descriptions stay current
+  while a separate polite live region coalesces rapid camera and playback
+  changes; latitude/longitude forms remain the non-pointer pick/inspect path.
 - Windows High Contrast now uses system colors, explicit workspace boundaries,
   three-pixel keyboard focus, text-backed status shapes, and patterned legend
   fallbacks. Headless forced-colors coverage exercises errors, commands, the
@@ -61,6 +66,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Entering Inspect now pauses active timeline playback so time-dependent point
+  probes can complete instead of being invalidated on every playback tick.
 - The isolated Windows release gate now fetches the locked application crate
   graph before strict offline license verification, so a clean runner cannot
   fail merely because `cargo-about` has not yet cached production dependencies.
