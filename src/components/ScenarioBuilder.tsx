@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { settings, type SavedScenario, type ScenarioRestorePoint } from "../lib/settings";
 import {
   createScenarioPayload,
@@ -20,6 +20,7 @@ import type {
 } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import { GlossaryTip } from "./GlossaryTip";
+import { NumericField } from "./NumericField";
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
@@ -108,96 +109,30 @@ function NumField({
   const b = bounds ?? BOUNDS[field];
   const help = PARAM_HELP[field];
   const showSlider = SLIDER_FIELDS.has(field);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [draft, setDraft] = useState<string>(() => String(value));
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const errorId = useId();
-  const focusedRef = useRef(false);
-  useEffect(() => {
-    if (!focusedRef.current) setDraft(String(value));
-  }, [value]);
-
-  function commit() {
-    const parsed = Number(draft);
-    if (draft.trim() === "" || !Number.isFinite(parsed)) {
-      setValidationError(`${label} must be a number.`);
-      setDraft(String(value));
-      return;
-    }
-    if ((b?.min !== undefined && parsed < b.min) || (b?.max !== undefined && parsed > b.max)) {
-      setValidationError(`${label} must be between ${b.min ?? "negative infinity"} and ${b.max ?? "positive infinity"}.`);
-      setDraft(String(value));
-      return;
-    }
-    setValidationError(null);
-    onChange(parsed);
-    setDraft(String(parsed));
+  if (!b || b.min === undefined || b.max === undefined) {
+    throw new Error(`Missing numeric bounds for ${field}`);
   }
-
+  const min = b.min;
+  const max = b.max;
   return (
-    <label className="scenario-field">
-      <span className="scenario-field__header">
-        <span>
-          {label}
-          {b && (
-            <span className="scenario-form__bound" aria-hidden>
-              {" "}({b.min ?? "−∞"} … {b.max ?? "+∞"})
-            </span>
-          )}
-        </span>
-        {help && (
-          <button
-            type="button"
-          className="scenario-field__help-btn"
-            aria-label={`Help: ${label}`}
-            aria-expanded={helpOpen}
-          onClick={(e) => { e.preventDefault(); setHelpOpen((v) => !v); }}
-        >
-            <UiIcon name="info" size={13} />
-        </button>
-        )}
-      </span>
-      {helpOpen && help && (
-        <span className="scenario-field__help-text" role="note">
-          {help}
-        </span>
-      )}
-      <span className="scenario-field__inputs">
-        <input
-          type="number"
-          value={draft}
-          step={step ?? "any"}
-          min={b?.min}
-          max={b?.max}
-          aria-invalid={Boolean(validationError)}
-          aria-describedby={validationError ? errorId : undefined}
-          onFocus={() => { focusedRef.current = true; }}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            if (validationError) setValidationError(null);
-          }}
-          onBlur={() => { focusedRef.current = false; commit(); }}
-        />
-        {showSlider && b?.min !== undefined && b?.max !== undefined && (
-          <input
-            type="range"
-            className="scenario-field__slider"
-            min={b.min}
-            max={b.max}
-            step={step ?? (b.max - b.min) / 200}
-            value={value}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              onChange(v);
-              setDraft(String(v));
-              setValidationError(null);
-            }}
-            aria-label={`${label} slider`}
-          />
-        )}
-      </span>
-      {validationError && <span id={errorId} className="scenario-field__error" role="alert">{validationError}</span>}
-    </label>
+    <NumericField
+      layout="scenario"
+      label={label}
+      value={value}
+      min={min}
+      max={max}
+      step={step ?? "any"}
+      help={help}
+      onCommit={onChange}
+      slider={showSlider ? {
+        value,
+        min,
+        max,
+        step: step ?? (max - min) / 200,
+        valueText: `${value}`,
+        onChange,
+      } : undefined}
+    />
   );
 }
 

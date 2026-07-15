@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Scenario Builder and direct-hazard numeric fields now use one accessible
+  number/slider primitive with distinct exact and coarse-control names, linked
+  bounds, units, help, and errors. Invalid exact text remains editable with a
+  visible explanation instead of being silently clamped or reset.
 - The analytical globe now has an application-owned semantic equivalent with
   scenario, camera scale/region, model time, visible layers, imagery/renderer
   health, and selected point-probe output. Immediate descriptions stay current

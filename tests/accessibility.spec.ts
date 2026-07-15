@@ -131,12 +131,47 @@ for (const theme of THEMES) {
       await assertAccessiblePage(page);
     });
 
+    test("custom numeric fields expose exact, coarse, help, and bound semantics", async ({ page }) => {
+      await page.goto("/");
+      await page.getByRole("button", { name: /Create my own/i }).click();
+      const form = page.locator(".scenario-form");
+      for (const [tab, count] of [["Asteroid", 7], ["Nuclear", 5], ["Earthquake", 11], ["Landslide", 8]] as const) {
+        await page.getByRole("tab", { name: tab }).click();
+        await expect(form.getByRole("spinbutton")).toHaveCount(count);
+        await expect(form.locator(".scenario-field label input, .scenario-field label button, .scenario-field label select")).toHaveCount(0);
+        const firstExact = form.getByRole("spinbutton").first();
+        await expect(firstExact).toHaveAccessibleName(/exact value$/);
+        await expect(firstExact).toHaveAttribute("aria-describedby", /-bounds/);
+        const firstHelp = form.getByRole("button", { name: /^About / }).first();
+        await firstHelp.focus();
+        await page.keyboard.press("Enter");
+        await expect(firstHelp).toHaveAttribute("aria-expanded", "true");
+        await assertAccessiblePage(page);
+      }
+    });
+
     for (const hazard of ["Impact", "Nuclear"] as const) {
       test(`${hazard.toLowerCase()} workspace`, async ({ page }) => {
         await page.goto("/");
         await page.getByRole("button", { name: hazard, exact: true }).click();
         const workspace = page.getByRole("complementary", { name: "Direct effects workspace" });
         await expect(workspace).toBeVisible();
+        const hazardForm = page.locator(".hazard");
+        const fieldLabel = hazard === "Impact" ? "Diameter" : "Yield";
+        const exact = hazardForm.getByRole("spinbutton", { name: `${fieldLabel} exact value` });
+        const coarse = hazardForm.getByRole("slider", { name: `${fieldLabel} coarse slider` });
+        await expect(exact).toHaveAttribute("aria-describedby", /-bounds.*-unit/);
+        await expect(coarse).toHaveAttribute("aria-valuetext", /.+/);
+        const invalid = Number(await exact.getAttribute("max")) + 1;
+        await exact.fill(String(invalid));
+        await exact.press("Tab");
+        await expect(exact).toHaveValue(String(invalid));
+        await expect(exact).toHaveAttribute("aria-invalid", "true");
+        await expect(hazardForm.getByRole("alert")).toContainText(`${fieldLabel} must be between`);
+        await assertAccessiblePage(page);
+        await exact.fill(String(await exact.getAttribute("min")));
+        await exact.press("Enter");
+        await expect(exact).toHaveAttribute("aria-invalid", "false");
         await page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }).click();
         const coordinates = page.getByRole("form", { name: "Enter coordinates" });
         await expect(coordinates.getByRole("button", { name: "Go" })).toBeDisabled();

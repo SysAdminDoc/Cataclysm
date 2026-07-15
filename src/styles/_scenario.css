@@ -39,6 +39,10 @@
   align-items: center;
   gap: 4px;
 }
+.scenario-field__header > label {
+  color: inherit;
+  font: inherit;
+}
 .scenario-field__help-btn {
   all: unset;
   display: inline-flex;
@@ -71,6 +75,16 @@
   flex-direction: column;
   gap: 2px;
 }
+.scenario-field__exact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+.scenario-field__unit {
+  color: var(--subtext);
+  font-size: 10px;
+}
 .scenario-field__slider {
   width: 100%;
   height: 6px;
@@ -81,6 +95,9 @@
   color: var(--red);
   font-size: 11px;
   line-height: 1.35;
+}
+.scenario-field[data-invalid="true"] input[type="number"] {
+  border-color: var(--red);
 }
 
 .scenario-tabs {

@@ -1,7 +1,6 @@
 // Direct-hazard controls are presentation-only. Rust supplies every result,
 // including the detonation timeline and fallout dimensions.
 
-import { useEffect, useRef, useState } from "react";
 import { sourceBound, sourceEnumValues } from "../lib/scenario-schema";
 import {
   WEAPON_PRESETS,
@@ -13,6 +12,7 @@ import {
   type TargetType,
 } from "../hazards";
 import type { WorkspaceMode } from "../lib/settings";
+import { NumericField } from "./NumericField";
 
 /** Place a point estimate in its one-significant-digit display bucket. This
  * removes false precision without manufacturing a statistical uncertainty. */
@@ -32,44 +32,6 @@ type NumericEntry = {
   unit?: string;
   onCommit: (v: number) => void;
 };
-
-/** Draft-on-blur numeric input paired with a coarse slider, mirroring the
- * Scenario Builder pattern: typing is free, values clamp to bounds on commit. */
-function NumberEntry({ value, min, max, step, unit, ariaLabel, onCommit }: NumericEntry & { ariaLabel: string }) {
-  const [draft, setDraft] = useState(() => String(value));
-  const focused = useRef(false);
-  useEffect(() => {
-    if (!focused.current) setDraft(String(value));
-  }, [value]);
-  function commit() {
-    const parsed = Number(draft);
-    if (draft.trim() === "" || !Number.isFinite(parsed)) {
-      setDraft(String(value));
-      return;
-    }
-    const clamped = Math.min(max, Math.max(min, parsed));
-    onCommit(clamped);
-    setDraft(String(clamped));
-  }
-  return (
-    <span className="hazard__num">
-      <input
-        type="number"
-        className="hazard__number"
-        value={draft}
-        min={min}
-        max={max}
-        step={step}
-        aria-label={ariaLabel}
-        onFocus={() => { focused.current = true; }}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => { focused.current = false; commit(); }}
-        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-      />
-      {unit && <span className="hazard__num-unit">{unit}</span>}
-    </span>
-  );
-}
 
 type HazardMode = "nuclear" | "asteroid";
 
@@ -95,6 +57,21 @@ function Slider({
   numeric?: NumericEntry;
 }) {
   const formattedValue = format ? format(value) : String(value);
+  if (numeric) {
+    return (
+      <NumericField
+        layout="hazard"
+        label={label}
+        value={numeric.value}
+        min={numeric.min}
+        max={numeric.max}
+        step={numeric.step}
+        unit={numeric.unit}
+        onCommit={numeric.onCommit}
+        slider={{ value, min, max, step, onChange, valueText: formattedValue }}
+      />
+    );
+  }
   return (
     <label className="hazard__row">
       <span className="hazard__row-label">{label}</span>
@@ -109,9 +86,7 @@ function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         className="hazard__slider"
       />
-      {numeric
-        ? <NumberEntry {...numeric} ariaLabel={`${label} exact value`} />
-        : <span className="hazard__row-value">{formattedValue}</span>}
+      <span className="hazard__row-value">{formattedValue}</span>
     </label>
   );
 }

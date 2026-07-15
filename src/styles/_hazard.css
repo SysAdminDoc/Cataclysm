@@ -110,6 +110,17 @@
   outline-offset: 1px;
 }
 
+.hazard__row[data-invalid="true"] .hazard__number {
+  border-color: var(--danger);
+}
+
+.hazard__number-error {
+  grid-column: 2 / 4;
+  color: var(--danger);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 .hazard__num-unit {
   font-size: 0.7rem;
   color: var(--subtext);

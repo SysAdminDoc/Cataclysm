@@ -233,20 +233,53 @@ describe("ScenarioBuilder scenario persistence", () => {
     });
   });
 
-  it("rejects blank scientific inputs instead of silently committing a minimum", async () => {
+  it("keeps blank scientific inputs editable and explains the validation error", async () => {
     const user = setupUser();
     renderBuilder();
     const diameter = document.querySelector<HTMLInputElement>(
       '.scenario-field input[type="number"]',
     );
     expect(diameter).not.toBeNull();
-    const original = diameter?.value;
-
     await user.clear(diameter!);
     await user.tab();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Diameter.*must be a number/);
-    expect(diameter).toHaveValue(Number(original));
+    expect(diameter).toHaveValue(null);
+    expect(diameter).toHaveAttribute("aria-invalid", "true");
+    expect(diameter).toHaveAccessibleName("Diameter (m) exact value");
+  });
+
+  it("gives every numeric field a distinct exact control and coarse slider relationship", async () => {
+    const user = setupUser();
+    renderBuilder();
+    const fieldsByTab = {
+      Asteroid: ["Diameter (m)", "Density (kg/m³)", "Velocity (m/s)", "Angle (°)", "Latitude (°)", "Longitude (°)", "Water depth (m)"],
+      Nuclear: ["Yield (kt TNT)", "Burst depth (m)", "Latitude (°)", "Longitude (°)", "Water depth (m)"],
+      Earthquake: ["Magnitude (M_w)", "Hypocentre depth (m)", "Strike (°)", "Dip (°)", "Rake (°)", "Slip (m)", "Fault length (m, 0 = auto)", "Fault width (m, 0 = auto)", "Latitude (°)", "Longitude (°)", "Water depth (m)"],
+      Landslide: ["Volume (m³)", "Density (kg/m³)", "Drop height (m)", "Slope (°)", "Receiving body width (m)", "Latitude (°)", "Longitude (°)", "Water depth (m)"],
+    } as const;
+
+    for (const [tab, fields] of Object.entries(fieldsByTab)) {
+      await user.click(screen.getByRole("tab", { name: tab }));
+      for (const label of fields) {
+        const exact = screen.getByRole("spinbutton", { name: `${label} exact value` });
+        const describedBy = exact.getAttribute("aria-describedby")?.split(" ") ?? [];
+        expect(describedBy.length).toBeGreaterThan(0);
+        describedBy.forEach((id) => expect(document.getElementById(id)).not.toBeNull());
+        const group = screen.getByRole("group", { name: label });
+        expect(group.querySelector("label")?.querySelector("input, button, select")).toBeNull();
+        const help = screen.getByRole("button", { name: `About ${label}` });
+        const helpId = help.getAttribute("aria-controls");
+        expect(helpId).toBeTruthy();
+      }
+      for (const slider of screen.queryAllByRole("slider")) {
+        expect(slider).toHaveAccessibleName(/coarse slider$/);
+        expect(slider).toHaveAttribute("aria-valuetext");
+        slider.getAttribute("aria-describedby")?.split(" ").forEach((id) => {
+          expect(document.getElementById(id)).not.toBeNull();
+        });
+      }
+    }
   });
 
   it("loads an active source into the editor", async () => {
