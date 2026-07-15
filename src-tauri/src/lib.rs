@@ -9,6 +9,7 @@ pub mod native_diagnostics;
 pub mod physics;
 pub mod presets;
 pub mod render_protocol;
+pub mod support_resources;
 
 use commands::*;
 use native_diagnostics::{
@@ -16,6 +17,7 @@ use native_diagnostics::{
     native_panic_record,
 };
 use std::path::PathBuf;
+use support_resources::third_party_notices;
 use tauri::Manager;
 
 fn native_diagnostics_directory(app: &tauri::App) -> Result<PathBuf, String> {
@@ -78,6 +80,7 @@ pub fn run() {
             diagnostics_bundle,
             native_panic_record,
             acknowledge_native_panic_record,
+            third_party_notices,
             keychain_get_token,
             keychain_set_token,
             cancel_simulation,

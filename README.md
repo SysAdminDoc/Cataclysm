@@ -98,6 +98,9 @@ Existing tools each do one piece:
   full-width simulation transport with playback speed and solver state.
 - **Focused command bar** — mode switching, inspect/compare tools, grouped
   exports, references, and settings without a wall of equal-priority buttons.
+- **Auditable installed notices** — References exposes the production npm and
+  Rust versions, SPDX identifiers, source links, and license texts bundled with
+  the current desktop package; lockfile drift is rejected during verification.
 - **Scenario library filters** — recorded and what-if cases stay searchable,
   while guided training remains available without crowding the primary flow.
 - **5 globe styles**: high-detail Esri World Imagery by default, bundled Natural

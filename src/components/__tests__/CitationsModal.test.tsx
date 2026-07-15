@@ -1,8 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Preset } from "../../types/scenario";
 import { CitationsModal } from "../CitationsModal";
+
+const tauriMocks = vi.hoisted(() => ({
+  thirdPartyNotices: vi.fn(),
+}));
+
+vi.mock("../../lib/tauri", () => ({
+  api: { thirdPartyNotices: tauriMocks.thirdPartyNotices },
+  isTauri: () => true,
+}));
 
 function citationPreset(overrides: Partial<Preset>): Preset {
   return {
@@ -27,6 +36,13 @@ function citationPreset(overrides: Partial<Preset>): Preset {
 }
 
 describe("CitationsModal", () => {
+  beforeEach(() => {
+    tauriMocks.thirdPartyNotices.mockReset();
+    tauriMocks.thirdPartyNotices.mockResolvedValue(
+      "CATACLYSM THIRD-PARTY NOTICES\n\nProduction components: 36 npm; 279 Rust",
+    );
+  });
+
   it("marks documented HTTP exceptions and blocks unvetted citation URLs with an alert", async () => {
     const user = userEvent.setup();
     render(
@@ -53,5 +69,18 @@ describe("CitationsModal", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent(/Blocked citation link/i);
     expect(screen.getByRole("alert")).toHaveTextContent(/not in the allowlist/i);
+  });
+
+  it("reads the installed notice artifact without opening an external application", async () => {
+    const user = userEvent.setup();
+    render(<CitationsModal onClose={() => {}} presets={[citationPreset({})]} />);
+
+    await user.click(screen.getByRole("button", { name: "View third-party notices" }));
+
+    expect(await screen.findByRole("heading", { name: "Third-party dependency notices" })).toBeInTheDocument();
+    expect(screen.getByText(/CATACLYSM THIRD-PARTY NOTICES/)).toHaveTextContent(
+      /Production components: 36 npm; 279 Rust/,
+    );
+    expect(tauriMocks.thirdPartyNotices).toHaveBeenCalledOnce();
   });
 });

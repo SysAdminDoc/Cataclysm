@@ -380,6 +380,9 @@ export const api = {
   acknowledgeNativePanicRecord(recordId: string): Promise<void> {
     return invoke<void>("acknowledge_native_panic_record", { recordId });
   },
+  thirdPartyNotices(): Promise<string> {
+    return invoke<string>("third_party_notices");
+  },
   simulateGridStreaming(
     runId: string,
     req: {

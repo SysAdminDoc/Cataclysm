@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "overrides": {
+    "@cesium/wasm-splats@0.1.0-alpha.2": {
+      "declared_spdx": "Apache-2.0",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-t9pMkknv31hhIbLpMa8yPvmqfpvs5UkUjgqlQv9SeO8VerCXOYnyP8/486BDaFrztM0A7FMbRjsXtNeKvqQghA==",
+      "replacement": "node_modules/dompurify/LICENSE",
+      "replacement_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "@tauri-apps/api@2.11.1": {
+      "declared_spdx": "Apache-2.0 OR MIT",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-M2FPuYND2m+wh5hfW9ZpSdxMPdEJovPBWwoHJmwUpysTYNHaOkVFN419m/K0LIgjb/7KU2vBgsUepJWugQCvAA==",
+      "replacement": "node_modules/@tauri-apps/api/LICENSE_APACHE-2.0",
+      "replacement_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    "@tauri-apps/plugin-shell@2.3.5": {
+      "declared_spdx": "MIT OR Apache-2.0",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-jewtULhiQ7lI7+owCKAjc8tYLJr92U16bPOeAa472LHJdgaibLP83NcfAF2e+wkEcA53FxKQAZ7byDzs2eeizg==",
+      "replacement": "node_modules/@tauri-apps/api/LICENSE_APACHE-2.0",
+      "replacement_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    "@tauri-apps/plugin-store@2.4.3": {
+      "declared_spdx": "MIT OR Apache-2.0",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-9LWPj9yMphRi9czEtUv87XHbl1b6xgd9EXpPrUnq6nG7+nbtoF84d4Kwz9xhAv/Hf30sr58pq7EOlyI936y8qw==",
+      "replacement": "node_modules/@tauri-apps/api/LICENSE_APACHE-2.0",
+      "replacement_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    "bitmap-sdf@1.0.4": {
+      "declared_spdx": "MIT",
+      "resolved_spdx": "MIT",
+      "package_integrity": "sha512-1G3U4n5JE6RAiALMxu0p1XmeZkTeCwGKykzsLTCqVzfSDaN6S7fKnkIkfejogz+iwqBWc0UYAIKnKHNN7pSfDg==",
+      "replacement": "scripts/third-party-license-overrides/bitmap-sdf-1.0.4.txt",
+      "replacement_sha256": "9d44ceca565491545efa191bb07baaaff4eb1facf343df7a15283bec5e5757f8",
+      "evidence": "node_modules/bitmap-sdf/README.md",
+      "evidence_sha256": "59c5a6d318f115a4ad3a1a0bc47e8b8474bd6dac893c51797cfb1024f19092ac"
+    },
+    "dompurify@3.4.11": {
+      "declared_spdx": "(MPL-2.0 OR Apache-2.0)",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==",
+      "replacement": "node_modules/dompurify/LICENSE",
+      "replacement_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "draco3d@1.5.7": {
+      "declared_spdx": "Apache-2.0",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-m6WCKt/erDXcw+70IJXnG7M3awwQPAsZvJGX5zY7beBqpELw6RDGkYVU0W43AFxye4pDZ5i2Lbyc/NNGqwjUVQ==",
+      "replacement": "node_modules/dompurify/LICENSE",
+      "replacement_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "lerc@2.0.0": {
+      "declared_spdx": "Apache-2.0",
+      "resolved_spdx": "Apache-2.0",
+      "package_integrity": "sha512-7qo1Mq8ZNmaR4USHHm615nEW2lPeeWJ3bTyoqFbd35DLx0LUH7C6ptt5FDCTAlbIzs3+WKrk5SkJvw8AFDE2hg==",
+      "replacement": "node_modules/dompurify/LICENSE",
+      "replacement_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "mersenne-twister@1.1.0": {
+      "declared_spdx": "MIT",
+      "resolved_spdx": "MIT AND BSD-3-Clause",
+      "package_integrity": "sha512-mUYWsMKNrm4lfygPkL3OfGzOPTR2DBlTkBNHM//F6hGp8cLThY897crAlk3/Jo17LEOOjQUrNAx6DvgO77QJkA==",
+      "replacement": "scripts/third-party-license-overrides/mersenne-twister-1.1.0.txt",
+      "replacement_sha256": "55cc44af392e0c43e4e10d2d065c7b04b3e07c1bcf0f0bdce71b37f01ba2858d",
+      "evidence": "node_modules/mersenne-twister/src/mersenne-twister.js",
+      "evidence_sha256": "b197b673a9e8add2068c9062e5f9222f73ae46ff03634909db28a924fdcad0eb"
+    }
+  }
+}

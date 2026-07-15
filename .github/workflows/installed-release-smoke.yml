@@ -55,13 +55,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin
-          key: windows-release-tools-v1
+          key: windows-release-tools-v2
 
       - name: Install Rust policy and Tauri WebDriver tools
         shell: pwsh
         run: |
           if (-not (Test-Path "$HOME/.cargo/bin/cargo-audit.exe")) { cargo install cargo-audit --locked }
           if (-not (Test-Path "$HOME/.cargo/bin/cargo-deny.exe")) { cargo install cargo-deny --locked }
+          if (-not (Test-Path "$HOME/.cargo/bin/cargo-about.exe")) { cargo install cargo-about --version 0.9.1 --locked --features cli }
           if (-not (Test-Path "$HOME/.cargo/bin/tauri-driver.exe")) { cargo install tauri-driver --locked }
           if (-not (Test-Path "$HOME/.cargo/bin/msedgedriver-tool.exe")) { cargo install --git https://github.com/chippers/msedgedriver-tool }
           & "$HOME/.cargo/bin/msedgedriver-tool.exe"

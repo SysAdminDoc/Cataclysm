@@ -1,4 +1,3 @@
-
 .citations {
   list-style: none;
   padding: 0;
@@ -149,4 +148,65 @@
   margin-top: 6px;
   font-size: 11px;
   color: var(--peach);
+}
+
+.citations__notice-entry,
+.citations__notice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.citations__notice-entry {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface0) 56%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface1) 54%, transparent);
+}
+
+.citations__notice-entry div {
+  display: grid;
+  gap: 3px;
+}
+
+.citations__notice-entry span,
+.citations__notice-actions span,
+.citations__notice-help {
+  color: var(--subtext);
+  font-size: 11px;
+}
+
+.citations__notice-help {
+  margin: 7px 0 0;
+}
+
+.citations__notice-actions {
+  margin-bottom: 12px;
+}
+
+.citations__notices {
+  max-height: min(65vh, 48rem);
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border-radius: var(--r-md);
+  color: var(--text);
+  background: var(--crust);
+  border: 1px solid var(--surface1);
+  font:
+    11px/1.55 "JetBrains Mono",
+    "Cascadia Code",
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .citations__notice-entry,
+  .citations__notice-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

@@ -438,6 +438,7 @@ if (docsOnly) {
   console.log("\nDocs/script truth gate completed.");
   process.exit(0);
 }
+runNpm("Third-party dependency notices", ["run", "verify:notices"]);
 runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"]);
 runNpm("Scientific input contract parity gate", ["run", "validate:source-input-contract"]);
 runNpm("Reference perceptual-quality unit gate", ["run", "test:reference-quality"]);

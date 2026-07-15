@@ -41,11 +41,12 @@ permissions = [
 
 [[set]]
 identifier = "support-diagnostics"
-description = "Collect the redacted local diagnostics bundle exposed by the application backend."
+description = "Collect redacted local diagnostics and read bundled support/legal resources."
 permissions = [
   "allow-diagnostics-bundle",
   "allow-native-panic-record",
   "allow-acknowledge-native-panic-record",
+  "allow-third-party-notices",
 ]
 
 [[set]]

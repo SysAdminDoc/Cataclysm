@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Installed packages now bundle a deterministic `THIRD_PARTY_NOTICES.txt` for
+  the exact production npm and Rust lock graphs. Verification fails on drift,
+  unknown licensing, development-only leakage, or stale digest-pinned
+  overrides; the References dialog reads the same packaged artifact and the
+  isolated MSI/NSIS journey verifies it after installation.
 - CPU and GPU SWE propagation now share a well-balanced hydrostatic-
   reconstruction/Rusanov finite-volume update. Dynamic wet/dry masks retain
   conservative sub-threshold water without momentum, prevent negative depth,

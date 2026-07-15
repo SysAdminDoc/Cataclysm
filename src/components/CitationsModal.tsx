@@ -3,7 +3,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { validateCitationUrl, type ExternalUrlValidation } from "../lib/external-links";
-import { isTauri } from "../lib/tauri";
+import { api, isTauri } from "../lib/tauri";
 import type { Preset } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 
@@ -38,17 +38,49 @@ export function CitationsModal({ presets, onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
   const [linkAlert, setLinkAlert] = useState<string | null>(null);
+  const [notices, setNotices] = useState<string | null>(null);
+  const [noticesError, setNoticesError] = useState<string | null>(null);
+  const [noticesLoading, setNoticesLoading] = useState(false);
   const speculativeCount = presets.filter((p) => p.is_speculative).length;
+
+  async function showThirdPartyNotices() {
+    if (!isTauri()) return;
+    setNoticesLoading(true);
+    setNoticesError(null);
+    try {
+      setNotices(await api.thirdPartyNotices());
+    } catch (error) {
+      console.error("third-party notices could not be loaded", error);
+      setNoticesError("The bundled third-party notices could not be read. Reinstall Cataclysm and try again.");
+    } finally {
+      setNoticesLoading(false);
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
         <header className="modal__header">
-          <h2 id="citations-title">References &amp; provenance</h2>
+          <h2 id="citations-title">
+            {notices ? "Third-party dependency notices" : "References & provenance"}
+          </h2>
           <button onClick={onClose} aria-label="Close" className="modal__close" type="button">
             <UiIcon name="close" size={16} />
           </button>
         </header>
         <div className="modal__body">
+          {notices ? (
+            <>
+              <div className="citations__notice-actions">
+                <button className="secondary" type="button" onClick={() => setNotices(null)}>
+                  Back to references
+                </button>
+                <span>Bundled with this installed Cataclysm package</span>
+              </div>
+              <pre className="citations__notices" tabIndex={0}>{notices}</pre>
+            </>
+          ) : (
+          <>
           <p className="modal__intro">
             Every preset keeps its citation visible. References open externally
             so the model assumptions can be checked against the source material.
@@ -113,6 +145,28 @@ export function CitationsModal({ presets, onClose }: Props) {
             formulas live under <code>src-tauri/src/physics/</code> with
             per-module citation blocks.
           </p>
+          <div className="citations__notice-entry">
+            <div>
+              <strong>Third-party dependency notices</strong>
+              <span>
+                Exact production dependency versions, SPDX identifiers, source links, and required license texts.
+              </span>
+            </div>
+            <button
+              className="secondary"
+              type="button"
+              disabled={!isTauri() || noticesLoading}
+              onClick={() => void showThirdPartyNotices()}
+            >
+              {noticesLoading ? "Loading notices…" : "View third-party notices"}
+            </button>
+          </div>
+          {!isTauri() && (
+            <p className="citations__notice-help">Notices are available in installed desktop packages.</p>
+          )}
+          {noticesError && <div className="citations__alert" role="alert">{noticesError}</div>}
+          </>
+          )}
         </div>
       </div>
     </div>

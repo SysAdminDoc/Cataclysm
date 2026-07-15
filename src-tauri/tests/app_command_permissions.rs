@@ -96,6 +96,7 @@ fn runtime_authority_denies_an_unprivileged_window() {
         "diagnostics_bundle",
         "native_panic_record",
         "acknowledge_native_panic_record",
+        "third_party_notices",
         "keychain_set_token",
     ] {
         assert!(

@@ -28,6 +28,7 @@ fn main() {
         "diagnostics_bundle",
         "native_panic_record",
         "acknowledge_native_panic_record",
+        "third_party_notices",
         "keychain_get_token",
         "keychain_set_token",
         "cancel_simulation",

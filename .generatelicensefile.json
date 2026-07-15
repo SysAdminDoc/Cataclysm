@@ -1,0 +1,14 @@
+{
+  "lineEnding": "lf",
+  "replace": {
+    "@cesium/wasm-splats@0.1.0-alpha.2": "./node_modules/dompurify/LICENSE",
+    "@tauri-apps/api@2.11.1": "./node_modules/@tauri-apps/api/LICENSE_APACHE-2.0",
+    "@tauri-apps/plugin-shell@2.3.5": "./node_modules/@tauri-apps/api/LICENSE_APACHE-2.0",
+    "@tauri-apps/plugin-store@2.4.3": "./node_modules/@tauri-apps/api/LICENSE_APACHE-2.0",
+    "bitmap-sdf@1.0.4": "./scripts/third-party-license-overrides/bitmap-sdf-1.0.4.txt",
+    "dompurify@3.4.11": "./node_modules/dompurify/LICENSE",
+    "draco3d@1.5.7": "./node_modules/dompurify/LICENSE",
+    "lerc@2.0.0": "./node_modules/dompurify/LICENSE",
+    "mersenne-twister@1.1.0": "./scripts/third-party-license-overrides/mersenne-twister-1.1.0.txt"
+  }
+}

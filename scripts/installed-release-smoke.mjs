@@ -608,6 +608,28 @@ async function runTohokuJourney(baseUrl, sessionId, screenshotPath, expectedVers
   writeFileSync(screenshotPath, Buffer.from(screenshot, "base64"));
   invariant(statSync(screenshotPath).size > 10_000, "Installed journey screenshot is unexpectedly small.");
 
+  const closedDiagnostics = await execute(baseUrl, sessionId, `
+    const button = document.querySelector('button[aria-label="Close log viewer"]');
+    if (!button) return false;
+    button.click();
+    return true;
+  `);
+  invariant(closedDiagnostics, "Installed journey could not close the diagnostics log.");
+  await clickText(baseUrl, sessionId, "button", "References", true);
+  await clickText(baseUrl, sessionId, "button", "View third-party notices", true);
+  await waitForText(baseUrl, sessionId, "CATACLYSM THIRD-PARTY NOTICES", 30_000);
+  const noticeSummary = await execute(baseUrl, sessionId, `
+    const text = document.querySelector('.citations__notices')?.innerText || '';
+    return {
+      header: text.startsWith('CATACLYSM THIRD-PARTY NOTICES'),
+      components: text.includes('Production components: 36 npm; 279 Rust'),
+      bytes: text.length,
+    };
+  `);
+  invariant(noticeSummary.header, "Installed third-party notices are missing their generated header.");
+  invariant(noticeSummary.components, "Installed third-party notices have the wrong production component inventory.");
+  invariant(noticeSummary.bytes > 100_000, "Installed third-party notice artifact is unexpectedly small.");
+
   const runtimeErrors = await execute(
     baseUrl,
     sessionId,
@@ -619,6 +641,7 @@ async function runTohokuJourney(baseUrl, sessionId, screenshotPath, expectedVers
     text_export: true,
     diagnostics: true,
     diagnostics_version: diagnostics.app_version,
+    third_party_notices: true,
     renderer_protocol_errors: 0,
   };
 }

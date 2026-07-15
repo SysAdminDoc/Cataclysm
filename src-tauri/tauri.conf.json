@@ -38,6 +38,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "../THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt"
+    },
     "category": "Education",
     "shortDescription": "Multi-hazard disaster simulator: asteroid impacts, nuclear detonations, earthquakes, landslides, tsunamis",
     "longDescription": "Cataclysm is a scientifically grounded 3D-globe desktop application for simulating catastrophic events and their effects. It models asteroid entry, airburst, cratering, thermal and blast effects (Holsapple, Collins et al.); nuclear weapon fireball, overpressure, thermal, radiation, EMP, fallout, and casualties (Glasstone-Dolan, NWFAQ); seismic and landslide sources; and the tsunamis these events generate (Ward & Asphaug, Le Méhauté, Fritz-Hager, Synolakis). Historical presets span Chicxulub, Tunguska, Chelyabinsk, Hiroshima, Tsar Bomba, Tōhoku 2011, and Lituya Bay 1958."
