@@ -443,7 +443,7 @@ export function Globe({
     );
     lifecycle.ownSystem(() => directEffectsControllerRef.current?.destroy());
     staticHazardControllerRef.current = new StaticHazardController(
-      new CesiumStaticHazardHost(viewer),
+      new CesiumStaticHazardHost(viewer, referenceCaptureEnabled()),
       viewerGenerationRef.current,
     );
     lifecycle.ownSystem(() => staticHazardControllerRef.current?.destroy());

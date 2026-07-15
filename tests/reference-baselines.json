@@ -52,16 +52,16 @@
       }
     },
     "asteroid-ocean-impact@1440p": {
-      "pngSha256": "3ff983558457e26c772b466ae19f7161d37b755396e6cf81054a77eabf801c39",
+      "pngSha256": "6258846cd92af6bb15c4f621291a7db6815a6993cacdd24766eece750c36122f",
       "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
       "width": 2560,
       "height": 1440,
       "review": {
-        "reason": "Ground-zero annotation is now a deterministic overlay above translucent ocean-impact geometry",
+        "reason": "Reference capture omits machine-font rasterization while retaining the semantic ground-zero entity and deterministic point marker",
         "approver": "SysAdminDoc",
-        "approvedAt": "2026-07-15T05:19:44.340Z",
-        "previousPngSha256": "6315c30fe1b53795640cf716af49a05e31959bad02f40eab9c90c1e75bd7bb1a",
-        "commit": "a4429d3964d01e4da138d850fda1a659722812ed",
+        "approvedAt": "2026-07-15T05:59:54.334Z",
+        "previousPngSha256": "3ff983558457e26c772b466ae19f7161d37b755396e6cf81054a77eabf801c39",
+        "commit": "5d37fad05933a913f684496311dada7e20af0f31",
         "visualQualityStatus": "blocked",
         "visualQualityContractSha256": "61a910b0252342d74c5cc094165074df0575b60302c418a44e7b41ebf11d49dc",
         "requiredScaleCue": "The disturbance and surrounding ocean surface are visible together."
@@ -169,16 +169,16 @@
       }
     },
     "asteroid-ocean-impact@4k": {
-      "pngSha256": "339857fc23b2aa4721f32be7ca9f26dedfb96b59a80c2fb60afcca152c1cb480",
+      "pngSha256": "e7bdf24fd8d087254bfeb503f896280eff845544a96c3471e0da69017294d2e9",
       "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
       "width": 3840,
       "height": 2160,
       "review": {
-        "reason": "Ground-zero annotation is now a deterministic overlay above translucent ocean-impact geometry",
+        "reason": "Reference capture omits machine-font rasterization while retaining the semantic ground-zero entity and deterministic point marker",
         "approver": "SysAdminDoc",
-        "approvedAt": "2026-07-15T05:20:32.846Z",
-        "previousPngSha256": "5a2a98ca5374ce535546f13d7c4b23c3aa7196d1e3d4f118bef67ca06e6c90fa",
-        "commit": "a4429d3964d01e4da138d850fda1a659722812ed",
+        "approvedAt": "2026-07-15T06:02:42.251Z",
+        "previousPngSha256": "339857fc23b2aa4721f32be7ca9f26dedfb96b59a80c2fb60afcca152c1cb480",
+        "commit": "5d37fad05933a913f684496311dada7e20af0f31",
         "visualQualityStatus": "blocked",
         "visualQualityContractSha256": "61a910b0252342d74c5cc094165074df0575b60302c418a44e7b41ebf11d49dc",
         "requiredScaleCue": "The disturbance and surrounding ocean surface are visible together."

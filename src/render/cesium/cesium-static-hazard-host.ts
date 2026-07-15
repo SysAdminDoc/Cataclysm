@@ -13,7 +13,11 @@ function position(latDeg: number, lonDeg: number): Cesium.Cartesian3 {
   return Cesium.Cartesian3.fromDegrees(lonDeg, latDeg, 0);
 }
 
-function applyDescriptor(entity: Cesium.Entity, descriptor: StaticHazardEntityDescriptor): void {
+function applyDescriptor(
+  entity: Cesium.Entity,
+  descriptor: StaticHazardEntityDescriptor,
+  deterministicCapture: boolean,
+): void {
   entity.name = descriptor.kind === "ground_zero" ? "Ground zero" : descriptor.name;
   entity.description = new Cesium.ConstantProperty(
     descriptor.kind === "ground_zero" ? descriptor.label : descriptor.description,
@@ -48,8 +52,13 @@ function applyDescriptor(entity: Cesium.Entity, descriptor: StaticHazardEntityDe
       color: color(descriptor.fill_css),
       outlineColor: color(descriptor.outline_css),
       outlineWidth: descriptor.outline_width_px,
+      disableDepthTestDistance: deterministicCapture ? Number.POSITIVE_INFINITY : 0,
     });
-    entity.label = new Cesium.LabelGraphics({
+    // Cesium rasterizes label glyphs into a GPU atlas. Font hinting differs
+    // across otherwise equivalent Windows runners, so the locked reference
+    // frame uses the semantic entity name plus a depth-independent point and
+    // excludes only this decorative text atlas.
+    entity.label = deterministicCapture ? undefined : new Cesium.LabelGraphics({
       text: descriptor.label,
       font: "11px Inter, sans-serif",
       fillColor: color("#cdd6f4"),
@@ -80,19 +89,21 @@ function applyDescriptor(entity: Cesium.Entity, descriptor: StaticHazardEntityDe
 
 export class CesiumStaticHazardHost implements StaticHazardEntityHost<Cesium.Entity> {
   readonly #viewer: Cesium.Viewer;
+  readonly #deterministicCapture: boolean;
 
-  constructor(viewer: Cesium.Viewer) {
+  constructor(viewer: Cesium.Viewer, deterministicCapture = false) {
     this.#viewer = viewer;
+    this.#deterministicCapture = deterministicCapture;
   }
 
   createEntity(key: string, descriptor: StaticHazardEntityDescriptor): Cesium.Entity {
     const entity = this.#viewer.entities.add({ id: `static-hazard:${key}` });
-    applyDescriptor(entity, descriptor);
+    applyDescriptor(entity, descriptor, this.#deterministicCapture);
     return entity;
   }
 
   updateEntity(entity: Cesium.Entity, descriptor: StaticHazardEntityDescriptor): void {
-    applyDescriptor(entity, descriptor);
+    applyDescriptor(entity, descriptor, this.#deterministicCapture);
   }
 
   removeEntity(entity: Cesium.Entity): void {
