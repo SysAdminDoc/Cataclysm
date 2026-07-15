@@ -1,9 +1,16 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { getDartEvents, PRESET_TO_DART_EVENT } from "../lib/data";
 import { api, isTauri, type DartRmseResult } from "../lib/tauri";
 import type { DartBuoy, DartEvent, GridSnapshot } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
+import {
+  asyncResultValue,
+  rejectAsyncResult,
+  resolveAsyncResult,
+  startAsyncResult,
+  type AsyncResult,
+} from "../lib/async-result";
 
 type Props = {
   presetId: string | null;
@@ -15,8 +22,7 @@ type Props = {
 
 type BuoyFit =
   | { kind: "ok"; result: DartRmseResult }
-  | { kind: "no-overlap"; result: DartRmseResult }
-  | { kind: "error" };
+  | { kind: "no-overlap"; result: DartRmseResult };
 
 /** Model eta series at a buoy from the hidden `dart-<id>` gauge samples. */
 function modelSeriesForBuoy(buoyId: string | number, snapshots: GridSnapshot[]): [number, number][] {
@@ -249,7 +255,10 @@ function Sparkline({
 
 export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
   const [expanded, setExpanded] = useState(true);
-  const [fits, setFits] = useState<Record<string, BuoyFit>>({});
+  const [fitResult, setFitResult] = useState<AsyncResult<Record<string, BuoyFit>>>({ status: "idle" });
+  const fits = asyncResultValue(fitResult) ?? {};
+  const [retryNonce, setRetryNonce] = useState(0);
+  const contextRef = useRef<string | null>(null);
   const eventKey = presetId ? PRESET_TO_DART_EVENT[presetId] : null;
   const event: DartEvent | null = useMemo(
     () => (eventKey ? db.events[eventKey] ?? null : null),
@@ -268,12 +277,17 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
   // browser preview's demo frames are approximate by design.
   useEffect(() => {
     if (!event || !sweSnapshots || sweSnapshots.length < 2 || !isTauri()) {
-      setFits({});
+      contextRef.current = null;
+      setFitResult({ status: "idle" });
       return;
     }
+    const retainPrevious = contextRef.current === eventKey;
+    contextRef.current = eventKey;
+    setFitResult((current) => startAsyncResult(current, retainPrevious));
     let cancelled = false;
     (async () => {
       const next: Record<string, BuoyFit> = {};
+      const failures: string[] = [];
       for (const buoy of event.buoys) {
         const model = modelSeriesForBuoy(buoy.id, sweSnapshots);
         if (model.length < 2) continue;
@@ -289,15 +303,20 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
             : { kind: "ok", result };
         } catch (err) {
           console.error(`dartBuoyRmse failed for ${buoy.id}`, err);
-          next[buoy.id] = { kind: "error" };
+          failures.push(`${buoy.id}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
-      if (!cancelled) setFits(next);
+      if (cancelled) return;
+      if (failures.length > 0) {
+        setFitResult((current) => rejectAsyncResult(current, `Comparison failed for ${failures.join("; ")}`));
+      } else {
+        setFitResult(resolveAsyncResult(next, (items) => Object.keys(items).length === 0));
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [event, sweSnapshots]);
+  }, [event, eventKey, sweSnapshots, retryNonce]);
 
   if (!event) return null;
 
@@ -313,7 +332,15 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
           <UiIcon name={expanded ? "chevronDown" : "chevronRight"} size={13} />
           DART buoy observations
         </button>
-        <span className="section__badge">{event.buoys.length} buoys</span>
+        <span
+          className="section__badge"
+          data-tone={fitResult.status === "error" || fitResult.status === "stale" ? "danger" : fitResult.status === "loading" ? "active" : undefined}
+        >
+          {fitResult.status === "loading" ? fitResult.previous ? "Refreshing" : "Comparing"
+            : fitResult.status === "stale" ? "Stale"
+              : fitResult.status === "error" ? "Error"
+                : `${event.buoys.length} buoys`}
+        </span>
       </div>
       {expanded && (
         <>
@@ -326,6 +353,24 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
             event. When an SWE run is available, the peach series and all fit
             metrics come from its buoy gauge samples; blue is the timeline cursor.
           </p>
+          {fitResult.status === "loading" && !fitResult.previous && (
+            <div className="empty-state empty-state--compact" role="status">
+              <span className="empty-state__icon" aria-hidden />
+              <div><strong>Comparing DART observations…</strong><p>Computing model overlap, RMSE, peaks, and arrival residuals.</p></div>
+            </div>
+          )}
+          {(fitResult.status === "error" || fitResult.status === "stale") && (
+            <div className="panel-error" role="alert">
+              <span>{fitResult.status === "stale" ? "Showing the last valid DART comparison: " : "Couldn't compute DART comparison: "}{fitResult.error}</span>
+              <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry DART comparison</button>
+            </div>
+          )}
+          {fitResult.status === "empty" && (
+            <div className="empty-state empty-state--compact" role="status">
+              <span className="empty-state__icon" aria-hidden />
+              <div><strong>No comparable DART model samples</strong><p>The comparison completed, but this SWE result contains no usable buoy series.</p></div>
+            </div>
+          )}
           <div className="chart-legend chart-legend--dart" aria-hidden>
             <span><i data-tone="observed" /> Observed</span>
             {hasModelEvidence && <span><i data-tone="model" /> SWE model</span>}
@@ -367,11 +412,6 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
                       method: {fit.result.arrival_method}; threshold {(fit.result.arrival_threshold_m * 100).toFixed(0)} cm;
                       noise: {fit.result.noise_method}
                     </span>
-                  </div>
-                )}
-                {fit?.kind === "error" && (
-                  <div className="dart__rmse dart__rmse--muted" role="note">
-                    Couldn't compute RMSE for this buoy — see the diagnostics log.
                   </div>
                 )}
               </div>

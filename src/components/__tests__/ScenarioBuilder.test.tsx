@@ -8,6 +8,7 @@ import {
   INITIAL_NUCLEAR,
   SCENARIO_SCHEMA_VERSION,
 } from "../../lib/scenario-schema";
+import { settings } from "../../lib/settings";
 
 const clipboard = {
   readText: vi.fn<() => Promise<string>>(),
@@ -103,6 +104,22 @@ describe("ScenarioBuilder scenario persistence", () => {
 
     await waitFor(() => expect(screen.getByText("No saved scenarios yet.")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Load" })).toBeInTheDocument();
+  });
+
+  it("distinguishes a saved-scenario load failure from an empty library and retries locally", async () => {
+    const user = setupUser();
+    const loadSpy = vi.spyOn(settings, "getSavedScenarios")
+      .mockRejectedValueOnce(new Error("storage unavailable"))
+      .mockResolvedValueOnce([]);
+    try {
+      renderBuilder();
+      await user.click(screen.getByRole("button", { name: "Load" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't load saved scenarios: storage unavailable/);
+      await user.click(screen.getByRole("button", { name: "Retry saved scenarios" }));
+      expect(await screen.findByText("No saved scenarios yet.")).toBeInTheDocument();
+    } finally {
+      loadSpy.mockRestore();
+    }
   });
 
   it("undoes deletion with the same saved scenario identity and content", async () => {

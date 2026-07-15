@@ -1,8 +1,15 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { InitialDisplacement } from "../types/scenario";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import { demoAttenuationCurve } from "../lib/demo";
 import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
+import {
+  asyncResultValue,
+  rejectAsyncResult,
+  resolveAsyncResult,
+  startAsyncResult,
+  type AsyncResult,
+} from "../lib/async-result";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -32,27 +39,40 @@ function formatAxis(v: number): string {
 }
 
 export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Props) {
-  const [curve, setCurve] = useState<Sample[] | null>(null);
+  const [curveResult, setCurveResult] = useState<AsyncResult<Sample[]>>({ status: "idle" });
+  const curve = asyncResultValue(curveResult);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const contextRef = useRef<string | null>(null);
   const semanticId = useId();
 
   // Decay physics come from the Rust `attenuation_curve` command; the JS
   // approximation in demo.ts only serves the watermarked browser preview.
   useEffect(() => {
     if (!initial) {
-      setCurve(null);
+      contextRef.current = null;
+      setCurveResult({ status: "idle" });
       return;
     }
+    const context = [
+      initial.center.lat_deg,
+      initial.center.lon_deg,
+      initial.peak_amplitude_m,
+      initial.cavity_radius_m,
+      isImpact,
+    ].join(":");
+    const retainPrevious = contextRef.current === context;
+    contextRef.current = context;
+    setCurveResult((current) => startAsyncResult(current, retainPrevious));
     const alpha = isImpact ? 5 / 6 : 0.5;
     if (!isTauri()) {
-      setCurve(
-        demoAttenuationCurve(
+      const samples = demoAttenuationCurve(
           initial.peak_amplitude_m,
           initial.cavity_radius_m,
           alpha,
           CURVE_MAX_RANGE_M,
           CURVE_SAMPLES,
-        ).map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m })),
-      );
+        ).map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m }));
+      setCurveResult(resolveAsyncResult(samples, (items) => items.length === 0));
       return;
     }
     let cancelled = false;
@@ -66,15 +86,16 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
       })
       .then((samples) => {
         if (cancelled) return;
-        setCurve(samples.map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m })));
+        const mapped = samples.map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m }));
+        setCurveResult(resolveAsyncResult(mapped, (items) => items.length === 0));
       })
-      .catch(() => {
-        if (!cancelled) setCurve(null);
+      .catch((error) => {
+        if (!cancelled) setCurveResult((current) => rejectAsyncResult(current, error));
       });
     return () => {
       cancelled = true;
     };
-  }, [initial, isImpact]);
+  }, [initial, isImpact, retryNonce]);
 
   const arrivedPoints = useMemo(() => {
     return runupResults
@@ -82,7 +103,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
       .map((r) => ({ ...r, range_km: r.range_m / 1000, amplitude_m: r.offshore_amplitude_m }));
   }, [runupResults]);
 
-  if (!curve || !initial) {
+  if (!initial) {
     return (
       <div className="section">
         <div className="section__title">
@@ -94,6 +115,29 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
           <div>
             <strong>Amplitude curve appears after source selection</strong>
             <p>The chart compares modeled decay, the active wavefront, and arrived coastal samples.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!curve) {
+    const failed = curveResult.status === "error";
+    const empty = curveResult.status === "empty";
+    return (
+      <div className="section">
+        <div className="section__title">
+          <span>Wave attenuation</span>
+          <span className="section__badge" data-tone={failed ? "danger" : "muted"}>
+            {failed ? "Error" : empty ? "Empty" : "Loading"}
+          </span>
+        </div>
+        <div className={failed ? "panel-error" : "empty-state empty-state--compact"} role={failed ? "alert" : "status"}>
+          {!failed && <span className="empty-state__icon" aria-hidden />}
+          <div>
+            <strong>{failed ? "Couldn't compute wave attenuation" : empty ? "No attenuation samples returned" : "Computing attenuation curve…"}</strong>
+            <p>{failed ? curveResult.error : empty ? "The computation completed successfully but returned no samples." : "The current source remains selected while the analytical curve is prepared."}</p>
+            {(failed || empty) && <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry attenuation</button>}
           </div>
         </div>
       </div>
@@ -188,8 +232,16 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
     <div className="section">
       <div className="section__title">
         <span>Wave attenuation</span>
-        <span className="section__badge">{arrivedPoints.length} arrived</span>
+        <span className="section__badge" data-tone={curveResult.status === "stale" ? "danger" : curveResult.status === "loading" ? "active" : undefined}>
+          {curveResult.status === "stale" ? "Stale" : curveResult.status === "loading" ? "Refreshing" : `${arrivedPoints.length} arrived`}
+        </span>
       </div>
+      {curveResult.status === "stale" && (
+        <div className="panel-error" role="alert">
+          <span>Showing the last valid attenuation curve: {curveResult.error}</span>
+          <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry attenuation</button>
+        </div>
+      )}
       <div className="chart-shell">
         <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label="Modeled wave amplitude decay by distance" aria-describedby={`${semanticId}-summary`}>
           {yTicks.map((logV) => {

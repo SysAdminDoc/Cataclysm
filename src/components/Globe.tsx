@@ -72,6 +72,11 @@ import {
   type CesiumQualityDiagnostics,
 } from "../render/quality/cesium-quality-runtime";
 import type { RendererQualityTier } from "../render/quality/quality-controller";
+import {
+  rejectAsyncResult,
+  startAsyncResult,
+  type AsyncResult,
+} from "../lib/async-result";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -281,6 +286,7 @@ export function Globe({
   >(null);
   const [lastInspectCoord, setLastInspectCoord] = useState<{ lat: number; lon: number } | null>(null);
   const [lastInspectionSummary, setLastInspectionSummary] = useState<string | null>(null);
+  const [inspectionResult, setInspectionResult] = useState<AsyncResult<{ lat: number; lon: number; text: string }>>({ status: "idle" });
   const sweCoordinatorRef = useRef<{
     coordinator: AsyncResourceCoordinator<SweImageryResource>;
     generation: number;
@@ -714,6 +720,7 @@ export function Globe({
       !initial
     ) return;
     setLastInspectCoord({ lat, lon });
+    setInspectionResult((current) => startAsyncResult(current));
     setLastInspectionSummary(`Inspection at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude is in progress.`);
     const request = buildInspectionRequest(initial, lat, lon, {
       isImpact: inspectIsImpact,
@@ -736,9 +743,11 @@ export function Globe({
           lon,
           text,
         });
+        setInspectionResult({ status: "ready", value: { lat, lon, text } });
         setLastInspectionSummary(`Inspected point ${text}`);
       })
       .catch((error) => {
+        setInspectionResult((current) => rejectAsyncResult(current, error));
         setLastInspectionSummary(`Inspection failed at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude.`);
         console.warn("[globe] inspect_at_point failed", error);
       });
@@ -757,6 +766,7 @@ export function Globe({
       inspectionPresenter.clear();
       setLastInspectCoord(null);
       setLastInspectionSummary(null);
+      setInspectionResult({ status: "idle" });
       lease = controller.enable({
         kind: "pick",
         onPosition: (lat, lon) => onPick?.(lat, lon),
@@ -774,6 +784,7 @@ export function Globe({
       controller.disable();
       setLastInspectCoord(null);
       setLastInspectionSummary(null);
+      setInspectionResult({ status: "idle" });
     }
     interactionLeaseRef.current = lease;
     return () => {
@@ -1038,6 +1049,17 @@ export function Globe({
             onSubmit={runInspection}
             label="Enter coordinates"
           />
+          {inspectionResult.status === "loading" && (
+            <div className="app__globe-status" data-status="connecting" role="status" aria-live="polite">
+              {inspectionResult.previous ? "Refreshing inspection; the last point remains visible." : "Inspecting selected point…"}
+            </div>
+          )}
+          {(inspectionResult.status === "error" || inspectionResult.status === "stale") && (
+            <div className="app__globe-status" data-status="degraded" role="alert">
+              <span>{inspectionResult.status === "stale" ? "Showing the last valid inspection: " : "Inspection failed: "}{inspectionResult.error}</span>
+              {lastInspectCoord && <button type="button" onClick={() => runInspection(lastInspectCoord.lat, lastInspectCoord.lon)}>Retry inspection</button>}
+            </div>
+          )}
         </div>
       )}
       {imageryStatus === "connecting" && (

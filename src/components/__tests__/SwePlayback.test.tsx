@@ -296,4 +296,32 @@ describe("SwePlayback", () => {
     await user.click(screen.getByRole("button", { name: "Retry simulation" }));
     await waitFor(() => expect(tauriApi.simulateGridStreaming).toHaveBeenCalledTimes(2));
   });
+
+  it("restores the last valid frames and marks them stale when a re-run fails", async () => {
+    tauriApi.simulateGridStreaming
+      .mockImplementationOnce(async (_runId, _req, onSnapshot) => {
+        onSnapshot(SNAPSHOTS[0]);
+        onSnapshot(SNAPSHOTS[1]);
+        return {
+          dt_s: 2,
+          nx: 2,
+          ny: 2,
+          used_gpu: false,
+          n_snapshots: 2,
+          cancelled: false,
+          run_quality: RUN_QUALITY,
+        };
+      })
+      .mockRejectedValueOnce(new Error("refresh failed"));
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} />);
+
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+    expect(await screen.findByText(/Frame\s+1\/2/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Re-run simulation" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/showing the last valid run/i);
+    expect(screen.getByText(/Frame\s+1\/2/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry simulation" })).toBeInTheDocument();
+  });
 });

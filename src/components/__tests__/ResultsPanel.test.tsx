@@ -195,4 +195,44 @@ describe("ResultsPanel", () => {
     expect(onTimeChange).toHaveBeenCalledWith(runupResults[0].arrival_time_s);
     expect(onFocusOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: runupResults[0].id }));
   });
+
+  it("distinguishes loading, error, and valid-empty coastal screening with a local retry", async () => {
+    const user = userEvent.setup();
+    const onRetryRunup = vi.fn();
+    const { rerender } = render(
+      <ResultsPanel
+        initial={MOCK_INITIAL}
+        timeS={900}
+        onTimeChange={() => {}}
+        runupResult={{ status: "loading" }}
+        onRetryRunup={onRetryRunup}
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: "Validation" }));
+    expect(screen.getByText("Computing coastal screening…")).toBeInTheDocument();
+
+    rerender(
+      <ResultsPanel
+        initial={MOCK_INITIAL}
+        timeS={900}
+        onTimeChange={() => {}}
+        runupResult={{ status: "error", error: "solver unavailable" }}
+        onRetryRunup={onRetryRunup}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Coastal screening failed: solver unavailable");
+    await user.click(screen.getByRole("button", { name: "Retry coastal screening" }));
+    expect(onRetryRunup).toHaveBeenCalledOnce();
+
+    rerender(
+      <ResultsPanel
+        initial={MOCK_INITIAL}
+        timeS={900}
+        onTimeChange={() => {}}
+        runupResult={{ status: "empty", value: [] }}
+        onRetryRunup={onRetryRunup}
+      />,
+    );
+    expect(screen.getByText("No coastal point exceeded the display threshold")).toBeInTheDocument();
+  });
 });

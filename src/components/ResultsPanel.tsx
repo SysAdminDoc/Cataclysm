@@ -8,6 +8,7 @@ import {
   type CoastalOutcomePlace,
 } from "../lib/result-story";
 import { GlossaryTip } from "./GlossaryTip";
+import { type AsyncResult } from "../lib/async-result";
 
 /** The four modelled tsunami source families. `null` covers presets/custom
  * scenarios whose discrete kind is not known to the caller. */
@@ -21,6 +22,8 @@ type Props = {
   /** Discrete source family, used to label metrics correctly. */
   sourceKind?: SourceKind;
   runupResults?: RunupAtPointResult[];
+  runupResult?: AsyncResult<RunupAtPointResult[]>;
+  onRetryRunup?: () => void;
   scienceContent?: ReactNode;
   validationContent?: ReactNode;
   onFocusOutcome?: (place: CoastalOutcomePlace) => void;
@@ -144,6 +147,8 @@ export function ResultsPanel({
   showTimeline = true,
   sourceKind = null,
   runupResults = [],
+  runupResult,
+  onRetryRunup,
   scienceContent,
   validationContent,
   onFocusOutcome,
@@ -195,6 +200,8 @@ export function ResultsPanel({
   const outcome = describeOutcome(initial, sourceKind);
   const cavity_label = cavityLabel(sourceKind);
   const story = buildCoastalOutcomeStory(runupResults, safeTimeS);
+  const coastalState: AsyncResult<RunupAtPointResult[]> = runupResult
+    ?? (runupResults.length > 0 ? { status: "ready", value: runupResults } : { status: "idle" });
   const coastalResults = [...runupResults]
     .filter((result) => Number.isFinite(result.runup_m) && result.runup_m >= 0.1)
     .sort((left, right) => right.runup_m - left.runup_m)
@@ -433,10 +440,33 @@ export function ResultsPanel({
             <div className="section">
               <div className="section__title">
                 <span>Coastal screening validation</span>
-                <span className="section__badge" data-tone="muted">
-                  {coastalResults.length > 0 ? `${story.confidence} confidence` : "Waiting"}
+                <span
+                  className="section__badge"
+                  data-tone={coastalState.status === "error" || coastalState.status === "stale" ? "danger" : "muted"}
+                >
+                  {coastalState.status === "loading"
+                    ? coastalState.previous ? "Refreshing" : "Loading"
+                    : coastalState.status === "error" ? "Error"
+                      : coastalState.status === "stale" ? "Stale"
+                        : coastalResults.length > 0 ? `${story.confidence} confidence`
+                          : coastalState.status === "empty" || coastalState.status === "ready" ? "Complete" : "Waiting"}
                 </span>
               </div>
+              {(coastalState.status === "error" || coastalState.status === "stale") && (
+                <div className="panel-error" role="alert">
+                  <span>
+                    {coastalState.status === "stale" ? "Showing the last valid coastal screening: " : "Coastal screening failed: "}
+                    {coastalState.error}
+                  </span>
+                  {onRetryRunup && <button type="button" onClick={onRetryRunup}>Retry coastal screening</button>}
+                </div>
+              )}
+              {coastalState.status === "loading" && !coastalState.previous && (
+                <div className="empty-state empty-state--compact" role="status">
+                  <span className="empty-state__icon" aria-hidden />
+                  <div><strong>Computing coastal screening…</strong><p>Named-place arrivals and provenance are being calculated.</p></div>
+                </div>
+              )}
               {coastalResults.length > 0 ? (
                 <>
                   <p className="results__outcome-note">
@@ -465,15 +495,15 @@ export function ResultsPanel({
                     </details>
                   ))}
                 </>
-              ) : (
+              ) : coastalState.status !== "loading" && coastalState.status !== "error" ? (
                 <div className="empty-state empty-state--compact">
                   <span className="empty-state__icon" aria-hidden />
                   <div>
-                    <strong>No coastal validation result yet</strong>
-                    <p>Run coastal screening to compare named places, arrival times, and input provenance.</p>
+                    <strong>{coastalState.status === "idle" ? "No coastal validation result yet" : "No coastal point exceeded the display threshold"}</strong>
+                    <p>{coastalState.status === "idle" ? "Run coastal screening to compare named places, arrival times, and input provenance." : "The screening completed successfully; no named point reached 0.1 m modeled runup at this time."}</p>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
             {validationContent}
           </>

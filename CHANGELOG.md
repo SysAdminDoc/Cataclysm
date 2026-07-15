@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Preset/source, coastal screening, attenuation, SWE, DART, saved-scenario,
+  and point-inspection workflows now distinguish loading, valid-empty, current,
+  stale, and failed derived outputs. Safe prior results remain visible with a
+  stale marker after refresh failures, and each failure has a local retry.
 - Headless visual and WCAG regression now exercises empty, loading, error,
   recovery, custom-builder, comparison, layer, coastal-result, export,
   lesson/tour, and direct-hazard states in both themes. The same deterministic

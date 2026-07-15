@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import { demoInitialForScenario, runDemoPreset } from "../lib/demo";
+import { asyncResultValue, rejectAsyncResult, startAsyncResult, type AsyncResult } from "../lib/async-result";
 import type {
   AsteroidImpactInput,
   EarthquakeInput,
@@ -21,19 +22,21 @@ export type ScenarioInput =
 export type ScenarioSlot = {
   activePresetId: string | null;
   setActivePresetId: (id: string | null) => void;
+  sourceResult: AsyncResult<InitialDisplacement>;
   initial: InitialDisplacement | null;
   wavefront: PropagationSnapshot | null;
   sweSnapshot: GridSnapshot | null;
   setSweSnapshot: (s: GridSnapshot | null) => void;
+  runupResult: AsyncResult<RunupAtPointResult[]>;
   runupResults: RunupAtPointResult[];
-  setRunupResults: (r: RunupAtPointResult[]) => void;
+  setRunupResult: Dispatch<SetStateAction<AsyncResult<RunupAtPointResult[]>>>;
+  runupRetryNonce: number;
+  retryRunup: () => void;
   busyPresetId: string | null;
   simulate: (input: ScenarioInput) => void;
   lastCustomScenario: ScenarioInput | null;
-  /** Last preset/scenario IPC failure, surfaced to the user. Cleared on the
-   *  next successful (or newly-started) request. */
   error: string | null;
-  clearError: () => void;
+  retrySource: () => void;
 };
 
 function sameInitial(a: InitialDisplacement | null, b: InitialDisplacement): boolean {
@@ -55,11 +58,14 @@ function sameInitial(a: InitialDisplacement | null, b: InitialDisplacement): boo
 export function useScenarioSlot(timeS: number): ScenarioSlot {
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [initial, setInitial] = useState<InitialDisplacement | null>(null);
+  const [sourceResult, setSourceResult] = useState<AsyncResult<InitialDisplacement>>({ status: "idle" });
   const [wavefront, setWavefront] = useState<PropagationSnapshot | null>(null);
   const [sweSnapshot, setSweSnapshot] = useState<GridSnapshot | null>(null);
-  const [runupResults, setRunupResults] = useState<RunupAtPointResult[]>([]);
+  const [runupResult, setRunupResult] = useState<AsyncResult<RunupAtPointResult[]>>({ status: "idle" });
+  const runupResults = asyncResultValue(runupResult) ?? [];
+  const [runupRetryNonce, setRunupRetryNonce] = useState(0);
   const [busyPresetId, setBusyPresetId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [sourceRetryNonce, setSourceRetryNonce] = useState(0);
   const [lastCustomScenario, setLastCustomScenario] = useState<ScenarioInput | null>(null);
   // Monotonic request id — only the most recent runPreset response is
   // allowed to commit. Stops a slow earlier call from overwriting a fast
@@ -87,10 +93,11 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       return;
     }
     if (sourceChanged) {
+      setSourceResult({ status: "loading" });
       setInitial(null);
       setWavefront(null);
       setSweSnapshot(null);
-      setRunupResults([]);
+      setRunupResult({ status: "idle" });
     }
     setLastCustomScenario(null);
     // A preset selection supersedes any custom scenario IPC already in flight.
@@ -102,12 +109,13 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     // The wavefront is re-fetched on every timeline tick; without this guard the
     // busy badge flickers on/off throughout playback and scrubbing.
     if (sourceChanged) setBusyPresetId(activePresetId);
-    setError(null);
+    if (!sourceChanged) setSourceResult((current) => startAsyncResult(current));
     if (!inTauri) {
       window.setTimeout(() => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         const resp = runDemoPreset(activePresetId, timeS);
         setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
+        setSourceResult({ status: "ready", value: resp.initial });
         setWavefront(resp.wavefront);
         setBusyPresetId(null);
       }, 80);
@@ -119,18 +127,19 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
         // Drop stale responses + don't touch unmounted state.
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
+        setSourceResult({ status: "ready", value: resp.initial });
         setWavefront(resp.wavefront);
       })
       .catch((err) => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         console.error("runPreset failed", err);
-        setError(`Couldn't load this preset: ${String(err)}`);
+        setSourceResult((current) => rejectAsyncResult(current, `Couldn't load this preset: ${String(err)}`));
       })
       .finally(() => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
         setBusyPresetId(null);
       });
-  }, [activePresetId, timeS, inTauri]);
+  }, [activePresetId, timeS, inTauri, sourceRetryNonce]);
 
   const simulate = useCallback(
     (input: ScenarioInput) => {
@@ -141,14 +150,15 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       setBusyPresetId(null);
       setActivePresetId(null);
       setLastCustomScenario(input);
-      setError(null);
+      setSourceResult({ status: "loading" });
       setInitial(null);
       setWavefront(null);
       setSweSnapshot(null);
-      setRunupResults([]);
+      setRunupResult({ status: "idle" });
       if (!inTauri) {
         const d = demoInitialForScenario(input);
         setInitial(d);
+        setSourceResult({ status: "ready", value: d });
         setWavefront(null);
         setSweSnapshot(null);
         return;
@@ -167,39 +177,52 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
         .then((d) => {
           if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
           setInitial(d);
+          setSourceResult({ status: "ready", value: d });
           setWavefront(null);
           setSweSnapshot(null);
         })
         .catch((err) => {
           if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
           console.error(`${input.kind} initial_conditions failed`, err);
-          setError(`Couldn't simulate this ${input.kind.toLowerCase()} scenario: ${String(err)}`);
+          setSourceResult((current) => rejectAsyncResult(current, `Couldn't simulate this ${input.kind.toLowerCase()} scenario: ${String(err)}`));
         });
     },
     [inTauri],
   );
 
+  const retrySource = useCallback(() => {
+    if (activePresetId) {
+      setSourceRetryNonce((value) => value + 1);
+    } else if (lastCustomScenario) {
+      simulate(lastCustomScenario);
+    }
+  }, [activePresetId, lastCustomScenario, simulate]);
+
   // Reset SWE + runup when the source location/amplitude meaningfully
   // changes (a new scenario, not a timeline scrub).
   useEffect(() => {
     setSweSnapshot(null);
-    setRunupResults([]);
+    setRunupResult({ status: "idle" });
   }, [initial?.center.lat_deg, initial?.center.lon_deg, initial?.peak_amplitude_m]);
 
   return {
     activePresetId,
     setActivePresetId,
+    sourceResult,
     initial,
     wavefront,
     sweSnapshot,
     setSweSnapshot,
+    runupResult,
     runupResults,
-    setRunupResults,
+    setRunupResult,
+    runupRetryNonce,
+    retryRunup: () => setRunupRetryNonce((value) => value + 1),
     busyPresetId,
     simulate,
     lastCustomScenario,
-    error,
-    clearError: () => setError(null),
+    error: sourceResult.status === "error" || sourceResult.status === "stale" ? sourceResult.error : null,
+    retrySource,
   };
 }
 

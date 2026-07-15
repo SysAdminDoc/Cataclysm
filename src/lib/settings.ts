@@ -595,11 +595,17 @@ function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
 
 async function readScenarios(): Promise<SavedScenario[]> {
   const store = await getStore();
+  const failures: unknown[] = [];
+  let completedRead = false;
   if (store) {
     try {
       const v = await store.get<SavedScenario[]>(SCENARIOS_KEY);
+      completedRead = true;
       if (Array.isArray(v)) return sanitizeSavedScenarios(v);
-    } catch { /* ignore */ }
+      if (v != null) failures.push(new Error("Desktop scenario storage returned an invalid record."));
+    } catch (error) {
+      failures.push(error);
+    }
   }
   if (typeof localStorage !== "undefined") {
     try {
@@ -607,8 +613,18 @@ async function readScenarios(): Promise<SavedScenario[]> {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return sanitizeSavedScenarios(parsed);
+        throw new Error("Local scenario storage does not contain a list.");
       }
-    } catch { /* ignore */ }
+      completedRead = true;
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (!completedRead && failures.length > 0) {
+    const detail = failures
+      .map((error) => error instanceof Error ? error.message : String(error))
+      .join("; ");
+    throw new Error(`Saved scenario storage is unavailable: ${detail}`);
   }
   return [];
 }

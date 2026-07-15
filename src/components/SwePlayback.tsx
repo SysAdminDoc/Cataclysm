@@ -77,7 +77,7 @@ function overlaySnapshot(product: MaxFieldProduct, choice: OverlayChoice): GridS
   };
 }
 
-type Status = "idle" | "running" | "ready" | "error";
+type Status = "idle" | "running" | "ready" | "stale" | "error";
 
 /**
  * Drives the CPU shallow-water solver via the `simulate_grid` Tauri command
@@ -332,6 +332,10 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
 
   const run = useCallback(async (autoPlay = false) => {
     if (!initial) return;
+    const previousSnapshots = snapshots;
+    const previousDiag = diag;
+    const previousMaxField = maxField;
+    const previousQuality = diag?.quality ?? null;
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
     const previousRunId = runIdRef.current;
@@ -351,14 +355,16 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     setIsPlaying(false);
     onRenderFrame?.(null);
     setStreamProgress(0);
-    setSnapshots(null);
-    setActiveIdx(0);
-    setDiag(null);
-    setMaxField(null);
-    onSnapshot?.(null);
-    onSnapshotsReady?.(null);
-    onMaxField?.(null);
-    onRunQuality?.(null);
+    if (!previousSnapshots) {
+      setSnapshots(null);
+      setActiveIdx(0);
+      setDiag(null);
+      setMaxField(null);
+      onSnapshot?.(null);
+      onSnapshotsReady?.(null);
+      onMaxField?.(null);
+      onRunQuality?.(null);
+    }
     try {
       const halfDeg = Math.min(
         25,
@@ -460,16 +466,27 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       runIdRef.current = null;
       console.error("simulate_grid failed", err);
       setErrMsg(String(err));
-      setSnapshots(null);
-      setMaxField(null);
-      setDiag(null);
-      onSnapshot?.(null);
-      onSnapshotsReady?.(null);
-      onMaxField?.(null);
-      onRunQuality?.(null);
-      setStatus("error");
+      if (previousSnapshots) {
+        setSnapshots(previousSnapshots);
+        setMaxField(previousMaxField);
+        setDiag(previousDiag);
+        setActiveIdx((index) => Math.min(index, previousSnapshots.length - 1));
+        onSnapshotsReady?.(previousSnapshots);
+        onMaxField?.(previousMaxField);
+        onRunQuality?.(previousQuality);
+        setStatus("stale");
+      } else {
+        setSnapshots(null);
+        setMaxField(null);
+        setDiag(null);
+        onSnapshot?.(null);
+        onSnapshotsReady?.(null);
+        onMaxField?.(null);
+        onRunQuality?.(null);
+        setStatus("error");
+      }
     }
-  }, [initial, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS]);
+  }, [initial, snapshots, diag, maxField, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -486,14 +503,14 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         ? diag?.used_gpu
           ? "GPU ready"
           : "CPU ready"
-        : "Ready";
+        : status === "stale" ? "Stale" : "Ready";
   const fidelityLabel = cellsPerDeg <= 4 ? "Preview" : cellsPerDeg >= 10 ? "High" : "Standard";
 
   return (
     <div className="section" aria-label={slotLabel ? `${slotLabel} wave propagation` : undefined}>
       <div className="section__title">
         <span>{slotLabel && <>{slotLabel} · </>}Wave propagation <small>Shallow-water model</small> <GlossaryTip term="swe">SWE</GlossaryTip></span>
-        <span className="section__badge" data-tone={status === "error" ? "danger" : status === "running" ? "active" : undefined}>
+        <span className="section__badge" data-tone={status === "error" || status === "stale" ? "danger" : status === "running" ? "active" : undefined}>
           {solverBadge}
         </span>
       </div>
@@ -506,7 +523,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         <span><strong>60</strong> min window</span>
         <span><strong>{isTauri() ? "Backend" : "Preview"}</strong> mode</span>
       </div>}
-      {(workspaceMode !== "simple" || status === "running" || status === "error") && <div className="swe__row swe__row--primary">
+      {(workspaceMode !== "simple" || status === "running" || status === "error" || status === "stale") && <div className="swe__row swe__row--primary">
         <button
           className="primary"
           onClick={() => void run(false)}
@@ -514,7 +531,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           type="button"
         >
           {status !== "running" && <UiIcon name={status === "ready" ? "refresh" : "play"} size={14} />}
-          {status === "running" ? "Computing..." : status === "ready" ? "Re-run simulation" : status === "error" ? "Retry simulation" : "Run simulation"}
+          {status === "running" ? "Computing..." : status === "ready" ? "Re-run simulation" : status === "error" || status === "stale" ? "Retry simulation" : "Run simulation"}
         </button>
         {status === "running" && (
           <button
@@ -579,9 +596,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           </div>
         </div>
       )}
-      {status === "error" && (
+      {(status === "error" || status === "stale") && (
         <div className="swe__error" role="alert">
-          <strong>Simulation failed</strong>
+          <strong>{status === "stale" ? "Simulation refresh failed — showing the last valid run" : "Simulation failed"}</strong>
           <span>{errMsg ?? "The solver returned an error before producing frames."}</span>
         </div>
       )}

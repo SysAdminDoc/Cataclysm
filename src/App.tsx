@@ -25,6 +25,13 @@ import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { copyExportText, exportFailureLabel, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
+import {
+  asyncResultValue,
+  rejectAsyncResult,
+  resolveAsyncResult,
+  startAsyncResult,
+  type AsyncResult,
+} from "./lib/async-result";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput } from "./lib/scenario-schema";
@@ -283,7 +290,8 @@ function ToolbarButton({
 }
 
 export default function App() {
-  const [presets, setPresets] = useState<Preset[]>([]);
+  const [presetsResult, setPresetsResult] = useState<AsyncResult<Preset[]>>({ status: "loading" });
+  const presets = useMemo(() => asyncResultValue(presetsResult) ?? [], [presetsResult]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
   const [showCitations, setShowCitations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -341,7 +349,6 @@ export default function App() {
   const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
   const [lessonCompletions, setLessonCompletions] = useState<Record<string, string>>({});
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
-  const [presetsError, setPresetsError] = useState<string | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [libraryPreview, setLibraryPreview] = useState<LibraryPreview | null>(null);
   const [libraryPreviewPending, setLibraryPreviewPending] = useState(false);
@@ -627,23 +634,26 @@ export default function App() {
     return () => window.removeEventListener("tsunamisim:tour-requested", onRequested);
   }, []);
 
-  useEffect(() => {
+  const loadPresets = useCallback(() => {
     if (!inTauri) {
-      setPresets(listDemoPresets());
+      setPresetsResult(resolveAsyncResult(listDemoPresets(), (items) => items.length === 0));
       return;
     }
-    setPresetsError(null);
+    setPresetsResult((current) => startAsyncResult(current));
     api
       .listPresets()
       .then((p) => {
-        setPresets(p);
-        setPresetsError(null);
+        setPresetsResult(resolveAsyncResult(p, (items) => items.length === 0));
       })
       .catch((err) => {
         console.error("listPresets failed", err);
-        setPresetsError(String(err));
+        setPresetsResult((current) => rejectAsyncResult(current, err));
       });
   }, [inTauri]);
+
+  useEffect(() => {
+    loadPresets();
+  }, [loadPresets]);
 
   // First-launch banner: prompt the user to paste a Cesium ion token
   // for satellite imagery. Show only when the user has no token AND
@@ -1483,21 +1493,25 @@ export default function App() {
         aria-label={inHazardMode ? "Direct effects workspace" : "Preset scenarios"}
         inert={exportMenuOpen ? true : undefined}
       >
-        {presetsError && (
-          <div className="panel-error" role="status" aria-live="polite">
-            <span>Couldn't load presets: {presetsError}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setPresetsError(null);
-                api
-                  .listPresets()
-                  .then((p) => setPresets(p))
-                  .catch((err) => setPresetsError(String(err)));
-              }}
-            >
-              Retry
-            </button>
+        {presetsResult.status === "loading" && (
+          <div className="empty-state empty-state--compact" role="status" aria-live="polite">
+            <span className="empty-state__icon" aria-hidden />
+            <div><strong>{presetsResult.previous ? "Refreshing source library" : "Loading source library…"}</strong><p>{presetsResult.previous ? "Current scenarios remain available." : "Preparing curated scenarios and source models."}</p></div>
+          </div>
+        )}
+        {presetsResult.status === "empty" && (
+          <div className="empty-state empty-state--compact" role="status">
+            <span className="empty-state__icon" aria-hidden />
+            <div><strong>The installed preset catalog is empty</strong><p>Built-in what-if studies remain available.</p></div>
+          </div>
+        )}
+        {(presetsResult.status === "error" || presetsResult.status === "stale") && (
+          <div className="panel-error" role="alert">
+            <span>
+              {presetsResult.status === "stale" ? "Preset catalog is stale: " : "Couldn't load presets: "}
+              {presetsResult.error}
+            </span>
+            <button type="button" onClick={loadPresets}>Retry presets</button>
           </div>
         )}
         <PresetSelector
@@ -1534,6 +1548,12 @@ export default function App() {
               ))}
             </select>
             <small>{slotB.busyPresetId ? "Loading comparison source…" : activePresetB?.blurb ?? "Choose a second source without leaving Slot A."}</small>
+            {(slotB.sourceResult.status === "error" || slotB.sourceResult.status === "stale") && (
+              <div className="panel-error" role="alert">
+                <span>{slotB.sourceResult.status === "stale" ? "Slot B is showing its last valid source: " : "Slot B source failed: "}{slotB.sourceResult.error}</span>
+                <button type="button" onClick={slotB.retrySource}>Retry Slot B</button>
+              </div>
+            )}
           </div>
         )}
         {inHazardMode && (
@@ -1756,6 +1776,18 @@ export default function App() {
           />
         )}
         <div hidden={inspectorTab !== "setup" || inHazardMode}>
+          {slotA.sourceResult.status === "loading" && !slotA.sourceResult.previous && (
+            <div className="empty-state empty-state--compact" role="status">
+              <span className="empty-state__icon" aria-hidden />
+              <div><strong>Computing source conditions…</strong><p>The selected source is being prepared before derived outputs run.</p></div>
+            </div>
+          )}
+          {(slotA.sourceResult.status === "error" || slotA.sourceResult.status === "stale") && (
+            <div className="panel-error" role="alert">
+              <span>{slotA.sourceResult.status === "stale" ? "Showing the last valid source result: " : "Source computation failed: "}{slotA.sourceResult.error}</span>
+              <button type="button" onClick={slotA.retrySource}>Retry source computation</button>
+            </div>
+          )}
           <SourceModelSummary
             preset={activePresetA ?? null}
             initial={slotA.initial}
@@ -1832,6 +1864,8 @@ export default function App() {
           showTimeline={false}
           sourceKind={activeScenarioKindA}
           runupResults={slotA.runupResults}
+          runupResult={slotA.runupResult}
+          onRetryRunup={slotA.retryRunup}
           onFocusOutcome={handleOutcomeFocus}
           scienceContent={<AttenuationChart
             initial={slotA.initial}
@@ -1855,6 +1889,8 @@ export default function App() {
               showTimeline={false}
               sourceKind={activeScenarioKindB}
               runupResults={slotB.runupResults}
+              runupResult={slotB.runupResult}
+              onRetryRunup={slotB.retryRunup}
               scienceContent={<AttenuationChart
                 initial={slotB.initial}
                 isImpact={activeScenarioKindB === "Asteroid"}
@@ -1889,7 +1925,9 @@ export default function App() {
         activePreset={activePresetA}
         sourceKind={activeScenarioKindA}
         timeS={timeS}
-        onResults={slotA.setRunupResults}
+        result={slotA.runupResult}
+        onResult={slotA.setRunupResult}
+        retryNonce={slotA.runupRetryNonce}
       />}
       {!inHazardMode && compareMode && (
         <CoastalRunupOverlay
@@ -1897,7 +1935,9 @@ export default function App() {
           activePreset={activePresetB}
           sourceKind={activeScenarioKindB}
           timeS={timeS}
-          onResults={slotB.setRunupResults}
+          result={slotB.runupResult}
+          onResult={slotB.setRunupResult}
+          retryNonce={slotB.runupRetryNonce}
         />
       )}
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}

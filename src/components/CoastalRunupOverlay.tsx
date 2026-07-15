@@ -1,15 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import { getCoastalPoints } from "../lib/data";
 import { demoRunupAtPoints } from "../lib/demo";
 import type { CoastalPoint, InitialDisplacement, Preset } from "../types/scenario";
+import {
+  rejectAsyncResult,
+  resolveAsyncResult,
+  startAsyncResult,
+  type AsyncResult,
+} from "../lib/async-result";
 
 type Props = {
   initial: InitialDisplacement | null;
   activePreset: Preset | null;
   sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
   timeS: number;
-  onResults: (results: RunupAtPointResult[]) => void;
+  result: AsyncResult<RunupAtPointResult[]>;
+  onResult: Dispatch<SetStateAction<AsyncResult<RunupAtPointResult[]>>>;
+  retryNonce?: number;
 };
 
 // Coastal points + integrity filter live in lib/data.ts (I4-05).
@@ -23,11 +31,12 @@ const VALID_POINTS: readonly CoastalPoint[] = getCoastalPoints();
  * Uses a monotonic request id to drop stale responses on rapid scrubbing,
  * and a mounted ref to avoid setting state on an unmounted component.
  */
-export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, onResults }: Props) {
+export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, result, onResult, retryNonce = 0 }: Props) {
   const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
   const lastArrivedCountRef = useRef(0);
   const [announcement, setAnnouncement] = useState<string>("");
+  const contextRef = useRef<string | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -42,11 +51,22 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
 
   useEffect(() => {
     if (!initial) {
-      onResults([]);
+      contextRef.current = null;
+      onResult({ status: "idle" });
       lastArrivedCountRef.current = 0;
       setAnnouncement("");
       return;
     }
+    const context = [
+      initial.center.lat_deg,
+      initial.center.lon_deg,
+      initial.peak_amplitude_m,
+      initial.cavity_radius_m,
+      isImpact,
+    ].join(":");
+    const retainPrevious = contextRef.current === context;
+    contextRef.current = context;
+    onResult((current) => startAsyncResult(current, retainPrevious));
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
     const points: CoastalPoint[] = [...VALID_POINTS];
@@ -60,7 +80,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
         time_s: timeS,
         points,
       }) as RunupAtPointResult[];
-      onResults(res);
+      onResult(resolveAsyncResult(res, (items) => items.length === 0));
       const arrived = res.filter((r) => r.has_arrived && r.runup_m >= 0.1).length;
       lastArrivedCountRef.current = arrived;
       setAnnouncement(
@@ -82,7 +102,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
       })
       .then((res) => {
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
-        onResults(res);
+        onResult(resolveAsyncResult(res, (items) => items.length === 0));
         const arrived = res.filter((r) => r.has_arrived && r.runup_m >= 0.1).length;
         if (arrived !== lastArrivedCountRef.current) {
           lastArrivedCountRef.current = arrived;
@@ -98,16 +118,22 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
       .catch((err) => {
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
         console.error("runup_at_points failed", err);
-        onResults([]);
+        onResult((current) => rejectAsyncResult(current, err));
       });
-  }, [initial, isImpact, timeS, onResults]);
+  }, [initial, isImpact, timeS, retryNonce, onResult]);
 
   // Screen-reader-only aria-live region. Visually hidden via the global
   // `.sr-only` utility class (styles.css). Sighted users get the same
   // information visually from the 3D bars on the globe.
   return (
     <div role="status" aria-live="polite" className="sr-only">
-      {announcement}
+      {result.status === "loading"
+        ? result.previous ? "Refreshing coastal screening; current results remain visible." : "Computing coastal screening."
+        : result.status === "stale"
+          ? `Coastal screening is stale: ${result.error}`
+          : result.status === "error"
+            ? `Coastal screening failed: ${result.error}`
+            : announcement}
     </div>
   );
 }

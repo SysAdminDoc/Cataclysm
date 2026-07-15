@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DartOverlay } from "../DartOverlay";
@@ -150,6 +150,7 @@ describe("DartOverlay RMSE", () => {
 
   it("surfaces a real comparison failure separately from no-overlap", async () => {
     tauriApi.dartBuoyRmse.mockRejectedValue("invalid finite series");
+    const user = userEvent.setup();
     render(
       <DartOverlay
         presetId="tohoku_2011"
@@ -157,6 +158,32 @@ describe("DartOverlay RMSE", () => {
         sweSnapshots={[snapshotAt(0, 0.1), snapshotAt(3600, 0.2)]}
       />,
     );
-    expect(await screen.findAllByText(/Couldn't compute RMSE/)).toHaveLength(3);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't compute DART comparison/);
+    expect(screen.getByRole("button", { name: "Retry DART comparison" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry DART comparison" }));
+    await waitFor(() => expect(tauriApi.dartBuoyRmse).toHaveBeenCalledTimes(6));
+  });
+
+  it("retains the last valid comparison as stale when a refresh fails", async () => {
+    tauriApi.dartBuoyRmse.mockResolvedValue(comparisonResult());
+    const { rerender } = render(
+      <DartOverlay
+        presetId="tohoku_2011"
+        timeS={0}
+        sweSnapshots={[snapshotAt(0, 0.1), snapshotAt(3600, 0.2)]}
+      />,
+    );
+    expect(await screen.findAllByText(/RMSE 0\.42 m/)).toHaveLength(3);
+
+    tauriApi.dartBuoyRmse.mockRejectedValue(new Error("refresh failed"));
+    rerender(
+      <DartOverlay
+        presetId="tohoku_2011"
+        timeS={0}
+        sweSnapshots={[snapshotAt(0, 0.15), snapshotAt(3600, 0.25)]}
+      />,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Showing the last valid DART comparison/);
+    expect(screen.getAllByText(/RMSE 0\.42 m/)).toHaveLength(3);
   });
 });

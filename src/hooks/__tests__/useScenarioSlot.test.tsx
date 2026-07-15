@@ -111,4 +111,27 @@ describe("useScenarioSlot", () => {
 
     expect(result.current.initial).toBe(originalInitial);
   });
+
+  it("retains a stale preset result after refresh failure and retries locally", async () => {
+    vi.mocked(api.runPreset)
+      .mockResolvedValueOnce(makePresetResponse("tohoku", "Preset result"))
+      .mockRejectedValueOnce(new Error("backend unavailable"))
+      .mockResolvedValueOnce(makePresetResponse("tohoku", "Preset result"));
+    const { result, rerender } = renderHook(({ timeS }) => useScenarioSlot(timeS), {
+      initialProps: { timeS: 0 },
+    });
+
+    act(() => result.current.setActivePresetId("tohoku"));
+    await waitFor(() => expect(result.current.sourceResult.status).toBe("ready"));
+    const originalInitial = result.current.initial;
+
+    rerender({ timeS: 900 });
+    await waitFor(() => expect(result.current.sourceResult.status).toBe("stale"));
+    expect(result.current.initial).toBe(originalInitial);
+    expect(result.current.error).toContain("backend unavailable");
+
+    act(() => result.current.retrySource());
+    await waitFor(() => expect(api.runPreset).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(result.current.sourceResult.status).toBe("ready"));
+  });
 });

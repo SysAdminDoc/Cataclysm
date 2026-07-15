@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { settings, type SavedScenario, type ScenarioRestorePoint } from "../lib/settings";
+import {
+  asyncResultValue,
+  rejectAsyncResult,
+  resolveAsyncResult,
+  startAsyncResult,
+  type AsyncResult,
+} from "../lib/async-result";
 import {
   createScenarioPayload,
   INITIAL_ASTEROID,
@@ -162,17 +169,34 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   }, [pickedLocation, tab]);
 
   const [clipMsg, setClipMsg] = useState<InlineStatus | null>(null);
-  const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
+  const [savedScenariosResult, setSavedScenariosResult] = useState<AsyncResult<SavedScenario[]>>({ status: "loading" });
+  const savedScenarios = asyncResultValue(savedScenariosResult) ?? [];
   const [showSaved, setShowSaved] = useState(false);
   const clipTimer = useRef<number | undefined>(undefined);
   const scenarioActionVersion = useRef(0);
 
-  useEffect(() => {
+  const setSavedScenarios = useCallback((update: SavedScenario[] | ((current: SavedScenario[]) => SavedScenario[])) => {
+    setSavedScenariosResult((current) => {
+      const previous = asyncResultValue(current) ?? [];
+      const next = typeof update === "function" ? update(previous) : update;
+      return resolveAsyncResult(next, (items) => items.length === 0);
+    });
+  }, []);
+
+  const loadSavedScenarios = useCallback(() => {
+    setSavedScenariosResult((current) => startAsyncResult(current));
     settings
       .getSavedScenarios()
-      .then(setSavedScenarios)
-      .catch((err) => console.warn("[settings] failed to load saved scenarios", err));
+      .then((items) => setSavedScenariosResult(resolveAsyncResult(items, (list) => list.length === 0)))
+      .catch((err) => {
+        console.warn("[settings] failed to load saved scenarios", err);
+        setSavedScenariosResult((current) => rejectAsyncResult(current, err));
+      });
   }, []);
+
+  useEffect(() => {
+    loadSavedScenarios();
+  }, [loadSavedScenarios]);
   useEffect(() => () => window.clearTimeout(clipTimer.current), []);
 
   function showStatus(
@@ -220,7 +244,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     }
     const name = `${data.kind} — ${new Date().toLocaleString()}`;
     settings.saveScenario(name, payload.payload).then(() => {
-      settings.getSavedScenarios().then(setSavedScenarios);
+      loadSavedScenarios();
       showStatus("Saved scenario.", "success");
     }).catch((err) => {
       showStatus(`Save failed: ${err instanceof Error ? err.message : String(err)}`, "error");
@@ -527,6 +551,18 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             </span>
           )}
         </div>
+        {showSaved && savedScenariosResult.status === "loading" && !savedScenariosResult.previous && (
+          <div className="empty-state empty-state--compact scenario-saved__empty" role="status">
+            <span className="empty-state__icon" aria-hidden />
+            <div><strong>Loading saved scenarios…</strong><p>Reading the local scenario library.</p></div>
+          </div>
+        )}
+        {showSaved && (savedScenariosResult.status === "error" || savedScenariosResult.status === "stale") && (
+          <div className="panel-error" role="alert">
+            <span>{savedScenariosResult.status === "stale" ? "Saved-scenario list is stale: " : "Couldn't load saved scenarios: "}{savedScenariosResult.error}</span>
+            <button type="button" onClick={loadSavedScenarios}>Retry saved scenarios</button>
+          </div>
+        )}
         {showSaved && savedScenarios.length > 0 && (
           <div className="scenario-saved">
             {savedScenarios.map((s) => (
@@ -550,7 +586,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             ))}
           </div>
         )}
-        {showSaved && savedScenarios.length === 0 && (
+        {showSaved && savedScenariosResult.status === "empty" && (
           <div className="empty-state empty-state--compact scenario-saved__empty">
             <span className="empty-state__icon" aria-hidden />
             <div>
