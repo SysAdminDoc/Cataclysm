@@ -91,10 +91,17 @@
       }
     },
     "tsunami-deep-ocean@1440p": {
-      "pngSha256": "0398a49966dba63ff5a396ebe4c2cdd65d939ed7ee39fb05f664b7f7ec5441db",
+      "pngSha256": "fc9c262479d4bfef1c40a59dd7b4d404736a8e0cc5492b16e2ba1c936a432ae1",
       "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82",
       "width": 2560,
-      "height": 1440
+      "height": 1440,
+      "review": {
+        "reason": "The committed-WebGL-frame barrier replaces a visibly incomplete SwiftShader capture while preserving the exact reviewed scene contract",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-15T00:15:46.874Z",
+        "previousPngSha256": "0398a49966dba63ff5a396ebe4c2cdd65d939ed7ee39fb05f664b7f7ec5441db",
+        "commit": "cbafa397a367613f7c2a9327ea8e9cf89e0a7e05"
+      }
     },
     "tsunami-shoaling@1440p": {
       "pngSha256": "ffa37899477df224885807d83ea0c78095243c3a9a4cff49872d711a2d66973d",
