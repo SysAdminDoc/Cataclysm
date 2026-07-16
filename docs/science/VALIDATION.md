@@ -20,6 +20,7 @@ cargo test --release --features validation -- validation::
 | `stoker_wavefront_speed_matches_sqrt_gh` | Stoker 1957, *Water Waves*, §10.2 — wavefront propagates at `√(g·h)` over a uniform shallow channel | ±25 % on wave-front position after 5 minutes of simulated time on a 4 km uniform-depth basin | ✅ shipped |
 | `synolakis_matches_carrier_greenspan_envelope` | Synolakis 1987, *J. Fluid Mech.* 185:523, Fig. 4 — `R = 2.831 √(cot β) H^(5/4) / d^(1/4)` matches Carrier-Greenspan 1958 analytical for `H/d < 0.78` | ±25 % over `H/d ∈ [0.005, 0.3]`, slope = 2°, depth = 50 m | ✅ shipped |
 | `nthmp_bp1_single_wave_on_simple_beach_runup` | Synolakis 1987 *J. Fluid Mech.* 185:523 + NTHMP 2011 model-benchmarking workshop, BP1 — single wave on a 1:19.85 simple beach, canonical non-breaking `H/d = 0.0185` | Reproduces the Synolakis closed form (<2 %) **and** lands within ±18 % of the published laboratory run-up `R/d ≈ 0.0885` | ✅ shipped |
+| `nuclear_airburst_radii_match_glasstone_dolan` + `nuclear_effects_ordering_and_cube_root_scaling` | Glasstone & Dolan 1977 *The Effects of Nuclear Weapons* 3rd ed., ch. III/VII — 1 Mt air-burst radii ≈ 2.7 km (20 psi), 6.9 km (5 psi), 21 km (1 psi), 12 km (3rd-degree burns); Hiroshima 15 kt ≈ 1.7 km (5 psi) | Direct-nuclear blast/thermal radii within ±30 % of the published values (the simplified single-coefficient scaling omits height-of-burst curves); overpressure rings nest and blast radius scales as `W^(1/3)` | ✅ shipped |
 | `ward_asphaug_chicxulub_order_of_magnitude` | Range et al. 2022 *AGU Advances*, `doi:10.1029/2021AV000627`, Fig. 3 — 1.5 km ring-wave amplitude at r = 220 km | OOM only (50 m – 10 km): we use Ward-Asphaug analytical `r^(-5/6)` decay, Range used full Boussinesq SWE | ✅ shipped |
 | `lituya_bay_runup_in_published_band` | Fritz, Hager & Minor 2001 *Sci. Tsunami Hazards* 19:3 — Lituya Bay 1958 524 m runup record | Synolakis closed-form on the confined-fjord geometry; band [100, 2000] m | shipped v0.4.0 (F4-07) |
 | `dart_buoy_rmse_basic_math` + 3 edge cases | F4-06 — RMSE math correctness, time-bracket interpolation, out-of-range obs skip, location-bounds rejection | RMSE = 0 on identical series; offset-by-K → RMSE = K; interp midpoint; reject lat > 90° | shipped v0.4.0 |
@@ -70,6 +71,11 @@ path qualitatively.
 - Range 2022 is the published peer-reviewed Chicxulub simulation that
   the project's marketing claim references; the OOM check is a sanity
   guard against a wildly wrong cavity-rim formula.
+- Glasstone & Dolan is the canonical open reference for nuclear weapon
+  effects; anchoring the direct-nuclear blast/thermal radii to its
+  published 1 Mt and Hiroshima figures gives the nuclear mode the same
+  cited, regression-locked credibility the tsunami benchmarks provide,
+  and the cube-root scaling check guards the yield-dependence.
 
 ## Adding a new validation case
 

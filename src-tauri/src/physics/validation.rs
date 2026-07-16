@@ -30,6 +30,11 @@
 //!    0.086`) and laboratory (`R/d ≈ 0.0885`) values within a documented ±18 %
 //!    band. See `docs/science/VALIDATION.md` for which NTHMP benchmarks are out
 //!    of reach for this non-dispersive solver and why.
+//! 5. **Glasstone & Dolan 1977 nuclear air-burst radii** (scaled). Tests the
+//!    Rust direct-nuclear model's 20/5/1 psi blast and third-degree-burn thermal
+//!    radii for 1 Mt and 15 kt air bursts against the published *Effects of
+//!    Nuclear Weapons* values within a documented ±30 % band, plus cube-root
+//!    yield scaling and physical ring ordering.
 
 #![cfg(feature = "validation")]
 
@@ -37,6 +42,11 @@
 use super::asteroid::{AsteroidImpact, far_field_amplitude_m};
 #[cfg(test)]
 use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
+#[cfg(test)]
+use super::direct_hazard::{
+    HazardCenter, HazardDetail, NuclearBurstType, NuclearDetail, NuclearHazardRequest,
+    simulate_nuclear_hazard,
+};
 #[cfg(test)]
 use super::landslide::lituya_bay_1958;
 #[cfg(test)]
@@ -301,5 +311,85 @@ fn ward_asphaug_chicxulub_order_of_magnitude() {
         (50.0..=10_000.0).contains(&amp_220km),
         "Chicxulub @ 220 km gave {} m — outside the 1-OOM band of Range 2022's 1500 m",
         amp_220km
+    );
+}
+
+/// Run the Rust-authoritative direct-nuclear model for an air burst of the
+/// given yield and return the effect radii (km).
+#[cfg(test)]
+fn nuclear_airburst_detail(yield_kt: f64) -> NuclearDetail {
+    let request = NuclearHazardRequest {
+        center: HazardCenter { lat: 35.0, lon: 139.0 },
+        yield_kt,
+        burst_type: NuclearBurstType::Airburst,
+        height_m: None,
+        fission_pct: 50.0,
+        population_density: 0.0,
+    };
+    match simulate_nuclear_hazard(request)
+        .expect("nuclear hazard should evaluate for an in-bounds request")
+        .detail
+    {
+        HazardDetail::Nuclear(detail) => detail,
+        _ => unreachable!("nuclear request must produce a nuclear detail"),
+    }
+}
+
+/// **Nuclear air-burst blast & thermal radii vs Glasstone & Dolan 1977.**
+/// *The Effects of Nuclear Weapons* (3rd ed.) gives scaled air-burst damage
+/// radii. For a 1 Mt (1000 kt) air burst near optimum height the published
+/// radii are ≈ 2.7 km (20 psi, heavy destruction), ≈ 6.9 km (5 psi, most
+/// buildings collapse), ≈ 21 km (1 psi, window breakage / light injuries), and
+/// ≈ 12 km (third-degree burns, clear day). Hiroshima (15 kt) had a ≈ 1.7 km
+/// 5 psi contour. Our single-coefficient Glasstone-Dolan scaling must reproduce
+/// these within a documented ±30 % band — the simplified scaling omits the
+/// height-of-burst curves, so the band is wider than the tsunami analyticals.
+///
+/// Reference: Glasstone, S. & Dolan, P. J. (1977) *The Effects of Nuclear
+/// Weapons*, 3rd ed., ch. III (blast) & ch. VII (thermal radiation); radii
+/// reproduced in the Nuclear Weapon Archive FAQ and NUKEMAP.
+#[test]
+fn nuclear_airburst_radii_match_glasstone_dolan() {
+    fn assert_band(label: &str, got_km: f64, reference_km: f64) {
+        let err = (got_km - reference_km).abs() / reference_km;
+        assert!(
+            err < 0.30,
+            "{label}: model {got_km:.2} km vs Glasstone-Dolan {reference_km:.2} km ({:.0}% error)",
+            err * 100.0
+        );
+    }
+    let one_mt = nuclear_airburst_detail(1000.0);
+    assert_band("1 Mt 20 psi", one_mt.psi_20, 2.7);
+    assert_band("1 Mt 5 psi", one_mt.psi_5, 6.9);
+    assert_band("1 Mt 1 psi", one_mt.psi_1, 21.0);
+    assert_band("1 Mt 3rd-degree burns", one_mt.thermal_3, 12.0);
+
+    let hiroshima = nuclear_airburst_detail(15.0);
+    assert_band("15 kt 5 psi", hiroshima.psi_5, 1.7);
+}
+
+/// Physical-ordering and cube-root yield-scaling invariants for the nuclear
+/// effects model. Overpressure radius scales as `W^(1/3)` (Glasstone & Dolan
+/// cube-root scaling), so an 8× yield must double a blast radius, and lower
+/// thresholds must always reach farther than higher ones.
+#[test]
+fn nuclear_effects_ordering_and_cube_root_scaling() {
+    let d = nuclear_airburst_detail(1000.0);
+    assert!(
+        d.psi_1 > d.psi_5 && d.psi_5 > d.psi_20,
+        "overpressure rings must nest: 1 psi > 5 psi > 20 psi"
+    );
+    assert!(
+        d.thermal_1 > d.thermal_3,
+        "1st-degree burn radius must exceed 3rd-degree"
+    );
+    assert!(d.fireball > 0.0 && d.radiation > 0.0);
+
+    let small = nuclear_airburst_detail(100.0);
+    let big = nuclear_airburst_detail(800.0); // 8× yield ⇒ 2× radius
+    let ratio = big.psi_5 / small.psi_5;
+    assert!(
+        (ratio - 2.0).abs() < 0.05,
+        "8× yield should double the 5 psi radius (cube-root scaling); got {ratio:.3}"
     );
 }

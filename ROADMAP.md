@@ -646,13 +646,6 @@ below are the net-new, non-duplicate opportunities from this scan.
 
 ### P2
 
-- [ ] P2 — Nuclear-effects validation harness vs Glasstone & Dolan / EM-1 reference values
-  Why: the tsunami side has NTHMP-grade validation planned and a `docs/science/VALIDATION.md`, but `physics/nuclear.rs` (2 tests) has no equivalent published cross-check against authoritative overpressure/thermal/prompt-radiation tables — the credibility asymmetry undercuts the nuclear mode. Front-runs NUKEMAP's AWEL.js validation framing.
-  Evidence: Verified — `src-tauri/src/physics/nuclear.rs` has 2 tests, no reference-table harness; existing tsunami precedent in `physics/validation.rs` + `docs/science/VALIDATION.md`. Glasstone & Dolan (1977) effects tables via the permissively-documented `GOFAI/glasstone` port https://github.com/GOFAI/glasstone; NUKEMAP 2026 roadmap https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/.
-  Touches: `src-tauri/src/physics/nuclear.rs` (feature-gated `validation` cases with vendored reference values + citations), `docs/science/VALIDATION.md` (nuclear section documenting which effects match tables and which are out of reach and why).
-  Acceptance: `cargo test --release --features validation` cross-checks nuclear overpressure/thermal-fluence/prompt-radiation radii against at least three cited Glasstone & Dolan / EM-1 reference points within documented tolerances; VALIDATION.md records the comparison table and limitations; no behavior change to shipped results.
-  Complexity: M
-
 - [ ] P2 — First-arrival ETA quick-preview reusing the existing linear SWE mode
   Why: full nonlinear runs are slow, but `SolverMode::Linear` already exists and is unused as a product surface; an instant coarse first-arrival/ETA map before (or instead of) the expensive nonlinear pass is the responsiveness pattern that makes easyWave and Celeris feel alive, at near-zero new physics.
   Evidence: Verified — `SolverMode::Linear` is exercised only in `solver/gpu.rs` parity tests; no `arrival-time`/`eta_map` product exists; isochrones in `solver/max_field.rs` require a full run. easyWave early-warning model https://git.gfz-potsdam.de/id2/geoperil/easyWave; Celeris interactivity https://plynett.github.io/.

@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The validation harness now cross-checks the direct-nuclear model's air-burst
+  blast and thermal radii against published Glasstone & Dolan 1977 values (1 Mt
+  and Hiroshima 15 kt) within a documented ±30 % band, and asserts overpressure
+  ring nesting plus cube-root yield scaling. This gives the nuclear mode the same
+  cited, regression-locked validation the tsunami benchmarks already have.
 - The validation harness now includes NTHMP benchmark problem 1 (single wave on
   a simple 1:19.85 beach): the closed-form run-up at the canonical non-breaking
   `H/d = 0.0185` is checked against both the Synolakis analytical value and the
