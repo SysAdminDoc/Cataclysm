@@ -488,13 +488,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P2
 
-- [ ] P2 — Publish machine-readable software citation metadata
-  Why: a scientific educational tool with versioned models and references cannot currently be cited consistently, while peer tsunami software exposes standard citation metadata through GitHub and Zenodo.
-  Evidence: no `CITATION.cff` in the repository; Tsunami-HySEA `CITATION.cff` https://github.com/edanya-uma/Tsunami-HySEA; Citation File Format https://citation-file-format.github.io/.
-  Touches: `CITATION.cff`, version/product-truth validator, release checklist, README citation link.
-  Acceptance: a CFF 1.2 file validates, uses the public manifest author until a preferred identity is supplied, includes title/version/repository/license and a preferred software citation, records `date-released` only from a real tag/release, and renders GitHub's citation control; release verification fails when tagged version/date metadata drifts.
-  Complexity: S
-
 - [ ] P2 — Add a bounded immutable local run archive
   Why: scenarios and crash evidence persist, but a successful result disappears when the session closes, forcing recomputation and obscuring which model/data version produced an earlier conclusion.
   Evidence: current settings/scenario persistence; existing checkpoint, portable-package, and normalized-rerun roadmap items; OpenQuake prior-run logs/outputs https://docs.openquake.org/oq-engine/3.19/manual/getting-started/running-calculations/web-ui.html; TOAST incident database https://docs.gempa.de/toast/current/base/import.html.

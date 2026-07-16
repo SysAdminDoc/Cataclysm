@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added machine-readable citation metadata (`CITATION.cff`, CFF 1.2) so the
+  project can be cited consistently and GitHub renders a "Cite this repository"
+  control. A `citation-metadata` verification gate keeps its version and license
+  in lock-step with `package.json` and, on the strict release path, cross-checks
+  `date-released` against a matching git tag.
 - The validation harness now cross-checks the direct-nuclear model's air-burst
   blast and thermal radii against published Glasstone & Dolan 1977 values (1 Mt
   and Hiroshima 15 kt) within a documented ±30 % band, and asserts overpressure

@@ -348,6 +348,13 @@ See [`docs/science/`](./docs/science) for formula derivations and citations.
 - [`ROADMAP.md`](./ROADMAP.md) — phased delivery plan (v0.1.0 → v1.0.0).
 - [`CHANGELOG.md`](./CHANGELOG.md) — shipped feature summary.
 
+## Citation
+
+If you use Cataclysm in academic or educational work, cite it via the
+machine-readable [`CITATION.cff`](./CITATION.cff) at the repository root — GitHub
+renders a "Cite this repository" control from it, and the version/license are
+kept in lock-step with the release by the `citation-metadata` verification gate.
+
 ## License
 
 [MIT](./LICENSE). For scientific education and hazard-awareness visualization only. Not for evacuation planning. Use NOAA NTWC/PTWC for real warnings.

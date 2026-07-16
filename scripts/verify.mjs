@@ -9,6 +9,7 @@ import {
   RUST_RELEASE_FEATURE_MATRIX,
   cargoFeatureArgs,
 } from "./release-contract.mjs";
+import { validateCitationFile } from "./citation-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const srcTauriRoot = path.join(repoRoot, "src-tauri");
@@ -137,6 +138,21 @@ function docsTruthGate() {
 
   if (failures.length > 0) {
     console.error("\nDocs/script truth gate failed:");
+    for (const failure of failures) {
+      console.error(`- ${failure}`);
+    }
+    process.exit(1);
+  }
+}
+
+function citationMetadataGate() {
+  const { ok, failures } = validateCitationFile(
+    path.join(repoRoot, "CITATION.cff"),
+    path.join(repoRoot, "package.json"),
+    { strict: strictRustPolicy },
+  );
+  if (!ok) {
+    console.error("\nCitation metadata gate failed:");
     for (const failure of failures) {
       console.error(`- ${failure}`);
     }
@@ -434,6 +450,10 @@ capabilitySurfaceGate();
 
 console.log("\n==> Docs/script truth gate");
 docsTruthGate();
+
+console.log("\n==> Citation metadata gate");
+citationMetadataGate();
+
 runNpm("Version consistency and release-tag gate", ["run", "verify:version-contract"]);
 if (docsOnly) {
   console.log("\nDocs/script and version contract gates completed.");

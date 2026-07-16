@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use Cataclysm in academic or educational work, please cite it as below."
+title: "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator"
+type: software
+version: 0.10.4
+repository-code: "https://github.com/SysAdminDoc/Cataclysm"
+url: "https://github.com/SysAdminDoc/Cataclysm"
+license: MIT
+abstract: "Cataclysm simulates asteroid impacts, nuclear detonations, earthquakes, landslides, and the tsunamis they generate with Rust-authoritative physics (shallow-water solver, Okada 1985 deformation, Ward–Asphaug impact coupling) projected onto an analytical 3D globe. It is an educational and analytical tool, not an operational warning system."
+keywords:
+  - tsunami
+  - shallow-water-equations
+  - asteroid-impact
+  - nuclear-weapon-effects
+  - hazard-simulation
+  - scientific-visualization
+authors:
+  - name: "SysAdminDoc"
+preferred-citation:
+  type: software
+  title: "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator"
+  version: 0.10.4
+  license: MIT
+  repository-code: "https://github.com/SysAdminDoc/Cataclysm"
+  url: "https://github.com/SysAdminDoc/Cataclysm"
+  year: 2026
+  authors:
+    - name: "SysAdminDoc"
