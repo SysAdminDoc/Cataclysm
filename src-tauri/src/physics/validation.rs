@@ -24,6 +24,12 @@
 //! 3. **Range et al. 2022 Chicxulub far-field** (OOM). Tests the Ward &
 //!    Asphaug r^(-5/6) decay sampler against the published far-field
 //!    amplitudes from Range Fig. 3 at named distances.
+//! 4. **NTHMP benchmark problem 1 — single wave on a simple beach** (Synolakis
+//!    1987). Tests the closed-form run-up at the canonical 1:19.85 beach and
+//!    non-breaking `H/d = 0.0185` against the published analytical (`R/d ≈
+//!    0.086`) and laboratory (`R/d ≈ 0.0885`) values within a documented ±18 %
+//!    band. See `docs/science/VALIDATION.md` for which NTHMP benchmarks are out
+//!    of reach for this non-dispersive solver and why.
 
 #![cfg(feature = "validation")]
 
@@ -85,8 +91,8 @@ fn stoker_dry_bed_front_matches_analytical_speed() {
 
 /// NTHMP benchmark problem 1 geometry smoke: a positive pulse crosses a plane
 /// beach and wets cells landward of the still-water shoreline without a
-/// negative water column. Quantitative runup convergence remains in the
-/// dedicated NTHMP benchmark roadmap item.
+/// negative water column. The quantitative run-up comparison against the
+/// Synolakis closed form is `nthmp_bp1_single_wave_on_simple_beach_runup`.
 #[test]
 fn nthmp_problem_1_plane_beach_wets_positively() {
     let mut grid = SwGrid::new(-1.0, -0.01, 1.0, 0.01, 0.005, 0.005);
@@ -150,6 +156,57 @@ fn nthmp_problem_1_plane_beach_wets_positively() {
     assert!(
         peak_landward_wet_cells > 0,
         "no landward cell crossed the wet threshold"
+    );
+}
+
+/// **NTHMP benchmark problem 1 — single wave on a simple beach** (Synolakis
+/// 1987; NTHMP 2011 model-benchmarking workshop). The canonical laboratory
+/// geometry is a 1:19.85 plane beach. For the canonical non-breaking incident
+/// solitary wave `H/d = 0.0185`, the Carrier-Greenspan / Synolakis closed form
+/// predicts a maximum nondimensional run-up `R/d ≈ 0.086`, and the Synolakis
+/// 1987 laboratory measurement is `R/d ≈ 0.0885`. Our `synolakis_runup_m` must
+/// (a) reproduce the closed form and (b) land within a documented ±18 % band of
+/// the laboratory value — the tractable analytical slice of the NTHMP suite for
+/// a non-dispersive shallow-water model. Breaking cases (large `H/d`) and the
+/// 2-D field benchmarks (BP4 Monai, BP6 conical island, BP7 Okushiri) require
+/// dispersive Boussinesq physics and high-resolution bathymetry and are out of
+/// reach for this solver — see `docs/science/VALIDATION.md`.
+///
+/// Reference: Synolakis, C. E. (1987) *J. Fluid Mech.* 185:523-545;
+/// NTHMP (2012) *Proceedings and Results of the 2011 NTHMP Model Benchmarking
+/// Workshop*, benchmark problem 1.
+#[test]
+fn nthmp_bp1_single_wave_on_simple_beach_runup() {
+    // Canonical BP1 geometry: 1:19.85 plane beach → slope angle atan(1/19.85).
+    let cot_beta = 19.85_f64;
+    let slope_deg = (1.0_f64 / cot_beta).atan().to_degrees();
+    // Canonical non-breaking incident wave H/d = 0.0185, evaluated at unit
+    // still-water depth so the result reads directly as the nondimensional
+    // run-up R/d.
+    let depth_m = 1.0;
+    let h_over_d = 0.0185;
+    let r_over_d = synolakis_runup_m(h_over_d * depth_m, depth_m, slope_deg) / depth_m;
+
+    // Published references for BP1 at H/d = 0.0185:
+    //   analytical (Synolakis 1987 closed form):  R/d ≈ 0.086
+    //   laboratory (Synolakis 1987 Fig. 5):       R/d ≈ 0.0885
+    let analytical = 2.831 * cot_beta.sqrt() * h_over_d.powf(5.0 / 4.0);
+    let lab = 0.0885;
+
+    // (a) reproduce the closed form to numerical tolerance (regression lock on
+    //     the run-up coefficient and the breaking gate).
+    let closed_form_err = (r_over_d - analytical).abs() / analytical;
+    assert!(
+        closed_form_err < 0.02,
+        "NTHMP BP1 R/d={r_over_d:.5} does not reproduce the Synolakis closed form {analytical:.5} ({:.1}% error)",
+        closed_form_err * 100.0
+    );
+    // (b) land within a documented ±18% band of the laboratory measurement.
+    let lab_err = (r_over_d - lab).abs() / lab;
+    assert!(
+        lab_err < 0.18,
+        "NTHMP BP1 R/d={r_over_d:.5} outside ±18% of the lab value {lab:.4} ({:.0}% error)",
+        lab_err * 100.0
     );
 }
 

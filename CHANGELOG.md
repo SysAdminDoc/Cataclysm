@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The validation harness now includes NTHMP benchmark problem 1 (single wave on
+  a simple 1:19.85 beach): the closed-form run-up at the canonical non-breaking
+  `H/d = 0.0185` is checked against both the Synolakis analytical value and the
+  published laboratory run-up within a documented ±18 % band. `VALIDATION.md`
+  documents which NTHMP benchmarks (BP4/BP6/BP7) are out of reach for the
+  current non-dispersive shallow-water solver and why.
 - Earthquake scenarios can now auto-fill Okada fault geometry from the nearest
   mapped subduction zone. A curated, cited table of 16 major tsunamigenic
   megathrusts (Slab2-derived representative strike/dip/rake and seismogenic
