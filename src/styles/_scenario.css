@@ -195,6 +195,48 @@
   color: var(--danger);
 }
 
+.scenario-form__autofault {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.scenario-form__autofault > button {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-sm);
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--type-caption);
+  cursor: pointer;
+}
+
+.scenario-form__autofault > button:hover {
+  border-color: var(--accent);
+}
+
+.scenario-form__autofault-note {
+  margin: 0;
+  font-size: var(--type-caption);
+  color: var(--subtext);
+}
+
+.scenario-form__autofault-note[data-tone="success"] {
+  color: var(--success-text);
+}
+
+.scenario-form__autofault-note[data-tone="error"] {
+  color: var(--danger);
+}
+
 .scenario-saved {
   display: flex;
   flex-direction: column;

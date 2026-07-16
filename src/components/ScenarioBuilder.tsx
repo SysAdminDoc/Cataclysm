@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { settings, type SavedScenario, type ScenarioRestorePoint } from "../lib/settings";
+import { faultGeometryFromZone, nearestSubductionZone } from "../lib/subduction";
 import {
   asyncResultValue,
   rejectAsyncResult,
@@ -149,6 +150,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [nuclear, setNuclear] = useState(INITIAL_NUCLEAR);
   const [earthquake, setEarthquake] = useState(INITIAL_EARTHQUAKE);
   const [landslide, setLandslide] = useState(INITIAL_LANDSLIDE);
+  const [subductionNote, setSubductionNote] = useState<InlineStatus | null>(null);
   const burstModes = sourceEnumValues("Nuclear", "burst_mode", true);
   const landslideKinds = sourceEnumValues("Landslide", "kind", true);
 
@@ -167,6 +169,30 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     else if (tab === "earthquake") setEarthquake((s) => ({ ...s, location: { ...s.location, ...loc } }));
     else setLandslide((s) => ({ ...s, location: { ...s.location, ...loc } }));
   }, [pickedLocation, tab]);
+
+  // Auto-fill Okada fault orientation from the nearest mapped subduction zone
+  // (Slab2-derived representative geometry). Only prepares solver inputs — the
+  // Okada physics still runs in Rust. Fault length/width stay 0 (auto-sized).
+  const autoFillFaultFromZone = () => {
+    const match = nearestSubductionZone(earthquake.location.lat_deg, earthquake.location.lon_deg);
+    if (!match) {
+      setSubductionNote({ text: "Enter a valid epicentre before auto-filling.", tone: "error" });
+      return;
+    }
+    if (!match.onMappedZone) {
+      setSubductionNote({
+        text: `No mapped subduction zone in range (nearest: ${match.zone.name}, ~${Math.round(match.distanceKm)} km). Enter fault geometry manually.`,
+        tone: "error",
+      });
+      return;
+    }
+    const g = faultGeometryFromZone(match.zone);
+    setEarthquake((s) => ({ ...s, ...g }));
+    setSubductionNote({
+      text: `Filled from ${match.zone.name} (~${Math.round(match.distanceKm)} km): strike ${g.strike_deg}°, dip ${g.dip_deg}°, rake ${g.rake_deg}°, hypocentre ${(g.depth_m / 1000).toFixed(0)} km. Representative Slab2 zone geometry (${match.zone.reference_event}); length/width auto-size from magnitude.`,
+      tone: "success",
+    });
+  };
 
   const [clipMsg, setClipMsg] = useState<InlineStatus | null>(null);
   const [savedScenariosResult, setSavedScenariosResult] = useState<AsyncResult<SavedScenario[]>>({ status: "loading" });
@@ -459,6 +485,22 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
               onChange={(v) => setEarthquake({ ...earthquake, fault_length_m: v })} />
             <NumField field="fault_width_m" label="Fault width (m, 0 = auto)" value={earthquake.fault_width_m ?? 0}
               onChange={(v) => setEarthquake({ ...earthquake, fault_width_m: v })} />
+            <div className="scenario-form__autofault">
+              <button type="button" onClick={autoFillFaultFromZone} title="Fill strike/dip/rake and hypocentre depth from the nearest mapped subduction zone">
+                <UiIcon name="mapPin" size={14} />
+                Auto-fill fault from subduction zone
+              </button>
+              {subductionNote && (
+                <p
+                  className="scenario-form__autofault-note"
+                  data-tone={subductionNote.tone}
+                  role={subductionNote.tone === "error" ? "alert" : "status"}
+                  aria-live={subductionNote.tone === "error" ? "assertive" : "polite"}
+                >
+                  {subductionNote.text}
+                </p>
+              )}
+            </div>
           </>
         )}
         {tab === "landslide" && (

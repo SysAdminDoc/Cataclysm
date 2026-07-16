@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Earthquake scenarios can now auto-fill Okada fault geometry from the nearest
+  mapped subduction zone. A curated, cited table of 16 major tsunamigenic
+  megathrusts (Slab2-derived representative strike/dip/rake and seismogenic
+  depth) fills the fault orientation from the placed epicentre with a provenance
+  note and confidence caveat; fault length and width continue to auto-size from
+  magnitude, manual override is preserved, and epicentres far from any mapped
+  zone fall back to manual entry with a clear message.
 - The desktop simulator now uses a unified, legible visual system modeled from
   a dedicated 1600×1000 design study: 13–14 px operational text, 40 px controls,
   calmer column spacing, flat scenario and result lists, dot-based statuses,

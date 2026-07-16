@@ -330,4 +330,48 @@ describe("ScenarioBuilder scenario persistence", () => {
       document.querySelector<HTMLInputElement>('.scenario-field input[type="number"]'),
     ).toHaveValue(14_000));
   });
+
+  it("auto-fills fault geometry from the nearest subduction zone", async () => {
+    const user = setupUser();
+    renderBuilder();
+    await user.click(screen.getByRole("tab", { name: "Earthquake" }));
+
+    // Perturb strike away from the default Tohoku value so the auto-fill is observable.
+    const strike = screen.getByRole("spinbutton", { name: "Strike (°) exact value" });
+    await user.clear(strike);
+    await user.type(strike, "10");
+
+    await user.click(
+      screen.getByRole("button", { name: /auto-fill fault from subduction zone/i }),
+    );
+
+    // Default epicentre (38°N, 143°E) resolves to the Japan Trench (strike 195, dip 12).
+    await waitFor(() => expect(strike).toHaveValue(195));
+    expect(
+      screen.getByRole("spinbutton", { name: "Dip (°) exact value" }),
+    ).toHaveValue(12);
+    expect(screen.getByText(/Japan Trench/i)).toBeInTheDocument();
+  });
+
+  it("warns when the epicentre is not near a mapped subduction zone", async () => {
+    const user = setupUser();
+    renderBuilder();
+    await user.click(screen.getByRole("tab", { name: "Earthquake" }));
+
+    // Move the epicentre to the mid-Atlantic, far from any mapped zone.
+    const lat = screen.getByRole("spinbutton", { name: "Latitude (°) exact value" });
+    const lon = screen.getByRole("spinbutton", { name: "Longitude (°) exact value" });
+    await user.clear(lat);
+    await user.type(lat, "30");
+    await user.clear(lon);
+    await user.type(lon, "-40");
+
+    await user.click(
+      screen.getByRole("button", { name: /auto-fill fault from subduction zone/i }),
+    );
+
+    expect(
+      await screen.findByText(/No mapped subduction zone in range/i),
+    ).toBeInTheDocument();
+  });
 });

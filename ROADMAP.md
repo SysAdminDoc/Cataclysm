@@ -653,13 +653,6 @@ below are the net-new, non-duplicate opportunities from this scan.
 
 ### P2
 
-- [ ] P2 — Slab2-derived auto-fault geometry for earthquake sources
-  Why: users currently hand-enter strike/dip/rake/length/width — the single biggest usability barrier in the earthquake mode; every serious tsunami tool derives fault orientation from subduction-zone geometry, not manual entry. Distinct from the USGS-feed item (which seeds magnitude/epicentre from a catalog but still leaves geometry manual).
-  Evidence: Verified absent — `src-tauri/src/physics/earthquake.rs`/`okada.rs` take explicit geometry only; `ScenarioBuilder` exposes raw strike/dip/rake fields. USGS Slab2 3D subduction geometry https://github.com/usgs/slab2 · https://earthquake.usgs.gov/slab2/. Cross-ref existing "Seed earthquake scenarios from live USGS feeds + ShakeMap/PAGER compare".
-  Touches: a bundled curated subduction-geometry lookup (major zones: Japan/Kuril, Cascadia, Chile/Peru, Sunda, Aleutian, Hikurangi, Manila, Hellenic) in `src/data/` + Rust mirror, `src-tauri/src/physics/earthquake.rs` (derive strike/dip from nearest slab node + rake from convergence), `src/components/ScenarioBuilder.tsx` ("auto from subduction zone" toggle that fills geometry from placement + Mw with an override + provenance note).
-  Acceptance: placing an epicentre on a covered subduction zone and choosing a magnitude auto-populates strike/dip/rake and a magnitude-scaled fault footprint with a Slab2 citation and confidence caveat; manual override still works; uncovered locations fall back to manual entry with a clear message; a Rust test checks derived geometry against a known Tōhoku slab node within a documented tolerance. If curated coverage is judged insufficient and full Slab2 grids must be downloaded, relocate to `Roadmap_Blocked.md` with the dataset blocker (see RESEARCH.md Open Questions).
-  Complexity: M
-
 - [ ] P2 — Nuclear-effects validation harness vs Glasstone & Dolan / EM-1 reference values
   Why: the tsunami side has NTHMP-grade validation planned and a `docs/science/VALIDATION.md`, but `physics/nuclear.rs` (2 tests) has no equivalent published cross-check against authoritative overpressure/thermal/prompt-radiation tables — the credibility asymmetry undercuts the nuclear mode. Front-runs NUKEMAP's AWEL.js validation framing.
   Evidence: Verified — `src-tauri/src/physics/nuclear.rs` has 2 tests, no reference-table harness; existing tsunami precedent in `physics/validation.rs` + `docs/science/VALIDATION.md`. Glasstone & Dolan (1977) effects tables via the permissively-documented `GOFAI/glasstone` port https://github.com/GOFAI/glasstone; NUKEMAP 2026 roadmap https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/.
