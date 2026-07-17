@@ -265,6 +265,19 @@ const asteroidScenarios = loadAsteroidPresets().map((preset) => {
 const historicalScenarios = [...nuclearScenarios, ...asteroidScenarios];
 if (historicalScenarios.length !== 16) throw new Error(`Expected 16 historical scenarios, found ${historicalScenarios.length}`);
 
+const mirvPresets = nm.MIRV_PRESETS.map((preset) => ({
+  id: slug(preset.name),
+  name: preset.name,
+  warheads: preset.warheads,
+  spreadKm: preset.spread,
+  yieldKt: preset.yield_kt,
+  pattern: preset.pattern,
+  description: preset.desc,
+}));
+if (mirvPresets.length !== 8 || mirvPresets.some((preset) => !["circle", "triangle", "grid", "cross"].includes(preset.pattern))) {
+  throw new Error(`Unexpected MIRV preset registry: ${mirvPresets.length} entries`);
+}
+
 const ww3TargetSources = {
   us: nm.WW3_TARGETS_US,
   ru: nm.WW3_TARGETS_RU,
@@ -355,11 +368,13 @@ write(
   "legacy/nukemap/js/data.js#NM.HISTORICAL + legacy/asteroid/src/presets/historical.ts",
   historicalScenarios,
 );
+write("mirv-presets.json", "legacy/nukemap/js/data.js#NM.MIRV_PRESETS", mirvPresets);
 write("ww3-exchange.json", "legacy/nukemap/js/ww3.js", ww3Exchange);
 
 console.log(
   `${checkOnly ? "Verified" : "Imported"} ${weapons.length} weapons, ${cities.length} cities, ` +
-    `${Object.keys(zipCodes).length} ZIP codes, ${normalizedTargets.length} targets, and ` +
-    `${historicalScenarios.length} historical scenarios; WW3 includes ${ww3TargetCount} targets, ` +
+    `${Object.keys(zipCodes).length} ZIP codes, ${normalizedTargets.length} targets, ` +
+    `${historicalScenarios.length} historical scenarios, and ${mirvPresets.length} MIRV presets; ` +
+    `WW3 includes ${ww3TargetCount} targets, ` +
     `${ww3GlobalWarheads} global warheads, and ${ww3Scenarios.length} scenarios.`,
 );

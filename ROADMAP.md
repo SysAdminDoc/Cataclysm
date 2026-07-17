@@ -15,8 +15,6 @@ AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P3 — Advanced NukeMap features (breadth parity)
-- **UNI-12** MIRV mode (port `NM.MIRV.generatePattern`, already pure) + pattern
-  preview on the globe.
 - **UNI-14** Export/PWA parity: extend existing exporters (PNG/CZML/GeoJSON/KML)
   to nuclear/impact results; preserve NukeMap's offline single-file capability
   path where feasible under Vite/Tauri.

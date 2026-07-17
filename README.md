@@ -114,6 +114,11 @@ Existing tools each do one piece:
   launcher selection, and immediate-casualty screening are repeatable and
   clearly bounded as educational legacy-model outputs, not predictions or
   current force assessments.
+- **MIRV pattern preview** — all eight preserved payload presets project their
+  legacy circle or triangle aim-point geometry and stagger timing around the
+  selected effects origin, with a Cesium spread boundary and an accessible
+  coordinate list. Previewing never detonates the points or creates casualty
+  results.
 - **5 globe styles**: high-detail Esri World Imagery by default, bundled Natural
   Earth II as the deterministic offline fallback, OpenStreetMap, Cesium World
   Imagery, and Cesium World Bathymetry.

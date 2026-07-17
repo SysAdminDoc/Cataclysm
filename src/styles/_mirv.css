@@ -1,0 +1,80 @@
+.mirv {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mirv__intro,
+.mirv__notice,
+.mirv__preview details {
+  color: var(--subtext);
+  font-size: var(--type-micro);
+  line-height: 1.55;
+}
+
+.mirv__field {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--subtext);
+  font-size: var(--type-micro);
+}
+
+.mirv__field select {
+  min-width: 0;
+  width: 100%;
+}
+
+.mirv__notice {
+  border-left: 3px solid var(--warning-text);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  padding: var(--space-2) var(--space-3);
+}
+
+.mirv__preview {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mirv__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  padding: var(--space-3);
+}
+
+.mirv__summary div {
+  display: grid;
+  gap: 2px;
+}
+
+.mirv__summary span {
+  color: var(--subtext);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mirv__summary strong {
+  color: var(--text);
+  font-size: var(--type-body);
+  font-variant-numeric: tabular-nums;
+  text-transform: capitalize;
+}
+
+.mirv__preview summary {
+  cursor: pointer;
+  color: var(--subtext);
+}
+
+.mirv__preview ol {
+  max-height: 12rem;
+  overflow: auto;
+  padding: var(--space-2) 0 0 1.4rem;
+}
+
+.mirv__preview li {
+  padding-block: 2px;
+  font-variant-numeric: tabular-nums;
+}

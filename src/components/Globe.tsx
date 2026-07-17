@@ -28,6 +28,7 @@ import type { EffectRing, GeoPoint } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
 import type { FireballEvent } from "../types/jpl";
 import { WW3_SIDE_COLORS, type Ww3ExchangePlan, type Ww3TargetType } from "../lib/ww3";
+import { mirvSpreadCircle, type MirvPreview } from "../lib/mirv";
 import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
@@ -135,6 +136,8 @@ type Props = {
   fireballs?: FireballEvent[];
   /** Deterministic WW3 exchange plan rendered as Cesium-native target points and 3D missile arcs. */
   ww3Plan?: Ww3ExchangePlan | null;
+  /** Preserved NukeMap MIRV dispersal pattern rendered as aim points and a spread boundary. */
+  mirvPreview?: MirvPreview | null;
   /** Which authoritative direct-hazard frame family should render. */
   impactKind?: "asteroid" | "nuclear" | null;
   directRenderFrame: RendererNeutralFrameView | null;
@@ -274,6 +277,7 @@ export function Globe({
   hazardPolygons,
   fireballs = [],
   ww3Plan,
+  mirvPreview,
   impactKind,
   directRenderFrame,
   previewCamera,
@@ -362,6 +366,7 @@ export function Globe({
     if ((hazardPolygons?.length ?? 0) > 0) labels.push("fallout plume");
     if (directRenderFrame) labels.push("authoritative direct-effects frame");
     if (ww3Plan) labels.push("illustrative exchange targets and missile arcs");
+    if (mirvPreview) labels.push(`MIRV pattern preview with ${mirvPreview.points.length} aim points`);
     return labels;
   }, [
     dartBuoys,
@@ -371,6 +376,7 @@ export function Globe({
     hazardRings,
     initial,
     isochrones,
+    mirvPreview,
     resolvedStyle,
     runupResults,
     sweSnapshot,
@@ -1108,6 +1114,41 @@ export function Globe({
     };
   }, [viewerEpoch, ww3Plan]);
 
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed() || !mirvPreview) return;
+    const points = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
+    for (const point of mirvPreview.points) {
+      points.add({
+        id: `mirv:${point.id}`,
+        position: Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 750),
+        pixelSize: 10,
+        color: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.52),
+        outlineColor: Cesium.Color.fromCssColorString("#f5e0dc"),
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      });
+    }
+    const boundary = viewer.scene.primitives.add(new Cesium.PolylineCollection());
+    boundary.add({
+      id: `mirv-spread:${mirvPreview.id}`,
+      positions: mirvSpreadCircle(mirvPreview).map((point) => Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 500)),
+      width: 1.5,
+      material: Cesium.Material.fromType("PolylineDash", {
+        color: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.7),
+        dashLength: 14,
+      }),
+    });
+    viewer.scene.requestRender();
+    return () => {
+      if (!viewer.isDestroyed()) {
+        viewer.scene.primitives.remove(boundary);
+        viewer.scene.primitives.remove(points);
+        viewer.scene.requestRender();
+      }
+    };
+  }, [mirvPreview, viewerEpoch]);
+
   return (
     <>
       <div
@@ -1121,6 +1162,8 @@ export function Globe({
         data-swe-field-tiles={sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
         data-ww3-plan={ww3Plan?.id ?? "none"}
         data-ww3-strikes={ww3Plan?.strikes.length ?? 0}
+        data-mirv-preview={mirvPreview?.id ?? "none"}
+        data-mirv-warheads={mirvPreview?.points.length ?? 0}
       />
       <p id={sceneSummaryId} className="sr-only" data-globe-scene-summary>
         {accessibilitySummary}

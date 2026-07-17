@@ -68,6 +68,8 @@ import type { Preset } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
 import { HazardControls } from "./components/HazardControls";
 import { WW3ExchangeHud, WW3ExchangePanel, type Ww3ExchangeSession } from "./components/WW3Exchange";
+import { MIRVPatternPanel } from "./components/MIRVPatternPanel";
+import type { MirvPreview } from "./lib/mirv";
 import { useFireballs } from "./hooks/useFireballs";
 import { SimulationTransport } from "./components/SimulationTransport";
 import { LayerInspector } from "./components/LayerInspector";
@@ -382,6 +384,7 @@ export default function App() {
   });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
   const [ww3Session, setWw3Session] = useState<ActiveWw3ExchangeSession | null>(null);
+  const [mirvPreview, setMirvPreview] = useState<MirvPreview | null>(null);
   const [showFireballs, setShowFireballs] = useState(false);
   const fireballFeed = useFireballs(hazardMode === "asteroid" && showFireballs);
   const [asteroidVisualReport, setAsteroidVisualReport] = useState<AsteroidVisualReport | null>(null);
@@ -444,6 +447,11 @@ export default function App() {
   const startupScenario = useMemo(() => scenarioFromUrl(window.location.search), []);
   const startupScenarioHandled = useRef(false);
   const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
+
+  const handleMirvPreviewChange = useCallback((preview: MirvPreview | null) => {
+    setMirvPreview(preview);
+    if (preview) setWw3Session(null);
+  }, []);
 
   useEffect(() => {
     if (ww3Session?.state !== "running") return;
@@ -1196,7 +1204,10 @@ export default function App() {
     setCompareMode(false);
     setExportMenuOpen(false);
     setTimelinePlaying(false);
-    if (mode !== "nuclear") setWw3Session(null);
+    if (mode !== "nuclear") {
+      setWw3Session(null);
+      setMirvPreview(null);
+    }
     setPendingGauge(null);
     setInspectorTab("setup");
   }
@@ -1269,6 +1280,7 @@ export default function App() {
       && currentCenter?.lon === scenario.center.lon
       && JSON.stringify(currentInput) === JSON.stringify(scenarioInput);
     setWw3Session(null);
+    setMirvPreview(null);
     selectHazardMode(scenario.domain);
     setDirectRenderFrame(null);
     if (!canReuseResult) {
@@ -1307,7 +1319,10 @@ export default function App() {
 
   function detonateActiveHazard() {
     if (!directHazardMode) return;
-    if (directHazardMode === "nuclear") setWw3Session(null);
+    if (directHazardMode === "nuclear") {
+      setWw3Session(null);
+      setMirvPreview(null);
+    }
     setDetonateNonces((current) => ({
       ...current,
       [directHazardMode]: current[directHazardMode] + 1,
@@ -1883,6 +1898,7 @@ export default function App() {
                 hazardPolygons={hazardPolygons}
                 fireballs={hazardMode === "asteroid" && showFireballs ? fireballFeed.events : []}
                 ww3Plan={hazardMode === "nuclear" ? ww3Session?.plan ?? null : null}
+                mirvPreview={hazardMode === "nuclear" ? mirvPreview : null}
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 directRenderFrame={directRenderFrame}
                 previewCamera={comparisonCameraA ?? (libraryPreviewPending ? libraryPreviewCamera : null)}
@@ -2074,10 +2090,19 @@ export default function App() {
             canAnimate={Boolean(directRenderReplay)}
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
+          {hazardMode === "nuclear" && !ww3Session && (
+            <MIRVPatternPanel
+              center={hazardCenter}
+              preview={mirvPreview}
+              onPreviewChange={handleMirvPreviewChange}
+              onApplyYield={(yieldKt) => setNuclearInput((current) => ({ ...current, yieldKt }))}
+            />
+          )}
           {hazardMode === "nuclear" && (
             <WW3ExchangePanel
               session={ww3Session}
               onStart={(plan, speed) => {
+                setMirvPreview(null);
                 setHazardResult(null);
                 setDirectRenderFrame(null);
                 setDirectRenderReplay(null);

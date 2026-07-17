@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Nuclear setup now offers all eight preserved NukeMap MIRV payload presets as
+  deterministic pattern previews around the selected effects origin. The pure
+  TypeScript port retains the legacy circle, triangle, grid, and cross geometry
+  and stagger timing; Cesium renders bounded aim-point markers and the spread
+  boundary while the React panel supplies an equivalent coordinate list. The
+  preview is explicitly non-detonating and creates no casualty result.
 - Nuclear setup now includes a deterministic global-exchange lab built from all
   seven preserved NukeMap scenarios, 427 target records, and the current 712
   assigned-warhead global dataset. Pure TypeScript planning ports phase/target

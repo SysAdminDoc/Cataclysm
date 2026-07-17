@@ -268,6 +268,25 @@ test.describe("Cataclysm browser preview", () => {
     await expect(hud.getByRole("progressbar")).not.toHaveAttribute("value", "0", { timeout: 3_000 });
   });
 
+  test("MIRV preset publishes an accessible Cesium pattern preview", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+    await page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }).click();
+    const coordinateForm = page.getByRole("form", { name: "Enter coordinates" });
+    await coordinateForm.getByRole("spinbutton", { name: "Latitude" }).fill("40");
+    await coordinateForm.getByRole("spinbutton", { name: "Longitude" }).fill("-74");
+    await coordinateForm.getByRole("button", { name: "Go" }).click();
+
+    const mirv = page.getByRole("region", { name: "MIRV pattern preview" });
+    await mirv.getByRole("combobox", { name: "Payload preset" }).selectOption("trident-ii-w76");
+    await expect(mirv).toContainText("8");
+    await expect(mirv).toContainText("8 km");
+    const globe = page.locator(".app__globe-mount").first();
+    await expect(globe).toHaveAttribute("data-mirv-warheads", "8");
+    await expect(globe).toHaveAttribute("data-mirv-preview", /trident-ii-w76:40\.000000:-74\.000000/);
+  });
+
   test("hazard domain switches park incompatible workspace state", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");

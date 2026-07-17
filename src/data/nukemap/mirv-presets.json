@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "source": "legacy/nukemap/js/data.js#NM.MIRV_PRESETS",
+  "count": 8,
+  "items": [
+    {
+      "id": "trident-ii-w76",
+      "name": "Trident II (W76)",
+      "warheads": 8,
+      "spreadKm": 8,
+      "yieldKt": 100,
+      "pattern": "circle",
+      "description": "8x 100kT in 8km circle"
+    },
+    {
+      "id": "trident-ii-w88",
+      "name": "Trident II (W88)",
+      "warheads": 5,
+      "spreadKm": 6,
+      "yieldKt": 455,
+      "pattern": "circle",
+      "description": "5x 455kT in 6km circle"
+    },
+    {
+      "id": "minuteman-iii",
+      "name": "Minuteman III",
+      "warheads": 3,
+      "spreadKm": 4,
+      "yieldKt": 300,
+      "pattern": "triangle",
+      "description": "3x 300kT triangle"
+    },
+    {
+      "id": "rs-28-sarmat",
+      "name": "RS-28 Sarmat",
+      "warheads": 10,
+      "spreadKm": 12,
+      "yieldKt": 800,
+      "pattern": "circle",
+      "description": "10x 800kT in 12km spread"
+    },
+    {
+      "id": "ss-18-satan",
+      "name": "SS-18 Satan",
+      "warheads": 10,
+      "spreadKm": 10,
+      "yieldKt": 750,
+      "pattern": "circle",
+      "description": "10x 750kT city-killer"
+    },
+    {
+      "id": "df-41-china",
+      "name": "DF-41 (China)",
+      "warheads": 3,
+      "spreadKm": 5,
+      "yieldKt": 350,
+      "pattern": "triangle",
+      "description": "3x 350kT triangle"
+    },
+    {
+      "id": "m51-france",
+      "name": "M51 (France)",
+      "warheads": 6,
+      "spreadKm": 7,
+      "yieldKt": 300,
+      "pattern": "circle",
+      "description": "6x 300kT TN-75"
+    },
+    {
+      "id": "custom-mirv",
+      "name": "Custom MIRV",
+      "warheads": 4,
+      "spreadKm": 5,
+      "yieldKt": 100,
+      "pattern": "circle",
+      "description": "Configurable"
+    }
+  ]
+}
