@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { configureCesium } from "../lib/cesium";
 import {
@@ -27,12 +27,11 @@ import type {
 import type { EffectRing, GeoPoint } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
 import type { FireballEvent } from "../types/jpl";
-import { WW3_SIDE_COLORS, type Ww3ExchangePlan, type Ww3TargetType } from "../lib/ww3";
-import { mirvSpreadCircle, type MirvPreview } from "../lib/mirv";
+import type { Ww3ExchangePlan } from "../lib/ww3";
+import type { MirvPreview } from "../lib/mirv";
 import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
-import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
 import { resolveSweImageryTiles } from "../render/cesium/swe-field-tiles";
 import { CameraTelemetryController } from "../render/cesium/camera-telemetry";
 import { CesiumCameraTelemetryHost } from "../render/cesium/cesium-camera-telemetry-host";
@@ -86,6 +85,9 @@ import {
   startAsyncResult,
   type AsyncResult,
 } from "../lib/async-result";
+import { useStrategicGlobeOverlays } from "./globe-strategic-overlays";
+import { useGlobeAccessibilitySummary } from "./globe-accessibility";
+import { useGlobeControllerSync } from "./globe-controller-sync";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -353,75 +355,33 @@ export function Globe({
     automatic: boolean;
   }>({ tier: "High", automatic: true });
   const [qualityDiagnostics, setQualityDiagnostics] = useState<CesiumQualityDiagnostics | null>(null);
-  const activeLayerLabels = useMemo(() => {
-    const labels = [`${findStyle(resolvedStyle).label} base imagery`];
-    if (initial) labels.push("source geometry");
-    if (wavefront) labels.push("analytical wavefront");
-    if (sweSnapshot) labels.push("SWE water field");
-    if ((isochrones?.length ?? 0) > 0) labels.push("arrival isochrones");
-    if ((runupResults?.length ?? 0) > 0) labels.push("coastal runup samples");
-    if ((dartBuoys?.length ?? 0) > 0) labels.push("DART observations");
-    if (hazardCenter) labels.push("effects origin");
-    if ((hazardRings?.length ?? 0) > 0) labels.push("hazard effect rings");
-    if ((hazardPolygons?.length ?? 0) > 0) labels.push("fallout plume");
-    if (directRenderFrame) labels.push("authoritative direct-effects frame");
-    if (ww3Plan) labels.push("illustrative exchange targets and missile arcs");
-    if (mirvPreview) labels.push(`MIRV pattern preview with ${mirvPreview.points.length} aim points`);
-    return labels;
-  }, [
-    dartBuoys,
-    directRenderFrame,
-    hazardCenter,
-    hazardPolygons,
-    hazardRings,
-    initial,
-    isochrones,
-    mirvPreview,
+  const {
+    summary: accessibilitySummary,
+    announcedSummary: announcedAccessibilitySummary,
+  } = useGlobeAccessibilitySummary({
     resolvedStyle,
-    runupResults,
-    sweSnapshot,
-    wavefront,
-    ww3Plan,
-  ]);
-  const accessibilitySummary = useMemo(() => {
-    const camera = accessibleCameraTelemetry;
-    const cameraSummary = camera
-      ? `Camera centered at ${Math.abs(camera.lat).toFixed(2)} degrees ${camera.lat >= 0 ? "north" : "south"}, ${Math.abs(camera.lon).toFixed(2)} degrees ${camera.lon >= 0 ? "east" : "west"}, at ${camera.altitudeM >= 1_000_000 ? `${(camera.altitudeM / 1_000_000).toFixed(1)} megametres` : `${(camera.altitudeM / 1_000).toFixed(0)} kilometres`} altitude.`
-      : "Camera position is not available for this comparison pane.";
-    const rendererSummary = rendererError
-      ? `Renderer failed: ${rendererError}`
-      : imageryStatus === "ready"
-        ? "Renderer and base imagery are ready."
-        : `Renderer imagery is ${imageryStatus}: ${imageryMessage}`;
-    const interactionSummary = lastInspectionSummary
-      ?? (inspectMode
-        ? "Inspect mode is active; choose the globe or enter latitude and longitude."
-        : pickMode
-          ? "Location picking is active; choose the globe or enter latitude and longitude."
-          : "Latitude and longitude entry is available when location picking or inspection is active.");
-    return `${accessibleSceneLabel}. ${cameraSummary} Scenario time T plus ${Math.round(simulationTimeS / 60)} minutes. Visible analytical layers: ${activeLayerLabels.join(", ")}. ${rendererSummary} ${interactionSummary}`;
-  }, [
-    accessibleCameraTelemetry,
-    accessibleSceneLabel,
-    activeLayerLabels,
-    imageryMessage,
-    imageryStatus,
-    inspectMode,
-    lastInspectionSummary,
-    pickMode,
-    rendererError,
+    hasInitial: Boolean(initial),
+    hasWavefront: Boolean(wavefront),
+    hasSweSnapshot: Boolean(sweSnapshot),
+    isochroneCount: isochrones?.length ?? 0,
+    runupResultCount: runupResults?.length ?? 0,
+    dartBuoyCount: dartBuoys?.length ?? 0,
+    hasHazardCenter: Boolean(hazardCenter),
+    hazardRingCount: hazardRings?.length ?? 0,
+    hazardPolygonCount: hazardPolygons?.length ?? 0,
+    hasDirectRenderFrame: Boolean(directRenderFrame),
+    hasWw3Plan: Boolean(ww3Plan),
+    mirvPointCount: mirvPreview?.points.length ?? 0,
+    camera: accessibleCameraTelemetry,
+    sceneLabel: accessibleSceneLabel,
     simulationTimeS,
-  ]);
-  const [announcedAccessibilitySummary, setAnnouncedAccessibilitySummary] = useState("");
-  const announcedAccessibilitySummaryRef = useRef("");
-  useEffect(() => {
-    const delayMs = announcedAccessibilitySummaryRef.current ? 1_200 : 0;
-    const timer = window.setTimeout(() => {
-      announcedAccessibilitySummaryRef.current = accessibilitySummary;
-      setAnnouncedAccessibilitySummary(accessibilitySummary);
-    }, delayMs);
-    return () => window.clearTimeout(timer);
-  }, [accessibilitySummary]);
+    rendererError,
+    imageryStatus,
+    imageryMessage,
+    lastInspectionSummary,
+    inspectMode: Boolean(inspectMode),
+    pickMode: Boolean(pickMode),
+  });
 
   // One-time viewer mount
   useEffect(() => {
@@ -845,126 +805,33 @@ export function Globe({
     };
   }, [directHazardResultId, pickMode, inspectMode, initial, onPick, onPickCancel, onInspectCancel, runInspection, viewerEpoch]);
 
-  useEffect(() => {
-    const controller = tsunamiSourceControllerRef.current;
-    if (!controller) return;
-    controller.update({
-      source: initial,
-      reference_capture: referenceCaptureEnabled(),
-      reduced_motion:
-        typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
-    });
-  }, [initial, viewerEpoch]);
-
-  // Static hazard footprints are stable, generation-owned entities. The host
-  // mutates existing handles and the controller releases every removed zone.
-  useEffect(() => {
-    const viewer = viewerRef.current;
-    const controller = staticHazardControllerRef.current;
-    if (!viewer || !controller) return;
-    viewer.camera.cancelFlight();
-    const diagnostics = controller.update({
-      center: hazardCenter ? { lat_deg: hazardCenter.lat, lon_deg: hazardCenter.lon } : null,
-      rings: (hazardRings ?? []).map((ring) => ({
-        id: ring.category,
-        label: ring.label,
-        description: ring.description,
-        radius_m: ring.radiusM,
-        color_css: ring.color,
-      })),
-      fallout_polygons: (hazardPolygons ?? []).map((polygon) => ({
-        label: polygon.label,
-        color_css: polygon.color,
-        points: polygon.points.map((point) => ({ lat_deg: point.lat, lon_deg: point.lon })),
-      })),
-    });
-
-    // Frame the outermost ring: pull the camera back to ~3× its radius.
-    // HR-00 applies an exact camera after this renderer product is installed.
-    // A still-running flyTo would race that pose and make otherwise identical
-    // captures land on different frames.
-    const outerRadius = diagnostics.active.outer_radius_m;
-    if (!hazardCenter || outerRadius <= 0 || referenceCaptureEnabled()) return;
-    viewer.camera.flyToBoundingSphere(
-      new Cesium.BoundingSphere(
-        Cesium.Cartesian3.fromDegrees(hazardCenter.lon, hazardCenter.lat, 0),
-        outerRadius,
-      ),
-      {
-        duration: 1.2,
-        offset: new Cesium.HeadingPitchRange(
-          0,
-          Cesium.Math.toRadians(-55),
-          Math.max(outerRadius * 3.2, 20000),
-        ),
-      },
-    );
-  }, [hazardRings, hazardCenter, hazardPolygons, viewerEpoch]);
-
-  useEffect(() => {
-    const viewer = viewerRef.current;
-    const lifecycle = viewerLifecycleRef.current;
-    if (!viewer || !lifecycle || !previewCamera || referenceCaptureEnabled()) return;
-    const flight = lifecycle.own("rafs", () => {
-      if (!viewer.isDestroyed()) viewer.camera.cancelFlight();
-    });
-    viewer.camera.cancelFlight();
-    viewer.camera.flyToBoundingSphere(
-      new Cesium.BoundingSphere(
-        Cesium.Cartesian3.fromDegrees(previewCamera.targetLon, previewCamera.targetLat, 0),
-        Math.max(1_000, previewCamera.rangeM / 3),
-      ),
-      {
-        duration: 0.8,
-        offset: new Cesium.HeadingPitchRange(
-          Cesium.Math.toRadians(previewCamera.headingDeg),
-          Cesium.Math.toRadians(previewCamera.pitchDeg),
-          Math.max(20_000, previewCamera.rangeM),
-        ),
-      },
-    );
-    return () => flight.release();
-  }, [previewCamera, viewerEpoch]);
-
-  useEffect(() => {
-    const controller = outcomeFocusControllerRef.current;
-    if (!controller) return;
-    controller.update(outcomeFocus ?? null, {
-      reference_capture: referenceCaptureEnabled(),
-      reduced_motion:
-        typeof window !== "undefined"
-        && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
-    });
-  }, [outcomeFocus, viewerEpoch]);
-
-  useEffect(() => {
-    const viewer = viewerRef.current;
-    const controller = directEffectsControllerRef.current;
-    if (!viewer || !controller) return;
-    controller.update(impactKind ?? null, directRenderFrame);
-    if (referenceCaptureEnabled() && directRenderFrame) {
-      const committedFrame = `${directRenderFrame.scenario_id}:${directRenderFrame.solver_tick}:${directRenderFrame.sequence.toString()}`;
-      return commitReferenceFrame(viewer, document.documentElement, committedFrame);
-    }
-    viewer.scene.requestRender();
-    return () => {
-      if (!directRenderFrame) controller.clear();
-    };
-  }, [directRenderFrame, impactKind, viewerEpoch]);
-
-  useEffect(() => {
-    const controller = tsunamiAnalyticalControllerRef.current;
-    if (!controller) return;
-    controller.update({
-      source_center: initial
-        ? { lat_deg: initial.center.lat_deg, lon_deg: initial.center.lon_deg }
-        : null,
+  useGlobeControllerSync(
+    {
+      viewerRef,
+      viewerLifecycleRef,
+      tsunamiSourceControllerRef,
+      staticHazardControllerRef,
+      outcomeFocusControllerRef,
+      directEffectsControllerRef,
+      tsunamiAnalyticalControllerRef,
+      runupOverlayControllerRef,
+    },
+    {
+      viewerEpoch,
+      initial,
+      hazardRings,
+      hazardCenter,
+      hazardPolygons,
+      previewCamera,
+      outcomeFocus,
+      impactKind,
+      directRenderFrame,
       wavefront,
-      isochrones: isochrones ?? [],
-      dart_buoys: dartBuoys ?? [],
-    });
-  }, [initial, wavefront, isochrones, dartBuoys, viewerEpoch]);
+      isochrones,
+      dartBuoys,
+      runupResults,
+    },
+  );
 
   // SWE snapshot → Cesium imagery layer.
   //
@@ -1022,132 +889,7 @@ export function Globe({
     return () => ownership.coordinator.abortPending("snapshot_changed");
   }, [sweSnapshot, viewerEpoch]);
 
-  useEffect(() => {
-    runupOverlayControllerRef.current?.update(
-      (runupResults ?? []).map((result) => ({
-        id: result.id,
-        name: result.name,
-        lat: result.lat,
-        lon: result.lon,
-        range_m: result.range_m,
-        offshore_amplitude_m: result.offshore_amplitude_m,
-        runup_m: result.runup_m,
-        arrival_time_s: result.arrival_time_s,
-        has_arrived: result.has_arrived,
-        inundation_extent_m: result.inundation_extent_m,
-        quantitative_confidence: result.quantitative_confidence,
-        quantitative_label: result.quantitative_label,
-        slope_record_id: result.slope_provenance.record_id,
-        depth_record_id: result.depth_provenance.record_id,
-      })),
-    );
-  }, [runupResults, viewerEpoch]);
-
-  useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed() || fireballs.length === 0) return;
-    const points = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
-    for (const event of fireballs.slice(0, 80)) {
-      points.add({
-        id: `cneos-fireball:${event.id}`,
-        position: Cesium.Cartesian3.fromDegrees(event.lon, event.lat, (event.altitudeKm ?? 0) * 1_000),
-        pixelSize: Math.min(18, 6 + Math.log10(Math.max(event.impactEnergyKt, 0) + 1) * 3),
-        color: Cesium.Color.fromCssColorString(event.source === "NASA/JPL CNEOS" ? "#f9e2af" : "#fab387"),
-        outlineColor: Cesium.Color.fromCssColorString("#11111b"),
-        outlineWidth: 1.5,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      });
-    }
-    viewer.scene.requestRender();
-    return () => {
-      if (!viewer.isDestroyed()) {
-        viewer.scene.primitives.remove(points);
-        viewer.scene.requestRender();
-      }
-    };
-  }, [fireballs, viewerEpoch]);
-
-  useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed() || !ww3Plan) return;
-    const targetColors: Record<Ww3TargetType, string> = {
-      icbm: "#f38ba8",
-      sub: "#89b4fa",
-      bomber: "#cba6f7",
-      c2: "#f9e2af",
-      nuclear: "#fab387",
-      military: "#94e2d5",
-      infra: "#74c7ec",
-      city: "#f5c2e7",
-    };
-    const targets = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
-    const arcs = viewer.scene.primitives.add(new Cesium.PolylineCollection());
-    const seenTargets = new Set<string>();
-    for (const strike of ww3Plan.strikes) {
-      arcs.add({
-        id: `ww3-arc:${strike.id}`,
-        positions: strike.arc.map((point) => Cesium.Cartesian3.fromDegrees(point.lon, point.lat, point.altitudeM)),
-        width: 1.25,
-        material: Cesium.Material.fromType("Color", {
-          color: Cesium.Color.fromCssColorString(WW3_SIDE_COLORS[strike.attacker]).withAlpha(0.38),
-        }),
-      });
-      if (seenTargets.has(strike.target.id)) continue;
-      seenTargets.add(strike.target.id);
-      targets.add({
-        id: `ww3-target:${strike.target.id}`,
-        position: Cesium.Cartesian3.fromDegrees(strike.target.lon, strike.target.lat, 1_000),
-        pixelSize: strike.target.type === "city" ? 6 : 4,
-        color: Cesium.Color.fromCssColorString(targetColors[strike.target.type]).withAlpha(0.82),
-        outlineColor: Cesium.Color.fromCssColorString("#11111b"),
-        outlineWidth: 1,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      });
-    }
-    viewer.scene.requestRender();
-    return () => {
-      if (!viewer.isDestroyed()) {
-        viewer.scene.primitives.remove(arcs);
-        viewer.scene.primitives.remove(targets);
-        viewer.scene.requestRender();
-      }
-    };
-  }, [viewerEpoch, ww3Plan]);
-
-  useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed() || !mirvPreview) return;
-    const points = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
-    for (const point of mirvPreview.points) {
-      points.add({
-        id: `mirv:${point.id}`,
-        position: Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 750),
-        pixelSize: 10,
-        color: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.52),
-        outlineColor: Cesium.Color.fromCssColorString("#f5e0dc"),
-        outlineWidth: 2,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      });
-    }
-    const boundary = viewer.scene.primitives.add(new Cesium.PolylineCollection());
-    boundary.add({
-      id: `mirv-spread:${mirvPreview.id}`,
-      positions: mirvSpreadCircle(mirvPreview).map((point) => Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 500)),
-      width: 1.5,
-      material: Cesium.Material.fromType("PolylineDash", {
-        color: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.7),
-        dashLength: 14,
-      }),
-    });
-    viewer.scene.requestRender();
-    return () => {
-      if (!viewer.isDestroyed()) {
-        viewer.scene.primitives.remove(boundary);
-        viewer.scene.primitives.remove(points);
-        viewer.scene.requestRender();
-      }
-    };
-  }, [mirvPreview, viewerEpoch]);
+  useStrategicGlobeOverlays({ viewerRef, viewerEpoch, fireballs, ww3Plan, mirvPreview });
 
   return (
     <>

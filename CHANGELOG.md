@@ -116,6 +116,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Changed
 
+- The Cesium globe now delegates accessibility narration, controller-backed
+  analytical layer synchronization, preview-camera ownership, and strategic
+  primitive overlays to composable hooks. Fireball, global-exchange, and MIRV
+  primitive setup/teardown are independently lifecycle-tested, while the
+  existing generation-owned renderer controllers keep their prior behavior.
 - The 4,166-line Tauri command boundary is now split by responsibility into
   direct/source, wave analysis, observations, system, solver model/run/stream/
   dispatch, and focused test modules. Public command names and payloads are

@@ -35,16 +35,6 @@ tests locally.
 
 ### P2 — cited presets, products, and architecture
 
-- [ ] P2 — Split Globe.tsx into composable hooks and controllers
-  Why: the MSVC/foreground-verification blocker is stale; headless Playwright,
-  deterministic reference scenes, and controller lifecycle tests now provide the
-  non-interactive verification surface needed for this refactor.
-  Evidence: `src/components/Globe.tsx`; `src/render/cesium/`; reference-capture tests.
-  Touches: `src/components/Globe.tsx`, reusable globe hooks/controllers, focused tests.
-  Acceptance: behavior and locked reference scenes remain unchanged; lifecycle tests
-  cover setup/teardown; no foreground UI is launched.
-  Complexity: M
-
 - [ ] P2 — Add desktop deep-link import for shared scenario URLs
   Why: Rust and installer compilation work locally, so the old toolchain blocker no
   longer justifies deferring the OS routing that completes the existing URL codec.
