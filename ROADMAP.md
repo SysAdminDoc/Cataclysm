@@ -33,21 +33,6 @@ Roadmap_Blocked" had "Needs MSVC linker / Rust compilation" blockers that are
 stale: the VsDevCmd wrapper works and `npm run verify` runs 67 Rust release
 tests locally.
 
-### P1 — solver fidelity (from the 2026-07-09 second research pass)
-
-- [ ] P1 — Extend the NTHMP benchmark suite with solver-applicable analytical slices
-  Why: BP1 now ships, while the old blanket blocker predates the working validation
-  feature and overstates what can be tested without a dispersive solver. Add the
-  non-dispersive analytical portions of BP4/BP6/BP7 and explicitly retain the
-  phase-resolving portions as out of reach.
-  Evidence: `physics::validation::nthmp_bp1_*`; `docs/science/VALIDATION.md`;
-  NOAA/NTHMP benchmark specifications.
-  Touches: `src-tauri/src/physics/validation.rs`, validation fixtures,
-  `docs/science/VALIDATION.md`.
-  Acceptance: every added assertion cites its source and tolerance; unsupported
-  dispersive or breaking-wave claims remain explicitly excluded; validation tests pass.
-  Complexity: M
-
 ### P2 — cited presets, products, and architecture
 
 - [ ] P2 — Modularize commands.rs into submodules

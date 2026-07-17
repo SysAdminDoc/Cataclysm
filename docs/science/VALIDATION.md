@@ -20,6 +20,7 @@ cargo test --release --features validation -- validation::
 | `stoker_wavefront_speed_matches_sqrt_gh` | Stoker 1957, *Water Waves*, §10.2 — wavefront propagates at `√(g·h)` over a uniform shallow channel | ±25 % on wave-front position after 5 minutes of simulated time on a 4 km uniform-depth basin | ✅ shipped |
 | `synolakis_matches_carrier_greenspan_envelope` | Synolakis 1987, *J. Fluid Mech.* 185:523, Fig. 4 — `R = 2.831 √(cot β) H^(5/4) / d^(1/4)` matches Carrier-Greenspan 1958 analytical for `H/d < 0.78` | ±25 % over `H/d ∈ [0.005, 0.3]`, slope = 2°, depth = 50 m | ✅ shipped |
 | `nthmp_bp1_single_wave_on_simple_beach_runup` | Synolakis 1987 *J. Fluid Mech.* 185:523 + NTHMP 2011 model-benchmarking workshop, BP1 — single wave on a 1:19.85 simple beach, canonical non-breaking `H/d = 0.0185` | Reproduces the Synolakis closed form (<2 %) **and** lands within ±18 % of the published laboratory run-up `R/d ≈ 0.0885` | ✅ shipped |
+| `nthmp_bp4_nonbreaking_lab_runup_slice` | NTHMP BP4 `Lab_runup.txt` / Synolakis 1987 — seven non-breaking simple-beach measurements over `H/d = 0.005..0.019` | Predicted `R/d` remains within ±25 % of each laboratory value; rows above the benchmark's `H/d > 0.045` breaking threshold are explicitly excluded | ✅ shipped |
 | `nuclear_airburst_radii_match_glasstone_dolan` + `nuclear_effects_ordering_and_cube_root_scaling` | Glasstone & Dolan 1977 *The Effects of Nuclear Weapons* 3rd ed., ch. III/VII — 1 Mt air-burst radii ≈ 2.7 km (20 psi), 6.9 km (5 psi), 21 km (1 psi), 12 km (3rd-degree burns); Hiroshima 15 kt ≈ 1.7 km (5 psi) | Direct-nuclear blast/thermal radii within ±30 % of the published values (the simplified single-coefficient scaling omits height-of-burst curves); overpressure rings nest and blast radius scales as `W^(1/3)` | ✅ shipped |
 | `impact_crater_scaling_matches_collins_melosh_marcus` + `impact_crater_reproduces_meteor_crater_scale` + `impact_overpressure_and_wind_match_collins_melosh_marcus` | Collins, Melosh & Marcus 2005 *MAPS* 40:817-840 (Earth Impact Effects Program), eqns. 21/54-57; Meteor Crater observed ≈ 1.19 km | Asteroid crater Pi-scaling reproduces CMM 2005 to <1 % at 50 m / 500 m / 2 km impactors and grows monotonically; Meteor Crater analog lands in the [0.8, 2.0] km order-consistency band; overpressure falls with range and CMM peak-wind gives ≈ 72 m/s at 5 psi | ✅ shipped |
 | `ward_asphaug_chicxulub_order_of_magnitude` | Range et al. 2022 *AGU Advances*, `doi:10.1029/2021AV000627`, Fig. 3 — 1.5 km ring-wave amplitude at r = 220 km | OOM only (50 m – 10 km): we use Ward-Asphaug analytical `r^(-5/6)` decay, Range used full Boussinesq SWE | ✅ shipped |
@@ -37,16 +38,18 @@ refinement**, so only the analytically tractable slice of the suite is in reach:
 | NTHMP problem | Type | Status here | Why |
 |---------------|------|-------------|-----|
 | **BP1** — single wave on a simple beach | 1-D analytical run-up | ✅ covered (`nthmp_bp1_single_wave_on_simple_beach_runup`) | Closed-form Carrier-Greenspan / Synolakis run-up; no dispersion or fine bathymetry needed |
-| **BP4** — Monai Valley 2-D run-up | 2-D wave-tank | ⛔ out of reach | Needs 2-D nonlinear run-up over a fine wave-tank DEM; the geographic grid cannot resolve the Monai gully at benchmark scale |
-| **BP6** — solitary wave on a conical island | 2-D lab | ⛔ out of reach | Wrap-around and short-wavelength behaviour need dispersive Boussinesq physics the SWE core lacks |
-| **BP7** — Okushiri Island field case | 2-D field | ⛔ out of reach | Requires the 5 m Okushiri bathymetry grid and dispersive run-up; blocked on high-resolution bathymetry + Boussinesq |
+| **BP4** — solitary wave on a simple beach | 1-D laboratory | ✅ bounded slice (`nthmp_bp4_nonbreaking_lab_runup_slice`) | Maximum run-up is checked for seven official non-breaking measurements; breaking cases and time-resolved profiles are not claimed |
+| **BP6** — solitary wave on a conical island | 2-D laboratory | ⛔ full case out of reach | Requires laboratory-scale conical wet/dry geometry plus the specified time-dependent wave-paddle boundary before gauge and wrap-around comparisons are meaningful |
+| **BP7** — Monai Valley complex beach | 2-D laboratory | ⛔ full case out of reach | Requires the 0.014 m tank DEM, time-dependent inlet boundary, reflective wall contract, and gauge/shoreline comparison harness |
+| **BP9** — Okushiri Island field case | 2-D field | ⛔ full case out of reach | Requires nested source/bathymetry grids and field-comparison machinery; the official description itself warns that the legacy grids have material horizontal and vertical misalignment |
 
-The out-of-reach problems become tractable only after the blocked
-**Boussinesq / non-hydrostatic** and **adaptive mesh refinement** solver items
-land (see `Roadmap_Blocked.md`). Until then, BP1 is the honest, published NTHMP
-comparison this solver can pass, and the smoke test
-`nthmp_problem_1_plane_beach_wets_positively` guards the 2-D wet/dry propagation
-path qualitatively.
+The numbering and limits above follow the primary NTHMP benchmark repository,
+not older category-local numbering. BP6 and BP7 are not rejected merely because
+the solver is non-dispersive: their immediate missing contracts are
+laboratory-scale geometry, time-dependent boundary forcing, and comparison
+fixtures. BP9 additionally needs a defensible nested-grid ingestion path. The
+BP1 wet/dry smoke test remains qualitative; only the BP1 analytical point and
+BP4 non-breaking laboratory rows support quantitative claims today.
 
 ## Future benchmarks
 

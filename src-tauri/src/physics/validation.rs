@@ -24,12 +24,12 @@
 //! 3. **Range et al. 2022 Chicxulub far-field** (OOM). Tests the Ward &
 //!    Asphaug r^(-5/6) decay sampler against the published far-field
 //!    amplitudes from Range Fig. 3 at named distances.
-//! 4. **NTHMP benchmark problem 1 — single wave on a simple beach** (Synolakis
-//!    1987). Tests the closed-form run-up at the canonical 1:19.85 beach and
-//!    non-breaking `H/d = 0.0185` against the published analytical (`R/d ≈
-//!    0.086`) and laboratory (`R/d ≈ 0.0885`) values within a documented ±18 %
-//!    band. See `docs/science/VALIDATION.md` for which NTHMP benchmarks are out
-//!    of reach for this non-dispersive solver and why.
+//! 4. **NTHMP benchmark problems 1 and 4 — single waves on a simple beach**
+//!    (Synolakis 1987). Tests the closed-form run-up at the canonical 1:19.85
+//!    beach against BP1's analytical point and a bounded non-breaking slice of
+//!    BP4's official laboratory run-up table. See `docs/science/VALIDATION.md`
+//!    for the boundary-forcing, geometry, and data limits on the remaining
+//!    NTHMP laboratory and field problems.
 //! 5. **Glasstone & Dolan 1977 nuclear air-burst radii** (scaled). Tests the
 //!    Rust direct-nuclear model's 20/5/1 psi blast and third-degree-burn thermal
 //!    radii for 1 Mt and 15 kt air bursts against the published *Effects of
@@ -225,6 +225,45 @@ fn nthmp_bp1_single_wave_on_simple_beach_runup() {
         "NTHMP BP1 R/d={r_over_d:.5} outside ±18% of the lab value {lab:.4} ({:.0}% error)",
         lab_err * 100.0
     );
+}
+
+/// **NTHMP benchmark problem 4 — laboratory solitary wave on a simple
+/// beach.** Cross-check the Synolakis run-up implementation against seven
+/// non-breaking rows from the official `Lab_runup.txt` fixture. The benchmark
+/// specifies a 1:19.85 ramp and identifies `H/d > 0.045` as breaking, so this
+/// assertion deliberately stops at `H/d = 0.019`; it makes no breaking-wave or
+/// time-resolved profile claim. A ±25 % band covers laboratory scatter while
+/// remaining narrow enough to catch a coefficient, exponent, or slope error.
+///
+/// References: Synolakis, C. E. (1987) *J. Fluid Mech.* 185:523-545;
+/// NTHMP Benchmark Problem 4 description and laboratory data,
+/// <https://github.com/rjleveque/nthmp-benchmark-problems/tree/master/BP04-JosephZ-Single_wave_on_simple_beach>.
+#[test]
+fn nthmp_bp4_nonbreaking_lab_runup_slice() {
+    // (H/d, measured R/d, experimental d in metres). These rows span the
+    // bounded non-breaking region without selecting repeated measurements at
+    // the same H/d.
+    let laboratory = [
+        (0.005_f64, 0.019_f64, 0.3352_f64),
+        (0.008, 0.029, 0.3365),
+        (0.012, 0.048, 0.3224),
+        (0.014, 0.049, 0.2934),
+        (0.017, 0.063, 0.3384),
+        (0.018, 0.074, 0.2975),
+        (0.019, 0.078, 0.3097),
+    ];
+    let slope_deg = (1.0_f64 / 19.85).atan().to_degrees();
+
+    for (h_over_d, measured_r_over_d, depth_m) in laboratory {
+        let predicted_r_over_d =
+            synolakis_runup_m(h_over_d * depth_m, depth_m, slope_deg) / depth_m;
+        let relative_error = (predicted_r_over_d - measured_r_over_d).abs() / measured_r_over_d;
+        assert!(
+            relative_error <= 0.25,
+            "NTHMP BP4 H/d={h_over_d:.3}: predicted R/d={predicted_r_over_d:.4}, laboratory R/d={measured_r_over_d:.4} ({:.1}% error)",
+            relative_error * 100.0
+        );
+    }
 }
 
 /// Carrier-Greenspan 1958 plane-beach runup compared to the Synolakis

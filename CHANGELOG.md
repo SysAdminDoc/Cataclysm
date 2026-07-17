@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The validation feature now cross-checks Synolakis run-up against seven
+  official, non-breaking NTHMP BP4 laboratory measurements across
+  `H/d = 0.005..0.019`, each with a cited ±25% acceptance band. The NTHMP
+  coverage matrix now follows the primary repository's BP4/BP6/BP7/BP9
+  numbering and records the actual geometry, boundary-forcing, nested-grid,
+  breaking-wave, and field-data exclusions instead of attributing every gap to
+  missing dispersive physics.
 - Nuclear and asteroid results now export the current analytical globe as PNG
   or an attributed share card, plus Rust-derived effect rings and supplied
   hazard polygons as provenance-bearing GeoJSON, KML, and static CZML. The
