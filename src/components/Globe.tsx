@@ -735,7 +735,7 @@ export function Globe({
       ? api.probeDirectHazard(directRequest).then(directHazardProbeReport)
       : (isTauri()
           ? api.inspectAtPoint(request as ReturnType<typeof buildInspectionRequest>)
-          : Promise.resolve(demoInspectAtPoint(request as ReturnType<typeof buildInspectionRequest>)))
+          : demoInspectAtPoint(request as ReturnType<typeof buildInspectionRequest>))
         .then((result) => tsunamiProbeReport(lat, lon, result));
     const token = inspectGeneration.setContext(viewer, "inspect", request);
 

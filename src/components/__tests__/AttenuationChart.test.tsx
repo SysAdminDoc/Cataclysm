@@ -1,9 +1,26 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { AttenuationChart } from "../AttenuationChart";
 import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../../lib/data";
+
+vi.mock("../../lib/browser-physics", () => ({
+  browserAttenuation: vi.fn(async (request: {
+    initial_amplitude_m: number;
+    cavity_radius_m: number;
+    decay_alpha: number;
+    max_range_m: number;
+    n_samples: number;
+  }) => Array.from({ length: request.n_samples }, (_, index) => {
+    const fraction = index / (request.n_samples - 1);
+    const range_m = request.cavity_radius_m + fraction * (request.max_range_m - request.cavity_radius_m);
+    return {
+      range_m,
+      amplitude_m: request.initial_amplitude_m * (request.cavity_radius_m / range_m) ** request.decay_alpha,
+    };
+  })),
+}));
 
 const COASTAL = getCoastalPoints()[0];
 const RUNUP_PROVENANCE = {
@@ -30,22 +47,22 @@ describe("AttenuationChart", () => {
     expect(screen.getByText("Amplitude curve appears after source selection")).toBeInTheDocument();
   });
 
-  it("renders the chart SVG with axis labels when initial is provided", () => {
+  it("renders the chart SVG with axis labels when initial is provided", async () => {
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={0} runupResults={[]} />);
-    const svg = screen.getByRole("img", { name: /modeled wave amplitude decay by distance/i });
+    const svg = await screen.findByRole("img", { name: /modeled wave amplitude decay by distance/i });
     expect(svg).toBeInTheDocument();
     expect(svg.querySelectorAll("text").length).toBeGreaterThan(0);
   });
 
-  it("renders the decay curve path", () => {
+  it("renders the decay curve path", async () => {
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={0} runupResults={[]} />);
-    const svg = screen.getByRole("img");
+    const svg = await screen.findByRole("img");
     const path = svg.querySelector("path");
     expect(path).not.toBeNull();
     expect(path!.getAttribute("d")).toMatch(/^M/);
   });
 
-  it("renders arrived runup points as circles", () => {
+  it("renders arrived runup points as circles", async () => {
     const runup = [
       {
         ...RUNUP_PROVENANCE,
@@ -55,12 +72,12 @@ describe("AttenuationChart", () => {
       },
     ];
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={7200} runupResults={runup} />);
-    const svg = screen.getByRole("img");
+    const svg = await screen.findByRole("img");
     const circles = svg.querySelectorAll("circle");
     expect(circles.length).toBe(1);
   });
 
-  it("does not render points that haven't arrived", () => {
+  it("does not render points that haven't arrived", async () => {
     const runup = [
       {
         ...RUNUP_PROVENANCE,
@@ -70,13 +87,13 @@ describe("AttenuationChart", () => {
       },
     ];
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={100} runupResults={runup} />);
-    const svg = screen.getByRole("img");
+    const svg = await screen.findByRole("img");
     expect(svg.querySelectorAll("circle").length).toBe(0);
   });
 
-  it("renders wavefront position line when timeS > 0", () => {
+  it("renders wavefront position line when timeS > 0", async () => {
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={3600} runupResults={[]} />);
-    const svg = screen.getByRole("img");
+    const svg = await screen.findByRole("img");
     const dashedLine = svg.querySelector('line[stroke-dasharray]');
     expect(dashedLine).not.toBeNull();
   });
@@ -89,7 +106,7 @@ describe("AttenuationChart", () => {
   it("provides a non-live summary and keyboard-accessible provenance table", async () => {
     const user = userEvent.setup();
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={3600} runupResults={[]} />);
-    const summary = screen.getByText(/Modeled decay spans/, { selector: ".chart-data__summary" });
+    const summary = await screen.findByText(/Modeled decay spans/, { selector: ".chart-data__summary" });
     expect(summary).toHaveAttribute("aria-live", "off");
     expect(screen.getByRole("img")).toHaveAttribute("aria-describedby", summary.id);
 

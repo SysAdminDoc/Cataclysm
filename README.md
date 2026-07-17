@@ -287,7 +287,8 @@ git clone https://github.com/SysAdminDoc/Cataclysm
 cd Cataclysm
 npm install
 npm run doctor             # local toolchain preflight with actionable fixes
-npm run dev                # browser preview with deterministic demo data
+npm run dev                # browser preview with Rust/WASM source physics
+npm run build:physics      # rebuild + verify the checked-in browser WASM asset
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
 npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
@@ -298,9 +299,20 @@ npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # req
 npm run tauri:build        # isolated installed-package gate + GPU installer manifest
 ```
 
-The browser preview is for deterministic shell and globe development. Direct
-asteroid and nuclear calculations require the desktop app so the frontend
-cannot diverge from the Rust scientific authority.
+The browser preview loads a checked-in 215.4 KiB WebAssembly module compiled
+from the same Rust asteroid, nuclear, earthquake, landslide, attenuation,
+arrival, and Synolakis-runup code used by desktop IPC. The JavaScript-only
+boundary is the deterministic SWE frame/gauge playback; exports show the
+`BROWSER SWE PLAYBACK — APPROXIMATE` watermark only while that layer is active.
+Direct-effects blast, thermal, crater, fallout, and casualty calculations still
+require the installed desktop app.
+
+`npm run build:physics` requires the `wasm32-unknown-unknown` Rust target. Normal
+web builds verify the checked-in module's ABI, source digest, SHA-256, and byte
+size so stale generated physics cannot ship silently. The production main JS
+chunk changed from 1,260.56 kB / 356.96 kB gzip to 1,257.34 kB / 356.14 kB
+gzip; the separate WASM asset adds 220,561 bytes raw (215.4 KiB), taking the
+offline cache from 14.6 MiB to 14.8 MiB.
 
 `tauri:build` runs the strict gate, deletes stale bundles, compiles the desktop
 binary with GPU support, performs a non-visual capability smoke, and writes

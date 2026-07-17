@@ -71,7 +71,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
     const reqId = reqIdRef.current;
     const points: CoastalPoint[] = [...VALID_POINTS];
     if (!isTauri()) {
-      const res = demoRunupAtPoints({
+      void demoRunupAtPoints({
         source: initial.center,
         initial_amplitude_m: initial.peak_amplitude_m,
         cavity_radius_m: initial.cavity_radius_m,
@@ -79,15 +79,19 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
         mean_depth_m: 4000,
         time_s: timeS,
         points,
-      }) as RunupAtPointResult[];
-      onResult(resolveAsyncResult(res, (items) => items.length === 0));
-      const arrived = res.filter((r) => r.has_arrived && r.runup_m >= 0.1).length;
-      lastArrivedCountRef.current = arrived;
-      setAnnouncement(
-        arrived > 0
-          ? `Tsunami wave has reached ${arrived} coastal ${arrived === 1 ? "point" : "points"}.`
-          : "",
-      );
+      }).then((res) => {
+        if (reqId !== reqIdRef.current) return;
+        onResult(resolveAsyncResult(res as RunupAtPointResult[], (items) => items.length === 0));
+        const arrived = res.filter((r) => r.has_arrived && r.runup_m >= 0.1).length;
+        lastArrivedCountRef.current = arrived;
+        setAnnouncement(
+          arrived > 0
+            ? `Tsunami wave has reached ${arrived} coastal ${arrived === 1 ? "point" : "points"}.`
+            : "",
+        );
+      }).catch((error) => {
+        if (reqId === reqIdRef.current) onResult((current) => rejectAsyncResult(current, error));
+      });
       return;
     }
     api

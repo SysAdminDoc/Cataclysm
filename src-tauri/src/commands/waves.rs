@@ -92,22 +92,19 @@ pub fn attenuation_curve(req: AttenuationCurveRequest) -> Result<Vec<Attenuation
     if req.max_range_m <= start_range_m {
         return Err("max_range_m must exceed the curve start range".into());
     }
-    let n = req.n_samples as usize;
-    let mut samples = Vec::with_capacity(n);
-    for i in 0..n {
-        let frac = i as f64 / (n - 1) as f64;
-        let range_m = start_range_m + frac * (req.max_range_m - start_range_m);
-        let amplitude_m = if range_m <= req.cavity_radius_m {
-            req.initial_amplitude_m
-        } else {
-            req.initial_amplitude_m * (req.cavity_radius_m / range_m).powf(req.decay_alpha)
-        };
-        samples.push(AttenuationSample {
-            range_m,
-            amplitude_m,
-        });
-    }
-    Ok(samples)
+    Ok(crate::physics::screening::attenuation_curve(
+        req.initial_amplitude_m,
+        req.cavity_radius_m,
+        req.decay_alpha,
+        req.max_range_m,
+        req.n_samples as usize,
+    )
+    .into_iter()
+    .map(|sample| AttenuationSample {
+        range_m: sample.range_m,
+        amplitude_m: sample.amplitude_m,
+    })
+    .collect())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -165,16 +162,7 @@ pub struct RunPresetResponse {
 /// Clamps `s` to `[0, 1]` so float-precision drift on near-antipodal points
 /// doesn't produce NaN from `sqrt(1 - s)` when s slightly exceeds 1.0.
 pub(super) fn haversine_m(a_lat: f64, a_lon: f64, b_lat: f64, b_lon: f64) -> f64 {
-    if !(a_lat.is_finite() && a_lon.is_finite() && b_lat.is_finite() && b_lon.is_finite()) {
-        return 0.0;
-    }
-    let phi1 = a_lat.to_radians();
-    let phi2 = b_lat.to_radians();
-    let dphi = (b_lat - a_lat).to_radians();
-    let dlmb = (b_lon - a_lon).to_radians();
-    let s = ((dphi * 0.5).sin().powi(2) + phi1.cos() * phi2.cos() * (dlmb * 0.5).sin().powi(2))
-        .clamp(0.0, 1.0);
-    2.0 * R_EARTH_M * s.sqrt().atan2((1.0 - s).sqrt())
+    crate::physics::screening::haversine_m(a_lat, a_lon, b_lat, b_lon)
 }
 
 #[derive(Debug, Deserialize)]
@@ -253,24 +241,20 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
     let out = points
         .into_iter()
         .map(|p| {
-            let range_m = haversine_m(req.source.lat_deg, req.source.lon_deg, p.lat, p.lon);
-            let amp = if req.is_impact {
-                impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
-            } else {
-                nuclear_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
-            };
-            let runup_m = synolakis_runup_m(amp, p.offshore_depth_m, p.beach_slope_deg);
-            let c = (G_EARTH * req.mean_depth_m.max(1.0)).sqrt();
-            let arrival_time_s = range_m / c;
-            // Inland inundation extent: runup_m / tan(beach_slope). For
-            // a 0° "reference" point (deep-water gauge) tan(0) → 0 and
-            // we'd divide-by-zero; cap at 0 to indicate "no land here".
-            let slope_rad = p.beach_slope_deg.to_radians();
-            let inundation_extent_m = if slope_rad > 0.0 {
-                (runup_m / slope_rad.tan()).clamp(0.0, 50_000.0)
-            } else {
-                0.0
-            };
+            let screened = screen_point(
+                req.source,
+                req.initial_amplitude_m,
+                req.cavity_radius_m,
+                req.is_impact,
+                req.mean_depth_m,
+                req.time_s,
+                ScreeningPoint {
+                    lat: p.lat,
+                    lon: p.lon,
+                    beach_slope_deg: p.beach_slope_deg,
+                    offshore_depth_m: p.offshore_depth_m,
+                },
+            );
             let quantitative_confidence = match (
                 &p.slope_provenance.record.confidence,
                 &p.depth_provenance.record.confidence,
@@ -302,12 +286,12 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
                 depth_provenance: p.depth_provenance,
                 quantitative_confidence,
                 quantitative_label: quantitative_label.into(),
-                range_m,
-                offshore_amplitude_m: amp,
-                runup_m,
-                arrival_time_s,
-                has_arrived: req.time_s >= arrival_time_s,
-                inundation_extent_m,
+                range_m: screened.range_m,
+                offshore_amplitude_m: screened.offshore_amplitude_m,
+                runup_m: screened.runup_m,
+                arrival_time_s: screened.arrival_time_s,
+                has_arrived: screened.has_arrived,
+                inundation_extent_m: screened.inundation_extent_m,
             }
         })
         .collect();

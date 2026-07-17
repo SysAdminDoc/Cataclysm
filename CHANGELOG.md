@@ -6,6 +6,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Browser preview source initialization, analytical wavefronts, attenuation,
+  coastal runup, and point inspection now execute the same Rust modules as the
+  desktop app through a 220,561-byte raw WebAssembly asset and a minimal
+  versioned JSON ABI. Builds verify the asset against a source digest and
+  SHA-256 manifest, Node spot checks cover desktop fixture equality, and a
+  headless browser check confirms the Rust readouts. JavaScript remains only
+  for illustrative SWE frame/gauge playback, so the `APPROXIMATE` export
+  watermark is now limited to that active mode. The main JS bundle decreased
+  3.22 kB raw / 0.82 kB gzip while the offline cache grew from 14.6 to
+  14.8 MiB.
 - The installed app can now search NOAA/NCEI HazEL historical tsunami events
   by year and location, including the `1960 Chile` event set, and load an
   earthquake record's reported magnitude and epicentre into the scenario

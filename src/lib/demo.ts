@@ -1,17 +1,20 @@
 import type {
-  AsteroidImpactInput,
   CoastalPoint,
-  EarthquakeInput,
   GeoPoint,
   GridSnapshot,
   InitialDisplacement,
-  LandslideInput,
-  NuclearBurstInput,
   Preset,
-  PropagationSnapshot,
   RunPresetResponse,
   SimulateGridResponse,
 } from "../types/scenario";
+import {
+  browserAttenuation,
+  browserInitial,
+  browserInspect,
+  browserRunup,
+  browserWavefront,
+  type BrowserSourceInput,
+} from "./browser-physics";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "./geodesy";
 
 export type DemoRunupAtPointResult = {
@@ -43,11 +46,10 @@ export type DemoInspectAtPointResult = {
   governing_model: string;
   citations: string[];
   assumptions: string[];
-  confidence: "illustrative";
+  confidence: "screening_estimate";
   unknowns: string[];
 };
 
-const TNT_J_PER_KT = 4.184e12;
 const G = 9.81;
 
 const DEMO_PRESETS: Preset[] = [
@@ -299,114 +301,32 @@ const DEMO_PRESETS: Preset[] = [
   },
 ];
 
-const DEMO_METRICS: Record<
-  string,
-  Omit<InitialDisplacement, "center" | "label" | "camera_view">
-> = {
-  chicxulub: {
-    cavity_radius_m: 50_000,
-    peak_amplitude_m: 4500,
-    source_energy_j: 4.2e23,
-    seismic_mw_equivalent: 12.4,
-    dominant_wavelength_m: 220_000,
-  },
-  eltanin: {
-    cavity_radius_m: 4500,
-    peak_amplitude_m: 240,
-    source_energy_j: 1.2e20,
-    seismic_mw_equivalent: 10.3,
-    dominant_wavelength_m: 38_000,
-  },
-  tohoku_2011: {
-    cavity_radius_m: 120_000,
-    peak_amplitude_m: 8.2,
-    source_energy_j: 2.0e18,
-    seismic_mw_equivalent: 9.1,
-    dominant_wavelength_m: 260_000,
-  },
-  indian_ocean_2004: {
-    cavity_radius_m: 180_000,
-    peak_amplitude_m: 6.8,
-    source_energy_j: 2.8e18,
-    seismic_mw_equivalent: 9.2,
-    dominant_wavelength_m: 350_000,
-  },
-  lituya_bay_1958: {
-    cavity_radius_m: 900,
-    peak_amplitude_m: 172,
-    source_energy_j: 6.9e17,
-    seismic_mw_equivalent: 8.7,
-    dominant_wavelength_m: 2600,
-  },
-  krakatoa_1883: {
-    cavity_radius_m: 4200,
-    peak_amplitude_m: 42,
-    source_energy_j: 1.0e17,
-    seismic_mw_equivalent: 8.1,
-    dominant_wavelength_m: 14_000,
-  },
-  storegga: {
-    cavity_radius_m: 140_000,
-    peak_amplitude_m: 26,
-    source_energy_j: 4.2e18,
-    seismic_mw_equivalent: 9.3,
-    dominant_wavelength_m: 300_000,
-  },
-  hunga_tonga_2022: {
-    cavity_radius_m: 3800,
-    peak_amplitude_m: 15,
-    source_energy_j: 1.3e17,
-    seismic_mw_equivalent: 8.3,
-    dominant_wavelength_m: 18_000,
-  },
-  cumbre_vieja_scenario: {
-    cavity_radius_m: 68_000,
-    peak_amplitude_m: 120,
-    source_energy_j: 5.3e18,
-    seismic_mw_equivalent: 9.3,
-    dominant_wavelength_m: 180_000,
-  },
-  poseidon_realistic: {
-    cavity_radius_m: 1800,
-    peak_amplitude_m: 18,
-    source_energy_j: 8.4e15,
-    seismic_mw_equivalent: 7.2,
-    dominant_wavelength_m: 9000,
-  },
-  poseidon_propaganda: {
-    cavity_radius_m: 13_000,
-    peak_amplitude_m: 90,
-    source_energy_j: 4.2e17,
-    seismic_mw_equivalent: 8.6,
-    dominant_wavelength_m: 42_000,
-  },
-};
-
 export function listDemoPresets(): Preset[] {
   return DEMO_PRESETS.map((p) => ({ ...p }));
 }
 
-export function runDemoPreset(presetId: string, timeS: number): RunPresetResponse {
+export async function runDemoPreset(presetId: string, timeS: number): Promise<RunPresetResponse> {
   const preset = DEMO_PRESETS.find((p) => p.id === presetId) ?? DEMO_PRESETS[0];
-  const initial = initialForPreset(preset);
+  const initial = await browserInitial(preset.source);
+  initial.camera_view = preset.camera_view;
+  const meanDepthM = Math.max(initial.center.depth_m ?? 0, 50);
+  const wavefront = await browserWavefront({
+    initial_amplitude_m: initial.peak_amplitude_m,
+    cavity_radius_m: initial.cavity_radius_m,
+    decay_alpha: preset.source.kind === "Asteroid" ? 5 / 6 : 0.5,
+    mean_depth_m: meanDepthM,
+    time_s: timeS,
+    n_samples: 48,
+  });
   return {
     preset,
     initial,
-    wavefront: makeDemoWavefront(initial, timeS, preset.source.kind === "Asteroid"),
+    wavefront,
   };
 }
 
-export function demoInitialForScenario(
-  input:
-    | { kind: "Asteroid"; source: AsteroidImpactInput }
-    | { kind: "Nuclear"; source: NuclearBurstInput }
-    | { kind: "Earthquake"; source: EarthquakeInput }
-    | { kind: "Landslide"; source: LandslideInput },
-): InitialDisplacement {
-  if (input.kind === "Asteroid") return asteroidInitial(input.source);
-  if (input.kind === "Nuclear") return nuclearInitial(input.source);
-  if (input.kind === "Earthquake") return earthquakeInitial(input.source);
-  return landslideInitial(input.source);
+export function demoInitialForScenario(input: BrowserSourceInput): Promise<InitialDisplacement> {
+  return browserInitial(input);
 }
 
 export function simulateDemoGrid(
@@ -445,13 +365,13 @@ export function simulateDemoGrid(
       mass_drift_pct: 0,
       energy_drift_pct: 0,
       sponge_width_cells: 0,
-      warnings: ["Browser preview uses illustrative fields; desktop Rust runs publish numerical-integrity metrics."],
+      warnings: ["Browser preview SWE fields remain illustrative; source and screening physics use Rust/WASM."],
       failure: null,
     },
   };
 }
 
-export function demoRunupAtPoints(req: {
+export async function demoRunupAtPoints(req: {
   source: GeoPoint;
   initial_amplitude_m: number;
   cavity_radius_m: number;
@@ -459,16 +379,18 @@ export function demoRunupAtPoints(req: {
   mean_depth_m: number;
   time_s: number;
   points: CoastalPoint[];
-}): DemoRunupAtPointResult[] {
-  const c = Math.sqrt(G * Math.max(req.mean_depth_m, 50));
-  const alpha = req.is_impact ? 5 / 6 : 0.5;
-  return req.points.map((p) => {
-    const range_m = Math.max(1, haversineM(req.source.lat_deg, req.source.lon_deg, p.lat, p.lon));
-    const arrival_time_s = range_m / c;
-    const attenuation = Math.pow(Math.max(req.cavity_radius_m, 1000) / range_m, alpha);
-    const offshore = Math.max(0, req.initial_amplitude_m * attenuation * 0.32);
-    const slope = Math.max(0.001, Math.tan((p.beach_slope_deg * Math.PI) / 180));
-    const runup_m = Math.min(750, offshore * (offshore > 25 ? 1.4 : 2.6));
+}): Promise<DemoRunupAtPointResult[]> {
+  const screened = await browserRunup({
+    ...req,
+    points: req.points.map((point) => ({
+      lat: point.lat,
+      lon: point.lon,
+      beach_slope_deg: point.beach_slope_deg,
+      offshore_depth_m: point.offshore_depth_m,
+    })),
+  });
+  return req.points.map((p, index) => {
+    const result = screened[index];
     return {
       id: p.id,
       name: p.name,
@@ -490,37 +412,26 @@ export function demoRunupAtPoints(req: {
           : p.slope_provenance.confidence === "high" && p.depth_provenance.confidence === "high"
             ? "quantitative"
             : "screening_estimate",
-      range_m,
-      offshore_amplitude_m: offshore,
-      runup_m,
-      arrival_time_s,
-      has_arrived: req.time_s >= arrival_time_s,
-      inundation_extent_m: Math.min(60_000, runup_m / slope),
+      ...result,
     };
   });
 }
 
-/** Browser-preview approximation of the Rust `attenuation_curve` command.
- *  Same shape (metres in, metres out); desktop builds never call this. */
+/** Browser adapter for the shared Rust `attenuation_curve` implementation. */
 export function demoAttenuationCurve(
   initialAmplitudeM: number,
   cavityRadiusM: number,
   decayAlpha: number,
   maxRangeM: number,
   nSamples: number,
-): Array<{ range_m: number; amplitude_m: number }> {
-  const startRangeM = Math.max(cavityRadiusM, 1000);
-  const samples: Array<{ range_m: number; amplitude_m: number }> = [];
-  for (let i = 0; i < nSamples; i++) {
-    const frac = i / (nSamples - 1);
-    const range_m = startRangeM + frac * (maxRangeM - startRangeM);
-    const amplitude_m =
-      range_m <= cavityRadiusM
-        ? initialAmplitudeM
-        : initialAmplitudeM * Math.pow(cavityRadiusM / range_m, decayAlpha);
-    samples.push({ range_m, amplitude_m });
-  }
-  return samples;
+): Promise<Array<{ range_m: number; amplitude_m: number }>> {
+  return browserAttenuation({
+    initial_amplitude_m: initialAmplitudeM,
+    cavity_radius_m: cavityRadiusM,
+    decay_alpha: decayAlpha,
+    max_range_m: maxRangeM,
+    n_samples: nSamples,
+  });
 }
 
 export function sampleGaugesFromDemo(
@@ -561,7 +472,7 @@ export function sampleGaugesFromDemo(
   });
 }
 
-export function demoInspectAtPoint(req: {
+export async function demoInspectAtPoint(req: {
   source: GeoPoint;
   initial_amplitude_m: number;
   cavity_radius_m: number;
@@ -572,22 +483,10 @@ export function demoInspectAtPoint(req: {
   click_lon: number;
   beach_slope_deg: number;
   offshore_depth_m: number;
-}): DemoInspectAtPointResult {
-  const range_m = Math.max(1, haversineM(req.source.lat_deg, req.source.lon_deg, req.click_lat, req.click_lon));
-  const c = Math.sqrt(G * Math.max(req.mean_depth_m, 50));
-  const alpha = req.is_impact ? 5 / 6 : 0.5;
-  const attenuation = Math.pow(Math.max(req.cavity_radius_m, 1000) / range_m, alpha);
-  const offshore = Math.max(0, req.initial_amplitude_m * attenuation * 0.32);
-  const slope = Math.max(0.001, Math.tan((req.beach_slope_deg * Math.PI) / 180));
-  const runup_m = Math.min(750, offshore * (offshore > 25 ? 1.4 : 2.6));
-  const arrival_time_s = range_m / c;
+}): Promise<DemoInspectAtPointResult> {
+  const result = await browserInspect(req);
   return {
-    range_m,
-    offshore_amplitude_m: offshore,
-    runup_m,
-    arrival_time_s,
-    has_arrived: req.time_s >= arrival_time_s,
-    inundation_extent_m: Math.min(60_000, runup_m / slope),
+    ...result,
     governing_model: req.is_impact
       ? "impact-far-field + synolakis-runup"
       : "nuclear-far-field + synolakis-runup",
@@ -602,151 +501,12 @@ export function demoInspectAtPoint(req: {
       `Nominal ${req.beach_slope_deg.toFixed(1)}° beach slope and ${req.offshore_depth_m.toFixed(0)} m offshore depth`,
       "Radial far-field attenuation over a spherical-Earth distance",
     ],
-    confidence: "illustrative",
+    confidence: "screening_estimate",
     unknowns: [
       "Local bathymetry, shoreline geometry, reflection, and dispersion are not resolved",
       "An absent or small estimate is not an emergency-safety determination",
     ],
   };
-}
-
-function initialForPreset(preset: Preset): InitialDisplacement {
-  const metrics = DEMO_METRICS[preset.id] ?? DEMO_METRICS.chicxulub;
-  const sourceGeometry = (() => {
-    switch (preset.source.kind) {
-      case "Asteroid": return asteroidInitial(preset.source.source).source_geometry;
-      case "Nuclear": return nuclearInitial(preset.source.source).source_geometry;
-      case "Earthquake": return earthquakeInitial(preset.source.source).source_geometry;
-      case "Landslide": return landslideInitial(preset.source.source).source_geometry;
-    }
-  })();
-  return {
-    ...metrics,
-    center: sourceLocation(preset),
-    label: preset.name,
-    camera_view: preset.camera_view,
-    source_geometry: sourceGeometry,
-  };
-}
-
-function sourceLocation(preset: Preset): GeoPoint {
-  return preset.source.source.location;
-}
-
-function asteroidInitial(input: AsteroidImpactInput): InitialDisplacement {
-  const radius = Math.max(1000, input.diameter_m * 3.5);
-  const mass = (Math.PI / 6) * input.density_kg_m3 * input.diameter_m ** 3;
-  const energy = 0.5 * mass * input.velocity_m_s ** 2;
-  const angle = Math.max(0.1, Math.sin((input.angle_deg * Math.PI) / 180));
-  return {
-    center: input.location,
-    cavity_radius_m: radius,
-    peak_amplitude_m: Math.min(5000, Math.max(1, input.diameter_m * 0.32 * angle)),
-    source_energy_j: energy,
-    seismic_mw_equivalent: energyToMw(energy),
-    dominant_wavelength_m: radius * 4.4,
-    label: "Custom asteroid impact",
-    source_geometry: {
-      kind: "cavity_ring",
-      rim_radius_m: radius,
-      rim_width_m: Math.max(1, radius * 0.2),
-    },
-  };
-}
-
-function nuclearInitial(input: NuclearBurstInput): InitialDisplacement {
-  const energy = input.yield_kt * TNT_J_PER_KT;
-  const yieldSqrt = Math.sqrt(Math.max(input.yield_kt, 0.001));
-  const radius = Math.max(600, yieldSqrt * 190);
-  return {
-    center: input.location,
-    cavity_radius_m: radius,
-    peak_amplitude_m: Math.max(0.2, yieldSqrt * 0.55),
-    source_energy_j: energy,
-    seismic_mw_equivalent: energyToMw(energy),
-    dominant_wavelength_m: Math.max(1800, yieldSqrt * 900),
-    label: "Custom nuclear source",
-    source_geometry: {
-      kind: "cavity_ring",
-      rim_radius_m: radius,
-      rim_width_m: Math.max(1, radius * 0.2),
-    },
-  };
-}
-
-function earthquakeInitial(input: EarthquakeInput): InitialDisplacement {
-  const energy = 10 ** (1.5 * input.mw + 4.8);
-  const length = input.fault_length_m && input.fault_length_m > 0 ? input.fault_length_m : 10 ** (-2.44 + 0.59 * input.mw) * 1000;
-  const width = input.fault_width_m && input.fault_width_m > 0 ? input.fault_width_m : 10 ** (0.32 * input.mw - 1.01) * 1000;
-  return {
-    center: input.location,
-    cavity_radius_m: Math.max(20_000, length * 0.28),
-    peak_amplitude_m: Math.max(0.2, Math.min(16, input.slip_m * Math.sin((input.dip_deg * Math.PI) / 180) * 0.45)),
-    source_energy_j: energy,
-    seismic_mw_equivalent: input.mw,
-    dominant_wavelength_m: Math.max(60_000, length * 0.55),
-    label: "Custom earthquake source",
-    source_geometry: input.slip_m > 0 ? {
-      kind: "okada",
-      fault: {
-        center_lat: input.location.lat_deg,
-        center_lon: input.location.lon_deg,
-        depth_m: input.depth_m,
-        length_m: length,
-        width_m: width,
-        strike_deg: input.strike_deg,
-        dip_deg: input.dip_deg,
-        rake_deg: input.rake_deg,
-        slip_m: input.slip_m,
-      },
-    } : null,
-  };
-}
-
-function landslideInitial(input: LandslideInput): InitialDisplacement {
-  const energy = input.volume_m3 * input.density_kg_m3 * G * Math.max(input.drop_height_m, 1);
-  const scale = Math.cbrt(Math.max(input.volume_m3, 1));
-  const radius = Math.max(500, scale * 2.2);
-  return {
-    center: input.location,
-    cavity_radius_m: radius,
-    peak_amplitude_m: Math.max(0.5, Math.min(350, scale * Math.sin((input.slope_deg * Math.PI) / 180) * 0.09)),
-    source_energy_j: energy,
-    seismic_mw_equivalent: energyToMw(energy),
-    dominant_wavelength_m: Math.max(1200, input.water_body_width_m),
-    label: "Custom landslide source",
-    source_geometry: {
-      kind: "landslide",
-      axis_azimuth_deg: 0,
-      longitudinal_sigma_m: radius,
-      transverse_sigma_m: Math.max(1, Math.min(radius, input.water_body_width_m * 0.5)),
-    },
-  };
-}
-
-function makeDemoWavefront(
-  initial: InitialDisplacement,
-  timeS: number,
-  isImpact: boolean,
-): PropagationSnapshot {
-  const depth = Math.max(initial.center.depth_m ?? 4000, 50);
-  const c = Math.sqrt(G * depth);
-  const maxRange = Math.max(initial.cavity_radius_m * 1.5, c * Math.max(timeS, 60));
-  const alpha = isImpact ? 5 / 6 : 0.5;
-  const ranges_m: number[] = [];
-  const amplitudes_m: number[] = [];
-  for (let i = 0; i < 48; i += 1) {
-    const t = (i + 1) / 48;
-    const r = maxRange * t;
-    const envelope = Math.exp(-((t - 0.82) ** 2) / 0.045);
-    ranges_m.push(r);
-    amplitudes_m.push(
-      initial.peak_amplitude_m *
-        Math.pow(Math.max(initial.cavity_radius_m, 1000) / Math.max(r, 1000), alpha) *
-        envelope,
-    );
-  }
-  return { time_s: timeS, ranges_m, amplitudes_m };
 }
 
 type DemoFieldTileLayout = {
@@ -905,10 +665,4 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
     Math.sin(dPhi / 2) ** 2 +
     Math.cos(p1) * Math.cos(p2) * Math.sin(dLambda / 2) ** 2;
   return 2 * r * Math.asin(Math.min(1, Math.sqrt(a)));
-}
-
-function energyToMw(energyJ: number): number {
-  return Number.isFinite(energyJ) && energyJ > 0
-    ? (Math.log10(energyJ) - 4.8) / 1.5
-    : 0;
 }

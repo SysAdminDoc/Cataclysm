@@ -524,9 +524,11 @@ shipped/validated ONNX model, and measured error bounds before it can be trusted
   LMS/Classroom share button and an offline pack; teachers expect it, and it is a
   monetization-free channel into classrooms.
   Evidence: PhET distribution model https://phet.colorado.edu/en/help-center/getting-started; Chromebook simulation bundles https://www.excelschools.net/en/simulations/category/by-device/chromebook.html.
-  Touches: a web (non-Tauri) build target, embed/iframe surface, Classroom share, offline service-worker/app-cache bundle, licensing/hosting decision.
-  **Blocker:** Depends on the tracked WASM physics port (no web build exists
-  today, since physics is Rust-only) and a maintainer decision on a web hosting/
-  distribution channel. Return to ROADMAP.md once the WASM port lands and a
-  hosting channel is chosen.
+  Touches: embed/iframe surface, Classroom share, classroom packaging, and the
+  maintainer's licensing/hosting decision. The non-Tauri PWA and shared
+  Rust/WASM source-physics foundation landed on 2026-07-17.
+  **Blocker:** A maintainer must choose and control the public web hosting and
+  LMS distribution channel, including its origin, privacy posture, and account
+  credentials. Return the embed/share work to ROADMAP.md once that channel is
+  chosen; the prior WASM/web-build dependency is no longer a blocker.
   Complexity: XL

@@ -6,6 +6,17 @@ import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../../lib/data";
 import { demoRunupAtPoints } from "../../lib/demo";
 
+vi.mock("../../lib/browser-physics", () => ({
+  browserRunup: vi.fn(async ({ points }: { points: unknown[] }) => points.map((_, index) => ({
+    range_m: (index + 1) * 100_000,
+    offshore_amplitude_m: 4 - index,
+    runup_m: 8 - index,
+    arrival_time_s: (index + 1) * 500,
+    has_arrived: true,
+    inundation_extent_m: (index + 1) * 250,
+  }))),
+}));
+
 const MOCK_INITIAL: InitialDisplacement = {
   peak_amplitude_m: 1500,
   cavity_radius_m: 50000,
@@ -70,7 +81,7 @@ describe("ResultsPanel", () => {
 
   it("visibly discloses low-confidence coastal input records", async () => {
     const user = userEvent.setup();
-    const runupResults = demoRunupAtPoints({
+    const runupResults = await demoRunupAtPoints({
       source: MOCK_INITIAL.center,
       initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
       cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
@@ -89,7 +100,7 @@ describe("ResultsPanel", () => {
 
   it("surfaces a retry when coastal CSV download fails", async () => {
     const user = userEvent.setup();
-    const runupResults = demoRunupAtPoints({
+    const runupResults = await demoRunupAtPoints({
       source: MOCK_INITIAL.center,
       initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
       cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
@@ -135,7 +146,7 @@ describe("ResultsPanel", () => {
     const user = userEvent.setup();
     const onTimeChange = vi.fn();
     const onFocusOutcome = vi.fn();
-    const runupResults = demoRunupAtPoints({
+    const runupResults = await demoRunupAtPoints({
       source: MOCK_INITIAL.center,
       initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
       cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
@@ -166,7 +177,7 @@ describe("ResultsPanel", () => {
     const user = userEvent.setup();
     const onTimeChange = vi.fn();
     const onFocusOutcome = vi.fn();
-    const runupResults = demoRunupAtPoints({
+    const runupResults = await demoRunupAtPoints({
       source: MOCK_INITIAL.center,
       initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
       cavity_radius_m: MOCK_INITIAL.cavity_radius_m,

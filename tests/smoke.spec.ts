@@ -155,6 +155,24 @@ test.describe("Cataclysm browser preview", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
+  test("browser preview displays the shared Rust/WASM source fixture", async ({ page }) => {
+    await page.goto("/");
+    const eltanin = page.locator(".preset-card").filter({
+      has: page.getByText("Eltanin Impact", { exact: true }),
+    });
+    await expect(eltanin).toBeVisible({ timeout: 10_000 });
+    await eltanin.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await page.getByRole("tab", { name: "Results" }).click();
+    await page.getByRole("tab", { name: "Science" }).click();
+
+    await expect(page.getByText("Rust-authoritative", { exact: true })).toBeVisible();
+    await expect(page.locator(".results__cell", { hasText: "Cavity radius" })).toContainText("12.4 km");
+    await expect(page.locator(".results__cell", { hasText: "Peak source displacement" })).toContainText("2.3 km");
+    await page.getByText(/View wave attenuation data/).click();
+    await expect(page.getByText("Rust attenuation_curve compiled to browser WASM").first()).toBeVisible();
+  });
+
   test("historical event browser explains its desktop-only live data boundary", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /Search NOAA historical events/i }).click();

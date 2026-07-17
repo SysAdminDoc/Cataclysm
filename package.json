@@ -12,7 +12,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/validate-earth-assets.mjs && node scripts/validate-source-input-contract.mjs && tsc --noEmit && vite build && node scripts/build-pwa.mjs",
+    "build": "node scripts/build-browser-physics.mjs --check && node scripts/validate-earth-assets.mjs && node scripts/validate-source-input-contract.mjs && tsc --noEmit && vite build && node scripts/build-pwa.mjs",
+    "build:physics": "node scripts/build-browser-physics.mjs --build",
     "build:pwa": "npm run build",
     "doctor": "node scripts/doctor.mjs",
     "preview": "vite preview",
@@ -33,6 +34,7 @@
     "test:reference-quality": "node --test scripts/reference-visual-quality.test.mjs",
     "test:reference-lifecycle": "node --test scripts/reference-recorder-lifecycle.test.mjs",
     "test:rust-advisory-policy": "node --test scripts/rust-advisory-policy.test.mjs",
+    "test:browser-physics": "node scripts/build-browser-physics.mjs --check && node --test scripts/browser-physics.test.mjs",
     "test:pwa-contract": "node --test scripts/pwa-offline-contract.test.mjs",
     "test:installed-release": "node --test scripts/installed-release-smoke.test.mjs",
     "test:release-contracts": "node --test scripts/deep-link-contract.test.mjs scripts/deps-check.test.mjs scripts/release-artifact-contract.test.mjs scripts/version-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",

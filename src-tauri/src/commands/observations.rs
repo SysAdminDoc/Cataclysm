@@ -320,33 +320,27 @@ pub fn inspect_at_point(req: InspectAtPointRequest) -> Result<InspectAtPointResu
     if req.offshore_depth_m > 12_000.0 {
         return Err("offshore_depth_m must be ≤ 12 000 m".into());
     }
-    let range_m = haversine_m(
-        req.source.lat_deg,
-        req.source.lon_deg,
-        req.click_lat,
-        req.click_lon,
+    let screened = screen_point(
+        req.source,
+        req.initial_amplitude_m,
+        req.cavity_radius_m,
+        req.is_impact,
+        req.mean_depth_m,
+        req.time_s,
+        ScreeningPoint {
+            lat: req.click_lat,
+            lon: req.click_lon,
+            beach_slope_deg: req.beach_slope_deg,
+            offshore_depth_m: req.offshore_depth_m,
+        },
     );
-    let amp = if req.is_impact {
-        impact_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
-    } else {
-        nuclear_far_field(req.initial_amplitude_m, req.cavity_radius_m, range_m)
-    };
-    let runup_m = synolakis_runup_m(amp, req.offshore_depth_m, req.beach_slope_deg);
-    let c = (G_EARTH * req.mean_depth_m.max(1.0)).sqrt();
-    let arrival_time_s = range_m / c;
-    let slope_rad = req.beach_slope_deg.to_radians();
-    let inundation_extent_m = if slope_rad > 0.0 {
-        (runup_m / slope_rad.tan()).clamp(0.0, 50_000.0)
-    } else {
-        0.0
-    };
     Ok(InspectAtPointResult {
-        range_m,
-        offshore_amplitude_m: amp,
-        runup_m,
-        arrival_time_s,
-        has_arrived: req.time_s >= arrival_time_s,
-        inundation_extent_m,
+        range_m: screened.range_m,
+        offshore_amplitude_m: screened.offshore_amplitude_m,
+        runup_m: screened.runup_m,
+        arrival_time_s: screened.arrival_time_s,
+        has_arrived: screened.has_arrived,
+        inundation_extent_m: screened.inundation_extent_m,
         governing_model: if req.is_impact {
             "impact-far-field + synolakis-runup"
         } else {

@@ -15,12 +15,13 @@ use crate::data::coastal_points::{
 };
 use crate::physics::{
     GeoPoint, InitialDisplacement, InitialSourceGeometry,
-    asteroid::{AsteroidImpact, far_field_amplitude_m as impact_far_field},
-    constants::{G_EARTH, R_EARTH_M},
+    asteroid::AsteroidImpact,
+    constants::R_EARTH_M,
     earthquake::EarthquakeSource,
     lamb_wave::{LAMB_WAVE_SPEED_M_S, LambWaveSource, proudman_resonance_depth_m},
     landslide::LandslideSource,
-    nuclear::{NuclearBurst, far_field_amplitude_m as nuclear_far_field},
+    nuclear::NuclearBurst,
+    screening::{ScreeningPoint, screen_point},
     shallow_water::{
         PropagationSnapshot, long_wave_travel_time_s, sample_wavefront, synolakis_runup_m,
     },

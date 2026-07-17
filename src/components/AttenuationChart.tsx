@@ -46,7 +46,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
   const semanticId = useId();
 
   // Decay physics come from the Rust `attenuation_curve` command; the JS
-  // approximation in demo.ts only serves the watermarked browser preview.
+  // Browser preview calls the same Rust curve through the checked-in WASM ABI.
   useEffect(() => {
     if (!initial) {
       contextRef.current = null;
@@ -64,18 +64,25 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
     contextRef.current = context;
     setCurveResult((current) => startAsyncResult(current, retainPrevious));
     const alpha = isImpact ? 5 / 6 : 0.5;
+    let cancelled = false;
     if (!isTauri()) {
-      const samples = demoAttenuationCurve(
+      void demoAttenuationCurve(
           initial.peak_amplitude_m,
           initial.cavity_radius_m,
           alpha,
           CURVE_MAX_RANGE_M,
           CURVE_SAMPLES,
-        ).map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m }));
-      setCurveResult(resolveAsyncResult(samples, (items) => items.length === 0));
-      return;
+        ).then((samples) => {
+          if (cancelled) return;
+          const mapped = samples.map((s) => ({ range_km: s.range_m / 1000, amplitude_m: s.amplitude_m }));
+          setCurveResult(resolveAsyncResult(mapped, (items) => items.length === 0));
+        }).catch((error) => {
+          if (!cancelled) setCurveResult((current) => rejectAsyncResult(current, error));
+        });
+      return () => {
+        cancelled = true;
+      };
     }
-    let cancelled = false;
     api
       .attenuationCurve({
         initial_amplitude_m: initial.peak_amplitude_m,
@@ -183,7 +190,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
   );
   const modelProvenance = isTauri()
     ? "Rust attenuation_curve command"
-    : "Browser preview demo attenuation approximation";
+    : "Rust attenuation_curve compiled to browser WASM";
   const semanticRows: SemanticDataRow[] = [
     ...curve.map((sample, index) => ({
       series: "Modeled decay",

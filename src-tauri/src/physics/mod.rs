@@ -15,19 +15,24 @@
 //! evaluated so the math is auditable without consulting the citations file.
 
 pub mod constants;
+#[cfg(not(feature = "browser-wasm"))]
 pub mod direct_hazard;
+#[cfg(not(feature = "browser-wasm"))]
 pub mod direct_hazard_probe;
 pub mod asteroid;
 pub mod nuclear;
 pub mod landslide;
 pub mod earthquake;
 pub mod okada;
+#[cfg(not(feature = "browser-wasm"))]
 pub mod lamb_wave;
+pub mod screening;
 pub mod shallow_water;
+#[cfg(not(feature = "browser-wasm"))]
 pub mod solver;
-#[cfg(test)]
+#[cfg(all(test, not(feature = "browser-wasm")))]
 mod property_tests;
-#[cfg(feature = "validation")]
+#[cfg(all(feature = "validation", not(feature = "browser-wasm")))]
 pub mod validation;
 
 use serde::{Deserialize, Serialize};

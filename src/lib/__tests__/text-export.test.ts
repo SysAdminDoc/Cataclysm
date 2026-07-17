@@ -4,6 +4,17 @@ import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../data";
 import { demoRunupAtPoints } from "../demo";
 
+vi.mock("../browser-physics", () => ({
+  browserRunup: vi.fn(async ({ points }: { points: unknown[] }) => points.map((_, index) => ({
+    range_m: (index + 1) * 100_000,
+    offshore_amplitude_m: 4 - index,
+    runup_m: 8 - index,
+    arrival_time_s: (index + 1) * 500,
+    has_arrived: true,
+    inundation_extent_m: (index + 1) * 250,
+  }))),
+}));
+
 const MOCK_INITIAL: InitialDisplacement = {
   peak_amplitude_m: 1500,
   cavity_radius_m: 50000,
@@ -80,8 +91,8 @@ describe("generateTextExport", () => {
     expect(report).not.toContain("-151");
   });
 
-  it("exports the same qualified coastal place, time, reach, and limitation story", () => {
-    const runupResults = demoRunupAtPoints({
+  it("exports the same qualified coastal place, time, reach, and limitation story", async () => {
+    const runupResults = await demoRunupAtPoints({
       source: MOCK_INITIAL.center,
       initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
       cavity_radius_m: MOCK_INITIAL.cavity_radius_m,

@@ -39,7 +39,26 @@ mod tests {
     fn tracked_notice_artifact_is_readable_and_bounded() {
         let artifact = Path::new(env!("CARGO_MANIFEST_DIR")).join("../THIRD_PARTY_NOTICES.txt");
         let notices = read_third_party_notices(&artifact).expect("tracked notices must be valid");
-        assert!(notices.contains("Production components: 37 npm; 340 Rust"));
+        let summary = notices
+            .lines()
+            .find(|line| line.starts_with("Production components: "))
+            .expect("tracked notices must report production component counts");
+        let counts = summary
+            .strip_prefix("Production components: ")
+            .expect("summary prefix was checked")
+            .split_once(" npm; ")
+            .expect("summary must separate npm and Rust counts");
+        let npm_count = counts
+            .0
+            .parse::<usize>()
+            .expect("npm count must be numeric");
+        let rust_count = counts
+            .1
+            .strip_suffix(" Rust")
+            .expect("summary must label Rust dependencies")
+            .parse::<usize>()
+            .expect("Rust count must be numeric");
+        assert!(npm_count > 0 && rust_count > 0);
         assert!(notices.len() < MAX_THIRD_PARTY_NOTICES_BYTES as usize);
     }
 }

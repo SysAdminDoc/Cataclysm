@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "abi_version": 1,
+  "rust_version": "1.96.0",
+  "source_sha256": "7ca5a2975958d4cf228b5e8a4f722a91943592ed8e5c7f79102c0354713720b8",
+  "wasm_sha256": "f303446406fb145cf5b8246065e31b92058d81f77b842f2ffec60d9884ef5086",
+  "wasm_bytes": 220561
+}

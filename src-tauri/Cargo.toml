@@ -54,6 +54,9 @@ tempfile = "3"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+# Internal marker used only by the dedicated minimal browser-WASM crate when it
+# includes the shared physics module. The desktop package must not enable it.
+browser-wasm = []
 # Enables the quantitative validation-harness test suite under
 # physics::validation. Off by default — these tests are long-running
 # (1D Stoker dam-break / Carrier-Greenspan plane-beach runup /

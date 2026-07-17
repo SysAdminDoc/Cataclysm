@@ -200,10 +200,14 @@ export async function copyExportText(text: string): Promise<ExportResult> {
   }
 }
 
-function stampDemoWatermark(canvas: HTMLCanvasElement): void {
+function usesApproximateBrowserSwe(meta: ModelProvenanceInput): boolean {
+  return !isTauri() && /shallow-water-equation snapshot playback/i.test(meta.solverMode ?? "");
+}
+
+function stampApproximateSweWatermark(canvas: HTMLCanvasElement): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const text = "BROWSER PREVIEW — APPROXIMATE";
+  const text = "BROWSER SWE PLAYBACK — APPROXIMATE";
   ctx.save();
   ctx.font = "bold 18px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
@@ -273,7 +277,7 @@ function copyGlobeWithProvenance(
   const ctx = offscreen.getContext("2d");
   if (!ctx) return null;
   ctx.drawImage(sourceCanvas, 0, 0);
-  if (!isTauri()) stampDemoWatermark(offscreen);
+  if (usesApproximateBrowserSwe(meta)) stampApproximateSweWatermark(offscreen);
   stampProvenanceStrip(offscreen, meta, attributions);
   return offscreen;
 }
@@ -400,14 +404,14 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
     H - FOOTER_H + 32,
   );
 
-  if (!isTauri()) {
+  if (usesApproximateBrowserSwe(meta)) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.fillRect(W / 2 - 180, H / 2 - 16, 360, 32);
     ctx.fillStyle = "#fab387";
     ctx.font = "bold 16px Inter, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("BROWSER PREVIEW — APPROXIMATE", W / 2, H / 2);
+    ctx.fillText("BROWSER SWE PLAYBACK — APPROXIMATE", W / 2, H / 2);
     ctx.textAlign = "left";
   }
 
@@ -477,8 +481,8 @@ export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
   ctx.fillRect(paneW, LABEL_H, GAP, paneH);
   ctx.drawImage(srcB, paneW + GAP, LABEL_H, paneW, paneH);
 
-  if (!isTauri()) {
-    stampDemoWatermark(canvas);
+  if (usesApproximateBrowserSwe(opts.metaA) || usesApproximateBrowserSwe(opts.metaB)) {
+    stampApproximateSweWatermark(canvas);
   }
 
   const provA = buildModelProvenance(opts.metaA);

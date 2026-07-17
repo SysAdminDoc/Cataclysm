@@ -64,6 +64,12 @@ This is sampled at 79 named coastal points worldwide. Current beach slopes are l
 | Near-coast behavior | Limited | No Boussinesq dispersion for short wavelengths |
 | Atmospheric coupling | Partial | Lamb-wave forcing is one-way, no coupled model |
 
+Browser builds use the same Rust source-model, analytical wavefront,
+attenuation, arrival, and Synolakis-runup functions through the versioned
+WebAssembly ABI in `src-tauri/wasm`. Only the browser's JavaScript SWE
+frame/gauge playback remains an illustrative approximation; its screenshots and
+share cards carry the explicit `BROWSER SWE PLAYBACK — APPROXIMATE` watermark.
+
 ## Further reading
 
 Full derivations and citations are in `docs/science/`. Each source module has its own note:

@@ -113,11 +113,21 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     if (!inTauri) {
       window.setTimeout(() => {
         if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
-        const resp = runDemoPreset(activePresetId, timeS);
-        setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
-        setSourceResult({ status: "ready", value: resp.initial });
-        setWavefront(resp.wavefront);
-        setBusyPresetId(null);
+        void runDemoPreset(activePresetId, timeS)
+          .then((resp) => {
+            if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+            setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
+            setSourceResult({ status: "ready", value: resp.initial });
+            setWavefront(resp.wavefront);
+          })
+          .catch((err) => {
+            if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+            setSourceResult((current) => rejectAsyncResult(current, `Couldn't load browser physics: ${String(err)}`));
+          })
+          .finally(() => {
+            if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+            setBusyPresetId(null);
+          });
       }, 80);
       return;
     }
@@ -156,11 +166,20 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       setSweSnapshot(null);
       setRunupResult({ status: "idle" });
       if (!inTauri) {
-        const d = demoInitialForScenario(input);
-        setInitial(d);
-        setSourceResult({ status: "ready", value: d });
-        setWavefront(null);
-        setSweSnapshot(null);
+        simulateReqIdRef.current += 1;
+        const reqId = simulateReqIdRef.current;
+        void demoInitialForScenario(input)
+          .then((d) => {
+            if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
+            setInitial(d);
+            setSourceResult({ status: "ready", value: d });
+            setWavefront(null);
+            setSweSnapshot(null);
+          })
+          .catch((err) => {
+            if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;
+            setSourceResult((current) => rejectAsyncResult(current, `Couldn't run browser physics: ${String(err)}`));
+          });
         return;
       }
       simulateReqIdRef.current += 1;

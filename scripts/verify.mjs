@@ -480,6 +480,7 @@ runNpm("Reference recorder lifecycle gate", ["run", "test:reference-lifecycle"])
 runNpm("Rust advisory policy unit gate", ["run", "test:rust-advisory-policy"]);
 runNpm("Installed release harness unit gate", ["run", "test:installed-release"]);
 runNpm("Release contract unit gate", ["run", "test:release-contracts"]);
+runNpm("Browser Rust/WASM physics parity gate", ["run", "test:browser-physics"]);
 runNpm("HR-00 reference baseline contract", ["run", "verify:reference-locks"]);
 runNpm("HR-01 renderer protocol conformance", ["run", "verify:render-protocol"]);
 runNpm("TypeScript typecheck", ["run", "typecheck"]);
