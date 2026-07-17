@@ -39,7 +39,7 @@ mod tests {
     fn tracked_notice_artifact_is_readable_and_bounded() {
         let artifact = Path::new(env!("CARGO_MANIFEST_DIR")).join("../THIRD_PARTY_NOTICES.txt");
         let notices = read_third_party_notices(&artifact).expect("tracked notices must be valid");
-        assert!(notices.contains("Production components: 36 npm; 279 Rust"));
+        assert!(notices.contains("Production components: 36 npm; 303 Rust"));
         assert!(notices.len() < MAX_THIRD_PARTY_NOTICES_BYTES as usize);
     }
 }

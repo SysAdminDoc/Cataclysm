@@ -28,6 +28,11 @@ serde_json = "1.0"
 rayon = "1.12"
 base64 = "0.22"
 png = "0.17"
+# Pure-Rust local scientific-raster readers. They keep bathymetry import
+# offline and avoid GDAL/libnetcdf/HDF5 runtime dependencies in installers.
+geotiff-reader = { version = "0.7.0", default-features = false, features = ["local", "rayon"] }
+netcdf-reader = { version = "0.8.0", features = ["cf"] }
+sha2 = "0.10"
 # OS keychain for the Cesium ion token (Windows Credential Manager /
 # macOS Keychain / Linux Secret Service). Called directly rather than via
 # a thin community tauri-plugin wrapper: lower supply-chain surface, and
@@ -38,6 +43,10 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "sync-s
 # Property-based tests over the physics parameter space
 # (tests/physics_properties.rs).
 proptest = "1"
+geotiff-writer = "0.7.0"
+netcdf3 = "0.6.1"
+ndarray = "0.17"
+tempfile = "3"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

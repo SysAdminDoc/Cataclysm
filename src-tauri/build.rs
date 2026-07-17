@@ -21,6 +21,7 @@ fn main() {
         "gpu_probe",
         "render_protocol_capabilities",
         "surface_probe",
+        "preflight_bathymetry_import",
         "simulate_asteroid_hazard",
         "simulate_asteroid_hazard_render",
         "simulate_nuclear_hazard",

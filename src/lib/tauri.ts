@@ -49,6 +49,34 @@ export type NativePanicRecord = {
   } | null;
 };
 
+export type BathymetrySampleSemantics = "depth_positive_down" | "elevation_positive_up";
+
+export type BathymetryPreflight = {
+  format: "geo_tiff" | "net_cdf";
+  file_name: string;
+  file_size_bytes: number;
+  sha256: string;
+  source_label: string;
+  rights_statement: string;
+  variable: string;
+  width: number;
+  height: number;
+  bounds_wgs84: [number, number, number, number];
+  resolution_deg: [number, number];
+  horizontal_crs: "EPSG:4326";
+  vertical_datum: string;
+  units: "m";
+  sample_semantics: BathymetrySampleSemantics;
+  nodata: number | null;
+  valid_cell_count: number;
+  nodata_cell_count: number;
+  wet_cell_count: number;
+  dry_cell_count: number;
+  min_depth_m: number;
+  max_depth_m: number;
+  warnings: string[];
+};
+
 let simulationRunSequence = 0;
 
 type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
@@ -349,6 +377,15 @@ export const api = {
   },
   surfaceProbe(req: { lat_deg: number; lon_deg: number }): Promise<SurfaceProbe> {
     return invoke<SurfaceProbe>("surface_probe", { req });
+  },
+  preflightBathymetryImport(req: {
+    path: string;
+    variable?: string | null;
+    source_label: string;
+    rights_statement: string;
+    sample_semantics: BathymetrySampleSemantics;
+  }): Promise<BathymetryPreflight> {
+    return invoke<BathymetryPreflight>("preflight_bathymetry_import", { req });
   },
   /** Cesium ion token in the OS keychain. `null` = no token stored. */
   keychainGetToken(): Promise<string | null> {

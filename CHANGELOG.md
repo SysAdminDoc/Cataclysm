@@ -4,6 +4,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- The desktop backend now performs a read-only, fail-closed preflight for
+  user-selected GeoTIFF and NetCDF-CF bathymetry. Pure-Rust readers enforce
+  bounded file/cell budgets, WGS 84 coordinates, explicit mean-sea-level
+  vertical metadata, metre units, positive-axis agreement, NoData accounting,
+  physical value limits, a rights statement, and a streaming SHA-256 before any
+  future cache/import step may mutate application data.
+
 ## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
 
 ### Added

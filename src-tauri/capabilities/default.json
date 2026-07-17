@@ -11,6 +11,7 @@
     "store:allow-save",
     "store:allow-delete",
     "scientific-queries",
+    "bathymetry-import",
     "simulation-runs",
     "simulation-cancellation",
     "support-diagnostics",

@@ -72,6 +72,7 @@ fn custom_commands_are_granted_only_to_the_main_window() {
 
     for permission_set in [
         "scientific-queries",
+        "bathymetry-import",
         "simulation-runs",
         "simulation-cancellation",
         "support-diagnostics",

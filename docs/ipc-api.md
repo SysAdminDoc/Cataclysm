@@ -1,6 +1,7 @@
 # IPC Command Reference
 
-Every Tauri command lives in `src-tauri/src/commands.rs`. The frontend calls them via typed wrappers in `src/lib/tauri.ts`.
+Tauri commands live in `src-tauri/src/commands.rs` or a focused backend module.
+The frontend calls them via typed wrappers in `src/lib/tauri.ts`.
 
 ## Source Models
 
@@ -82,6 +83,13 @@ Signal all in-flight simulations to stop. The solver polls the cancel flag betwe
 - **Output:** none
 
 ## Data & Diagnostics
+
+### `preflight_bathymetry_import`
+Read and validate one user-selected local scientific raster without modifying
+the application cache.
+- **Input:** path, optional NetCDF variable name, bounded source label and rights statement, and `depth_positive_down` or `elevation_positive_up` sample semantics.
+- **Output:** format, filename, size, SHA-256, variable/band, dimensions, WGS 84 bounds/resolution, horizontal and vertical CRS, units, NoData, wet/dry/valid counts, depth range, and warnings.
+- **Validation:** GeoTIFF requires an unrotated north-up EPSG:4326 grid plus EPSG:5714/5715 and metre vertical units; NetCDF requires regular one-dimensional CF latitude/longitude coordinates, metre units, matching `positive`, and an explicit mean-sea-level vertical datum. Files are capped at 512 MiB and 16,777,216 cells.
 
 ### `list_presets`
 Return the full preset registry.

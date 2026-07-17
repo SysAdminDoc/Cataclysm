@@ -33,6 +33,13 @@ permissions = [
 ]
 
 [[set]]
+identifier = "bathymetry-import"
+description = "Read and validate one user-selected local scientific bathymetry raster without mutating the cache."
+permissions = [
+  "allow-preflight-bathymetry-import",
+]
+
+[[set]]
 identifier = "simulation-cancellation"
 description = "Cancel a solver run by its validated run identifier."
 permissions = [

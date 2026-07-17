@@ -313,17 +313,24 @@ version = "0.10.5"
 dependencies = [
  "base64 0.22.1",
  "bytemuck",
+ "geotiff-reader",
+ "geotiff-writer",
  "keyring",
+ "ndarray",
+ "netcdf-reader",
+ "netcdf3",
  "png 0.17.16",
  "pollster",
  "proptest",
  "rayon",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-shell",
  "tauri-plugin-store",
+ "tempfile",
  "wgpu",
 ]
 
@@ -383,8 +390,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -1150,6 +1159,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "geotiff-core"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00b6a72346d60112fc3dca193993e55df4da32e56dcf9f1bf6653334324a8cea"
+
+[[package]]
+name = "geotiff-reader"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "416616a52c7f194407968ad3bf056ecb381da0c6d0f241dfa49e9d1148c15f63"
+dependencies = [
+ "geotiff-core",
+ "lru",
+ "memmap2",
+ "ndarray",
+ "parking_lot",
+ "rayon",
+ "thiserror 2.0.18",
+ "tiff-reader",
+]
+
+[[package]]
+name = "geotiff-writer"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3efd0d11bb17bf7e1fabfc424cc68f7496def60f2f903c258a873bc0c159b246"
+dependencies = [
+ "geotiff-core",
+ "ndarray",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tiff-core",
+ "tiff-writer",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1407,6 +1452,34 @@ name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+
+[[package]]
+name = "hdf5-core"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51fed46a1a89bbce53b678d4a65aa90bb9c4a4f8d4fb314b879d1b6d0b50fde4"
+dependencies = [
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "hdf5-reader"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0ccc0f1a31dce934df9531ac0c4191ab9fbac23bbdbaf47704158bcfe543bb1"
+dependencies = [
+ "flate2",
+ "hdf5-core",
+ "libc",
+ "lru",
+ "lz4_flex",
+ "memmap2",
+ "ndarray",
+ "parking_lot",
+ "rayon",
+ "smallvec",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "heck"
@@ -1797,6 +1870,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "jpeg-decoder"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00810f1d8b74be64b13dbf3db89ac67740615d6c891f0e7b6179326533011a07"
+dependencies = [
+ "rayon",
+]
+
+[[package]]
+name = "jpeg-encoder"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b454d911ac55068f53495488d8ccd0646eaa540c033a28ee15b07838afafb01f"
+
+[[package]]
 name = "js-sys"
 version = "0.3.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1853,6 +1941,38 @@ dependencies = [
  "security-framework 3.7.0",
  "windows-sys 0.60.2",
  "zeroize",
+]
+
+[[package]]
+name = "lerc-band-materialize"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c7ea338fd659c5fdf23de24ec878e31eeacf55b839d74c355a00f602e1f519d"
+
+[[package]]
+name = "lerc-core"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c52050f983cb85074a1b9107a6db8b3c8242e9261f42c3e319ada57b2acca2e"
+
+[[package]]
+name = "lerc-reader"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42bf327f4c6b9fd69e1e7bf7fccf0fabb3cf9d074b862ae59f69fd069388ef14"
+dependencies = [
+ "lerc-band-materialize",
+ "lerc-core",
+ "ndarray",
+]
+
+[[package]]
+name = "lerc-writer"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e44ac5a9f7b1069751e7138a82a42fd37c17e8605a79d38d6ccf6e9e3ced5721"
+dependencies = [
+ "lerc-core",
 ]
 
 [[package]]
@@ -1963,6 +2083,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
+name = "lru"
+version = "0.16.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f66e8d5d03f609abc3a39e6f08e4164ebf1447a732906d39eb9b99b7919ef39"
+dependencies = [
+ "hashbrown 0.16.1",
+]
+
+[[package]]
+name = "lz4_flex"
+version = "0.11.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "373f5eceeeab7925e0c1098212f2fbc4d416adec9d35051a6ab251e824c1854a"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "markup5ever"
 version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1974,10 +2112,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "matrixmultiply"
+version = "0.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f607c237553f086e7043417a51df26b2eb899d3caff94e6a67592ff992fedc7"
+dependencies = [
+ "autocfg",
+ "rawpointer",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
+
+[[package]]
+name = "memmap2"
+version = "0.9.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1219ed1b7f229ee7104d281dd01d6802fe28bb6e95d292942c4daacdeb798c0"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "memoffset"
@@ -2063,6 +2220,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ndarray"
+version = "0.17.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "520080814a7a6b4a6e9070823bb24b4531daac8c4627e08ba5de8c5ef2f2752d"
+dependencies = [
+ "matrixmultiply",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "portable-atomic",
+ "portable-atomic-util",
+ "rawpointer",
+]
+
+[[package]]
 name = "ndk"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2087,16 +2259,77 @@ dependencies = [
 ]
 
 [[package]]
+name = "netcdf-core"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60fa0f5fa16ad5b2b8c411faec6e21dc0fc3a7d5b360066e6a9dd480cf658b9f"
+dependencies = [
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "netcdf-reader"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63ab1443ee168532aaafe6b5f9b368cd4d9930cd7dfe09f4768799be62a65ac9"
+dependencies = [
+ "chrono",
+ "hdf5-reader",
+ "memmap2",
+ "ndarray",
+ "netcdf-core",
+ "rayon",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "netcdf3"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "395ef44a0c89b4cf05950c71592d62617e7d2587183b3532ed6fe96e4dcc19f8"
+dependencies = [
+ "byteorder",
+ "nom",
+]
+
+[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
+name = "nom"
+version = "8.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df9761775871bdef83bee530e60050f7e54b1105350d6884eb0fb4f46c2f9405"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "num-complex"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "num-conv"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "521739c6d2bac4aa25192232afe6841231376b2b26d4d9fae5ecf8ca5772e441"
+
+[[package]]
+name = "num-integer"
+version = "0.1.46"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "num-traits"
@@ -2775,6 +3008,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rawpointer"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
+
+[[package]]
 name = "rayon"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2953,6 +3192,15 @@ dependencies = [
  "quick-error",
  "tempfile",
  "wait-timeout",
+]
+
+[[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
+dependencies = [
+ "twox-hash",
 ]
 
 [[package]]
@@ -3886,6 +4134,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "tiff-core"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f582d8e16c31f4e46b52ccf64a609d71c627c122d2d372336cc039426fe447c4"
+dependencies = [
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "tiff-reader"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35eb065e056291810d3bf19894de9711d4f9f77fecc777b3c5ab9fd7971de2f3"
+dependencies = [
+ "flate2",
+ "jpeg-decoder",
+ "lerc-core",
+ "lerc-reader",
+ "lru",
+ "memmap2",
+ "ndarray",
+ "parking_lot",
+ "rayon",
+ "ruzstd",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tiff-core",
+ "weezl",
+]
+
+[[package]]
+name = "tiff-writer"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1081699b9b14641c5479a516822698a18ec2f9f92ccad58c33d4eb9191372fc0"
+dependencies = [
+ "flate2",
+ "jpeg-encoder",
+ "lerc-core",
+ "lerc-writer",
+ "ruzstd",
+ "thiserror 2.0.18",
+ "tiff-core",
+ "weezl",
+]
+
+[[package]]
 name = "time"
 version = "0.3.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4187,6 +4482,12 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "twox-hash"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typeid"
@@ -4552,6 +4853,12 @@ dependencies = [
  "windows 0.61.3",
  "windows-core 0.61.2",
 ]
+
+[[package]]
+name = "weezl"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
 name = "wgpu"

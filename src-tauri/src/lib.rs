@@ -12,6 +12,7 @@ pub mod render_protocol;
 pub mod support_resources;
 
 use commands::*;
+use data::bathymetry_import::preflight_bathymetry_import;
 use native_diagnostics::{
     NativeDiagnosticsState, acknowledge_native_panic_record, install_native_panic_hook,
     native_panic_record,
@@ -73,6 +74,7 @@ pub fn run() {
             gpu_probe,
             render_protocol_capabilities,
             surface_probe,
+            preflight_bathymetry_import,
             simulate_asteroid_hazard,
             simulate_asteroid_hazard_render,
             simulate_nuclear_hazard,
