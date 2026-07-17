@@ -38,7 +38,7 @@ async function waitForServer() {
 }
 
 function seedSettings(tier) {
-  localStorage.setItem("tsunamisim._settings_schema_version", "3");
+  localStorage.setItem("tsunamisim._settings_schema_version", "4");
   localStorage.setItem("tsunamisim.launch_experience_seen_at", JSON.stringify("2026-01-01T00:00:00.000Z"));
   localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", JSON.stringify("2026-01-01T00:00:00.000Z"));
   localStorage.setItem("tsunamisim.tour_completed_at", JSON.stringify("2026-01-01T00:00:00.000Z"));

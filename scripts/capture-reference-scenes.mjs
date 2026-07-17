@@ -160,7 +160,7 @@ function pngDimensions(buffer) {
 
 function seedPreview() {
   const fixed = JSON.stringify("2026-01-01T00:00:00.000Z");
-  localStorage.setItem("tsunamisim._settings_schema_version", "3");
+  localStorage.setItem("tsunamisim._settings_schema_version", "4");
   localStorage.setItem("tsunamisim.launch_experience_seen_at", fixed);
   localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", fixed);
   localStorage.setItem("tsunamisim.tour_completed_at", fixed);

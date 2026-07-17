@@ -14,10 +14,14 @@ try {
   const result = validateVersionContract(
     {
       packageJson: read("package.json"),
+      packageLock: read("package-lock.json"),
       cargoToml: read("src-tauri/Cargo.toml"),
+      cargoLock: read("src-tauri/Cargo.lock"),
       tauriConfig: read("src-tauri/tauri.conf.json"),
       modelProvenance: read("src/lib/model-provenance.ts"),
       readme: read("README.md"),
+      thirdPartyNotices: read("THIRD_PARTY_NOTICES.txt"),
+      earthAssets: read("src/data/earth-assets.json"),
     },
     {
       gitRefName: process.env.GITHUB_REF_NAME,

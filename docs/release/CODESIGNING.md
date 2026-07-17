@@ -4,17 +4,18 @@ TsunamiSimulator uses local release builds. GitHub Actions release workflows
 were intentionally removed, so signing secrets are not configured in GitHub and
 there is no remote release job to trigger.
 
-Before packaging a release, run the local gate from the repo root:
-
-```bash
-npm run verify:release
-```
-
-Then build the platform bundle locally:
+Build the platform bundle locally from the repo root:
 
 ```bash
 npm run tauri:build
 ```
+
+This command runs `verify:release`, deletes stale bundle output, verifies the
+default/GPU/validation Rust feature matrix, builds with GPU support, and smokes
+the packaged binary before writing
+`src-tauri/target/release/bundle/cataclysm-build-manifest.json`. The manifest
+records enabled Cargo features, the runtime GPU probe, and each artifact's
+SHA-256 digest. A package that reports `feature-off` fails the build.
 
 Unsigned bundles remain valid for testing, but Windows SmartScreen and macOS
 Gatekeeper may warn. Public release assets should be signed when the maintainer
@@ -126,10 +127,10 @@ proper chain-of-trust mechanism once certificates are available.
 
 1. Confirm version strings match across `package.json`, `src-tauri/Cargo.toml`,
    `src-tauri/tauri.conf.json`, README badge, app chrome, and CHANGELOG.
-2. Run `npm run verify:release`.
-3. Delete stale bundle outputs under `src-tauri/target/release/bundle/`.
-4. Run `npm run tauri:build`.
-5. Generate SHA256 checksums for the platform artifacts (see above).
+2. Run `npm run tauri:build` (this runs the strict gate and cleans stale bundles).
+3. Confirm `cataclysm-build-manifest.json` reports the `gpu` Cargo feature and
+   an `available` or `no-adapter` probe result.
+4. Generate the public `checksums-sha256.txt` from the manifest digests.
 6. Sign the generated platform artifacts when certificates are available.
 7. Verify signatures on a clean machine or VM.
 8. Create the GitHub Release manually with `gh release create` and attach the
