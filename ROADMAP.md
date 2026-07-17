@@ -568,13 +568,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Acceptance: qualifying nuclear/impact events show a cited fire-ignition radius and a lofted-smoke indicator feeding the long-term climate narrative; each effect cites a source and states uncertainty; small events omit inapplicable effects.
   Complexity: M
 
-- [ ] P2 — Validate and refresh impact scaling against Svetsov et al. 2025
-  Why: crater/overpressure/wind scaling relies on Collins–Melosh–Marcus 2005; a 2025 peer-reviewed hydrodynamic calculator covers the exact 20 m–3 km range the app models and can either confirm the current formulas within tolerance or update them, strengthening the "why trust this" story.
-  Evidence: Svetsov et al. 2025, Meteoritics & Planetary Science https://onlinelibrary.wiley.com/doi/10.1111/maps.14329; current scaling in `src-tauri/src/physics/direct_hazard.rs` and `docs/science/`.
-  Touches: validation fixtures comparing app outputs to the 2025 model at several sizes, optional coefficient updates with citations, `docs/science/` derivation notes.
-  Acceptance: a feature-gated validation compares crater diameter, peak overpressure, and wind at 3+ impactor sizes to the 2025 model within a documented tolerance; any formula change cites the paper and updates the derivation note; presets remain reproducible.
-  Complexity: M
-
 - [ ] P2 — Harden the npm supply chain in the local release gate
   Why: `verify.mjs` runs `npm audit` but not signature/provenance verification, and the Sept-2025 chalk/debug/ansi-styles compromise hit transitive deps of the Vite/React/Cesium toolchains; adding `npm audit signatures` and lockfile-pin enforcement closes a real ingestion path consistent with the build-locally posture.
   Evidence: `scripts/verify.mjs:454` (`npm audit` only); chalk/debug npm compromise https://semgrep.dev/blog/2025/chalk-debug-and-color-on-npm-compromised-in-new-supply-chain-attack/.

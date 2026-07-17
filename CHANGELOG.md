@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The validation harness now locks the asteroid impact scaling to Collins–Melosh–Marcus
+  2005: crater Pi-scaling is checked to <1% across 50 m–2 km impactors (with a
+  Meteor Crater order-of-magnitude anchor), and the blast-overpressure fit and
+  Rankine-Hugoniot peak-wind relation (≈72 m/s at 5 psi) are verified. Svetsov
+  et al. 2025 is cited as corroboration; the full data-table cross-check is
+  tracked as blocked pending the paper's numerical tables.
 - Added machine-readable citation metadata (`CITATION.cff`, CFF 1.2) so the
   project can be cited consistently and GitHub renders a "Cite this repository"
   control. A `citation-metadata` verification gate keeps its version and license

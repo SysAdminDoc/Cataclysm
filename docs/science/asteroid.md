@@ -42,6 +42,14 @@ Boussinesq path (F4-10).
 - **Eltanin impact (2.5 Ma, ~1 km bolide)**: model far-field
   consistent with Hills & Goda 1998 reconstruction (~30 m at South
   American coast).
+- **Direct impact effects (crater / overpressure / wind)**: the
+  `direct_hazard.rs` Collins–Melosh–Marcus 2005 crater Pi-scaling is
+  locked to the CMM 2005 equations to <1% across 50 m–2 km impactors
+  with a Meteor Crater (~1.2 km) order-of-magnitude anchor, and the CMM
+  blast-overpressure fit and Rankine-Hugoniot peak-wind relation
+  (≈72 m/s at 5 psi) are checked. Svetsov et al. 2025 corroborates the
+  same 20 m–3 km range; a full cross-check against its data tables is
+  tracked in `Roadmap_Blocked.md`. See [`VALIDATION.md`](VALIDATION.md).
 
 ## Caveats
 

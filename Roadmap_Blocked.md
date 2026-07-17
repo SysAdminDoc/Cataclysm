@@ -6,6 +6,14 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 ---
 
+## Science / validation
+
+- **P3** — Cross-validate impact scaling against the Svetsov et al. 2025 numerical data tables.
+  *The impact crater/overpressure/wind scaling is already validated against Collins–Melosh–Marcus 2005 (its implemented basis) with a Meteor Crater anchor — see `physics::validation::impact_*` and `docs/science/VALIDATION.md`. A per-size numerical cross-check specifically against Svetsov et al. 2025 (MAPS, doi:10.1111/maps.14329) needs that paper's crater/overpressure/wind data tables.*
+  **Blocker:** Requires access to the paywalled MAPS paper's supplementary numerical tables (or an open dataset reproducing them). Return to ROADMAP.md once the tables are available; then assert app outputs land within a documented tolerance of Svetsov's values and reconcile any coefficient differences with a cited note.
+
+---
+
 ## Phase 3 — Trust / release / supply chain
 
 - **F-V04 P0** — Code signing (Win Authenticode + macOS notarisation).

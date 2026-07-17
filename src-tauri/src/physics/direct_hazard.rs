@@ -408,12 +408,25 @@ fn thermal_radius(energy: f64, threshold: f64, altitude: f64) -> f64 {
     (low + high) / 2.0
 }
 
-fn overpressure_at_scaled_distance(distance: f64) -> f64 {
+pub(crate) fn overpressure_at_scaled_distance(distance: f64) -> f64 {
     if distance <= 0.0 {
         SEA_LEVEL_PRESSURE_PA * 1_000.0
     } else {
         3.14e11 * distance.powf(-2.6) + 1.8e7 * distance.powf(-1.13)
     }
+}
+
+/// Peak wind velocity behind the shock front for a given peak overpressure, from
+/// the Rankine-Hugoniot relation used by Collins, Melosh & Marcus (2005),
+/// eqn. 56: `u = (5p / 7P0) · c0 / sqrt(1 + 6p / 7P0)`, with ambient pressure
+/// `P0` and sound speed `c0 = 340 m/s`. At 5 psi (34.5 kPa) this yields
+/// ≈ 72 m/s (≈ 160 mph), consistent with the damage-ring copy. Gated to the
+/// validation test build — it is only exercised by the impact-scaling benchmarks.
+#[cfg(all(feature = "validation", test))]
+pub(crate) fn peak_wind_velocity_m_s(overpressure_pa: f64) -> f64 {
+    const SOUND_SPEED_M_S: f64 = 340.0;
+    let scaled = overpressure_pa / (7.0 * SEA_LEVEL_PRESSURE_PA);
+    5.0 * scaled * SOUND_SPEED_M_S / (1.0 + 6.0 * scaled).sqrt()
 }
 
 fn ground_reflection(altitude: f64, ground_range: f64) -> f64 {

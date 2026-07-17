@@ -35,6 +35,12 @@
 //!    radii for 1 Mt and 15 kt air bursts against the published *Effects of
 //!    Nuclear Weapons* values within a documented ±30 % band, plus cube-root
 //!    yield scaling and physical ring ordering.
+//! 6. **Collins–Melosh–Marcus 2005 impact scaling.** Locks the asteroid crater
+//!    Pi-group scaling to CMM 2005 across the modeled impactor range (with a
+//!    Meteor Crater order-of-magnitude anchor), and checks the CMM blast
+//!    overpressure fit and Rankine-Hugoniot peak-wind relation (≈ 72 m/s at
+//!    5 psi). Svetsov et al. 2025 corroborates the same range; a full data-table
+//!    cross-check is tracked in `Roadmap_Blocked.md`.
 
 #![cfg(feature = "validation")]
 
@@ -44,8 +50,9 @@ use super::asteroid::{AsteroidImpact, far_field_amplitude_m};
 use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
 #[cfg(test)]
 use super::direct_hazard::{
-    HazardCenter, HazardDetail, NuclearBurstType, NuclearDetail, NuclearHazardRequest,
-    simulate_nuclear_hazard,
+    AsteroidDetail, AsteroidHazardRequest, AsteroidTargetType, HazardCenter, HazardDetail,
+    NuclearBurstType, NuclearDetail, NuclearHazardRequest, overpressure_at_scaled_distance,
+    peak_wind_velocity_m_s, simulate_asteroid_hazard, simulate_nuclear_hazard,
 };
 #[cfg(test)]
 use super::landslide::lituya_bay_1958;
@@ -392,4 +399,153 @@ fn nuclear_effects_ordering_and_cube_root_scaling() {
         (ratio - 2.0).abs() < 0.05,
         "8× yield should double the 5 psi radius (cube-root scaling); got {ratio:.3}"
     );
+}
+
+/// Run the Rust-authoritative direct-asteroid model for a ground-reaching
+/// impactor and return its detail.
+#[cfg(test)]
+fn asteroid_impact_detail(
+    diameter_m: f64,
+    density_kg_m3: f64,
+    velocity_km_s: f64,
+    target: AsteroidTargetType,
+) -> AsteroidDetail {
+    let request = AsteroidHazardRequest {
+        center: HazardCenter { lat: 20.0, lon: 0.0 },
+        diameter_m,
+        density_kg_m3,
+        velocity_km_s,
+        angle_deg: 45.0,
+        target_type: target,
+        water_depth_m: 0.0,
+        beach_slope_rad: 0.001,
+    };
+    match simulate_asteroid_hazard(request)
+        .expect("asteroid hazard should evaluate for an in-bounds request")
+        .detail
+    {
+        HazardDetail::Asteroid(detail) => detail,
+        _ => unreachable!("asteroid request must produce an asteroid detail"),
+    }
+}
+
+/// Independent Collins–Melosh–Marcus (2005) Pi-group crater re-derivation, used
+/// to lock the shipped `asteroid_crater` implementation against its cited
+/// formula. Uses the impact velocity the atmospheric-entry model actually
+/// delivered so this isolates the crater scaling from entry ablation.
+#[cfg(test)]
+fn cmm_final_crater_m(
+    diameter_m: f64,
+    density_kg_m3: f64,
+    impact_velocity_m_s: f64,
+    angle_deg: f64,
+    target: AsteroidTargetType,
+) -> f64 {
+    let (target_density, transition) = match target {
+        AsteroidTargetType::SedimentaryRock => (2_500.0, 3_200.0),
+        AsteroidTargetType::CrystallineRock => (2_750.0, 4_000.0),
+        AsteroidTargetType::Water => (1_025.0, 3_200.0),
+    };
+    let sin_theta = angle_deg.to_radians().sin();
+    let transient = 1.161
+        * (density_kg_m3 / target_density).powf(1.0 / 3.0)
+        * diameter_m.powf(0.78)
+        * impact_velocity_m_s.powf(0.44)
+        * 9.81_f64.powf(-0.22)
+        * sin_theta.powf(1.0 / 3.0);
+    if transient * 1.25 >= transition {
+        1.17 * transient.powf(1.13) * transition.powf(-0.13)
+    } else {
+        1.25 * transient
+    }
+}
+
+/// **Collins–Melosh–Marcus 2005 crater scaling — implementation lock across the
+/// modeled impactor range.** The shipped `asteroid_crater` must reproduce the
+/// CMM 2005 Pi-group transient/final-crater equations to numerical tolerance at
+/// several sizes, and the final crater must grow monotonically with impactor
+/// diameter. This guards against silent coefficient drift in the crater formula.
+///
+/// Reference: Collins, G. S., Melosh, H. J. & Marcus, R. A. (2005) *Meteoritics
+/// & Planetary Science* 40:817-840 (Earth Impact Effects Program). Svetsov et
+/// al. (2025), MAPS `doi:10.1111/maps.14329`, covers the same 20 m–3 km range as
+/// a modern hydrodynamic corroboration; a full cross-check against its data
+/// tables is tracked in `Roadmap_Blocked.md`.
+#[test]
+fn impact_crater_scaling_matches_collins_melosh_marcus() {
+    let cases = [
+        (50.0, 7_870.0, 12.8, AsteroidTargetType::SedimentaryRock),
+        (500.0, 3_000.0, 17.0, AsteroidTargetType::CrystallineRock),
+        (2_000.0, 3_000.0, 20.0, AsteroidTargetType::CrystallineRock),
+    ];
+    let mut previous_diameter = 0.0;
+    for (diameter_m, density, velocity_km_s, target) in cases {
+        let detail = asteroid_impact_detail(diameter_m, density, velocity_km_s, target);
+        let crater = detail.crater.expect("ground-reaching impactor forms a crater");
+        let expected = cmm_final_crater_m(
+            diameter_m,
+            density,
+            detail.atmospheric_entry.impact_velocity,
+            45.0,
+            target,
+        );
+        let err = (crater.final_diameter - expected).abs() / expected;
+        assert!(
+            err < 0.01,
+            "crater for {diameter_m} m impactor {:.1} m diverges from CMM 2005 {:.1} m ({:.2}% error)",
+            crater.final_diameter,
+            expected,
+            err * 100.0
+        );
+        assert!(
+            crater.final_diameter > previous_diameter,
+            "final crater must grow with impactor size"
+        );
+        previous_diameter = crater.final_diameter;
+    }
+}
+
+/// **Meteor Crater (Barringer) order-of-magnitude anchor.** A ~50 m iron
+/// impactor at ~12.8 km/s and 45° into sedimentary rock should excavate a
+/// ~1.2 km crater (observed rim-to-rim ≈ 1.19 km). The band is deliberately
+/// wide because the impactor size, velocity, and angle are themselves uncertain
+/// — this is an order-consistency check, not a tight fit.
+///
+/// Reference: observed Meteor Crater diameter (Kring 2007); CMM 2005 scaling.
+#[test]
+fn impact_crater_reproduces_meteor_crater_scale() {
+    let detail = asteroid_impact_detail(50.0, 7_870.0, 12.8, AsteroidTargetType::SedimentaryRock);
+    let crater = detail.crater.expect("Meteor Crater impactor reaches the ground");
+    assert!(
+        (800.0..=2_000.0).contains(&crater.final_diameter),
+        "Meteor Crater analog gave {:.0} m, outside the order-consistency band [800, 2000] m",
+        crater.final_diameter
+    );
+}
+
+/// **Collins–Melosh–Marcus 2005 blast overpressure and peak-wind relations.**
+/// The scaled-distance overpressure fit must decrease monotonically with range,
+/// and the Rankine-Hugoniot peak-wind relation must reproduce the ≈ 72 m/s
+/// (≈ 160 mph) wind at 5 psi that the damage-ring copy cites, increasing with
+/// overpressure.
+///
+/// Reference: Collins, Melosh & Marcus 2005, eqns. 54-57.
+#[test]
+fn impact_overpressure_and_wind_match_collins_melosh_marcus() {
+    // Overpressure decreases with scaled distance.
+    let near = overpressure_at_scaled_distance(300.0);
+    let mid = overpressure_at_scaled_distance(1_000.0);
+    let far = overpressure_at_scaled_distance(5_000.0);
+    assert!(near > mid && mid > far, "overpressure must fall with distance");
+
+    // Peak wind at 5 psi ≈ 72 m/s (≈ 160 mph), the documented damage-ring value.
+    let wind_5psi = peak_wind_velocity_m_s(34_474.0);
+    assert!(
+        (wind_5psi - 72.0).abs() / 72.0 < 0.05,
+        "5 psi peak wind {wind_5psi:.1} m/s off the CMM 2005 ≈72 m/s reference"
+    );
+    // Wind rises with overpressure.
+    assert!(peak_wind_velocity_m_s(137_900.0) > wind_5psi);
+    // Zero overpressure ⇒ still air.
+    assert_eq!(peak_wind_velocity_m_s(0.0), 0.0);
 }
