@@ -138,6 +138,11 @@ Existing tools each do one piece:
   Advanced mode offers 30-second, one-minute, and five-minute wall-clock
   cadences; compatible interrupted runs can resume without changing the
   deterministic result.
+- **Nuclear shelter screening** — an expandable, accessible table compares the
+  preserved NukeMap shelter heuristic across key modeled effect radii. Rust
+  derives every score from the registered result, and the UI states clearly
+  that these are educational comparisons rather than personal survival odds or
+  protective-action guidance.
 - **Teacher mode** — lockable classroom settings profiles (via settings
   export/import) and a printable worksheet for each of the 7 guided lessons.
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.

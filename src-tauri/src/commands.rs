@@ -243,6 +243,15 @@ pub fn probe_direct_hazard(
     crate::physics::direct_hazard_probe::probe(req)
 }
 
+/// Return bounded, Rust-authoritative shelter screening for a registered
+/// nuclear result without rerunning or accepting client-supplied effect radii.
+#[tauri::command]
+pub fn nuclear_shelter_advisor(
+    result_id: String,
+) -> Result<crate::physics::direct_hazard::NuclearShelterReport, String> {
+    crate::physics::direct_hazard_probe::shelter_report(result_id)
+}
+
 fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
     let total = packets.iter().try_fold(0_usize, |total, packet| {
         total

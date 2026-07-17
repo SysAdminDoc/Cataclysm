@@ -13,6 +13,7 @@ permissions = [
   "allow-list-presets",
   "allow-inspect-at-point",
   "allow-probe-direct-hazard",
+  "allow-nuclear-shelter-advisor",
   "allow-lamb-wave-sample",
   "allow-dart-buoy-rmse",
   "allow-gpu-probe",

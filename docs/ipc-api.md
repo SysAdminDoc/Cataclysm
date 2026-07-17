@@ -69,6 +69,15 @@ Live direct results are held in a bounded 16-entry content-addressed registry.
   unknowns. Outside all displayed thresholds is never reported as safe; fallout
   is excluded from radial inference because it requires wind-oriented plume data.
 
+### `nuclear_shelter_advisor`
+Return shelter screening for one registered immutable nuclear result without
+rerunning the model or accepting client-supplied effect radii.
+- **Input:** validated content-addressed `result_id`
+- **Output:** six key-radius zones with modeled overpressure/thermal context and
+  eight per-shelter screening scores, plus model identity and limitations.
+- **Limits:** the source result must still be present in the bounded 16-result
+  direct-hazard registry; asteroid and stale IDs fail closed.
+
 ### `lamb_wave_sample`
 Atmospheric Lamb-wave properties at a given distance from source.
 - **Input:** `LambWaveSampleRequest` — source params + receiver lat/lon

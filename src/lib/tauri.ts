@@ -20,6 +20,7 @@ import type {
   BurstType,
   DirectHazardProbeResult,
   HazardResult,
+  NuclearShelterReport,
   TargetType,
 } from "../hazards";
 import {
@@ -391,6 +392,9 @@ export const api = {
     click_lon: number;
   }) {
     return invoke<DirectHazardProbeResult>("probe_direct_hazard", { req });
+  },
+  nuclearShelterAdvisor(resultId: string) {
+    return invoke<NuclearShelterReport>("nuclear_shelter_advisor", { resultId });
   },
   simulateGrid(req: {
     source: GeoPoint;

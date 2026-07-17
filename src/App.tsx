@@ -75,6 +75,7 @@ import {
   type HazardResult,
   type NuclearDetail,
   type NuclearInput,
+  type NuclearShelterReport,
 } from "./hazards";
 import { falloutRings } from "./hazards/nuclear/fallout";
 import {
@@ -375,6 +376,7 @@ export default function App() {
     waterDepthM: sourceNumericDefault("DirectAsteroid", "water_depth_m"),
   });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [nuclearShelterReport, setNuclearShelterReport] = useState<NuclearShelterReport | null>(null);
   const [hazardError, setHazardError] = useState<string | null>(null);
   const [directRenderReplay, setDirectRenderReplay] = useState<RenderReplayAdapter | null>(null);
   const [directRenderFrame, setDirectRenderFrame] = useState<RendererNeutralFrameView | null>(null);
@@ -811,6 +813,7 @@ export default function App() {
     const requestId = ++hazardRequestId.current;
     if (hazardMode === "tsunami" || !hazardCenter) {
       setHazardResult(null);
+      setNuclearShelterReport(null);
       setHazardError(null);
       setDirectRenderReplay(null);
       setDirectRenderFrame(null);
@@ -823,6 +826,7 @@ export default function App() {
         ? (directHazardCaptureFixtures as Record<string, HazardResult>)[referenceCaptureSceneId]
         : undefined;
       setHazardResult(fixture?.kind === hazardMode ? structuredClone(fixture) : null);
+      setNuclearShelterReport(null);
       setDirectRenderReplay(null);
       const recordingUrl = referenceCaptureSceneId
         ? DIRECT_RENDER_FIXTURE_URLS[referenceCaptureSceneId]
@@ -848,6 +852,7 @@ export default function App() {
     }
 
     setHazardResult(null);
+    setNuclearShelterReport(null);
     setHazardError(null);
     setDirectRenderReplay(null);
     setDirectRenderFrame(null);
@@ -890,6 +895,17 @@ export default function App() {
           throw new Error("backend returned an invalid direct-hazard authority contract");
         }
         setHazardResult(result);
+        if (hazardMode === "nuclear" && result.resultId) {
+          void api.nuclearShelterAdvisor(result.resultId)
+            .then((report) => {
+              if (!cancelled && requestId === hazardRequestId.current) {
+                setNuclearShelterReport(report);
+              }
+            })
+            .catch((error) => {
+              if (!cancelled) console.error("nuclear shelter screening failed", error);
+            });
+        }
         setHazardError(null);
         if (renderOutcome.status === "fulfilled") {
           setDirectRenderReplay(renderOutcome.value);
@@ -903,6 +919,7 @@ export default function App() {
         if (cancelled || requestId !== hazardRequestId.current) return;
         console.error("direct hazard simulation failed", error);
         setHazardResult(null);
+        setNuclearShelterReport(null);
         const message = `Direct hazard simulation failed: ${String(error)}`;
         setHazardError(message);
         showToast(message, "error");
@@ -1970,6 +1987,7 @@ export default function App() {
             onTogglePick={() => setPickMode((p) => !p)}
             pickActive={pickMode}
             result={hazardResult}
+            shelterReport={nuclearShelterReport}
             windFromDeg={windFromDeg}
             onWindChange={setWindFromDeg}
             onDetonate={() => {
@@ -2056,6 +2074,7 @@ export default function App() {
           onTogglePick={() => setPickMode((p) => !p)}
           pickActive={pickMode}
           result={hazardResult}
+          shelterReport={nuclearShelterReport}
           windFromDeg={windFromDeg}
           onWindChange={setWindFromDeg}
           onDetonate={detonateActiveHazard}

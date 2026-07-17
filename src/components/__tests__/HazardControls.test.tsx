@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { HazardControls } from "../HazardControls";
-import type { AsteroidInput, HazardResult, NuclearInput } from "../../hazards";
+import type { AsteroidInput, HazardResult, NuclearInput, NuclearShelterReport } from "../../hazards";
 
 const nuclear: NuclearInput = { yieldKt: 100, burstType: "airburst", populationDensity: 5000 };
 const asteroid: AsteroidInput = { diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 };
@@ -46,6 +46,33 @@ const nuclearFalloutResult = {
     },
   },
 } as HazardResult;
+const shelterReport: NuclearShelterReport = {
+  resultId: "nuclear-result",
+  model: "NukeMap shelter heuristic port 1.0",
+  zones: [
+    {
+      label: "5 psi zone",
+      distanceKm: 3,
+      overpressurePsi: 5,
+      thermalCalCm2: 10,
+      shelters: [
+        { shelterType: "Open air", survivalPct: 0, blastOk: false },
+        { shelterType: "Deep underground", survivalPct: 100, blastOk: true },
+      ],
+    },
+    {
+      label: "1 psi zone",
+      distanceKm: 8,
+      overpressurePsi: 1,
+      thermalCalCm2: 2,
+      shelters: [
+        { shelterType: "Open air", survivalPct: 75, blastOk: false },
+        { shelterType: "Deep underground", survivalPct: 100, blastOk: true },
+      ],
+    },
+  ],
+  limitations: ["Educational screening only."],
+};
 
 function noop() {}
 
@@ -71,7 +98,8 @@ describe("HazardControls", () => {
     expect(screen.getByText(/no location set/i)).toBeInTheDocument();
   });
 
-  it("renders the nuclear readout, casualties and ring legend from a result", () => {
+  it("renders the nuclear readout, casualties, shelter screening and ring legend from a result", async () => {
+    const user = userEvent.setup();
     render(
       <HazardControls
         mode="nuclear"
@@ -83,6 +111,7 @@ describe("HazardControls", () => {
         onTogglePick={noop}
         pickActive={false}
         result={nuclearResult}
+        shelterReport={shelterReport}
         windFromDeg={270}
         onWindChange={noop}
         onDetonate={noop}
@@ -97,6 +126,12 @@ describe("HazardControls", () => {
     expect(screen.getByText(/BEIR VII/i)).toBeInTheDocument();
     // one legend entry per ring
     expect(screen.getByText("Fireball")).toBeInTheDocument();
+    await user.click(screen.getByText("Shelter screening by effect zone"));
+    const table = screen.getByRole("region", { name: "Shelter screening table" });
+    expect(table).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("columnheader", { name: /5 psi zone 3\.0 km/ })).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: "Deep underground" })).toBeInTheDocument();
+    expect(screen.getByText(/not personal survival odds/i)).toBeInTheDocument();
   });
 
   it("fires the pick toggle when the location button is clicked", () => {

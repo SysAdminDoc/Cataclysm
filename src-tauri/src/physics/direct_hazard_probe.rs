@@ -8,7 +8,9 @@ use std::sync::{LazyLock, Mutex};
 
 use serde::{Deserialize, Serialize};
 
-use super::direct_hazard::{EffectRing, HazardResult};
+use super::direct_hazard::{
+    EffectRing, HazardDetail, HazardResult, NuclearShelterReport, nuclear_shelter_report,
+};
 
 const MAX_REGISTERED_RESULTS: usize = 16;
 const BLAST_SPEED_M_S: f64 = 343.0;
@@ -81,14 +83,7 @@ pub fn register_result(mut result: HazardResult, canonical_request: &[u8]) -> Ha
 pub fn probe(request: DirectHazardProbeRequest) -> Result<DirectHazardProbeResult, String> {
     validate_coordinate("probe latitude", request.click_lat, 90.0)?;
     validate_coordinate("probe longitude", request.click_lon, 180.0)?;
-    if request.result_id.len() > 80
-        || !request
-            .result_id
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
-    {
-        return Err("result_id has an invalid format".to_string());
-    }
+    validate_result_id(&request.result_id)?;
 
     let result = RESULTS
         .lock()
@@ -157,6 +152,35 @@ pub fn probe(request: DirectHazardProbeRequest) -> Result<DirectHazardProbeResul
         confidence: ProbeConfidence::ScreeningEstimate,
         unknowns,
     })
+}
+
+pub fn shelter_report(result_id: String) -> Result<NuclearShelterReport, String> {
+    validate_result_id(&result_id)?;
+    let results = RESULTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let result = results
+        .iter()
+        .find(|entry| entry.result_id == result_id)
+        .ok_or_else(|| {
+            "The selected nuclear result is no longer available; rerun the scenario once to inspect shelter screening."
+                .to_string()
+        })?;
+    let HazardDetail::Nuclear(detail) = &result.detail else {
+        return Err("shelter screening applies only to nuclear results".to_string());
+    };
+    Ok(nuclear_shelter_report(result.result_id.clone(), detail))
+}
+
+fn validate_result_id(result_id: &str) -> Result<(), String> {
+    if result_id.len() > 80
+        || !result_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    {
+        return Err("result_id has an invalid format".to_string());
+    }
+    Ok(())
 }
 
 fn effect_at_range(kind: &str, ring: &EffectRing, range_m: f64) -> ProbeEffect {
@@ -261,6 +285,25 @@ mod tests {
                 .any(|effect| effect.threshold_value == Some(500.0))
         );
         assert_eq!(probe.governing_model, "nuclear-direct-1.0.0");
+    }
+
+    #[test]
+    fn shelter_report_reuses_the_registered_nuclear_result() {
+        let result = registered_nuclear();
+        let report = shelter_report(result.result_id.clone()).unwrap();
+        assert_eq!(report.result_id, result.result_id);
+        assert_eq!(report.zones.len(), 6);
+        let psi_five = report
+            .zones
+            .iter()
+            .find(|zone| zone.label == "5 psi zone")
+            .unwrap();
+        assert_eq!(psi_five.shelters.len(), 8);
+        assert!(psi_five.shelters[0].survival_pct < 50);
+        assert!(psi_five.shelters[7].survival_pct > 80);
+
+        let error = shelter_report(format!("nuclear-{}", "0".repeat(64))).unwrap_err();
+        assert!(error.contains("no longer available"));
     }
 
     #[test]

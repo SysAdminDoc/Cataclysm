@@ -77,6 +77,27 @@ export interface LatentCancerEstimate {
   geneticEffects: number;
 }
 
+export interface ShelterAssessment {
+  shelterType: string;
+  survivalPct: number;
+  blastOk: boolean;
+}
+
+export interface ShelterZoneAssessment {
+  label: string;
+  distanceKm: number;
+  overpressurePsi: number;
+  thermalCalCm2: number;
+  shelters: ShelterAssessment[];
+}
+
+export interface NuclearShelterReport {
+  resultId: string;
+  model: string;
+  zones: ShelterZoneAssessment[];
+  limitations: string[];
+}
+
 export interface NuclearDetail {
   yieldKt: number;
   isSurface: boolean;

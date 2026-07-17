@@ -9,6 +9,7 @@ import {
   type HazardResult,
   type NuclearDetail,
   type NuclearInput,
+  type NuclearShelterReport,
   type TargetType,
 } from "../hazards";
 import type { WorkspaceMode } from "../lib/settings";
@@ -103,6 +104,7 @@ export function HazardControls({
   onTogglePick,
   pickActive,
   result,
+  shelterReport,
   windFromDeg,
   onWindChange,
   onDetonate,
@@ -122,6 +124,7 @@ export function HazardControls({
   onTogglePick: () => void;
   pickActive: boolean;
   result: HazardResult | null;
+  shelterReport?: NuclearShelterReport | null;
   windFromDeg: number;
   onWindChange: (deg: number) => void;
   onDetonate: () => void;
@@ -409,6 +412,57 @@ export function HazardControls({
               </span>
             </div>
           )}
+          {mode === "nuclear" && shelterReport?.zones.length ? (
+            <details className="hazard__shelter">
+              <summary>Shelter screening by effect zone</summary>
+              <p>
+                Educational comparison scores from the Rust-authoritative {shelterReport.model}.
+                These are not personal survival odds or protective-action guidance.
+              </p>
+              <div className="hazard__shelter-table" role="region" aria-label="Shelter screening table" tabIndex={0}>
+                <table>
+                  <caption>Relative survival screening score by modeled effect radius</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Shelter</th>
+                      {shelterReport.zones.map((zone) => (
+                        <th
+                          scope="col"
+                          key={zone.label}
+                          aria-label={`${zone.label} ${zone.distanceKm.toFixed(1)} km`}
+                        >
+                          {zone.label}
+                          <small>{zone.distanceKm.toFixed(1)} km</small>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shelterReport.zones[0].shelters.map((shelter, shelterIndex) => (
+                      <tr key={shelter.shelterType}>
+                        <th scope="row">{shelter.shelterType}</th>
+                        {shelterReport.zones.map((zone) => {
+                          const assessment = zone.shelters[shelterIndex];
+                          return (
+                            <td
+                              key={zone.label}
+                              data-blast-ok={assessment.blastOk ? "true" : "false"}
+                              title={`${zone.overpressurePsi.toFixed(1)} psi · ${zone.thermalCalCm2.toFixed(1)} cal/cm²`}
+                            >
+                              {assessment.survivalPct}%
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className="hazard__shelter-limits">
+                {shelterReport.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
+              </ul>
+            </details>
+          ) : null}
           <ul className="hazard__ring-legend">
             {result.rings.map((ring) => (
               <li key={ring.label}>

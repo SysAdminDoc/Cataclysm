@@ -201,6 +201,82 @@
   color: var(--subtext);
 }
 
+.hazard__shelter {
+  margin-top: 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: var(--type-caption);
+}
+
+.hazard__shelter summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.hazard__shelter p {
+  margin: 7px 0;
+  color: var(--subtext);
+}
+
+.hazard__shelter-table {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+}
+
+.hazard__shelter-table table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.hazard__shelter-table caption {
+  padding: 6px;
+  text-align: left;
+  color: var(--subtext);
+}
+
+.hazard__shelter-table th,
+.hazard__shelter-table td {
+  padding: 5px 7px;
+  border-top: 1px solid var(--panel-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.hazard__shelter-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface0);
+  text-align: left;
+}
+
+.hazard__shelter-table thead th {
+  color: var(--subtext);
+  vertical-align: bottom;
+}
+
+.hazard__shelter-table thead small {
+  display: block;
+  font-weight: 400;
+}
+
+.hazard__shelter-table td[data-blast-ok="false"] {
+  color: var(--danger);
+}
+
+.hazard__shelter-limits {
+  margin: 7px 0 0;
+  padding-left: 18px;
+  color: var(--subtext);
+}
+
 .hazard__ring-legend {
   list-style: none;
   margin: 10px 0 0;

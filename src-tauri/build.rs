@@ -31,6 +31,7 @@ fn main() {
         "simulate_nuclear_hazard",
         "simulate_nuclear_hazard_render",
         "probe_direct_hazard",
+        "nuclear_shelter_advisor",
         "diagnostics_bundle",
         "native_panic_record",
         "acknowledge_native_panic_record",

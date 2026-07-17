@@ -6,6 +6,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Nuclear results now offer a Rust-authoritative shelter screening table at the
+  fireball, 20/5/1 psi, beyond-1-psi, and first-degree-burn radii. The query is
+  bound to a registered immutable result rather than accepting client-supplied
+  effect radii; it compares eight shelter types using the preserved NukeMap
+  blast/thermal/radiation heuristic and explicitly labels the percentages as
+  educational screening scores, not personal odds or emergency guidance.
+- Reconciled the stale nuclear parity backlog: the Rust detonation timeline and
+  wind-oriented Cesium heavy/light fallout polygons were already shipped and
+  verified, so UNI-04A and UNI-05 no longer remain actionable.
 - Long-running streaming SWE runs now lay the persistence foundation for crash
   recovery: a versioned binary checkpoint captures eta/u/v/depth, solver tick,
   scenario/settings/data digests, maximum fields, and exact snapshot progress

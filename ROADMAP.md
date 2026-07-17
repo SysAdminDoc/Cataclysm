@@ -14,14 +14,6 @@ rebuild their **UIs** on the Cesium globe. The standalone NukeMap and
 AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
-### P1 — Nuclear mode (core NukeMap experience)
-- **UNI-04A** Add the detonation timeline from `NM.calcTimeline` to the shipped
-  nuclear results experience.
-- **UNI-05** Fallout plume overlay (wind angle/speed) as a Cesium polygon —
-  port `NM.Effects.drawFallout`.
-- **UNI-06** Shelter advisor (port `js/shelter.js`, already pure): per-shelter-type
-  survival probability at key radii from blast/thermal/radiation interpolation.
-
 ### P2 — Impact mode + data
 - **UNI-07A** Add the `TrajectoryChart` and `CraterDiagram` SVG result components
   from `legacy/asteroid/src/components/Results` to the shipped impact experience.

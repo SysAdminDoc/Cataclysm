@@ -817,6 +817,33 @@ pub struct TimelineEvent {
     pub category: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShelterAssessment {
+    pub shelter_type: &'static str,
+    pub survival_pct: u8,
+    pub blast_ok: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShelterZoneAssessment {
+    pub label: &'static str,
+    pub distance_km: f64,
+    pub overpressure_psi: f64,
+    pub thermal_cal_cm2: f64,
+    pub shelters: Vec<ShelterAssessment>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NuclearShelterReport {
+    pub result_id: String,
+    pub model: &'static str,
+    pub zones: Vec<ShelterZoneAssessment>,
+    pub limitations: Vec<&'static str>,
+}
+
 /// Latent (delayed) cancer fatalities among blast/thermal survivors, BEIR VII
 /// (2006) linear-no-threshold model at ~5.5% excess cancer mortality per Sv.
 #[derive(Debug, Clone, Serialize)]
@@ -1105,6 +1132,181 @@ fn nuclear_timeline(effects: &NuclearEffects) -> Vec<TimelineEvent> {
         ));
     }
     events
+}
+
+struct ShelterType {
+    name: &'static str,
+    blast_resistance_psi: f64,
+    thermal_survival: f64,
+    radiation_exposure_fraction: f64,
+}
+
+const SHELTER_TYPES: [ShelterType; 8] = [
+    ShelterType {
+        name: "Open air",
+        blast_resistance_psi: 0.5,
+        thermal_survival: 0.1,
+        radiation_exposure_fraction: 1.0,
+    },
+    ShelterType {
+        name: "Automobile",
+        blast_resistance_psi: 1.5,
+        thermal_survival: 0.3,
+        radiation_exposure_fraction: 0.9,
+    },
+    ShelterType {
+        name: "Wood-frame house",
+        blast_resistance_psi: 2.5,
+        thermal_survival: 0.5,
+        radiation_exposure_fraction: 0.6,
+    },
+    ShelterType {
+        name: "Brick building",
+        blast_resistance_psi: 5.0,
+        thermal_survival: 0.7,
+        radiation_exposure_fraction: 0.3,
+    },
+    ShelterType {
+        name: "Concrete building",
+        blast_resistance_psi: 12.0,
+        thermal_survival: 0.9,
+        radiation_exposure_fraction: 0.1,
+    },
+    ShelterType {
+        name: "Basement",
+        blast_resistance_psi: 15.0,
+        thermal_survival: 0.95,
+        radiation_exposure_fraction: 0.05,
+    },
+    ShelterType {
+        name: "Reinforced bunker",
+        blast_resistance_psi: 50.0,
+        thermal_survival: 1.0,
+        radiation_exposure_fraction: 0.01,
+    },
+    ShelterType {
+        name: "Deep underground",
+        blast_resistance_psi: 200.0,
+        thermal_survival: 1.0,
+        radiation_exposure_fraction: 0.001,
+    },
+];
+
+fn shelter_overpressure_psi(detail: &NuclearDetail, distance_km: f64) -> f64 {
+    if distance_km <= 0.0 {
+        return 999.0;
+    }
+    let mut pairs = vec![
+        (detail.fireball, 3_000.0),
+        (detail.fireball * 1.5, 200.0),
+        (detail.psi_20, 20.0),
+        (detail.psi_5, 5.0),
+        (detail.psi_5 * 1.3, 3.0),
+        (detail.psi_1, 1.0),
+        (detail.psi_1 * 2.0, 0.2),
+    ];
+    pairs.retain(|(radius, _)| radius.is_finite() && *radius > 0.0);
+    pairs.sort_by(|left, right| left.0.total_cmp(&right.0));
+    pairs.dedup_by(|left, right| left.0.to_bits() == right.0.to_bits());
+    if pairs.is_empty() {
+        return 0.0;
+    }
+    if distance_km <= pairs[0].0 {
+        return pairs[0].1;
+    }
+    if distance_km >= pairs[pairs.len() - 1].0 {
+        return 0.0;
+    }
+    for pair in pairs.windows(2) {
+        let [(near_radius, near_psi), (far_radius, far_psi)] = pair else {
+            unreachable!()
+        };
+        if distance_km >= *near_radius && distance_km <= *far_radius {
+            let fraction = (distance_km - near_radius) / (far_radius - near_radius);
+            return near_psi * (far_psi / near_psi).powf(fraction);
+        }
+    }
+    0.0
+}
+
+fn shelter_thermal_cal_cm2(detail: &NuclearDetail, distance_km: f64) -> f64 {
+    if distance_km <= detail.fireball {
+        1_000.0
+    } else if distance_km <= detail.thermal_3 {
+        8.0 * (detail.thermal_3 / distance_km).powi(2)
+    } else if distance_km <= detail.thermal_1 {
+        2.0 * (detail.thermal_1 / distance_km).powi(2)
+    } else {
+        0.0
+    }
+}
+
+pub fn nuclear_shelter_report(result_id: String, detail: &NuclearDetail) -> NuclearShelterReport {
+    let radii = [
+        ("Fireball edge", detail.fireball),
+        ("20 psi zone", detail.psi_20),
+        ("5 psi zone", detail.psi_5),
+        ("1 psi zone", detail.psi_1),
+        ("Beyond 1 psi", detail.psi_1 * 1.5),
+        ("1st-degree burn edge", detail.thermal_1),
+    ];
+    let zones = radii
+        .into_iter()
+        .filter(|(_, distance_km)| distance_km.is_finite() && *distance_km > 0.001)
+        .map(|(label, distance_km)| {
+            let overpressure_psi = shelter_overpressure_psi(detail, distance_km);
+            let thermal_cal_cm2 = shelter_thermal_cal_cm2(detail, distance_km);
+            let radiation_fraction = if distance_km <= 0.001 {
+                1.0
+            } else {
+                (detail.radiation / distance_km).powi(2).clamp(0.0, 1.0)
+            };
+            let shelters = SHELTER_TYPES
+                .iter()
+                .map(|shelter| {
+                    let blast_survival = if overpressure_psi <= shelter.blast_resistance_psi {
+                        1.0
+                    } else {
+                        (1.0 - (overpressure_psi - shelter.blast_resistance_psi)
+                            / (shelter.blast_resistance_psi * 2.0))
+                            .max(0.0)
+                    };
+                    let thermal_survival = if thermal_cal_cm2 > 8.0 {
+                        shelter.thermal_survival
+                    } else {
+                        1.0
+                    };
+                    let radiation_survival =
+                        1.0 - radiation_fraction * shelter.radiation_exposure_fraction;
+                    ShelterAssessment {
+                        shelter_type: shelter.name,
+                        survival_pct: (100.0
+                            * (blast_survival * thermal_survival * radiation_survival)
+                                .clamp(0.0, 1.0))
+                        .round() as u8,
+                        blast_ok: overpressure_psi <= shelter.blast_resistance_psi,
+                    }
+                })
+                .collect();
+            ShelterZoneAssessment {
+                label,
+                distance_km,
+                overpressure_psi,
+                thermal_cal_cm2,
+                shelters,
+            }
+        })
+        .collect();
+    NuclearShelterReport {
+        result_id,
+        model: "NukeMap shelter heuristic port 1.0",
+        zones,
+        limitations: vec![
+            "Screening scores are simplified scenario comparisons, not personal survival probabilities or protective-action guidance.",
+            "Terrain, building condition, orientation, fire, fallout timing, emergency response, and individual vulnerability are not modeled.",
+            "Follow official emergency-management instructions; do not choose a shelter from this educational table.",
+        ],
+    }
 }
 
 fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimate {
