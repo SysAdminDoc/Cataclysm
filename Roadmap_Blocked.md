@@ -30,9 +30,6 @@ Return them to ROADMAP.md once the blocker is resolved.
   *Release workflow now emits `latest.json` updater manifest conditional on `TAURI_SIGNING_PRIVATE_KEY` being present.*
   **Blocker:** Needs maintainer to run `npx tauri signer generate`, paste private key as GH secret, paste public key into `tauri.conf.json`, and register the plugin in `src-tauri/src/lib.rs` (steps documented in `docs/release/CODESIGNING.md`).
 
-- **I-V04 P1** — Cesium token via OS keychain (Win Credential Manager / macOS Keychain / Linux Secret Service).
-  **Blocker:** Needs `keyring`-crate-equivalent that is Tauri-2 compatible; the `tauri-plugin-keyring` ecosystem is still emerging.
-
 ## Phase 3 — Science-frontier
 
 - **HR-03U P1** — Mirror renderer quality budgets into Unreal scalability
@@ -74,47 +71,6 @@ Return them to ROADMAP.md once the blocker is resolved.
 - **P1** — GEBCO_2026/TID progressive bathymetry loader (XL).
   **Blocker:** Same as F-V06; needs distribution channel decision + artifact.
 
-## Research-Driven — Needs visual verification
-
-- **P2** — Split Globe.tsx into composable hooks (M).
-  **Blocker:** At 1000+ lines, this is a significant refactor that needs visual verification (Cesium globe rendering, entity placement, SWE overlay, inspect tooltips). Requires running `npm run tauri dev` or `npm run dev` + browser and verifying no regressions in all globe interactions.
-
-- **P3** — CSP hash for inline styles (L).
-  **Blocker:** CesiumJS injects dynamic inline styles that change across versions and based on the scene content (picked entity tooltips, info box, widgets). Hash-based allowlists would break on every CesiumJS upgrade. The current `'unsafe-inline'` in `style-src` is the pragmatic choice until CesiumJS moves to stylesheet-based styling (tracked upstream).
-
-- **P3** — Structured error reporting with diagnostics bundle (S).
-  **Blocker:** Full diagnostics (GPU adapter name/driver, wgpu version) requires a new Rust IPC command (`diagnostics_bundle`). Needs MSVC linker for Rust compilation. The frontend LogViewer could be enhanced independently, but the most valuable diagnostics come from the Rust side.
-
-## Research-Driven — Rust compilation + platform testing required
-
-- **P2** — Desktop deep-link import for shared scenario URLs (M).
-  **Blocker:** Requires `tauri-plugin-deep-link` Cargo dependency (needs MSVC linker to verify compilation), platform-specific URL protocol handler registration (Windows registry via MSI/NSIS installer), and integration testing (launching `tsunamisimulator://open?scenario=<encoded>` from outside the app). The existing `scenarioFromUrl` / `scenarioToUrlParams` infrastructure handles the URL parsing; the gap is the OS-level routing from custom scheme to app instance.
-
-## Research-Driven — Rust compilation required
-
-- **P1** — Property-based tests for physics modules (M).
-  **Blocker:** Needs `cargo test` with MSVC linker. Add `proptest` dev-dep, write property tests for asteroid cavity monotonicity, Okada slip bound, SWE mass conservation.
-
-- **P1** — DART RMSE display in sparklines (M).
-  **Blocker:** Requires Rust IPC change — the SWE solver must output raw eta values at specific buoy lat/lon coordinates alongside PNG snapshots. The existing `dart_buoy_rmse` IPC accepts `model_samples` but the frontend has no way to extract spatial samples from PNG-encoded SWE output.
-
-- **P2** — Modularize commands.rs (M).
-  **Blocker:** Needs `cargo check` to verify the refactor doesn't break compilation. Split 1750+ line commands.rs into sub-modules (types, validators, simulation, source, query).
-
-- **P2** — Build-time demo data generation from Rust (L).
-  **Blocker:** Needs new `[[bin]]` target in Cargo.toml + Rust compilation. Would replace 665-line demo.ts JS physics reimplementation with generated fixtures.
-
-## Research-Driven — P3 Future
-
-- **P3** — NTHMP benchmark suite integration (XL).
-  **Blocker:** Research-grade; requires NTHMP benchmark data acquisition + significant solver work.
-
-- **P3** — Volcanic caldera collapse source model (L).
-  **Blocker:** Requires Maeno & Imamura 2011 implementation + Krakatoa preset conversion. Significant physics research needed.
-
-- **P3** — NetCDF output export for interoperability (M).
-  **Blocker:** Requires `netcdf` crate which depends on `netcdf-sys` → `libnetcdf` (C library) + CMake at build time. The C dependency complicates cross-platform CI and local builds. Consider a pure-Rust alternative or bundling libnetcdf as a static lib.
-
 ## Future / Stretch
 
 - **Population casualty overlay** (opt-in, heavy disclaimer).
@@ -122,9 +78,6 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 - **Multi-event scenarios** — Chicxulub debris re-entry secondary impacts, Tōhoku aftershock tsunamis.
   **Blocker:** Significant solver architecture work — multiple concurrent sources, superposition of wave fields, sequential event timing.
-
-- **Multi-language UI** (en/ja first — Tōhoku audience).
-  **Blocker:** Requires i18n infrastructure (react-intl or similar), extraction of all user-facing strings, and Japanese translation.
 
 ## Research-Driven — External data licensing
 
@@ -516,18 +469,6 @@ its resolution/size budget are decided.
   Acceptance: casualty estimates sample a georeferenced density grid at the target with cited provenance and declared resolution/error; a manual override remains available; outputs are stated as ranges, not exact integers; the grid ships offline and passes `validate:earth-assets`.
   Complexity: L
 
-### Build provenance, SBOM, and reproducibility (unsigned-app trust)
-**Blocker:** Needs `cosign`/`slsa-verifier`/`cargo-cyclonedx` tooling installed and a
-tagged release to attest; keyless attestation also needs an identity. Actionable at
-release time once the tooling is on the build host.
-
-- [ ] P2 — Publish build provenance, SBOM, and reproducibility instead of code signing
-  Why: installers ship unsigned (by policy), and the credible substitute for a certificate is verifiable provenance — a signed SLSA/in-toto attestation, a dependency SBOM, and a reproducible-build recipe a third party can check against the published hash.
-  Evidence: unsigned-installer state in README/`docs/release/CODESIGNING.md`; SLSA provenance (https://slsa.dev/spec/v1.0/distributing-provenance); Sigstore/cosign keyless attestation; run locally, not via CI, per repo no-Actions rule.
-  Touches: local `cosign`/`slsa-verifier` provenance generation, CycloneDX/SPDX SBOM (`cargo cyclonedx` + npm), release-checklist docs, checksum+attestation release assets.
-  Acceptance: each release attaches a checksummed installer, an in-toto/SLSA provenance attestation, and an SBOM; docs show how to verify provenance and reproduce the build; no code-signing certificate is introduced.
-  Complexity: M
-
 ### ML surrogate for instant inundation preview
 **Blocker:** Research-grade: needs an offline training pipeline over solver outputs, a
 shipped/validated ONNX model, and measured error bounds before it can be trusted.
@@ -542,43 +483,6 @@ shipped/validated ONNX model, and measured error bounds before it can be trusted
 ---
 
 ## Moved from ROADMAP.md (2026-07-14 triage — large bets / external gates)
-
-- [ ] P2 — Add a cited volcanic-source tsunami module feeding the SWE solver
-  **Blocker:** research-grade, multi-pass physics. A flank-collapse /
-  pyroclastic-flow source term plus a preset that reproduces published near-field
-  runup (Anak Krakatau 2018, Santorini) needs a staged source model and a
-  validation dataset that cannot land in a single implementation pass.
-  Evidence: PAGEOPH TGV review https://link.springer.com/article/10.1007/s00024-024-03515-y;
-  Santorini reappraisal https://www.nature.com/articles/ncomms13332;
-  lab benchmark https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023JC020796.
-  Touches: new `physics/volcanic.rs` source term, source-input contract + enum,
-  scenario builder tab, cited presets, science note, validation fixtures.
-  Complexity: L
-
-- [ ] P2 — Add meteotsunami / moving atmospheric-pressure forcing (Hunga Tonga)
-  **Blocker:** the Lamb-wave IC injection, Proudman-resonance-depth calculation,
-  and Hunga Tonga 2022 preset already shipped (`physics/lamb_wave.rs`); the
-  remaining work — a *moving* pressure forcing term that continuously pumps the
-  SWE solver and demonstrably amplifies near Proudman resonance — is research-grade
-  and needs an energy/CFL-safe forcing integration plus a resonance validation
-  fixture, which cannot land in a single pass.
-  Evidence: Vilibić et al. 2025 review https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2024RG000867;
-  Proudman resonance https://www.coastalwiki.org/wiki/Proudman_resonance_and_meteo_tsunamis;
-  Hunga Tonga Lamb wave https://www.nature.com/articles/s41598-023-35800-6.
-  Touches: pressure-forcing source term in the solver, moving-source parameters,
-  resonance explainer, validation fixture.
-  Complexity: L
-
-- [ ] P2 — Show institutions/infrastructure inside a hazard zone (OSM)
-  **Blocker:** requires acquiring, filtering, and bundling a large external OSM
-  institution dataset (schools/hospitals/museums) — a data-licensing and hosting
-  decision — before an offline point-in-zone lookup can ship.
-  Evidence: NUKEMAP 2026 roadmap institution lookup
-  https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/.
-  Touches: bundled/queryable OSM institution index (offline-first, cached, stale
-  badge), point-in-zone query against ring/inundation geometry, results list,
-  provenance/attribution, privacy copy.
-  Complexity: M
 
 - [ ] P3 — Add a cited supervolcano ashfall module
   **Blocker:** research-grade, multi-pass. An Ash3d-style advection-diffusion

@@ -15,23 +15,16 @@ AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P1 — Nuclear mode (core NukeMap experience)
-- ✅ **UNI-01** Hazard-mode switch in the top bar (Tsunami / Impact / Nuclear). *(v0.6.0)*
-- ✅ **UNI-02** Nuclear input panel: weapon preset picker (`WEAPON_PRESETS`), log
-  yield slider, burst-type selector, population density, pick-on-globe. *(v0.6.0)*
-- ✅ **UNI-03** Cesium ring renderer for `HazardResult.rings` (concentric ground
-  ellipses + ground-zero marker + auto-frame). Shared by nuclear and asteroid
-  modes. Replaces NukeMap `js/effects.js`. *(v0.6.0)*
-- ✅ **UNI-04** Results readout + casualty estimate + ring legend. *(v0.6.0)*
-  Remaining sub-item: detonation timeline (port `NM.calcTimeline`).
+- **UNI-04A** Add the detonation timeline from `NM.calcTimeline` to the shipped
+  nuclear results experience.
 - **UNI-05** Fallout plume overlay (wind angle/speed) as a Cesium polygon —
   port `NM.Effects.drawFallout`.
 - **UNI-06** Shelter advisor (port `js/shelter.js`, already pure): per-shelter-type
   survival probability at key radii from blast/thermal/radiation interpolation.
 
 ### P2 — Impact mode + data
-- ✅ **UNI-07** Asteroid input panel (diameter/velocity/angle/density/target) wired
-  to the ported engine. *(v0.6.0)* Remaining: `TrajectoryChart`/`CraterDiagram`
-  SVG components from `legacy/asteroid/src/components/Results`.
+- **UNI-07A** Add the `TrajectoryChart` and `CraterDiagram` SVG result components
+  from `legacy/asteroid/src/components/Results` to the shipped impact experience.
 - **UNI-08** NEO/fireball database integration (port `services/jplApi.ts`,
   `useFireballs`, fallback datasets) with the app's CSP allowlist.
 - **UNI-09** Port NukeMap target/weapon/city/ZIP datasets (`data/*.json`,
@@ -71,13 +64,58 @@ tests locally.
 
 ### P1 — solver fidelity (from the 2026-07-09 second research pass)
 
+- [ ] P1 — Extend the NTHMP benchmark suite with solver-applicable analytical slices
+  Why: BP1 now ships, while the old blanket blocker predates the working validation
+  feature and overstates what can be tested without a dispersive solver. Add the
+  non-dispersive analytical portions of BP4/BP6/BP7 and explicitly retain the
+  phase-resolving portions as out of reach.
+  Evidence: `physics::validation::nthmp_bp1_*`; `docs/science/VALIDATION.md`;
+  NOAA/NTHMP benchmark specifications.
+  Touches: `src-tauri/src/physics/validation.rs`, validation fixtures,
+  `docs/science/VALIDATION.md`.
+  Acceptance: every added assertion cites its source and tolerance; unsupported
+  dispersive or breaking-wave claims remain explicitly excluded; validation tests pass.
+  Complexity: M
+
 ### P2 — cited presets, products, and architecture
 
 - [ ] P2 — Modularize commands.rs into submodules
   Why: 1,944 lines and growing with each new IPC; split into types/validators/simulation/source/query keeps the boundary reviewable. Returns from Roadmap_Blocked (stale MSVC blocker).
-  Evidence: src-tauri/src/commands.rs line count; Roadmap_Blocked "Modularize commands.rs".
+  Evidence: current `src-tauri/src/commands.rs` line count and command test surface.
   Touches: src-tauri/src/commands/ (new module tree), src-tauri/src/lib.rs.
   Acceptance: no behavior change; all 67+ Rust tests pass; no file exceeds ~600 lines.
+  Complexity: M
+
+- [ ] P2 — Split Globe.tsx into composable hooks and controllers
+  Why: the MSVC/foreground-verification blocker is stale; headless Playwright,
+  deterministic reference scenes, and controller lifecycle tests now provide the
+  non-interactive verification surface needed for this refactor.
+  Evidence: `src/components/Globe.tsx`; `src/render/cesium/`; reference-capture tests.
+  Touches: `src/components/Globe.tsx`, reusable globe hooks/controllers, focused tests.
+  Acceptance: behavior and locked reference scenes remain unchanged; lifecycle tests
+  cover setup/teardown; no foreground UI is launched.
+  Complexity: M
+
+- [ ] P2 — Add desktop deep-link import for shared scenario URLs
+  Why: Rust and installer compilation work locally, so the old toolchain blocker no
+  longer justifies deferring the OS routing that completes the existing URL codec.
+  Evidence: `scenarioFromUrl` / `scenarioToUrlParams`; Tauri 2 deep-link plugin docs.
+  Touches: Tauri plugin/capabilities, single-instance routing, scenario import flow,
+  installer metadata, headless/integration fixtures.
+  Acceptance: a bounded `cataclysm://open?scenario=...` payload reaches the existing
+  fail-closed importer on cold and warm launch; malformed/oversized input is rejected;
+  platform registration is verified without foreground automation.
+  Complexity: M
+
+- [ ] P2 — Export solver products as CF-compliant NetCDF
+  Why: the old C-library blocker is an installation concern, not an external blocker;
+  the local toolchain may use the maintained `netcdf` crate or a verified pure-Rust
+  writer while preserving a portable release build.
+  Evidence: existing scientific export preflight; NetCDF-CF conventions.
+  Touches: Rust export module/IPC, release toolchain, export UI, interoperability tests.
+  Acceptance: coordinates, time, eta/velocity/depth/max fields, CRS/datum, units,
+  quality warnings, citations, and provenance round-trip through a pinned reader;
+  unsupported or oversized grids fail closed.
   Complexity: M
 
 - [ ] P2 — Port inundation/gauge overlays to Cesium `GeoJsonPrimitive` + arrival-colored paths via `PathGraphics.materialMode`
@@ -110,10 +148,23 @@ tests locally.
 
 ### P3 — education distribution and larger bets
 
+- [ ] P3 — Remove application-owned inline styles and narrow the CSP exception to Cesium
+  Why: Cesium still injects dynamic inline styles, but that does not block eliminating
+  Cataclysm-owned inline style attributes or proving that the remaining exception is
+  isolated to the embedded Cesium widget surface.
+  Evidence: current Tauri `style-src` policy; Cesium dynamic widget styling.
+  Touches: React components/stylesheets, CSP verification contract, security docs.
+  Acceptance: tracked application components use classes/CSS variables instead of
+  inline styles; verification inventories remaining inline styles and rejects any
+  non-Cesium regression; Cesium remains functional under the documented exception.
+  Complexity: M
+
 
 - [ ] P3 — Zarr v3 scientific output export via `zarrs` (pure Rust)
-  Why: gives researchers a chunked, self-describing raw-field export without the C-library NetCDF burden that keeps the NetCDF item blocked; zarrs 0.23.x is spec-complete Zarr v3.1. Note: raises rust-version to 1.91 (schedule after the P0 1.87 bump).
-  Evidence: https://crates.io/crates/zarrs; Roadmap_Blocked "NetCDF output export" C-dependency blocker.
+  Why: gives researchers a chunked, self-describing raw-field export complementary
+  to the now-actionable CF-NetCDF export; zarrs 0.23.x is spec-complete Zarr v3.1.
+  Note: raises rust-version to 1.91, so schedule the toolchain change deliberately.
+  Evidence: https://crates.io/crates/zarrs and the active CF-NetCDF export item.
   Touches: src-tauri/Cargo.toml, new export command (eta/max-field arrays + CF-style attrs), src/lib/export.ts (menu entry, desktop-only).
   Acceptance: an exported store opens in Python (`zarr.open`) with correct dims/coords/units; documented in the manual.
   Complexity: M
@@ -461,15 +512,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ## Research-Driven Additions
 
-### P0
-
-- [ ] P0 — Gate releases on an installed MSI/NSIS desktop journey
-  Why: the current release script probes the raw binary, but the 2026-07-12 WebView2 byte-transport and channel-drain failures escaped browser and raw-binary checks and broke the installed desktop run.
-  Evidence: `scripts/build-release.mjs:62-127`; `CHANGELOG.md:100-110`; Tauri WebDriver https://v2.tauri.app/develop/tests/webdriver/; Microsoft WebView2 WebDriver https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/webdriver.
-  Touches: local release scripts, isolated Windows installer harness, Tauri/WebView2 driver fixtures, release manifest/checklist.
-  Acceptance: the gate installs the emitted package in an isolated Windows profile/VM, verifies installed version, launches the installed binary, completes Tōhoku Run & Watch through 60/60 frames, exercises diagnostics/export/keychain persistence, asserts no renderer/protocol errors, and uninstalls cleanly; an opt-in forward-compatibility variant uses a WebView2 preview channel.
-  Complexity: M
-
 ### P1
 
 - [ ] P1 — Automate spatial/temporal convergence and Grid Convergence Index reporting
@@ -606,22 +648,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Complexity: L
 
 ## Research-Driven Additions
-
-### P1
-
-- [ ] P1 — Persist native Rust panic evidence into the local recovery flow
-  Why: browser-side failures survive reload, but a native panic after Tauri initializes can terminate outside `diagnosticsLog.ts`, leaving users and the installed-package gate without the redacted evidence already available for React/window failures.
-  Evidence: Verified — no `std::panic::set_hook` in `src-tauri/src/`; `src-tauri/src/lib.rs` ends in `.run(...).expect(...)`; existing `src/lib/diagnosticsLog.ts` and `CrashRecoveryNotice.tsx`; Rust panic-hook API https://doc.rust-lang.org/std/panic/fn.set_hook.html; OWASP logging guidance https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html.
-  Touches: `src-tauri/src/main.rs`, `src-tauri/src/lib.rs`, a bounded native diagnostics module/IPC command, `src/lib/diagnosticsLog.ts`, `src/components/CrashRecoveryNotice.tsx`, Rust and installed-smoke fixtures.
-  Acceptance: after the Tauri app log directory is resolved, an intentional test-only native panic atomically writes one size-bounded record containing version, timestamp, panic location, and a redacted message; the hook chains the previous/default hook and preserves the failing exit; next launch imports the record into the existing recovery notice and diagnostics export, then marks or clears it only on explicit review; malformed/future records are quarantined; tokens, scenario inputs, local paths, environment values, and automatic network upload are excluded; a Rust fixture and installed-package smoke prove the path.
-  Complexity: M
-
-- [ ] P1 — Generate, verify, and bundle third-party dependency notices
-  Why: cargo-deny and the planned SBOM validate policy/inventory, but users of the shipped MSI/NSIS still cannot inspect the exact production dependency license texts from either Rust or npm.
-  Evidence: Verified — `src-tauri/deny.toml`, `src-tauri/Cargo.lock`, and `package-lock.json` exist; `src-tauri/tauri.conf.json` bundles no generated notice artifact; root `NOTICE` is a product safety notice; cargo-about generates Rust license information https://embarkstudios.github.io/cargo-about/ and generate-license-file consumes installed npm packages https://generate-license-file.js.org/docs/intro/getting-started.
-  Touches: deterministic Rust/npm notice-generation config and templates, `scripts/verify.mjs`, `src-tauri/tauri.conf.json` bundle resources, in-app References/About access, installed-package smoke fixtures; cross-reference the existing SBOM/provenance item rather than merging their outputs.
-  Acceptance: one deterministic artifact lists exact versions, SPDX expressions, source links, and required license text for production Rust and npm dependencies only; verification regenerates it from lockfile-resolved local inputs without querying mutable network services and fails on drift, missing/unknown licenses, or accidental dev-only packages; any required resolution/override is checked in with its source digest; MSI and NSIS contain a readable copy and the app exposes it from References/About; an installed smoke test opens the bundled artifact; the SBOM remains the machine-readable component inventory rather than substituting for license text.
-  Complexity: M
 
 ## Research-Driven Additions (2026-07-16)
 
