@@ -4,6 +4,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [Unreleased]
 
+## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
+
 ### Added
 
 - The validation harness now locks the asteroid impact scaling to Collins–Melosh–Marcus
