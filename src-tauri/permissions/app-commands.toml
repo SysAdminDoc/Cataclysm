@@ -15,6 +15,7 @@ permissions = [
   "allow-probe-direct-hazard",
   "allow-nuclear-shelter-advisor",
   "allow-asteroid-result-visuals",
+  "allow-jpl-api-request",
   "allow-lamb-wave-sample",
   "allow-dart-buoy-rmse",
   "allow-gpu-probe",

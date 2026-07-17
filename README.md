@@ -146,6 +146,9 @@ Existing tools each do one piece:
 - **Impact profile diagrams** — responsive SVGs plot the bounded atmospheric
   trajectory and modeled crater cross-section returned by the registered Rust
   result, including breakup/airburst markers and accessible descriptions.
+- **NASA/JPL impact data** — desktop impact setup can populate inputs from SBDB,
+  show Sentry risk context when available, and plot the latest 80 located CNEOS
+  fireballs. Bounded built-in references keep both workflows useful offline.
 - **Teacher mode** — lockable classroom settings profiles (via settings
   export/import) and a printable worksheet for each of the 7 guided lessons.
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.

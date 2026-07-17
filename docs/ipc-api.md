@@ -87,6 +87,16 @@ result without accepting browser-computed entry or crater values.
 - **Limits:** the source result must still be present in the bounded 16-result
   direct-hazard registry; nuclear and stale IDs fail closed.
 
+### `jpl_api_request`
+Perform one serialized NASA/JPL SSD request outside the WebView.
+- **Input:** endpoint enum (`fireball`, `sbdb`, or `sentry`) plus the exact
+  allowlisted parameter shape for that endpoint.
+- **Output:** JSON only after its signature version matches Fireball 1.2, SBDB
+  1.3, or Sentry 2.0.
+- **Limits:** one request at a time; 5-second connect and 12-second total
+  timeout; redirects denied; response capped at 1 MiB; unknown parameters fail
+  before network access. The renderer CSP intentionally grants no JPL origin.
+
 ### `lamb_wave_sample`
 Atmospheric Lamb-wave properties at a given distance from source.
 - **Input:** `LambWaveSampleRequest` — source params + receiver lat/lon

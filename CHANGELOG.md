@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Impact setup now includes NASA/JPL SBDB + Sentry object lookup and an
+  80-event CNEOS fireball overlay, with bundled Apophis/Bennu/2024 YR4 and
+  notable-fireball fallbacks. JPL requests are serialized through a fixed-shape
+  Rust HTTPS bridge with timeouts, redirect denial, a 1 MiB cap, and exact API
+  signature checks; the WebView CSP remains closed in accordance with JPL's
+  no-browser-embedding policy.
 - Impact results now include responsive, accessible atmospheric-trajectory and
   crater cross-section SVGs. A bounded trajectory is retained inside the
   registered Rust result and exposed through a result-ID-bound query, keeping

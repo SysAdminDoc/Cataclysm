@@ -261,6 +261,15 @@ pub fn asteroid_result_visuals(
     crate::physics::direct_hazard_probe::asteroid_visual_report(result_id)
 }
 
+/// Perform one serialized, allowlisted NASA/JPL SSD API request outside the
+/// WebView, which intentionally has no cross-origin JPL network authority.
+#[tauri::command]
+pub async fn jpl_api_request(
+    req: crate::jpl_api::JplApiRequest,
+) -> Result<serde_json::Value, String> {
+    crate::jpl_api::request(req).await
+}
+
 fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
     let total = packets.iter().try_fold(0_usize, |total, packet| {
         total

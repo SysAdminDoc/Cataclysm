@@ -15,6 +15,7 @@ import {
   type TargetType,
 } from "../hazards";
 import { CraterDiagram } from "./CraterDiagram";
+import { NeoSearch } from "./NeoSearch";
 import { TrajectoryChart } from "./TrajectoryChart";
 import type { WorkspaceMode } from "../lib/settings";
 import { buildDirectResultEvidence } from "../lib/trust-evidence";
@@ -110,6 +111,11 @@ export function HazardControls({
   result,
   asteroidVisuals,
   shelterReport,
+  showFireballs = false,
+  fireballCount = 0,
+  fireballsLoading = false,
+  fireballNotice,
+  onToggleFireballs,
   windFromDeg,
   onWindChange,
   onDetonate,
@@ -131,6 +137,11 @@ export function HazardControls({
   result: HazardResult | null;
   asteroidVisuals?: AsteroidVisualReport | null;
   shelterReport?: NuclearShelterReport | null;
+  showFireballs?: boolean;
+  fireballCount?: number;
+  fireballsLoading?: boolean;
+  fireballNotice?: string | null;
+  onToggleFireballs?: () => void;
   windFromDeg: number;
   onWindChange: (deg: number) => void;
   onDetonate: () => void;
@@ -352,6 +363,29 @@ export function HazardControls({
               ))}
             </select>
           </label>
+          <NeoSearch
+            onSelect={(neo) => onAsteroidChange({
+              ...asteroid,
+              diameterM: Math.min(asteroidDiameter.max, Math.max(asteroidDiameter.min, neo.diameterM)),
+              velocityKmS: Math.min(asteroidVelocity.max, Math.max(asteroidVelocity.min, neo.velocityMps / 1_000)),
+              densityKgM3: Math.min(asteroidDensity.max, Math.max(asteroidDensity.min, neo.densityKgM3)),
+            })}
+          />
+          {onToggleFireballs ? (
+            <div className="fireball-feed">
+              <button type="button" aria-pressed={showFireballs} onClick={onToggleFireballs}>
+                {showFireballs ? "Hide CNEOS fireballs" : "Show CNEOS fireballs"}
+              </button>
+              <span role="status">
+                {fireballsLoading
+                  ? "Loading located events…"
+                  : showFireballs
+                    ? `${fireballCount} located event${fireballCount === 1 ? "" : "s"} on globe`
+                    : "Off"}
+              </span>
+              {showFireballs && fireballNotice ? <p>{fireballNotice}</p> : null}
+            </div>
+          ) : null}
         </>
       )}
       </>}

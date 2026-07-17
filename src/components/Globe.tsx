@@ -26,6 +26,7 @@ import type {
 } from "../types/scenario";
 import type { EffectRing, GeoPoint } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
+import type { FireballEvent } from "../types/jpl";
 import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
@@ -129,6 +130,8 @@ type Props = {
   hazardCenter?: GeoPoint | null;
   /** Fallout plume polygons (nuclear surface bursts): closed lon/lat rings. */
   hazardPolygons?: { label: string; color: string; points: GeoPoint[] }[] | null;
+  /** Located CNEOS atmospheric events, rendered as bounded point primitives. */
+  fireballs?: FireballEvent[];
   /** Which authoritative direct-hazard frame family should render. */
   impactKind?: "asteroid" | "nuclear" | null;
   directRenderFrame: RendererNeutralFrameView | null;
@@ -266,6 +269,7 @@ export function Globe({
   hazardRings,
   hazardCenter,
   hazardPolygons,
+  fireballs = [],
   impactKind,
   directRenderFrame,
   previewCamera,
@@ -1026,6 +1030,30 @@ export function Globe({
       })),
     );
   }, [runupResults, viewerEpoch]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed() || fireballs.length === 0) return;
+    const points = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
+    for (const event of fireballs.slice(0, 80)) {
+      points.add({
+        id: `cneos-fireball:${event.id}`,
+        position: Cesium.Cartesian3.fromDegrees(event.lon, event.lat, (event.altitudeKm ?? 0) * 1_000),
+        pixelSize: Math.min(18, 6 + Math.log10(Math.max(event.impactEnergyKt, 0) + 1) * 3),
+        color: Cesium.Color.fromCssColorString(event.source === "NASA/JPL CNEOS" ? "#f9e2af" : "#fab387"),
+        outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+        outlineWidth: 1.5,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      });
+    }
+    viewer.scene.requestRender();
+    return () => {
+      if (!viewer.isDestroyed()) {
+        viewer.scene.primitives.remove(points);
+        viewer.scene.requestRender();
+      }
+    };
+  }, [fireballs, viewerEpoch]);
 
   return (
     <>

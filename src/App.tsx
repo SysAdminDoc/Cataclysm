@@ -66,6 +66,7 @@ import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
+import { useFireballs } from "./hooks/useFireballs";
 import { SimulationTransport } from "./components/SimulationTransport";
 import { LayerInspector } from "./components/LayerInspector";
 import { SourceModelSummary } from "./components/SourceModelSummary";
@@ -377,6 +378,8 @@ export default function App() {
     waterDepthM: sourceNumericDefault("DirectAsteroid", "water_depth_m"),
   });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [showFireballs, setShowFireballs] = useState(false);
+  const fireballFeed = useFireballs(hazardMode === "asteroid" && showFireballs);
   const [asteroidVisualReport, setAsteroidVisualReport] = useState<AsteroidVisualReport | null>(null);
   const [nuclearShelterReport, setNuclearShelterReport] = useState<NuclearShelterReport | null>(null);
   const [hazardError, setHazardError] = useState<string | null>(null);
@@ -1836,6 +1839,7 @@ export default function App() {
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
+                fireballs={hazardMode === "asteroid" && showFireballs ? fireballFeed.events : []}
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 directRenderFrame={directRenderFrame}
                 previewCamera={comparisonCameraA ?? (libraryPreviewPending ? libraryPreviewCamera : null)}
@@ -2006,6 +2010,11 @@ export default function App() {
             result={hazardResult}
             asteroidVisuals={asteroidVisualReport}
             shelterReport={nuclearShelterReport}
+            showFireballs={showFireballs}
+            fireballCount={fireballFeed.events.length}
+            fireballsLoading={fireballFeed.loading}
+            fireballNotice={fireballFeed.notice}
+            onToggleFireballs={() => setShowFireballs((shown) => !shown)}
             windFromDeg={windFromDeg}
             onWindChange={setWindFromDeg}
             onDetonate={() => {
@@ -2094,6 +2103,11 @@ export default function App() {
           result={hazardResult}
           asteroidVisuals={asteroidVisualReport}
           shelterReport={nuclearShelterReport}
+          showFireballs={showFireballs}
+          fireballCount={fireballFeed.events.length}
+          fireballsLoading={fireballFeed.loading}
+          fireballNotice={fireballFeed.notice}
+          onToggleFireballs={() => setShowFireballs((shown) => !shown)}
           windFromDeg={windFromDeg}
           onWindChange={setWindFromDeg}
           onDetonate={detonateActiveHazard}

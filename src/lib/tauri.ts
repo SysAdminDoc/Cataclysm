@@ -400,6 +400,9 @@ export const api = {
   asteroidResultVisuals(resultId: string) {
     return invoke<AsteroidVisualReport>("asteroid_result_visuals", { resultId });
   },
+  jplApiRequest(endpoint: "fireball" | "sbdb" | "sentry", params: Record<string, string>) {
+    return invoke<unknown>("jpl_api_request", { req: { endpoint, params } });
+  },
   simulateGrid(req: {
     source: GeoPoint;
     initial_amplitude_m: number;

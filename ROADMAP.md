@@ -15,8 +15,6 @@ AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P2 — Impact mode + data
-- **UNI-08** NEO/fireball database integration (port `services/jplApi.ts`,
-  `useFireballs`, fallback datasets) with the app's CSP allowlist.
 - **UNI-09** Port NukeMap target/weapon/city/ZIP datasets (`data/*.json`,
   `js/zipcodes.js`, 41,958 ZIPs; `js/data.js` tables) to typed JSON;
   location search + density estimation from real city table.
