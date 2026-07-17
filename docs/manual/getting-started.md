@@ -34,7 +34,7 @@ Without a token, the app uses the local Natural Earth globe by default. OpenStre
 ### Building a custom scenario
 
 1. Scroll down in the right panel to **Custom scenario**.
-2. Select a source type tab: **Asteroid**, **Nuclear**, **Earthquake**, or **Landslide**.
+2. Select a source type tab: **Asteroid**, **Nuclear**, **Earthquake**, **Landslide**, or **Meteotsunami**.
 3. Fill in the parameters. Each field has a **?** help button explaining the physics and citing the source paper.
 4. Set the location by either:
    - Clicking **Pick on globe** and clicking the map, or

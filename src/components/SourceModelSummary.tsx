@@ -33,6 +33,13 @@ function formatSource(preset: Preset | null): { type: string; magnitude: string;
       model: "Glasstone–Dolan source model",
     };
   }
+  if (source.kind === "Meteotsunami") {
+    return {
+      type: "Meteotsunami",
+      magnitude: `${source.source.peak_pressure_pa.toLocaleString()} Pa · ${source.source.speed_m_s.toFixed(1)} m/s`,
+      model: "Moving pressure-gradient source",
+    };
+  }
   return {
     type: source.source.kind === "Subaerial" ? "Subaerial landslide" : "Submarine landslide",
     magnitude: `${(source.source.volume_m3 / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 })} million m³`,

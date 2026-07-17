@@ -27,6 +27,8 @@ cargo test --release --features validation -- validation::
 | `lituya_bay_runup_in_published_band` | Fritz, Hager & Minor 2001 *Sci. Tsunami Hazards* 19:3 — Lituya Bay 1958 524 m runup record | Synolakis closed-form on the confined-fjord geometry; band [100, 2000] m | shipped v0.4.0 (F4-07) |
 | `dart_buoy_rmse_basic_math` + 3 edge cases | F4-06 — RMSE math correctness, time-bracket interpolation, out-of-range obs skip, location-bounds rejection | RMSE = 0 on identical series; offset-by-K → RMSE = K; interp midpoint; reject lat > 90° | shipped v0.4.0 |
 | `swe_gpu_matches_cpu` | F4-01 — GPU vs CPU agreement on linear-SWE leapfrog over a 17×17 flat-ocean Gaussian | < 1e-3 m max-cell deviation after 50 leapfrog steps; silently no-ops on adapter-less runners | shipped v0.4.0 |
+| `moving_pressure_source_reproduces_proudman_amplification` | NOAA NOS CO-OPS 079; NOAA/NWS Meteotsunami Guidelines (2020); Anarde et al. 2020 — moving pressure resonates as `U ≈ sqrt(gh)` | Full forced-SWE peak response at resonance exceeds both 0.25c and 2c runs by at least 15% in a uniform 100 m basin | ✅ shipped |
+| `swe_gpu_matches_cpu_with_moving_pressure_forcing` | Shared host-side pressure gradient followed by equivalent CPU/GPU hydrodynamic steps | < 1e-3 m max-cell eta deviation after 12 forced steps; skips cleanly without an adapter | ✅ shipped |
 
 ## NTHMP benchmark coverage
 

@@ -9,6 +9,7 @@ import type {
   InitialDisplacement,
   InitialSourceGeometry,
   LandslideInput,
+  MeteotsunamiInput,
   NuclearBurstInput,
   Preset,
   RunPresetResponse,
@@ -308,6 +309,9 @@ export const api = {
   earthquakeInitialConditions(input: EarthquakeInput) {
     return invoke<InitialDisplacement>("earthquake_initial_conditions", { input });
   },
+  meteotsunamiInitialConditions(input: MeteotsunamiInput) {
+    return invoke<InitialDisplacement>("meteotsunami_initial_conditions", { input });
+  },
   farFieldAmplitude(req: {
     initial_amplitude_m: number;
     cavity_radius_m: number;
@@ -422,6 +426,7 @@ export const api = {
     include_lamb_wave?: boolean;
     lamb_wave_peak_pressure_pa?: number;
     lamb_wave_source_radius_m?: number;
+    meteotsunami_forcing?: MeteotsunamiInput | null;
     colormap?: ColormapId;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
   }, runId: string = createSimulationRunId()) {
@@ -513,6 +518,7 @@ export const api = {
       include_lamb_wave?: boolean;
       lamb_wave_peak_pressure_pa?: number;
       lamb_wave_source_radius_m?: number;
+      meteotsunami_forcing?: MeteotsunamiInput | null;
       colormap?: ColormapId;
       gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
     },

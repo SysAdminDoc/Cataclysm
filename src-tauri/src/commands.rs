@@ -20,6 +20,7 @@ use crate::physics::{
     earthquake::EarthquakeSource,
     lamb_wave::{LAMB_WAVE_SPEED_M_S, LambWaveSource, proudman_resonance_depth_m},
     landslide::LandslideSource,
+    meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
     screening::{ScreeningPoint, screen_point},
     shallow_water::{
@@ -33,7 +34,7 @@ use crate::physics::{
         run_simulation_with_gauge_samples, snapshot_step_schedule,
     },
 };
-use crate::presets::{Preset, all_presets, find_preset};
+use crate::presets::{Preset, PresetSource, all_presets, find_preset};
 use tauri::{AppHandle, Emitter, Manager, ipc::Response};
 
 mod direct;
@@ -236,14 +237,20 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
         initial.center.depth_m.max(50.0)
     };
     let n_samples = req.n_samples.clamp(2, WAVEFRONT_MAX_SAMPLES);
-    let wavefront = sample_wavefront(
-        initial.peak_amplitude_m,
-        initial.cavity_radius_m,
-        alpha,
-        mean_depth_m,
-        req.time_s,
-        n_samples,
-    );
+    let wavefront = if matches!(&preset.source, PresetSource::Meteotsunami(_)) {
+        // A moving atmospheric source has no instantaneous radial wavefront;
+        // its physically meaningful product comes from the forced SWE run.
+        PropagationSnapshot { time_s: req.time_s, ranges_m: Vec::new(), amplitudes_m: Vec::new() }
+    } else {
+        sample_wavefront(
+            initial.peak_amplitude_m,
+            initial.cavity_radius_m,
+            alpha,
+            mean_depth_m,
+            req.time_s,
+            n_samples,
+        )
+    };
     Ok(RunPresetResponse {
         preset,
         initial,

@@ -141,7 +141,7 @@ Existing tools each do one piece:
   declared error budgets travel with solver height fields and exports. One
   versioned mask drives solver wet/dry cells and picked asteroid/nuclear target
   response; ambiguous coast cells preserve the operator's material choice.
-- **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide
+- **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide / Meteotsunami
   forms; click-globe-to-pick location.
 - **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
   through the live shallow-water solver, with classic or colorblind-safe

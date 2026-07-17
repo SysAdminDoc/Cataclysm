@@ -4,6 +4,7 @@ import type {
   GeoPoint,
   InitialDisplacement,
   LandslideInput,
+  MeteotsunamiInput,
   NuclearBurstInput,
   PropagationSnapshot,
 } from "../types/scenario";
@@ -25,7 +26,8 @@ export type BrowserSourceInput =
   | { kind: "Asteroid"; source: AsteroidImpactInput }
   | { kind: "Nuclear"; source: NuclearBurstInput }
   | { kind: "Earthquake"; source: EarthquakeInput }
-  | { kind: "Landslide"; source: LandslideInput };
+  | { kind: "Landslide"; source: LandslideInput }
+  | { kind: "Meteotsunami"; source: MeteotsunamiInput };
 
 export type BrowserScreeningResult = {
   range_m: number;

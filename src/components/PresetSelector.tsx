@@ -64,6 +64,8 @@ function sourceDetail(preset: Preset): string {
         : formatCompact(preset.source.source.yield_kt, 1, "kt yield") ?? "Burst model";
     case "Landslide":
       return formatCompact(preset.source.source.volume_m3, 1_000_000, "Mm³ slide") ?? "Slide model";
+    case "Meteotsunami":
+      return `${preset.source.source.peak_pressure_pa.toLocaleString()} Pa · ${preset.source.source.speed_m_s.toFixed(1)} m/s`;
   }
 }
 
@@ -81,6 +83,7 @@ function presetHighlights(preset: Preset): string[] {
     case "Landslide": return ["Slide source", "Confined wave", "Runup estimate"];
     case "Asteroid": return ["Impact source", "Basin propagation", "Coastal runup"];
     case "Nuclear": return ["Underwater source", "Wave attenuation", "Coastal arrival"];
+    case "Meteotsunami": return ["Moving pressure", "Proudman resonance", "Coastal response"];
   }
 }
 
@@ -104,6 +107,11 @@ function SourceGlyph({ kind }: { kind: Preset["source"]["kind"] }) {
           <path d="M3 19 10 7l4 7 2-3 5 8H3Z" />
           <circle cx="15.5" cy="6.5" r="1.7" />
           <path d="m18 9 2 2" />
+        </>}
+        {kind === "Meteotsunami" && <>
+          <path d="M3 9c3-3 5 3 8 0s5-3 10 0" />
+          <path d="M3 15c3-3 5 3 8 0s5-3 10 0" />
+          <path d="m17 4 3 2-3 2" />
         </>}
       </svg>
     </span>

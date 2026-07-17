@@ -139,6 +139,7 @@ impl EarthquakeSource {
             source_geometry: (self.slip_m > 0.0).then(|| InitialSourceGeometry::Okada {
                 fault: self.into(),
             }),
+            meteotsunami_forcing: None,
         }
     }
 }

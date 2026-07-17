@@ -54,6 +54,8 @@ export type InitialDisplacement = {
   /** Source-specific t=0 geometry consumed by the SWE solver. Older saved
    * responses omit it and retain the circular-Gaussian fallback. */
   source_geometry?: InitialSourceGeometry | null;
+  /** Time-dependent atmospheric-pressure source applied by the SWE solver. */
+  meteotsunami_forcing?: MeteotsunamiInput | null;
 };
 
 export type AsteroidImpactInput = {
@@ -101,11 +103,23 @@ export type EarthquakeInput = {
   location: GeoPoint;
 };
 
+export type MeteotsunamiInput = {
+  peak_pressure_pa: number;
+  speed_m_s: number;
+  heading_deg: number;
+  along_track_sigma_m: number;
+  cross_track_sigma_m: number;
+  track_length_m: number;
+  water_depth_m: number;
+  location: GeoPoint;
+};
+
 export type PresetSource =
   | { kind: "Asteroid"; source: AsteroidImpactInput }
   | { kind: "Nuclear"; source: NuclearBurstInput }
   | { kind: "Landslide"; source: LandslideInput }
-  | { kind: "Earthquake"; source: EarthquakeInput };
+  | { kind: "Earthquake"; source: EarthquakeInput }
+  | { kind: "Meteotsunami"; source: MeteotsunamiInput };
 
 export type Preset = {
   id: string;

@@ -22,6 +22,16 @@ source.
 
 ## Historical events
 
+### Lake Superior meteotsunami 2025
+
+A west-to-east storm produced a pressure-driven meteotsunami in eastern Lake
+Superior on 2025-06-21. NOAA GLERL measured a 19.3 inch rise at Point Iroquois;
+the later 45.4 inch rebound involved wind-driven surge and seiche processes.
+
+- **Source**: NOAA Great Lakes Environmental Research Laboratory, 2025-07-18
+- **Model scope**: Pressure-gradient forcing only; no wind stress or later seiche
+- **Caveat**: Representative Gaussian parameters, not a calibrated NOAA hindcast
+
 ### Chicxulub impact (66 Ma)
 
 The asteroid impact that ended the Cretaceous period. A ~14 km diameter asteroid struck the Yucatan Peninsula, generating a global mega-tsunami with initial wave heights exceeding 4.5 km.

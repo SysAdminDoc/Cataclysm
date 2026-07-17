@@ -54,6 +54,30 @@ const G = 9.81;
 
 const DEMO_PRESETS: Preset[] = [
   {
+    id: "lake_superior_meteotsunami_2025",
+    name: "Lake Superior Meteotsunami",
+    date: "2025-06-21",
+    blurb: "A west-to-east pressure disturbance over Lake Superior; NOAA GLERL measured a 19.3-inch meteotsunami rise at Point Iroquois.",
+    reference: "NOAA GLERL, June 21 2025 Storm Causes Significant Meteotsunami and Seiche on Lake Superior (2025-07-18)",
+    reference_url: "https://www.glerl.noaa.gov/blog/2025/07/18/june-21-2025-storm-causes-significant-meteotsunami-and-seiche-on-lake-superior/",
+    is_speculative: true,
+    controversy_note: "Educational pressure-only reconstruction: representative parameters, not a calibrated NOAA hindcast.",
+    camera_view: { heading_deg: 90, pitch_deg: -60, range_m: 900_000 },
+    source: {
+      kind: "Meteotsunami",
+      source: {
+        peak_pressure_pa: 300,
+        speed_m_s: 39,
+        heading_deg: 90,
+        along_track_sigma_m: 40_000,
+        cross_track_sigma_m: 120_000,
+        track_length_m: 560_000,
+        water_depth_m: 155,
+        location: { lat_deg: 47.1, lon_deg: -92.1, depth_m: 155 },
+      },
+    },
+  },
+  {
     id: "chicxulub",
     name: "Chicxulub Impact",
     date: "66 Ma",
@@ -310,14 +334,16 @@ export async function runDemoPreset(presetId: string, timeS: number): Promise<Ru
   const initial = await browserInitial(preset.source);
   initial.camera_view = preset.camera_view;
   const meanDepthM = Math.max(initial.center.depth_m ?? 0, 50);
-  const wavefront = await browserWavefront({
-    initial_amplitude_m: initial.peak_amplitude_m,
-    cavity_radius_m: initial.cavity_radius_m,
-    decay_alpha: preset.source.kind === "Asteroid" ? 5 / 6 : 0.5,
-    mean_depth_m: meanDepthM,
-    time_s: timeS,
-    n_samples: 48,
-  });
+  const wavefront = preset.source.kind === "Meteotsunami"
+    ? { time_s: timeS, ranges_m: [], amplitudes_m: [] }
+    : await browserWavefront({
+        initial_amplitude_m: initial.peak_amplitude_m,
+        cavity_radius_m: initial.cavity_radius_m,
+        decay_alpha: preset.source.kind === "Asteroid" ? 5 / 6 : 0.5,
+        mean_depth_m: meanDepthM,
+        time_s: timeS,
+        n_samples: 48,
+      });
   return {
     preset,
     initial,
@@ -580,7 +606,10 @@ function makeDemoSnapshot(
   const img = ctx.createImageData(nx, ny);
   const progress = Math.max(0.05, timeS / 3600);
   const ring = Math.min(0.78, 0.08 + progress * 0.68);
-  const amp = Math.max(1, Math.min(160, initial.peak_amplitude_m));
+  const forcing = initial.meteotsunami_forcing;
+  const amp = forcing
+    ? Math.max(0.001, initial.peak_amplitude_m)
+    : Math.max(1, Math.min(160, initial.peak_amplitude_m));
   let etaMin = Infinity;
   let etaMax = -Infinity;
 
@@ -589,10 +618,33 @@ function makeDemoSnapshot(
       const dx = (x + 0.5) / nx - 0.5;
       const dy = (y + 0.5) / ny - 0.5;
       const r = Math.sqrt(dx * dx + dy * dy) * 2;
-      const crest = Math.exp(-((r - ring) ** 2) / 0.0016);
-      const trough = Math.exp(-((r - ring * 0.76) ** 2) / 0.0022);
-      const lamb = includeLambWave ? Math.exp(-((r - ring * 1.12) ** 2) / 0.004) * 0.28 : 0;
-      const eta = amp * (crest - trough * 0.42 + lamb) * (1 - r * 0.35);
+      let eta: number;
+      if (forcing) {
+        const widthM = 2 * boxHalfSizeDeg * 111_320;
+        const eastM = dx * widthM * Math.cos(initial.center.lat_deg * Math.PI / 180);
+        const northM = -dy * widthM;
+        const heading = forcing.heading_deg * Math.PI / 180;
+        const travelledM = Math.min(forcing.track_length_m, forcing.speed_m_s * timeS);
+        const alongM = eastM * Math.sin(heading) + northM * Math.cos(heading) - travelledM;
+        const acrossM = eastM * Math.cos(heading) - northM * Math.sin(heading);
+        const footprint = Math.exp(-0.5 * (
+          (alongM / forcing.along_track_sigma_m) ** 2
+          + (acrossM / forcing.cross_track_sigma_m) ** 2
+        ));
+        const wake = Math.exp(-0.5 * (
+          ((alongM + 2.2 * forcing.along_track_sigma_m) / forcing.along_track_sigma_m) ** 2
+          + (acrossM / forcing.cross_track_sigma_m) ** 2
+        ));
+        // Illustrative browser playback: inverted-barometer depression plus a
+        // small trailing free-wave crest. The desktop uses the actual SWE
+        // pressure-gradient source and remains the quantitative path.
+        eta = amp * (-footprint + 0.65 * wake);
+      } else {
+        const crest = Math.exp(-((r - ring) ** 2) / 0.0016);
+        const trough = Math.exp(-((r - ring * 0.76) ** 2) / 0.0022);
+        const lamb = includeLambWave ? Math.exp(-((r - ring * 1.12) ** 2) / 0.004) * 0.28 : 0;
+        eta = amp * (crest - trough * 0.42 + lamb) * (1 - r * 0.35);
+      }
       etaMin = Math.min(etaMin, eta);
       etaMax = Math.max(etaMax, eta);
       const px = (y * nx + x) * 4;

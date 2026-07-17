@@ -12,9 +12,9 @@ import { type AsyncResult } from "../lib/async-result";
 import { buildOutcomeEvidence } from "../lib/trust-evidence";
 import { TrustDisclosure } from "./TrustDisclosure";
 
-/** The four modelled tsunami source families. `null` covers presets/custom
+/** The modelled tsunami source families. `null` covers presets/custom
  * scenarios whose discrete kind is not known to the caller. */
-export type SourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
+export type SourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | null;
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -44,6 +44,8 @@ function cavityLabel(kind: SourceKind): { term: string; text: string } {
     case "Earthquake":
     case "Landslide":
       return { term: "cavity_radius", text: "Source region radius" };
+    case "Meteotsunami":
+      return { term: "cavity_radius", text: "Pressure footprint radius" };
     default:
       return { term: "cavity_radius", text: "Cavity radius" };
   }
@@ -78,6 +80,11 @@ function describeOutcome(
       return {
         headline: "Landslide-generated wave",
         detail: `The moving mass pushes up a ${ampText} initial wave, releasing about ${energyText} (tsunami-equivalent M ${mw}).`,
+      };
+    case "Meteotsunami":
+      return {
+        headline: "Atmospheric-pressure-driven wave",
+        detail: `A translating pressure anomaly forces the water column continuously. The ${ampText} value is its inverted-barometer source scale; resonance and bathymetry determine the simulated wave.`,
       };
     default:
       return {

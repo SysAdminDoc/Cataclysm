@@ -7,6 +7,7 @@ use crate::physics::{
     asteroid::AsteroidImpact,
     earthquake::EarthquakeSource,
     landslide::LandslideSource,
+    meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
     CameraView, GeoPoint, InitialDisplacement,
 };
@@ -18,6 +19,7 @@ pub enum PresetSource {
     Earthquake(EarthquakeSource),
     Landslide(LandslideSource),
     Nuclear(NuclearBurst),
+    Meteotsunami(MeteotsunamiSource),
 }
 
 impl PresetSource {
@@ -27,6 +29,7 @@ impl PresetSource {
             Self::Earthquake(e) => e.initial_displacement(),
             Self::Landslide(l) => l.initial_displacement(),
             Self::Nuclear(n) => n.initial_displacement(),
+            Self::Meteotsunami(m) => m.initial_displacement(),
         }
     }
 
@@ -68,6 +71,27 @@ pub struct Preset {
 /// All built-in presets. IDs are stable; the frontend keys off them.
 pub fn all_presets() -> Vec<Preset> {
     vec![
+        Preset {
+            id: "lake_superior_meteotsunami_2025",
+            name: "Lake Superior Meteotsunami",
+            date: "2025-06-21",
+            blurb: "A west-to-east moving pressure disturbance generates a meteotsunami across Lake Superior. NOAA GLERL measured a 19.3-inch meteotsunami rise at Point Iroquois; the later 45.4-inch rebound combined wind-driven surge and seiche processes that this pressure-only source does not model.",
+            reference: "NOAA GLERL, June 21 2025 Storm Causes Significant Meteotsunami and Seiche on Lake Superior (2025-07-18)",
+            reference_url: Some("https://www.glerl.noaa.gov/blog/2025/07/18/june-21-2025-storm-causes-significant-meteotsunami-and-seiche-on-lake-superior/"),
+            is_speculative: true,
+            controversy_note: Some("Educational pressure-only reconstruction: the 300 Pa Gaussian and 39 m/s translation are representative parameters inferred from the reported west-to-east four-hour crossing, not a calibrated NOAA hindcast."),
+            camera_view: Some(CameraView { heading_deg: 90.0, pitch_deg: -60.0, range_m: 900_000.0 }),
+            source: PresetSource::Meteotsunami(MeteotsunamiSource {
+                peak_pressure_pa: 300.0,
+                speed_m_s: 39.0,
+                heading_deg: 90.0,
+                along_track_sigma_m: 40_000.0,
+                cross_track_sigma_m: 120_000.0,
+                track_length_m: 560_000.0,
+                water_depth_m: 155.0,
+                location: GeoPoint { lat_deg: 47.1, lon_deg: -92.1, depth_m: 155.0 },
+            }),
+        },
         Preset {
             id: "chicxulub",
             name: "Chicxulub Impact",
@@ -548,6 +572,15 @@ mod tests {
                     assert!(l.water_depth_m > 0.0, "{id}: water_depth");
                     assert!(l.water_body_width_m > 0.0, "{id}: water_body_width");
                 }
+                PresetSource::Meteotsunami(m) => {
+                    assert!(m.peak_pressure_pa > 0.0, "{id}: pressure");
+                    assert!(m.speed_m_s > 0.0, "{id}: speed");
+                    assert!((0.0..360.0).contains(&m.heading_deg), "{id}: heading");
+                    assert!(m.along_track_sigma_m > 0.0, "{id}: along-track sigma");
+                    assert!(m.cross_track_sigma_m > 0.0, "{id}: cross-track sigma");
+                    assert!(m.track_length_m > 0.0, "{id}: track length");
+                    assert!(m.water_depth_m >= 50.0, "{id}: water depth");
+                }
             }
             // Location domain matches check_lat_lon (lat ±90, lon ±180).
             let loc = match &p.source {
@@ -555,6 +588,7 @@ mod tests {
                 PresetSource::Nuclear(n) => n.location,
                 PresetSource::Earthquake(e) => e.location,
                 PresetSource::Landslide(l) => l.location,
+                PresetSource::Meteotsunami(m) => m.location,
             };
             assert!(loc.lat_deg.abs() <= 90.0, "{id}: lat {}", loc.lat_deg);
             assert!(loc.lon_deg.abs() <= 180.0, "{id}: lon {}", loc.lon_deg);

@@ -5,6 +5,7 @@
 //! - [`nuclear`]  — Glasstone & Dolan 1977 + Le Méhauté 1996 + DNA 1996 efficiency.
 //! - [`landslide`] — Fritz & Hager 2001 (Lituya); Slingerland & Voight.
 //! - [`earthquake`] — Okada 1985 fault dislocation (see [`okada`]).
+//! - [`meteotsunami`] — translating atmospheric-pressure gradient forcing.
 //!
 //! ## Propagation + runup
 //! - [`shallow_water`] — linear long-wave dispersion, Synolakis 1987 runup,
@@ -26,6 +27,7 @@ pub mod earthquake;
 pub mod okada;
 #[cfg(not(feature = "browser-wasm"))]
 pub mod lamb_wave;
+pub mod meteotsunami;
 pub mod screening;
 pub mod shallow_water;
 #[cfg(not(feature = "browser-wasm"))]
@@ -133,4 +135,8 @@ pub struct InitialDisplacement {
     /// fall back to the legacy circular Gaussian.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_geometry: Option<InitialSourceGeometry>,
+    /// Optional translating atmospheric-pressure source consumed at every SWE
+    /// solver step. Older responses omit it and retain displacement-only runs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meteotsunami_forcing: Option<meteotsunami::MeteotsunamiSource>,
 }

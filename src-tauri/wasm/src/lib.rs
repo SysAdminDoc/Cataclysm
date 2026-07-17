@@ -18,6 +18,7 @@ use physics::{
     asteroid::AsteroidImpact,
     earthquake::EarthquakeSource,
     landslide::LandslideSource,
+    meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
     screening::{ScreeningPoint, attenuation_curve, screen_point},
     shallow_water::sample_wavefront,
@@ -30,6 +31,7 @@ enum SourceInput {
     Nuclear { source: NuclearBurst },
     Earthquake { source: EarthquakeSource },
     Landslide { source: LandslideSource },
+    Meteotsunami { source: MeteotsunamiSource },
 }
 
 impl SourceInput {
@@ -39,6 +41,7 @@ impl SourceInput {
             Self::Nuclear { source } => source.initial_displacement(),
             Self::Earthquake { source } => source.initial_displacement(),
             Self::Landslide { source } => source.initial_displacement(),
+            Self::Meteotsunami { source } => source.initial_displacement(),
         }
     }
 }

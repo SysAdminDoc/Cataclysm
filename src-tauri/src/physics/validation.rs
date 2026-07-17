@@ -588,3 +588,61 @@ fn impact_overpressure_and_wind_match_collins_melosh_marcus() {
     // Zero overpressure ⇒ still air.
     assert_eq!(peak_wind_velocity_m_s(0.0), 0.0);
 }
+
+/// **Proudman resonance for a translating pressure disturbance.** A Gaussian
+/// atmospheric pressure source crossing a uniform 100 m basin must transfer
+/// more energy into the water when its translation speed matches the long-wave
+/// celerity `sqrt(g h)` than when it travels well below or above that speed.
+///
+/// References: NOAA NOS CO-OPS 079; NOAA/NWS Meteotsunami Guidelines and Best
+/// Practices (2020); Anarde et al. 2020, doi:10.1029/2020JC016347.
+#[test]
+fn moving_pressure_source_reproduces_proudman_amplification() {
+    use super::{GeoPoint, meteotsunami::MeteotsunamiSource};
+    use super::constants::G_EARTH;
+    use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
+
+    fn peak_response(speed_m_s: f64) -> f64 {
+        let depth_m = 100.0;
+        let mut grid = SwGrid::new(-1.8, -0.3, 1.8, 0.3, 0.03, 0.1);
+        grid.fill_uniform_depth(depth_m);
+        let source = MeteotsunamiSource {
+            peak_pressure_pa: 300.0,
+            speed_m_s,
+            heading_deg: 90.0,
+            along_track_sigma_m: 20_000.0,
+            cross_track_sigma_m: 80_000.0,
+            track_length_m: 300_000.0,
+            water_depth_m: depth_m,
+            location: GeoPoint {
+                lat_deg: 0.0,
+                lon_deg: -1.4,
+                depth_m,
+            },
+        };
+        let dt_s = grid.recommended_dt_s(0.35);
+        let mut stepper = TimeStepper::new(dt_s)
+            .with_boundary(BoundaryMode::ZeroFlux)
+            .with_mode(SolverMode::Linear);
+        stepper.manning_n = 0.0;
+        let end_s = 12_000.0;
+        let mut peak = 0.0_f64;
+        while grid.t_s < end_s {
+            let midpoint_s = grid.t_s + 0.5 * dt_s;
+            source.apply_pressure_gradient(&mut grid, midpoint_s, dt_s);
+            stepper.step_one(&mut grid);
+            peak = grid.eta_m.iter().fold(peak, |value, eta| value.max(eta.abs()));
+        }
+        peak
+    }
+
+    let resonant_speed = (G_EARTH * 100.0_f64).sqrt();
+    let resonant = peak_response(resonant_speed);
+    let subcritical = peak_response(0.25 * resonant_speed);
+    let supercritical = peak_response(2.0 * resonant_speed);
+    let strongest_off_resonance = subcritical.max(supercritical);
+    assert!(
+        resonant > 1.15 * strongest_off_resonance,
+        "resonant response {resonant:.6} m was not at least 15% above off-resonance responses {subcritical:.6}/{supercritical:.6} m",
+    );
+}

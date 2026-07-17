@@ -108,6 +108,7 @@ function initialIdentity(initial: InitialDisplacement | null): string | null {
     initial.cavity_radius_m,
     initial.source_energy_j,
     initial.source_geometry ?? null,
+    initial.meteotsunami_forcing ?? null,
   ]);
 }
 
@@ -270,6 +271,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       onRunQuality?.(null);
       onScientificExport?.(null, null);
       onRenderFrame?.(null);
+      // The bundled coarse bathymetry represents inland water at a nominal
+      // 50 m and cannot reproduce Lake Superior's resonant depth. Start
+      // moving-pressure scenarios on their declared uniform depth; users can
+      // still select an imported high-resolution bathymetry asset explicitly.
+      if (initial?.meteotsunami_forcing) setUseBathy(false);
     }
   }, [initial, onSnapshot, onSnapshotsReady, onGaugesChange, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
 
@@ -476,6 +482,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         t_end_s: 60 * 60,
         n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
+        meteotsunami_forcing: initial.meteotsunami_forcing ?? null,
         colormap,
         gauge_points: [
           ...gauges.map((g) => ({

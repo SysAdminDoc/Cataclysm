@@ -13,6 +13,7 @@ import {
   INITIAL_ASTEROID,
   INITIAL_EARTHQUAKE,
   INITIAL_LANDSLIDE,
+  INITIAL_METEOTSUNAMI,
   INITIAL_NUCLEAR,
   parseScenarioPayload,
   SCENARIO_BOUNDS as BOUNDS,
@@ -24,6 +25,7 @@ import type {
   AsteroidImpactInput,
   EarthquakeInput,
   LandslideInput,
+  MeteotsunamiInput,
   NuclearBurstInput,
 } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
@@ -39,7 +41,7 @@ type Props = {
   pickActive: boolean;
 };
 
-type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide";
+type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide" | "meteotsunami";
 type InlineStatus = {
   text: string;
   tone: "info" | "success" | "error";
@@ -51,6 +53,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "nuclear", label: "Nuclear" },
   { key: "earthquake", label: "Earthquake" },
   { key: "landslide", label: "Landslide" },
+  { key: "meteotsunami", label: "Meteotsunami" },
 ];
 
 const TAB_DESCRIPTIONS: Record<TabKey, string> = {
@@ -58,6 +61,7 @@ const TAB_DESCRIPTIONS: Record<TabKey, string> = {
   nuclear: "Underwater and surface burst coupling with yield and depth controls.",
   earthquake: "Fault-source parameters for Okada-style seafloor displacement.",
   landslide: "Subaerial and submarine slide source geometry for confined or open water.",
+  meteotsunami: "A moving atmospheric-pressure anomaly that forces the water column throughout its track.",
 };
 
 const PARAM_HELP: Record<string, string> = {
@@ -80,6 +84,12 @@ const PARAM_HELP: Record<string, string> = {
   drop_height_m: "Vertical fall of the slide mass centre. Fritz & Hager 2001.",
   slope_deg: "Slope angle of the failure surface. Steeper = faster slide. Slingerland & Voight.",
   water_body_width_m: "Width of the receiving water body. Constrains 2D channel geometry.",
+  peak_pressure_pa: "Peak surface-pressure anomaly. NOAA guidance reports known meteotsunami sources commonly below 500 Pa.",
+  speed_m_s: "Translation speed. Proudman amplification peaks when this matches the long-wave speed √(gh).",
+  heading_deg: "Direction of pressure-centre travel clockwise from true north.",
+  along_track_sigma_m: "One-standard-deviation length of the Gaussian pressure footprint along its track.",
+  cross_track_sigma_m: "One-standard-deviation width of the Gaussian pressure footprint across its track.",
+  track_length_m: "Distance over which the atmospheric pressure source remains active.",
   lat_deg: "Source latitude (−90° to 90°).",
   lon_deg: "Source longitude (−180° to 180°).",
 };
@@ -88,6 +98,7 @@ const SLIDER_FIELDS = new Set([
   "diameter_m", "density_kg_m3", "velocity_m_s", "angle_deg",
   "water_depth_m", "yield_kt", "burst_depth_m", "mw",
   "dip_deg", "slope_deg", "drop_height_m", "slip_m",
+  "peak_pressure_pa", "speed_m_s", "heading_deg",
 ]);
 
 function clamp(field: string, v: number): number {
@@ -150,6 +161,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [nuclear, setNuclear] = useState(INITIAL_NUCLEAR);
   const [earthquake, setEarthquake] = useState(INITIAL_EARTHQUAKE);
   const [landslide, setLandslide] = useState(INITIAL_LANDSLIDE);
+  const [meteotsunami, setMeteotsunami] = useState(INITIAL_METEOTSUNAMI);
   const [subductionNote, setSubductionNote] = useState<InlineStatus | null>(null);
   const [importProvenance, setImportProvenance] = useState<string | null>(null);
   const burstModes = sourceEnumValues("Nuclear", "burst_mode", true);
@@ -169,7 +181,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     if (tab === "asteroid") setAsteroid((s) => ({ ...s, location: { ...s.location, ...loc } }));
     else if (tab === "nuclear") setNuclear((s) => ({ ...s, location: { ...s.location, ...loc } }));
     else if (tab === "earthquake") setEarthquake((s) => ({ ...s, location: { ...s.location, ...loc } }));
-    else setLandslide((s) => ({ ...s, location: { ...s.location, ...loc } }));
+    else if (tab === "landslide") setLandslide((s) => ({ ...s, location: { ...s.location, ...loc } }));
+    else setMeteotsunami((s) => ({ ...s, location: { ...s.location, ...loc } }));
   }, [pickedLocation, tab]);
 
   // Auto-fill Okada fault orientation from the nearest mapped subduction zone
@@ -244,7 +257,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     return tab === "asteroid" ? { kind: "Asteroid", source: asteroid }
       : tab === "nuclear" ? { kind: "Nuclear", source: nuclear }
       : tab === "earthquake" ? { kind: "Earthquake", source: earthquake }
-      : { kind: "Landslide", source: landslide };
+      : tab === "landslide" ? { kind: "Landslide", source: landslide }
+      : { kind: "Meteotsunami", source: meteotsunami };
   }
 
   function applyScenario(data: ScenarioInput) {
@@ -258,9 +272,12 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     } else if (data.kind === "Earthquake") {
       setTab("earthquake");
       setEarthquake(data.source);
-    } else {
+    } else if (data.kind === "Landslide") {
       setTab("landslide");
       setLandslide(data.source);
+    } else {
+      setTab("meteotsunami");
+      setMeteotsunami(data.source);
     }
   }
 
@@ -342,7 +359,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     if (tab === "asteroid") onSimulate({ kind: "Asteroid", source: asteroid });
     else if (tab === "nuclear") onSimulate({ kind: "Nuclear", source: nuclear });
     else if (tab === "earthquake") onSimulate({ kind: "Earthquake", source: earthquake });
-    else onSimulate({ kind: "Landslide", source: landslide });
+    else if (tab === "landslide") onSimulate({ kind: "Landslide", source: landslide });
+    else onSimulate({ kind: "Meteotsunami", source: meteotsunami });
   }
 
   function copyScenario() {
@@ -539,22 +557,42 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
               onChange={(v) => setLandslide({ ...landslide, water_body_width_m: v })} />
           </>
         )}
+        {tab === "meteotsunami" && (
+          <>
+            <div className="scenario-form__import-provenance" role="note">
+              <strong>Time-dependent source</strong>
+              <p>The SWE solver starts from a flat surface and applies the atmospheric pressure gradient at every step. Wind stress and later basin seiche are not included.</p>
+            </div>
+            <NumField field="peak_pressure_pa" label="Peak pressure anomaly (Pa)" value={meteotsunami.peak_pressure_pa}
+              onChange={(v) => setMeteotsunami({ ...meteotsunami, peak_pressure_pa: v })} />
+            <NumField field="speed_m_s" label="Disturbance speed (m/s)" value={meteotsunami.speed_m_s} step={0.1}
+              onChange={(v) => setMeteotsunami({ ...meteotsunami, speed_m_s: v })} />
+            <NumField field="heading_deg" label="Track heading (°)" value={meteotsunami.heading_deg} step={1}
+              onChange={(v) => setMeteotsunami({ ...meteotsunami, heading_deg: v })} />
+            <NumField field="along_track_sigma_m" label="Along-track width, 1σ (m)" value={meteotsunami.along_track_sigma_m}
+              onChange={(v) => setMeteotsunami({ ...meteotsunami, along_track_sigma_m: v })} />
+            <NumField field="cross_track_sigma_m" label="Cross-track width, 1σ (m)" value={meteotsunami.cross_track_sigma_m}
+              onChange={(v) => setMeteotsunami({ ...meteotsunami, cross_track_sigma_m: v })} />
+            <NumField field="track_length_m" label="Active track length (m)" value={meteotsunami.track_length_m}
+              onChange={(v) => setMeteotsunami({ ...meteotsunami, track_length_m: v })} />
+          </>
+        )}
 
         <NumField field="lat_deg" label="Latitude (°)"
-          value={currentLat({ tab, asteroid, nuclear, earthquake, landslide })}
+          value={currentLat({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
           onChange={(v) =>
-            applyLocation(v, "lat", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide })
+            applyLocation(v, "lat", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
           } />
         <NumField field="lon_deg" label="Longitude (°)"
-          value={currentLon({ tab, asteroid, nuclear, earthquake, landslide })}
+          value={currentLon({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
           onChange={(v) =>
-            applyLocation(v, "lon", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide })
+            applyLocation(v, "lon", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
           } />
         <NumField field="water_depth_m" label="Water depth (m)"
-          bounds={sourceBound(tab === "asteroid" ? "Asteroid" : tab === "nuclear" ? "Nuclear" : tab === "earthquake" ? "Earthquake" : "Landslide", "water_depth_m")}
-          value={currentDepth({ tab, asteroid, nuclear, earthquake, landslide })}
+          bounds={sourceBound(tab === "asteroid" ? "Asteroid" : tab === "nuclear" ? "Nuclear" : tab === "earthquake" ? "Earthquake" : tab === "landslide" ? "Landslide" : "Meteotsunami", "water_depth_m")}
+          value={currentDepth({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
           onChange={(v) =>
-            applyDepth(v, { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide })
+            applyDepth(v, { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
           } />
 
         <div className="scenario-form__actions">
@@ -667,42 +705,49 @@ type Bundle = {
   nuclear: NuclearBurstInput;
   earthquake: EarthquakeInput;
   landslide: LandslideInput;
+  meteotsunami: MeteotsunamiInput;
 };
 type SetBundle = Bundle & {
   setAsteroid: (s: AsteroidImpactInput) => void;
   setNuclear: (s: NuclearBurstInput) => void;
   setEarthquake: (s: EarthquakeInput) => void;
   setLandslide: (s: LandslideInput) => void;
+  setMeteotsunami: (s: MeteotsunamiInput) => void;
 };
 
 function currentLat(b: Bundle): number {
   return b.tab === "asteroid" ? b.asteroid.location.lat_deg
        : b.tab === "nuclear" ? b.nuclear.location.lat_deg
        : b.tab === "earthquake" ? b.earthquake.location.lat_deg
-       : b.landslide.location.lat_deg;
+       : b.tab === "landslide" ? b.landslide.location.lat_deg
+       : b.meteotsunami.location.lat_deg;
 }
 function currentLon(b: Bundle): number {
   return b.tab === "asteroid" ? b.asteroid.location.lon_deg
        : b.tab === "nuclear" ? b.nuclear.location.lon_deg
        : b.tab === "earthquake" ? b.earthquake.location.lon_deg
-       : b.landslide.location.lon_deg;
+       : b.tab === "landslide" ? b.landslide.location.lon_deg
+       : b.meteotsunami.location.lon_deg;
 }
 function currentDepth(b: Bundle): number {
   return b.tab === "asteroid" ? b.asteroid.water_depth_m
        : b.tab === "nuclear" ? b.nuclear.water_depth_m
        : b.tab === "earthquake" ? b.earthquake.water_depth_m
-       : b.landslide.water_depth_m;
+       : b.tab === "landslide" ? b.landslide.water_depth_m
+       : b.meteotsunami.water_depth_m;
 }
 function applyLocation(v: number, axis: "lat" | "lon", b: SetBundle) {
   const key = axis === "lat" ? "lat_deg" : "lon_deg";
   if (b.tab === "asteroid") b.setAsteroid({ ...b.asteroid, location: { ...b.asteroid.location, [key]: v } });
   else if (b.tab === "nuclear") b.setNuclear({ ...b.nuclear, location: { ...b.nuclear.location, [key]: v } });
   else if (b.tab === "earthquake") b.setEarthquake({ ...b.earthquake, location: { ...b.earthquake.location, [key]: v } });
-  else b.setLandslide({ ...b.landslide, location: { ...b.landslide.location, [key]: v } });
+  else if (b.tab === "landslide") b.setLandslide({ ...b.landslide, location: { ...b.landslide.location, [key]: v } });
+  else b.setMeteotsunami({ ...b.meteotsunami, location: { ...b.meteotsunami.location, [key]: v } });
 }
 function applyDepth(v: number, b: SetBundle) {
   if (b.tab === "asteroid") b.setAsteroid({ ...b.asteroid, water_depth_m: v, location: { ...b.asteroid.location, depth_m: v } });
   else if (b.tab === "nuclear") b.setNuclear({ ...b.nuclear, water_depth_m: v, location: { ...b.nuclear.location, depth_m: v } });
   else if (b.tab === "earthquake") b.setEarthquake({ ...b.earthquake, water_depth_m: v, location: { ...b.earthquake.location, depth_m: v } });
-  else b.setLandslide({ ...b.landslide, water_depth_m: v, location: { ...b.landslide.location, depth_m: v } });
+  else if (b.tab === "landslide") b.setLandslide({ ...b.landslide, water_depth_m: v, location: { ...b.landslide.location, depth_m: v } });
+  else b.setMeteotsunami({ ...b.meteotsunami, water_depth_m: v, location: { ...b.meteotsunami.location, depth_m: v } });
 }

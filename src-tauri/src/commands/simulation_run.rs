@@ -95,10 +95,12 @@ pub async fn simulate_grid(
         // Vulkan, etc.). The finite-volume kernel has CPU/GPU parity for
         // both linear and nonlinear transport; live runs request nonlinear
         // mode on either backend.
-        let quality_baseline = QualityBaseline::capture(
-            &grid,
-            crate::physics::solver::BoundaryMode::default_sponge(),
-        );
+        let boundary = crate::physics::solver::BoundaryMode::default_sponge();
+        let quality_baseline = if req.meteotsunami_forcing.is_some() {
+            QualityBaseline::capture_with_external_forcing(&grid, boundary)
+        } else {
+            QualityBaseline::capture(&grid, boundary)
+        };
         let admission_quality = quality_baseline.assess(&grid, dt);
         if let Some(failure) = &admission_quality.failure {
             publish_run_quality(&admission_quality);
@@ -113,6 +115,7 @@ pub async fn simulate_grid(
             Some(&diagnostics),
             &req.gauge_points,
             MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m),
+            req.meteotsunami_forcing.as_ref(),
         );
         let run_quality = quality_baseline.assess(&grid, dt);
         publish_run_quality(&run_quality);

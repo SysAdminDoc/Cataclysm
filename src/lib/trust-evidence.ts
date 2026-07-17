@@ -63,6 +63,11 @@ const SOURCE_MODELS: Record<NonNullable<ScenarioKind>, {
     assumptions: ["Slide volume, slope, density, and drop geometry control the initial impulse.", "Subaerial and submarine slides use distinct empirical source relations."],
     citation: "Fritz, Hager & Minor 2001; Heller & Hager 2010; Watts et al. 2005",
   },
+  Meteotsunami: {
+    model: "Translating Gaussian atmospheric-pressure forcing",
+    assumptions: ["The pressure gradient is applied to depth-averaged momentum at every solver step.", "The source follows a straight, constant-speed finite track; wind stress and later seiche response are excluded."],
+    citation: "NOAA NOS CO-OPS 079; Anarde et al. 2020, doi:10.1029/2020JC016347",
+  },
 };
 
 function contextId(preset: Preset | null, initial?: InitialDisplacement | null): string {

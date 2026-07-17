@@ -163,6 +163,7 @@ impl NuclearBurst {
                 rim_radius_m: r_c,
                 rim_width_m: (0.2 * r_c).max(1.0),
             }),
+            meteotsunami_forcing: None,
         }
     }
 }

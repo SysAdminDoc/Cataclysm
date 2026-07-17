@@ -3,6 +3,7 @@ import {
   INITIAL_ASTEROID,
   INITIAL_EARTHQUAKE,
   INITIAL_LANDSLIDE,
+  INITIAL_METEOTSUNAMI,
   INITIAL_NUCLEAR,
   SCENARIO_SCHEMA_VERSION,
   parseScenarioPayload,
@@ -52,6 +53,14 @@ describe("scenario schema", () => {
     }]);
     expect(parsed.payload.schemaVersion).toBe(SCENARIO_SCHEMA_VERSION);
     expect(parsed.scenario.kind).toBe("Nuclear");
+  });
+
+  it("round-trips moving-pressure scenarios through share URLs", () => {
+    const input = { kind: "Meteotsunami" as const, source: INITIAL_METEOTSUNAMI };
+    const restored = scenarioFromUrl(scenarioToUrlParams(null, input));
+    expect(restored.type).toBe("scenario");
+    if (restored.type !== "scenario") return;
+    expect(restored.scenario).toEqual(input);
   });
 
   it("defaults legacy earthquake fault dimensions when they are absent", () => {

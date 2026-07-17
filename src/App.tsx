@@ -2350,6 +2350,7 @@ export default function App() {
             isImpact={activeScenarioKindA === "Asteroid"}
             timeS={timeS}
             runupResults={slotA.runupResults}
+            movingPressure={activeScenarioKindA === "Meteotsunami"}
           />}
           validationContent={<DartOverlay
             presetId={slotA.activePresetId}
@@ -2375,6 +2376,7 @@ export default function App() {
                 isImpact={activeScenarioKindB === "Asteroid"}
                 timeS={timeS}
                 runupResults={slotB.runupResults}
+                movingPressure={activeScenarioKindB === "Meteotsunami"}
               />}
               validationContent={<DartOverlay
                 presetId={slotB.activePresetId}

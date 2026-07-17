@@ -994,11 +994,29 @@ impl TimeStepper {
         baseline: &quality::QualityBaseline,
         observe: &mut dyn FnMut(&SwGrid),
     ) -> Result<bool, quality::RunQualityRecord> {
+        self.step_cancellable_checked_forced(grid, n_steps, cancel, baseline, None, observe)
+    }
+
+    /// Checked stepping with an optional time-dependent atmospheric-pressure
+    /// source. The forcing is evaluated at each step midpoint before the
+    /// finite-volume update, matching the per-dispatch GPU integration path.
+    pub fn step_cancellable_checked_forced(
+        &self,
+        grid: &mut SwGrid,
+        n_steps: usize,
+        cancel: Option<&AtomicBool>,
+        baseline: &quality::QualityBaseline,
+        forcing: Option<&super::meteotsunami::MeteotsunamiSource>,
+        observe: &mut dyn FnMut(&SwGrid),
+    ) -> Result<bool, quality::RunQualityRecord> {
         let n = grid.nx * grid.ny;
         let mut scratch = SolverScratch::new(n);
         for _ in 0..n_steps {
             if cancel.is_some_and(|c| c.load(Ordering::Acquire)) {
                 return Ok(false);
+            }
+            if let Some(source) = forcing {
+                source.apply_pressure_gradient(grid, grid.t_s + 0.5 * self.dt_s, self.dt_s);
             }
             self.step_one_with_scratch(grid, &mut scratch);
             let mut quality = baseline.assess(grid, self.dt_s);

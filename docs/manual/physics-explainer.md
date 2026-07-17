@@ -4,12 +4,13 @@ TsunamiSimulator models three stages of a tsunami: generation (source), propagat
 
 ## Stage 1: Source generation
 
-Each source type computes an **initial water-surface displacement** — the shape and size of the cavity or uplift that the event creates in the ocean surface.
+Most source types compute an **initial water-surface displacement** — the shape and size of the cavity or uplift that the event creates in the ocean surface. Meteotsunamis instead force momentum continuously during the run.
 
 - **Asteroid impacts** use the Ward & Asphaug 2000 scaling to compute cavity diameter and depth from impactor size, speed, and water depth. The cavity is parabolic with depth ≈ diameter / 2.83.
 - **Nuclear detonations** use Glasstone & Dolan 1977 cavity radius scaling with Le Méhauté 1996 wave generation efficiency (~5% of total yield couples to water waves).
 - **Earthquakes** use the Okada 1985 elastic half-space solution to compute vertical seafloor displacement from fault geometry (strike, dip, rake, slip, dimensions).
 - **Landslides** use Fritz & Hager 2001 (subaerial) or Watts et al. 2005 (submarine) empirical scaling.
+- **Meteotsunamis** apply `-(1/rho_w) grad(p_a)` at every SWE step for a translating Gaussian pressure anomaly; Proudman amplification occurs near `U = sqrt(gh)`.
 
 ## Stage 2: Propagation
 
@@ -62,7 +63,7 @@ This is sampled at 79 named coastal points worldwide. Current beach slopes are l
 | Arrival times | Good | √(gH) phase speed is well-validated |
 | Coastal runup | Approximate | Synolakis is analytical, not full wetting/drying |
 | Near-coast behavior | Limited | No Boussinesq dispersion for short wavelengths |
-| Atmospheric coupling | Partial | Lamb-wave forcing is one-way, no coupled model |
+| Atmospheric coupling | Partial | Moving pressure and Lamb-wave forcing are one-way; wind stress and coupled weather are excluded |
 
 Browser builds use the same Rust source-model, analytical wavefront,
 attenuation, arrival, and Synolakis-runup functions through the versioned
@@ -79,6 +80,7 @@ Full derivations and citations are in `docs/science/`. Each source module has it
 - `docs/science/landslide.md` — Fritz-Hager + Slingerland-Voight
 - `docs/science/shallow_water.md` — SWE solver details
 - `docs/science/lamb_wave.md` — Hunga Tonga atmospheric coupling
+- `docs/science/meteotsunami.md` — moving pressure forcing and Proudman resonance
 
 ## Disclaimer
 

@@ -172,3 +172,22 @@ pub fn earthquake_initial_conditions(
     validate("lon_deg", input.location.lon_deg)?;
     Ok(input.initial_displacement())
 }
+
+#[tauri::command]
+pub fn meteotsunami_initial_conditions(
+    input: MeteotsunamiSource,
+) -> Result<InitialDisplacement, String> {
+    let validate = |field, value| {
+        crate::data::source_input_contract::validate_number("Meteotsunami", field, value)
+    };
+    validate("peak_pressure_pa", input.peak_pressure_pa)?;
+    validate("speed_m_s", input.speed_m_s)?;
+    validate("heading_deg", input.heading_deg)?;
+    validate("along_track_sigma_m", input.along_track_sigma_m)?;
+    validate("cross_track_sigma_m", input.cross_track_sigma_m)?;
+    validate("track_length_m", input.track_length_m)?;
+    validate("water_depth_m", input.water_depth_m)?;
+    validate("lat_deg", input.location.lat_deg)?;
+    validate("lon_deg", input.location.lon_deg)?;
+    Ok(input.initial_displacement())
+}

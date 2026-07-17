@@ -5,6 +5,7 @@ permissions = [
   "allow-asteroid-initial-conditions",
   "allow-nuclear-initial-conditions",
   "allow-landslide-initial-conditions",
+  "allow-meteotsunami-initial-conditions",
   "allow-earthquake-initial-conditions",
   "allow-far-field-amplitude",
   "allow-attenuation-curve",

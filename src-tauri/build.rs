@@ -6,6 +6,7 @@ fn main() {
         "asteroid_initial_conditions",
         "nuclear_initial_conditions",
         "landslide_initial_conditions",
+        "meteotsunami_initial_conditions",
         "earthquake_initial_conditions",
         "far_field_amplitude",
         "attenuation_curve",

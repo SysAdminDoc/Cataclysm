@@ -169,6 +169,7 @@ impl LandslideSource {
                     .min(self.effective_cavity_radius_m())
                     .max(1.0),
             }),
+            meteotsunami_forcing: None,
         }
     }
 }

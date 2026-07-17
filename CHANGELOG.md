@@ -6,9 +6,20 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Meteotsunami scenarios now prescribe a finite translating Gaussian
+  atmospheric-pressure anomaly and apply its pressure gradient at every CPU or
+  GPU shallow-water step. The fifth Scenario Builder source type exposes
+  pressure, speed, heading, footprint, track, and depth; saved/share links and
+  the browser Rust source module carry the same contract. A full SWE validation
+  run locks Proudman amplification near `U = sqrt(gh)`, and a GPU parity test
+  covers forced stepping. The cited 2025-06-21 Lake Superior preset separates
+  NOAA GLERL's measured 19.3-inch meteotsunami rise from the later 45.4-inch
+  wind/seiche rebound and labels its representative pressure track as an
+  educational reconstruction rather than a calibrated hindcast.
+
 - Browser preview source initialization, analytical wavefronts, attenuation,
   coastal runup, and point inspection now execute the same Rust modules as the
-  desktop app through a 220,561-byte raw WebAssembly asset and a minimal
+  desktop app through a 232,834-byte raw WebAssembly asset and a minimal
   versioned JSON ABI. Builds verify the asset against a source digest and
   SHA-256 manifest, Node spot checks cover desktop fixture equality, and a
   headless browser check confirms the Rust readouts. JavaScript remains only

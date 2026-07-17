@@ -14,7 +14,7 @@ export type TextExportData = ModelProvenanceInput & {
   initial?: InitialDisplacement | null;
   timeS: number;
   runupResults?: RunupAtPointResult[];
-  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
+  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | null;
 };
 
 export function generateTextExport(data: TextExportData): string {

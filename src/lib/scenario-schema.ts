@@ -3,6 +3,7 @@ import type {
   EarthquakeInput,
   GeoPoint,
   LandslideInput,
+  MeteotsunamiInput,
   NuclearBurstInput,
 } from "../types/scenario";
 import sourceInputContract from "../data/source-input-contract.json";
@@ -13,7 +14,8 @@ export type ScenarioInput =
   | { kind: "Asteroid"; source: AsteroidImpactInput }
   | { kind: "Nuclear"; source: NuclearBurstInput }
   | { kind: "Earthquake"; source: EarthquakeInput }
-  | { kind: "Landslide"; source: LandslideInput };
+  | { kind: "Landslide"; source: LandslideInput }
+  | { kind: "Meteotsunami"; source: MeteotsunamiInput };
 
 export type ScenarioPayload = ScenarioInput & {
   schemaVersion: typeof SCENARIO_SCHEMA_VERSION;
@@ -41,7 +43,7 @@ export type ScenarioValidationResult =
   | { ok: false; reason: string };
 
 export type Bound = { min?: number; max?: number; minInclusive?: boolean; maxInclusive?: boolean };
-export type ScenarioSourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide";
+export type ScenarioSourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami";
 export type ScientificSourceKind = ScenarioSourceKind | "DirectAsteroid" | "DirectNuclear";
 type ContractField = {
   type: "number" | "enum";
@@ -57,7 +59,7 @@ type ContractField = {
 };
 type SourceContract = { fields: Record<string, ContractField> };
 const allSources = sourceInputContract.sources as unknown as Record<ScientificSourceKind, SourceContract>;
-const scenarioSourceKinds: ScenarioSourceKind[] = ["Asteroid", "Nuclear", "Earthquake", "Landslide"];
+const scenarioSourceKinds: ScenarioSourceKind[] = ["Asteroid", "Nuclear", "Earthquake", "Landslide", "Meteotsunami"];
 const scenarioSources = scenarioSourceKinds.map((source) => allSources[source]);
 
 if (sourceInputContract.scenarioSchemaVersion !== SCENARIO_SCHEMA_VERSION) {
@@ -152,6 +154,21 @@ export const INITIAL_LANDSLIDE: LandslideInput = {
   water_depth_m: sourceNumericDefault("Landslide", "water_depth_m"),
   water_body_width_m: sourceNumericDefault("Landslide", "water_body_width_m"),
   location: { lat_deg: sourceNumericDefault("Landslide", "lat_deg"), lon_deg: sourceNumericDefault("Landslide", "lon_deg"), depth_m: sourceNumericDefault("Landslide", "water_depth_m") },
+};
+
+export const INITIAL_METEOTSUNAMI: MeteotsunamiInput = {
+  peak_pressure_pa: sourceNumericDefault("Meteotsunami", "peak_pressure_pa"),
+  speed_m_s: sourceNumericDefault("Meteotsunami", "speed_m_s"),
+  heading_deg: sourceNumericDefault("Meteotsunami", "heading_deg"),
+  along_track_sigma_m: sourceNumericDefault("Meteotsunami", "along_track_sigma_m"),
+  cross_track_sigma_m: sourceNumericDefault("Meteotsunami", "cross_track_sigma_m"),
+  track_length_m: sourceNumericDefault("Meteotsunami", "track_length_m"),
+  water_depth_m: sourceNumericDefault("Meteotsunami", "water_depth_m"),
+  location: {
+    lat_deg: sourceNumericDefault("Meteotsunami", "lat_deg"),
+    lon_deg: sourceNumericDefault("Meteotsunami", "lon_deg"),
+    depth_m: sourceNumericDefault("Meteotsunami", "water_depth_m"),
+  },
 };
 
 export const SCENARIO_BOUNDS: Record<string, Bound> = scenarioSources
@@ -402,6 +419,37 @@ function parseLandslide(source: unknown): ParseResult<LandslideInput> {
   };
 }
 
+function parseMeteotsunami(source: unknown): ParseResult<MeteotsunamiInput> {
+  const obj = asRecord(source, "Meteotsunami source");
+  if (!obj.ok) return obj;
+  const fields = [
+    "peak_pressure_pa",
+    "speed_m_s",
+    "heading_deg",
+    "along_track_sigma_m",
+    "cross_track_sigma_m",
+    "track_length_m",
+  ] as const;
+  const values = {} as Record<(typeof fields)[number], number>;
+  for (const field of fields) {
+    const parsed = numberInSourceRange(obj.value, "Meteotsunami", field);
+    if (!parsed.ok) return parsed;
+    values[field] = parsed.value;
+  }
+  const waterDepth = numberInSourceRange(obj.value, "Meteotsunami", "water_depth_m");
+  if (!waterDepth.ok) return waterDepth;
+  const location = parseLocation(obj.value.location, waterDepth.value);
+  if (!location.ok) return location;
+  return {
+    ok: true,
+    value: {
+      ...values,
+      water_depth_m: waterDepth.value,
+      location: location.value,
+    },
+  };
+}
+
 export function parseScenarioPayload(value: unknown): ScenarioValidationResult {
   const root = asRecord(value, "Scenario");
   if (!root.ok) return fail(root.reason);
@@ -459,6 +507,9 @@ export function parseScenarioPayload(value: unknown): ScenarioValidationResult {
       break;
     case "Landslide":
       parsedSource = parseLandslide(root.value.source);
+      break;
+    case "Meteotsunami":
+      parsedSource = parseMeteotsunami(root.value.source);
       break;
     default:
       return fail(`Scenario kind "${root.value.kind}" is not supported.`);

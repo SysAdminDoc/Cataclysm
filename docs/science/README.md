@@ -13,6 +13,7 @@ formula. This directory contains:
   - [`landslide.md`](landslide.md) — Heller & Hager impulse-wave law
   - [`shallow_water.md`](shallow_water.md) — Synolakis runup + leapfrog SWE solver
   - [`lamb_wave.md`](lamb_wave.md) — Hunga Tonga atmospheric coupling
+  - [`meteotsunami.md`](meteotsunami.md) — translating pressure forcing and Proudman resonance
 
 The high-confidence physics ranges are catalogued here so reviewers can spot
 when a code change pushes a formula outside its validated regime (e.g.

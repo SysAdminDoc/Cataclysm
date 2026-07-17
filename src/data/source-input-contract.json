@@ -52,6 +52,19 @@
         "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": -175.39 }
       }
     },
+    "Meteotsunami": {
+      "fields": {
+        "peak_pressure_pa": { "type": "number", "label": "Peak pressure anomaly", "units": "Pa", "minimum": 1, "maximum": 10000, "minimumInclusive": true, "maximumInclusive": true, "default": 300 },
+        "speed_m_s": { "type": "number", "label": "Disturbance speed", "units": "m/s", "minimum": 1, "maximum": 500, "minimumInclusive": true, "maximumInclusive": true, "default": 39 },
+        "heading_deg": { "type": "number", "label": "Track heading", "units": "°", "minimum": 0, "maximum": 359.999, "minimumInclusive": true, "maximumInclusive": true, "default": 90 },
+        "along_track_sigma_m": { "type": "number", "label": "Along-track width (1σ)", "units": "m", "minimum": 1000, "maximum": 2000000, "minimumInclusive": true, "maximumInclusive": true, "default": 40000 },
+        "cross_track_sigma_m": { "type": "number", "label": "Cross-track width (1σ)", "units": "m", "minimum": 1000, "maximum": 2000000, "minimumInclusive": true, "maximumInclusive": true, "default": 120000 },
+        "track_length_m": { "type": "number", "label": "Active track length", "units": "m", "minimum": 1000, "maximum": 10000000, "minimumInclusive": true, "maximumInclusive": true, "default": 560000 },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 50, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 155 },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": 47.1 },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": -92.1 }
+      }
+    },
     "DirectAsteroid": {
       "fields": {
         "diameter_m": { "type": "number", "label": "Diameter", "units": "m", "minimum": 1, "maximum": 20000, "minimumInclusive": true, "maximumInclusive": true, "default": 300 },

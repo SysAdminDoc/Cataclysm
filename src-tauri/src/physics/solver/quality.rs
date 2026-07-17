@@ -14,6 +14,7 @@ pub struct QualityBaseline {
     mass_scale_m3: f64,
     energy_j: f64,
     sponge_width_cells: usize,
+    externally_forced: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,7 +53,18 @@ impl QualityBaseline {
             mass_scale_m3: metrics.mass_scale_m3,
             energy_j: metrics.energy_j,
             sponge_width_cells,
+            externally_forced: false,
         }
+    }
+
+    /// Capture a run whose equations include prescribed external work. Mass,
+    /// finite-field, depth, and CFL checks remain active, but comparing final
+    /// energy to the quiescent initial state would report a meaningless
+    /// conservation drift.
+    pub fn capture_with_external_forcing(grid: &SwGrid, boundary: BoundaryMode) -> Self {
+        let mut baseline = Self::capture(grid, boundary);
+        baseline.externally_forced = true;
+        baseline
     }
 
     pub fn assess(&self, grid: &SwGrid, dt_s: f64) -> RunQualityRecord {
@@ -60,7 +72,11 @@ impl QualityBaseline {
         let cfl_number = grid_cfl_number(grid, dt_s);
         let cfl_margin = CFL_HARD_LIMIT - cfl_number;
         let mass_drift_pct = percent_change(metrics.mass_m3, self.mass_m3, self.mass_scale_m3);
-        let energy_drift_pct = percent_change(metrics.energy_j, self.energy_j, self.energy_j.abs());
+        let energy_drift_pct = if self.externally_forced {
+            0.0
+        } else {
+            percent_change(metrics.energy_j, self.energy_j, self.energy_j.abs())
+        };
         let mut warnings = Vec::new();
         if mass_drift_pct.abs() > MASS_DRIFT_WARNING_PCT {
             warnings.push(format!(
@@ -71,6 +87,12 @@ impl QualityBaseline {
             warnings.push(format!(
                 "sponge-adjusted energy increased by {energy_drift_pct:.2}%"
             ));
+        }
+        if self.externally_forced {
+            warnings.push(
+                "energy-conservation drift is not evaluated for prescribed external pressure forcing"
+                    .to_string(),
+            );
         }
         let failure = if !metrics.finite_fields {
             Some("solver produced a non-finite eta, velocity, depth, or time value".to_string())
@@ -263,6 +285,19 @@ mod tests {
 
         assert!(record.failure.is_none(), "{:?}", record.failure);
         assert!((record.cfl_number - 0.4).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn external_forcing_suppresses_meaningless_energy_gain_percentage() {
+        let mut grid = grid();
+        let baseline = QualityBaseline::capture_with_external_forcing(
+            &grid,
+            BoundaryMode::ZeroFlux,
+        );
+        grid.u_ms[10] = 0.5;
+        let record = baseline.assess(&grid, grid.recommended_dt_s(0.4));
+        assert_eq!(record.energy_drift_pct, 0.0);
+        assert!(record.warnings.iter().any(|warning| warning.contains("external pressure")));
     }
 
     #[test]

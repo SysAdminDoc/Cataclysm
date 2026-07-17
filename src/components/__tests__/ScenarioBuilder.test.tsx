@@ -52,6 +52,18 @@ describe("ScenarioBuilder scenario persistence", () => {
     clipboard.writeText.mockReset();
   });
 
+  it("submits a moving-pressure meteotsunami source", async () => {
+    const user = setupUser();
+    const onSimulate = renderBuilder();
+    await user.click(screen.getByRole("tab", { name: "Meteotsunami" }));
+    expect(screen.getByText(/applies the atmospheric pressure gradient at every step/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Simulate" }));
+    expect(onSimulate).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "Meteotsunami",
+      source: expect.objectContaining({ peak_pressure_pa: 300, speed_m_s: 39 }),
+    }));
+  });
+
   it("copies versioned scenario payloads", async () => {
     clipboard.writeText.mockResolvedValue(undefined);
     const user = setupUser();

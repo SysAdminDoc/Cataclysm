@@ -8,6 +8,7 @@ import type {
   GridSnapshot,
   InitialDisplacement,
   LandslideInput,
+  MeteotsunamiInput,
   NuclearBurstInput,
   Preset,
   PropagationSnapshot,
@@ -17,7 +18,8 @@ export type ScenarioInput =
   | { kind: "Asteroid"; source: AsteroidImpactInput }
   | { kind: "Nuclear"; source: NuclearBurstInput }
   | { kind: "Earthquake"; source: EarthquakeInput }
-  | { kind: "Landslide"; source: LandslideInput };
+  | { kind: "Landslide"; source: LandslideInput }
+  | { kind: "Meteotsunami"; source: MeteotsunamiInput };
 
 export type ScenarioSlot = {
   activePresetId: string | null;
@@ -191,7 +193,9 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
             ? api.nuclearInitialConditions(input.source)
             : input.kind === "Earthquake"
               ? api.earthquakeInitialConditions(input.source)
-              : api.landslideInitialConditions(input.source);
+              : input.kind === "Landslide"
+                ? api.landslideInitialConditions(input.source)
+                : api.meteotsunamiInitialConditions(input.source);
       route
         .then((d) => {
           if (!mountedRef.current || reqId !== simulateReqIdRef.current) return;

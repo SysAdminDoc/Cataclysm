@@ -385,6 +385,27 @@ impl GpuTimeStepper {
         pollster::block_on(self.step_async(grid, n_steps, diagnostics))
     }
 
+    /// Apply one moving atmospheric-pressure source increment and advance one
+    /// GPU step. The host fields are re-uploaded by `step_with_diagnostics`,
+    /// so CPU and GPU consume the identical forced state without duplicating
+    /// source mathematics in WGSL. A failed GPU step reverses the explicit
+    /// forcing increment because the hydrodynamic state/time were not committed.
+    pub fn step_with_pressure_forcing(
+        &self,
+        grid: &mut SwGrid,
+        source: &crate::physics::meteotsunami::MeteotsunamiSource,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
+        let midpoint_s = grid.t_s + 0.5 * self.dt_s;
+        source.apply_pressure_gradient(grid, midpoint_s, self.dt_s);
+        if self.step_with_diagnostics(grid, 1, diagnostics) {
+            true
+        } else {
+            source.apply_pressure_gradient(grid, midpoint_s, -self.dt_s);
+            false
+        }
+    }
+
     async fn step_async(
         &self,
         grid: &mut SwGrid,
@@ -648,6 +669,49 @@ mod tests {
             "GPU η disagrees with CPU η by {} m (> 1e-3)",
             max_diff
         );
+    }
+
+    #[test]
+    fn swe_gpu_matches_cpu_with_moving_pressure_forcing() {
+        use crate::physics::{GeoPoint, meteotsunami::MeteotsunamiSource};
+
+        let mut cpu_grid = SwGrid::new(-0.4, -0.4, 0.4, 0.4, 0.05, 0.05);
+        cpu_grid.fill_uniform_depth(155.0);
+        let mut gpu_grid = cpu_grid.clone();
+        let source = MeteotsunamiSource {
+            peak_pressure_pa: 300.0,
+            speed_m_s: 39.0,
+            heading_deg: 90.0,
+            along_track_sigma_m: 20_000.0,
+            cross_track_sigma_m: 40_000.0,
+            track_length_m: 200_000.0,
+            water_depth_m: 155.0,
+            location: GeoPoint { lat_deg: 0.0, lon_deg: -0.25, depth_m: 155.0 },
+        };
+        let dt = cpu_grid.recommended_dt_s(0.3);
+        let mut cpu = TimeStepper::new(dt)
+            .with_boundary(super::super::BoundaryMode::ZeroFlux);
+        cpu.manning_n = 0.0;
+        let gpu = match GpuTimeStepper::new(&gpu_grid, dt, 0.0, 0, true) {
+            Some(gpu) => gpu,
+            None => {
+                println!("swe_gpu_matches_cpu_with_moving_pressure_forcing: no adapter — skipping");
+                return;
+            }
+        };
+        for _ in 0..12 {
+            let midpoint = cpu_grid.t_s + 0.5 * dt;
+            source.apply_pressure_gradient(&mut cpu_grid, midpoint, dt);
+            cpu.step_one(&mut cpu_grid);
+            assert!(gpu.step_with_pressure_forcing(&mut gpu_grid, &source, None));
+        }
+        let eta_error = cpu_grid
+            .eta_m
+            .iter()
+            .zip(&gpu_grid.eta_m)
+            .map(|(cpu, gpu)| (cpu - gpu).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(eta_error < 1.0e-3, "forced GPU eta parity error was {eta_error}");
     }
 
     /// Full-physics parity: nonlinear advection + sponge boundary +

@@ -32,11 +32,12 @@ pub(crate) fn stream_simulation_cpu_from(
             scheduled_take
         };
         if take > 0 {
-            match stepper.step_cancellable_checked(
+            match stepper.step_cancellable_checked_forced(
                 grid,
                 take,
                 Some(ctx.cancel),
                 ctx.quality_baseline,
+                ctx.meteotsunami_forcing,
                 &mut |state| ctx.max_field.borrow_mut().observe(state),
             ) {
                 Ok(true) => {}
@@ -118,7 +119,12 @@ pub(crate) fn stream_simulation_dispatch(
                 if ctx.cancel.load(Ordering::Acquire) {
                     return Ok(true);
                 }
-                if !gpu.step_with_diagnostics(grid, 1, ctx.diagnostics) {
+                let advanced = if let Some(source) = ctx.meteotsunami_forcing {
+                    gpu.step_with_pressure_forcing(grid, source, ctx.diagnostics)
+                } else {
+                    gpu.step_with_diagnostics(grid, 1, ctx.diagnostics)
+                };
+                if !advanced {
                     let remaining = take.saturating_sub(completed);
                     stream_simulation_cpu_from(
                         grid,
@@ -199,6 +205,7 @@ pub(crate) fn run_simulation_dispatch(
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
     max_field_threshold_m: f64,
+    meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
 ) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
@@ -227,6 +234,7 @@ pub(crate) fn run_simulation_dispatch(
             diagnostics,
             gauges,
             &mut |g| acc.observe(g),
+            meteotsunami_forcing,
         ) {
             return (snaps, true, acc);
         }
@@ -235,15 +243,9 @@ pub(crate) fn run_simulation_dispatch(
     }
     let stepper = TimeStepper::new(dt_s);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
-    let snaps = run_simulation_with_gauge_samples(
-        grid,
-        &stepper,
-        t_end_s,
-        n_snapshots,
-        Some(cancel),
-        diagnostics,
-        gauges,
-        &mut |g| acc.observe(g),
+    let snaps = run_simulation_cpu_with_optional_forcing(
+        grid, &stepper, t_end_s, n_snapshots, cancel, diagnostics, gauges,
+        &mut |g| acc.observe(g), meteotsunami_forcing,
     );
     (snaps, false, acc)
 }
@@ -259,18 +261,13 @@ pub(crate) fn run_simulation_dispatch(
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
     max_field_threshold_m: f64,
+    meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
 ) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     let stepper = TimeStepper::new(dt_s);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
-    let snaps = run_simulation_with_gauge_samples(
-        grid,
-        &stepper,
-        t_end_s,
-        n_snapshots,
-        Some(cancel),
-        diagnostics,
-        gauges,
-        &mut |g| acc.observe(g),
+    let snaps = run_simulation_cpu_with_optional_forcing(
+        grid, &stepper, t_end_s, n_snapshots, cancel, diagnostics, gauges,
+        &mut |g| acc.observe(g), meteotsunami_forcing,
     );
     (snaps, false, acc)
 }
@@ -292,6 +289,7 @@ pub(crate) fn run_simulation_gpu(
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
     observe: &mut dyn FnMut(&SwGrid),
+    meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
 ) -> Option<Vec<GridSnapshot>> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
@@ -309,7 +307,12 @@ pub(crate) fn run_simulation_gpu(
             if cancel.load(Ordering::Acquire) {
                 return Some(snaps);
             }
-            if !gpu.step_with_diagnostics(grid, 1, diagnostics) {
+            let advanced = if let Some(source) = meteotsunami_forcing {
+                gpu.step_with_pressure_forcing(grid, source, diagnostics)
+            } else {
+                gpu.step_with_diagnostics(grid, 1, diagnostics)
+            };
+            if !advanced {
                 return None;
             }
             observe(grid);
@@ -318,4 +321,48 @@ pub(crate) fn run_simulation_gpu(
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     }
     Some(snaps)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_simulation_cpu_with_optional_forcing(
+    grid: &mut SwGrid,
+    stepper: &TimeStepper,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+    observe: &mut dyn FnMut(&SwGrid),
+    forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
+) -> Vec<GridSnapshot> {
+    if forcing.is_none() {
+        return run_simulation_with_gauge_samples(
+            grid, stepper, t_end_s, n_snapshots, Some(cancel), diagnostics, gauges, observe,
+        );
+    }
+    let n = n_snapshots.max(2);
+    let mut snapshots = Vec::with_capacity(n);
+    snapshots.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    observe(grid);
+    if !t_end_s.is_finite() || t_end_s < 0.0 {
+        return snapshots;
+    }
+    for take in snapshot_step_schedule(t_end_s, stepper.dt_s, n) {
+        for _ in 0..take {
+            if cancel.load(Ordering::Acquire) {
+                return snapshots;
+            }
+            if let Some(source) = forcing {
+                source.apply_pressure_gradient(
+                    grid,
+                    grid.t_s + 0.5 * stepper.dt_s,
+                    stepper.dt_s,
+                );
+            }
+            stepper.step_one(grid);
+            observe(grid);
+        }
+        snapshots.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    }
+    snapshots
 }

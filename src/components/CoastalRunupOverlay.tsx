@@ -13,7 +13,7 @@ import {
 type Props = {
   initial: InitialDisplacement | null;
   activePreset: Preset | null;
-  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | null;
+  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | null;
   timeS: number;
   result: AsyncResult<RunupAtPointResult[]>;
   onResult: Dispatch<SetStateAction<AsyncResult<RunupAtPointResult[]>>>;
@@ -48,9 +48,11 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
   const isImpact = useMemo<boolean>(() => {
     return sourceKind === "Asteroid" || activePreset?.source.kind === "Asteroid";
   }, [activePreset, sourceKind]);
+  const isMovingPressure = sourceKind === "Meteotsunami"
+    || activePreset?.source.kind === "Meteotsunami";
 
   useEffect(() => {
-    if (!initial) {
+    if (!initial || isMovingPressure) {
       contextRef.current = null;
       onResult({ status: "idle" });
       lastArrivedCountRef.current = 0;
@@ -124,7 +126,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
         console.error("runup_at_points failed", err);
         onResult((current) => rejectAsyncResult(current, err));
       });
-  }, [initial, isImpact, timeS, retryNonce, onResult]);
+  }, [initial, isImpact, isMovingPressure, timeS, retryNonce, onResult]);
 
   // Screen-reader-only aria-live region. Visually hidden via the global
   // `.sr-only` utility class (styles.css). Sighted users get the same

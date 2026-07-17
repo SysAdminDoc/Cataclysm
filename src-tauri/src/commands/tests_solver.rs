@@ -17,10 +17,33 @@ fn simulate_grid_rejects_bad_lamb_wave_override() {
         include_lamb_wave: true,
         lamb_wave_peak_pressure_pa: Some(-1.0),
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "diverging".to_string(),
         gauge_points: vec![],
     });
     assert!(res.is_err());
+}
+
+#[test]
+fn simulate_grid_validates_moving_pressure_forcing() {
+    let source = crate::physics::meteotsunami::MeteotsunamiSource {
+        peak_pressure_pa: 300.0,
+        speed_m_s: 39.0,
+        heading_deg: 90.0,
+        along_track_sigma_m: 40_000.0,
+        cross_track_sigma_m: 120_000.0,
+        track_length_m: 560_000.0,
+        water_depth_m: 155.0,
+        location: GeoPoint { lat_deg: 47.1, lon_deg: -92.1, depth_m: 155.0 },
+    };
+    let mut request = source_grid_request(None);
+    request.initial_amplitude_m = source.inverted_barometer_amplitude_m();
+    request.mean_depth_m = 155.0;
+    request.meteotsunami_forcing = Some(source);
+    assert!(validate_simulate_grid(&request).is_ok());
+
+    request.meteotsunami_forcing.as_mut().expect("source").speed_m_s = 0.0;
+    assert!(validate_simulate_grid(&request).is_err());
 }
 
 #[test]
@@ -71,6 +94,7 @@ fn simulate_grid_rejects_unknown_colormap() {
         include_lamb_wave: false,
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "rainbow".to_string(),
         gauge_points: vec![],
     });
@@ -94,6 +118,7 @@ fn simulate_grid_accepts_viridis_colormap() {
         include_lamb_wave: false,
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
     });
@@ -119,6 +144,7 @@ fn simulate_grid_rejects_sub_floor_analytical_depth() {
         include_lamb_wave: false,
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
     });
@@ -139,6 +165,7 @@ fn simulate_grid_rejects_sub_floor_analytical_depth() {
         include_lamb_wave: false,
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
     });
@@ -166,6 +193,7 @@ fn simulate_grid_tiles_antimeridian_crossing_box() {
         include_lamb_wave: false,
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
     };
@@ -226,6 +254,7 @@ fn simulate_grid_rejects_bad_gauge_coordinates() {
         include_lamb_wave: false,
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
+        meteotsunami_forcing: None,
         colormap: "diverging".to_string(),
         gauge_points: vec![GridGaugePoint {
             id: "bad".to_string(),
@@ -487,6 +516,7 @@ fn gpu_quantitative_products_are_independent_of_snapshot_count() {
             None,
             &[],
             &mut |state| acc.observe(state),
+            None,
         )?;
         let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
         Some((

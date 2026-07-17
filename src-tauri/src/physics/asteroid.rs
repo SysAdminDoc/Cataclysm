@@ -155,6 +155,7 @@ impl AsteroidImpact {
                 rim_radius_m: cavity_r,
                 rim_width_m: (0.2 * cavity_r).max(1.0),
             }),
+            meteotsunami_forcing: None,
         }
     }
 }

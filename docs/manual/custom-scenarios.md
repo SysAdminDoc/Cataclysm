@@ -57,6 +57,26 @@ Models subaerial rockslides (Fritz & Hager 2001) or submarine slope failures (Wa
 | Water depth (m) | 1 – 12,000 | Water depth at the source; landslide sources require water |
 | Receiving body width (m) | 1 – 1,000,000 | Width of the receiving water body |
 
+### Meteotsunami
+
+Models the pressure-driven part of a meteotsunami as a translating Gaussian
+atmospheric-pressure anomaly. The SWE solver starts from a flat surface and
+applies the pressure gradient at every step. Proudman amplification is strongest
+when disturbance speed matches `sqrt(g × water depth)`.
+
+| Parameter | Range | Description |
+|---|---|---|
+| Peak pressure anomaly (Pa) | 1 – 10,000 | Positive pressure depresses the water surface beneath the footprint |
+| Disturbance speed (m/s) | 1 – 500 | Translation speed; compare with `sqrt(gh)` |
+| Track heading (°) | 0 – 359.999 | Direction clockwise from true north |
+| Along-track width, 1σ (m) | 1,000 – 2,000,000 | Gaussian footprint length parallel to travel |
+| Cross-track width, 1σ (m) | 1,000 – 2,000,000 | Gaussian footprint width normal to travel |
+| Active track length (m) | 1,000 – 10,000,000 | Distance over which the source remains active |
+| Water depth (m) | 50 – 12,000 | Representative uniform depth and Proudman-speed reference |
+
+This source includes pressure-gradient forcing only. Wind stress, harbor
+resonance, and later basin seiche are not modeled.
+
 ## Direct hazard controls
 
 Direct asteroid and nuclear views use deliberately narrower interactive ranges than the tsunami source builder. Imported requests are validated against the same limits before Rust evaluates them.

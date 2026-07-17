@@ -48,6 +48,9 @@ pub struct SimulateGridRequest {
     /// `include_lamb_wave` is false.
     #[serde(default)]
     pub lamb_wave_source_radius_m: Option<f64>,
+    /// Optional time-dependent moving atmospheric-pressure disturbance.
+    #[serde(default)]
+    pub meteotsunami_forcing: Option<crate::physics::meteotsunami::MeteotsunamiSource>,
     #[serde(default)]
     pub colormap: String,
     #[serde(default)]
@@ -65,6 +68,11 @@ pub(crate) fn inject_source_initial_field(
     grid: &mut SwGrid,
     req: &SimulateGridRequest,
 ) -> Result<(), String> {
+    // Moving-pressure scenarios generate their wave through momentum forcing;
+    // injecting the generic Gaussian as well would double-count the source.
+    if req.meteotsunami_forcing.is_some() {
+        return Ok(());
+    }
     let Some(geometry) = &req.source_geometry else {
         grid.inject_gaussian(
             req.source.lat_deg,
@@ -381,6 +389,38 @@ pub(crate) fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), St
         && (!r.is_finite() || r <= 0.0 || r > 1.0e7)
     {
         return Err("lamb_wave_source_radius_m must be in (0, 10 000 km]".into());
+    }
+    if let Some(source) = req.meteotsunami_forcing {
+        let values = [
+            source.peak_pressure_pa,
+            source.speed_m_s,
+            source.heading_deg,
+            source.along_track_sigma_m,
+            source.cross_track_sigma_m,
+            source.track_length_m,
+            source.water_depth_m,
+            source.location.lat_deg,
+            source.location.lon_deg,
+        ];
+        if values.iter().any(|value| !value.is_finite())
+            || source.peak_pressure_pa <= 0.0
+            || source.peak_pressure_pa > 10_000.0
+            || source.speed_m_s <= 0.0
+            || source.speed_m_s > 500.0
+            || !(0.0..360.0).contains(&source.heading_deg)
+            || source.along_track_sigma_m <= 0.0
+            || source.along_track_sigma_m > 2.0e6
+            || source.cross_track_sigma_m <= 0.0
+            || source.cross_track_sigma_m > 2.0e6
+            || source.track_length_m <= 0.0
+            || source.track_length_m > 1.0e7
+            || source.water_depth_m < SWE_MIN_MEAN_DEPTH_M
+            || source.water_depth_m > 12_000.0
+            || source.location.lat_deg.abs() > 90.0
+            || source.location.lon_deg.abs() > LON_ABS_MAX
+        {
+            return Err("meteotsunami_forcing contains out-of-range source parameters".into());
+        }
     }
     if !(req.colormap.is_empty()
         || req.colormap == "diverging"

@@ -52,6 +52,30 @@ test("browser WASM returns the shared Rust asteroid source fixture", async () =>
   assert.equal(initial.source_geometry.kind, "cavity_ring");
 });
 
+test("browser WASM returns the shared Rust meteotsunami source summary", async () => {
+  const call = await physicsCaller();
+  const initial = call({
+    operation: "initial",
+    input: {
+      kind: "Meteotsunami",
+      source: {
+        peak_pressure_pa: 300,
+        speed_m_s: 39,
+        heading_deg: 90,
+        along_track_sigma_m: 40000,
+        cross_track_sigma_m: 120000,
+        track_length_m: 560000,
+        water_depth_m: 155,
+        location: { lat_deg: 47.1, lon_deg: -92.1, depth_m: 155 },
+      },
+    },
+  });
+  assert.ok(Math.abs(initial.peak_amplitude_m - 0.02984) < 0.0001);
+  assert.equal(initial.cavity_radius_m, 120000);
+  assert.match(initial.label, /Proudman ratio 1\.00/);
+  assert.equal(initial.meteotsunami_forcing.track_length_m, 560000);
+});
+
 test("browser WASM attenuation matches the desktop Rust screening fixture", async () => {
   const call = await physicsCaller();
   const samples = call({

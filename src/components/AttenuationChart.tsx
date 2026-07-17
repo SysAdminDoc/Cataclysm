@@ -16,6 +16,7 @@ type Props = {
   isImpact: boolean;
   timeS: number;
   runupResults: RunupAtPointResult[];
+  movingPressure?: boolean;
 };
 
 const W = 320;
@@ -38,7 +39,7 @@ function formatAxis(v: number): string {
   return v.toFixed(2);
 }
 
-export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Props) {
+export function AttenuationChart({ initial, isImpact, timeS, runupResults, movingPressure = false }: Props) {
   const [curveResult, setCurveResult] = useState<AsyncResult<Sample[]>>({ status: "idle" });
   const curve = asyncResultValue(curveResult);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -48,7 +49,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
   // Decay physics come from the Rust `attenuation_curve` command; the JS
   // Browser preview calls the same Rust curve through the checked-in WASM ABI.
   useEffect(() => {
-    if (!initial) {
+    if (!initial || movingPressure) {
       contextRef.current = null;
       setCurveResult({ status: "idle" });
       return;
@@ -102,7 +103,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
     return () => {
       cancelled = true;
     };
-  }, [initial, isImpact, retryNonce]);
+  }, [initial, isImpact, movingPressure, retryNonce]);
 
   const arrivedPoints = useMemo(() => {
     return runupResults
@@ -122,6 +123,24 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
           <div>
             <strong>Amplitude curve appears after source selection</strong>
             <p>The chart compares modeled decay, the active wavefront, and arrived coastal samples.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (movingPressure) {
+    return (
+      <div className="section">
+        <div className="section__title">
+          <span>Wave attenuation</span>
+          <span className="section__badge" data-tone="muted">SWE only</span>
+        </div>
+        <div className="empty-state empty-state--compact">
+          <span className="empty-state__icon" aria-hidden />
+          <div>
+            <strong>Radial attenuation does not apply</strong>
+            <p>This moving pressure source is generated along a track. Run the SWE solver to see its resonant, bathymetry-dependent response.</p>
           </div>
         </div>
       </div>
