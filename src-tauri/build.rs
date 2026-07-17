@@ -38,6 +38,8 @@ fn main() {
         "keychain_get_token",
         "keychain_set_token",
         "cancel_simulation",
+        "list_solver_checkpoints",
+        "remove_solver_checkpoint",
     ]);
 
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(app_manifest))

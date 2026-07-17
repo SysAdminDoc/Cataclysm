@@ -98,6 +98,16 @@ export type ImportedBathymetryAsset = {
   report: BathymetryPreflight;
 };
 
+export type SolverCheckpointSummary = {
+  run_id: string;
+  scenario_sha256: string;
+  solver_version: string;
+  created_at_ms: number;
+  time_s: number;
+  t_end_s: number;
+  step_index: number;
+};
+
 let simulationRunSequence = 0;
 
 type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
@@ -554,6 +564,12 @@ export const api = {
   },
   cancelSimulation(runId: string) {
     return invoke<boolean>("cancel_simulation", { runId });
+  },
+  listSolverCheckpoints() {
+    return invoke<SolverCheckpointSummary[]>("list_solver_checkpoints");
+  },
+  removeSolverCheckpoint(runId: string) {
+    return invoke<boolean>("remove_solver_checkpoint", { runId });
   },
 };
 

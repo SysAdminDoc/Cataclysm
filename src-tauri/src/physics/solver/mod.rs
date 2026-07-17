@@ -54,6 +54,7 @@ use crate::data::geodesy::{GeographicFieldTile, geographic_field_tiles};
 pub mod gpu;
 pub mod kernels;
 pub mod max_field;
+pub mod checkpoint;
 pub mod quality;
 
 pub type DiagnosticSink<'a> = dyn Fn(&str) + Send + Sync + 'a;
@@ -653,7 +654,8 @@ pub(super) fn encode_rgba_png(
     base64::engine::general_purpose::STANDARD.encode(&buf)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Colormap {
     #[default]
     Diverging,

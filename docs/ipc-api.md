@@ -89,9 +89,22 @@ Streaming variant — sends each snapshot via a Tauri Channel as it's computed. 
 - **Output:** `Result<SimulateGridStreamMeta, String>` — `dt_s, nx, ny, used_gpu, n_snapshots`
 
 ### `cancel_simulation`
-Signal all in-flight simulations to stop. The solver polls the cancel flag between snapshot batches.
+Signal one owned simulation to stop. The solver polls its run-specific cancel
+flag between accepted steps and snapshot batches.
+- **Input:** validated `run_id`
+- **Output:** `true` when an active run was signaled, otherwise `false`.
+
+### `list_solver_checkpoints`
+List bounded authenticated checkpoint metadata without exposing application-data
+paths. Invalid or incompatible entries are quarantined rather than offered.
 - **Input:** none
-- **Output:** none
+- **Output:** run/scenario identity, solver version, creation time, simulated
+  progress, target time, and accepted step index for up to four retained runs.
+
+### `remove_solver_checkpoint`
+Remove one retained checkpoint by its validated run ID.
+- **Input:** `run_id`
+- **Output:** `true` when an entry was removed, otherwise `false`.
 
 ## Data & Diagnostics
 

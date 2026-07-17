@@ -96,6 +96,8 @@ pub fn run() {
             keychain_get_token,
             keychain_set_token,
             cancel_simulation,
+            list_solver_checkpoints,
+            remove_solver_checkpoint,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

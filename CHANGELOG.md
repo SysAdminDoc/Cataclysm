@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Long-running streaming SWE runs now lay the persistence foundation for crash
+  recovery: a versioned binary checkpoint captures eta/u/v/depth, solver tick,
+  scenario/settings/data digests, maximum fields, and exact snapshot progress
+  at bounded wall-clock intervals and on cancellation. Writes replace
+  atomically, retain at most four runs, disappear after clean completion, and
+  quarantine corrupt or future-schema files; typed commands list and remove
+  retained checkpoints while resume execution remains tracked on the roadmap.
 - Inspect now works across tsunami, asteroid, and nuclear scenarios. Completed
   direct-hazard results receive bounded content-addressed handles, so moving a
   point probe reads the existing Rust result rather than rerunning physics. The

@@ -66,7 +66,7 @@ pub struct MaxFieldTile {
 ///
 /// [`observe`]: MaxFieldAccumulator::observe
 /// [`into_product`]: MaxFieldAccumulator::into_product
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MaxFieldAccumulator {
     peak_m: Vec<f64>,
     t_of_max_s: Vec<f64>,
@@ -75,6 +75,39 @@ pub struct MaxFieldAccumulator {
     last_t_s: f64,
     arrival_threshold_m: f64,
     observed: bool,
+}
+
+impl MaxFieldAccumulator {
+    pub(super) fn checkpoint_fields(&self) -> [&[f64]; 4] {
+        [
+            &self.peak_m,
+            &self.t_of_max_s,
+            &self.arrival_s,
+            &self.energy_m2s,
+        ]
+    }
+
+    pub(super) fn checkpoint_metadata(&self) -> (f64, f64, bool) {
+        (self.last_t_s, self.arrival_threshold_m, self.observed)
+    }
+
+    pub(super) fn restore_checkpoint(
+        fields: [Vec<f64>; 4],
+        last_t_s: f64,
+        arrival_threshold_m: f64,
+        observed: bool,
+    ) -> Self {
+        let [peak_m, t_of_max_s, arrival_s, energy_m2s] = fields;
+        Self {
+            peak_m,
+            t_of_max_s,
+            arrival_s,
+            energy_m2s,
+            last_t_s,
+            arrival_threshold_m,
+            observed,
+        }
+    }
 }
 
 impl MaxFieldAccumulator {

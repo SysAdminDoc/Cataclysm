@@ -3,9 +3,10 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, Weak};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -1650,15 +1651,10 @@ pub async fn simulate_grid_streaming(
     on_render_packet: tauri::ipc::Channel<Response>,
 ) -> Result<SimulateGridStreamMeta, String> {
     validate_simulate_grid(&req)?;
-    let app_data_dir = req
-        .bathymetry_asset_id
-        .as_ref()
-        .map(|_| {
-            app.path()
-                .app_data_dir()
-                .map_err(|error| format!("application data directory is unavailable: {error}"))
-        })
-        .transpose()?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let memory = SimulationMemoryEstimate::for_plan(&plan, 0);
 
@@ -1683,7 +1679,7 @@ pub async fn simulate_grid_streaming(
                 "viridis" => Colormap::Viridis,
                 _ => Colormap::Diverging,
             };
-            populate_grid_bathymetry(&mut grid, &req, app_data_dir.as_deref())?;
+            populate_grid_bathymetry(&mut grid, &req, Some(&app_data_dir))?;
             inject_source_initial_field(&mut grid, &req)?;
 
             if req.include_lamb_wave {
@@ -1765,6 +1761,12 @@ pub async fn simulate_grid_streaming(
                 max_field_threshold_m,
             ));
             max_field_acc.borrow_mut().observe(&grid);
+            let checkpoint_writer = RefCell::new(StreamCheckpointWriter::new(
+                app_data_dir,
+                &response_run_id,
+                &req,
+                dt,
+            )?);
 
             let stream_ctx = StreamSimulationContext {
                 cancel: cancel.as_ref(),
@@ -1774,6 +1776,7 @@ pub async fn simulate_grid_streaming(
                 max_field: &max_field_acc,
                 render: Some(&render_stream),
                 quality_baseline: &quality_baseline,
+                checkpoint: Some(&checkpoint_writer),
             };
             let used_gpu =
                 stream_simulation_dispatch(&mut grid, dt, &snapshot_schedule, &stream_ctx)?;
@@ -1784,11 +1787,25 @@ pub async fn simulate_grid_streaming(
                 return Err(format!("simulation rejected by numerical-integrity gate: {failure}"));
             }
             render_stream.finish(&grid)?;
+            let cancelled = cancel.load(Ordering::Acquire);
+            if cancelled {
+                let next_interval = checkpoint_writer
+                    .borrow()
+                    .identity
+                    .next_snapshot_interval as usize;
+                checkpoint_writer.borrow_mut().maybe_write(
+                    &grid,
+                    &max_field_acc.borrow(),
+                    next_interval,
+                    true,
+                    Some(&diagnostics),
+                );
+            } else {
+                checkpoint_writer.borrow().remove_completed();
+            }
             let max_field = max_field_acc
                 .into_inner()
                 .into_product(&grid, Some(&diagnostics));
-
-            let cancelled = cancel.load(Ordering::Acquire);
             Ok(SimulateGridStreamMeta {
                 run_id: response_run_id,
                 lifecycle: if cancelled {
@@ -1957,6 +1974,26 @@ pub fn cancel_simulation(run_id: String) -> Result<bool, String> {
     Ok(false)
 }
 
+#[tauri::command]
+pub fn list_solver_checkpoints(
+    app: AppHandle,
+) -> Result<Vec<crate::physics::solver::checkpoint::CheckpointSummary>, String> {
+    let root = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    crate::physics::solver::checkpoint::list(&root)
+}
+
+#[tauri::command]
+pub fn remove_solver_checkpoint(app: AppHandle, run_id: String) -> Result<bool, String> {
+    let root = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    crate::physics::solver::checkpoint::remove(&root, &run_id)
+}
+
 /// F4-01 — Dispatcher around `run_simulation` that prefers the wgpu
 /// GPU path when the `gpu` feature is compiled in and an adapter is
 /// available, and falls back to the CPU `TimeStepper` otherwise.
@@ -2086,6 +2123,84 @@ struct StreamSimulationContext<'a> {
     max_field: &'a std::cell::RefCell<MaxFieldAccumulator>,
     render: Option<&'a RenderStreamContext<'a>>,
     quality_baseline: &'a QualityBaseline,
+    checkpoint: Option<&'a RefCell<StreamCheckpointWriter>>,
+}
+
+const CHECKPOINT_INTERVAL: Duration = Duration::from_secs(60);
+
+struct StreamCheckpointWriter {
+    root: PathBuf,
+    identity: crate::physics::solver::checkpoint::CheckpointIdentity,
+    last_write: Instant,
+    disabled: bool,
+}
+
+impl StreamCheckpointWriter {
+    fn new(root: PathBuf, run_id: &str, req: &SimulateGridRequest, dt_s: f64) -> Result<Self, String> {
+        let canonical = serde_json::to_vec(req)
+            .map_err(|error| format!("failed to identify checkpoint scenario: {error}"))?;
+        let mut settings_material = b"cataclysm-checkpoint-settings-v1\0".to_vec();
+        settings_material.extend_from_slice(&canonical);
+        let data_source = req.bathymetry_asset_id.as_deref().unwrap_or(if req.use_real_bathymetry {
+            "cataclysm-coarse-bathymetry-v1"
+        } else {
+            "cataclysm-uniform-depth-v1"
+        });
+        let data_material = format!("cataclysm-checkpoint-data-v1\0{data_source}");
+        let created_at_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |duration| duration.as_millis().min(u64::MAX as u128) as u64);
+        Ok(Self {
+            root,
+            identity: crate::physics::solver::checkpoint::CheckpointIdentity {
+                run_id: run_id.to_string(),
+                scenario_sha256: crate::render_protocol::sha256_hex(&canonical),
+                settings_sha256: crate::render_protocol::sha256_hex(&settings_material),
+                data_sha256: crate::render_protocol::sha256_hex(data_material.as_bytes()),
+                solver_version: "shallow-water-solver-1.0.0".to_string(),
+                created_at_ms,
+                dt_s,
+                t_end_s: req.t_end_s,
+                n_snapshots: req.n_snapshots.min(u32::MAX as usize) as u32,
+                next_snapshot_interval: 0,
+            },
+            last_write: Instant::now(),
+            disabled: false,
+        })
+    }
+
+    fn maybe_write(
+        &mut self,
+        grid: &SwGrid,
+        max_field: &MaxFieldAccumulator,
+        next_interval: usize,
+        force: bool,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) {
+        self.identity.next_snapshot_interval = next_interval.min(u32::MAX as usize) as u32;
+        if self.disabled || (!force && self.last_write.elapsed() < CHECKPOINT_INTERVAL) {
+            return;
+        }
+        match crate::physics::solver::checkpoint::write_latest_state(
+            &self.root,
+            &self.identity,
+            grid,
+            max_field,
+        ) {
+            Ok(_) => self.last_write = Instant::now(),
+            Err(error) => {
+                self.disabled = true;
+                crate::physics::solver::report_diagnostic(
+                    diagnostics,
+                    format!("[solver] checkpointing disabled for this run: {error}"),
+                );
+            }
+        }
+    }
+
+    fn remove_completed(&self) {
+        let _ = crate::physics::solver::checkpoint::remove(&self.root, &self.identity.run_id);
+    }
 }
 
 fn stream_simulation_cpu(
@@ -2156,6 +2271,16 @@ fn stream_simulation_cpu_from(
             ctx.cancel.store(true, Ordering::Release);
             break;
         }
+        if let Some(checkpoint) = ctx.checkpoint {
+            let max_field = ctx.max_field.borrow();
+            checkpoint.borrow_mut().maybe_write(
+                grid,
+                &max_field,
+                interval.saturating_add(1),
+                false,
+                ctx.diagnostics,
+            );
+        }
     }
     Ok(())
 }
@@ -2224,6 +2349,16 @@ fn stream_simulation_dispatch(
             {
                 ctx.cancel.store(true, Ordering::Release);
                 break;
+            }
+            if let Some(checkpoint) = ctx.checkpoint {
+                let max_field = ctx.max_field.borrow();
+                checkpoint.borrow_mut().maybe_write(
+                    grid,
+                    &max_field,
+                    interval.saturating_add(1),
+                    false,
+                    ctx.diagnostics,
+                );
             }
         }
         return Ok(true);

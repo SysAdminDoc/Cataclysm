@@ -18,6 +18,7 @@ permissions = [
   "allow-gpu-probe",
   "allow-render-protocol-capabilities",
   "allow-surface-probe",
+  "allow-list-solver-checkpoints",
 ]
 
 [[set]]
@@ -49,6 +50,7 @@ identifier = "simulation-cancellation"
 description = "Cancel a solver run by its validated run identifier."
 permissions = [
   "allow-cancel-simulation",
+  "allow-remove-solver-checkpoint",
 ]
 
 [[set]]
