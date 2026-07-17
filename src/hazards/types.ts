@@ -130,6 +130,8 @@ export interface AsteroidDetail {
 }
 
 export interface HazardResult {
+  /** Present for live Rust results; capture fixtures predate result registration. */
+  resultId?: string;
   kind: HazardKind;
   center: GeoPoint;
   rings: EffectRing[];
@@ -138,4 +140,29 @@ export interface HazardResult {
   detail: AsteroidDetail | NuclearDetail;
   authority: "rust";
   modelVersion: string;
+}
+
+export interface DirectHazardProbeEffect {
+  label: string;
+  category: string;
+  description?: string | null;
+  threshold_value?: number | null;
+  threshold_unit?: string | null;
+  value_qualifier?: "at_least" | null;
+  arrival_time_s?: number | null;
+}
+
+export interface DirectHazardProbeResult {
+  result_id: string;
+  kind: "asteroid" | "nuclear";
+  click_lat: number;
+  click_lon: number;
+  range_m: number;
+  status: "threshold_exceeded" | "no_displayed_threshold";
+  effects: DirectHazardProbeEffect[];
+  governing_model: string;
+  citations: string[];
+  assumptions: string[];
+  confidence: "screening_estimate";
+  unknowns: string[];
 }

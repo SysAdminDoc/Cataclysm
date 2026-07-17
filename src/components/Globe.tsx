@@ -47,7 +47,13 @@ import { CesiumReferenceCaptureHost } from "../render/cesium/cesium-reference-ca
 import { ViewerLifecycle } from "../render/cesium/viewer-lifecycle";
 import { TsunamiAnalyticalController } from "../render/cesium/tsunami-analytical";
 import { CesiumTsunamiAnalyticalHost } from "../render/cesium/cesium-tsunami-analytical-host";
-import { buildInspectionRequest, formatInspectionLabel } from "../render/cesium/inspection";
+import {
+  buildInspectionRequest,
+  directHazardProbeReport,
+  formatPointProbeReport,
+  tsunamiProbeReport,
+  type PointProbeReport,
+} from "../render/cesium/inspection";
 import {
   InteractionOwnershipController,
   type InteractionLease,
@@ -102,6 +108,12 @@ type Props = {
   inspectMode?: boolean;
   inspectIsImpact?: boolean;
   inspectTimeS?: number;
+  /** Stable handle for a completed Rust-authoritative asteroid/nuclear result. */
+  directHazardResultId?: string | null;
+  /** Compare mode drives every pane from the same exact probe coordinate. */
+  inspectionCoordinate?: GeoPoint | null;
+  onInspectionCoordinate?: (coordinate: GeoPoint) => void;
+  onInspectionReport?: (report: PointProbeReport) => void;
   onInspectCancel?: () => void;
   onAddGauge?: (lat: number, lon: number) => void;
   /** Whether this is the primary (exportable) globe pane. Only the primary
@@ -243,6 +255,10 @@ export function Globe({
   inspectMode,
   inspectIsImpact,
   inspectTimeS,
+  directHazardResultId,
+  inspectionCoordinate,
+  onInspectionCoordinate,
+  onInspectionReport,
   onInspectCancel,
   onAddGauge,
   primary = true,
@@ -720,18 +736,25 @@ export function Globe({
       !interactionController ||
       !interactionLease ||
       interactionLease.mode.kind !== "inspect" ||
-      !initial
+      (!initial && !directHazardResultId)
     ) return;
     setLastInspectCoord({ lat, lon });
+    onInspectionCoordinate?.({ lat, lon });
     setInspectionResult((current) => startAsyncResult(current));
     setLastInspectionSummary(`Inspection at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude is in progress.`);
-    const request = buildInspectionRequest(initial, lat, lon, {
+    const directRequest = directHazardResultId
+      ? { result_id: directHazardResultId, click_lat: lat, click_lon: lon }
+      : null;
+    const request = directRequest ?? buildInspectionRequest(initial!, lat, lon, {
       isImpact: inspectIsImpact,
       timeS: inspectTimeS,
     });
-    const inspectPromise = isTauri()
-      ? api.inspectAtPoint(request)
-      : Promise.resolve(demoInspectAtPoint(request));
+    const inspectPromise = directRequest
+      ? api.probeDirectHazard(directRequest).then(directHazardProbeReport)
+      : (isTauri()
+          ? api.inspectAtPoint(request as ReturnType<typeof buildInspectionRequest>)
+          : Promise.resolve(demoInspectAtPoint(request as ReturnType<typeof buildInspectionRequest>)))
+        .then((result) => tsunamiProbeReport(lat, lon, result));
     const token = inspectGeneration.setContext(viewer, "inspect", request);
 
     void inspectGeneration
@@ -740,7 +763,8 @@ export function Globe({
           interactionControllerRef.current !== interactionController ||
           inspectionPresenterRef.current !== inspectionPresenter
         ) return;
-        const text = formatInspectionLabel(lat, lon, result);
+        const text = formatPointProbeReport(result);
+        onInspectionReport?.(result);
         inspectionPresenter.present({
           lat,
           lon,
@@ -754,7 +778,14 @@ export function Globe({
         setLastInspectionSummary(`Inspection failed at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude.`);
         console.warn("[globe] inspect_at_point failed", error);
       });
-  }, [initial, inspectIsImpact, inspectTimeS]);
+  }, [directHazardResultId, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport]);
+
+  useEffect(() => {
+    if (!inspectMode || !inspectionCoordinate) return;
+    const current = lastInspectCoord;
+    if (current?.lat === inspectionCoordinate.lat && current.lon === inspectionCoordinate.lon) return;
+    runInspection(inspectionCoordinate.lat, inspectionCoordinate.lon);
+  }, [inspectMode, inspectionCoordinate, lastInspectCoord, runInspection]);
 
   // Pick and inspect are mutually exclusive, generation-owned interactions.
   useEffect(() => {
@@ -775,7 +806,7 @@ export function Globe({
         onPosition: (lat, lon) => onPick?.(lat, lon),
         onCancel: () => onPickCancel?.(),
       });
-    } else if (inspectMode && initial) {
+    } else if (inspectMode && (initial || directHazardResultId)) {
       lease = controller.enable({
         kind: "inspect",
         onPosition: runInspection,
@@ -796,7 +827,7 @@ export function Globe({
       inspectionPresenter.clear();
       controller.disable();
     };
-  }, [pickMode, inspectMode, initial, onPick, onPickCancel, onInspectCancel, runInspection, viewerEpoch]);
+  }, [directHazardResultId, pickMode, inspectMode, initial, onPick, onPickCancel, onInspectCancel, runInspection, viewerEpoch]);
 
   useEffect(() => {
     const controller = tsunamiSourceControllerRef.current;
@@ -1037,7 +1068,9 @@ export function Globe({
       {inspectMode && (
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">
-            <span>Click anywhere on the globe to read amplitude, arrival, and runup.</span>
+            <span>{domain === "tsunami"
+              ? "Click anywhere on the globe to read amplitude, arrival, and runup."
+              : "Click anywhere to inspect modeled thresholds, arrival, assumptions, and unknowns."}</span>
             {lastInspectCoord && onAddGauge && (
               <button
                 className="app__globe-banner-action"

@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Inspect now works across tsunami, asteroid, and nuclear scenarios. Completed
+  direct-hazard results receive bounded content-addressed handles, so moving a
+  point probe reads the existing Rust result rather than rerunning physics. The
+  globe and Results inspector report threshold lower bounds, modeled arrival,
+  governing model and citations, assumptions, confidence, and explicit unknowns;
+  comparison panes share one exact coordinate, and probe reports export as
+  accessible text or CSV.
 - The desktop backend now performs a read-only, fail-closed preflight for
   user-selected GeoTIFF and NetCDF-CF bathymetry. Pure-Rust readers enforce
   bounded file/cell budgets, WGS 84 coordinates, explicit mean-sea-level

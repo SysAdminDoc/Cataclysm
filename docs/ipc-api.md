@@ -55,9 +55,19 @@ Batch runup computation at validated bundled coastal points.
 - **Output:** `Result<Vec<RunupAtPoint>, String>` — results include the slope/depth values, full independent provenance records, exact sample/record IDs, derived quantitative confidence/label, and runup/arrival/inundation fields.
 
 ### `inspect_at_point`
-Click-to-inspect: amplitude, arrival, runup at an arbitrary globe coordinate.
+Click-to-inspect: amplitude, arrival, runup, model provenance, assumptions,
+confidence, and explicit unknowns at an arbitrary globe coordinate.
 - **Input:** `InspectAtPointRequest` — source params + click lat/lon + time_s
 - **Output:** `Result<InspectAtPointResult, String>`
+
+### `probe_direct_hazard`
+Inspect a completed asteroid or nuclear result without rerunning its simulation.
+Live direct results are held in a bounded 16-entry content-addressed registry.
+- **Input:** `{ result_id, click_lat, click_lon }`
+- **Output:** range, applicable displayed thresholds and modeled arrival times,
+  governing model/citations, assumptions, screening confidence, and explicit
+  unknowns. Outside all displayed thresholds is never reported as safe; fallout
+  is excluded from radial inference because it requires wind-oriented plume data.
 
 ### `lamb_wave_sample`
 Atmospheric Lamb-wave properties at a given distance from source.

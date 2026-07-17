@@ -62,6 +62,8 @@ pub struct CasualtyEstimate {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HazardResult {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub result_id: String,
     pub kind: String,
     pub center: HazardCenter,
     pub rings: Vec<EffectRing>,
@@ -764,6 +766,7 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
         tsunami,
     };
     Ok(HazardResult {
+        result_id: String::new(),
         kind: "asteroid".to_string(),
         center: request.center,
         rings,
@@ -1362,6 +1365,7 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
             .then(|| latent_cancer(&effects, request.population_density)),
     };
     Ok(HazardResult {
+        result_id: String::new(),
         kind: "nuclear".to_string(),
         center: request.center,
         rings,

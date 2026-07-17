@@ -214,7 +214,10 @@ pub fn surface_probe(
 pub fn simulate_asteroid_hazard(
     req: crate::physics::direct_hazard::AsteroidHazardRequest,
 ) -> Result<crate::physics::direct_hazard::HazardResult, String> {
+    let canonical = serde_json::to_vec(&req)
+        .map_err(|error| format!("failed to identify asteroid result: {error}"))?;
     crate::physics::direct_hazard::simulate_asteroid_hazard(req)
+        .map(|result| crate::physics::direct_hazard_probe::register_result(result, &canonical))
 }
 
 /// Produce the complete renderer-facing nuclear product in Rust, including
@@ -223,7 +226,19 @@ pub fn simulate_asteroid_hazard(
 pub fn simulate_nuclear_hazard(
     req: crate::physics::direct_hazard::NuclearHazardRequest,
 ) -> Result<crate::physics::direct_hazard::HazardResult, String> {
+    let canonical = serde_json::to_vec(&req)
+        .map_err(|error| format!("failed to identify nuclear result: {error}"))?;
     crate::physics::direct_hazard::simulate_nuclear_hazard(req)
+        .map(|result| crate::physics::direct_hazard_probe::register_result(result, &canonical))
+}
+
+/// Inspect one coordinate against a completed direct-hazard result without
+/// rerunning the asteroid or nuclear model.
+#[tauri::command]
+pub fn probe_direct_hazard(
+    req: crate::physics::direct_hazard_probe::DirectHazardProbeRequest,
+) -> Result<crate::physics::direct_hazard_probe::DirectHazardProbeResult, String> {
+    crate::physics::direct_hazard_probe::probe(req)
 }
 
 fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
@@ -915,6 +930,11 @@ pub struct InspectAtPointResult {
     pub arrival_time_s: f64,
     pub has_arrived: bool,
     pub inundation_extent_m: f64,
+    pub governing_model: &'static str,
+    pub citations: Vec<&'static str>,
+    pub assumptions: Vec<String>,
+    pub confidence: &'static str,
+    pub unknowns: Vec<&'static str>,
 }
 
 /// Single-point readout for the F-V11 Inspect overlay. Mirrors the math
@@ -975,6 +995,32 @@ pub fn inspect_at_point(req: InspectAtPointRequest) -> Result<InspectAtPointResu
         arrival_time_s,
         has_arrived: req.time_s >= arrival_time_s,
         inundation_extent_m,
+        governing_model: if req.is_impact {
+            "impact-far-field + synolakis-runup"
+        } else {
+            "nuclear-far-field + synolakis-runup"
+        },
+        citations: vec![
+            if req.is_impact {
+                "Ward & Asphaug (2000), Asteroid impact tsunami"
+            } else {
+                "Glasstone & Dolan (1977), The Effects of Nuclear Weapons"
+            },
+            "Synolakis (1987), The runup of solitary waves",
+        ],
+        assumptions: vec![
+            format!("Uniform mean ocean depth of {:.0} m", req.mean_depth_m),
+            format!(
+                "Nominal {:.1}° beach slope and {:.0} m offshore depth",
+                req.beach_slope_deg, req.offshore_depth_m
+            ),
+            "Radial far-field attenuation over a spherical-Earth distance".to_string(),
+        ],
+        confidence: "illustrative",
+        unknowns: vec![
+            "Local bathymetry, shoreline geometry, reflection, and dispersion are not resolved",
+            "An absent or small estimate is not an emergency-safety determination",
+        ],
     })
 }
 

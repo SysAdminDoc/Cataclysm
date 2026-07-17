@@ -16,6 +16,7 @@
 
 pub mod constants;
 pub mod direct_hazard;
+pub mod direct_hazard_probe;
 pub mod asteroid;
 pub mod nuclear;
 pub mod landslide;

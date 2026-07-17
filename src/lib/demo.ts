@@ -40,6 +40,11 @@ export type DemoInspectAtPointResult = {
   arrival_time_s: number;
   has_arrived: boolean;
   inundation_extent_m: number;
+  governing_model: string;
+  citations: string[];
+  assumptions: string[];
+  confidence: "illustrative";
+  unknowns: string[];
 };
 
 const TNT_J_PER_KT = 4.184e12;
@@ -583,6 +588,25 @@ export function demoInspectAtPoint(req: {
     arrival_time_s,
     has_arrived: req.time_s >= arrival_time_s,
     inundation_extent_m: Math.min(60_000, runup_m / slope),
+    governing_model: req.is_impact
+      ? "impact-far-field + synolakis-runup"
+      : "nuclear-far-field + synolakis-runup",
+    citations: [
+      req.is_impact
+        ? "Ward & Asphaug (2000), Asteroid impact tsunami"
+        : "Glasstone & Dolan (1977), The Effects of Nuclear Weapons",
+      "Synolakis (1987), The runup of solitary waves",
+    ],
+    assumptions: [
+      `Uniform mean ocean depth of ${req.mean_depth_m.toFixed(0)} m`,
+      `Nominal ${req.beach_slope_deg.toFixed(1)}° beach slope and ${req.offshore_depth_m.toFixed(0)} m offshore depth`,
+      "Radial far-field attenuation over a spherical-Earth distance",
+    ],
+    confidence: "illustrative",
+    unknowns: [
+      "Local bathymetry, shoreline geometry, reflection, and dispersion are not resolved",
+      "An absent or small estimate is not an emergency-safety determination",
+    ],
   };
 }
 

@@ -337,13 +337,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Acceptance: peak, time-of-maximum, arrival, and eta² accumulation update on every accepted GPU step without host readback; eta/u/v read back only at display, cancellation, or completion boundaries; CPU/GPU products stay within declared tolerance and a fixed 4M-cell benchmark records material speedup without extra VRAM beyond budget.
   Complexity: L
 
-- [ ] P1 — Extend Inspect into an explainable all-hazard point probe
-  Why: tsunami inspect reports wave/runup at a click, but asteroid/nuclear users only see concentric regions rather than the effect, arrival, threshold, formula, and uncertainty at a chosen place.
-  Evidence: `src-tauri/src/commands.rs` (`inspect_at_point` is tsunami-only); `src-tauri/src/physics/direct_hazard.rs`; NUKEMAP FAQ https://db.nuclearsecrecy.com/nukemap/faq/.
-  Touches: Rust direct-hazard probe query, globe inspect mode, Results panel, comparison and text/CSV export.
-  Acceptance: one probe works across tsunami, asteroid, and nuclear domains and reports applicable peak/time/dose/threshold values, governing model/citation, assumptions, confidence, and safe unknown states; moving the probe never reruns the full simulation; Compare shows both scenarios at the same coordinate.
-  Complexity: M
-
 - [ ] P1 — Checkpoint authoritative solver state and recover interrupted runs
   Why: crash reports persist but solver fields and progress do not, so an interrupted high-resolution run restarts from zero.
   Evidence: streaming paths in `src-tauri/src/commands.rs`; ErrorBoundary recovery in `src/components/ErrorBoundary.tsx`; ANUGA checkpointing https://anuga.readthedocs.io/en/stable/setup_anuga_script/checkpointing.html.

@@ -98,6 +98,11 @@ Existing tools each do one piece:
   full-width simulation transport with playback speed and solver state.
 - **Focused command bar** — mode switching, inspect/compare tools, grouped
   exports, references, and settings without a wall of equal-priority buttons.
+- **Explainable all-hazard point probe** — inspect tsunami wave/runup or
+  asteroid/nuclear effect thresholds at one coordinate with modeled arrival,
+  governing model and citations, assumptions, confidence, and safe unknowns.
+  Comparison panes evaluate the same coordinate; text and CSV preserve the
+  complete report without rerunning the simulation.
 - **Auditable installed notices** — References exposes the production npm and
   Rust versions, SPDX identifiers, source links, and license texts bundled with
   the current desktop package; lockfile drift is rejected during verification.

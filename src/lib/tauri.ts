@@ -16,7 +16,12 @@ import type {
 } from "../types/scenario";
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
-import type { BurstType, HazardResult, TargetType } from "../hazards";
+import type {
+  BurstType,
+  DirectHazardProbeResult,
+  HazardResult,
+  TargetType,
+} from "../hazards";
 import {
   RENDER_PROTOCOL_MAJOR,
   RENDER_PROTOCOL_MINOR,
@@ -177,6 +182,11 @@ export type InspectAtPointResult = {
   arrival_time_s: number;
   has_arrived: boolean;
   inundation_extent_m: number;
+  governing_model?: string;
+  citations?: string[];
+  assumptions?: string[];
+  confidence?: "illustrative" | "screening_estimate" | "quantitative";
+  unknowns?: string[];
 };
 
 export type DartRmseResult = {
@@ -359,6 +369,13 @@ export const api = {
     offshore_depth_m: number;
   }) {
     return invoke<InspectAtPointResult>("inspect_at_point", { req });
+  },
+  probeDirectHazard(req: {
+    result_id: string;
+    click_lat: number;
+    click_lon: number;
+  }) {
+    return invoke<DirectHazardProbeResult>("probe_direct_hazard", { req });
   },
   simulateGrid(req: {
     source: GeoPoint;

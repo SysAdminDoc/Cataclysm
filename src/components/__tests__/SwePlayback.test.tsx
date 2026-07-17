@@ -122,6 +122,7 @@ describe("SwePlayback", () => {
     render(<SwePlayback initial={INITIAL} />);
 
     const source = await screen.findByRole("combobox", { name: "Bathymetry source" });
+    await within(source).findByRole("option", { name: /Harbor survey/ });
     await user.selectOptions(source, assetId);
     expect(screen.getByRole("note")).toHaveTextContent(/bilinear solver-grid resampling/i);
     await user.click(screen.getByRole("button", { name: "Run simulation" }));

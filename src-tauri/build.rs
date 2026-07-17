@@ -30,6 +30,7 @@ fn main() {
         "simulate_asteroid_hazard_render",
         "simulate_nuclear_hazard",
         "simulate_nuclear_hazard_render",
+        "probe_direct_hazard",
         "diagnostics_bundle",
         "native_panic_record",
         "acknowledge_native_panic_record",

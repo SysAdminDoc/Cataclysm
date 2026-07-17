@@ -3,6 +3,7 @@ import { PresetSelector } from "./components/PresetSelector";
 import { ComparisonStories } from "./components/ComparisonStories";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
+import { PointProbePanel } from "./components/PointProbePanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
@@ -62,6 +63,7 @@ import {
 } from "./lib/comparison-stories";
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
+import type { PointProbeReport } from "./render/cesium/inspection";
 import type { Preset } from "./types/scenario";
 import { HazardControls } from "./components/HazardControls";
 import { SimulationTransport } from "./components/SimulationTransport";
@@ -69,6 +71,7 @@ import { LayerInspector } from "./components/LayerInspector";
 import { SourceModelSummary } from "./components/SourceModelSummary";
 import {
   type AsteroidInput,
+  type GeoPoint,
   type HazardResult,
   type NuclearDetail,
   type NuclearInput,
@@ -343,6 +346,12 @@ export default function App() {
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("setup");
   const [pickMode, setPickMode] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
+  const [comparisonInspectCoordinate, setComparisonInspectCoordinate] = useState<GeoPoint | null>(null);
+  const [pointProbeA, setPointProbeA] = useState<PointProbeReport | null>(null);
+  const [pointProbeB, setPointProbeB] = useState<PointProbeReport | null>(null);
+  useEffect(() => {
+    if (!inspectMode) setComparisonInspectCoordinate(null);
+  }, [inspectMode]);
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [hazardMode, setHazardMode] = useState<HazardMode>("tsunami");
   const [hazardCenters, setHazardCenters] = useState<Record<DirectHazardMode, { lat: number; lon: number } | null>>({
@@ -459,6 +468,10 @@ export default function App() {
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
+  useEffect(() => {
+    setPointProbeA(null);
+    setPointProbeB(null);
+  }, [hazardMode, hazardResult?.resultId, slotA.initial, slotB.initial]);
   useEffect(() => {
     setOutcomeFocus(null);
   }, [slotA.initial]);
@@ -1369,9 +1382,11 @@ export default function App() {
                   setTimelinePlaying(false);
                 }
               }}
-              title="Toggle inspect mode — click anywhere on the globe to read amplitude, arrival, and runup"
-              disabled={inHazardMode || !slotA.initial}
-              disabledReason={sourceRequiredReason}
+              title="Toggle inspect mode — click anywhere for an explainable point probe"
+              disabled={inHazardMode ? !hazardResult?.resultId : !slotA.initial}
+              disabledReason={inHazardMode
+                ? "Run this direct-hazard scenario once to enable its authoritative point probe."
+                : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               Inspect
@@ -1768,9 +1783,19 @@ export default function App() {
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
                 onPickCancel={() => setPickMode(false)}
-                inspectMode={!inHazardMode && inspectMode}
+                inspectMode={inspectMode}
                 inspectIsImpact={activeScenarioKindA === "Asteroid"}
                 inspectTimeS={timeS}
+                directHazardResultId={inHazardMode ? hazardResult?.resultId ?? null : null}
+                inspectionCoordinate={compareMode ? comparisonInspectCoordinate : null}
+                onInspectionCoordinate={compareMode ? (coordinate) => {
+                  setComparisonInspectCoordinate((current) =>
+                    current?.lat === coordinate.lat && current.lon === coordinate.lon
+                      ? current
+                      : coordinate,
+                  );
+                } : undefined}
+                onInspectionReport={setPointProbeA}
                 onInspectCancel={() => setInspectMode(false)}
                 onAddGauge={inHazardMode ? undefined : (lat, lon) => setPendingGauge({ lat, lon })}
                 isochrones={inHazardMode ? null : sweIsochrones}
@@ -1800,6 +1825,19 @@ export default function App() {
                   runupResults={slotB.runupResults}
                   dartBuoys={dartPinsForPreset(slotB.activePresetId)}
                   directRenderFrame={null}
+                  inspectMode={inspectMode}
+                  inspectIsImpact={activeScenarioKindB === "Asteroid"}
+                  inspectTimeS={timeS}
+                  inspectionCoordinate={comparisonInspectCoordinate}
+                  onInspectionCoordinate={(coordinate) => {
+                    setComparisonInspectCoordinate((current) =>
+                      current?.lat === coordinate.lat && current.lon === coordinate.lon
+                        ? current
+                        : coordinate,
+                    );
+                  }}
+                  onInspectionReport={setPointProbeB}
+                  onInspectCancel={() => setInspectMode(false)}
                   primary={false}
                   previewCamera={comparisonCameraB}
                   accessibleSceneLabel={`Comparison slot B · ${activePresetB?.name ?? slotB.initial?.label ?? "No source selected"}`}
@@ -2077,6 +2115,17 @@ export default function App() {
               />}
             />
           </div>
+        )}
+        {inspectorTab === "results" && (
+          <PointProbePanel
+            primary={pointProbeA}
+            comparison={compareMode
+              && pointProbeB
+              && pointProbeA?.lat === pointProbeB.lat
+              && pointProbeA.lon === pointProbeB.lon
+              ? pointProbeB
+              : null}
+          />
         )}
         {inspectorTab === "layers" && <LayerInspector
           domain={hazardMode}
