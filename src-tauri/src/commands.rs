@@ -1646,6 +1646,7 @@ pub struct SimulateGridStreamMeta {
 pub async fn simulate_grid_streaming(
     app: AppHandle,
     run_id: String,
+    resume_run_id: Option<String>,
     req: SimulateGridRequest,
     on_snapshot: tauri::ipc::Channel<GridSnapshot>,
     on_render_packet: tauri::ipc::Channel<Response>,
@@ -1713,6 +1714,38 @@ pub async fn simulate_grid_streaming(
                 return Err(format!("simulation rejected by numerical-integrity admission gate: {failure}"));
             }
 
+            let checkpoint_writer = RefCell::new(StreamCheckpointWriter::new(
+                app_data_dir.clone(),
+                &response_run_id,
+                &req,
+                dt,
+            )?);
+            let resumed = resume_run_id
+                .as_deref()
+                .map(|checkpoint_run_id| {
+                    let checkpoint = crate::physics::solver::checkpoint::load_latest(
+                        &app_data_dir,
+                        checkpoint_run_id,
+                    )?;
+                    verify_resume_checkpoint(
+                        &checkpoint,
+                        &checkpoint_writer.borrow().identity,
+                        &grid,
+                        &snapshot_schedule,
+                    )?;
+                    Ok::<_, String>(checkpoint)
+                })
+                .transpose()?;
+            let (start_interval, restored_max_field) = if let Some(checkpoint) = resumed {
+                let start = checkpoint.identity.next_snapshot_interval as usize;
+                grid = checkpoint.grid;
+                (start, Some(checkpoint.max_field))
+            } else {
+                (0, None)
+            };
+            checkpoint_writer.borrow_mut().identity.next_snapshot_interval =
+                start_interval.min(u32::MAX as usize) as u32;
+
             let canonical_scenario = serde_json::to_vec(&req)
                 .map_err(|error| format!("failed to canonicalize render scenario: {error}"))?;
             let scenario_sha256 = crate::render_protocol::sha256_hex(&canonical_scenario);
@@ -1756,17 +1789,12 @@ pub async fn simulate_grid_streaming(
 
             let max_field_threshold_m =
                 MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
-            let max_field_acc = std::cell::RefCell::new(MaxFieldAccumulator::new(
-                grid.nx * grid.ny,
-                max_field_threshold_m,
-            ));
-            max_field_acc.borrow_mut().observe(&grid);
-            let checkpoint_writer = RefCell::new(StreamCheckpointWriter::new(
-                app_data_dir,
-                &response_run_id,
-                &req,
-                dt,
-            )?);
+            let max_field_acc = std::cell::RefCell::new(restored_max_field.unwrap_or_else(|| {
+                let mut accumulator =
+                    MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
+                accumulator.observe(&grid);
+                accumulator
+            }));
 
             let stream_ctx = StreamSimulationContext {
                 cancel: cancel.as_ref(),
@@ -1777,9 +1805,14 @@ pub async fn simulate_grid_streaming(
                 render: Some(&render_stream),
                 quality_baseline: &quality_baseline,
                 checkpoint: Some(&checkpoint_writer),
+                snapshot_interval_offset: start_interval,
             };
-            let used_gpu =
-                stream_simulation_dispatch(&mut grid, dt, &snapshot_schedule, &stream_ctx)?;
+            let used_gpu = stream_simulation_dispatch(
+                &mut grid,
+                dt,
+                &snapshot_schedule[start_interval..],
+                &stream_ctx,
+            )?;
             let run_quality = quality_baseline.assess(&grid, dt);
             publish_run_quality(&run_quality);
             if let Some(failure) = &run_quality.failure {
@@ -1802,6 +1835,12 @@ pub async fn simulate_grid_streaming(
                 );
             } else {
                 checkpoint_writer.borrow().remove_completed();
+                if let Some(resume_run_id) = resume_run_id.as_deref() {
+                    let _ = crate::physics::solver::checkpoint::remove(
+                        &checkpoint_writer.borrow().root,
+                        resume_run_id,
+                    );
+                }
             }
             let max_field = max_field_acc
                 .into_inner()
@@ -2124,6 +2163,7 @@ struct StreamSimulationContext<'a> {
     render: Option<&'a RenderStreamContext<'a>>,
     quality_baseline: &'a QualityBaseline,
     checkpoint: Option<&'a RefCell<StreamCheckpointWriter>>,
+    snapshot_interval_offset: usize,
 }
 
 const CHECKPOINT_INTERVAL: Duration = Duration::from_secs(60);
@@ -2203,6 +2243,55 @@ impl StreamCheckpointWriter {
     }
 }
 
+fn verify_resume_checkpoint(
+    checkpoint: &crate::physics::solver::checkpoint::SolverCheckpoint,
+    expected: &crate::physics::solver::checkpoint::CheckpointIdentity,
+    initial_grid: &SwGrid,
+    snapshot_schedule: &[usize],
+) -> Result<(), String> {
+    let actual = &checkpoint.identity;
+    if actual.scenario_sha256 != expected.scenario_sha256
+        || actual.settings_sha256 != expected.settings_sha256
+        || actual.data_sha256 != expected.data_sha256
+        || actual.solver_version != expected.solver_version
+        || actual.dt_s.to_bits() != expected.dt_s.to_bits()
+        || actual.t_end_s.to_bits() != expected.t_end_s.to_bits()
+        || actual.n_snapshots != expected.n_snapshots
+    {
+        return Err(
+            "checkpoint does not match the current scenario, settings, data, or solver version"
+                .to_string(),
+        );
+    }
+    let start_interval = actual.next_snapshot_interval as usize;
+    if start_interval > snapshot_schedule.len() {
+        return Err("checkpoint progress exceeds the deterministic snapshot schedule".to_string());
+    }
+    let expected_steps = snapshot_schedule[..start_interval]
+        .iter()
+        .try_fold(0_u64, |total, steps| {
+            total.checked_add(*steps as u64)
+        })
+        .ok_or_else(|| "checkpoint step schedule overflow".to_string())?;
+    let expected_time = expected_steps as f64 * expected.dt_s;
+    let time_tolerance = (expected_time.abs() * 1.0e-12).max(1.0e-9);
+    let grid = &checkpoint.grid;
+    if grid.step_index != expected_steps
+        || (grid.t_s - expected_time).abs() > time_tolerance
+        || grid.nx != initial_grid.nx
+        || grid.ny != initial_grid.ny
+        || grid.dlon_deg.to_bits() != initial_grid.dlon_deg.to_bits()
+        || grid.dlat_deg.to_bits() != initial_grid.dlat_deg.to_bits()
+        || grid.west_lon.to_bits() != initial_grid.west_lon.to_bits()
+        || grid.south_lat.to_bits() != initial_grid.south_lat.to_bits()
+        || grid.colormap != initial_grid.colormap
+        || grid.h_m != initial_grid.h_m
+    {
+        return Err("checkpoint grid or progress does not match the deterministic run plan".to_string());
+    }
+    Ok(())
+}
+
 fn stream_simulation_cpu(
     grid: &mut SwGrid,
     dt_s: f64,
@@ -2276,7 +2365,9 @@ fn stream_simulation_cpu_from(
             checkpoint.borrow_mut().maybe_write(
                 grid,
                 &max_field,
-                interval.saturating_add(1),
+                ctx.snapshot_interval_offset
+                    .saturating_add(interval)
+                    .saturating_add(1),
                 false,
                 ctx.diagnostics,
             );
@@ -2355,7 +2446,9 @@ fn stream_simulation_dispatch(
                 checkpoint.borrow_mut().maybe_write(
                     grid,
                     &max_field,
-                    interval.saturating_add(1),
+                    ctx.snapshot_interval_offset
+                        .saturating_add(interval)
+                        .saturating_add(1),
                     false,
                     ctx.diagnostics,
                 );
@@ -3642,6 +3735,97 @@ mod tests {
         assert!(diagnostics.surface_mask.declared_horizontal_error_m > 100_000.0);
         assert_eq!(diagnostics.solver_memory_budget_bytes, SWE_MEMORY_BUDGET_BYTES);
         assert!(diagnostics.solver_reserved_memory_bytes <= SWE_MEMORY_BUDGET_BYTES);
+    }
+
+    #[test]
+    fn checkpoint_resume_matches_uninterrupted_cpu_run() {
+        let mut req = source_grid_request(None);
+        req.t_end_s = 120.0;
+        req.n_snapshots = 6;
+        let plan = SimulationGridPlan::from_request(&req).unwrap();
+        let mut initial = SwGrid::new(
+            plan.west,
+            plan.south,
+            plan.east,
+            plan.north,
+            plan.cell_deg,
+            plan.cell_deg,
+        );
+        initial.fill_uniform_depth(req.mean_depth_m);
+        inject_source_initial_field(&mut initial, &req).unwrap();
+        let dt = initial.recommended_dt_s(0.4);
+        let schedule = snapshot_step_schedule(req.t_end_s, dt, req.n_snapshots);
+        let stepper = TimeStepper::new(dt);
+        let threshold = MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
+
+        let mut uninterrupted = initial.clone();
+        let mut uninterrupted_max = MaxFieldAccumulator::new(
+            uninterrupted.nx * uninterrupted.ny,
+            threshold,
+        );
+        uninterrupted_max.observe(&uninterrupted);
+        for &steps in &schedule {
+            assert!(stepper.step_cancellable_observed(
+                &mut uninterrupted,
+                steps,
+                None,
+                &mut |grid| uninterrupted_max.observe(grid),
+            ));
+        }
+
+        let split = 2;
+        let mut partial = initial.clone();
+        let mut partial_max = MaxFieldAccumulator::new(partial.nx * partial.ny, threshold);
+        partial_max.observe(&partial);
+        for &steps in &schedule[..split] {
+            assert!(stepper.step_cancellable_observed(
+                &mut partial,
+                steps,
+                None,
+                &mut |grid| partial_max.observe(grid),
+            ));
+        }
+        let root = tempfile::tempdir().unwrap();
+        let mut writer = StreamCheckpointWriter::new(
+            root.path().to_path_buf(),
+            "resume-golden",
+            &req,
+            dt,
+        )
+        .unwrap();
+        writer.identity.next_snapshot_interval = split as u32;
+        let encoded = crate::physics::solver::checkpoint::encode_state(
+            &writer.identity,
+            &partial,
+            &partial_max,
+        )
+        .unwrap();
+        let restored = crate::physics::solver::checkpoint::decode(&encoded).unwrap();
+        verify_resume_checkpoint(&restored, &writer.identity, &initial, &schedule).unwrap();
+
+        let mut resumed = restored.grid;
+        let mut resumed_max = restored.max_field;
+        for &steps in &schedule[split..] {
+            assert!(stepper.step_cancellable_observed(
+                &mut resumed,
+                steps,
+                None,
+                &mut |grid| resumed_max.observe(grid),
+            ));
+        }
+        assert_eq!(resumed.step_index, uninterrupted.step_index);
+        assert_eq!(resumed.t_s, uninterrupted.t_s);
+        assert_eq!(resumed.eta_m, uninterrupted.eta_m);
+        assert_eq!(resumed.u_ms, uninterrupted.u_ms);
+        assert_eq!(resumed.v_ms, uninterrupted.v_ms);
+        let resumed_product = resumed_max.into_product(&resumed, None);
+        let uninterrupted_product = uninterrupted_max.into_product(&uninterrupted, None);
+        assert_eq!(resumed_product.peak_png_b64, uninterrupted_product.peak_png_b64);
+        assert_eq!(
+            resumed_product.t_of_max_png_b64,
+            uninterrupted_product.t_of_max_png_b64
+        );
+        assert_eq!(resumed_product.energy_png_b64, uninterrupted_product.energy_png_b64);
     }
 
     #[cfg(feature = "gpu")]

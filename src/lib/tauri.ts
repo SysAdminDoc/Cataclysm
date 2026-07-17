@@ -498,6 +498,7 @@ export const api = {
     },
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
     onRenderPacket?: (packet: DecodedRenderPacket, replay: RenderReplayAdapter) => void,
+    resumeRunId: string | null = null,
   ): Promise<{
     run_id: string;
     lifecycle: "completed" | "cancelled";
@@ -544,7 +545,13 @@ export const api = {
       run_quality: import("../types/scenario").RunQualityRecord;
       render_scenario_id: string | null;
       render_frame_count: number;
-    }>("simulate_grid_streaming", { runId, req, onSnapshot: channel, onRenderPacket: renderChannel })
+    }>("simulate_grid_streaming", {
+      runId,
+      resumeRunId,
+      req,
+      onSnapshot: channel,
+      onRenderPacket: renderChannel,
+    })
       .then(async (meta) => {
         if (meta.cancelled) {
           // A cancelled run may have counted a frame the channel never

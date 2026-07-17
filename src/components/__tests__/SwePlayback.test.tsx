@@ -9,6 +9,8 @@ const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
   cancelSimulation: vi.fn(),
   listImportedBathymetry: vi.fn(),
+  listSolverCheckpoints: vi.fn(),
+  removeSolverCheckpoint: vi.fn(),
 }));
 const exportApi = vi.hoisted(() => ({
   exportGaugeCsv: vi.fn(),
@@ -87,6 +89,10 @@ describe("SwePlayback", () => {
     tauriApi.cancelSimulation.mockResolvedValue(undefined);
     tauriApi.listImportedBathymetry.mockReset();
     tauriApi.listImportedBathymetry.mockResolvedValue([]);
+    tauriApi.listSolverCheckpoints.mockReset();
+    tauriApi.listSolverCheckpoints.mockResolvedValue([]);
+    tauriApi.removeSolverCheckpoint.mockReset();
+    tauriApi.removeSolverCheckpoint.mockResolvedValue(true);
     exportApi.exportGaugeCsv.mockReset();
     exportApi.exportGaugeCsv.mockReturnValue({ ok: true });
   });
@@ -135,6 +141,7 @@ describe("SwePlayback", () => {
       }),
       expect.any(Function),
       expect.any(Function),
+      null,
     );
   });
 
@@ -166,6 +173,7 @@ describe("SwePlayback", () => {
       expect.objectContaining({ source_geometry: INITIAL.source_geometry }),
       expect.any(Function),
       expect.any(Function),
+      null,
     );
 
     act(() => {
@@ -206,6 +214,38 @@ describe("SwePlayback", () => {
     expect(onSnapshot).not.toHaveBeenCalledWith(SNAPSHOTS[0]);
   });
 
+  it("offers a retained checkpoint and threads its run ID into strict resume", async () => {
+    tauriApi.listSolverCheckpoints.mockResolvedValue([{
+      run_id: "interrupted-run",
+      scenario_sha256: "a".repeat(64),
+      solver_version: "shallow-water-solver-1.0.0",
+      created_at_ms: 1,
+      time_s: 900,
+      t_end_s: 3_600,
+      step_index: 450,
+    }]);
+    tauriApi.simulateGridStreaming.mockResolvedValue({
+      dt_s: 2,
+      nx: 2,
+      ny: 2,
+      used_gpu: false,
+      n_snapshots: 0,
+      cancelled: false,
+      run_quality: RUN_QUALITY,
+    });
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} />);
+
+    await user.click(await screen.findByRole("button", { name: "Resume if compatible" }));
+    expect(tauriApi.simulateGridStreaming).toHaveBeenCalledWith(
+      "run-test",
+      expect.any(Object),
+      expect.any(Function),
+      expect.any(Function),
+      "interrupted-run",
+    );
+  });
+
   it("requests backend gauge samples and exports sampled series", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
@@ -233,6 +273,7 @@ describe("SwePlayback", () => {
       }),
       expect.any(Function),
       expect.any(Function),
+      null,
     );
 
     act(() => {

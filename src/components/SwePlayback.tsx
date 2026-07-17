@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { api, createSimulationRunId, isTauri, type ImportedBathymetryAsset } from "../lib/tauri";
+import { api, createSimulationRunId, isTauri, type ImportedBathymetryAsset, type SolverCheckpointSummary } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
@@ -145,6 +145,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [bathymetryAssets, setBathymetryAssets] = useState<ImportedBathymetryAsset[]>([]);
   const [bathymetryAssetId, setBathymetryAssetId] = useState("");
   const [bathymetryListError, setBathymetryListError] = useState<string | null>(null);
+  const [checkpoints, setCheckpoints] = useState<SolverCheckpointSummary[]>([]);
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
@@ -174,6 +175,17 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const mountedRef = useRef(true);
   const gaugeCounter = useRef(0);
   const handledRunAndWatchNonce = useRef(0);
+
+  const refreshCheckpoints = useCallback(() => {
+    if (!isTauri()) return Promise.resolve();
+    return api.listSolverCheckpoints()
+      .then(setCheckpoints)
+      .catch((error) => console.warn("[solver] failed to list checkpoints", error));
+  }, []);
+
+  useEffect(() => {
+    void refreshCheckpoints();
+  }, [refreshCheckpoints]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -363,6 +375,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     if (runId && isTauri()) {
       api
         .cancelSimulation(runId)
+        .then(() => window.setTimeout(() => void refreshCheckpoints(), 750))
         .catch((err) => console.warn("[solver] failed to cancel active simulation", err));
     }
     setStatus("idle");
@@ -378,9 +391,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     onMaxField?.(null);
     onRunQuality?.(null);
     onRenderFrame?.(null);
-  }, [onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame]);
+  }, [onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame, refreshCheckpoints]);
 
-  const run = useCallback(async (autoPlay = false) => {
+  const run = useCallback(async (autoPlay = false, resumeRunId: string | null = null) => {
     if (!initial) return;
     const previousSnapshots = snapshots;
     const previousDiag = diag;
@@ -481,6 +494,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
               ),
             });
           },
+          resumeRunId,
         );
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
         runIdRef.current = null;
@@ -495,6 +509,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         onSnapshotsReady?.(streamSnaps);
         setMaxField(meta.max_field ?? null);
         onMaxField?.(meta.max_field ?? null);
+        await refreshCheckpoints();
         if (autoPlay && playbackTimeS === undefined) setIsPlaying(true);
       } else {
         const resp = simulateDemoGrid(initial, {
@@ -516,6 +531,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       if (!mountedRef.current || reqId !== reqIdRef.current) return;
       runIdRef.current = null;
       console.error("simulate_grid failed", err);
+      await refreshCheckpoints();
       setErrMsg(String(err));
       if (previousSnapshots) {
         setSnapshots(previousSnapshots);
@@ -537,7 +553,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS]);
+  }, [initial, snapshots, diag, maxField, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -595,6 +611,23 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           </button>
         )}
       </div>}
+      {isTauri() && status !== "running" && checkpoints[0] && (
+        <div className="swe__confidence" role="note">
+          <strong>Interrupted solver state available</strong>
+          <span>
+            {(checkpoints[0].time_s / 60).toFixed(1)} of {(checkpoints[0].t_end_s / 60).toFixed(1)} min · step {checkpoints[0].step_index.toLocaleString()}
+          </span>
+          <button type="button" onClick={() => void run(false, checkpoints[0].run_id)}>
+            Resume if compatible
+          </button>
+          <button
+            type="button"
+            onClick={() => void api.removeSolverCheckpoint(checkpoints[0].run_id).then(refreshCheckpoints)}
+          >
+            Remove
+          </button>
+        </div>
+      )}
       {workspaceMode !== "simple" && <div className="swe__options" role="group" aria-label="Solver options">
         <label className="swe__check">
           <input

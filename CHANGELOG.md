@@ -12,7 +12,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   at bounded wall-clock intervals and on cancellation. Writes replace
   atomically, retain at most four runs, disappear after clean completion, and
   quarantine corrupt or future-schema files; typed commands list and remove
-  retained checkpoints while resume execution remains tracked on the roadmap.
+  retained checkpoints.
+- Retained solver checkpoints now appear in the wave-propagation panel and can
+  resume through the normal streaming command. Restore fails closed unless the
+  scenario, settings, data source, solver version, grid geometry, bathymetry,
+  tick, and simulated time match the rebuilt deterministic run plan; a golden
+  test locks resumed eta/u/v and maximum-field products to an uninterrupted run.
 - Inspect now works across tsunami, asteroid, and nuclear scenarios. Completed
   direct-hazard results receive bounded content-addressed handles, so moving a
   point probe reads the existing Rust result rather than rerunning physics. The
