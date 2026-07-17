@@ -208,8 +208,17 @@ function Sparkline({
         aria-describedby={`${semanticId}-summary`}
       >
         <line x1={0} x2={w} y1={plotCenter} y2={plotCenter} stroke="var(--surface2)" strokeDasharray="2 4" />
-        <path d={observedPath} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
-        {modelPath && <path d={modelPath} fill="none" stroke="var(--peach)" strokeWidth={1.5} />}
+        <path data-series="observed" d={observedPath} fill="none" stroke="var(--maroon)" strokeWidth={1.5} />
+        {modelPath && (
+          <path
+            data-series="model"
+            d={modelPath}
+            fill="none"
+            stroke="var(--peach)"
+            strokeWidth={1.5}
+            strokeDasharray="5 3"
+          />
+        )}
         {Number.isFinite(cursorX) && cursorX >= 0 && cursorX <= w && (
           <line x1={cursorX} x2={cursorX} y1={plotTop} y2={plotBottom} stroke="var(--sapphire)" strokeWidth={1.5} />
         )}

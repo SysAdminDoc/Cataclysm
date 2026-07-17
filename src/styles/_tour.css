@@ -60,7 +60,7 @@
 }
 
 .tour-card__step {
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: var(--accent-text);

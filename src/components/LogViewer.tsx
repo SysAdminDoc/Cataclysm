@@ -58,6 +58,7 @@ export function LogViewer({ open, onClose }: Props) {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const dialogRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const followTailRef = useRef(true);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEscapeKey(onClose, open);
   useFocusTrap(dialogRef, open);
@@ -75,10 +76,19 @@ export function LogViewer({ open, onClose }: Props) {
   }, [open]);
 
   useEffect(() => {
-    if (listRef.current) {
+    if (followTailRef.current && listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [entries]);
+
+  useEffect(() => {
+    if (!open) return;
+    followTailRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
 
   useEffect(() => {
     return () => {
@@ -255,7 +265,14 @@ export function LogViewer({ open, onClose }: Props) {
             Clear
           </button>
         </div>
-        <div className="log-viewer__list" ref={listRef}>
+        <div
+          className="log-viewer__list"
+          ref={listRef}
+          onScroll={(event) => {
+            const list = event.currentTarget;
+            followTailRef.current = list.scrollHeight - list.scrollTop - list.clientHeight <= 24;
+          }}
+        >
           {entries.length === 0 && (
             <div className="empty-state empty-state--compact log-viewer__empty">
               <span className="empty-state__icon" aria-hidden />

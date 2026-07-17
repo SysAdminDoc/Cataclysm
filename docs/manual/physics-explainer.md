@@ -51,7 +51,7 @@ where:
 - **H** is the offshore wave amplitude
 - **d** is the offshore water depth
 
-This is sampled at 60+ named coastal points worldwide, each with a calibrated beach slope from geomorphological surveys.
+This is sampled at 79 named coastal points worldwide. Current beach slopes are legacy curated estimates and most offshore depths are nominal 50 m placeholders whose original per-point sample lineage was not retained. The app labels these runup values illustrative and low confidence, exposes uncertainty and exact provenance record IDs, and excludes three zero-slope deep-water reference gauges from the coastal calculation.
 
 ## What's accurate vs. approximate
 

@@ -108,13 +108,12 @@ pub struct GridSnapshot {
     /// Maximum absolute amplitude across the grid (used by Cesium for
     /// alpha-by-magnitude rendering).
     pub eta_abs_max_m: f64,
-    /// Base64-encoded PNG of the |η| field, mapped to a blue→white→red
-    /// diverging colormap. Suitable for `data:image/png;base64,…` URIs
-    /// passed to Cesium's `SingleTileImageryProvider`.
+    /// Base64-encoded PNG of the |η| field for a single non-wrapping
+    /// rectangle. Empty when `field_tiles` carries the complete field, which
+    /// avoids retaining a redundant full raster for wrapped/polar grids.
     pub eta_png_b64: String,
     /// Non-wrapping renderer tiles. Empty for a single low-latitude rectangle;
-    /// populated for antimeridian and polar fields while `eta_png_b64` remains
-    /// available for backward-compatible export.
+    /// populated for antimeridian and polar fields.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub field_tiles: Vec<GridSnapshotTile>,
     #[serde(default)]
@@ -476,6 +475,11 @@ impl SwGrid {
                 Vec::new()
             }
         };
+        let eta_png_b64 = if field_tiles.is_empty() {
+            self.encode_eta_png(absmax.max(1e-9), diagnostics)
+        } else {
+            String::new()
+        };
         GridSnapshot {
             time_s: self.t_s,
             bbox: [
@@ -490,7 +494,7 @@ impl SwGrid {
             eta_min_m: if lo.is_finite() { lo } else { 0.0 },
             eta_max_m: if hi.is_finite() { hi } else { 0.0 },
             eta_abs_max_m: absmax,
-            eta_png_b64: self.encode_eta_png(absmax.max(1e-9), diagnostics),
+            eta_png_b64,
             field_tiles,
             gauge_samples: gauges
                 .iter()
@@ -1447,6 +1451,34 @@ mod tests {
                 .field_tiles
                 .iter()
                 .all(|tile| !tile.eta_png_b64.is_empty())
+        );
+        assert!(
+            snapshot.eta_png_b64.is_empty(),
+            "tiled snapshots must not retain a duplicate full-field PNG"
+        );
+    }
+
+    #[test]
+    fn tiled_snapshot_retains_one_encoded_field_with_bounded_overhead() {
+        let mut grid = SwGrid::new(174.53, -2.0, 184.53, 2.0, 0.1, 0.1);
+        let mut state = 0x9e37_79b9_u32;
+        for value in &mut grid.eta_m {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            *value = (f64::from(state) / f64::from(u32::MAX)) * 2.0 - 1.0;
+        }
+
+        let snapshot = grid.snapshot();
+        assert!(snapshot.eta_png_b64.is_empty());
+        assert_eq!(snapshot.field_tiles.len(), 2);
+        let retained_bytes = snapshot
+            .field_tiles
+            .iter()
+            .map(|tile| tile.eta_png_b64.len())
+            .sum::<usize>();
+        assert!(
+            retained_bytes <= grid.nx * grid.ny * 6 + 4_096,
+            "encoded tiled field retained {retained_bytes} bytes for {} cells",
+            grid.nx * grid.ny
         );
     }
 

@@ -245,7 +245,7 @@
     padding: 7px 5px;
     justify-content: center;
     text-align: center;
-    font-size: 11px;
+    font-size: var(--type-caption);
   }
 
   .settings__nav button[aria-current="page"] {

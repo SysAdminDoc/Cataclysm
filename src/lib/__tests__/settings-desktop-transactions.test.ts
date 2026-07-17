@@ -267,4 +267,26 @@ describe("settings desktop transactions", () => {
     expect(desktop.storeValues.get("disclaimer_acknowledged_at")).toBe("2026-07-02T00:00:00.000Z");
     expect(desktop.storeValues.get("classroom_locked")).toBe(true);
   });
+
+  it.each([
+    ["tour completion", "tour_completed_at", () => settings.clearTourCompleted()],
+    ["online-map notice dismissal", "token_banner_dismissed_at", () => settings.clearTokenBannerDismissed()],
+    ["disclaimer acknowledgement", "disclaimer_acknowledged_at", () => settings.clearDisclaimerAck()],
+  ] as const)("clears %s transactionally in both settings stores", async (_label, key, action) => {
+    await action();
+    expect(desktop.storeValues.has(key)).toBe(false);
+    expect(localStorage.getItem(LS_PREFIX + key)).toBeNull();
+  });
+
+  it.each([
+    ["tour completion", "tour_completed_at", () => settings.clearTourCompleted()],
+    ["online-map notice dismissal", "token_banner_dismissed_at", () => settings.clearTokenBannerDismissed()],
+    ["disclaimer acknowledgement", "disclaimer_acknowledged_at", () => settings.clearDisclaimerAck()],
+  ] as const)("rolls %s back when desktop persistence fails", async (_label, key, action) => {
+    const original = DESKTOP_BASELINE[key];
+    desktop.failNext({ method: "save" });
+    await captureTransactionFailure(action);
+    expect(desktop.storeValues.get(key)).toEqual(original);
+    expect(localStorage.getItem(LS_PREFIX + key)).toBe(JSON.stringify(original));
+  });
 });

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, useId, type ReactNode } from "react";
 import { getGlossaryEntry } from "../lib/glossary";
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
 
 export function GlossaryTip({ term, children }: Props) {
   const entry = getGlossaryEntry(term);
+  const tooltipId = `${useId()}-glossary-tooltip`;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const popupRef = useRef<HTMLSpanElement>(null);
@@ -55,7 +56,7 @@ export function GlossaryTip({ term, children }: Props) {
       ref={ref}
       className="glossary-tip"
       tabIndex={0}
-      aria-describedby={open ? `glossary-${term}` : undefined}
+      aria-describedby={open ? tooltipId : undefined}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
@@ -64,7 +65,7 @@ export function GlossaryTip({ term, children }: Props) {
       {children}
       <span className="glossary-tip__indicator" aria-hidden>?</span>
       {open && (
-        <span ref={popupRef} className="glossary-tip__popup" id={`glossary-${term}`} role="tooltip">
+        <span ref={popupRef} className="glossary-tip__popup" id={tooltipId} role="tooltip">
           <strong className="glossary-tip__term">{entry.term}</strong>
           <span className="glossary-tip__def">{entry.definition}</span>
           {entry.citation && (

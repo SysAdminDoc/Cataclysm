@@ -299,7 +299,7 @@
   background: var(--mantle);
   border: 1px solid var(--sapphire);
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   letter-spacing: 0.6px;
   pointer-events: none;
@@ -325,7 +325,7 @@
 }
 
 .app__compare-rail-label {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.4px;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -683,6 +683,6 @@
   color: var(--text);
   padding: 1px 6px;
   border-radius: var(--r-sm);
-  font-size: 11px;
+  font-size: 12px;
   margin: 0 4px;
 }

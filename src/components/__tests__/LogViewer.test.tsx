@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -81,6 +81,31 @@ describe("LogViewer", () => {
 
     expect(await screen.findByText(/readback failed/)).toBeInTheDocument();
     expect(screen.getByText("warn")).toBeInTheDocument();
+  });
+
+  it("follows new entries only while the reader is near the log tail", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<LogViewer open onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    const list = container.querySelector<HTMLElement>(".log-viewer__list") as HTMLElement;
+    let scrollHeight = 1_000;
+    Object.defineProperties(list, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+    });
+
+    list.scrollTop = 100;
+    fireEvent.scroll(list);
+    act(() => pushExternalDiagnostic({ level: "info", message: "preserve-reader-position" }));
+    await screen.findByText("preserve-reader-position");
+    expect(list.scrollTop).toBe(100);
+
+    list.scrollTop = 790;
+    fireEvent.scroll(list);
+    scrollHeight = 1_200;
+    act(() => pushExternalDiagnostic({ level: "info", message: "follow-reader-tail" }));
+    await screen.findByText("follow-reader-tail");
+    expect(list.scrollTop).toBe(1_200);
   });
 
   it("includes the active Earth providers and asset versions in the support bundle", async () => {

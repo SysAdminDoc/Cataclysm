@@ -82,16 +82,18 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
               style={{ left: `${pct}%` }}
               onClick={() => onSelect(e.preset.id)}
               disabled={isBusy}
-              title={`${e.preset.name} — ${e.preset.date}`}
+              aria-label={`${e.preset.name}, ${e.preset.source.kind} source, ${e.preset.date}`}
+              title={`${e.preset.name} — ${e.preset.source.kind} source — ${e.preset.date}`}
               type="button"
             >
               <span
                 className="timeline__dot"
                 style={{ background: color, boxShadow: isActive ? `0 0 0 3px ${color}` : undefined }}
+                aria-hidden
               />
               <span className="timeline__label">
                 <strong>{e.preset.name.split(/\s+/).slice(0, 2).join(" ")}</strong>
-                <span>{isBusy ? "..." : e.label}</span>
+                <span>{e.preset.source.kind} · {isBusy ? "..." : e.label}</span>
               </span>
             </button>
           );

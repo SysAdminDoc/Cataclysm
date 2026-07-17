@@ -20,6 +20,29 @@ describe("Settings", () => {
     expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();
   });
 
+  it("uses roving focus and arrow keys for renderer quality radios", async () => {
+    const user = userEvent.setup();
+    render(<Settings onClose={() => {}} />);
+
+    await user.click(await screen.findByRole("button", { name: "Simulation performance" }));
+    const high = screen.getByRole("radio", { name: /^High/ });
+    const cinematic = screen.getByRole("radio", { name: /^Cinematic/ });
+    const low = screen.getByRole("radio", { name: /^Low/ });
+    expect(high).toHaveAttribute("aria-checked", "true");
+    expect(high).toHaveAttribute("tabindex", "0");
+    expect(cinematic).toHaveAttribute("tabindex", "-1");
+
+    high.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(document.activeElement).toBe(cinematic);
+    expect(cinematic).toHaveAttribute("aria-checked", "true");
+    expect(high).toHaveAttribute("tabindex", "-1");
+
+    await user.keyboard("{Home}");
+    expect(document.activeElement).toBe(low);
+    expect(low).toHaveAttribute("aria-checked", "true");
+  });
+
   it("saves a trimmed token and dispatches settings updates", async () => {
     const saved = vi.fn();
     window.addEventListener("tsunamisim:settings-saved", saved);

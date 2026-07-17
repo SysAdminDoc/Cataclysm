@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 async function seedAcknowledgedPreview(page: { addInitScript: (script: () => void) => Promise<void> }) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "3");
+    localStorage.setItem("tsunamisim._settings_schema_version", "4");
     localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
@@ -84,7 +84,7 @@ test.describe("Keyboard-only golden path", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("export popover moves focus and closes on Escape", async ({ page }) => {
+  test("export popover restores focus after Escape and action selection", async ({ page }) => {
     await page.goto("/");
     const trigger = page.getByRole("button", { name: "Export", exact: true });
     await trigger.click();
@@ -100,6 +100,14 @@ test.describe("Keyboard-only golden path", () => {
 
     await expect(page.locator(".app__export-panel")).toHaveCount(0);
     await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await page.getByRole("button", { name: /^PNG/ }).dispatchEvent("click");
+    await expect(page.locator(".app__export-panel")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    const infoToast = page.locator('.app-toast[data-tone="info"]');
+    await expect(infoToast).toHaveAttribute("role", "status");
+    await expect(infoToast).toHaveAttribute("aria-live", "polite");
   });
 
   test("scenario and inspector tabs use roving focus with arrow, Home, and End keys", async ({ page }) => {

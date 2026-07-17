@@ -2,7 +2,7 @@
 .footer-note {
   display: grid;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--subtext);
   text-align: left;
   padding: 10px;

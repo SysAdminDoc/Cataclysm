@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SimulationTransport } from "../SimulationTransport";
 
@@ -33,5 +34,24 @@ describe("SimulationTransport", () => {
     expect(screen.getByText("Nuclear effects ready")).toBeInTheDocument();
     expect(screen.queryByLabelText("Scenario timeline scrubber")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open setup" })).toBeEnabled();
+  });
+
+  it("restarts from source time when Play is pressed at the end", async () => {
+    const onTimeChange = vi.fn();
+    const onTogglePlaying = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <SimulationTransport
+        {...baseProps}
+        timeS={3600}
+        durationS={3600}
+        onTimeChange={onTimeChange}
+        onTogglePlaying={onTogglePlaying}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Play scenario timeline" }));
+    expect(onTimeChange).toHaveBeenCalledWith(0);
+    expect(onTogglePlaying).toHaveBeenCalledTimes(1);
   });
 });

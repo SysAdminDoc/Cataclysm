@@ -70,4 +70,11 @@ describe("TimelineView", () => {
     expect(screen.getByText("Ancient")).toBeInTheDocument();
     expect(screen.getByText("Recent")).toBeInTheDocument();
   });
+
+  it("communicates source categories without relying on marker color", () => {
+    render(<TimelineView presets={PRESETS} activeId={null} onSelect={() => {}} />);
+    const tohoku = screen.getByRole("button", { name: /Tōhoku 2011, Earthquake source/ });
+    expect(tohoku).toHaveTextContent("Earthquake");
+    expect(tohoku.querySelector(".timeline__dot")).toHaveAttribute("aria-hidden", "true");
+  });
 });

@@ -10,7 +10,7 @@
 .log-viewer__intro {
   padding: 12px 20px 0;
   color: var(--subtext);
-  font-size: 12.5px;
+  font-size: var(--type-caption);
   line-height: 1.5;
 }
 
@@ -30,7 +30,7 @@
   background: color-mix(in srgb, var(--surface0) 42%, transparent);
   border: 1px solid color-mix(in srgb, var(--surface1) 36%, transparent);
   color: var(--subtext);
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
 }
 
@@ -68,7 +68,7 @@
 .log-viewer__crash span,
 .log-viewer__crash small {
   color: var(--subtext);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 
 .log-viewer__crash details {
@@ -88,7 +88,7 @@
   overflow: auto;
   color: var(--text);
   font-family: "JetBrains Mono", "Cascadia Code", monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   white-space: pre-wrap;
 }
 
@@ -101,12 +101,12 @@
   flex-wrap: wrap;
 }
 .log-viewer__count {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--subtext);
   margin-right: auto;
 }
 .log-viewer__btn {
-  font-size: 12px;
+  font-size: var(--type-caption);
   padding: 4px 10px;
   border-radius: var(--r-sm);
   background: var(--surface0);
@@ -116,7 +116,7 @@
 }
 .log-viewer__btn:hover { background: var(--surface1); }
 .log-viewer__copy-status {
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--subtext);
 }
 .log-viewer__copy-status[data-tone="success"] { color: var(--success-text); }
@@ -126,7 +126,7 @@
   overflow-y: auto;
   padding: 10px 12px;
   font-family: "JetBrains Mono", "Cascadia Code", monospace;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   min-height: 200px;
 }

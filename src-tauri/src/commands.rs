@@ -1130,12 +1130,15 @@ const SWE_MAX_CELLS: usize = 4_000_000;
 /// streaming run remains admissible; a second comparable run is rejected
 /// before either grid can double the process working set.
 const SWE_MEMORY_BUDGET_BYTES: u64 = 512 * 1024 * 1024;
-/// Peak per-cell residency across the f64 host grid, solver scratch/max-field
-/// arrays, f32 GPU ping-pong/readback buffers, and upload staging.
-const SWE_CORE_BYTES_PER_CELL: u64 = 120;
-/// Conservative retained size for each PNG/base64 snapshot in the
-/// non-streaming response. Streaming responses do not retain prior snapshots.
-const SWE_RETAINED_SNAPSHOT_BYTES_PER_CELL: u64 = 5;
+/// Conservative peak per-cell residency across the f64 host grid,
+/// scratch/max-field arrays, f32 GPU ping-pong/readback/upload buffers, and one
+/// in-flight RGBA/PNG/base64 encoding. Source-level accounting is about 140
+/// bytes before allocator and codec overhead, so admission keeps headroom.
+const SWE_CORE_BYTES_PER_CELL: u64 = 152;
+/// Retained base64 PNG size per cell for each non-streaming snapshot. Tiled
+/// snapshots no longer retain a duplicate full image; raw RGBA encoded as
+/// base64 approaches 5.34 bytes/cell before small PNG/container overhead.
+const SWE_RETAINED_SNAPSHOT_BYTES_PER_CELL: u64 = 6;
 /// Hard cap on total *work* (grid cells × time steps). The cell cap and the
 /// step cap are each individually bounded, but their product is what actually
 /// determines wall-clock time; without this a request that passes both (e.g.
@@ -2483,14 +2486,27 @@ mod tests {
     }
 
     #[test]
-    fn maximum_streaming_run_is_admitted_but_a_concurrent_peer_is_rejected() {
+    fn peak_memory_admission_rejects_oversize_and_concurrent_runs() {
         let mut request = source_grid_request(None);
         request.box_half_size_deg = 5.0;
         request.cells_per_deg = 200.0;
-        let plan = SimulationGridPlan::from_request(&request).expect("maximum grid plan");
+        let maximum_plan = SimulationGridPlan::from_request(&request).expect("maximum grid plan");
+        let maximum_memory = SimulationMemoryEstimate::for_plan(&maximum_plan, 0);
+        assert_eq!(
+            (maximum_plan.nx, maximum_plan.ny, maximum_plan.cells),
+            (2_000, 2_000, 4_000_000)
+        );
+        assert!(maximum_memory.estimated_bytes > SWE_MEMORY_BUDGET_BYTES);
+        let oversize = Arc::new(AtomicBool::new(false));
+        let oversize_error = register_simulation("test-memory-oversize", &oversize, &maximum_memory)
+            .expect_err("a single run above the process budget must be rejected");
+        assert!(oversize_error.contains("2000×2000"), "{oversize_error}");
+
+        request.cells_per_deg = 160.0;
+        let plan = SimulationGridPlan::from_request(&request).expect("concurrent grid plan");
         let memory = SimulationMemoryEstimate::for_plan(&plan, 0);
         let retained = SimulationMemoryEstimate::for_plan(&plan, 60);
-        assert_eq!((plan.nx, plan.ny, plan.cells), (2_000, 2_000, 4_000_000));
+        assert_eq!((plan.nx, plan.ny, plan.cells), (1_600, 1_600, 2_560_000));
         assert!(memory.estimated_bytes < SWE_MEMORY_BUDGET_BYTES);
         assert!(memory.estimated_bytes * 2 > SWE_MEMORY_BUDGET_BYTES);
         assert!(retained.estimated_bytes > SWE_MEMORY_BUDGET_BYTES);
@@ -2500,7 +2516,7 @@ mod tests {
         register_simulation("test-memory-run-a", &first, &memory).expect("first run admitted");
         let error = register_simulation("test-memory-run-b", &second, &memory)
             .expect_err("second maximum run must exceed the shared budget");
-        assert!(error.contains("2000×2000"), "{error}");
+        assert!(error.contains("1600×1600"), "{error}");
         assert!(error.contains("MiB"), "{error}");
         assert!(error.contains("concurrent compare runs"), "{error}");
         unregister_simulation("test-memory-run-a", &first);

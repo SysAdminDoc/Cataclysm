@@ -38,7 +38,7 @@ function LayerRow({ label, detail, active, evidence }: { label: string; detail: 
         </span>
         <span className="layer-inspector__status">{active ? "Active" : "Waiting"}</span>
       </div>
-      <TrustDisclosure evidence={contextualEvidence} compact />
+      <TrustDisclosure evidence={contextualEvidence} compact compactStatus={active ? undefined : "Evidence"} />
     </li>
   );
 }

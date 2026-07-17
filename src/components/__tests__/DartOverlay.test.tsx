@@ -94,6 +94,10 @@ describe("DartOverlay RMSE", () => {
     expect(screen.getAllByText(/threshold 3 cm; noise: fixed 0\.03 m NOAA/, { selector: ".dart__rmse span" })).toHaveLength(3);
     expect(screen.getByText("SWE model")).toBeInTheDocument();
     expect(screen.getByText("Arrival markers")).toBeInTheDocument();
+    for (const chart of screen.getAllByRole("img", { name: /DART water level/ })) {
+      expect(chart.querySelector('[data-series="observed"]')).not.toHaveAttribute("stroke-dasharray");
+      expect(chart.querySelector('[data-series="model"]')).toHaveAttribute("stroke-dasharray", "5 3");
+    }
     expect(
       screen.getAllByRole("img", {
         name: /observed 0\.00 m at the timeline cursor; model 0\.10 m at the timeline cursor/,

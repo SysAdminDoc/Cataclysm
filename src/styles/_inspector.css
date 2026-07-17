@@ -169,7 +169,7 @@
   border: 1px solid var(--divider);
   border-radius: 50%;
   background: var(--inspector-bg);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 

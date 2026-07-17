@@ -413,7 +413,26 @@ export function Settings({ onClose }: Props) {
                     aria-checked={rendererQuality === tier}
                     role="radio"
                     type="button"
+                    tabIndex={rendererQuality === tier ? 0 : -1}
                     onClick={() => setRendererQuality(tier)}
+                    onKeyDown={(event) => {
+                      const currentIndex = RENDERER_QUALITY_TIERS.indexOf(tier);
+                      let nextIndex: number | null = null;
+                      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+                        nextIndex = (currentIndex + 1) % RENDERER_QUALITY_TIERS.length;
+                      }
+                      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+                        nextIndex = (currentIndex - 1 + RENDERER_QUALITY_TIERS.length) % RENDERER_QUALITY_TIERS.length;
+                      }
+                      if (event.key === "Home") nextIndex = 0;
+                      if (event.key === "End") nextIndex = RENDERER_QUALITY_TIERS.length - 1;
+                      if (nextIndex === null) return;
+                      event.preventDefault();
+                      setRendererQuality(RENDERER_QUALITY_TIERS[nextIndex]);
+                      const radios = event.currentTarget.parentElement
+                        ?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+                      radios?.[nextIndex]?.focus();
+                    }}
                     disabled={classroomLocked}
                   >
                     <strong>{tier}</strong>

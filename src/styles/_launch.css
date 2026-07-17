@@ -132,7 +132,7 @@ html[data-launch-experience-active="true"] .app .app__globe {
   display: block;
   margin-bottom: var(--space-3);
   color: var(--cinematic-sky);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -159,7 +159,7 @@ html[data-launch-experience-active="true"] .app .app__globe {
   gap: 26px;
   margin-top: 26px;
   color: var(--cinematic-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -196,7 +196,7 @@ html[data-launch-experience-active="true"] .app .app__globe {
   align-items: center;
   gap: var(--space-2);
   color: var(--cinematic-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

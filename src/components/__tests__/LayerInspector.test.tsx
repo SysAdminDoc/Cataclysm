@@ -27,4 +27,24 @@ describe("LayerInspector trust evidence", () => {
     expect(screen.getByText("Finite-volume shallow-water-equation solver")).toBeInTheDocument();
     expect(screen.getByText("layer:custom:scenario:swe-field")).toBeInTheDocument();
   });
+
+  it("shows each inactive layer state once without duplicating Waiting in evidence", () => {
+    render(
+      <LayerInspector
+        domain="tsunami"
+        hasSource={false}
+        hasWavefront={false}
+        hasSweField={false}
+        hasMaxField={false}
+        arrivalCount={0}
+        runupCount={0}
+        dartCount={0}
+        hasFallout={false}
+        onOpenSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("Waiting")).toHaveLength(7);
+    expect(screen.getAllByText("Evidence")).toHaveLength(7);
+  });
 });

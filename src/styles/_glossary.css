@@ -11,13 +11,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   margin-left: 2px;
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-text);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   vertical-align: super;
   line-height: 1;
@@ -30,7 +30,7 @@
   transform: translateX(-50%);
   z-index: 900;
   width: max-content;
-  max-width: 300px;
+  max-width: 340px;
   padding: 10px 12px;
   border-radius: var(--r-md);
   background: var(--surface0);
@@ -43,19 +43,19 @@
 }
 
 .glossary-tip__term {
-  font-size: 12px;
+  font-size: var(--type-label);
   font-weight: 700;
   color: var(--accent-text);
 }
 
 .glossary-tip__def {
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1.5;
   color: var(--text);
 }
 
 .glossary-tip__cite {
-  font-size: 10px;
+  font-size: var(--type-caption);
   color: var(--subtext);
   font-style: italic;
 }

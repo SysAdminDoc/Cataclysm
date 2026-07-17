@@ -230,6 +230,15 @@
   width: 90px;
 }
 
+.swe__gauge-errors {
+  display: grid;
+  flex: 1 0 100%;
+  gap: 2px;
+  color: var(--danger);
+  font-size: var(--type-caption);
+  line-height: 1.35;
+}
+
 .swe__gauge-list {
   display: flex;
   flex-direction: column;

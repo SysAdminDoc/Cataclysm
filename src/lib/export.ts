@@ -15,6 +15,7 @@ import {
   assertEarthOperationAllowed,
   type EarthOperationPreflight,
 } from "./earth-assets";
+import { resolveSweImageryTiles } from "../render/cesium/swe-field-tiles";
 
 export type ExportFailureCode =
   | "preflight"
@@ -670,20 +671,74 @@ export function exportCzml(
   const tEnd = snapshots[snapshots.length - 1].time_s;
   const interval = `${toIso(tStart)}/${toIso(Math.max(tEnd, tStart + 1))}`;
 
-  // Time-tagged CZML ImageProperty: each element is only { interval, image }.
-  // repeat/color/transparent belong to the ImageMaterial level (below), not
-  // inside these interval elements, or a strict CzmlDataSource ignores them.
-  const materialIntervals: unknown[] = [];
-  for (let k = 0; k < snapshots.length; k++) {
-    const snap = snapshots[k];
-    const next = k + 1 < snapshots.length ? snapshots[k + 1].time_s : tEnd + 1;
-    materialIntervals.push({
-      interval: `${toIso(snap.time_s)}/${toIso(next)}`,
-      image: `data:image/png;base64,${snap.eta_png_b64}`,
-    });
+  const layouts = snapshots.map(resolveSweImageryTiles);
+  const firstLayout = layouts[0];
+  const sameRectangle = (left: readonly number[], right: readonly number[]) =>
+    left.length === right.length && left.every((value, index) => value === right[index]);
+  const layoutIsStable = firstLayout.length > 0 && layouts.every((layout) =>
+    layout.length === firstLayout.length
+    && layout.every((tile, index) => sameRectangle(tile.bbox, firstLayout[index].bbox)));
+  if (!layoutIsStable) {
+    return exportFailure(
+      "data",
+      "Simulation frames have an invalid or inconsistent imagery layout. Run the SWE simulation again before exporting CZML.",
+      true,
+    );
   }
 
-  const [west, south, east, north] = snapshots[0].bbox;
+  const commonProperties = {
+    appVersion: provenance.appVersion,
+    assetRegistryVersion: provenance.assetRegistryVersion,
+    bathymetryAssetId: provenance.bathymetryAssetId,
+    bathymetrySource: provenance.bathymetrySource,
+    citationReference: provenance.citationReference,
+    citationUrl: provenance.citationUrl,
+    evidenceIds: provenance.evidenceIds,
+    generatedAt: provenance.generatedAt,
+    scenarioType: provenance.scenarioType,
+    solverMode: provenance.solverMode,
+    solverAssetIds: provenance.solverAssetIds,
+    visualAssetIds: provenance.visualAssetIds,
+    heightField: snapshots[0].height_field,
+  };
+
+  const waveFields = firstLayout.map((firstTile, tileIndex) => {
+    // Time-tagged CZML ImageProperty elements contain only interval + image.
+    // repeat/color/transparent belong to the ImageMaterial level below.
+    const materialIntervals = snapshots.map((snapshot, snapshotIndex) => {
+      const next = snapshotIndex + 1 < snapshots.length
+        ? snapshots[snapshotIndex + 1].time_s
+        : tEnd + 1;
+      return {
+        interval: `${toIso(snapshot.time_s)}/${toIso(next)}`,
+        image: `data:image/png;base64,${layouts[snapshotIndex][tileIndex].pngBase64}`,
+      };
+    });
+    const [west, south, east, north] = firstTile.bbox;
+    return {
+      id: tileIndex === 0 ? "wave-field" : `wave-field-${tileIndex + 1}`,
+      name: firstLayout.length === 1
+        ? "SWE wave field"
+        : `SWE wave field ${tileIndex + 1}/${firstLayout.length}`,
+      availability: interval,
+      description: `Cataclysm ${provenance.scenarioName} - ${snapshots.length} snapshots. ${provenance.limitation}`,
+      properties: commonProperties,
+      rectangle: {
+        coordinates: { wsenDegrees: [west, south, east, north] },
+        material: {
+          image: {
+            image: materialIntervals,
+            repeat: { cartesian2: [1, 1] },
+            color: { rgba: [255, 255, 255, 230] },
+            // The eta PNGs carry alpha for land/dry cells; without this the
+            // rectangle hides the globe beneath.
+            transparent: true,
+          },
+        },
+        height: 0,
+      },
+    };
+  });
 
   const czml = [
     {
@@ -699,41 +754,7 @@ export function exportCzml(
         step: "SYSTEM_CLOCK_MULTIPLIER",
       },
     },
-    {
-      id: "wave-field",
-      name: "SWE wave field",
-      availability: interval,
-      description: `Cataclysm ${provenance.scenarioName} - ${snapshots.length} snapshots. ${provenance.limitation}`,
-      properties: {
-        appVersion: provenance.appVersion,
-        assetRegistryVersion: provenance.assetRegistryVersion,
-        bathymetryAssetId: provenance.bathymetryAssetId,
-        bathymetrySource: provenance.bathymetrySource,
-        citationReference: provenance.citationReference,
-        citationUrl: provenance.citationUrl,
-        evidenceIds: provenance.evidenceIds,
-        generatedAt: provenance.generatedAt,
-        scenarioType: provenance.scenarioType,
-        solverMode: provenance.solverMode,
-        solverAssetIds: provenance.solverAssetIds,
-        visualAssetIds: provenance.visualAssetIds,
-        heightField: snapshots[0].height_field,
-      },
-      rectangle: {
-        coordinates: { wsenDegrees: [west, south, east, north] },
-        material: {
-          image: {
-            image: materialIntervals,
-            repeat: { cartesian2: [1, 1] },
-            color: { rgba: [255, 255, 255, 230] },
-            // The eta PNGs carry their own alpha for land/dry cells; without
-            // this the rectangle renders opaque and hides the globe beneath.
-            transparent: true,
-          },
-        },
-        height: 0,
-      },
-    },
+    ...waveFields,
   ];
 
   const json = JSON.stringify(czml, null, 2);

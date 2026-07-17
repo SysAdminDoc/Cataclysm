@@ -132,7 +132,9 @@ export type RunPresetResponse = {
   wavefront: PropagationSnapshot;
 };
 
-/** One snapshot of the SWE simulation field. PNG body lives in eta_png_b64. */
+/** One snapshot of the SWE simulation field. A non-wrapping field uses
+ * `eta_png_b64`; wrapped/polar fields use `field_tiles` without duplicating
+ * the complete raster. */
 export type GridSnapshotTile = {
   column_offset: number;
   column_count: number;

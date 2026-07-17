@@ -18,12 +18,12 @@ type Props = {
   runupResults: RunupAtPointResult[];
 };
 
-const W = 280;
-const H = 120;
-const PAD_L = 42;
-const PAD_R = 8;
-const PAD_T = 8;
-const PAD_B = 24;
+const W = 320;
+const H = 150;
+const PAD_L = 62;
+const PAD_R = 12;
+const PAD_T = 12;
+const PAD_B = 32;
 const PLOT_W = W - PAD_L - PAD_R;
 const PLOT_H = H - PAD_T - PAD_B;
 
@@ -249,7 +249,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
             return (
               <g key={`y-${logV}`}>
                 <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="var(--surface1)" strokeWidth={0.5} />
-                <text x={PAD_L - 4} y={y + 3} textAnchor="end" fill="var(--overlay0)" fontSize={8}>
+                <text x={PAD_L - 6} y={y + 4} textAnchor="end" fill="var(--overlay0)" fontSize={12}>
                   {formatAxis(10 ** logV)} m
                 </text>
               </g>
@@ -258,7 +258,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults }: Pro
           {xTicks.map((logV) => {
             const x = toX(10 ** logV);
             return (
-              <text key={`x-${logV}`} x={x} y={H - 4} textAnchor="middle" fill="var(--overlay0)" fontSize={8}>
+              <text key={`x-${logV}`} x={x} y={H - 6} textAnchor="middle" fill="var(--overlay0)" fontSize={12}>
                 {formatAxis(10 ** logV)} km
               </text>
             );

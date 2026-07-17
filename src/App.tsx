@@ -1258,7 +1258,13 @@ export default function App() {
     >
       <a className="skip-link" href="#main-globe">Skip to globe</a>
       {toast && (
-        <div className="app-toast" data-tone={toast.tone} role="alert" aria-live="assertive">
+        <div
+          className="app-toast"
+          data-tone={toast.tone}
+          role={toast.tone === "error" ? "alert" : "status"}
+          aria-live={toast.tone === "error" ? "assertive" : "polite"}
+          aria-atomic="true"
+        >
           <span>{toast.msg}</span>
           {toast.action && (
             <button
@@ -1405,7 +1411,10 @@ export default function App() {
               aria-label="Export current scenario"
               onClick={(event) => {
                 if ((event.target as HTMLElement).closest("button")) {
-                  window.setTimeout(() => setExportMenuOpen(false), 0);
+                  window.setTimeout(() => {
+                    setExportMenuOpen(false);
+                    window.requestAnimationFrame(() => exportTriggerRef.current?.focus());
+                  }, 0);
                 }
               }}
             >

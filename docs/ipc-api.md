@@ -49,9 +49,9 @@ Synolakis 1987 closed-form runup at a single coastal point.
 - **Output:** `Result<f64, String>`
 
 ### `runup_at_points`
-Batch runup computation at multiple named coastal points.
-- **Input:** `RunupAtPointsRequest` — source params + `points` (max 2000)
-- **Output:** `Result<Vec<RunupAtPoint>, String>` — each with `id, name, lat, lon, range_m, offshore_amplitude_m, runup_m, arrival_time_s, has_arrived, inundation_extent_m`
+Batch runup computation at validated bundled coastal points.
+- **Input:** `RunupAtPointsRequest` — source params + stable `point_ids` (max 2000). Rust resolves numerical inputs and provenance from the bundled database; unknown and deep-water-reference IDs are rejected.
+- **Output:** `Result<Vec<RunupAtPoint>, String>` — results include the slope/depth values, full independent provenance records, exact sample/record IDs, derived quantitative confidence/label, and runup/arrival/inundation fields.
 
 ### `inspect_at_point`
 Click-to-inspect: amplitude, arrival, runup at an arbitrary globe coordinate.

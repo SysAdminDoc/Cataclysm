@@ -37,10 +37,13 @@ pub struct MaxFieldProduct {
     /// |η| threshold used for first-arrival detection (m).
     pub arrival_threshold_m: f64,
     /// Peak |η| per cell, rendered with the run's colormap (positive ramp).
+    /// Empty when `field_tiles` carries a wrapped/polar field.
     pub peak_png_b64: String,
-    /// Time of the per-cell peak, viridis-mapped over [0, t_end].
+    /// Time of the per-cell peak, viridis-mapped over [0, t_end]. Empty for a
+    /// tiled field.
     pub t_of_max_png_b64: String,
     /// Time-integrated η² (qualitative energy/directivity), sqrt-normalised.
+    /// Empty for a tiled field.
     pub energy_png_b64: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub field_tiles: Vec<MaxFieldTile>,
@@ -147,9 +150,6 @@ impl MaxFieldAccumulator {
         let energy_max = self.energy_m2s.iter().cloned().fold(0.0_f64, f64::max);
 
         let colormap = grid.colormap;
-        let peak_png = render_field(nx, ny, &self.peak_m, peak_max.max(1e-9), |t| {
-            colormap_positive(colormap, t)
-        });
         // Time-of-max only means something where a wave actually peaked;
         // mask cells that never exceeded 5% of the global peak.
         let t_mask = 0.05 * peak_max;
@@ -159,18 +159,15 @@ impl MaxFieldAccumulator {
             .zip(self.peak_m.iter())
             .map(|(&t, &p)| if p >= t_mask && p > 0.0 { t } else { f64::NAN })
             .collect();
-        let t_of_max_png = render_field(nx, ny, &t_of_max_rgba, t_end, |t| {
-            let (r, g, b, _) = viridis_colormap(t);
-            (r, g, b, 210)
-        });
-        let energy_png = render_field(nx, ny, &self.energy_m2s, energy_max.max(1e-12), |t| {
-            // sqrt-compress so the directivity lobes away from the source
-            // stay visible next to the near-field maximum.
-            colormap_positive(colormap, t.sqrt())
-        });
-
-        let field_tiles = match grid.field_tiles() {
-            Ok(layouts) if layouts.len() > 1 => layouts
+        let tile_layouts = match grid.field_tiles() {
+            Ok(layouts) => layouts,
+            Err(error) => {
+                report_diagnostic(diagnostics, format!("SWE max-field tiling failed: {error}"));
+                Vec::new()
+            }
+        };
+        let (peak_png, t_of_max_png, energy_png, field_tiles) = if tile_layouts.len() > 1 {
+            let field_tiles = tile_layouts
                 .into_iter()
                 .map(|tile| MaxFieldTile {
                     peak_png_b64: render_field_columns(
@@ -207,12 +204,23 @@ impl MaxFieldAccumulator {
                     column_count: tile.column_count,
                     bbox: tile.bbox,
                 })
-                .collect(),
-            Ok(_) => Vec::new(),
-            Err(error) => {
-                report_diagnostic(diagnostics, format!("SWE max-field tiling failed: {error}"));
-                Vec::new()
-            }
+                .collect();
+            (String::new(), String::new(), String::new(), field_tiles)
+        } else {
+            let peak_png = render_field(nx, ny, &self.peak_m, peak_max.max(1e-9), |t| {
+                colormap_positive(colormap, t)
+            });
+            let t_of_max_png = render_field(nx, ny, &t_of_max_rgba, t_end, |t| {
+                let (r, g, b, _) = viridis_colormap(t);
+                (r, g, b, 210)
+            });
+            let energy_png =
+                render_field(nx, ny, &self.energy_m2s, energy_max.max(1e-12), |t| {
+                    // sqrt-compress so the directivity lobes away from the
+                    // source stay visible next to the near-field maximum.
+                    colormap_positive(colormap, t.sqrt())
+                });
+            (peak_png, t_of_max_png, energy_png, Vec::new())
         };
 
         let isochrones = extract_isochrones(grid, &self.arrival_s, t_end);
@@ -230,10 +238,7 @@ impl MaxFieldAccumulator {
             peak_abs_max_m: peak_max,
             t_end_s: t_end,
             arrival_threshold_m: self.arrival_threshold_m,
-            peak_png_b64: {
-                let _ = diagnostics;
-                peak_png
-            },
+            peak_png_b64: peak_png,
             t_of_max_png_b64: t_of_max_png,
             energy_png_b64: energy_png,
             field_tiles,
@@ -551,6 +556,9 @@ mod tests {
         let product = acc.into_product(&grid, None);
 
         assert_eq!(product.field_tiles.len(), 2);
+        assert!(product.peak_png_b64.is_empty());
+        assert!(product.t_of_max_png_b64.is_empty());
+        assert!(product.energy_png_b64.is_empty());
         assert_eq!(
             product
                 .field_tiles

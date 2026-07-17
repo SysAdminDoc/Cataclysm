@@ -726,6 +726,12 @@
   max-width: 100%;
 }
 
+.timeline__label > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .timeline__marker[data-active="true"] .timeline__label strong {
   color: var(--accent-text);
 }

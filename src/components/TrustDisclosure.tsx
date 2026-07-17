@@ -8,11 +8,19 @@ function currentOnlineState(): boolean {
   return typeof navigator === "undefined" || navigator.onLine;
 }
 
-export function TrustDisclosure({ evidence, compact = false }: { evidence: TrustEvidence; compact?: boolean }) {
+export function TrustDisclosure({
+  evidence,
+  compact = false,
+  compactStatus,
+}: {
+  evidence: TrustEvidence;
+  compact?: boolean;
+  compactStatus?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [online, setOnline] = useState(currentOnlineState);
   const [linkAlert, setLinkAlert] = useState<string | null>(null);
-  const summaryStatus = compact
+  const summaryStatus = compactStatus ?? (compact
     ? evidence.confidence.startsWith("Waiting")
       ? "Waiting"
       : evidence.tone === "speculative"
@@ -22,7 +30,7 @@ export function TrustDisclosure({ evidence, compact = false }: { evidence: Trust
           : evidence.tone === "validated"
             ? "Validated"
             : "Modelled"
-    : evidence.confidence;
+    : evidence.confidence);
 
   useEffect(() => {
     const update = () => setOnline(currentOnlineState());

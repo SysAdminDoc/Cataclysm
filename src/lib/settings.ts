@@ -6,7 +6,7 @@
  * storage.
  */
 
-import { isTauri } from "./tauri";
+import { api, isTauri } from "./tauri";
 import { DEFAULT_STYLE, type GlobeStyleId } from "./globe-styles";
 import { isGlobeStyleId } from "./earth-assets";
 import { parseScenarioPayload } from "./scenario-schema";
@@ -309,7 +309,6 @@ function readLocalMirror<K extends keyof Settings>(key: K): Settings[K] | undefi
  *  never treated as successfully migrated. */
 async function readTokenFromKeychain(): Promise<string | undefined> {
   try {
-    const { api } = await import("./tauri");
     const token = await api.keychainGetToken();
     return token ?? undefined;
   } catch (err) {
@@ -319,7 +318,6 @@ async function readTokenFromKeychain(): Promise<string | undefined> {
 
 async function writeTokenToKeychain(token: string): Promise<void> {
   try {
-    const { api } = await import("./tauri");
     await api.keychainSetToken(token);
   } catch (err) {
     throw new Error("The operating-system keychain is unavailable; the token was not stored.", { cause: err });
@@ -426,6 +424,22 @@ async function runSettingsTransaction(
     const rollbackErrors = await restorePersistence(snapshot);
     throw new SettingsTransactionError(operation, err, rollbackErrors);
   }
+}
+
+async function clearSettingAtomically<K extends keyof Settings>(
+  operation: string,
+  key: K,
+): Promise<void> {
+  await runSettingsTransaction(operation, [key], async (snapshot) => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(LS_PREFIX + key);
+    }
+    if (snapshot.store) {
+      if (typeof snapshot.store.delete === "function") await snapshot.store.delete(key);
+      else await snapshot.store.set(key, DEFAULTS[key]);
+      await snapshot.store.save();
+    }
+  });
 }
 
 async function read<K extends keyof Settings>(key: K): Promise<Settings[K]> {
@@ -818,22 +832,7 @@ export const settings = {
     return write("tour_completed_at", new Date().toISOString());
   },
   async clearTourCompleted(): Promise<void> {
-    if (typeof localStorage !== "undefined") {
-      try {
-        localStorage.removeItem(LS_PREFIX + "tour_completed_at");
-      } catch {
-        /* ignore */
-      }
-    }
-    const store = await getStore();
-    if (store && typeof store.delete === "function") {
-      try {
-        await store.delete("tour_completed_at");
-        await store.save();
-      } catch {
-        /* best-effort */
-      }
-    }
+    return clearSettingAtomically("Clearing tour completion", "tour_completed_at");
   },
   async getLessonCompletions(): Promise<LessonCompletions> {
     return read("lessons_completed");
@@ -859,22 +858,7 @@ export const settings = {
   /** Clear the token-banner dismissal so it re-appears on next eval.
    *  Used by Settings → Advanced → Show token banner again. */
   async clearTokenBannerDismissed(): Promise<void> {
-    if (typeof localStorage !== "undefined") {
-      try {
-        localStorage.removeItem(LS_PREFIX + "token_banner_dismissed_at");
-      } catch {
-        /* ignore */
-      }
-    }
-    const store = await getStore();
-    if (store && typeof store.delete === "function") {
-      try {
-        await store.delete("token_banner_dismissed_at");
-        await store.save();
-      } catch {
-        /* best-effort */
-      }
-    }
+    return clearSettingAtomically("Clearing online-map notice dismissal", "token_banner_dismissed_at");
   },
   async loadAll(): Promise<Settings> {
     return {
@@ -979,22 +963,7 @@ export const settings = {
   /** Clear only the disclaimer-ack timestamp so the first-run modal
    * re-appears on next launch. */
   async clearDisclaimerAck(): Promise<void> {
-    if (typeof localStorage !== "undefined") {
-      try {
-        localStorage.removeItem(LS_PREFIX + "disclaimer_acknowledged_at");
-      } catch {
-        /* ignore */
-      }
-    }
-    const store = await getStore();
-    if (store && typeof store.delete === "function") {
-      try {
-        await store.delete("disclaimer_acknowledged_at");
-        await store.save();
-      } catch {
-        /* best-effort */
-      }
-    }
+    return clearSettingAtomically("Clearing disclaimer acknowledgement", "disclaimer_acknowledged_at");
   },
   async exportSettings(): Promise<string> {
     const all = await this.loadAll();

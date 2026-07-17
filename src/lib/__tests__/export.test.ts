@@ -447,6 +447,62 @@ describe("exportCzml", () => {
     expect(Object.keys(image!.image![0]).sort()).toEqual(["image", "interval"]);
     expect(image?.image?.[0].image).toContain("data:image/png;base64,a");
   });
+
+  it("exports wrapped fields as complete non-duplicated CZML tiles", async () => {
+    const getBlob = mockDownload();
+    const tiled = (time_s: number, suffix: string) => ({
+      bbox: [174, -2, 184, 2] as [number, number, number, number],
+      eta_abs_max_m: 1,
+      eta_max_m: 1,
+      eta_min_m: -1,
+      eta_png_b64: "",
+      nx: 4,
+      ny: 2,
+      height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
+      time_s,
+      field_tiles: [
+        { column_offset: 0, column_count: 2, bbox: [174, -2, 180, 2] as [number, number, number, number], eta_png_b64: `east-${suffix}` },
+        { column_offset: 2, column_count: 2, bbox: [-180, -2, -176, 2] as [number, number, number, number], eta_png_b64: `west-${suffix}` },
+      ],
+    });
+
+    expect(exportCzml(PROVENANCE_META, [tiled(0, "a"), tiled(60, "b")]).ok).toBe(true);
+    const czml = JSON.parse(await getBlob()!.text()) as Array<{
+      id: string;
+      rectangle?: { material?: { image?: { image?: Array<{ image: string }> } } };
+    }>;
+    expect(czml.map((packet) => packet.id)).toEqual(["document", "wave-field", "wave-field-2"]);
+    expect(czml[1].rectangle?.material?.image?.image?.map((item) => item.image)).toEqual([
+      "data:image/png;base64,east-a",
+      "data:image/png;base64,east-b",
+    ]);
+    expect(czml[2].rectangle?.material?.image?.image?.map((item) => item.image)).toEqual([
+      "data:image/png;base64,west-a",
+      "data:image/png;base64,west-b",
+    ]);
+  });
+
+  it("rejects CZML when a tiled frame drops part of the field", () => {
+    const snapshot = {
+      bbox: [174, -2, 184, 2] as [number, number, number, number],
+      eta_abs_max_m: 1,
+      eta_max_m: 1,
+      eta_min_m: -1,
+      eta_png_b64: "",
+      nx: 4,
+      ny: 2,
+      height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
+      time_s: 0,
+      field_tiles: [
+        { column_offset: 0, column_count: 2, bbox: [174, -2, 180, 2] as [number, number, number, number], eta_png_b64: "partial" },
+      ],
+    };
+    expect(exportCzml(PROVENANCE_META, [snapshot])).toMatchObject({
+      ok: false,
+      code: "data",
+      retryable: true,
+    });
+  });
 });
 
 describe("exportKml", () => {

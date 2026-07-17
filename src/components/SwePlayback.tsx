@@ -122,6 +122,19 @@ function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): G
     .filter((series) => series.samples.length > 0);
 }
 
+function gaugeCoordinateError(
+  draft: string,
+  label: string,
+  min: number,
+  max: number,
+): string | null {
+  if (draft.trim() === "") return null;
+  const value = Number(draft);
+  if (!Number.isFinite(value)) return `${label} must be a number.`;
+  if (value < min || value > max) return `${label} must be between ${min} and ${max}.`;
+  return null;
+}
+
 export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
@@ -145,6 +158,13 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [gaugeLatInput, setGaugeLatInput] = useState("");
   const [gaugeLonInput, setGaugeLonInput] = useState("");
   const [gaugeNameInput, setGaugeNameInput] = useState("");
+  const gaugeEntryId = useId();
+  const gaugeLatError = gaugeCoordinateError(gaugeLatInput, "Latitude", -90, 90);
+  const gaugeLonError = gaugeCoordinateError(gaugeLonInput, "Longitude", -180, 180);
+  const gaugeCoordinatesValid = gaugeLatInput.trim() !== ""
+    && gaugeLonInput.trim() !== ""
+    && gaugeLatError === null
+    && gaugeLonError === null;
   const lastInitialRef = useRef<string | null>(null);
   const reqIdRef = useRef(0);
   const runIdRef = useRef<string | null>(null);
@@ -262,10 +282,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   }, [initial, gauges, snapshots]);
 
   const addGauge = useCallback(() => {
-    const lat = parseFloat(gaugeLatInput);
-    const lon = parseFloat(gaugeLonInput);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+    const lat = Number(gaugeLatInput);
+    const lon = Number(gaugeLonInput);
+    if (!gaugeCoordinatesValid) return;
     gaugeCounter.current += 1;
     const name = gaugeNameInput.trim() || `Gauge ${gaugeCounter.current}`;
     setGauges((prev) => [
@@ -275,7 +294,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     setGaugeLatInput("");
     setGaugeLonInput("");
     setGaugeNameInput("");
-  }, [gaugeLatInput, gaugeLonInput, gaugeNameInput]);
+  }, [gaugeCoordinatesValid, gaugeLatInput, gaugeLonInput, gaugeNameInput]);
 
   const removeGauge = useCallback((id: string) => {
     setGauges((prev) => prev.filter((g) => g.id !== id));
@@ -577,7 +596,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             value={cellsPerDeg}
             onChange={(e) => setCellsPerDeg(Number(e.target.value))}
             aria-label="Grid resolution in cells per degree"
-            title="Higher resolution is more accurate but slower. Default is 6."
+            title="Higher resolution is more accurate but slower. Default is 8."
           />
         </label>}
       </div>}
@@ -744,6 +763,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             value={gaugeLatInput}
             onChange={(e) => setGaugeLatInput(e.target.value)}
             aria-label="Gauge latitude"
+            aria-invalid={gaugeLatError !== null}
+            aria-errormessage={gaugeLatError ? `${gaugeEntryId}-latitude-error` : undefined}
+            aria-describedby={gaugeLatError ? `${gaugeEntryId}-latitude-error` : undefined}
             min={-90}
             max={90}
             step="any"
@@ -755,6 +777,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             value={gaugeLonInput}
             onChange={(e) => setGaugeLonInput(e.target.value)}
             aria-label="Gauge longitude"
+            aria-invalid={gaugeLonError !== null}
+            aria-errormessage={gaugeLonError ? `${gaugeEntryId}-longitude-error` : undefined}
+            aria-describedby={gaugeLonError ? `${gaugeEntryId}-longitude-error` : undefined}
             min={-180}
             max={180}
             step="any"
@@ -763,11 +788,17 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
           <button
             type="button"
             onClick={addGauge}
-            disabled={!gaugeLatInput || !gaugeLonInput}
+            disabled={!gaugeCoordinatesValid}
             title="Add gauge at the specified coordinates"
           >
             Add
           </button>
+          {(gaugeLatError || gaugeLonError) && (
+            <div className="swe__gauge-errors">
+              {gaugeLatError && <span id={`${gaugeEntryId}-latitude-error`} role="alert">{gaugeLatError}</span>}
+              {gaugeLonError && <span id={`${gaugeEntryId}-longitude-error`} role="alert">{gaugeLonError}</span>}
+            </div>
+          )}
         </div>
         {gauges.length > 0 && (
           <div className="swe__gauge-list" role="list">

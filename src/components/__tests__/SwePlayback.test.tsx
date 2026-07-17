@@ -88,6 +88,14 @@ describe("SwePlayback", () => {
     exportApi.exportGaugeCsv.mockReturnValue({ ok: true });
   });
 
+  it("describes the actual default grid resolution", () => {
+    render(<SwePlayback initial={INITIAL} />);
+    expect(screen.getByLabelText("Grid resolution in cells per degree")).toHaveAttribute(
+      "title",
+      "Higher resolution is more accurate but slower. Default is 8.",
+    );
+  });
+
   it("streams progress and hands snapshots to the parent", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
@@ -234,6 +242,32 @@ describe("SwePlayback", () => {
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(exportApi.exportGaugeCsv).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("explains invalid gauge coordinates and accepts inclusive boundaries", async () => {
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} />);
+    const latitude = screen.getByLabelText("Gauge latitude");
+    const longitude = screen.getByLabelText("Gauge longitude");
+    const add = screen.getByRole("button", { name: "Add" });
+
+    await user.type(latitude, "91");
+    await user.type(longitude, "181");
+    expect(latitude).toHaveAttribute("aria-invalid", "true");
+    expect(longitude).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("Latitude must be between -90 and 90.")).toHaveAttribute("role", "alert");
+    expect(screen.getByText("Longitude must be between -180 and 180.")).toHaveAttribute("role", "alert");
+    expect(add).toBeDisabled();
+
+    await user.clear(latitude);
+    await user.type(latitude, "-90");
+    await user.clear(longitude);
+    await user.type(longitude, "180");
+    expect(latitude).toHaveAttribute("aria-invalid", "false");
+    expect(longitude).toHaveAttribute("aria-invalid", "false");
+    expect(add).toBeEnabled();
+    await user.click(add);
+    expect(screen.getByText("Gauge 1")).toBeInTheDocument();
   });
 
   it("keeps completed output when an equivalent source object is supplied", async () => {

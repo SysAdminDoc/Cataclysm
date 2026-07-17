@@ -39,6 +39,13 @@
   margin-top: -2px;
 }
 
+.chart-legend--dart i[data-tone="model"] {
+  height: 0;
+  border-top: 2px dashed var(--peach);
+  border-radius: 0;
+  background: transparent;
+}
+
 .dart__buoy {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--maroon) 5%, transparent), transparent 56px),

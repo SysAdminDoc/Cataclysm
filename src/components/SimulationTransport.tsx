@@ -72,7 +72,10 @@ export function SimulationTransport({
         <button
           type="button"
           className="simulation-transport__play"
-          onClick={onTogglePlaying}
+          onClick={() => {
+            if (!playing && safeTimeS >= safeDurationS) onTimeChange(0);
+            onTogglePlaying();
+          }}
           disabled={!hasSource}
           aria-label={playing ? "Pause scenario timeline" : "Play scenario timeline"}
           title={hasSource ? "Play or pause the analytical scenario timeline" : "Select a source first"}
