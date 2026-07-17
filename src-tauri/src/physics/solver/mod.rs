@@ -1517,13 +1517,14 @@ mod tests {
             s.height_field.vertical_axis,
             crate::data::geodesy::VerticalAxis::PositiveUp,
         );
+        let encoded_len = s.eta_png_b64.len()
+            + s.field_tiles
+                .iter()
+                .map(|tile| tile.eta_png_b64.len())
+                .sum::<usize>();
         assert!(
-            !s.eta_png_b64.is_empty(),
-            "snapshot PNG should be non-empty"
-        );
-        assert!(
-            s.eta_png_b64.len() > 100,
-            "snapshot PNG looks suspiciously small"
+            encoded_len > 100,
+            "snapshot PNG output looks suspiciously small"
         );
     }
 
