@@ -35,13 +35,6 @@ tests locally.
 
 ### P2 — cited presets, products, and architecture
 
-- [ ] P2 — Modularize commands.rs into submodules
-  Why: 1,944 lines and growing with each new IPC; split into types/validators/simulation/source/query keeps the boundary reviewable. Returns from Roadmap_Blocked (stale MSVC blocker).
-  Evidence: current `src-tauri/src/commands.rs` line count and command test surface.
-  Touches: src-tauri/src/commands/ (new module tree), src-tauri/src/lib.rs.
-  Acceptance: no behavior change; all 67+ Rust tests pass; no file exceeds ~600 lines.
-  Complexity: M
-
 - [ ] P2 — Split Globe.tsx into composable hooks and controllers
   Why: the MSVC/foreground-verification blocker is stale; headless Playwright,
   deterministic reference scenes, and controller lifecycle tests now provide the

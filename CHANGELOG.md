@@ -114,6 +114,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   centres. Incomplete spatial coverage, NoData intersections, tampering, and
   ambiguous local/coarse requests fail closed; run metadata preserves the asset ID.
 
+### Changed
+
+- The 4,166-line Tauri command boundary is now split by responsibility into
+  direct/source, wave analysis, observations, system, solver model/run/stream/
+  dispatch, and focused test modules. Public command names and payloads are
+  unchanged; every command file is below 600 lines and the existing Rust
+  command contract remains intact.
+
 ## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
 
 ### Added
