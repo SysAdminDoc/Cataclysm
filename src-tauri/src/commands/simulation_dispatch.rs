@@ -1,0 +1,324 @@
+use super::*;
+
+pub(crate) fn stream_simulation_cpu(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    snapshot_schedule: &[usize],
+    ctx: &StreamSimulationContext<'_>,
+) -> Result<(), String> {
+    stream_simulation_cpu_from(grid, dt_s, snapshot_schedule, 0, None, ctx)
+}
+
+/// Continue the scheduled snapshot stream from an already-committed solver
+/// state. `first_take_remaining` is used when a GPU failed partway through the
+/// interval at `start_interval`; later intervals use the shared deterministic
+/// plan.
+pub(crate) fn stream_simulation_cpu_from(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    snapshot_schedule: &[usize],
+    start_interval: usize,
+    first_take_remaining: Option<usize>,
+    ctx: &StreamSimulationContext<'_>,
+) -> Result<(), String> {
+    let stepper = TimeStepper::new(dt_s);
+    for (interval, &scheduled_take) in snapshot_schedule.iter().enumerate().skip(start_interval) {
+        if ctx.cancel.load(Ordering::Acquire) {
+            break;
+        }
+        let take = if interval == start_interval {
+            first_take_remaining.unwrap_or(scheduled_take)
+        } else {
+            scheduled_take
+        };
+        if take > 0 {
+            match stepper.step_cancellable_checked(
+                grid,
+                take,
+                Some(ctx.cancel),
+                ctx.quality_baseline,
+                &mut |state| ctx.max_field.borrow_mut().observe(state),
+            ) {
+                Ok(true) => {}
+                Ok(false) => break,
+                Err(quality) => {
+                    publish_run_quality(&quality);
+                    let failure = quality
+                        .failure
+                        .clone()
+                        .unwrap_or_else(|| "unknown numerical-integrity violation".to_string());
+                    return Err(format!(
+                        "simulation rejected at step {}: {failure}",
+                        quality.accepted_steps
+                    ));
+                }
+            }
+        }
+        if ctx
+            .on_snapshot
+            .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics))
+            .is_err()
+        {
+            ctx.cancel.store(true, Ordering::Release);
+            break;
+        }
+        if let Some(checkpoint) = ctx.checkpoint {
+            checkpoint.borrow_mut().record_gauges(grid);
+        }
+        if let Some(render) = ctx.render
+            && !render.try_send_frame(grid)
+        {
+            ctx.cancel.store(true, Ordering::Release);
+            break;
+        }
+        if let Some(checkpoint) = ctx.checkpoint {
+            let max_field = ctx.max_field.borrow();
+            checkpoint.borrow_mut().maybe_write(
+                grid,
+                &max_field,
+                ctx.snapshot_interval_offset
+                    .saturating_add(interval)
+                    .saturating_add(1),
+                false,
+                ctx.diagnostics,
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "gpu")]
+pub(crate) fn stream_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    snapshot_schedule: &[usize],
+    ctx: &StreamSimulationContext<'_>,
+) -> Result<bool, String> {
+    use crate::physics::solver::BoundaryMode;
+    use crate::physics::solver::gpu::GpuTimeStepper;
+
+    let sponge_width = match BoundaryMode::default_sponge() {
+        BoundaryMode::Sponge { width_cells } => width_cells as u32,
+        BoundaryMode::ZeroFlux => 0,
+    };
+    if let Some(gpu) = GpuTimeStepper::new_with_diagnostics(
+        grid,
+        dt_s,
+        crate::physics::constants::MANNING_N_COASTAL,
+        sponge_width,
+        true,
+        ctx.diagnostics,
+    ) {
+        for (interval, &take) in snapshot_schedule.iter().enumerate() {
+            if ctx.cancel.load(Ordering::Acquire) {
+                break;
+            }
+            let mut completed = 0usize;
+            for _ in 0..take {
+                if ctx.cancel.load(Ordering::Acquire) {
+                    return Ok(true);
+                }
+                if !gpu.step_with_diagnostics(grid, 1, ctx.diagnostics) {
+                    let remaining = take.saturating_sub(completed);
+                    stream_simulation_cpu_from(
+                        grid,
+                        dt_s,
+                        snapshot_schedule,
+                        interval,
+                        Some(remaining),
+                        ctx,
+                    )?;
+                    return Ok(false);
+                }
+                let quality = ctx.quality_baseline.assess(grid, dt_s);
+                if let Some(failure) = quality.failure.clone() {
+                    publish_run_quality(&quality);
+                    return Err(format!(
+                        "GPU simulation rejected at step {}: {failure}",
+                        quality.accepted_steps
+                    ));
+                }
+                completed = completed.saturating_add(1);
+                ctx.max_field.borrow_mut().observe(grid);
+            }
+            if ctx
+                .on_snapshot
+                .send(grid.snapshot_with_gauge_samples(ctx.gauges, ctx.diagnostics))
+                .is_err()
+            {
+                ctx.cancel.store(true, Ordering::Release);
+                break;
+            }
+            if let Some(checkpoint) = ctx.checkpoint {
+                checkpoint.borrow_mut().record_gauges(grid);
+            }
+            if let Some(render) = ctx.render
+                && !render.try_send_frame(grid)
+            {
+                ctx.cancel.store(true, Ordering::Release);
+                break;
+            }
+            if let Some(checkpoint) = ctx.checkpoint {
+                let max_field = ctx.max_field.borrow();
+                checkpoint.borrow_mut().maybe_write(
+                    grid,
+                    &max_field,
+                    ctx.snapshot_interval_offset
+                        .saturating_add(interval)
+                        .saturating_add(1),
+                    false,
+                    ctx.diagnostics,
+                );
+            }
+        }
+        return Ok(true);
+    }
+    stream_simulation_cpu(grid, dt_s, snapshot_schedule, ctx)?;
+    Ok(false)
+}
+
+#[cfg(not(feature = "gpu"))]
+pub(crate) fn stream_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    snapshot_schedule: &[usize],
+    ctx: &StreamSimulationContext<'_>,
+) -> Result<bool, String> {
+    stream_simulation_cpu(grid, dt_s, snapshot_schedule, ctx)?;
+    Ok(false)
+}
+
+#[cfg(feature = "gpu")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+    max_field_threshold_m: f64,
+) -> (Vec<GridSnapshot>, bool, Option<MaxFieldProduct>) {
+    use crate::physics::solver::BoundaryMode;
+    use crate::physics::solver::gpu::GpuTimeStepper;
+
+    let sponge_width = match BoundaryMode::default_sponge() {
+        BoundaryMode::Sponge { width_cells } => width_cells as u32,
+        BoundaryMode::ZeroFlux => 0,
+    };
+    if let Some(gpu) = GpuTimeStepper::new_with_diagnostics(
+        grid,
+        dt_s,
+        crate::physics::constants::MANNING_N_COASTAL,
+        sponge_width,
+        true,
+        diagnostics,
+    ) {
+        let pristine = grid.clone();
+        let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
+        if let Some(snaps) = run_simulation_gpu(
+            grid,
+            &gpu,
+            dt_s,
+            t_end_s,
+            n_snapshots,
+            cancel,
+            diagnostics,
+            gauges,
+            &mut |g| acc.observe(g),
+        ) {
+            let product = acc.into_product(grid, diagnostics);
+            return (snaps, true, Some(product));
+        }
+        // Discard partial-GPU observations; CPU rerun observes fresh below.
+        *grid = pristine;
+    }
+    let stepper = TimeStepper::new(dt_s);
+    let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
+    let snaps = run_simulation_with_gauge_samples(
+        grid,
+        &stepper,
+        t_end_s,
+        n_snapshots,
+        Some(cancel),
+        diagnostics,
+        gauges,
+        &mut |g| acc.observe(g),
+    );
+    let product = acc.into_product(grid, diagnostics);
+    (snaps, false, Some(product))
+}
+
+#[cfg(not(feature = "gpu"))]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_simulation_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+    max_field_threshold_m: f64,
+) -> (Vec<GridSnapshot>, bool, Option<MaxFieldProduct>) {
+    let stepper = TimeStepper::new(dt_s);
+    let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
+    let snaps = run_simulation_with_gauge_samples(
+        grid,
+        &stepper,
+        t_end_s,
+        n_snapshots,
+        Some(cancel),
+        diagnostics,
+        gauges,
+        &mut |g| acc.observe(g),
+    );
+    let product = acc.into_product(grid, diagnostics);
+    (snaps, false, Some(product))
+}
+
+/// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-spaced
+/// snapshots as the CPU path while reading back every solver step for
+/// quantitative accumulation. Snapshot encoding remains independently paced.
+/// Returns `None` if any GPU step fails (map/poll error or non-finite field),
+/// signalling the dispatcher to fall back to the CPU path.
+#[cfg(feature = "gpu")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_simulation_gpu(
+    grid: &mut SwGrid,
+    gpu: &crate::physics::solver::gpu::GpuTimeStepper,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+    observe: &mut dyn FnMut(&SwGrid),
+) -> Option<Vec<GridSnapshot>> {
+    let n = n_snapshots.max(2);
+    let mut snaps = Vec::with_capacity(n);
+    snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    observe(grid);
+    if !t_end_s.is_finite() || t_end_s < 0.0 {
+        return Some(snaps);
+    }
+    for take in snapshot_step_schedule(t_end_s, dt_s, n) {
+        if cancel.load(Ordering::Acquire) {
+            break;
+        }
+        let mut remaining = take;
+        while remaining > 0 {
+            if cancel.load(Ordering::Acquire) {
+                return Some(snaps);
+            }
+            if !gpu.step_with_diagnostics(grid, 1, diagnostics) {
+                return None;
+            }
+            observe(grid);
+            remaining -= 1;
+        }
+        snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    }
+    Some(snaps)
+}
