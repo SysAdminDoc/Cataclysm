@@ -27,6 +27,7 @@ import type {
 import type { EffectRing, GeoPoint } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
 import type { FireballEvent } from "../types/jpl";
+import { WW3_SIDE_COLORS, type Ww3ExchangePlan, type Ww3TargetType } from "../lib/ww3";
 import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
@@ -132,6 +133,8 @@ type Props = {
   hazardPolygons?: { label: string; color: string; points: GeoPoint[] }[] | null;
   /** Located CNEOS atmospheric events, rendered as bounded point primitives. */
   fireballs?: FireballEvent[];
+  /** Deterministic WW3 exchange plan rendered as Cesium-native target points and 3D missile arcs. */
+  ww3Plan?: Ww3ExchangePlan | null;
   /** Which authoritative direct-hazard frame family should render. */
   impactKind?: "asteroid" | "nuclear" | null;
   directRenderFrame: RendererNeutralFrameView | null;
@@ -270,6 +273,7 @@ export function Globe({
   hazardCenter,
   hazardPolygons,
   fireballs = [],
+  ww3Plan,
   impactKind,
   directRenderFrame,
   previewCamera,
@@ -357,6 +361,7 @@ export function Globe({
     if ((hazardRings?.length ?? 0) > 0) labels.push("hazard effect rings");
     if ((hazardPolygons?.length ?? 0) > 0) labels.push("fallout plume");
     if (directRenderFrame) labels.push("authoritative direct-effects frame");
+    if (ww3Plan) labels.push("illustrative exchange targets and missile arcs");
     return labels;
   }, [
     dartBuoys,
@@ -370,6 +375,7 @@ export function Globe({
     runupResults,
     sweSnapshot,
     wavefront,
+    ww3Plan,
   ]);
   const accessibilitySummary = useMemo(() => {
     const camera = accessibleCameraTelemetry;
@@ -1055,6 +1061,53 @@ export function Globe({
     };
   }, [fireballs, viewerEpoch]);
 
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed() || !ww3Plan) return;
+    const targetColors: Record<Ww3TargetType, string> = {
+      icbm: "#f38ba8",
+      sub: "#89b4fa",
+      bomber: "#cba6f7",
+      c2: "#f9e2af",
+      nuclear: "#fab387",
+      military: "#94e2d5",
+      infra: "#74c7ec",
+      city: "#f5c2e7",
+    };
+    const targets = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
+    const arcs = viewer.scene.primitives.add(new Cesium.PolylineCollection());
+    const seenTargets = new Set<string>();
+    for (const strike of ww3Plan.strikes) {
+      arcs.add({
+        id: `ww3-arc:${strike.id}`,
+        positions: strike.arc.map((point) => Cesium.Cartesian3.fromDegrees(point.lon, point.lat, point.altitudeM)),
+        width: 1.25,
+        material: Cesium.Material.fromType("Color", {
+          color: Cesium.Color.fromCssColorString(WW3_SIDE_COLORS[strike.attacker]).withAlpha(0.38),
+        }),
+      });
+      if (seenTargets.has(strike.target.id)) continue;
+      seenTargets.add(strike.target.id);
+      targets.add({
+        id: `ww3-target:${strike.target.id}`,
+        position: Cesium.Cartesian3.fromDegrees(strike.target.lon, strike.target.lat, 1_000),
+        pixelSize: strike.target.type === "city" ? 6 : 4,
+        color: Cesium.Color.fromCssColorString(targetColors[strike.target.type]).withAlpha(0.82),
+        outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+        outlineWidth: 1,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      });
+    }
+    viewer.scene.requestRender();
+    return () => {
+      if (!viewer.isDestroyed()) {
+        viewer.scene.primitives.remove(arcs);
+        viewer.scene.primitives.remove(targets);
+        viewer.scene.requestRender();
+      }
+    };
+  }, [viewerEpoch, ww3Plan]);
+
   return (
     <>
       <div
@@ -1066,6 +1119,8 @@ export function Globe({
         data-imagery-status={imageryStatus}
         data-imagery-style={activeImageryStyle ?? "none"}
         data-swe-field-tiles={sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
+        data-ww3-plan={ww3Plan?.id ?? "none"}
+        data-ww3-strikes={ww3Plan?.strikes.length ?? 0}
       />
       <p id={sceneSummaryId} className="sr-only" data-globe-scene-summary>
         {accessibilitySummary}

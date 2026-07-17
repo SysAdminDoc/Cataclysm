@@ -67,6 +67,7 @@ import type { PointProbeReport } from "./render/cesium/inspection";
 import type { Preset } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
 import { HazardControls } from "./components/HazardControls";
+import { WW3ExchangeHud, WW3ExchangePanel, type Ww3ExchangeSession } from "./components/WW3Exchange";
 import { useFireballs } from "./hooks/useFireballs";
 import { SimulationTransport } from "./components/SimulationTransport";
 import { LayerInspector } from "./components/LayerInspector";
@@ -109,6 +110,7 @@ type LibraryPreview =
   | { kind: "direct"; scenario: DirectScenarioTemplate };
 type JourneyStage = "prepare" | "calculate" | "watch" | "understand";
 type RunJourney = { scenarioId: string; stage: JourneyStage };
+type ActiveWw3ExchangeSession = Ww3ExchangeSession & { elapsedMs: number };
 
 const JOURNEY_STEPS: Array<{ id: JourneyStage; label: string }> = [
   { id: "prepare", label: "Prepare" },
@@ -379,6 +381,7 @@ export default function App() {
     waterDepthM: sourceNumericDefault("DirectAsteroid", "water_depth_m"),
   });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [ww3Session, setWw3Session] = useState<ActiveWw3ExchangeSession | null>(null);
   const [showFireballs, setShowFireballs] = useState(false);
   const fireballFeed = useFireballs(hazardMode === "asteroid" && showFireballs);
   const [asteroidVisualReport, setAsteroidVisualReport] = useState<AsteroidVisualReport | null>(null);
@@ -441,6 +444,30 @@ export default function App() {
   const startupScenario = useMemo(() => scenarioFromUrl(window.location.search), []);
   const startupScenarioHandled = useRef(false);
   const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (ww3Session?.state !== "running") return;
+    const timer = window.setInterval(() => {
+      setWw3Session((current) => {
+        if (!current || current.state !== "running") return current;
+        const scenarioDurationMs = Math.max(
+          ...current.plan.scenario.phases.map((phase) => phase.delayMs + phase.durationMs),
+          0,
+        ) + 18_000;
+        const elapsedMs = Math.min(scenarioDurationMs, current.elapsedMs + 250 * current.speed);
+        const visibleStrikeCount = current.plan.strikes.length === 0
+          ? 0
+          : Math.min(current.plan.strikes.length, Math.floor((elapsedMs / scenarioDurationMs) * current.plan.strikes.length));
+        return {
+          ...current,
+          elapsedMs,
+          visibleStrikeCount,
+          state: elapsedMs >= scenarioDurationMs ? "complete" : "running",
+        };
+      });
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [ww3Session?.plan.id, ww3Session?.state]);
 
   const handleOutcomeFocus = useCallback((place: {
     name: string;
@@ -1169,6 +1196,7 @@ export default function App() {
     setCompareMode(false);
     setExportMenuOpen(false);
     setTimelinePlaying(false);
+    if (mode !== "nuclear") setWw3Session(null);
     setPendingGauge(null);
     setInspectorTab("setup");
   }
@@ -1240,6 +1268,7 @@ export default function App() {
       && currentCenter?.lat === scenario.center.lat
       && currentCenter?.lon === scenario.center.lon
       && JSON.stringify(currentInput) === JSON.stringify(scenarioInput);
+    setWw3Session(null);
     selectHazardMode(scenario.domain);
     setDirectRenderFrame(null);
     if (!canReuseResult) {
@@ -1278,6 +1307,7 @@ export default function App() {
 
   function detonateActiveHazard() {
     if (!directHazardMode) return;
+    if (directHazardMode === "nuclear") setWw3Session(null);
     setDetonateNonces((current) => ({
       ...current,
       [directHazardMode]: current[directHazardMode] + 1,
@@ -1852,6 +1882,7 @@ export default function App() {
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
                 fireballs={hazardMode === "asteroid" && showFireballs ? fireballFeed.events : []}
+                ww3Plan={hazardMode === "nuclear" ? ww3Session?.plan ?? null : null}
                 impactKind={hazardMode === "asteroid" ? "asteroid" : hazardMode === "nuclear" ? "nuclear" : null}
                 directRenderFrame={directRenderFrame}
                 previewCamera={comparisonCameraA ?? (libraryPreviewPending ? libraryPreviewCamera : null)}
@@ -1898,6 +1929,7 @@ export default function App() {
             )}
           </div>
         </Suspense>
+        {hazardMode === "nuclear" && ww3Session && <WW3ExchangeHud session={ww3Session} />}
         <div className="app__viewport-hud app__viewport-hud--source" aria-label={`Scenario time T plus ${Math.round(timeS / 60)} minutes`}>
           <div className="app__viewport-time">
             <span aria-hidden="true">◷</span>
@@ -2010,6 +2042,7 @@ export default function App() {
         )}
         <div ref={inspectorBodyRef} className="inspector__body" id="inspector-panel" role="tabpanel" aria-labelledby={`inspector-tab-${inspectorTab}`}>
         {inspectorTab === "setup" && inHazardMode && (
+          <>
           <HazardControls
             mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
             nuclear={nuclearInput}
@@ -2041,6 +2074,27 @@ export default function App() {
             canAnimate={Boolean(directRenderReplay)}
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
+          {hazardMode === "nuclear" && (
+            <WW3ExchangePanel
+              session={ww3Session}
+              onStart={(plan, speed) => {
+                setHazardResult(null);
+                setDirectRenderFrame(null);
+                setDirectRenderReplay(null);
+                setWw3Session({
+                  plan,
+                  speed,
+                  elapsedMs: 0,
+                  visibleStrikeCount: 0,
+                  state: "running",
+                });
+              }}
+              onPause={() => setWw3Session((current) => current ? { ...current, state: "paused" } : null)}
+              onResume={() => setWw3Session((current) => current ? { ...current, state: "running" } : null)}
+              onStop={() => setWw3Session(null)}
+            />
+          )}
+          </>
         )}
         <div hidden={inspectorTab !== "setup" || inHazardMode}>
           {slotA.sourceResult.status === "loading" && !slotA.sourceResult.previous && (

@@ -108,6 +108,12 @@ Existing tools each do one piece:
   the current desktop package; lockfile drift is rejected during verification.
 - **Scenario library filters** — recorded and what-if cases stay searchable,
   while guided training remains available without crowding the primary flow.
+- **Deterministic global-exchange lab** — seven preserved NukeMap scenarios,
+  427 target records, and 712 assigned warheads can be explored through
+  Cesium-native great-circle arcs and an accessible React HUD. Phase filters,
+  launcher selection, and immediate-casualty screening are repeatable and
+  clearly bounded as educational legacy-model outputs, not predictions or
+  current force assessments.
 - **5 globe styles**: high-detail Esri World Imagery by default, bundled Natural
   Earth II as the deterministic offline fallback, OpenStreetMap, Cesium World
   Imagery, and Cesium World Bathymetry.

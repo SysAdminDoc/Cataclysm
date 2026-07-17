@@ -6,6 +6,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Nuclear setup now includes a deterministic global-exchange lab built from all
+  seven preserved NukeMap scenarios, 427 target records, and the current 712
+  assigned-warhead global dataset. Pure TypeScript planning ports phase/target
+  filters, launcher assignment, great-circle paths, and legacy immediate-casualty
+  aggregation; React controls and an accessible live HUD drive Cesium-native 3D
+  missile arcs and target markers. The experience is explicitly labeled as an
+  educational reconstruction rather than a prediction or current force
+  assessment, and exposes the packaged-density, overlap, doctrine, and fallout
+  limitations beside the controls.
 - The unified scenario library now includes all 10 preserved NukeMap historical
   tests and all six AsteroidSimulator impact presets as recorded-event direct
   scenarios, distinct from the five deterministic what-if fixtures. Each entry

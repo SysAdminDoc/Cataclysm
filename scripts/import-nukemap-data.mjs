@@ -17,7 +17,7 @@ function loadLegacyTables() {
   const context = vm.createContext({ Blob, console });
   context.window = context;
   context.NM = {};
-  for (const relativePath of ["js/data.js", "js/zipcodes.js"]) {
+  for (const relativePath of ["js/data.js", "js/zipcodes.js", "js/ww3.js"]) {
     vm.runInContext(fs.readFileSync(path.join(legacyRoot, relativePath), "utf8"), context, {
       filename: relativePath,
       timeout: 5_000,
@@ -265,6 +265,74 @@ const asteroidScenarios = loadAsteroidPresets().map((preset) => {
 const historicalScenarios = [...nuclearScenarios, ...asteroidScenarios];
 if (historicalScenarios.length !== 16) throw new Error(`Expected 16 historical scenarios, found ${historicalScenarios.length}`);
 
+const ww3TargetSources = {
+  us: nm.WW3_TARGETS_US,
+  ru: nm.WW3_TARGETS_RU,
+  nato: nm.WW3_TARGETS_NATO,
+  cn: nm.WW3_TARGETS_CN,
+};
+const ww3Targets = Object.fromEntries(Object.entries(ww3TargetSources).map(([side, entries]) => [
+  side,
+  uniqueIds(entries.map((target) => {
+    assertCoordinate(target.lat, target.lng, target.name);
+    if (!Number.isInteger(target.warheads) || target.warheads < 0 || !Number.isFinite(target.yieldKt)) {
+      throw new Error(`Invalid WW3 target payload for ${target.name}`);
+    }
+    return {
+      name: target.name,
+      lat: target.lat,
+      lon: target.lng,
+      type: target.type,
+      warheads: target.warheads,
+      yieldKt: target.yieldKt,
+      description: target.cat,
+    };
+  })).map(({ id, ...target }) => ({ id: `${side}:${id}`, ...target })),
+]));
+const ww3Launchers = Object.fromEntries(Object.entries(nm.WW3_LAUNCHERS).map(([id, entries]) => [
+  id,
+  entries.map((launcher, index) => {
+    assertCoordinate(launcher.lat, launcher.lng, launcher.name);
+    return { id: `${id}:${index + 1}`, name: launcher.name, lat: launcher.lat, lon: launcher.lng };
+  }),
+]));
+
+function classifyWw3Phase(filter) {
+  const includes = Object.fromEntries(["icbm", "infra", "city"].map((type) => [type, Boolean(filter({ type }))]));
+  if (includes.icbm && !includes.infra && !includes.city) return "counterforce";
+  if (includes.icbm && includes.infra && !includes.city) return "noncity";
+  if (!includes.icbm && includes.infra && includes.city) return "countervalue";
+  if (!includes.icbm && !includes.infra && includes.city) return "city";
+  if (includes.icbm && includes.infra && includes.city) return "all";
+  throw new Error(`Unsupported WW3 phase filter: ${JSON.stringify(includes)}`);
+}
+
+const ww3Scenarios = nm.WW3_SCENARIOS.map((scenario) => ({
+  id: scenario.id,
+  name: scenario.name,
+  description: scenario.desc,
+  phases: scenario.phases.map((phase) => ({
+    name: phase.name,
+    delayMs: phase.delay,
+    durationMs: phase.duration,
+    targetFilter: classifyWw3Phase(phase.filter),
+  })),
+  targetSides: Object.keys(scenario.targetSets),
+  launchSets: scenario.launchSets,
+  camera: { lat: scenario.zoom[0], lon: scenario.zoom[1], legacyZoom: scenario.zoom[2] },
+}));
+const ww3TargetCount = Object.values(ww3Targets).reduce((sum, entries) => sum + entries.length, 0);
+const ww3GlobalWarheads = Object.values(ww3Targets)
+  .flat()
+  .reduce((sum, target) => sum + target.warheads, 0);
+if (ww3TargetCount !== 427 || ww3GlobalWarheads !== 712 || ww3Scenarios.length !== 7) {
+  throw new Error(
+    `Unexpected WW3 import counts: ${ww3TargetCount} targets, ${ww3GlobalWarheads} global warheads, ` +
+      `${ww3Scenarios.length} scenarios`,
+  );
+}
+const ww3Exchange = { targets: ww3Targets, launchers: ww3Launchers, scenarios: ww3Scenarios };
+
 fs.mkdirSync(outputRoot, { recursive: true });
 const write = (name, source, items, compact = false) => {
   const value = { schemaVersion: 1, source, count: Object.keys(items).length, items };
@@ -287,9 +355,11 @@ write(
   "legacy/nukemap/js/data.js#NM.HISTORICAL + legacy/asteroid/src/presets/historical.ts",
   historicalScenarios,
 );
+write("ww3-exchange.json", "legacy/nukemap/js/ww3.js", ww3Exchange);
 
 console.log(
   `${checkOnly ? "Verified" : "Imported"} ${weapons.length} weapons, ${cities.length} cities, ` +
     `${Object.keys(zipCodes).length} ZIP codes, ${normalizedTargets.length} targets, and ` +
-    `${historicalScenarios.length} historical scenarios.`,
+    `${historicalScenarios.length} historical scenarios; WW3 includes ${ww3TargetCount} targets, ` +
+    `${ww3GlobalWarheads} global warheads, and ${ww3Scenarios.length} scenarios.`,
 );

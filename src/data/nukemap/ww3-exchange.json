@@ -1,0 +1,4737 @@
+{
+  "schemaVersion": 1,
+  "source": "legacy/nukemap/js/ww3.js",
+  "count": 3,
+  "items": {
+    "targets": {
+      "us": [
+        {
+          "id": "us:malmstrom-afb",
+          "name": "Malmstrom AFB",
+          "lat": 47.505,
+          "lon": -111.1872,
+          "type": "icbm",
+          "warheads": 8,
+          "yieldKt": 800,
+          "description": "341st Missile Wing, 150 Minuteman III silos across central Montana"
+        },
+        {
+          "id": "us:minot-afb",
+          "name": "Minot AFB",
+          "lat": 48.4159,
+          "lon": -101.3306,
+          "type": "icbm",
+          "warheads": 8,
+          "yieldKt": 800,
+          "description": "91st Missile Wing, 150 Minuteman III silos across North Dakota"
+        },
+        {
+          "id": "us:f-e-warren-afb",
+          "name": "F.E. Warren AFB",
+          "lat": 41.1265,
+          "lon": -104.8668,
+          "type": "icbm",
+          "warheads": 8,
+          "yieldKt": 800,
+          "description": "90th Missile Wing, 150 Minuteman III silos across WY/CO/NE"
+        },
+        {
+          "id": "us:malmstrom-maf-alpha-a-01",
+          "name": "Malmstrom MAF Alpha (A-01)",
+          "lat": 47.2817,
+          "lon": -110.8008,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Launch Control Center, 341st MW, SE of Belt, MT"
+        },
+        {
+          "id": "us:malmstrom-maf-foxtrot-f-01",
+          "name": "Malmstrom MAF Foxtrot (F-01)",
+          "lat": 47.6047,
+          "lon": -112.3106,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Launch Control Center, 341st MW, NNE of Augusta, MT"
+        },
+        {
+          "id": "us:malmstrom-maf-kilo-k-01",
+          "name": "Malmstrom MAF Kilo (K-01)",
+          "lat": 46.4453,
+          "lon": -109.8014,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Launch Control Center, 341st MW, near Harlowton, MT"
+        },
+        {
+          "id": "us:malmstrom-maf-papa-p-00",
+          "name": "Malmstrom MAF Papa (P-00)",
+          "lat": 48.205,
+          "lon": -111.9086,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Launch Control Center, 341st MW, NE of Conrad, MT"
+        },
+        {
+          "id": "us:whiteman-afb",
+          "name": "Whiteman AFB",
+          "lat": 38.7289,
+          "lon": -93.5605,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "509th Bomb Wing, all 19 B-2 Spirit stealth bombers, nuclear-capable"
+        },
+        {
+          "id": "us:barksdale-afb",
+          "name": "Barksdale AFB",
+          "lat": 32.5019,
+          "lon": -93.6626,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "2nd Bomb Wing, ~44 B-52H Stratofortress bombers, AFGSC HQ"
+        },
+        {
+          "id": "us:dyess-afb",
+          "name": "Dyess AFB",
+          "lat": 32.4185,
+          "lon": -99.8565,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "7th Bomb Wing, B-1B Lancers (conventional only, de-nuclearized under START I)"
+        },
+        {
+          "id": "us:ellsworth-afb",
+          "name": "Ellsworth AFB",
+          "lat": 44.1453,
+          "lon": -103.1022,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "28th Bomb Wing, B-1B Lancers, future B-21 Raider base"
+        },
+        {
+          "id": "us:naval-base-kitsap-bangor",
+          "name": "Naval Base Kitsap-Bangor",
+          "lat": 47.7195,
+          "lon": -122.7191,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pacific Fleet Trident base, 8 Ohio-class SSBNs, SWFPAC nuclear weapons facility"
+        },
+        {
+          "id": "us:naval-submarine-base-kings-bay",
+          "name": "Naval Submarine Base Kings Bay",
+          "lat": 30.7968,
+          "lon": -81.5328,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Atlantic Fleet Trident base, 6 Ohio-class SSBNs, SWFLANT nuclear weapons facility"
+        },
+        {
+          "id": "us:cheyenne-mountain-complex",
+          "name": "Cheyenne Mountain Complex",
+          "lat": 38.7443,
+          "lon": -104.8468,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "NORAD/USNORTHCOM alternate command center, deep underground bunker"
+        },
+        {
+          "id": "us:peterson-space-force-base",
+          "name": "Peterson Space Force Base",
+          "lat": 38.8236,
+          "lon": -104.695,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "NORAD & USNORTHCOM headquarters, Space Force operations"
+        },
+        {
+          "id": "us:offutt-afb",
+          "name": "Offutt AFB",
+          "lat": 41.1243,
+          "lon": -95.9146,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "US Strategic Command (USSTRATCOM) headquarters, E-4B Nightwatch base"
+        },
+        {
+          "id": "us:the-pentagon",
+          "name": "The Pentagon",
+          "lat": 38.8719,
+          "lon": -77.0563,
+          "type": "c2",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Department of Defense headquarters, National Military Command Center"
+        },
+        {
+          "id": "us:the-white-house",
+          "name": "The White House",
+          "lat": 38.8977,
+          "lon": -77.0366,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "President/Commander-in-Chief residence, Situation Room"
+        },
+        {
+          "id": "us:us-capitol-building",
+          "name": "US Capitol Building",
+          "lat": 38.8898,
+          "lon": -77.0091,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Seat of Congress, legislative branch headquarters"
+        },
+        {
+          "id": "us:raven-rock-mountain-complex-site-r",
+          "name": "Raven Rock Mountain Complex (Site R)",
+          "lat": 39.734,
+          "lon": -77.419,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Alternate National Military Command Center, underground Pentagon backup"
+        },
+        {
+          "id": "us:mount-weather-eoc",
+          "name": "Mount Weather EOC",
+          "lat": 39.0645,
+          "lon": -77.8899,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "FEMA continuity of government facility, presidential fallout shelter"
+        },
+        {
+          "id": "us:camp-david",
+          "name": "Camp David",
+          "lat": 39.6483,
+          "lon": -77.465,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Presidential retreat, near Raven Rock, hardened communications"
+        },
+        {
+          "id": "us:tinker-afb",
+          "name": "Tinker AFB",
+          "lat": 35.4148,
+          "lon": -97.3866,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "E-6B Mercury TACAMO base, nuclear communications relay to submarines"
+        },
+        {
+          "id": "us:joint-base-andrews",
+          "name": "Joint Base Andrews",
+          "lat": 38.8108,
+          "lon": -76.8674,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Air Force One base, National Capital Region defense"
+        },
+        {
+          "id": "us:schriever-space-force-base",
+          "name": "Schriever Space Force Base",
+          "lat": 38.8033,
+          "lon": -104.5256,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Satellite command & control for 170+ DoD satellites, missile warning"
+        },
+        {
+          "id": "us:buckley-space-force-base",
+          "name": "Buckley Space Force Base",
+          "lat": 39.701,
+          "lon": -104.751,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Space-based infrared missile warning, intelligence processing"
+        },
+        {
+          "id": "us:pantex-plant",
+          "name": "Pantex Plant",
+          "lat": 35.3116,
+          "lon": -101.5597,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Only US nuclear weapons assembly/disassembly facility, Amarillo TX"
+        },
+        {
+          "id": "us:y-12-national-security-complex",
+          "name": "Y-12 National Security Complex",
+          "lat": 35.9863,
+          "lon": -84.2528,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Enriched uranium weapons components, Oak Ridge TN"
+        },
+        {
+          "id": "us:los-alamos-national-laboratory",
+          "name": "Los Alamos National Laboratory",
+          "lat": 35.8757,
+          "lon": -106.2923,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear weapons design & plutonium science, Los Alamos NM"
+        },
+        {
+          "id": "us:lawrence-livermore-national-lab",
+          "name": "Lawrence Livermore National Lab",
+          "lat": 37.6858,
+          "lon": -121.7055,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear weapons research & design, Livermore CA"
+        },
+        {
+          "id": "us:sandia-national-laboratories-nm",
+          "name": "Sandia National Laboratories (NM)",
+          "lat": 35.0507,
+          "lon": -106.5431,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Non-nuclear weapons components R&D, Kirtland AFB, Albuquerque NM"
+        },
+        {
+          "id": "us:sandia-national-laboratories-ca",
+          "name": "Sandia National Laboratories (CA)",
+          "lat": 37.6744,
+          "lon": -121.7066,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "California branch, adjacent to LLNL, Livermore CA"
+        },
+        {
+          "id": "us:savannah-river-site",
+          "name": "Savannah River Site",
+          "lat": 33.2464,
+          "lon": -81.6679,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Tritium supply & processing for nuclear weapons, Aiken SC"
+        },
+        {
+          "id": "us:kansas-city-national-security-campus",
+          "name": "Kansas City National Security Campus",
+          "lat": 38.9581,
+          "lon": -94.5689,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Electronic, mechanical & material components for nuclear weapons"
+        },
+        {
+          "id": "us:nevada-national-security-site",
+          "name": "Nevada National Security Site",
+          "lat": 37.1167,
+          "lon": -116.05,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Former nuclear test site, subcritical experiments, stockpile stewardship"
+        },
+        {
+          "id": "us:kirtland-afb",
+          "name": "Kirtland AFB",
+          "lat": 35.0403,
+          "lon": -106.6092,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest nuclear weapons storage area in US (Manzano/Coyote Canyon), Sandia base"
+        },
+        {
+          "id": "us:oak-ridge-national-laboratory",
+          "name": "Oak Ridge National Laboratory",
+          "lat": 35.931,
+          "lon": -84.31,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "DOE multipurpose research lab, Oak Ridge TN"
+        },
+        {
+          "id": "us:macdill-afb-centcom-socom",
+          "name": "MacDill AFB (CENTCOM/SOCOM)",
+          "lat": 27.8493,
+          "lon": -82.5212,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "US Central Command & Special Operations Command headquarters, Tampa FL"
+        },
+        {
+          "id": "us:fort-liberty",
+          "name": "Fort Liberty",
+          "lat": 35.1392,
+          "lon": -78.9992,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "XVIII Airborne Corps, Army Special Operations Command, 52,000+ personnel (renamed from Fort Bragg 2023)"
+        },
+        {
+          "id": "us:fort-hood-fort-cavazos",
+          "name": "Fort Hood (Fort Cavazos)",
+          "lat": 31.1363,
+          "lon": -97.7797,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "III Corps, 1st Cavalry Division, largest active-duty armored post"
+        },
+        {
+          "id": "us:camp-pendleton",
+          "name": "Camp Pendleton",
+          "lat": 33.3,
+          "lon": -117.35,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "I Marine Expeditionary Force, major West Coast Marine base"
+        },
+        {
+          "id": "us:camp-lejeune",
+          "name": "Camp Lejeune",
+          "lat": 34.589,
+          "lon": -77.3388,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "II Marine Expeditionary Force, major East Coast Marine base"
+        },
+        {
+          "id": "us:naval-station-norfolk",
+          "name": "Naval Station Norfolk",
+          "lat": 36.9474,
+          "lon": -76.3169,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "World's largest naval station, Fleet Forces Command HQ, 75+ ships"
+        },
+        {
+          "id": "us:naval-base-san-diego",
+          "name": "Naval Base San Diego",
+          "lat": 32.6756,
+          "lon": -117.1199,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Principal Pacific Fleet homeport, 50+ ships"
+        },
+        {
+          "id": "us:joint-base-pearl-harbor-hickam",
+          "name": "Joint Base Pearl Harbor-Hickam",
+          "lat": 21.3489,
+          "lon": -157.9436,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "US Pacific Fleet HQ, US Indo-Pacific Command nearby"
+        },
+        {
+          "id": "us:nsa-fort-meade",
+          "name": "NSA - Fort Meade",
+          "lat": 39.109,
+          "lon": -76.77,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "National Security Agency & US Cyber Command headquarters"
+        },
+        {
+          "id": "us:cia-langley",
+          "name": "CIA - Langley",
+          "lat": 38.9518,
+          "lon": -77.1466,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Central Intelligence Agency headquarters, Fairfax County VA"
+        },
+        {
+          "id": "us:dia-anacostia-bolling",
+          "name": "DIA - Anacostia-Bolling",
+          "lat": 38.8463,
+          "lon": -77.0132,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Defense Intelligence Agency headquarters, Washington DC"
+        },
+        {
+          "id": "us:fort-meade",
+          "name": "Fort Meade",
+          "lat": 39.1082,
+          "lon": -76.7432,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "US Army Cyber Command, NSA co-located"
+        },
+        {
+          "id": "us:nellis-afb",
+          "name": "Nellis AFB",
+          "lat": 36.2414,
+          "lon": -115.0508,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "USAF Warfare Center, largest air combat training range (NTTR)"
+        },
+        {
+          "id": "us:travis-afb",
+          "name": "Travis AFB",
+          "lat": 38.2721,
+          "lon": -121.9399,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest Air Mobility Command base on West Coast, strategic airlift"
+        },
+        {
+          "id": "us:fairchild-afb",
+          "name": "Fairchild AFB",
+          "lat": 47.6188,
+          "lon": -117.6483,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "KC-135 tanker base, survival school, strategic refueling support"
+        },
+        {
+          "id": "us:beale-afb",
+          "name": "Beale AFB",
+          "lat": 39.1388,
+          "lon": -121.4389,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "ISR hub, U-2 Dragon Lady, Global Hawk operations"
+        },
+        {
+          "id": "us:creech-afb",
+          "name": "Creech AFB",
+          "lat": 36.5863,
+          "lon": -115.6774,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "MQ-9 Reaper drone operations center, combat UAV hub"
+        },
+        {
+          "id": "us:fort-eisenhower-formerly-gordon",
+          "name": "Fort Eisenhower (formerly Gordon)",
+          "lat": 33.417,
+          "lon": -82.135,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "US Army Cyber Center of Excellence, signals intelligence training"
+        },
+        {
+          "id": "us:redstone-arsenal",
+          "name": "Redstone Arsenal",
+          "lat": 34.6849,
+          "lon": -86.653,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Army missile/aviation, Space & Missile Defense Command, Huntsville AL"
+        },
+        {
+          "id": "us:wright-patterson-afb",
+          "name": "Wright-Patterson AFB",
+          "lat": 39.8261,
+          "lon": -84.0483,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Air Force Materiel Command HQ, National Air & Space Intel Center"
+        },
+        {
+          "id": "us:port-of-los-angeles",
+          "name": "Port of Los Angeles",
+          "lat": 33.7292,
+          "lon": -118.262,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest container port in Western Hemisphere"
+        },
+        {
+          "id": "us:port-of-long-beach",
+          "name": "Port of Long Beach",
+          "lat": 33.7542,
+          "lon": -118.2165,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Second busiest US port, adjacent to Port of LA"
+        },
+        {
+          "id": "us:port-of-houston",
+          "name": "Port of Houston",
+          "lat": 29.6111,
+          "lon": -95.0217,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US port by tonnage, 25-mile ship channel complex"
+        },
+        {
+          "id": "us:port-of-savannah",
+          "name": "Port of Savannah",
+          "lat": 32.0809,
+          "lon": -81.0912,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Fastest-growing major US container port"
+        },
+        {
+          "id": "us:port-of-new-york-new-jersey",
+          "name": "Port of New York/New Jersey",
+          "lat": 40.6683,
+          "lon": -74.0364,
+          "type": "infra",
+          "warheads": 6,
+          "yieldKt": 800,
+          "description": "Largest East Coast port, Newark-Elizabeth complex"
+        },
+        {
+          "id": "us:port-of-norfolk-hampton-roads",
+          "name": "Port of Norfolk/Hampton Roads",
+          "lat": 36.8508,
+          "lon": -76.2859,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Deep-water port, coal export, naval operations"
+        },
+        {
+          "id": "us:port-of-seattle-tacoma",
+          "name": "Port of Seattle/Tacoma",
+          "lat": 47.5815,
+          "lon": -122.348,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Northwest Seaport Alliance, major Pacific trade hub"
+        },
+        {
+          "id": "us:port-of-charleston",
+          "name": "Port of Charleston",
+          "lat": 32.7876,
+          "lon": -79.9249,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major East Coast container port, deep water"
+        },
+        {
+          "id": "us:houston-ship-channel-refinery-complex",
+          "name": "Houston Ship Channel Refinery Complex",
+          "lat": 29.75,
+          "lon": -95.08,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Multiple refineries, 2.6M bbl/day capacity, Baytown/Deer Park/Pasadena"
+        },
+        {
+          "id": "us:port-arthur-refinery-complex",
+          "name": "Port Arthur Refinery Complex",
+          "lat": 29.9,
+          "lon": -93.93,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Motiva (607K bbl/day), Valero (435K bbl/day), TotalEnergies refineries"
+        },
+        {
+          "id": "us:texas-city-galveston-bay-refinery",
+          "name": "Texas City/Galveston Bay Refinery",
+          "lat": 29.38,
+          "lon": -94.9,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Marathon Galveston Bay, largest US refinery at 631K bbl/day"
+        },
+        {
+          "id": "us:beaumont-refinery-complex",
+          "name": "Beaumont Refinery Complex",
+          "lat": 30.08,
+          "lon": -94.1,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "ExxonMobil Beaumont (609K bbl/day) and other refineries"
+        },
+        {
+          "id": "us:baton-rouge-refinery-complex",
+          "name": "Baton Rouge Refinery Complex",
+          "lat": 30.4515,
+          "lon": -91.1871,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "ExxonMobil Baton Rouge, second largest US refinery"
+        },
+        {
+          "id": "us:whiting-refinery-chicago-area",
+          "name": "Whiting Refinery (Chicago area)",
+          "lat": 41.6792,
+          "lon": -87.4946,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "BP Whiting, largest inland refinery, 435K bbl/day"
+        },
+        {
+          "id": "us:philadelphia-delaware-valley-refineries",
+          "name": "Philadelphia/Delaware Valley Refineries",
+          "lat": 39.875,
+          "lon": -75.24,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "PBF Energy, Monroe Energy, East Coast refining hub"
+        },
+        {
+          "id": "us:los-angeles-basin-refineries",
+          "name": "Los Angeles Basin Refineries",
+          "lat": 33.89,
+          "lon": -118.24,
+          "type": "infra",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Multiple refineries, Marathon, Valero, Phillips 66, Torrance/Carson/Wilmington"
+        },
+        {
+          "id": "us:san-francisco-bay-refineries",
+          "name": "San Francisco Bay Refineries",
+          "lat": 38.02,
+          "lon": -122.23,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Chevron Richmond, Marathon Martinez, PBF Martinez, Valero Benicia"
+        },
+        {
+          "id": "us:grand-coulee-dam",
+          "name": "Grand Coulee Dam",
+          "lat": 47.9555,
+          "lon": -118.9815,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US hydroelectric dam, 6.8 GW capacity, Columbia River"
+        },
+        {
+          "id": "us:hoover-dam",
+          "name": "Hoover Dam",
+          "lat": 36.0161,
+          "lon": -114.7377,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "2.1 GW hydroelectric, supplies water/power to NV/AZ/CA"
+        },
+        {
+          "id": "us:glen-canyon-dam",
+          "name": "Glen Canyon Dam",
+          "lat": 36.9375,
+          "lon": -111.4858,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "1.3 GW hydroelectric, Lake Powell, Colorado River system"
+        },
+        {
+          "id": "us:oroville-dam",
+          "name": "Oroville Dam",
+          "lat": 39.5378,
+          "lon": -121.4847,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Tallest US dam (235m), 0.8 GW, California water supply"
+        },
+        {
+          "id": "us:palo-verde-nuclear-plant",
+          "name": "Palo Verde Nuclear Plant",
+          "lat": 33.3881,
+          "lon": -112.8617,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US nuclear power plant, 3.9 GW, supplies AZ/CA/NM"
+        },
+        {
+          "id": "us:south-texas-nuclear-plant",
+          "name": "South Texas Nuclear Plant",
+          "lat": 28.795,
+          "lon": -96.0489,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "2.7 GW nuclear power, Gulf Coast grid critical infrastructure"
+        },
+        {
+          "id": "us:ashburn-va-data-center-alley",
+          "name": "Ashburn VA Data Center Alley",
+          "lat": 39.0438,
+          "lon": -77.4874,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "World's largest data center cluster, 70%+ US internet traffic"
+        },
+        {
+          "id": "us:the-dalles-or-data-center-hub",
+          "name": "The Dalles OR Data Center Hub",
+          "lat": 45.5946,
+          "lon": -121.1787,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major Google/Amazon data center campus, Columbia River cooling"
+        },
+        {
+          "id": "us:pjm-interconnection-hub",
+          "name": "PJM Interconnection Hub",
+          "lat": 40.3165,
+          "lon": -75.9325,
+          "type": "infra",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US power grid operator, serves 65M people across 13 states"
+        },
+        {
+          "id": "us:new-york-newark-jersey-city",
+          "name": "New York-Newark-Jersey City",
+          "lat": 40.7128,
+          "lon": -74.006,
+          "type": "city",
+          "warheads": 6,
+          "yieldKt": 800,
+          "description": "Pop ~19.9M, largest US metro, financial capital"
+        },
+        {
+          "id": "us:los-angeles-long-beach-anaheim",
+          "name": "Los Angeles-Long Beach-Anaheim",
+          "lat": 34.0522,
+          "lon": -118.2437,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~13.2M, second largest metro"
+        },
+        {
+          "id": "us:chicago-naperville-elgin",
+          "name": "Chicago-Naperville-Elgin",
+          "lat": 41.8781,
+          "lon": -87.6298,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~9.5M, major transportation hub"
+        },
+        {
+          "id": "us:dallas-fort-worth-arlington",
+          "name": "Dallas-Fort Worth-Arlington",
+          "lat": 32.7767,
+          "lon": -96.797,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~8.1M, major economic center"
+        },
+        {
+          "id": "us:houston-pasadena-the-woodlands",
+          "name": "Houston-Pasadena-The Woodlands",
+          "lat": 29.7604,
+          "lon": -95.3698,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~7.5M, energy capital, major refining center"
+        },
+        {
+          "id": "us:washington-arlington-alexandria",
+          "name": "Washington-Arlington-Alexandria",
+          "lat": 38.9072,
+          "lon": -77.0369,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~6.4M, national capital, federal government center"
+        },
+        {
+          "id": "us:philadelphia-camden-wilmington",
+          "name": "Philadelphia-Camden-Wilmington",
+          "lat": 39.9526,
+          "lon": -75.1652,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~6.3M, major East Coast metro"
+        },
+        {
+          "id": "us:miami-fort-lauderdale-west-palm-beach",
+          "name": "Miami-Fort Lauderdale-West Palm Beach",
+          "lat": 25.7617,
+          "lon": -80.1918,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~6.2M, SOUTHCOM nearby"
+        },
+        {
+          "id": "us:atlanta-sandy-springs-roswell",
+          "name": "Atlanta-Sandy Springs-Roswell",
+          "lat": 33.749,
+          "lon": -84.388,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~6.3M, major transportation/logistics hub, CDC HQ"
+        },
+        {
+          "id": "us:boston-cambridge-newton",
+          "name": "Boston-Cambridge-Newton",
+          "lat": 42.3601,
+          "lon": -71.0589,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~5.0M, major biotech/education center"
+        },
+        {
+          "id": "us:phoenix-mesa-chandler",
+          "name": "Phoenix-Mesa-Chandler",
+          "lat": 33.4484,
+          "lon": -112.074,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "Pop ~5.1M, Luke AFB nearby"
+        },
+        {
+          "id": "us:san-francisco-oakland-berkeley",
+          "name": "San Francisco-Oakland-Berkeley",
+          "lat": 37.7749,
+          "lon": -122.4194,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~4.7M, tech capital, major port"
+        },
+        {
+          "id": "us:riverside-san-bernardino-ontario",
+          "name": "Riverside-San Bernardino-Ontario",
+          "lat": 33.9533,
+          "lon": -117.3962,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~4.7M, Inland Empire, March ARB"
+        },
+        {
+          "id": "us:detroit-warren-dearborn",
+          "name": "Detroit-Warren-Dearborn",
+          "lat": 42.3314,
+          "lon": -83.0458,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~4.3M, major manufacturing/auto center"
+        },
+        {
+          "id": "us:seattle-tacoma-bellevue",
+          "name": "Seattle-Tacoma-Bellevue",
+          "lat": 47.6062,
+          "lon": -122.3321,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~4.1M, Boeing, major tech hub, near Bangor SSBN base"
+        },
+        {
+          "id": "us:minneapolis-st-paul-bloomington",
+          "name": "Minneapolis-St. Paul-Bloomington",
+          "lat": 44.9778,
+          "lon": -93.265,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~3.7M, major Midwest metro"
+        },
+        {
+          "id": "us:san-diego-chula-vista-carlsbad",
+          "name": "San Diego-Chula Vista-Carlsbad",
+          "lat": 32.7157,
+          "lon": -117.1611,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~3.3M, major military complex, Naval Base San Diego"
+        },
+        {
+          "id": "us:tampa-st-petersburg-clearwater",
+          "name": "Tampa-St. Petersburg-Clearwater",
+          "lat": 27.9506,
+          "lon": -82.4572,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~3.3M, MacDill AFB/CENTCOM/SOCOM"
+        },
+        {
+          "id": "us:denver-aurora-lakewood",
+          "name": "Denver-Aurora-Lakewood",
+          "lat": 39.7392,
+          "lon": -104.9903,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~3.0M, near Buckley SFB, Schriever SFB, Cheyenne Mountain"
+        },
+        {
+          "id": "us:st-louis-mo-il",
+          "name": "St. Louis, MO-IL",
+          "lat": 38.627,
+          "lon": -90.1994,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.8M, major river/transportation hub"
+        },
+        {
+          "id": "us:baltimore-columbia-towson",
+          "name": "Baltimore-Columbia-Towson",
+          "lat": 39.2904,
+          "lon": -76.6122,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.8M, NSA/Fort Meade, major port"
+        },
+        {
+          "id": "us:orlando-kissimmee-sanford",
+          "name": "Orlando-Kissimmee-Sanford",
+          "lat": 28.5383,
+          "lon": -81.3792,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.8M"
+        },
+        {
+          "id": "us:charlotte-concord-gastonia",
+          "name": "Charlotte-Concord-Gastonia",
+          "lat": 35.2271,
+          "lon": -80.8431,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.8M, major banking center"
+        },
+        {
+          "id": "us:san-antonio-new-braunfels",
+          "name": "San Antonio-New Braunfels",
+          "lat": 29.4241,
+          "lon": -98.4936,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.7M, Lackland AFB, Fort Sam Houston, JBSA"
+        },
+        {
+          "id": "us:portland-vancouver-hillsboro",
+          "name": "Portland-Vancouver-Hillsboro",
+          "lat": 45.5152,
+          "lon": -122.6784,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.5M, major West Coast metro"
+        },
+        {
+          "id": "us:sacramento-roseville-folsom",
+          "name": "Sacramento-Roseville-Folsom",
+          "lat": 38.5816,
+          "lon": -121.4944,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.4M, state capital, Beale AFB nearby"
+        },
+        {
+          "id": "us:pittsburgh",
+          "name": "Pittsburgh",
+          "lat": 40.4406,
+          "lon": -79.9959,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.4M, major industrial center"
+        },
+        {
+          "id": "us:austin-round-rock-georgetown",
+          "name": "Austin-Round Rock-Georgetown",
+          "lat": 30.2672,
+          "lon": -97.7431,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.4M, fast-growing tech hub"
+        },
+        {
+          "id": "us:las-vegas-henderson-north-las-vegas",
+          "name": "Las Vegas-Henderson-North Las Vegas",
+          "lat": 36.1699,
+          "lon": -115.1398,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.3M, Nellis AFB, Creech AFB, NNSS nearby"
+        },
+        {
+          "id": "us:cincinnati-oh-ky-in",
+          "name": "Cincinnati, OH-KY-IN",
+          "lat": 39.1031,
+          "lon": -84.512,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.3M"
+        },
+        {
+          "id": "us:kansas-city-mo-ks",
+          "name": "Kansas City, MO-KS",
+          "lat": 39.0997,
+          "lon": -94.5786,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.2M, KC National Security Campus"
+        },
+        {
+          "id": "us:columbus-oh",
+          "name": "Columbus, OH",
+          "lat": 39.9612,
+          "lon": -82.9988,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.2M, Defense Supply Center Columbus"
+        },
+        {
+          "id": "us:indianapolis-carmel-anderson",
+          "name": "Indianapolis-Carmel-Anderson",
+          "lat": 39.7684,
+          "lon": -86.1581,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.1M"
+        },
+        {
+          "id": "us:cleveland-elyria",
+          "name": "Cleveland-Elyria",
+          "lat": 41.4993,
+          "lon": -81.6944,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "Pop ~2.1M, NASA Glenn Research Center"
+        },
+        {
+          "id": "us:san-jose-sunnyvale-santa-clara",
+          "name": "San Jose-Sunnyvale-Santa Clara",
+          "lat": 37.3382,
+          "lon": -121.8863,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~2.0M, Silicon Valley, major tech/defense industry"
+        },
+        {
+          "id": "us:nashville-davidson-murfreesboro-franklin",
+          "name": "Nashville-Davidson-Murfreesboro-Franklin",
+          "lat": 36.1627,
+          "lon": -86.7816,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~2.0M"
+        },
+        {
+          "id": "us:virginia-beach-norfolk-newport-news",
+          "name": "Virginia Beach-Norfolk-Newport News",
+          "lat": 36.8529,
+          "lon": -75.978,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.8M, Naval Station Norfolk, Langley AFB, shipbuilding"
+        },
+        {
+          "id": "us:raleigh-cary",
+          "name": "Raleigh-Cary",
+          "lat": 35.7796,
+          "lon": -78.6382,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.5M, Research Triangle"
+        },
+        {
+          "id": "us:milwaukee-waukesha",
+          "name": "Milwaukee-Waukesha",
+          "lat": 43.0389,
+          "lon": -87.9065,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.6M"
+        },
+        {
+          "id": "us:jacksonville-fl",
+          "name": "Jacksonville, FL",
+          "lat": 30.3322,
+          "lon": -81.6557,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.7M, Naval Station Mayport"
+        },
+        {
+          "id": "us:oklahoma-city",
+          "name": "Oklahoma City",
+          "lat": 35.4676,
+          "lon": -97.5164,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.5M, Tinker AFB"
+        },
+        {
+          "id": "us:memphis-tn-ms-ar",
+          "name": "Memphis, TN-MS-AR",
+          "lat": 35.1495,
+          "lon": -90.049,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.3M, FedEx hub, major logistics"
+        },
+        {
+          "id": "us:richmond-va",
+          "name": "Richmond, VA",
+          "lat": 37.5407,
+          "lon": -77.436,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.3M, Defense Supply Center Richmond"
+        },
+        {
+          "id": "us:louisville-jefferson-county-ky-in",
+          "name": "Louisville/Jefferson County, KY-IN",
+          "lat": 38.2527,
+          "lon": -85.7585,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.3M, Fort Knox nearby"
+        },
+        {
+          "id": "us:new-orleans-metairie",
+          "name": "New Orleans-Metairie",
+          "lat": 29.9511,
+          "lon": -90.0715,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.3M, major port, Naval Air Station JRB"
+        },
+        {
+          "id": "us:salt-lake-city-ut",
+          "name": "Salt Lake City, UT",
+          "lat": 40.7608,
+          "lon": -111.891,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.3M, Hill AFB, Tooele Army Depot"
+        },
+        {
+          "id": "us:hartford-east-hartford-middletown",
+          "name": "Hartford-East Hartford-Middletown",
+          "lat": 41.7658,
+          "lon": -72.6734,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.2M, Pratt & Whitney (jet engines), submarine parts manufacturing"
+        },
+        {
+          "id": "us:buffalo-cheektowaga",
+          "name": "Buffalo-Cheektowaga",
+          "lat": 42.8864,
+          "lon": -78.8784,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.1M"
+        },
+        {
+          "id": "us:birmingham-hoover-al",
+          "name": "Birmingham-Hoover, AL",
+          "lat": 33.5186,
+          "lon": -86.8104,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.1M"
+        },
+        {
+          "id": "us:rochester-ny",
+          "name": "Rochester, NY",
+          "lat": 43.1566,
+          "lon": -77.6088,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.1M"
+        },
+        {
+          "id": "us:grand-rapids-kentwood-mi",
+          "name": "Grand Rapids-Kentwood, MI",
+          "lat": 42.9634,
+          "lon": -85.6681,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.1M"
+        },
+        {
+          "id": "us:tucson-az",
+          "name": "Tucson, AZ",
+          "lat": 32.2226,
+          "lon": -110.9747,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Pop ~1.1M, Davis-Monthan AFB, AMARG boneyard"
+        },
+        {
+          "id": "us:tulsa-ok",
+          "name": "Tulsa, OK",
+          "lat": 36.154,
+          "lon": -95.9928,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~1.0M"
+        },
+        {
+          "id": "us:fresno-ca",
+          "name": "Fresno, CA",
+          "lat": 36.7378,
+          "lon": -119.7871,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~1.0M"
+        },
+        {
+          "id": "us:urban-honolulu-hi",
+          "name": "Urban Honolulu, HI",
+          "lat": 21.3069,
+          "lon": -157.8583,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~1.0M, JBPHH, Indo-Pacific Command"
+        },
+        {
+          "id": "us:bridgeport-stamford-norwalk-ct",
+          "name": "Bridgeport-Stamford-Norwalk, CT",
+          "lat": 41.1865,
+          "lon": -73.1952,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~950K"
+        },
+        {
+          "id": "us:worcester-ma-ct",
+          "name": "Worcester, MA-CT",
+          "lat": 42.2626,
+          "lon": -71.8023,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~950K"
+        },
+        {
+          "id": "us:omaha-council-bluffs-ne-ia",
+          "name": "Omaha-Council Bluffs, NE-IA",
+          "lat": 41.2565,
+          "lon": -95.9345,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Pop ~970K, Offutt AFB/STRATCOM"
+        },
+        {
+          "id": "us:albuquerque-nm",
+          "name": "Albuquerque, NM",
+          "lat": 35.0844,
+          "lon": -106.6504,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~920K, Kirtland AFB, Sandia Labs, major nuclear weapons complex"
+        },
+        {
+          "id": "us:new-haven-milford-ct",
+          "name": "New Haven-Milford, CT",
+          "lat": 41.3083,
+          "lon": -72.9279,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~870K, Electric Boat submarine manufacturing (Groton nearby)"
+        },
+        {
+          "id": "us:albany-schenectady-troy-ny",
+          "name": "Albany-Schenectady-Troy, NY",
+          "lat": 42.6526,
+          "lon": -73.7562,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~890K"
+        },
+        {
+          "id": "us:bakersfield-ca",
+          "name": "Bakersfield, CA",
+          "lat": 35.3733,
+          "lon": -119.0187,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~910K, Edwards AFB nearby"
+        },
+        {
+          "id": "us:knoxville-tn",
+          "name": "Knoxville, TN",
+          "lat": 35.9606,
+          "lon": -83.9207,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~900K, Y-12/ORNL 15 miles away"
+        },
+        {
+          "id": "us:mcallen-edinburg-mission-tx",
+          "name": "McAllen-Edinburg-Mission, TX",
+          "lat": 26.2034,
+          "lon": -98.23,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~880K"
+        },
+        {
+          "id": "us:boise-city-id",
+          "name": "Boise City, ID",
+          "lat": 43.615,
+          "lon": -116.2023,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~830K, Mountain Home AFB nearby"
+        },
+        {
+          "id": "us:el-paso-tx",
+          "name": "El Paso, TX",
+          "lat": 31.7619,
+          "lon": -106.485,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~870K, Fort Bliss, White Sands nearby"
+        },
+        {
+          "id": "us:oxnard-thousand-oaks-ventura-ca",
+          "name": "Oxnard-Thousand Oaks-Ventura, CA",
+          "lat": 34.1975,
+          "lon": -119.1771,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~840K, Naval Base Ventura County/Point Mugu"
+        },
+        {
+          "id": "us:greenville-anderson-sc",
+          "name": "Greenville-Anderson, SC",
+          "lat": 34.8526,
+          "lon": -82.394,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~950K"
+        },
+        {
+          "id": "us:north-port-sarasota-bradenton-fl",
+          "name": "North Port-Sarasota-Bradenton, FL",
+          "lat": 27.3364,
+          "lon": -82.5307,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~890K"
+        },
+        {
+          "id": "us:columbia-sc",
+          "name": "Columbia, SC",
+          "lat": 34.0007,
+          "lon": -81.0348,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~870K, Fort Jackson, Shaw AFB nearby"
+        },
+        {
+          "id": "us:provo-orem-ut",
+          "name": "Provo-Orem, UT",
+          "lat": 40.2338,
+          "lon": -111.6585,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~700K"
+        },
+        {
+          "id": "us:colorado-springs-co",
+          "name": "Colorado Springs, CO",
+          "lat": 38.8339,
+          "lon": -104.8214,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~780K, NORAD, Peterson SFB, Schriever SFB, Fort Carson"
+        },
+        {
+          "id": "us:dayton-kettering-oh",
+          "name": "Dayton-Kettering, OH",
+          "lat": 39.7589,
+          "lon": -84.1916,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~810K, Wright-Patterson AFB"
+        },
+        {
+          "id": "us:greensboro-high-point-nc",
+          "name": "Greensboro-High Point, NC",
+          "lat": 36.0726,
+          "lon": -79.792,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~780K"
+        },
+        {
+          "id": "us:des-moines-west-des-moines-ia",
+          "name": "Des Moines-West Des Moines, IA",
+          "lat": 41.5868,
+          "lon": -93.625,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~710K"
+        },
+        {
+          "id": "us:little-rock-north-little-rock-conway-ar",
+          "name": "Little Rock-North Little Rock-Conway, AR",
+          "lat": 34.7465,
+          "lon": -92.2896,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~750K, Little Rock AFB"
+        },
+        {
+          "id": "us:cape-coral-fort-myers-fl",
+          "name": "Cape Coral-Fort Myers, FL",
+          "lat": 26.6449,
+          "lon": -81.8613,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~840K"
+        },
+        {
+          "id": "us:charleston-north-charleston-sc",
+          "name": "Charleston-North Charleston, SC",
+          "lat": 32.7765,
+          "lon": -79.9311,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~850K, Joint Base Charleston"
+        },
+        {
+          "id": "us:ogden-clearfield-ut",
+          "name": "Ogden-Clearfield, UT",
+          "lat": 41.223,
+          "lon": -111.9738,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~720K, Hill AFB"
+        },
+        {
+          "id": "us:palm-bay-melbourne-titusville-fl",
+          "name": "Palm Bay-Melbourne-Titusville, FL",
+          "lat": 28.0345,
+          "lon": -80.5887,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~640K, Patrick SFB, Cape Canaveral"
+        },
+        {
+          "id": "us:deltona-daytona-beach-ormond-beach-fl",
+          "name": "Deltona-Daytona Beach-Ormond Beach, FL",
+          "lat": 29.2108,
+          "lon": -81.0229,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~700K"
+        },
+        {
+          "id": "us:wichita-ks",
+          "name": "Wichita, KS",
+          "lat": 37.6872,
+          "lon": -97.3301,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~650K, McConnell AFB, aircraft manufacturing"
+        },
+        {
+          "id": "us:madison-wi",
+          "name": "Madison, WI",
+          "lat": 43.0731,
+          "lon": -89.4012,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~680K"
+        },
+        {
+          "id": "us:lakeland-winter-haven-fl",
+          "name": "Lakeland-Winter Haven, FL",
+          "lat": 28.0395,
+          "lon": -81.9498,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~760K"
+        },
+        {
+          "id": "us:harrisburg-carlisle-pa",
+          "name": "Harrisburg-Carlisle, PA",
+          "lat": 40.2732,
+          "lon": -76.8867,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~610K"
+        },
+        {
+          "id": "us:chattanooga-tn-ga",
+          "name": "Chattanooga, TN-GA",
+          "lat": 35.0456,
+          "lon": -85.3097,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~580K"
+        },
+        {
+          "id": "us:spokane-spokane-valley-wa",
+          "name": "Spokane-Spokane Valley, WA",
+          "lat": 47.6588,
+          "lon": -117.426,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~600K, Fairchild AFB"
+        },
+        {
+          "id": "us:durham-chapel-hill-nc",
+          "name": "Durham-Chapel Hill, NC",
+          "lat": 35.994,
+          "lon": -78.8986,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~590K, Research Triangle"
+        },
+        {
+          "id": "us:stockton-ca",
+          "name": "Stockton, CA",
+          "lat": 37.9577,
+          "lon": -121.2908,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~780K"
+        },
+        {
+          "id": "us:fayetteville-springdale-rogers-ar",
+          "name": "Fayetteville-Springdale-Rogers, AR",
+          "lat": 36.0626,
+          "lon": -94.1574,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~580K"
+        },
+        {
+          "id": "us:scranton-wilkes-barre-pa",
+          "name": "Scranton-Wilkes-Barre, PA",
+          "lat": 41.409,
+          "lon": -75.6624,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~570K, Tobyhanna Army Depot"
+        },
+        {
+          "id": "us:akron-oh",
+          "name": "Akron, OH",
+          "lat": 41.0814,
+          "lon": -81.519,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~700K"
+        },
+        {
+          "id": "us:reno-nv",
+          "name": "Reno, NV",
+          "lat": 39.5296,
+          "lon": -119.8138,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~510K"
+        },
+        {
+          "id": "us:lexington-fayette-ky",
+          "name": "Lexington-Fayette, KY",
+          "lat": 38.0406,
+          "lon": -84.5037,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~530K, Bluegrass Army Depot"
+        },
+        {
+          "id": "us:pensacola-ferry-pass-brent-fl",
+          "name": "Pensacola-Ferry Pass-Brent, FL",
+          "lat": 30.4213,
+          "lon": -87.2169,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~520K, NAS Pensacola"
+        },
+        {
+          "id": "us:modesto-ca",
+          "name": "Modesto, CA",
+          "lat": 37.6391,
+          "lon": -120.9969,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~570K"
+        },
+        {
+          "id": "us:port-st-lucie-fl",
+          "name": "Port St. Lucie, FL",
+          "lat": 27.273,
+          "lon": -80.3582,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~520K"
+        },
+        {
+          "id": "us:winston-salem-nc",
+          "name": "Winston-Salem, NC",
+          "lat": 36.0999,
+          "lon": -80.2442,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~680K"
+        },
+        {
+          "id": "us:augusta-richmond-county-ga-sc",
+          "name": "Augusta-Richmond County, GA-SC",
+          "lat": 33.4735,
+          "lon": -81.9748,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~620K, Fort Eisenhower (Army Cyber), near Savannah River Site"
+        },
+        {
+          "id": "us:huntsville-al",
+          "name": "Huntsville, AL",
+          "lat": 34.7304,
+          "lon": -86.5861,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~530K, Redstone Arsenal, NASA Marshall, missile defense"
+        },
+        {
+          "id": "us:lancaster-pa",
+          "name": "Lancaster, PA",
+          "lat": 40.0379,
+          "lon": -76.3055,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pop ~560K"
+        }
+      ],
+      "ru": [
+        {
+          "id": "ru:kozelsk-28th-guards-missile-division",
+          "name": "Kozelsk - 28th Guards Missile Division",
+          "lat": 53.9433,
+          "lon": 35.8194,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "RS-24 Yars silo field, 3 regiments (~30 silos), 240km SW of "
+        },
+        {
+          "id": "ru:tatishchevo-60th-missile-division",
+          "name": "Tatishchevo - 60th Missile Division",
+          "lat": 51.8792,
+          "lon": 45.3368,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "60 SS-27 Mod 1 (Topol-M) silo-based ICBMs, 6 regiments, Sara"
+        },
+        {
+          "id": "ru:tatishchevo-104th-regiment",
+          "name": "Tatishchevo - 104th Regiment",
+          "lat": 51.6108,
+          "lon": 45.497,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 60th Missile Division"
+        },
+        {
+          "id": "ru:tatishchevo-122nd-regiment",
+          "name": "Tatishchevo - 122nd Regiment",
+          "lat": 52.1589,
+          "lon": 45.6404,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 60th Missile Division"
+        },
+        {
+          "id": "ru:tatishchevo-165th-regiment",
+          "name": "Tatishchevo - 165th Regiment",
+          "lat": 51.8062,
+          "lon": 45.655,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 60th Missile Division"
+        },
+        {
+          "id": "ru:tatishchevo-322nd-regiment",
+          "name": "Tatishchevo - 322nd Regiment",
+          "lat": 52.0449,
+          "lon": 45.4458,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 60th Missile Division"
+        },
+        {
+          "id": "ru:tatishchevo-626th-regiment",
+          "name": "Tatishchevo - 626th Regiment",
+          "lat": 51.7146,
+          "lon": 45.2278,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 60th Missile Division"
+        },
+        {
+          "id": "ru:dombarovsky-13th-missile-division",
+          "name": "Dombarovsky - 13th Missile Division",
+          "lat": 51.0489,
+          "lon": 59.8533,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "SS-18/Avangard HGV silos, Orenburg Oblast. Up to 64 silos at"
+        },
+        {
+          "id": "ru:uzhur-62nd-missile-division-229th-regiment",
+          "name": "Uzhur - 62nd Missile Division (229th Regiment)",
+          "lat": 55.2453,
+          "lon": 89.9194,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "SS-18 silos being upgraded to RS-28 Sarmat, Krasnoyarsk Krai"
+        },
+        {
+          "id": "ru:uzhur-269th-regiment",
+          "name": "Uzhur - 269th Regiment",
+          "lat": 55.2077,
+          "lon": 90.2526,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 62nd Missile Division"
+        },
+        {
+          "id": "ru:uzhur-302nd-regiment",
+          "name": "Uzhur - 302nd Regiment",
+          "lat": 55.1147,
+          "lon": 89.6311,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 62nd Missile Division"
+        },
+        {
+          "id": "ru:uzhur-735th-regiment",
+          "name": "Uzhur - 735th Regiment",
+          "lat": 55.272,
+          "lon": 89.5783,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Silo regiment of 62nd Missile Division"
+        },
+        {
+          "id": "ru:kartaly-decommissioned",
+          "name": "Kartaly (decommissioned)",
+          "lat": 53.9667,
+          "lon": 57.8333,
+          "type": "icbm",
+          "warheads": 0,
+          "yieldKt": 455,
+          "description": "Former SS-18 deployment site, Chelyabinsk Oblast. Decommissioned — not targeted."
+        },
+        {
+          "id": "ru:aleysk-decommissioned",
+          "name": "Aleysk (decommissioned)",
+          "lat": 52.5,
+          "lon": 82.75,
+          "type": "icbm",
+          "warheads": 0,
+          "yieldKt": 455,
+          "description": "Former 41st Guards Missile Division, 30 SS-18 silos destroyed. Decommissioned — not targeted."
+        },
+        {
+          "id": "ru:teykovo-54th-guards-missile-division-235th-regiment",
+          "name": "Teykovo - 54th Guards Missile Division (235th Regiment)",
+          "lat": 56.7041,
+          "lon": 40.4403,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile SS-27 Mod 1/Mod 2 (Yars), Ivanovo Oblast"
+        },
+        {
+          "id": "ru:teykovo-285th-regiment",
+          "name": "Teykovo - 285th Regiment",
+          "lat": 56.8091,
+          "lon": 40.171,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 54th Guards Missile Division"
+        },
+        {
+          "id": "ru:teykovo-321st-regiment",
+          "name": "Teykovo - 321st Regiment",
+          "lat": 56.9324,
+          "lon": 40.544,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 54th Guards Missile Division"
+        },
+        {
+          "id": "ru:teykovo-773rd-regiment",
+          "name": "Teykovo - 773rd Regiment",
+          "lat": 56.9167,
+          "lon": 40.3087,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 54th Guards Missile Division"
+        },
+        {
+          "id": "ru:yoshkar-ola-14th-missile-division-290th-regiment",
+          "name": "Yoshkar-Ola - 14th Missile Division (290th Regiment)",
+          "lat": 56.8328,
+          "lon": 48.237,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile RS-24 Yars, Mari El Republic"
+        },
+        {
+          "id": "ru:yoshkar-ola-697th-regiment",
+          "name": "Yoshkar-Ola - 697th Regiment",
+          "lat": 56.5601,
+          "lon": 48.2144,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 14th Missile Division"
+        },
+        {
+          "id": "ru:yoshkar-ola-779th-regiment",
+          "name": "Yoshkar-Ola - 779th Regiment",
+          "lat": 56.5821,
+          "lon": 48.155,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 14th Missile Division"
+        },
+        {
+          "id": "ru:novosibirsk-39th-guards-missile-division-382nd-regiment",
+          "name": "Novosibirsk - 39th Guards Missile Division (382nd Regiment)",
+          "lat": 55.3175,
+          "lon": 83.1684,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile RS-24 Yars, Novosibirsk Oblast (Paskino)"
+        },
+        {
+          "id": "ru:novosibirsk-357th-regiment",
+          "name": "Novosibirsk - 357th Regiment",
+          "lat": 55.3255,
+          "lon": 82.9422,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 39th Guards Missile Division"
+        },
+        {
+          "id": "ru:nizhny-tagil-42nd-missile-division-308th-regiment",
+          "name": "Nizhny Tagil - 42nd Missile Division (308th Regiment)",
+          "lat": 58.2298,
+          "lon": 60.6773,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile RS-24 Yars, Sverdlovsk Oblast"
+        },
+        {
+          "id": "ru:nizhny-tagil-433rd-regiment",
+          "name": "Nizhny Tagil - 433rd Regiment",
+          "lat": 58.1015,
+          "lon": 60.3592,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 42nd Missile Division"
+        },
+        {
+          "id": "ru:nizhny-tagil-804th-regiment",
+          "name": "Nizhny Tagil - 804th Regiment",
+          "lat": 58.1372,
+          "lon": 60.5366,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 42nd Missile Division"
+        },
+        {
+          "id": "ru:irkutsk-29th-guards-missile-division-92nd-regiment",
+          "name": "Irkutsk - 29th Guards Missile Division (92nd Regiment)",
+          "lat": 52.5085,
+          "lon": 104.3933,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile RS-24 Yars, Irkutsk Oblast"
+        },
+        {
+          "id": "ru:irkutsk-344th-regiment",
+          "name": "Irkutsk - 344th Regiment",
+          "lat": 52.6694,
+          "lon": 104.5199,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 29th Guards Missile Division"
+        },
+        {
+          "id": "ru:irkutsk-586th-regiment",
+          "name": "Irkutsk - 586th Regiment",
+          "lat": 52.5505,
+          "lon": 104.1584,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 29th Guards Missile Division"
+        },
+        {
+          "id": "ru:barnaul-35th-missile-division-479th-guards-regiment",
+          "name": "Barnaul - 35th Missile Division (479th Guards Regiment)",
+          "lat": 53.7699,
+          "lon": 83.9592,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile RS-24 Yars, Altai Krai (ZATO Sibirsky)"
+        },
+        {
+          "id": "ru:barnaul-480th-regiment",
+          "name": "Barnaul - 480th Regiment",
+          "lat": 53.3059,
+          "lon": 84.1462,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 35th Missile Division"
+        },
+        {
+          "id": "ru:barnaul-867th-regiment",
+          "name": "Barnaul - 867th Regiment",
+          "lat": 53.2247,
+          "lon": 84.6695,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 35th Missile Division"
+        },
+        {
+          "id": "ru:barnaul-307th-regiment",
+          "name": "Barnaul - 307th Regiment",
+          "lat": 53.3131,
+          "lon": 84.5075,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 35th Missile Division"
+        },
+        {
+          "id": "ru:vypolzovo-bologoye-7th-guards-missile-division-41st-regiment",
+          "name": "Vypolzovo/Bologoye - 7th Guards Missile Division (41st Regiment)",
+          "lat": 57.8631,
+          "lon": 33.6517,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile RS-24 Yars, Tver Oblast. Westernmost RVSN divisi"
+        },
+        {
+          "id": "ru:vypolzovo-bologoye-510th-regiment",
+          "name": "Vypolzovo/Bologoye - 510th Regiment",
+          "lat": 57.7883,
+          "lon": 33.8654,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Road-mobile regiment, 7th Guards Missile Division"
+        },
+        {
+          "id": "ru:gadzhiyevo-yagelnaya-bay-northern-fleet-ssbn-base",
+          "name": "Gadzhiyevo (Yagelnaya Bay) - Northern Fleet SSBN Base",
+          "lat": 69.2614,
+          "lon": 33.3322,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 455,
+          "description": "Home port for Borei and Delta-IV class SSBNs. Kola Peninsula"
+        },
+        {
+          "id": "ru:vilyuchinsk-rybachiy-pacific-fleet-ssbn-base",
+          "name": "Vilyuchinsk (Rybachiy) - Pacific Fleet SSBN Base",
+          "lat": 52.92,
+          "lon": 158.49,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 455,
+          "description": "Borei-class SSBNs, Kamchatka Peninsula. Russia's largest sub"
+        },
+        {
+          "id": "ru:severodvinsk-sevmash-shipyard",
+          "name": "Severodvinsk - Sevmash Shipyard",
+          "lat": 64.5817,
+          "lon": 39.8307,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 455,
+          "description": "Russia's only nuclear submarine construction facility. 30,00"
+        },
+        {
+          "id": "ru:engels-2-air-base",
+          "name": "Engels-2 Air Base",
+          "lat": 51.4753,
+          "lon": 46.2063,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Russia's sole Tu-160 base + Tu-95MS. 22nd Guards Heavy Bombe"
+        },
+        {
+          "id": "ru:ukrainka-air-base",
+          "name": "Ukrainka Air Base",
+          "lat": 51.17,
+          "lon": 128.445,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Tu-95MS strategic bombers, 326th Heavy Bomber Division, Amur"
+        },
+        {
+          "id": "ru:moscow-kremlin-presidential-command",
+          "name": "Moscow Kremlin - Presidential Command",
+          "lat": 55.752,
+          "lon": 37.6175,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Russian President's official residence and office, supreme n"
+        },
+        {
+          "id": "ru:russian-general-staff-hq-znamenka-street",
+          "name": "Russian General Staff HQ - Znamenka Street",
+          "lat": 55.7506,
+          "lon": 37.6028,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "General Staff of Russian Armed Forces, Arbat District, Mosco"
+        },
+        {
+          "id": "ru:vlasikha-strategic-rocket-forces-hq",
+          "name": "Vlasikha - Strategic Rocket Forces HQ",
+          "lat": 55.6869,
+          "lon": 37.1833,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "RVSN headquarters, closed town west of Moscow. 12-tier under"
+        },
+        {
+          "id": "ru:kosvinsky-kamen-alternate-strategic-command-post",
+          "name": "Kosvinsky Kamen - Alternate Strategic Command Post",
+          "lat": 59.5168,
+          "lon": 59.0611,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Deep underground bunker under 300m of granite. Perimeter/Dea"
+        },
+        {
+          "id": "ru:mount-yamantau-nuclear-war-bunker",
+          "name": "Mount Yamantau - Nuclear War Bunker",
+          "lat": 54.2553,
+          "lon": 58.1019,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Massive underground facility, 1640m mountain. Leadership rel"
+        },
+        {
+          "id": "ru:national-defense-management-center-moscow",
+          "name": "National Defense Management Center - Moscow",
+          "lat": 55.743,
+          "lon": 37.585,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Founded 2014, central C2 node for Russian Armed Forces, Frun"
+        },
+        {
+          "id": "ru:sarov-arzamas-16-vniief",
+          "name": "Sarov (Arzamas-16) - VNIIEF",
+          "lat": 54.8167,
+          "lon": 43.3667,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Russia's primary nuclear warhead design institute + Avangard"
+        },
+        {
+          "id": "ru:snezhinsk-chelyabinsk-70-vniitf",
+          "name": "Snezhinsk (Chelyabinsk-70) - VNIITF",
+          "lat": 56.0833,
+          "lon": 60.7333,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Second nuclear warhead design center, Chelyabinsk Oblast"
+        },
+        {
+          "id": "ru:zheleznogorsk-krasnoyarsk-26-mining-chemical-combine",
+          "name": "Zheleznogorsk (Krasnoyarsk-26) - Mining & Chemical Combine",
+          "lat": 56.2511,
+          "lon": 93.5314,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Underground plutonium production complex (200-250m deep), la"
+        },
+        {
+          "id": "ru:seversk-tomsk-7-siberian-chemical-combine",
+          "name": "Seversk (Tomsk-7) - Siberian Chemical Combine",
+          "lat": 56.6167,
+          "lon": 84.8333,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Russia's largest plutonium production & fissile material com"
+        },
+        {
+          "id": "ru:ozersk-chelyabinsk-65-mayak-production-association",
+          "name": "Ozersk (Chelyabinsk-65) - Mayak Production Association",
+          "lat": 55.75,
+          "lon": 60.75,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Plutonium production, reprocessing, weapons-grade material s"
+        },
+        {
+          "id": "ru:novouralsk-sverdlovsk-44-uranium-enrichment",
+          "name": "Novouralsk (Sverdlovsk-44) - Uranium Enrichment",
+          "lat": 57.25,
+          "lon": 60.0833,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Uranium enrichment plant, Sverdlovsk Oblast"
+        },
+        {
+          "id": "ru:lesnoy-sverdlovsk-45-warhead-assembly",
+          "name": "Lesnoy (Sverdlovsk-45) - Warhead Assembly",
+          "lat": 58.6333,
+          "lon": 59.7833,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear warhead serial production plant, Sverdlovsk Oblast"
+        },
+        {
+          "id": "ru:trekhgornyy-zlatoust-36-instrument-making-plant",
+          "name": "Trekhgornyy (Zlatoust-36) - Instrument Making Plant",
+          "lat": 54.8167,
+          "lon": 58.45,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear warhead component manufacturing, Chelyabinsk Oblast"
+        },
+        {
+          "id": "ru:zarechnyy-penza-19-start-production-association",
+          "name": "Zarechnyy (Penza-19) - Start Production Association",
+          "lat": 53.2,
+          "lon": 45.1667,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear warhead final assembly/disassembly, Penza Oblast"
+        },
+        {
+          "id": "ru:zelenogorsk-krasnoyarsk-45-electrochemical-plant",
+          "name": "Zelenogorsk (Krasnoyarsk-45) - Electrochemical Plant",
+          "lat": 56.1167,
+          "lon": 94.5833,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Uranium enrichment facility, Krasnoyarsk Krai"
+        },
+        {
+          "id": "ru:severomorsk-northern-fleet-hq",
+          "name": "Severomorsk - Northern Fleet HQ",
+          "lat": 69.0667,
+          "lon": 33.4167,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Northern Fleet headquarters, Kola Peninsula, Barents Sea. Ru"
+        },
+        {
+          "id": "ru:vladivostok-pacific-fleet-hq",
+          "name": "Vladivostok - Pacific Fleet HQ",
+          "lat": 43.0778,
+          "lon": 131.9222,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pacific Fleet headquarters, Ulysses Bay, Primorsky Krai"
+        },
+        {
+          "id": "ru:baltiysk-baltic-fleet-main-base",
+          "name": "Baltiysk - Baltic Fleet Main Base",
+          "lat": 54.6347,
+          "lon": 19.8809,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Baltic Fleet principal seaward base, Kaliningrad Oblast"
+        },
+        {
+          "id": "ru:kaliningrad-baltic-fleet-hq",
+          "name": "Kaliningrad - Baltic Fleet HQ",
+          "lat": 54.7208,
+          "lon": 20.495,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Baltic Fleet headquarters city, Kaliningrad Oblast exclave"
+        },
+        {
+          "id": "ru:sevastopol-black-sea-fleet-hq",
+          "name": "Sevastopol - Black Sea Fleet HQ",
+          "lat": 44.6167,
+          "lon": 33.5167,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Black Sea Fleet headquarters, Crimea (annexed 2014)"
+        },
+        {
+          "id": "ru:polyarny-northern-fleet-submarine-base",
+          "name": "Polyarny - Northern Fleet Submarine Base",
+          "lat": 69.2,
+          "lon": 33.4833,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Attack submarine base, Kola Peninsula"
+        },
+        {
+          "id": "ru:vidyayevo-northern-fleet-submarine-base",
+          "name": "Vidyayevo - Northern Fleet Submarine Base",
+          "lat": 69.3167,
+          "lon": 32.75,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Attack submarine base (Ura Bay), Kola Peninsula"
+        },
+        {
+          "id": "ru:olenya-bay-northern-fleet-air-base",
+          "name": "Olenya Bay - Northern Fleet Air Base",
+          "lat": 68.15,
+          "lon": 33.4333,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Tu-22M3 Backfire bomber base, Kola Peninsula"
+        },
+        {
+          "id": "ru:moscow",
+          "name": "Moscow",
+          "lat": 55.7512,
+          "lon": 37.6184,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Capital, 13M+ pop. Political/economic center, national comma"
+        },
+        {
+          "id": "ru:saint-petersburg",
+          "name": "Saint Petersburg",
+          "lat": 59.9375,
+          "lon": 30.3086,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "5.6M pop. Cultural capital, major naval/military industry, B"
+        },
+        {
+          "id": "ru:novosibirsk",
+          "name": "Novosibirsk",
+          "lat": 55.0188,
+          "lon": 82.934,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.6M pop. Largest Siberian city, major rail/industrial hub"
+        },
+        {
+          "id": "ru:yekaterinburg",
+          "name": "Yekaterinburg",
+          "lat": 56.8333,
+          "lon": 60.5833,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.5M pop. Urals industrial center, military-industrial compl"
+        },
+        {
+          "id": "ru:kazan",
+          "name": "Kazan",
+          "lat": 55.7964,
+          "lon": 49.1089,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.3M pop. Tatarstan capital, aerospace/defense industry"
+        },
+        {
+          "id": "ru:nizhny-novgorod",
+          "name": "Nizhny Novgorod",
+          "lat": 56.3275,
+          "lon": 44.0007,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.3M pop. Major defense industry center, Volga region"
+        },
+        {
+          "id": "ru:chelyabinsk",
+          "name": "Chelyabinsk",
+          "lat": 55.1644,
+          "lon": 61.4368,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.2M pop. Urals heavy industry, tank/vehicle manufacturing"
+        },
+        {
+          "id": "ru:samara",
+          "name": "Samara",
+          "lat": 53.2415,
+          "lon": 50.2212,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.2M pop. Aerospace center (Progress rocket factory), Volga "
+        },
+        {
+          "id": "ru:omsk",
+          "name": "Omsk",
+          "lat": 54.9833,
+          "lon": 73.3667,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.1M pop. Major Siberian industrial city, oil refining"
+        },
+        {
+          "id": "ru:rostov-on-don",
+          "name": "Rostov-on-Don",
+          "lat": 47.2333,
+          "lon": 39.7,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.1M pop. Southern Military District HQ, major transport hub"
+        },
+        {
+          "id": "ru:ufa",
+          "name": "Ufa",
+          "lat": 54.7333,
+          "lon": 56,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.1M pop. Bashkortostan capital, oil/petrochemical industry"
+        },
+        {
+          "id": "ru:krasnoyarsk",
+          "name": "Krasnoyarsk",
+          "lat": 56.0153,
+          "lon": 92.8932,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "1.1M pop. Major Siberian city, aluminum/defense industry"
+        },
+        {
+          "id": "ru:voronezh",
+          "name": "Voronezh",
+          "lat": 51.672,
+          "lon": 39.1843,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "1.0M pop. Aerospace/electronics industry, Central Russia"
+        },
+        {
+          "id": "ru:perm",
+          "name": "Perm",
+          "lat": 58.0105,
+          "lon": 56.2502,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "1.0M pop. Urals industrial center, rocket engine manufacturi"
+        },
+        {
+          "id": "ru:volgograd",
+          "name": "Volgograd",
+          "lat": 48.7138,
+          "lon": 44.4976,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "1.0M pop. Major Volga city, heavy industry"
+        },
+        {
+          "id": "ru:krasnodar",
+          "name": "Krasnodar",
+          "lat": 45.0448,
+          "lon": 38.976,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "950K+ pop. Southern Russia economic center"
+        },
+        {
+          "id": "ru:saratov",
+          "name": "Saratov",
+          "lat": 51.5406,
+          "lon": 46.0086,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "900K+ pop. Volga region, near Engels-2 bomber base"
+        },
+        {
+          "id": "ru:tyumen",
+          "name": "Tyumen",
+          "lat": 57.1522,
+          "lon": 65.5272,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "850K+ pop. Oil industry capital of Western Siberia"
+        },
+        {
+          "id": "ru:tolyatti",
+          "name": "Tolyatti",
+          "lat": 53.5303,
+          "lon": 49.3461,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "700K+ pop. Volga automotive industry center (AvtoVAZ/Lada)"
+        },
+        {
+          "id": "ru:izhevsk",
+          "name": "Izhevsk",
+          "lat": 56.8498,
+          "lon": 53.2045,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "650K+ pop. Udmurt Republic, Kalashnikov weapons manufacturin"
+        },
+        {
+          "id": "ru:barnaul",
+          "name": "Barnaul",
+          "lat": 53.3606,
+          "lon": 83.7636,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "630K+ pop. Altai Krai capital, near 35th Missile Division"
+        },
+        {
+          "id": "ru:ulyanovsk",
+          "name": "Ulyanovsk",
+          "lat": 54.33,
+          "lon": 48.39,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "630K+ pop. Aviastar aircraft factory (Il-76, An-124)"
+        },
+        {
+          "id": "ru:irkutsk",
+          "name": "Irkutsk",
+          "lat": 52.2978,
+          "lon": 104.2964,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "617K+ pop. Major Siberian city, near 29th Guards Missile Div"
+        },
+        {
+          "id": "ru:khabarovsk",
+          "name": "Khabarovsk",
+          "lat": 48.4803,
+          "lon": 135.0882,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "617K+ pop. Eastern Military District HQ, Far East major city"
+        },
+        {
+          "id": "ru:vladivostok",
+          "name": "Vladivostok",
+          "lat": 43.1198,
+          "lon": 131.8869,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "604K+ pop. Pacific Fleet HQ, major Far East port"
+        },
+        {
+          "id": "ru:yaroslavl",
+          "name": "Yaroslavl",
+          "lat": 57.6299,
+          "lon": 39.8737,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "577K+ pop. Central Russia, diesel engine manufacturing"
+        },
+        {
+          "id": "ru:makhachkala",
+          "name": "Makhachkala",
+          "lat": 42.9833,
+          "lon": 47.5,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "600K+ pop. Dagestan capital, Caspian Sea port"
+        },
+        {
+          "id": "ru:kemerovo",
+          "name": "Kemerovo",
+          "lat": 55.345,
+          "lon": 86.0623,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "557K+ pop. Kuzbass coal mining region center"
+        },
+        {
+          "id": "ru:tomsk",
+          "name": "Tomsk",
+          "lat": 56.5003,
+          "lon": 84.982,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "556K+ pop. Major Siberian university/science city, near Seve"
+        },
+        {
+          "id": "ru:orenburg",
+          "name": "Orenburg",
+          "lat": 51.7727,
+          "lon": 55.0988,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "550K+ pop. Southern Urals, 31st Rocket Army HQ city"
+        },
+        {
+          "id": "ru:naberezhnye-chelny",
+          "name": "Naberezhnye Chelny",
+          "lat": 55.7254,
+          "lon": 52.4112,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "548K+ pop. Tatarstan, KAMAZ truck manufacturing"
+        },
+        {
+          "id": "ru:novokuznetsk",
+          "name": "Novokuznetsk",
+          "lat": 53.76,
+          "lon": 87.11,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "540K+ pop. Kemerovo Oblast, steel/metallurgy center"
+        },
+        {
+          "id": "ru:ryazan",
+          "name": "Ryazan",
+          "lat": 54.6095,
+          "lon": 39.7126,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "520K+ pop. Central Russia, airborne forces training center"
+        },
+        {
+          "id": "ru:lipetsk",
+          "name": "Lipetsk",
+          "lat": 52.6,
+          "lon": 39.57,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "510K+ pop. Steel industry, combat pilot training center"
+        },
+        {
+          "id": "ru:astrakhan",
+          "name": "Astrakhan",
+          "lat": 46.3497,
+          "lon": 48.0408,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "502K+ pop. Caspian Flotilla base, Volga delta"
+        },
+        {
+          "id": "ru:kirov",
+          "name": "Kirov",
+          "lat": 58.6,
+          "lon": 49.66,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "500K+ pop. Volga-Ural region, defense industry"
+        },
+        {
+          "id": "ru:penza",
+          "name": "Penza",
+          "lat": 53.2,
+          "lon": 45,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "520K+ pop. Near Zarechnyy nuclear warhead assembly plant"
+        },
+        {
+          "id": "ru:cheboksary",
+          "name": "Cheboksary",
+          "lat": 56.13,
+          "lon": 47.25,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "500K+ pop. Chuvash Republic capital, electronics industry"
+        },
+        {
+          "id": "ru:tula",
+          "name": "Tula",
+          "lat": 54.2,
+          "lon": 37.62,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "500K+ pop. Historic arms manufacturing center (Tula Arms Pla"
+        }
+      ],
+      "nato": [
+        {
+          "id": "nato:buchel-air-base",
+          "name": "Buchel Air Base",
+          "lat": 50.1762,
+          "lon": 7.064,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "German Tornado wing, 10-15 B61-12 bombs. F-35A arriving 2027"
+        },
+        {
+          "id": "nato:kleine-brogel-air-base",
+          "name": "Kleine Brogel Air Base",
+          "lat": 51.1682,
+          "lon": 5.469,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Belgian 10th Tactical Wing F-16s, ~20 B61 nuclear bombs."
+        },
+        {
+          "id": "nato:volkel-air-base",
+          "name": "Volkel Air Base",
+          "lat": 51.6564,
+          "lon": 5.7086,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Dutch F-35A squadrons (312 & 313), ~22 B61 bombs. 703rd MUNS"
+        },
+        {
+          "id": "nato:aviano-air-base",
+          "name": "Aviano Air Base",
+          "lat": 46.0313,
+          "lon": 12.5968,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "USAF 31st FW, 20-30 B61-12 bombs for US F-16C/D delivery."
+        },
+        {
+          "id": "nato:ghedi-air-base",
+          "name": "Ghedi Air Base",
+          "lat": 45.4319,
+          "lon": 10.267,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Italian PA-200 Tornados, 10-15 B61-12 bombs. F-35A transitio"
+        },
+        {
+          "id": "nato:incirlik-air-base",
+          "name": "Incirlik Air Base",
+          "lat": 37.0025,
+          "lon": 35.4267,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "USAF/Turkish joint base, 20-30 B61-12 bombs. Strategic easte"
+        },
+        {
+          "id": "nato:raf-lakenheath",
+          "name": "RAF Lakenheath",
+          "lat": 52.4082,
+          "lon": 0.5587,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "USAF 48th FW F-15E/F-35A. Nuclear mission reactivated, vault"
+        },
+        {
+          "id": "nato:shape-supreme-hq-allied-powers-europe",
+          "name": "SHAPE (Supreme HQ Allied Powers Europe)",
+          "lat": 50.505,
+          "lon": 3.97,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "NATO's military HQ at Casteau near Mons. SACEUR commands all"
+        },
+        {
+          "id": "nato:nato-hq-brussels",
+          "name": "NATO HQ Brussels",
+          "lat": 50.8724,
+          "lon": 4.4199,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "NATO political headquarters, North Atlantic Council."
+        },
+        {
+          "id": "nato:jfc-brunssum",
+          "name": "JFC Brunssum",
+          "lat": 50.945,
+          "lon": 5.97,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Allied Joint Force Command Brunssum. Operational-level HQ."
+        },
+        {
+          "id": "nato:jfc-naples-lago-patria",
+          "name": "JFC Naples (Lago Patria)",
+          "lat": 40.9258,
+          "lon": 14.0358,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Allied Joint Force Command Naples. Southern flank operations"
+        },
+        {
+          "id": "nato:marcom-northwood",
+          "name": "MARCOM Northwood",
+          "lat": 51.613,
+          "lon": -0.414,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Allied Maritime Command. NATO's one-stop shop for maritime o"
+        },
+        {
+          "id": "nato:aircom-ramstein",
+          "name": "AIRCOM Ramstein",
+          "lat": 49.4369,
+          "lon": 7.6003,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Allied Air Command. Prime air/space advisor to the Alliance."
+        },
+        {
+          "id": "nato:nato-joint-warfare-centre-stavanger",
+          "name": "NATO Joint Warfare Centre Stavanger",
+          "lat": 58.97,
+          "lon": 5.7331,
+          "type": "c2",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "JWC Jatta, subordinate to HQ SACT. Training and exercises."
+        },
+        {
+          "id": "nato:hmnb-clyde-faslane",
+          "name": "HMNB Clyde (Faslane)",
+          "lat": 56.0609,
+          "lon": -4.8211,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Home of UK Vanguard-class Trident SSBNs. Britain's continuou"
+        },
+        {
+          "id": "nato:rnad-coulport",
+          "name": "RNAD Coulport",
+          "lat": 56.05,
+          "lon": -4.8833,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Trident warhead storage/loading facility. 16 hillside bunker"
+        },
+        {
+          "id": "nato:awe-aldermaston",
+          "name": "AWE Aldermaston",
+          "lat": 51.3688,
+          "lon": -1.1415,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Nuclear warhead research, design & manufacturing. 750-acre s"
+        },
+        {
+          "id": "nato:awe-burghfield",
+          "name": "AWE Burghfield",
+          "lat": 51.4068,
+          "lon": -1.0213,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Warhead assembly, maintenance & decommissioning. 225-acre si"
+        },
+        {
+          "id": "nato:hmnb-devonport",
+          "name": "HMNB Devonport",
+          "lat": 50.383,
+          "lon": -4.183,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Largest naval base in Western Europe. Sole UK nuclear sub re"
+        },
+        {
+          "id": "nato:ile-longue-submarine-base",
+          "name": "Ile Longue Submarine Base",
+          "lat": 48.3064,
+          "lon": -4.5067,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Base of 4 Triomphant-class SSBNs (FOST). France's sea-based "
+        },
+        {
+          "id": "nato:saint-dizier-air-base-ba-113",
+          "name": "Saint-Dizier Air Base (BA 113)",
+          "lat": 48.636,
+          "lon": 4.8994,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Nuclear-capable Rafale BF3 squadrons (Gascogne & La Fayette)"
+        },
+        {
+          "id": "nato:istres-le-tube-air-base-ba-125",
+          "name": "Istres-Le Tube Air Base (BA 125)",
+          "lat": 43.5213,
+          "lon": 4.9383,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Large multi-role base. Nuclear weapon dispersal/storage site"
+        },
+        {
+          "id": "nato:cea-valduc",
+          "name": "CEA Valduc",
+          "lat": 47.5822,
+          "lon": 4.8704,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Nuclear warhead production, maintenance, storage & dismantle"
+        },
+        {
+          "id": "nato:cea-bruyeres-le-chatel-dam-dif",
+          "name": "CEA Bruyeres-le-Chatel (DAM-DIF)",
+          "lat": 48.5887,
+          "lon": 2.1899,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Warhead design & simulation. Houses Tera 1000 supercomputer,"
+        },
+        {
+          "id": "nato:cea-cesta-le-barp",
+          "name": "CEA CESTA (Le Barp)",
+          "lat": 44.6655,
+          "lon": -0.7961,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Nuclear weapon/reentry vehicle design. Hosts Laser Megajoule"
+        },
+        {
+          "id": "nato:toulon-naval-base",
+          "name": "Toulon Naval Base",
+          "lat": 43.1183,
+          "lon": 5.9098,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Principal French Navy base. Charles de Gaulle carrier, nucle"
+        },
+        {
+          "id": "nato:arsenal-de-brest",
+          "name": "Arsenal de Brest",
+          "lat": 48.3867,
+          "lon": -4.4967,
+          "type": "nuclear",
+          "warheads": 2,
+          "yieldKt": 300,
+          "description": "Major French naval facility near Ile Longue. Submarine suppo"
+        },
+        {
+          "id": "nato:ramstein-air-base",
+          "name": "Ramstein Air Base",
+          "lat": 49.4397,
+          "lon": 7.6014,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US air base in Europe. USAFE-AFAFRICA HQ. 54,000 per"
+        },
+        {
+          "id": "nato:spangdahlem-air-base",
+          "name": "Spangdahlem Air Base",
+          "lat": 49.9833,
+          "lon": 6.6833,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "USAF 52nd FW. SEAD missions, nuclear security ops across 4 c"
+        },
+        {
+          "id": "nato:raf-mildenhall",
+          "name": "RAF Mildenhall",
+          "lat": 52.3613,
+          "lon": 0.4864,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "USAF 100th ARW aerial refueling. Strategic airlift hub."
+        },
+        {
+          "id": "nato:raf-fairford",
+          "name": "RAF Fairford",
+          "lat": 51.6822,
+          "lon": -1.79,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "USAF forward operating base. B-52/B-2 bomber deployments."
+        },
+        {
+          "id": "nato:lajes-field-azores",
+          "name": "Lajes Field (Azores)",
+          "lat": 38.757,
+          "lon": -27.0877,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Mid-Atlantic staging base. Strategic between North America a"
+        },
+        {
+          "id": "nato:nas-sigonella",
+          "name": "NAS Sigonella",
+          "lat": 37.401,
+          "lon": 14.92,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Hub of the Med. Global Hawk UAVs, maritime patrol. US 6th Fl"
+        },
+        {
+          "id": "nato:naval-station-rota",
+          "name": "Naval Station Rota",
+          "lat": 36.6208,
+          "lon": -6.3316,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US military community in Spain. Aegis BMD destroyers"
+        },
+        {
+          "id": "nato:souda-bay-nato-base",
+          "name": "Souda Bay NATO Base",
+          "lat": 35.4867,
+          "lon": 24.0831,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest NATO naval base in eastern Mediterranean. Greek/US/N"
+        },
+        {
+          "id": "nato:naval-base-kiel",
+          "name": "Naval Base Kiel",
+          "lat": 54.3569,
+          "lon": 10.1439,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "German Navy base. Baltic Sea operations."
+        },
+        {
+          "id": "nato:rygge-air-station",
+          "name": "Rygge Air Station",
+          "lat": 59.3783,
+          "lon": 10.7853,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Royal Norwegian Air Force. F-35A operations."
+        },
+        {
+          "id": "nato:amari-air-base",
+          "name": "Amari Air Base",
+          "lat": 59.2603,
+          "lon": 24.2086,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Estonian AF base. NATO Baltic Air Policing."
+        },
+        {
+          "id": "nato:siauliai-air-base",
+          "name": "Siauliai Air Base",
+          "lat": 55.8939,
+          "lon": 23.395,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Lithuanian AF base. NATO Baltic Air Policing primary."
+        },
+        {
+          "id": "nato:lask-air-base",
+          "name": "Lask Air Base",
+          "lat": 51.5517,
+          "lon": 19.1792,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Polish AF base. F-16 operations, NATO enhanced presence."
+        },
+        {
+          "id": "nato:deveselu-aegis-ashore",
+          "name": "Deveselu Aegis Ashore",
+          "lat": 43.7653,
+          "lon": 24.3922,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "US Aegis Ashore BMD site. SM-3 interceptors."
+        },
+        {
+          "id": "nato:redzikowo-aegis-ashore",
+          "name": "Redzikowo Aegis Ashore",
+          "lat": 54.4781,
+          "lon": 17.1006,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "US Aegis Ashore BMD site. Activated 2024. SM-3 interceptors."
+        },
+        {
+          "id": "nato:grafenwohr-training-area",
+          "name": "Grafenwohr Training Area",
+          "lat": 49.6983,
+          "lon": 11.925,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest US Army training area in Europe. Major troop concent"
+        },
+        {
+          "id": "nato:mihail-kogalniceanu-air-base",
+          "name": "Mihail Kogalniceanu Air Base",
+          "lat": 44.3622,
+          "lon": 28.4883,
+          "type": "military",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major US/NATO rotational force hub on Black Sea."
+        },
+        {
+          "id": "nato:london",
+          "name": "London",
+          "lat": 51.5074,
+          "lon": -0.1278,
+          "type": "city",
+          "warheads": 4,
+          "yieldKt": 800,
+          "description": "UK capital. Global financial center."
+        },
+        {
+          "id": "nato:paris",
+          "name": "Paris",
+          "lat": 48.8566,
+          "lon": 2.3522,
+          "type": "city",
+          "warheads": 3,
+          "yieldKt": 800,
+          "description": "French capital. EU's largest metro area."
+        },
+        {
+          "id": "nato:berlin",
+          "name": "Berlin",
+          "lat": 52.52,
+          "lon": 13.405,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "German capital. Largest city in EU by population."
+        },
+        {
+          "id": "nato:rome",
+          "name": "Rome",
+          "lat": 41.9028,
+          "lon": 12.4964,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Italian capital. Historical center."
+        },
+        {
+          "id": "nato:madrid",
+          "name": "Madrid",
+          "lat": 40.4168,
+          "lon": -3.7038,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Spanish capital. Largest city in Spain."
+        },
+        {
+          "id": "nato:ankara",
+          "name": "Ankara",
+          "lat": 39.9334,
+          "lon": 32.8597,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Turkish capital. Central Anatolia."
+        },
+        {
+          "id": "nato:warsaw",
+          "name": "Warsaw",
+          "lat": 52.2297,
+          "lon": 21.0122,
+          "type": "city",
+          "warheads": 2,
+          "yieldKt": 800,
+          "description": "Polish capital. NATO eastern flank anchor."
+        },
+        {
+          "id": "nato:bucharest",
+          "name": "Bucharest",
+          "lat": 44.4268,
+          "lon": 26.1025,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Romanian capital. Black Sea region anchor."
+        },
+        {
+          "id": "nato:budapest",
+          "name": "Budapest",
+          "lat": 47.4979,
+          "lon": 19.0402,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Hungarian capital. Danube strategic crossing."
+        },
+        {
+          "id": "nato:prague",
+          "name": "Prague",
+          "lat": 50.0755,
+          "lon": 14.4378,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Czech capital. Central European hub."
+        },
+        {
+          "id": "nato:lisbon",
+          "name": "Lisbon",
+          "lat": 38.7223,
+          "lon": -9.1393,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Portuguese capital. Atlantic gateway."
+        },
+        {
+          "id": "nato:athens",
+          "name": "Athens",
+          "lat": 37.9838,
+          "lon": 23.7275,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Greek capital. Eastern Mediterranean."
+        },
+        {
+          "id": "nato:brussels",
+          "name": "Brussels",
+          "lat": 50.8503,
+          "lon": 4.3517,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Belgian capital. NATO and EU headquarters city."
+        },
+        {
+          "id": "nato:amsterdam",
+          "name": "Amsterdam",
+          "lat": 52.3676,
+          "lon": 4.9041,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Dutch capital (constitutional). Major port city."
+        },
+        {
+          "id": "nato:copenhagen",
+          "name": "Copenhagen",
+          "lat": 55.6761,
+          "lon": 12.5683,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Danish capital. Baltic approaches."
+        },
+        {
+          "id": "nato:oslo",
+          "name": "Oslo",
+          "lat": 59.9139,
+          "lon": 10.7522,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Norwegian capital. Arctic/North Sea gateway."
+        },
+        {
+          "id": "nato:stockholm",
+          "name": "Stockholm",
+          "lat": 59.3293,
+          "lon": 18.0686,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Swedish capital. Baltic Sea control."
+        },
+        {
+          "id": "nato:helsinki",
+          "name": "Helsinki",
+          "lat": 60.1699,
+          "lon": 24.9384,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Finnish capital. 280km from Russia."
+        },
+        {
+          "id": "nato:tallinn",
+          "name": "Tallinn",
+          "lat": 59.437,
+          "lon": 24.7536,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Estonian capital. NATO Baltic frontline."
+        },
+        {
+          "id": "nato:riga",
+          "name": "Riga",
+          "lat": 56.9496,
+          "lon": 24.1052,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Latvian capital. Baltic region."
+        },
+        {
+          "id": "nato:vilnius",
+          "name": "Vilnius",
+          "lat": 54.6872,
+          "lon": 25.2797,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Lithuanian capital. Near Suwalki Gap."
+        },
+        {
+          "id": "nato:sofia",
+          "name": "Sofia",
+          "lat": 42.6977,
+          "lon": 23.3219,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Bulgarian capital. Black Sea region."
+        },
+        {
+          "id": "nato:zagreb",
+          "name": "Zagreb",
+          "lat": 45.815,
+          "lon": 15.9819,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Croatian capital."
+        },
+        {
+          "id": "nato:bratislava",
+          "name": "Bratislava",
+          "lat": 48.1486,
+          "lon": 17.1077,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Slovak capital. On the Danube."
+        },
+        {
+          "id": "nato:ljubljana",
+          "name": "Ljubljana",
+          "lat": 46.0569,
+          "lon": 14.5058,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Slovenian capital. Alpine crossroads."
+        },
+        {
+          "id": "nato:tirana",
+          "name": "Tirana",
+          "lat": 41.3275,
+          "lon": 19.8187,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Albanian capital."
+        },
+        {
+          "id": "nato:skopje",
+          "name": "Skopje",
+          "lat": 41.9973,
+          "lon": 21.428,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "North Macedonian capital."
+        },
+        {
+          "id": "nato:podgorica",
+          "name": "Podgorica",
+          "lat": 42.4304,
+          "lon": 19.2594,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Montenegrin capital."
+        },
+        {
+          "id": "nato:luxembourg-city",
+          "name": "Luxembourg City",
+          "lat": 49.6116,
+          "lon": 6.13,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Luxembourg capital. EU institutions."
+        },
+        {
+          "id": "nato:reykjavik",
+          "name": "Reykjavik",
+          "lat": 64.1466,
+          "lon": -21.9426,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Icelandic capital. GIUK gap monitoring."
+        }
+      ],
+      "cn": [
+        {
+          "id": "cn:yumen-silo-field-base-64",
+          "name": "Yumen Silo Field (Base 64)",
+          "lat": 40.1449,
+          "lon": 96.5518,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "120 silos for solid-fuel ICBMs. 1,110 km2 area. Construction"
+        },
+        {
+          "id": "cn:hami-silo-field-base-64",
+          "name": "Hami Silo Field (Base 64)",
+          "lat": 42.35,
+          "lon": 92.55,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "110 silos. 1,028 km2 area. Eastern Xinjiang. Security gates "
+        },
+        {
+          "id": "cn:hanggin-banner-ordos-silo-field-base-65",
+          "name": "Hanggin Banner/Ordos Silo Field (Base 65)",
+          "lat": 40.113,
+          "lon": 108.104,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "90 silos. 832 km2. Inner Mongolia, Northern Theater. Differe"
+        },
+        {
+          "id": "cn:jilantai-training-area",
+          "name": "Jilantai Training Area",
+          "lat": 39.7,
+          "lon": 105.4164,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "PLARF training site. 16 silos, 2,090 km2. 5 missile types tr"
+        },
+        {
+          "id": "cn:sundian-checunzhen-df-5-silos-base-66",
+          "name": "Sundian/Checunzhen (DF-5 silos, Base 66)",
+          "lat": 33.85,
+          "lon": 112,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "Legacy DF-5 silo area, Henan Province. Additional silos unde"
+        },
+        {
+          "id": "cn:jingxian-df-5-expansion",
+          "name": "Jingxian (DF-5 expansion)",
+          "lat": 30.72,
+          "lon": 116.55,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "New DF-5 silos constructed since 2017. Anhui Province."
+        },
+        {
+          "id": "cn:yueyang-df-5-expansion",
+          "name": "Yueyang (DF-5 expansion)",
+          "lat": 29.37,
+          "lon": 113.09,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "New DF-5 silos since 2017. Hunan Province."
+        },
+        {
+          "id": "cn:luanchuan-662-brigade-base-66",
+          "name": "Luanchuan (662 Brigade, Base 66)",
+          "lat": 33.7883,
+          "lon": 111.5925,
+          "type": "icbm",
+          "warheads": 4,
+          "yieldKt": 455,
+          "description": "DF-4/DF-5A/B silo site. Potentially upgrading to DF-41."
+        },
+        {
+          "id": "cn:nanyang-663-brigade-base-66",
+          "name": "Nanyang (663 Brigade, Base 66)",
+          "lat": 33.0117,
+          "lon": 112.4145,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "First DF-31A brigade. Road-mobile ICBM. Henan Province."
+        },
+        {
+          "id": "cn:yiyang-664-brigade-base-66",
+          "name": "Yiyang (664 Brigade, Base 66)",
+          "lat": 34.5435,
+          "lon": 112.147,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Possibly upgrading to DF-31AG. Henan Province."
+        },
+        {
+          "id": "cn:tonghua-655-brigade",
+          "name": "Tonghua (655 Brigade)",
+          "lat": 41.7649,
+          "lon": 125.9857,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Rumored new brigade base area. Jilin Province, near North Ko"
+        },
+        {
+          "id": "cn:hanzhong-base-63-area",
+          "name": "Hanzhong (Base 63 area)",
+          "lat": 33.0674,
+          "lon": 107.023,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "PLARF base area in Shaanxi. DF-31/DF-41 units. Mountain terr"
+        },
+        {
+          "id": "cn:luoyang-base-66-hq",
+          "name": "Luoyang (Base 66 HQ)",
+          "lat": 34.6405,
+          "lon": 112.3823,
+          "type": "icbm",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Headquarters of Base 66. Commands multiple ICBM brigades in "
+        },
+        {
+          "id": "cn:yulin-longpo-naval-base",
+          "name": "Yulin/Longpo Naval Base",
+          "lat": 18.2028,
+          "lon": 109.6944,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 455,
+          "description": "South Sea Fleet. Underground pens for 20 subs. 6 Type 094 Ji"
+        },
+        {
+          "id": "cn:jianggezhuang-naval-base",
+          "name": "Jianggezhuang Naval Base",
+          "lat": 36.1108,
+          "lon": 120.5758,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 455,
+          "description": "Submarine Base No.1. Underground tunnel complex. Near Qingda"
+        },
+        {
+          "id": "cn:qingdao-naval-base-north-sea-fleet-hq",
+          "name": "Qingdao Naval Base (North Sea Fleet HQ)",
+          "lat": 36.0661,
+          "lon": 120.3694,
+          "type": "sub",
+          "warheads": 3,
+          "yieldKt": 455,
+          "description": "North Sea Fleet headquarters. Major surface/submarine fleet "
+        },
+        {
+          "id": "cn:neixiang-air-base-106th-air-brigade",
+          "name": "Neixiang Air Base (106th Air Brigade)",
+          "lat": 32.9767,
+          "lon": 111.8832,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "Only H-6N nuclear bomber base. 20 H-6K/N bombers. ALBM-capab"
+        },
+        {
+          "id": "cn:xi-an-yanliang-xac-cfte",
+          "name": "Xi'an Yanliang (XAC/CFTE)",
+          "lat": 34.6446,
+          "lon": 109.243,
+          "type": "bomber",
+          "warheads": 2,
+          "yieldKt": 455,
+          "description": "H-6 manufacturing/test facility. Xi'an Aircraft Industrial C"
+        },
+        {
+          "id": "cn:mianyang-caep-science-city",
+          "name": "Mianyang/CAEP (Science City)",
+          "lat": 31.4674,
+          "lon": 104.679,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "China Academy of Engineering Physics. Primary nuclear warhea"
+        },
+        {
+          "id": "cn:caep-903-factory-pingwu-county",
+          "name": "CAEP 903 Factory (Pingwu County)",
+          "lat": 32.42,
+          "lon": 104.53,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear warhead fabrication facility. ~100km NW of Mianyang "
+        },
+        {
+          "id": "cn:lanzhou-enrichment-plant-plant-504",
+          "name": "Lanzhou Enrichment Plant (Plant 504)",
+          "lat": 36.1481,
+          "lon": 103.5235,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "China's largest uranium enrichment facility. GDP operational"
+        },
+        {
+          "id": "cn:guangyuan-nuclear-complex-plant-821",
+          "name": "Guangyuan Nuclear Complex (Plant 821)",
+          "lat": 32.43,
+          "lon": 105.84,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Plutonium production reactor complex. Northern Sichuan. Part"
+        },
+        {
+          "id": "cn:heping-gdp-plant-814-jinkouhe",
+          "name": "Heping GDP (Plant 814, Jinkouhe)",
+          "lat": 29.25,
+          "lon": 103.59,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Second HEU production facility. Leshan area, Sichuan. Operat"
+        },
+        {
+          "id": "cn:baotou-nuclear-fuel-plant-plant-202",
+          "name": "Baotou Nuclear Fuel Plant (Plant 202)",
+          "lat": 40.6563,
+          "lon": 109.8422,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Nuclear fuel component fabrication. Inner Mongolia. Uranium/"
+        },
+        {
+          "id": "cn:jiuquan-atomic-energy-complex-plant-404",
+          "name": "Jiuquan Atomic Energy Complex (Plant 404)",
+          "lat": 40.12,
+          "lon": 97.64,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Plutonium production & reprocessing. Near Yumen. Part of ori"
+        },
+        {
+          "id": "cn:taibai-county-warhead-storage-baoji",
+          "name": "Taibai County Warhead Storage (Baoji)",
+          "lat": 33.97,
+          "lon": 107.32,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "PLARF central warhead handling and storage facility. Shaanxi"
+        },
+        {
+          "id": "cn:shanghai",
+          "name": "Shanghai",
+          "lat": 31.2304,
+          "lon": 121.4737,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Financial center. Largest city proper. Jiangnan Shipyard."
+        },
+        {
+          "id": "cn:beijing",
+          "name": "Beijing",
+          "lat": 39.9042,
+          "lon": 116.4074,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "National capital. PLA command centers. Central government."
+        },
+        {
+          "id": "cn:chongqing",
+          "name": "Chongqing",
+          "lat": 29.4316,
+          "lon": 106.9123,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Largest municipality. Southwestern industrial hub. Defense m"
+        },
+        {
+          "id": "cn:chengdu",
+          "name": "Chengdu",
+          "lat": 30.5728,
+          "lon": 104.0668,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Western Theater Command HQ. Chengdu J-20 production. CAEP ne"
+        },
+        {
+          "id": "cn:guangzhou",
+          "name": "Guangzhou",
+          "lat": 23.1291,
+          "lon": 113.2644,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Southern Theater Command HQ. Pearl River Delta manufacturing"
+        },
+        {
+          "id": "cn:shenzhen",
+          "name": "Shenzhen",
+          "lat": 22.5431,
+          "lon": 114.0579,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Tech capital. Adjacent to Hong Kong. Major electronics/semic"
+        },
+        {
+          "id": "cn:wuhan",
+          "name": "Wuhan",
+          "lat": 30.5928,
+          "lon": 114.3055,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Central China hub. Major rail/river junction. Heavy industry"
+        },
+        {
+          "id": "cn:tianjin",
+          "name": "Tianjin",
+          "lat": 39.3434,
+          "lon": 117.3616,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Beijing's port city. Major industrial/petrochemical center."
+        },
+        {
+          "id": "cn:xi-an",
+          "name": "Xi'an",
+          "lat": 34.3416,
+          "lon": 108.9398,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Aerospace/defense center. XAC H-6 production. AVIC headquart"
+        },
+        {
+          "id": "cn:suzhou",
+          "name": "Suzhou",
+          "lat": 31.299,
+          "lon": 120.5853,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major manufacturing center. Electronics and semiconductors."
+        },
+        {
+          "id": "cn:zhengzhou",
+          "name": "Zhengzhou",
+          "lat": 34.7466,
+          "lon": 113.6253,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Henan capital. Central rail hub. Near PLARF Base 66 units."
+        },
+        {
+          "id": "cn:hangzhou",
+          "name": "Hangzhou",
+          "lat": 30.2741,
+          "lon": 120.1551,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Zhejiang capital. Tech hub (Alibaba). Eastern Theater."
+        },
+        {
+          "id": "cn:shijiazhuang",
+          "name": "Shijiazhuang",
+          "lat": 38.0428,
+          "lon": 114.5149,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Hebei capital. Near Beijing military support zone."
+        },
+        {
+          "id": "cn:dongguan",
+          "name": "Dongguan",
+          "lat": 23.0208,
+          "lon": 113.7518,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pearl River Delta manufacturing powerhouse."
+        },
+        {
+          "id": "cn:changsha",
+          "name": "Changsha",
+          "lat": 28.2282,
+          "lon": 112.9388,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Hunan capital. Defense industry and education center."
+        },
+        {
+          "id": "cn:hefei",
+          "name": "Hefei",
+          "lat": 31.8206,
+          "lon": 117.2272,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Anhui capital. Growing tech/semiconductor hub."
+        },
+        {
+          "id": "cn:nanjing",
+          "name": "Nanjing",
+          "lat": 32.0603,
+          "lon": 118.7969,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Eastern Theater Command HQ. Major military/political signifi"
+        },
+        {
+          "id": "cn:jinan",
+          "name": "Jinan",
+          "lat": 36.6512,
+          "lon": 116.9969,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Shandong capital. Northern Theater support."
+        },
+        {
+          "id": "cn:shenyang",
+          "name": "Shenyang",
+          "lat": 41.8057,
+          "lon": 123.4315,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Northern Theater Command HQ. Shenyang Aircraft Corp (J-11/J-"
+        },
+        {
+          "id": "cn:foshan",
+          "name": "Foshan",
+          "lat": 23.0218,
+          "lon": 113.1216,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Pearl River Delta manufacturing. Adjacent to Guangzhou."
+        },
+        {
+          "id": "cn:wenzhou",
+          "name": "Wenzhou",
+          "lat": 28,
+          "lon": 120.6722,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Zhejiang coast. Light manufacturing hub."
+        },
+        {
+          "id": "cn:ningbo",
+          "name": "Ningbo",
+          "lat": 29.8683,
+          "lon": 121.544,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major deep-water port. Eastern coast logistics hub."
+        },
+        {
+          "id": "cn:nanning",
+          "name": "Nanning",
+          "lat": 22.817,
+          "lon": 108.3665,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Guangxi capital. Near Vietnam border."
+        },
+        {
+          "id": "cn:harbin",
+          "name": "Harbin",
+          "lat": 45.8038,
+          "lon": 126.535,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Heilongjiang capital. Near Russia. Heavy industry and aerosp"
+        },
+        {
+          "id": "cn:kunming",
+          "name": "Kunming",
+          "lat": 25.0389,
+          "lon": 102.7183,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Yunnan capital. Southern Theater air operations hub."
+        },
+        {
+          "id": "cn:changchun",
+          "name": "Changchun",
+          "lat": 43.8171,
+          "lon": 125.3235,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Jilin capital. Automotive and satellite manufacturing."
+        },
+        {
+          "id": "cn:fuzhou",
+          "name": "Fuzhou",
+          "lat": 26.0745,
+          "lon": 119.2965,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Fujian capital. Taiwan Strait frontline logistics."
+        },
+        {
+          "id": "cn:dalian",
+          "name": "Dalian",
+          "lat": 38.914,
+          "lon": 121.6147,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major naval port. Dalian Shipbuilding (aircraft carriers, de"
+        },
+        {
+          "id": "cn:nanchang",
+          "name": "Nanchang",
+          "lat": 28.682,
+          "lon": 115.8579,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Jiangxi capital. AVIC Hongdu Aviation (L-15, CJ-6 trainers)."
+        },
+        {
+          "id": "cn:guiyang",
+          "name": "Guiyang",
+          "lat": 26.647,
+          "lon": 106.6302,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Guizhou capital. Defense electronics and aerospace."
+        },
+        {
+          "id": "cn:lanzhou",
+          "name": "Lanzhou",
+          "lat": 36.0611,
+          "lon": 103.8343,
+          "type": "nuclear",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Gansu capital. Uranium enrichment plant. Western logistics h"
+        },
+        {
+          "id": "cn:urumqi",
+          "name": "Urumqi",
+          "lat": 43.8256,
+          "lon": 87.6168,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Xinjiang capital. Western military staging. Near Hami silo f"
+        },
+        {
+          "id": "cn:taiyuan",
+          "name": "Taiyuan",
+          "lat": 37.8706,
+          "lon": 112.5489,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Shanxi capital. Taiyuan Satellite Launch Center nearby."
+        },
+        {
+          "id": "cn:wuxi",
+          "name": "Wuxi",
+          "lat": 31.4912,
+          "lon": 120.3119,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major semiconductor and electronics manufacturing hub."
+        },
+        {
+          "id": "cn:xuzhou",
+          "name": "Xuzhou",
+          "lat": 34.2616,
+          "lon": 117.1859,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Major rail junction. Strategic crossroads in Jiangsu."
+        },
+        {
+          "id": "cn:tangshan",
+          "name": "Tangshan",
+          "lat": 39.6307,
+          "lon": 118.1802,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Steel production capital. North China industry."
+        },
+        {
+          "id": "cn:xiamen",
+          "name": "Xiamen",
+          "lat": 24.4798,
+          "lon": 118.0894,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Fujian coast. Directly across from Taiwan-held Kinmen island"
+        },
+        {
+          "id": "cn:zhuhai",
+          "name": "Zhuhai",
+          "lat": 22.271,
+          "lon": 113.5767,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Adjacent to Macau. China Airshow host. Defense industry show"
+        },
+        {
+          "id": "cn:haikou",
+          "name": "Haikou",
+          "lat": 20.0174,
+          "lon": 110.3492,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Hainan capital. Southern military infrastructure support."
+        },
+        {
+          "id": "cn:lhasa",
+          "name": "Lhasa",
+          "lat": 29.65,
+          "lon": 91.1,
+          "type": "city",
+          "warheads": 1,
+          "yieldKt": 300,
+          "description": "Tibet capital. Growing PLARF missile presence on Tibetan Pla"
+        }
+      ]
+    },
+    "launchers": {
+      "us_icbm": [
+        {
+          "id": "us_icbm:1",
+          "name": "Malmstrom",
+          "lat": 47.506,
+          "lon": -111.183
+        },
+        {
+          "id": "us_icbm:2",
+          "name": "Minot",
+          "lat": 48.416,
+          "lon": -101.358
+        },
+        {
+          "id": "us_icbm:3",
+          "name": "Warren",
+          "lat": 41.145,
+          "lon": -104.862
+        }
+      ],
+      "us_slbm": [
+        {
+          "id": "us_slbm:1",
+          "name": "Atlantic SSBN Patrol",
+          "lat": 58,
+          "lon": -30
+        },
+        {
+          "id": "us_slbm:2",
+          "name": "Pacific SSBN Patrol",
+          "lat": 40,
+          "lon": -155
+        },
+        {
+          "id": "us_slbm:3",
+          "name": "Atlantic Bastion",
+          "lat": 32,
+          "lon": -65
+        },
+        {
+          "id": "us_slbm:4",
+          "name": "Pacific Bastion",
+          "lat": 20,
+          "lon": -160
+        }
+      ],
+      "ru_icbm": [
+        {
+          "id": "ru_icbm:1",
+          "name": "Kozelsk",
+          "lat": 54.035,
+          "lon": 36.013
+        },
+        {
+          "id": "ru_icbm:2",
+          "name": "Tatishchevo",
+          "lat": 51.7,
+          "lon": 45.537
+        },
+        {
+          "id": "ru_icbm:3",
+          "name": "Dombarovsky",
+          "lat": 51.049,
+          "lon": 59.853
+        },
+        {
+          "id": "ru_icbm:4",
+          "name": "Uzhur",
+          "lat": 55.114,
+          "lon": 89.634
+        },
+        {
+          "id": "ru_icbm:5",
+          "name": "Teykovo",
+          "lat": 56.883,
+          "lon": 40.517
+        },
+        {
+          "id": "ru_icbm:6",
+          "name": "Vypolzovo",
+          "lat": 57.863,
+          "lon": 33.652
+        }
+      ],
+      "ru_slbm": [
+        {
+          "id": "ru_slbm:1",
+          "name": "Barents Bastion SSBN",
+          "lat": 72,
+          "lon": 35
+        },
+        {
+          "id": "ru_slbm:2",
+          "name": "Okhotsk Bastion SSBN",
+          "lat": 55,
+          "lon": 150
+        },
+        {
+          "id": "ru_slbm:3",
+          "name": "White Sea SSBN",
+          "lat": 68,
+          "lon": 40
+        },
+        {
+          "id": "ru_slbm:4",
+          "name": "Arctic Bastion SSBN",
+          "lat": 78,
+          "lon": 50
+        }
+      ],
+      "cn_icbm": [
+        {
+          "id": "cn_icbm:1",
+          "name": "Yumen",
+          "lat": 40.283,
+          "lon": 97.033
+        },
+        {
+          "id": "cn_icbm:2",
+          "name": "Hami",
+          "lat": 42.8,
+          "lon": 93.5
+        },
+        {
+          "id": "cn_icbm:3",
+          "name": "Hanggin Banner",
+          "lat": 40.5,
+          "lon": 107
+        }
+      ],
+      "cn_slbm": [
+        {
+          "id": "cn_slbm:1",
+          "name": "South China Sea SSBN",
+          "lat": 18,
+          "lon": 110
+        },
+        {
+          "id": "cn_slbm:2",
+          "name": "East China Sea SSBN",
+          "lat": 25,
+          "lon": 121
+        }
+      ],
+      "uk_slbm": [
+        {
+          "id": "uk_slbm:1",
+          "name": "UK Trident Patrol",
+          "lat": 56,
+          "lon": -10
+        },
+        {
+          "id": "uk_slbm:2",
+          "name": "UK Trident South",
+          "lat": 50,
+          "lon": -15
+        }
+      ],
+      "fr_slbm": [
+        {
+          "id": "fr_slbm:1",
+          "name": "French SSBN Patrol",
+          "lat": 46,
+          "lon": -8
+        },
+        {
+          "id": "fr_slbm:2",
+          "name": "French SSBN Atlantic",
+          "lat": 42,
+          "lon": -12
+        }
+      ],
+      "fr_air": [
+        {
+          "id": "fr_air:1",
+          "name": "Istres BA125",
+          "lat": 43.521,
+          "lon": 4.938
+        },
+        {
+          "id": "fr_air:2",
+          "name": "Saint-Dizier BA113",
+          "lat": 48.636,
+          "lon": 4.9
+        }
+      ]
+    },
+    "scenarios": [
+      {
+        "id": "us_ru_full",
+        "name": "US vs Russia (Full Exchange)",
+        "description": "Princeton Plan A-style escalation: counterforce then countervalue. ~495 warheads.",
+        "phases": [
+          {
+            "name": "Phase 1: Counterforce",
+            "delayMs": 0,
+            "durationMs": 25000,
+            "targetFilter": "counterforce"
+          },
+          {
+            "name": "Phase 2: Cities & Infrastructure",
+            "delayMs": 40000,
+            "durationMs": 30000,
+            "targetFilter": "countervalue"
+          }
+        ],
+        "targetSides": [
+          "us",
+          "ru"
+        ],
+        "launchSets": {
+          "us": [
+            "us_icbm",
+            "us_slbm"
+          ],
+          "ru": [
+            "ru_icbm",
+            "ru_slbm"
+          ]
+        },
+        "camera": {
+          "lat": 40,
+          "lon": 0,
+          "legacyZoom": 3
+        }
+      },
+      {
+        "id": "ru_nato",
+        "name": "Russia vs NATO + UK/FR Retaliation",
+        "description": "Russian strike on NATO; UK Trident & French M51 fire back at Russia.",
+        "phases": [
+          {
+            "name": "Phase 1: Russian strike on NATO",
+            "delayMs": 0,
+            "durationMs": 20000,
+            "targetFilter": "noncity"
+          },
+          {
+            "name": "Phase 2: UK/FR retaliation on Russia",
+            "delayMs": 25000,
+            "durationMs": 15000,
+            "targetFilter": "noncity"
+          },
+          {
+            "name": "Phase 3: All cities",
+            "delayMs": 42000,
+            "durationMs": 25000,
+            "targetFilter": "city"
+          }
+        ],
+        "targetSides": [
+          "nato",
+          "ru"
+        ],
+        "launchSets": {
+          "ru": [
+            "ru_icbm",
+            "ru_slbm"
+          ],
+          "uk": [
+            "uk_slbm"
+          ],
+          "fr": [
+            "fr_slbm",
+            "fr_air"
+          ]
+        },
+        "camera": {
+          "lat": 52,
+          "lon": 10,
+          "legacyZoom": 3
+        }
+      },
+      {
+        "id": "us_cn",
+        "name": "US vs China",
+        "description": "Bilateral exchange: US strikes Chinese nuclear forces + cities, China retaliates.",
+        "phases": [
+          {
+            "name": "Phase 1: Counterforce",
+            "delayMs": 0,
+            "durationMs": 20000,
+            "targetFilter": "noncity"
+          },
+          {
+            "name": "Phase 2: Countervalue",
+            "delayMs": 32000,
+            "durationMs": 22000,
+            "targetFilter": "city"
+          }
+        ],
+        "targetSides": [
+          "us",
+          "cn"
+        ],
+        "launchSets": {
+          "us": [
+            "us_icbm",
+            "us_slbm"
+          ],
+          "cn": [
+            "cn_icbm",
+            "cn_slbm"
+          ]
+        },
+        "camera": {
+          "lat": 30,
+          "lon": 160,
+          "legacyZoom": 3
+        }
+      },
+      {
+        "id": "counterforce_only",
+        "name": "Counterforce Only (US-Russia)",
+        "description": "Military/nuclear targets only - no cities struck. \"Limited\" exchange.",
+        "phases": [
+          {
+            "name": "Counterforce exchange",
+            "delayMs": 0,
+            "durationMs": 30000,
+            "targetFilter": "counterforce"
+          }
+        ],
+        "targetSides": [
+          "us",
+          "ru"
+        ],
+        "launchSets": {
+          "us": [
+            "us_icbm",
+            "us_slbm"
+          ],
+          "ru": [
+            "ru_icbm",
+            "ru_slbm"
+          ]
+        },
+        "camera": {
+          "lat": 50,
+          "lon": -20,
+          "legacyZoom": 3
+        }
+      },
+      {
+        "id": "global",
+        "name": "Global Thermonuclear War",
+        "description": "US + NATO + UK + France vs Russia + China. Every warhead flies. ~708 total.",
+        "phases": [
+          {
+            "name": "Phase 1: Counterforce",
+            "delayMs": 0,
+            "durationMs": 30000,
+            "targetFilter": "counterforce"
+          },
+          {
+            "name": "Phase 2: All cities & infrastructure",
+            "delayMs": 45000,
+            "durationMs": 35000,
+            "targetFilter": "countervalue"
+          }
+        ],
+        "targetSides": [
+          "us",
+          "ru",
+          "nato",
+          "cn"
+        ],
+        "launchSets": {
+          "us": [
+            "us_icbm",
+            "us_slbm"
+          ],
+          "ru": [
+            "ru_icbm",
+            "ru_slbm"
+          ],
+          "cn": [
+            "cn_icbm",
+            "cn_slbm"
+          ],
+          "uk": [
+            "uk_slbm"
+          ],
+          "fr": [
+            "fr_slbm",
+            "fr_air"
+          ]
+        },
+        "camera": {
+          "lat": 35,
+          "lon": 0,
+          "legacyZoom": 3
+        }
+      },
+      {
+        "id": "first_strike_ru",
+        "name": "Russian First Strike on US",
+        "description": "Russia launches surprise counterforce strike. US has no time to launch on warning.",
+        "phases": [
+          {
+            "name": "Russian first strike",
+            "delayMs": 0,
+            "durationMs": 25000,
+            "targetFilter": "all"
+          }
+        ],
+        "targetSides": [
+          "us"
+        ],
+        "launchSets": {
+          "ru": [
+            "ru_icbm",
+            "ru_slbm"
+          ]
+        },
+        "camera": {
+          "lat": 39,
+          "lon": -98,
+          "legacyZoom": 4
+        }
+      },
+      {
+        "id": "first_strike_us",
+        "name": "US First Strike on Russia",
+        "description": "US launches surprise counterforce strike on Russian nuclear forces.",
+        "phases": [
+          {
+            "name": "US first strike",
+            "delayMs": 0,
+            "durationMs": 25000,
+            "targetFilter": "all"
+          }
+        ],
+        "targetSides": [
+          "ru"
+        ],
+        "launchSets": {
+          "us": [
+            "us_icbm",
+            "us_slbm"
+          ]
+        },
+        "camera": {
+          "lat": 55,
+          "lon": 50,
+          "legacyZoom": 3
+        }
+      }
+    ]
+  }
+}

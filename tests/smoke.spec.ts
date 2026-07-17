@@ -248,6 +248,26 @@ test.describe("Cataclysm browser preview", () => {
     await expect(panel.getByRole("option", { name: /Little Boy \(Hiroshima\)/ })).toBeAttached();
   });
 
+  test("global exchange lab drives the React HUD and Cesium plan", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+
+    const exchange = page.getByRole("region", { name: "Global exchange lab" });
+    await expect(exchange).toBeVisible({ timeout: 10_000 });
+    await expect(exchange.getByRole("combobox", { name: "Scenario" }).locator("option")).toHaveCount(7);
+    await exchange.getByRole("button", { name: "Run illustrative exchange" }).click();
+
+    const globe = page.locator(".app__globe-mount").first();
+    await expect(globe).toHaveAttribute("data-ww3-plan", "global:all");
+    await expect(globe).toHaveAttribute("data-ww3-strikes", "712");
+    const hud = page.getByRole("complementary", { name: "Illustrative global exchange status" });
+    await expect(hud).toBeVisible();
+    await expect(hud).toContainText("Global Thermonuclear War");
+    await expect(hud).toContainText("/ 712");
+    await expect(hud.getByRole("progressbar")).not.toHaveAttribute("value", "0", { timeout: 3_000 });
+  });
+
   test("hazard domain switches park incompatible workspace state", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");

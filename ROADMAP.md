@@ -15,9 +15,6 @@ AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P3 — Advanced NukeMap features (breadth parity)
-- **UNI-11** WW3 exchange engine: port scenario/target data + casualty aggregation
-  (pure) from `js/ww3.js`; rebuild missile arcs + HUD as React/Cesium (708
-  warheads, 427 targets, 7 scenarios).
 - **UNI-12** MIRV mode (port `NM.MIRV.generatePattern`, already pure) + pattern
   preview on the globe.
 - **UNI-14** Export/PWA parity: extend existing exporters (PNG/CZML/GeoJSON/KML)
