@@ -66,7 +66,7 @@ import {
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
-import type { Preset } from "./types/scenario";
+import type { Gauge, Preset } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
 import { HazardControls } from "./components/HazardControls";
 import { WW3ExchangeHud, WW3ExchangePanel, type Ww3ExchangeSession } from "./components/WW3Exchange";
@@ -410,6 +410,8 @@ export default function App() {
     nuclear: 0,
   });
   const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);
+  const [sweGaugesA, setSweGaugesA] = useState<Gauge[]>([]);
+  const [sweGaugesB, setSweGaugesB] = useState<Gauge[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
@@ -1975,6 +1977,7 @@ export default function App() {
                 wavefront={inHazardMode ? null : slotA.wavefront}
                 sweSnapshot={inHazardMode ? null : slotA.sweSnapshot}
                 runupResults={inHazardMode ? [] : slotA.runupResults}
+                gauges={inHazardMode ? [] : sweGaugesA}
                 dartBuoys={inHazardMode ? [] : dartPinsForPreset(slotA.activePresetId)}
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
@@ -2022,6 +2025,7 @@ export default function App() {
                   wavefront={slotB.wavefront}
                   sweSnapshot={slotB.sweSnapshot}
                   runupResults={slotB.runupResults}
+                  gauges={sweGaugesB}
                   dartBuoys={dartPinsForPreset(slotB.activePresetId)}
                   directRenderFrame={null}
                   inspectMode={inspectMode}
@@ -2256,6 +2260,7 @@ export default function App() {
             initial={slotA.initial}
             onSnapshot={slotA.setSweSnapshot}
             onSnapshotsReady={handleSweSnapshotsReady}
+            onGaugesChange={setSweGaugesA}
             onColormap={setLegendColormap}
             pendingGauge={pendingGauge}
             dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
@@ -2271,7 +2276,7 @@ export default function App() {
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
           <div hidden={!compareMode} aria-label="Comparison slot B solver">
-            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
           </div>
           <div hidden={compareMode || !customEditorOpen || workspaceMode === "simple"}>
             <ScenarioBuilder

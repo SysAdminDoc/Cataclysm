@@ -5,7 +5,7 @@ import { referenceCaptureEnabled } from "../lib/reference-capture";
 import type { RunupAtPointResult } from "../lib/tauri";
 import type { EffectRing, GeoPoint } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
-import type { DartBuoy, InitialDisplacement, Isochrone, PropagationSnapshot } from "../types/scenario";
+import type { DartBuoy, Gauge, InitialDisplacement, Isochrone, PropagationSnapshot } from "../types/scenario";
 import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
 import type { DirectEffectsController } from "../render/cesium/direct-effects";
 import type { OutcomeFocusController, OutcomeFocusRequest } from "../render/cesium/outcome-focus";
@@ -26,6 +26,7 @@ type PreviewCamera = Readonly<{
 type RunupController = RunupOverlayController<
   Cesium.BufferPolylineCollection,
   Cesium.BufferPolygonCollection,
+  Cesium.GeoJsonPrimitive,
   Cesium.Entity
 >;
 
@@ -54,6 +55,7 @@ type ControllerState = Readonly<{
   isochrones?: Isochrone[] | null;
   dartBuoys?: DartBuoy[];
   runupResults?: RunupAtPointResult[];
+  gauges?: Gauge[];
 }>;
 
 export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerState) {
@@ -81,6 +83,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
     isochrones,
     dartBuoys,
     runupResults,
+    gauges,
   } = state;
 
   useEffect(() => {
@@ -210,6 +213,12 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         slope_record_id: result.slope_provenance.record_id,
         depth_record_id: result.depth_provenance.record_id,
       })),
+      (gauges ?? []).map((gauge) => ({
+        id: gauge.id,
+        name: gauge.name,
+        lat: gauge.lat_deg,
+        lon: gauge.lon_deg,
+      })),
     );
-  }, [runupOverlayControllerRef, runupResults, viewerEpoch]);
+  }, [gauges, runupOverlayControllerRef, runupResults, viewerEpoch]);
 }

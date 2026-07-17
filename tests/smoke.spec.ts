@@ -127,7 +127,9 @@ test.describe("Cataclysm browser preview", () => {
     );
     await page.goto("/");
 
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
@@ -196,7 +198,9 @@ test.describe("Cataclysm browser preview", () => {
 
   test("Run & Watch advances to outcomes with one playhead and reuses cached frames", async ({ page }) => {
     await page.goto("/");
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
@@ -315,7 +319,9 @@ test.describe("Cataclysm browser preview", () => {
     await page.goto("/");
 
     const app = page.locator(".app");
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await expect(chicxulub).toHaveAttribute("aria-pressed", "true");
@@ -406,7 +412,9 @@ test.describe("Cataclysm browser preview", () => {
     await expect(detail.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Custom scenario", { exact: true })).toBeHidden();
 
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
     await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
@@ -414,7 +422,7 @@ test.describe("Cataclysm browser preview", () => {
 
     await expect(detail.getByRole("button", { name: "Customize" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("button", { name: "Re-run simulation" })).toBeVisible();
-    await expect(page.getByText("Use simplified ocean-depth model")).toBeVisible();
+    await expect(page.getByText("Use spatially varying ocean depths")).toBeVisible();
     await expect(page.getByLabel("Grid resolution in cells per degree")).toHaveCount(0);
     await expect(page.getByLabel("Gauge name")).toHaveCount(0);
 
@@ -427,6 +435,33 @@ test.describe("Cataclysm browser preview", () => {
     await detail.getByRole("button", { name: "Advanced" }).click();
     await page.reload();
     await expect(detail.getByRole("button", { name: "Advanced" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("publishes an advanced-mode gauge to the analytical globe", async ({ page }) => {
+    const payload = {
+      schemaVersion: 1,
+      kind: "Asteroid",
+      source: {
+        diameter_m: 1_000,
+        density_kg_m3: 3_000,
+        velocity_m_s: 20_000,
+        angle_deg: 45,
+        water_depth_m: 4_000,
+        location: { lat_deg: 0, lon_deg: 179.5, depth_m: 4_000 },
+      },
+    };
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
+    await page.goto(`/?scenario=${encodeURIComponent(encoded)}`);
+    const detail = page.getByRole("group", { name: "Workspace detail" });
+    await detail.getByRole("button", { name: "Advanced" }).click();
+    await page.getByLabel("Gauge name").fill("Benchmark gauge", { timeout: 15_000 });
+    await page.getByLabel("Gauge latitude").fill("12.5");
+    await page.getByLabel("Gauge longitude").fill("-45.25");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    await expect(page.getByRole("listitem").filter({ hasText: "Benchmark gauge" })).toBeVisible();
+    await expect(page.locator("[data-globe-scene-summary]")).toContainText("1 user gauges");
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
   });
 
   test("cancelling globe pick mode does not trip the recovery boundary", async ({ page }) => {
@@ -504,7 +539,9 @@ test.describe("Accessibility (axe-core WCAG A/AA)", () => {
   test("cockpit with active preset has no violations", async ({ page }) => {
     await seedAcknowledgedPreview(page);
     await page.goto("/");
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();

@@ -17,6 +17,7 @@ type GlobeAccessibilityState = Readonly<{
   hasSweSnapshot: boolean;
   isochroneCount: number;
   runupResultCount: number;
+  gaugeCount: number;
   dartBuoyCount: number;
   hasHazardCenter: boolean;
   hazardRingCount: number;
@@ -42,6 +43,7 @@ export function buildGlobeAccessibilitySummary(state: GlobeAccessibilityState): 
   if (state.hasSweSnapshot) layers.push("SWE water field");
   if (state.isochroneCount > 0) layers.push("arrival isochrones");
   if (state.runupResultCount > 0) layers.push("coastal runup samples");
+  if (state.gaugeCount > 0) layers.push(`${state.gaugeCount} user gauges`);
   if (state.dartBuoyCount > 0) layers.push("DART observations");
   if (state.hasHazardCenter) layers.push("effects origin");
   if (state.hazardRingCount > 0) layers.push("hazard effect rings");

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   RunupOverlayController,
+  type GaugeOverlayInput,
+  type GaugePrimitivePresentation,
   type InundationPrimitivePresentation,
   type RunupLabelPresentation,
   type RunupOverlayHost,
@@ -32,16 +34,28 @@ function point(overrides: Partial<RunupOverlayInput> = {}): RunupOverlayInput {
   };
 }
 
+function gauge(overrides: Partial<GaugeOverlayInput> = {}): GaugeOverlayInput {
+  return {
+    id: "gauge-1",
+    name: "Gauge 1",
+    lat: 20,
+    lon: -80,
+    ...overrides,
+  };
+}
+
 function harness() {
   let nextId = 1;
   const runupPrimitives = new Set<Handle>();
   const inundationPrimitives = new Set<Handle>();
+  const gaugePrimitives = new Set<Handle>();
   const labels = new Map<Handle, RunupLabelPresentation>();
   const runupBatches: RunupPrimitivePresentation[][] = [];
   const inundationBatches: InundationPrimitivePresentation[][] = [];
+  const gaugeBatches: GaugePrimitivePresentation[][] = [];
   let failInundation = false;
   let failLabelId: string | null = null;
-  const host: RunupOverlayHost<Handle, Handle, Handle> = {
+  const host: RunupOverlayHost<Handle, Handle, Handle, Handle> = {
     createRunupPrimitive: (presentations) => {
       const handle = { id: nextId++ };
       runupPrimitives.add(handle);
@@ -61,6 +75,15 @@ function harness() {
     removeInundationPrimitive: (primitive) => {
       inundationPrimitives.delete(primitive);
     },
+    createGaugePrimitive: (presentations) => {
+      const handle = { id: nextId++ };
+      gaugePrimitives.add(handle);
+      gaugeBatches.push(presentations.map((presentation) => ({ ...presentation })));
+      return handle;
+    },
+    removeGaugePrimitive: (primitive) => {
+      gaugePrimitives.delete(primitive);
+    },
     createLabel: (presentation) => {
       if (presentation.id === failLabelId) throw new Error("label construction failed");
       const handle = { id: nextId++ };
@@ -79,9 +102,11 @@ function harness() {
     controller,
     runupPrimitives,
     inundationPrimitives,
+    gaugePrimitives,
     labels,
     runupBatches,
     inundationBatches,
+    gaugeBatches,
     setFailInundation: (value: boolean) => {
       failInundation = value;
     },
@@ -159,6 +184,61 @@ describe("RunupOverlayController", () => {
     });
   });
 
+  it("normalizes 500 gauges into one deterministic primitive-backed batch", () => {
+    const { controller, gaugeBatches, gaugePrimitives } = harness();
+    const gauges = Array.from({ length: 500 }, (_, index) => gauge({
+      id: `gauge-${String(500 - index).padStart(3, "0")}`,
+      name: `Gauge ${index + 1}`,
+      lat: -80 + (index % 160),
+      lon: -170 + (index % 340),
+    }));
+
+    const startedAt = performance.now();
+    controller.update([], gauges);
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(elapsedMs).toBeLessThan(250);
+    expect(gaugeBatches).toHaveLength(1);
+    expect(gaugeBatches[0]).toHaveLength(500);
+    expect(gaugeBatches[0][0]).toMatchObject({
+      id: "gauge-001",
+      colorCss: "#89b4fa",
+      outlineColorCss: "#11111b",
+      outlineWidth: 2,
+      pixelSize: 10,
+    });
+    expect(controller.diagnostics()).toMatchObject({
+      ownedGaugePrimitiveCount: 1,
+      currentGaugeItemCount: 500,
+      createdGaugePrimitiveCount: 1,
+    });
+
+    controller.clear();
+    expect(gaugePrimitives.size).toBe(0);
+    expect(controller.diagnostics()).toMatchObject({
+      ownedGaugePrimitiveCount: 0,
+      currentGaugeItemCount: 0,
+      removedGaugePrimitiveCount: 1,
+    });
+  });
+
+  it("rejects invalid gauges and counts duplicate IDs without duplicate markers", () => {
+    const { controller, gaugeBatches } = harness();
+    controller.update([], [
+      gauge({ id: "b" }),
+      gauge({ id: "a", name: "First" }),
+      gauge({ id: "a", name: "Duplicate" }),
+      gauge({ id: "bad", lat: 91 }),
+    ]);
+
+    expect(gaugeBatches[0].map((entry) => entry.id)).toEqual(["a", "b"]);
+    expect(controller.diagnostics()).toMatchObject({
+      invalidInputCount: 1,
+      duplicateInputCount: 2,
+      currentGaugeItemCount: 2,
+    });
+  });
+
   it("rolls back a partially constructed primitive update", () => {
     const {
       controller,
@@ -214,7 +294,7 @@ describe("RunupOverlayController", () => {
   });
 
   it("leaves zero primitives and labels after 100 update/clear cycles", () => {
-    const { controller, runupPrimitives, inundationPrimitives, labels } = harness();
+    const { controller, runupPrimitives, inundationPrimitives, gaugePrimitives, labels } = harness();
     for (let cycle = 0; cycle < 100; cycle += 1) {
       controller.update([
         point({ id: "a", runup_m: 1 + cycle / 10 }),
@@ -223,10 +303,12 @@ describe("RunupOverlayController", () => {
       controller.clear();
       expect(runupPrimitives.size).toBe(0);
       expect(inundationPrimitives.size).toBe(0);
+      expect(gaugePrimitives.size).toBe(0);
       expect(labels.size).toBe(0);
       expect(controller.diagnostics()).toMatchObject({
         ownedRunupPrimitiveCount: 0,
         ownedInundationPrimitiveCount: 0,
+        ownedGaugePrimitiveCount: 0,
         ownedLabelCount: 0,
       });
     }
@@ -244,6 +326,7 @@ describe("RunupOverlayController", () => {
       removedLabelCount: 200,
       ownedRunupPrimitiveCount: 0,
       ownedInundationPrimitiveCount: 0,
+      ownedGaugePrimitiveCount: 0,
       ownedLabelCount: 0,
     });
   });

@@ -1,5 +1,6 @@
 import * as Cesium from "cesium";
 import type {
+  GaugePrimitivePresentation,
   InundationPrimitivePresentation,
   RunupLabelPresentation,
   RunupOverlayHost,
@@ -11,6 +12,7 @@ const EARTH_RADIUS_M = 6_371_000;
 export type CesiumRunupOverlayHost = RunupOverlayHost<
   Cesium.BufferPolylineCollection,
   Cesium.BufferPolygonCollection,
+  Cesium.GeoJsonPrimitive,
   Cesium.Entity
 >;
 
@@ -161,6 +163,57 @@ export class CesiumRunupOverlayHostAdapter implements CesiumRunupOverlayHost {
     this.releaseCollection(primitive);
   }
 
+  createGaugePrimitive(
+    presentations: readonly GaugePrimitivePresentation[],
+  ): Cesium.GeoJsonPrimitive {
+    this.assertViewerAlive();
+    const primitive = Cesium.GeoJsonPrimitive.fromGeoJson(
+      {
+        type: "FeatureCollection",
+        features: presentations.map((presentation) => ({
+          type: "Feature",
+          id: presentation.id,
+          properties: { name: presentation.name },
+          geometry: {
+            type: "Point",
+            coordinates: [presentation.lon, presentation.lat, 0],
+          },
+        })),
+      },
+      { allowPicking: false },
+    );
+    try {
+      const points = primitive.points;
+      if (!points || points.primitiveCount !== presentations.length) {
+        throw new Error("Cesium GeoJsonPrimitive did not create the expected gauge points");
+      }
+      const point = new Cesium.BufferPoint();
+      for (let index = 0; index < presentations.length; index += 1) {
+        const presentation = presentations[index];
+        points.get(index, point);
+        point.setMaterial(new Cesium.BufferPointMaterial({
+          color: Cesium.Color.fromCssColorString(presentation.colorCss).withAlpha(
+            presentation.colorAlpha,
+          ),
+          outlineColor: Cesium.Color.fromCssColorString(
+            presentation.outlineColorCss,
+          ).withAlpha(presentation.outlineAlpha),
+          outlineWidth: presentation.outlineWidth,
+          size: presentation.pixelSize,
+        }));
+      }
+      this.assertViewerAlive();
+      return this.viewer.scene.primitives.add(primitive);
+    } catch (error) {
+      this.releaseGeoJsonPrimitive(primitive);
+      throw error;
+    }
+  }
+
+  removeGaugePrimitive(primitive: Cesium.GeoJsonPrimitive): void {
+    this.releaseGeoJsonPrimitive(primitive);
+  }
+
   createLabel(presentation: RunupLabelPresentation): Cesium.Entity {
     this.assertViewerAlive();
     return this.viewer.entities.add({
@@ -223,6 +276,23 @@ export class CesiumRunupOverlayHostAdapter implements CesiumRunupOverlayHost {
       }
     }
     if (!collection.isDestroyed()) collection.destroy();
+  }
+
+  private releaseGeoJsonPrimitive(primitive: Cesium.GeoJsonPrimitive): void {
+    if (!this.viewer.isDestroyed()) {
+      try {
+        if (this.viewer.scene.primitives.remove(primitive)) return;
+      } catch {
+        // Fall through to direct destruction when the scene is tearing down.
+      }
+    }
+    // Cesium 1.143 implements the normal primitive destroy contract, but its
+    // generated declaration currently omits these two lifecycle methods.
+    const destroyable = primitive as unknown as {
+      isDestroyed: () => boolean;
+      destroy: () => void;
+    };
+    if (!destroyable.isDestroyed()) destroyable.destroy();
   }
 }
 

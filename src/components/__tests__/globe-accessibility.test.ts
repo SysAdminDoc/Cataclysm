@@ -9,6 +9,7 @@ const baseState = {
   hasSweSnapshot: false,
   isochroneCount: 0,
   runupResultCount: 0,
+  gaugeCount: 0,
   dartBuoyCount: 0,
   hasHazardCenter: false,
   hazardRingCount: 0,
@@ -41,6 +42,7 @@ describe("buildGlobeAccessibilitySummary", () => {
       hasSweSnapshot: true,
       isochroneCount: 2,
       runupResultCount: 4,
+      gaugeCount: 2,
       dartBuoyCount: 1,
       hasHazardCenter: true,
       hazardRingCount: 3,
@@ -58,6 +60,7 @@ describe("buildGlobeAccessibilitySummary", () => {
     expect(summary).toContain("Camera centered at 35.50 degrees south, 140.25 degrees east, at 2.5 megametres altitude.");
     expect(summary).toContain("Scenario time T plus 120 minutes.");
     expect(summary).toContain("MIRV pattern preview with 6 aim points");
+    expect(summary).toContain("2 user gauges");
     expect(summary).toContain("Renderer and base imagery are ready.");
     expect(summary).toContain("Inspect mode is active");
   });

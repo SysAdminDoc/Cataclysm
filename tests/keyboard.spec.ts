@@ -27,7 +27,9 @@ test.describe("Keyboard-only golden path", () => {
     await page.goto("/");
 
     // 1. Activate the Chicxulub preset card from the keyboard.
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.focus();
     await page.keyboard.press("Enter");

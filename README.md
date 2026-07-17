@@ -140,9 +140,11 @@ Existing tools each do one piece:
 - **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
   through the live shallow-water solver, with classic or colorblind-safe
   overlay colormaps.
-- **Effect overlays** — wavefront ring, coastal runup bars at 60+ named
-  coastal points, DART buoy historical observations with per-buoy
-  model-vs-observed RMSE for the four instrumented presets.
+- **Effect overlays** — wavefront ring, primitive-backed coastal runup bars and
+  inundation discs at 60+ named coastal points, user-created gauge markers,
+  and DART buoy historical observations with per-buoy model-vs-observed RMSE
+  for the four instrumented presets. Gauge markers are batched for rendering;
+  the accessible gauge table remains the interaction and export surface.
 - **Max-field products** — fgmax-style peak-amplitude, time-of-maximum, and
   energy-directivity overlays for every solver run, plus labelled
   first-arrival isochrones (NOAA travel-time-map style) exportable as

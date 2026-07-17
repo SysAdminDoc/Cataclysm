@@ -114,7 +114,9 @@ test.describe("Visual regression — desktop", () => {
   test("active preset cockpit", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible({ timeout: 10_000 });
@@ -219,7 +221,9 @@ test.describe("Visual regression — desktop", () => {
   test("SWE solver ready state", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
@@ -238,7 +242,9 @@ test.describe("Visual regression — desktop", () => {
   test("SWE solver playback state", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");
-    const chicxulub = page.locator('.preset-card:has-text("Chicxulub")');
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
     await expect(chicxulub).toBeVisible({ timeout: 10_000 });
     await chicxulub.click();
     await page.getByRole("button", { name: "Run & Watch" }).click();

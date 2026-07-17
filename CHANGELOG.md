@@ -129,6 +129,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Changed
 
+- Coastal runup bars and first-order inundation discs remain on their direct
+  Cesium buffer collections, while user-created SWE gauges now render through
+  one styled `GeoJsonPrimitive` point batch per globe pane instead of adding
+  entities. Invalid and duplicate gauges fail closed, scenario changes release
+  stale markers, accessible gauge tables remain the interaction surface, and a
+  500-gauge regression check locks the single-batch path. Arrival-time
+  `PathGraphics` was deliberately not added: the solver produces fields and
+  isochrones, not physically traced trajectories, so drawing source-to-gauge
+  paths would invent unsupported wave routes.
 - The Cesium globe now delegates accessibility narration, controller-backed
   analytical layer synchronization, preview-camera ownership, and strategic
   primitive overlays to composable hooks. Fireball, global-exchange, and MIRV

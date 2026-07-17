@@ -14,6 +14,8 @@ type Props = {
   initial: InitialDisplacement | null;
   onSnapshot?: (snap: GridSnapshot | null) => void;
   onSnapshotsReady?: (snaps: GridSnapshot[] | null) => void;
+  /** Publishes user-created gauges so the globe can render one batched point layer. */
+  onGaugesChange?: (gauges: Gauge[]) => void;
   pendingGauge?: { lat: number; lon: number } | null;
   /** DART buoys for the active preset. Sampled as hidden `dart-<id>` gauge
    *  points so the overlay can compute model-vs-observed RMSE. */
@@ -143,7 +145,7 @@ function gaugeCoordinateError(
   return null;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -256,6 +258,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setMaxField(null);
       setOverlay("wave");
       setShowArrivals(false);
+      setGauges([]);
+      setGaugeSeries([]);
+      gaugeCounter.current = 0;
+      lastPendingRef.current = null;
+      onGaugesChange?.([]);
       setRecoveredGaugeHistory([]);
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
@@ -264,7 +271,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onScientificExport?.(null, null);
       onRenderFrame?.(null);
     }
-  }, [initial, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
+  }, [initial, onSnapshot, onSnapshotsReady, onGaugesChange, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
+
+  useEffect(() => {
+    onGaugesChange?.(gauges);
+  }, [gauges, onGaugesChange]);
 
   // Publish the arrival contours to the globe when toggled.
   useEffect(() => {

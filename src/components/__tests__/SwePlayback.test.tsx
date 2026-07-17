@@ -368,7 +368,8 @@ describe("SwePlayback", () => {
 
   it("explains invalid gauge coordinates and accepts inclusive boundaries", async () => {
     const user = userEvent.setup();
-    render(<SwePlayback initial={INITIAL} />);
+    const onGaugesChange = vi.fn();
+    render(<SwePlayback initial={INITIAL} onGaugesChange={onGaugesChange} />);
     const latitude = screen.getByLabelText("Gauge latitude");
     const longitude = screen.getByLabelText("Gauge longitude");
     const add = screen.getByRole("button", { name: "Add" });
@@ -390,6 +391,9 @@ describe("SwePlayback", () => {
     expect(add).toBeEnabled();
     await user.click(add);
     expect(screen.getByText("Gauge 1")).toBeInTheDocument();
+    await waitFor(() => expect(onGaugesChange).toHaveBeenLastCalledWith([
+      { id: "gauge-1", name: "Gauge 1", lat_deg: -90, lon_deg: 180 },
+    ]));
   });
 
   it("keeps completed output when an equivalent source object is supplied", async () => {

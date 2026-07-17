@@ -20,6 +20,7 @@ import { demoInspectAtPoint } from "../lib/demo";
 import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import type {
   DartBuoy,
+  Gauge,
   GridSnapshot,
   InitialDisplacement,
   PropagationSnapshot,
@@ -97,6 +98,8 @@ type Props = {
   sweSnapshot?: GridSnapshot | null;
   /** Coastal runup samples to render as 3D bars at coastline points. */
   runupResults?: RunupAtPointResult[];
+  /** User-created SWE gauges rendered as a single primitive-backed point layer. */
+  gauges?: Gauge[];
   /** DART buoy pins for the active historical preset. */
   dartBuoys?: DartBuoy[];
   /** Override style; if absent, the persisted Settings style is used. */
@@ -258,6 +261,7 @@ export function Globe({
   wavefront,
   sweSnapshot,
   runupResults,
+  gauges,
   dartBuoys,
   styleId,
   pickMode,
@@ -311,6 +315,7 @@ export function Globe({
     RunupOverlayController<
       Cesium.BufferPolylineCollection,
       Cesium.BufferPolygonCollection,
+      Cesium.GeoJsonPrimitive,
       Cesium.Entity
     > | null
   >(null);
@@ -365,6 +370,7 @@ export function Globe({
     hasSweSnapshot: Boolean(sweSnapshot),
     isochroneCount: isochrones?.length ?? 0,
     runupResultCount: runupResults?.length ?? 0,
+    gaugeCount: gauges?.length ?? 0,
     dartBuoyCount: dartBuoys?.length ?? 0,
     hasHazardCenter: Boolean(hazardCenter),
     hazardRingCount: hazardRings?.length ?? 0,
@@ -830,6 +836,7 @@ export function Globe({
       isochrones,
       dartBuoys,
       runupResults,
+      gauges,
     },
   );
 

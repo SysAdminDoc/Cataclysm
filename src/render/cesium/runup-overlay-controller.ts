@@ -28,6 +28,22 @@ export interface RunupPrimitivePresentation {
   width: 8;
 }
 
+export interface GaugeOverlayInput {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+export interface GaugePrimitivePresentation extends GaugeOverlayInput {
+  colorCss: "#89b4fa";
+  colorAlpha: 0.95;
+  outlineColorCss: "#11111b";
+  outlineAlpha: 0.9;
+  outlineWidth: 2;
+  pixelSize: 10;
+}
+
 export interface InundationPrimitivePresentation {
   id: string;
   lat: number;
@@ -48,7 +64,7 @@ export interface RunupLabelPresentation {
   text: string;
 }
 
-export interface RunupOverlayHost<RunupPrimitive, InundationPrimitive, Label> {
+export interface RunupOverlayHost<RunupPrimitive, InundationPrimitive, GaugePrimitive, Label> {
   createRunupPrimitive: (
     presentations: readonly RunupPrimitivePresentation[],
   ) => RunupPrimitive;
@@ -57,6 +73,10 @@ export interface RunupOverlayHost<RunupPrimitive, InundationPrimitive, Label> {
     presentations: readonly InundationPrimitivePresentation[],
   ) => InundationPrimitive;
   removeInundationPrimitive: (primitive: InundationPrimitive) => void;
+  createGaugePrimitive: (
+    presentations: readonly GaugePrimitivePresentation[],
+  ) => GaugePrimitive;
+  removeGaugePrimitive: (primitive: GaugePrimitive) => void;
   createLabel: (presentation: RunupLabelPresentation) => Label;
   updateLabel: (label: Label, presentation: RunupLabelPresentation) => void;
   removeLabel: (label: Label) => void;
@@ -66,9 +86,11 @@ export interface RunupOverlayDiagnostics {
   destroyed: boolean;
   ownedRunupPrimitiveCount: 0 | 1;
   ownedInundationPrimitiveCount: 0 | 1;
+  ownedGaugePrimitiveCount: 0 | 1;
   ownedLabelCount: number;
   currentRunupItemCount: number;
   currentInundationItemCount: number;
+  currentGaugeItemCount: number;
   updateCount: number;
   clearCount: number;
   invalidInputCount: number;
@@ -77,6 +99,8 @@ export interface RunupOverlayDiagnostics {
   removedRunupPrimitiveCount: number;
   createdInundationPrimitiveCount: number;
   removedInundationPrimitiveCount: number;
+  createdGaugePrimitiveCount: number;
+  removedGaugePrimitiveCount: number;
   createdLabelCount: number;
   updatedLabelCount: number;
   removedLabelCount: number;
@@ -93,6 +117,7 @@ interface OwnedLabel<Label> {
 interface NormalizedOverlay {
   runup: RunupPrimitivePresentation[];
   inundation: InundationPrimitivePresentation[];
+  gauges: GaugePrimitivePresentation[];
   labels: RunupLabelPresentation[];
   invalidCount: number;
   duplicateCount: number;
@@ -126,6 +151,19 @@ function validBaseInput(input: RunupOverlayInput): boolean {
   );
 }
 
+function validGaugeInput(input: GaugeOverlayInput): boolean {
+  return typeof input.id === "string"
+    && input.id.trim().length > 0
+    && typeof input.name === "string"
+    && input.name.trim().length > 0
+    && Number.isFinite(input.lat)
+    && input.lat >= -90
+    && input.lat <= 90
+    && Number.isFinite(input.lon)
+    && input.lon >= -180
+    && input.lon <= 180;
+}
+
 function labelPresentation(input: RunupOverlayInput, heightM: number): RunupLabelPresentation {
   const arrivalMin = input.arrival_time_s / 60;
   const arrivalLabel = !Number.isFinite(arrivalMin)
@@ -145,7 +183,10 @@ function labelPresentation(input: RunupOverlayInput, heightM: number): RunupLabe
   };
 }
 
-function normalize(inputs: readonly RunupOverlayInput[]): NormalizedOverlay {
+function normalize(
+  inputs: readonly RunupOverlayInput[],
+  gaugeInputs: readonly GaugeOverlayInput[],
+): NormalizedOverlay {
   const valid = inputs.filter(validBaseInput);
   const invalidCount = inputs.length - valid.length;
   const groups = new Map<string, RunupOverlayInput[]>();
@@ -201,7 +242,40 @@ function normalize(inputs: readonly RunupOverlayInput[]): NormalizedOverlay {
       });
     }
   }
-  return { runup, inundation, labels, invalidCount, duplicateCount };
+  const validGauges = gaugeInputs.filter(validGaugeInput);
+  const gaugeInvalidCount = gaugeInputs.length - validGauges.length;
+  const gaugeIdCounts = new Map<string, number>();
+  for (const input of validGauges) {
+    gaugeIdCounts.set(input.id, (gaugeIdCounts.get(input.id) ?? 0) + 1);
+  }
+  const gaugeDuplicateCount = [...gaugeIdCounts.values()]
+    .filter((count) => count > 1)
+    .reduce((sum, count) => sum + count, 0);
+  const gaugeIds = new Set<string>();
+  const gauges: GaugePrimitivePresentation[] = [];
+  for (const input of [...validGauges].sort((left, right) => left.id.localeCompare(right.id))) {
+    if (gaugeIds.has(input.id)) {
+      continue;
+    }
+    gaugeIds.add(input.id);
+    gauges.push({
+      ...input,
+      colorCss: "#89b4fa",
+      colorAlpha: 0.95,
+      outlineColorCss: "#11111b",
+      outlineAlpha: 0.9,
+      outlineWidth: 2,
+      pixelSize: 10,
+    });
+  }
+  return {
+    runup,
+    inundation,
+    gauges,
+    labels,
+    invalidCount: invalidCount + gaugeInvalidCount,
+    duplicateCount: duplicateCount + gaugeDuplicateCount,
+  };
 }
 
 function presentationsEqual(
@@ -217,14 +291,16 @@ function presentationsEqual(
   );
 }
 
-export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> {
-  private readonly host: RunupOverlayHost<RunupPrimitive, InundationPrimitive, Label>;
+export class RunupOverlayController<RunupPrimitive, InundationPrimitive, GaugePrimitive, Label> {
+  private readonly host: RunupOverlayHost<RunupPrimitive, InundationPrimitive, GaugePrimitive, Label>;
   private runupPrimitive: RunupPrimitive | null = null;
   private inundationPrimitive: InundationPrimitive | null = null;
+  private gaugePrimitive: GaugePrimitive | null = null;
   private labels = new Map<string, OwnedLabel<Label>>();
   private destroyed = false;
   private currentRunupItemCount = 0;
   private currentInundationItemCount = 0;
+  private currentGaugeItemCount = 0;
   private updateCount = 0;
   private clearCount = 0;
   private invalidInputCount = 0;
@@ -233,6 +309,8 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
   private removedRunupPrimitiveCount = 0;
   private createdInundationPrimitiveCount = 0;
   private removedInundationPrimitiveCount = 0;
+  private createdGaugePrimitiveCount = 0;
+  private removedGaugePrimitiveCount = 0;
   private createdLabelCount = 0;
   private updatedLabelCount = 0;
   private removedLabelCount = 0;
@@ -240,18 +318,22 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
   private rollbackCount = 0;
   private failedUpdateCount = 0;
 
-  constructor(host: RunupOverlayHost<RunupPrimitive, InundationPrimitive, Label>) {
+  constructor(host: RunupOverlayHost<RunupPrimitive, InundationPrimitive, GaugePrimitive, Label>) {
     this.host = host;
   }
 
-  update(inputs: readonly RunupOverlayInput[] | null | undefined): void {
+  update(
+    inputs: readonly RunupOverlayInput[] | null | undefined,
+    gauges: readonly GaugeOverlayInput[] | null | undefined = [],
+  ): void {
     if (this.destroyed) return;
-    const normalized = normalize(inputs ?? []);
+    const normalized = normalize(inputs ?? [], gauges ?? []);
     this.invalidInputCount += normalized.invalidCount;
     this.duplicateInputCount += normalized.duplicateCount;
 
     let nextRunup: RunupPrimitive | null = null;
     let nextInundation: InundationPrimitive | null = null;
+    let nextGauges: GaugePrimitive | null = null;
     const createdLabels = new Map<string, OwnedLabel<Label>>();
     const updatedLabels: Array<{ owned: OwnedLabel<Label>; previous: RunupLabelPresentation }> = [];
     try {
@@ -262,6 +344,10 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
       if (normalized.inundation.length > 0) {
         nextInundation = this.host.createInundationPrimitive(normalized.inundation);
         this.createdInundationPrimitiveCount += 1;
+      }
+      if (normalized.gauges.length > 0) {
+        nextGauges = this.host.createGaugePrimitive(normalized.gauges);
+        this.createdGaugePrimitiveCount += 1;
       }
       for (const presentation of normalized.labels) {
         const current = this.labels.get(presentation.id);
@@ -287,6 +373,7 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
         this.host.removeLabel(handle);
         this.removedLabelCount += 1;
       }
+      if (nextGauges !== null) this.removeGauge(nextGauges);
       if (nextInundation !== null) this.removeInundation(nextInundation);
       if (nextRunup !== null) this.removeRunup(nextRunup);
       this.rollbackCount += 1;
@@ -296,10 +383,13 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
 
     const previousRunup = this.runupPrimitive;
     const previousInundation = this.inundationPrimitive;
+    const previousGauges = this.gaugePrimitive;
     this.runupPrimitive = nextRunup;
     this.inundationPrimitive = nextInundation;
+    this.gaugePrimitive = nextGauges;
     if (previousRunup !== null) this.removeRunup(previousRunup);
     if (previousInundation !== null) this.removeInundation(previousInundation);
+    if (previousGauges !== null) this.removeGauge(previousGauges);
 
     const desiredIds = new Set(normalized.labels.map((label) => label.id));
     for (const [id, owned] of this.labels) {
@@ -312,6 +402,7 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
 
     this.currentRunupItemCount = normalized.runup.length;
     this.currentInundationItemCount = normalized.inundation.length;
+    this.currentGaugeItemCount = normalized.gauges.length;
     this.updateCount += 1;
   }
 
@@ -332,9 +423,11 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
       destroyed: this.destroyed,
       ownedRunupPrimitiveCount: this.runupPrimitive === null ? 0 : 1,
       ownedInundationPrimitiveCount: this.inundationPrimitive === null ? 0 : 1,
+      ownedGaugePrimitiveCount: this.gaugePrimitive === null ? 0 : 1,
       ownedLabelCount: this.labels.size,
       currentRunupItemCount: this.currentRunupItemCount,
       currentInundationItemCount: this.currentInundationItemCount,
+      currentGaugeItemCount: this.currentGaugeItemCount,
       updateCount: this.updateCount,
       clearCount: this.clearCount,
       invalidInputCount: this.invalidInputCount,
@@ -343,6 +436,8 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
       removedRunupPrimitiveCount: this.removedRunupPrimitiveCount,
       createdInundationPrimitiveCount: this.createdInundationPrimitiveCount,
       removedInundationPrimitiveCount: this.removedInundationPrimitiveCount,
+      createdGaugePrimitiveCount: this.createdGaugePrimitiveCount,
+      removedGaugePrimitiveCount: this.removedGaugePrimitiveCount,
       createdLabelCount: this.createdLabelCount,
       updatedLabelCount: this.updatedLabelCount,
       removedLabelCount: this.removedLabelCount,
@@ -361,6 +456,10 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
       this.removeInundation(this.inundationPrimitive);
       this.inundationPrimitive = null;
     }
+    if (this.gaugePrimitive !== null) {
+      this.removeGauge(this.gaugePrimitive);
+      this.gaugePrimitive = null;
+    }
     for (const { handle } of this.labels.values()) {
       this.host.removeLabel(handle);
       this.removedLabelCount += 1;
@@ -368,6 +467,7 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
     this.labels.clear();
     this.currentRunupItemCount = 0;
     this.currentInundationItemCount = 0;
+    this.currentGaugeItemCount = 0;
   }
 
   private removeRunup(primitive: RunupPrimitive): void {
@@ -378,5 +478,10 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, Label> 
   private removeInundation(primitive: InundationPrimitive): void {
     this.host.removeInundationPrimitive(primitive);
     this.removedInundationPrimitiveCount += 1;
+  }
+
+  private removeGauge(primitive: GaugePrimitive): void {
+    this.host.removeGaugePrimitive(primitive);
+    this.removedGaugePrimitiveCount += 1;
   }
 }

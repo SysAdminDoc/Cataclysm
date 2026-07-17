@@ -98,6 +98,11 @@ After clicking **Simulate**, the initial conditions panel shows the source reado
 3. Use the scrubber or Play button to animate the wave propagation
 4. Toggle **Coastal runup** to see Synolakis 1987 low-confidence screening estimates at 79 coastal points. Expand a Result to audit the legacy slope and nominal depth records; CSV, GeoJSON, KML, and text exports preserve the same IDs.
 
+Advanced mode also lets you place named SWE gauges. Each gauge appears in the
+accessible table and as a blue, outlined marker on the active globe pane;
+comparison slots keep separate gauge sets. Changing the source clears the old
+gauges so markers and sampled time series cannot leak into the next scenario.
+
 ## Opening an installed desktop link
 
 Installed packages register `cataclysm://open` for the same encoded scenario
