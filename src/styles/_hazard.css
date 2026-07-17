@@ -201,6 +201,123 @@
   color: var(--subtext);
 }
 
+.hazard__diagrams {
+  margin-top: 10px;
+  padding: 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+}
+
+.hazard__diagrams h3,
+.hazard__diagrams p {
+  margin: 0;
+}
+
+.hazard__diagrams h3 {
+  font-size: var(--type-body);
+}
+
+.hazard__diagrams > p,
+.hazard-diagram figcaption {
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.hazard__diagrams > p {
+  margin-top: 3px;
+}
+
+.hazard-diagram {
+  margin: 9px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.hazard-diagram__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 250px;
+  overflow: visible;
+}
+
+.hazard-diagram__axis,
+.hazard-diagram__ground {
+  fill: none;
+  stroke: var(--surface2);
+  stroke-width: 1.5;
+}
+
+.hazard-diagram__ground {
+  stroke-dasharray: 5 4;
+}
+
+.hazard-diagram__altitude,
+.hazard-diagram__velocity {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.hazard-diagram__altitude {
+  stroke: var(--peach);
+  stroke-width: 2.5;
+}
+
+.hazard-diagram__velocity {
+  stroke: var(--blue);
+  stroke-width: 2;
+  stroke-dasharray: 7 4;
+}
+
+.hazard-diagram__breakup {
+  fill: var(--yellow);
+  stroke: var(--mantle);
+  stroke-width: 2;
+}
+
+.hazard-diagram__terminal {
+  fill: var(--red);
+  stroke: var(--mantle);
+  stroke-width: 2;
+}
+
+.hazard-diagram__label,
+.hazard-diagram__legend,
+.hazard-diagram__dimension-label,
+.hazard-diagram__depth-label {
+  fill: var(--subtext);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.hazard-diagram__crater {
+  fill: color-mix(in srgb, var(--mauve) 12%, var(--surface0));
+  stroke: var(--mauve);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.hazard-diagram__dimension,
+.hazard-diagram__depth {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 1.5;
+}
+
+.hazard-diagram__depth {
+  stroke: var(--peach);
+}
+
+.hazard-diagram__depth-label {
+  fill: var(--peach);
+}
+
+.hazard-diagram figcaption {
+  margin-top: -2px;
+  text-align: center;
+}
+
 .hazard__shelter {
   margin-top: 10px;
   border: 1px solid var(--panel-border);

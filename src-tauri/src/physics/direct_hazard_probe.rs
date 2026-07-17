@@ -9,7 +9,8 @@ use std::sync::{LazyLock, Mutex};
 use serde::{Deserialize, Serialize};
 
 use super::direct_hazard::{
-    EffectRing, HazardDetail, HazardResult, NuclearShelterReport, nuclear_shelter_report,
+    AsteroidTrajectoryPoint, EffectRing, HazardDetail, HazardResult, NuclearShelterReport,
+    nuclear_shelter_report,
 };
 
 const MAX_REGISTERED_RESULTS: usize = 16;
@@ -64,6 +65,24 @@ pub struct DirectHazardProbeResult {
     pub assumptions: Vec<String>,
     pub confidence: ProbeConfidence,
     pub unknowns: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AsteroidCraterVisual {
+    pub final_diameter: f64,
+    pub crater_depth: f64,
+    pub rim_height: f64,
+    pub is_complex: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AsteroidVisualReport {
+    pub result_id: String,
+    pub model: String,
+    pub trajectory: Vec<AsteroidTrajectoryPoint>,
+    pub crater: Option<AsteroidCraterVisual>,
 }
 
 pub fn register_result(mut result: HazardResult, canonical_request: &[u8]) -> HazardResult {
@@ -172,6 +191,34 @@ pub fn shelter_report(result_id: String) -> Result<NuclearShelterReport, String>
     Ok(nuclear_shelter_report(result.result_id.clone(), detail))
 }
 
+pub fn asteroid_visual_report(result_id: String) -> Result<AsteroidVisualReport, String> {
+    validate_result_id(&result_id)?;
+    let results = RESULTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let result = results
+        .iter()
+        .find(|entry| entry.result_id == result_id)
+        .ok_or_else(|| {
+            "The selected asteroid result is no longer available; rerun the scenario once to inspect its diagrams."
+                .to_string()
+        })?;
+    let HazardDetail::Asteroid(detail) = &result.detail else {
+        return Err("trajectory and crater diagrams apply only to asteroid results".to_string());
+    };
+    Ok(AsteroidVisualReport {
+        result_id: result.result_id.clone(),
+        model: result.model_version.to_string(),
+        trajectory: detail.atmospheric_entry.trajectory.clone(),
+        crater: detail.crater.as_ref().map(|crater| AsteroidCraterVisual {
+            final_diameter: crater.final_diameter,
+            crater_depth: crater.crater_depth,
+            rim_height: crater.final_diameter * 0.04,
+            is_complex: crater.is_complex,
+        }),
+    })
+}
+
 fn validate_result_id(result_id: &str) -> Result<(), String> {
     if result_id.len() > 80
         || !result_id
@@ -252,7 +299,8 @@ fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 mod tests {
     use super::*;
     use crate::physics::direct_hazard::{
-        HazardCenter, NuclearBurstType, NuclearHazardRequest, simulate_nuclear_hazard,
+        AsteroidHazardRequest, AsteroidTargetType, HazardCenter, NuclearBurstType,
+        NuclearHazardRequest, simulate_asteroid_hazard, simulate_nuclear_hazard,
     };
 
     fn registered_nuclear() -> HazardResult {
@@ -266,6 +314,21 @@ mod tests {
         };
         let canonical = serde_json::to_vec(&request).unwrap();
         register_result(simulate_nuclear_hazard(request).unwrap(), &canonical)
+    }
+
+    fn registered_asteroid() -> HazardResult {
+        let request = AsteroidHazardRequest {
+            center: HazardCenter { lat: 0.0, lon: 0.0 },
+            diameter_m: 300.0,
+            density_kg_m3: 4_000.0,
+            velocity_km_s: 20.0,
+            angle_deg: 45.0,
+            target_type: AsteroidTargetType::SedimentaryRock,
+            water_depth_m: 0.0,
+            beach_slope_rad: 0.02,
+        };
+        let canonical = serde_json::to_vec(&request).unwrap();
+        register_result(simulate_asteroid_hazard(request).unwrap(), &canonical)
     }
 
     #[test]
@@ -304,6 +367,22 @@ mod tests {
 
         let error = shelter_report(format!("nuclear-{}", "0".repeat(64))).unwrap_err();
         assert!(error.contains("no longer available"));
+    }
+
+    #[test]
+    fn asteroid_visual_report_reuses_bounded_authoritative_details() {
+        let result = registered_asteroid();
+        let report = asteroid_visual_report(result.result_id.clone()).unwrap();
+        assert_eq!(report.result_id, result.result_id);
+        assert!(report.trajectory.len() >= 3);
+        assert!(report.trajectory.len() <= 256);
+        assert_eq!(report.trajectory[0].altitude, 100_000.0);
+        assert!(report.trajectory.last().unwrap().altitude <= report.trajectory[0].altitude);
+        let crater = report.crater.unwrap();
+        assert_eq!(crater.rim_height, crater.final_diameter * 0.04);
+
+        let nuclear = registered_nuclear();
+        assert!(asteroid_visual_report(nuclear.result_id).is_err());
     }
 
     #[test]

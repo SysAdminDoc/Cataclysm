@@ -143,6 +143,9 @@ Existing tools each do one piece:
   derives every score from the registered result, and the UI states clearly
   that these are educational comparisons rather than personal survival odds or
   protective-action guidance.
+- **Impact profile diagrams** — responsive SVGs plot the bounded atmospheric
+  trajectory and modeled crater cross-section returned by the registered Rust
+  result, including breakup/airburst markers and accessible descriptions.
 - **Teacher mode** — lockable classroom settings profiles (via settings
   export/import) and a printable worksheet for each of the 7 guided lessons.
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.

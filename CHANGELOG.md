@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Impact results now include responsive, accessible atmospheric-trajectory and
+  crater cross-section SVGs. A bounded trajectory is retained inside the
+  registered Rust result and exposed through a result-ID-bound query, keeping
+  the locked direct-hazard capture schema stable while preventing React from
+  recreating entry or crater physics.
 - Nuclear results now offer a Rust-authoritative shelter screening table at the
   fireball, 20/5/1 psi, beyond-1-psi, and first-degree-burn radii. The query is
   bound to a registered immutable result rather than accepting client-supplied

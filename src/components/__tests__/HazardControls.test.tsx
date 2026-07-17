@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { HazardControls } from "../HazardControls";
-import type { AsteroidInput, HazardResult, NuclearInput, NuclearShelterReport } from "../../hazards";
+import type { AsteroidInput, AsteroidVisualReport, HazardResult, NuclearInput, NuclearShelterReport } from "../../hazards";
 
 const nuclear: NuclearInput = { yieldKt: 100, burstType: "airburst", populationDensity: 5000 };
 const asteroid: AsteroidInput = { diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 };
@@ -46,6 +46,53 @@ const nuclearFalloutResult = {
     },
   },
 } as HazardResult;
+const asteroidResult: HazardResult = {
+  kind: "asteroid",
+  authority: "rust",
+  modelVersion: "asteroid-direct-1.0.0",
+  center: { lat: 40, lon: -74 },
+  rings: [{ label: "Final crater", radiusM: 1_500, color: "#cba6f7", category: "crater" }],
+  readout: [{ label: "Final crater", value: "3.0 km" }],
+  detail: {
+    kineticEnergyJ: 1e19,
+    megatons: 2_390,
+    impactorMassKg: 1e12,
+    atmosphericEntry: {
+      reachesGround: true,
+      airburstAltitude: 0,
+      airburstEnergy: 1e19,
+      impactVelocity: 18_000,
+      breakupAltitude: 35_000,
+    },
+    crater: { finalDiameter: 3_000, craterDepth: 600, isComplex: false },
+    seismicMagnitude: 6,
+    fireballRadiusM: 2_000,
+    radiusWindowBreakageM: 10_000,
+    radiusSevereDamageM: 5_000,
+    radiusTotalDestructionM: 2_500,
+    thermalRadiusFirstDegreeM: 12_000,
+    thermalRadiusThirdDegreeM: 7_000,
+    tsunami: {
+      applies: false,
+      cavityDiameter: 0,
+      cavityDepth: 0,
+      initialAmplitude: 0,
+      amplitudeAtDistance: 0,
+      runupHeight: 0,
+      arrivalTime: 0,
+    },
+  },
+};
+const asteroidVisuals: AsteroidVisualReport = {
+  resultId: "asteroid-result",
+  model: "asteroid-direct-1.0.0",
+  trajectory: [
+    { altitude: 100_000, velocity: 20_000, groundDistance: 0, time: 0 },
+    { altitude: 35_000, velocity: 19_500, groundDistance: 65_000, time: 5 },
+    { altitude: 0, velocity: 18_000, groundDistance: 100_000, time: 9 },
+  ],
+  crater: { finalDiameter: 3_000, craterDepth: 600, rimHeight: 120, isComplex: false },
+};
 const shelterReport: NuclearShelterReport = {
   resultId: "nuclear-result",
   model: "NukeMap shelter heuristic port 1.0",
@@ -132,6 +179,32 @@ describe("HazardControls", () => {
     expect(screen.getByRole("columnheader", { name: /5 psi zone 3\.0 km/ })).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "Deep underground" })).toBeInTheDocument();
     expect(screen.getByText(/not personal survival odds/i)).toBeInTheDocument();
+  });
+
+  it("renders accessible Rust-authoritative asteroid trajectory and crater diagrams", () => {
+    render(
+      <HazardControls
+        mode="asteroid"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={asteroidResult}
+        asteroidVisuals={asteroidVisuals}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Impact profile" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Atmospheric entry trajectory/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Modeled crater cross-section/ })).toBeInTheDocument();
+    expect(screen.getByText(/3\.0 km diameter/)).toBeInTheDocument();
+    expect(screen.getByText(/browser only draws the returned values/i)).toBeInTheDocument();
   });
 
   it("fires the pick toggle when the location button is clicked", () => {

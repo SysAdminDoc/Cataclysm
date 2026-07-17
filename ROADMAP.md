@@ -15,8 +15,6 @@ AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P2 — Impact mode + data
-- **UNI-07A** Add the `TrajectoryChart` and `CraterDiagram` SVG result components
-  from `legacy/asteroid/src/components/Results` to the shipped impact experience.
 - **UNI-08** NEO/fireball database integration (port `services/jplApi.ts`,
   `useFireballs`, fallback datasets) with the app's CSP allowlist.
 - **UNI-09** Port NukeMap target/weapon/city/ZIP datasets (`data/*.json`,
@@ -42,7 +40,7 @@ remain safe in-tree under `legacy/` while this section reaches parity.
   subtree). NukeMap's old GitHub Pages site (`sysadmindoc.github.io/NukeMap/`) is
   offline as a result; the nuclear experience now lives in Cataclysm's Nuclear
   mode and will ship on Cataclysm's own Pages deploy.
-- The UNI-05/06/08..14 items below remain the parity backlog, now worked entirely
+- The UNI-08..14 items below remain the parity backlog, now worked entirely
   inside Cataclysm against the preserved `legacy/` reference.
 
 ---

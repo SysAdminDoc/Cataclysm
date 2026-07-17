@@ -98,6 +98,27 @@ export interface NuclearShelterReport {
   limitations: string[];
 }
 
+export interface AsteroidTrajectoryPoint {
+  altitude: number;
+  velocity: number;
+  groundDistance: number;
+  time: number;
+}
+
+export interface AsteroidCraterVisual {
+  finalDiameter: number;
+  craterDepth: number;
+  rimHeight: number;
+  isComplex: boolean;
+}
+
+export interface AsteroidVisualReport {
+  resultId: string;
+  model: string;
+  trajectory: AsteroidTrajectoryPoint[];
+  crater: AsteroidCraterVisual | null;
+}
+
 export interface NuclearDetail {
   yieldKt: number;
   isSurface: boolean;

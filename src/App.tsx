@@ -71,6 +71,7 @@ import { LayerInspector } from "./components/LayerInspector";
 import { SourceModelSummary } from "./components/SourceModelSummary";
 import {
   type AsteroidInput,
+  type AsteroidVisualReport,
   type GeoPoint,
   type HazardResult,
   type NuclearDetail,
@@ -376,6 +377,7 @@ export default function App() {
     waterDepthM: sourceNumericDefault("DirectAsteroid", "water_depth_m"),
   });
   const [hazardResult, setHazardResult] = useState<HazardResult | null>(null);
+  const [asteroidVisualReport, setAsteroidVisualReport] = useState<AsteroidVisualReport | null>(null);
   const [nuclearShelterReport, setNuclearShelterReport] = useState<NuclearShelterReport | null>(null);
   const [hazardError, setHazardError] = useState<string | null>(null);
   const [directRenderReplay, setDirectRenderReplay] = useState<RenderReplayAdapter | null>(null);
@@ -813,6 +815,7 @@ export default function App() {
     const requestId = ++hazardRequestId.current;
     if (hazardMode === "tsunami" || !hazardCenter) {
       setHazardResult(null);
+      setAsteroidVisualReport(null);
       setNuclearShelterReport(null);
       setHazardError(null);
       setDirectRenderReplay(null);
@@ -826,6 +829,7 @@ export default function App() {
         ? (directHazardCaptureFixtures as Record<string, HazardResult>)[referenceCaptureSceneId]
         : undefined;
       setHazardResult(fixture?.kind === hazardMode ? structuredClone(fixture) : null);
+      setAsteroidVisualReport(null);
       setNuclearShelterReport(null);
       setDirectRenderReplay(null);
       const recordingUrl = referenceCaptureSceneId
@@ -852,6 +856,7 @@ export default function App() {
     }
 
     setHazardResult(null);
+    setAsteroidVisualReport(null);
     setNuclearShelterReport(null);
     setHazardError(null);
     setDirectRenderReplay(null);
@@ -895,6 +900,17 @@ export default function App() {
           throw new Error("backend returned an invalid direct-hazard authority contract");
         }
         setHazardResult(result);
+        if (hazardMode === "asteroid" && result.resultId) {
+          void api.asteroidResultVisuals(result.resultId)
+            .then((report) => {
+              if (!cancelled && requestId === hazardRequestId.current) {
+                setAsteroidVisualReport(report);
+              }
+            })
+            .catch((error) => {
+              if (!cancelled) console.error("asteroid result diagrams failed", error);
+            });
+        }
         if (hazardMode === "nuclear" && result.resultId) {
           void api.nuclearShelterAdvisor(result.resultId)
             .then((report) => {
@@ -919,6 +935,7 @@ export default function App() {
         if (cancelled || requestId !== hazardRequestId.current) return;
         console.error("direct hazard simulation failed", error);
         setHazardResult(null);
+        setAsteroidVisualReport(null);
         setNuclearShelterReport(null);
         const message = `Direct hazard simulation failed: ${String(error)}`;
         setHazardError(message);
@@ -1987,6 +2004,7 @@ export default function App() {
             onTogglePick={() => setPickMode((p) => !p)}
             pickActive={pickMode}
             result={hazardResult}
+            asteroidVisuals={asteroidVisualReport}
             shelterReport={nuclearShelterReport}
             windFromDeg={windFromDeg}
             onWindChange={setWindFromDeg}
@@ -2074,6 +2092,7 @@ export default function App() {
           onTogglePick={() => setPickMode((p) => !p)}
           pickActive={pickMode}
           result={hazardResult}
+          asteroidVisuals={asteroidVisualReport}
           shelterReport={nuclearShelterReport}
           windFromDeg={windFromDeg}
           onWindChange={setWindFromDeg}

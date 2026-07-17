@@ -17,6 +17,7 @@ import type {
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
 import type {
+  AsteroidVisualReport,
   BurstType,
   DirectHazardProbeResult,
   HazardResult,
@@ -395,6 +396,9 @@ export const api = {
   },
   nuclearShelterAdvisor(resultId: string) {
     return invoke<NuclearShelterReport>("nuclear_shelter_advisor", { resultId });
+  },
+  asteroidResultVisuals(resultId: string) {
+    return invoke<AsteroidVisualReport>("asteroid_result_visuals", { resultId });
   },
   simulateGrid(req: {
     source: GeoPoint;

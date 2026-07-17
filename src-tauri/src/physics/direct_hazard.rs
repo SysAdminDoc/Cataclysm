@@ -109,6 +109,17 @@ pub struct AsteroidAtmosphericDetail {
     pub airburst_energy: f64,
     pub impact_velocity: f64,
     pub breakup_altitude: f64,
+    #[serde(skip)]
+    pub trajectory: Vec<AsteroidTrajectoryPoint>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AsteroidTrajectoryPoint {
+    pub altitude: f64,
+    pub velocity: f64,
+    pub ground_distance: f64,
+    pub time: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -157,6 +168,46 @@ struct EntryState {
     z: f64,
     x: f64,
     r: f64,
+}
+
+const MAX_TRAJECTORY_POINTS: usize = 256;
+
+fn trajectory_point(state: EntryState, time: f64) -> AsteroidTrajectoryPoint {
+    AsteroidTrajectoryPoint {
+        altitude: state.z.max(0.0),
+        velocity: state.v.max(0.0),
+        ground_distance: state.x.max(0.0),
+        time,
+    }
+}
+
+fn record_trajectory_sample(
+    trajectory: &mut Vec<AsteroidTrajectoryPoint>,
+    state: EntryState,
+    time: f64,
+) {
+    if trajectory.len() < MAX_TRAJECTORY_POINTS - 1 {
+        trajectory.push(trajectory_point(state, time));
+    }
+}
+
+fn complete_trajectory(
+    mut trajectory: Vec<AsteroidTrajectoryPoint>,
+    state: EntryState,
+    time: f64,
+) -> Vec<AsteroidTrajectoryPoint> {
+    let terminal = trajectory_point(state, time);
+    if trajectory.len() >= MAX_TRAJECTORY_POINTS {
+        if let Some(last) = trajectory.last_mut() {
+            *last = terminal;
+        }
+    } else if trajectory
+        .last()
+        .is_none_or(|last| last.time.to_bits() != terminal.time.to_bits())
+    {
+        trajectory.push(terminal);
+    }
+    trajectory
 }
 
 fn atmospheric_density(altitude_m: f64) -> f64 {
@@ -270,12 +321,20 @@ fn atmospheric_entry(
     let mut past_peak = false;
     let mut peak_steps = 0;
     const DT: f64 = 0.02;
+    let estimated_duration = 100_000.0 / (velocity * state.theta.sin() * 0.5).max(1.0);
+    let record_interval = ((estimated_duration / DT / 240.0).floor() as usize).max(1);
+    let mut trajectory = Vec::with_capacity(MAX_TRAJECTORY_POINTS);
+    let mut time = 0.0;
 
-    for _ in 0..5_000_000 {
+    for step in 0..5_000_000 {
+        if step % record_interval == 0 {
+            record_trajectory_sample(&mut trajectory, state, time);
+        }
         if breakup_altitude < 0.0 && atmospheric_density(state.z) * state.v.powi(2) > strength {
             breakup_altitude = state.z;
         }
         state = rk4_entry(state, DT, strength, ablation_heat, density, radius);
+        time += DT;
         // A near-stopped body drives the 1/velocity term in the theta
         // derivative unbounded; if the integrator diverges, stop with the energy
         // deposited so far rather than emitting a spurious authoritative result.
@@ -290,6 +349,7 @@ fn atmospheric_entry(
                 airburst_energy: (initial_energy - previous_energy).max(0.0),
                 impact_velocity: 0.0,
                 breakup_altitude,
+                trajectory,
             };
         }
         let current_energy = 0.5 * state.m.max(0.0) * state.v.max(0.0).powi(2);
@@ -316,6 +376,7 @@ fn atmospheric_entry(
                 airburst_energy: initial_energy * (1.0 - state.m / mass),
                 impact_velocity: state.v.max(0.0),
                 breakup_altitude,
+                trajectory: complete_trajectory(trajectory, state, time),
             };
         }
         if state.r > radius * 4.0 && breakup_altitude > 0.0 {
@@ -329,6 +390,7 @@ fn atmospheric_entry(
                 airburst_energy: current_energy,
                 impact_velocity: state.v.max(0.0),
                 breakup_altitude,
+                trajectory: complete_trajectory(trajectory, state, time),
             };
         }
         if past_peak && breakup_altitude > 0.0 && state.v < velocity * 0.3 {
@@ -338,6 +400,7 @@ fn atmospheric_entry(
                 airburst_energy: (initial_energy - current_energy).max(0.0),
                 impact_velocity: state.v.max(0.0),
                 breakup_altitude,
+                trajectory: complete_trajectory(trajectory, state, time),
             };
         }
         if state.z <= 0.0 {
@@ -347,6 +410,7 @@ fn atmospheric_entry(
                 airburst_energy: current_energy,
                 impact_velocity: state.v.max(0.0),
                 breakup_altitude,
+                trajectory: complete_trajectory(trajectory, state, time),
             };
         }
         if state.v < 1.0 {
@@ -361,6 +425,7 @@ fn atmospheric_entry(
                 airburst_energy: current_energy,
                 impact_velocity: state.v.max(0.0),
                 breakup_altitude,
+                trajectory: complete_trajectory(trajectory, state, time),
             };
         }
     }
@@ -375,6 +440,7 @@ fn atmospheric_entry(
             .max(0.0),
         impact_velocity: state.v.max(0.0),
         breakup_altitude,
+        trajectory: complete_trajectory(trajectory, state, time),
     }
 }
 

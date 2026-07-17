@@ -4,7 +4,9 @@
 import { sourceBound, sourceEnumValues } from "../lib/scenario-schema";
 import {
   WEAPON_PRESETS,
+  type AsteroidDetail,
   type AsteroidInput,
+  type AsteroidVisualReport,
   type BurstType,
   type HazardResult,
   type NuclearDetail,
@@ -12,6 +14,8 @@ import {
   type NuclearShelterReport,
   type TargetType,
 } from "../hazards";
+import { CraterDiagram } from "./CraterDiagram";
+import { TrajectoryChart } from "./TrajectoryChart";
 import type { WorkspaceMode } from "../lib/settings";
 import { buildDirectResultEvidence } from "../lib/trust-evidence";
 import { NumericField } from "./NumericField";
@@ -104,6 +108,7 @@ export function HazardControls({
   onTogglePick,
   pickActive,
   result,
+  asteroidVisuals,
   shelterReport,
   windFromDeg,
   onWindChange,
@@ -124,6 +129,7 @@ export function HazardControls({
   onTogglePick: () => void;
   pickActive: boolean;
   result: HazardResult | null;
+  asteroidVisuals?: AsteroidVisualReport | null;
   shelterReport?: NuclearShelterReport | null;
   windFromDeg: number;
   onWindChange: (deg: number) => void;
@@ -144,6 +150,7 @@ export function HazardControls({
   const asteroidDensity = sourceBound("DirectAsteroid", "density_kg_m3");
   const nuclearBurstTypes = sourceEnumValues("DirectNuclear", "burst_type", true);
   const asteroidTargetTypes = sourceEnumValues("DirectAsteroid", "target_type", true);
+  const asteroidEffects = mode === "asteroid" ? (result?.detail as AsteroidDetail | undefined) : undefined;
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
   const timeline = nuclearEffects?.timeline ?? [];
   const hasFallout = Boolean(nuclearEffects?.fallout);
@@ -382,6 +389,19 @@ export function HazardControls({
               </div>
             ))}
           </div>
+          {mode === "asteroid" && asteroidEffects && asteroidVisuals ? (
+            <section className="hazard__diagrams" aria-label="Impact profile">
+              <h3>Impact profile</h3>
+              <p>Bounded visualization samples retained by {asteroidVisuals.model}; the browser only draws the returned values.</p>
+              <TrajectoryChart
+                trajectory={asteroidVisuals.trajectory}
+                reachesGround={asteroidEffects.atmosphericEntry.reachesGround}
+                breakupAltitude={asteroidEffects.atmosphericEntry.breakupAltitude}
+                airburstAltitude={asteroidEffects.atmosphericEntry.airburstAltitude}
+              />
+              {asteroidVisuals.crater ? <CraterDiagram crater={asteroidVisuals.crater} /> : null}
+            </section>
+          ) : null}
           {result.casualties && (
             <div className="hazard__casualties">
               <strong>{magnitudeDisplayBand(result.casualties.deaths)}</strong> fatalities ·{" "}

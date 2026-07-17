@@ -78,6 +78,15 @@ rerunning the model or accepting client-supplied effect radii.
 - **Limits:** the source result must still be present in the bounded 16-result
   direct-hazard registry; asteroid and stale IDs fail closed.
 
+### `asteroid_result_visuals`
+Return bounded visualization data retained by one registered immutable asteroid
+result without accepting browser-computed entry or crater values.
+- **Input:** validated content-addressed `result_id`
+- **Output:** up to 256 atmospheric trajectory samples plus optional final
+  crater diameter, depth, rim height, and simple/complex classification.
+- **Limits:** the source result must still be present in the bounded 16-result
+  direct-hazard registry; nuclear and stale IDs fail closed.
+
 ### `lamb_wave_sample`
 Atmospheric Lamb-wave properties at a given distance from source.
 - **Input:** `LambWaveSampleRequest` — source params + receiver lat/lon

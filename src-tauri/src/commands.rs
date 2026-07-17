@@ -252,6 +252,15 @@ pub fn nuclear_shelter_advisor(
     crate::physics::direct_hazard_probe::shelter_report(result_id)
 }
 
+/// Return bounded trajectory and crater visualization data retained by a
+/// registered asteroid result without accepting client-computed physics.
+#[tauri::command]
+pub fn asteroid_result_visuals(
+    result_id: String,
+) -> Result<crate::physics::direct_hazard_probe::AsteroidVisualReport, String> {
+    crate::physics::direct_hazard_probe::asteroid_visual_report(result_id)
+}
+
 fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
     let total = packets.iter().try_fold(0_usize, |total, packet| {
         total
