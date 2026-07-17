@@ -164,6 +164,16 @@
   cursor: pointer;
 }
 
+.swe__bathymetry-source {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.swe__bathymetry-source select {
+  width: 100%;
+  min-width: 0;
+}
+
 .swe__confidence {
   padding: 7px 8px;
   border-radius: var(--r-sm);

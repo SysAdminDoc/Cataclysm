@@ -137,6 +137,7 @@ export function BathymetryImportPanel() {
       setPreview(asset.report);
       setRemovedAssetId(null);
       setMessage(`${asset.report.file_name} is cached for offline use.`);
+      window.dispatchEvent(new CustomEvent("cataclysm:bathymetry-cache-changed"));
     } catch (cause) {
       setError(`Import failed: ${errorMessage(cause)}`);
     } finally {
@@ -153,6 +154,7 @@ export function BathymetryImportPanel() {
       setAssets((current) => current.filter((item) => item.asset_id !== assetId));
       setRemovedAssetId(assetId);
       setMessage("Bathymetry moved to the local recovery area.");
+      window.dispatchEvent(new CustomEvent("cataclysm:bathymetry-cache-changed"));
     } catch (cause) {
       setError(`Remove failed: ${errorMessage(cause)}`);
     } finally {
@@ -169,6 +171,7 @@ export function BathymetryImportPanel() {
       setAssets((current) => [asset, ...current]);
       setRemovedAssetId(null);
       setMessage(`${asset.report.file_name} was restored.`);
+      window.dispatchEvent(new CustomEvent("cataclysm:bathymetry-cache-changed"));
     } catch (cause) {
       setError(`Restore failed: ${errorMessage(cause)}`);
     } finally {

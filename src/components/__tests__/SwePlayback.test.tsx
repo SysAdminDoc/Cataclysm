@@ -8,6 +8,7 @@ import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../../lib/geodesy";
 const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
   cancelSimulation: vi.fn(),
+  listImportedBathymetry: vi.fn(),
 }));
 const exportApi = vi.hoisted(() => ({
   exportGaugeCsv: vi.fn(),
@@ -84,6 +85,8 @@ describe("SwePlayback", () => {
     tauriApi.simulateGridStreaming.mockReset();
     tauriApi.cancelSimulation.mockReset();
     tauriApi.cancelSimulation.mockResolvedValue(undefined);
+    tauriApi.listImportedBathymetry.mockReset();
+    tauriApi.listImportedBathymetry.mockResolvedValue([]);
     exportApi.exportGaugeCsv.mockReset();
     exportApi.exportGaugeCsv.mockReturnValue({ ok: true });
   });
@@ -93,6 +96,44 @@ describe("SwePlayback", () => {
     expect(screen.getByLabelText("Grid resolution in cells per degree")).toHaveAttribute(
       "title",
       "Higher resolution is more accurate but slower. Default is 8.",
+    );
+  });
+
+  it("threads a selected content-addressed bathymetry asset into the solver request", async () => {
+    const assetId = `local-bathymetry-${"b".repeat(64)}`;
+    tauriApi.listImportedBathymetry.mockResolvedValue([{
+      asset_id: assetId,
+      report: {
+        file_name: "coastal-depth.tif",
+        source_label: "Harbor survey",
+        sha256: "b".repeat(64),
+      },
+    }]);
+    tauriApi.simulateGridStreaming.mockResolvedValue({
+      dt_s: 2,
+      nx: 2,
+      ny: 2,
+      used_gpu: false,
+      n_snapshots: 0,
+      cancelled: false,
+      run_quality: RUN_QUALITY,
+    });
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} />);
+
+    const source = await screen.findByRole("combobox", { name: "Bathymetry source" });
+    await user.selectOptions(source, assetId);
+    expect(screen.getByRole("note")).toHaveTextContent(/bilinear solver-grid resampling/i);
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+
+    expect(tauriApi.simulateGridStreaming).toHaveBeenCalledWith(
+      "run-test",
+      expect.objectContaining({
+        use_real_bathymetry: true,
+        bathymetry_asset_id: assetId,
+      }),
+      expect.any(Function),
+      expect.any(Function),
     );
   });
 
@@ -112,7 +153,7 @@ describe("SwePlayback", () => {
     const user = userEvent.setup();
     render(<SwePlayback initial={INITIAL} onSnapshot={onSnapshot} onSnapshotsReady={onSnapshotsReady} />);
 
-    expect(screen.getByText("Use simplified ocean-depth model")).toBeInTheDocument();
+    expect(screen.getByText("Use spatially varying ocean depths")).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(/Low confidence/i);
     expect(screen.getByRole("note")).toHaveTextContent(/GEBCO_2026\/TID-backed terrain/i);
 
@@ -316,7 +357,7 @@ describe("SwePlayback", () => {
 
     await user.click(screen.getByRole("button", { name: "Run simulation" }));
     expect(await screen.findByRole("button", { name: "Retry simulation" })).toBeInTheDocument();
-    expect(screen.getByText("Use simplified ocean-depth model")).toBeInTheDocument();
+    expect(screen.getByText("Use spatially varying ocean depths")).toBeInTheDocument();
 
     tauriApi.simulateGridStreaming.mockResolvedValue({
       dt_s: 2,

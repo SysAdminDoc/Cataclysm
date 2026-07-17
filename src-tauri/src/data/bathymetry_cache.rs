@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
 use super::bathymetry_import::{
-    BathymetryPreflight, BathymetryPreflightRequest, BathymetryRasterFormat,
-    preflight_bathymetry_import, sha256_file,
+    BathymetryPreflight, BathymetryPreflightRequest, BathymetryRaster, BathymetryRasterFormat,
+    decode_bathymetry_raster, preflight_bathymetry_import, sha256_file,
 };
 
 const CACHE_SCHEMA_VERSION: u32 = 1;
@@ -61,7 +61,7 @@ fn validate_sha256(value: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_asset_id(value: &str) -> Result<&str, String> {
+pub(crate) fn validate_asset_id(value: &str) -> Result<&str, String> {
     let digest = value
         .strip_prefix("local-bathymetry-")
         .ok_or_else(|| "invalid local bathymetry asset id".to_owned())?;
@@ -98,6 +98,42 @@ fn read_manifest(path: &Path) -> Result<ImportedBathymetryAsset, String> {
         return Err("bathymetry manifest cache filename is invalid".into());
     }
     Ok(asset)
+}
+
+pub(crate) fn load_cached_raster(
+    app_data_dir: &Path,
+    id: &str,
+) -> Result<(ImportedBathymetryAsset, BathymetryRaster), String> {
+    validate_asset_id(id)?;
+    let root = cache_root(app_data_dir);
+    let asset = read_manifest(&root.join(format!("{id}.json")))?;
+    if asset.asset_id != id {
+        return Err("bathymetry manifest identity does not match the requested asset".into());
+    }
+    let source = root.join(&asset.cache_file);
+    let metadata = source
+        .metadata()
+        .map_err(|error| format!("bathymetry cached source is unavailable: {error}"))?;
+    if !metadata.is_file() || metadata.len() != asset.report.file_size_bytes {
+        return Err("bathymetry cached source size no longer matches its manifest".into());
+    }
+    if sha256_file(&source)? != asset.report.sha256 {
+        return Err("bathymetry cached source checksum no longer matches its manifest".into());
+    }
+    let raster = decode_bathymetry_raster(
+        &source,
+        asset.report.format,
+        Some(&asset.report.variable),
+        asset.report.sample_semantics,
+    )?;
+    if raster.width != asset.report.width
+        || raster.height != asset.report.height
+        || raster.bounds_wgs84 != asset.report.bounds_wgs84
+        || raster.resolution_deg != asset.report.resolution_deg
+    {
+        return Err("bathymetry cached source metadata no longer matches its manifest".into());
+    }
+    Ok((asset, raster))
 }
 
 fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
@@ -403,6 +439,9 @@ mod tests {
         let req = fixture(source.path());
         let preview = preflight_bathymetry_import(req.clone()).unwrap();
         let asset = import_into_root(app_data.path(), req, &preview.sha256).unwrap();
+        let (_, raster) = load_cached_raster(app_data.path(), &asset.asset_id).unwrap();
+        assert_eq!(raster.sample_bilinear(0.5, -1.5).unwrap(), 300.0);
+        assert_eq!(raster.sample_bilinear(1.0, -1.0).unwrap(), 250.0);
         assert_eq!(
             list_from_root(&cache_root(app_data.path())).unwrap().len(),
             1
@@ -454,5 +493,21 @@ mod tests {
 
         let error = list_from_root(&cache_root(app_data.path())).unwrap_err();
         assert!(error.contains("cached source is unavailable"));
+    }
+
+    #[test]
+    fn solver_load_rejects_a_tampered_cached_source() {
+        let source = tempdir().unwrap();
+        let app_data = tempdir().unwrap();
+        let req = fixture(source.path());
+        let preview = preflight_bathymetry_import(req.clone()).unwrap();
+        let asset = import_into_root(app_data.path(), req, &preview.sha256).unwrap();
+        let cached = cache_root(app_data.path()).join(&asset.cache_file);
+        let mut bytes = fs::read(&cached).unwrap();
+        bytes[0] ^= 0xff;
+        fs::write(cached, bytes).unwrap();
+
+        let error = load_cached_raster(app_data.path(), &asset.asset_id).unwrap_err();
+        assert!(error.contains("checksum"));
     }
 }

@@ -367,6 +367,7 @@ export const api = {
     source_geometry?: InitialSourceGeometry | null;
     mean_depth_m: number;
     use_real_bathymetry?: boolean;
+    bathymetry_asset_id?: string | null;
     box_half_size_deg: number;
     cells_per_deg: number;
     t_end_s: number;
@@ -457,6 +458,7 @@ export const api = {
       source_geometry?: InitialSourceGeometry | null;
       mean_depth_m: number;
       use_real_bathymetry?: boolean;
+      bathymetry_asset_id?: string | null;
       box_half_size_deg: number;
       cells_per_deg: number;
       t_end_s: number;
@@ -475,6 +477,7 @@ export const api = {
     dt_s: number;
     nx: number;
     ny: number;
+    bathymetry_asset_id?: string | null;
     used_gpu: boolean;
     n_snapshots: number;
     cancelled: boolean;
@@ -506,6 +509,7 @@ export const api = {
       dt_s: number;
       nx: number;
       ny: number;
+      bathymetry_asset_id?: string | null;
       used_gpu: boolean;
       n_snapshots: number;
       cancelled: boolean;

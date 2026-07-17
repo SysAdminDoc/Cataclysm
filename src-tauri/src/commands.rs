@@ -3,6 +3,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, Weak};
 
@@ -30,7 +31,7 @@ use crate::physics::{
     },
 };
 use crate::presets::{Preset, all_presets, find_preset};
-use tauri::{AppHandle, Emitter, ipc::Response};
+use tauri::{AppHandle, Emitter, Manager, ipc::Response};
 
 #[derive(Debug)]
 struct ActiveSimulation {
@@ -996,6 +997,10 @@ pub struct SimulateGridRequest {
     /// or zero-depth, fall back to `mean_depth_m`.
     #[serde(default)]
     pub use_real_bathymetry: bool,
+    /// Optional content-addressed local raster. Requires
+    /// `use_real_bathymetry = true`; omission retains the bundled coarse model.
+    #[serde(default)]
+    pub bathymetry_asset_id: Option<String>,
     /// Half-extent of the simulation box around the source, degrees.
     /// Larger = more area covered, slower simulation.
     pub box_half_size_deg: f64,
@@ -1112,6 +1117,7 @@ pub struct SimulateGridResponse {
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
+    pub bathymetry_asset_id: Option<String>,
     /// F4-01 — `true` when the SWE finite-volume solver ran on the wgpu GPU
     /// path, `false` for the CPU `rayon` path. Always `false` on
     /// builds compiled without `--features gpu`. Frontend uses this
@@ -1317,6 +1323,12 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             SWE_MIN_MEAN_DEPTH_M
         ));
     }
+    if let Some(asset_id) = req.bathymetry_asset_id.as_deref() {
+        if !req.use_real_bathymetry {
+            return Err("bathymetry_asset_id requires use_real_bathymetry=true".into());
+        }
+        crate::data::bathymetry_cache::validate_asset_id(asset_id)?;
+    }
     if !(req.box_half_size_deg.is_finite()
         && req.box_half_size_deg > 0.0
         && req.box_half_size_deg <= 60.0)
@@ -1368,6 +1380,40 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
     Ok(())
 }
 
+fn populate_grid_bathymetry(
+    grid: &mut SwGrid,
+    req: &SimulateGridRequest,
+    app_data_dir: Option<&Path>,
+) -> Result<(), String> {
+    if let Some(asset_id) = req.bathymetry_asset_id.as_deref() {
+        let app_data_dir = app_data_dir.ok_or_else(|| {
+            "application data directory is unavailable for local bathymetry".to_owned()
+        })?;
+        let (_, raster) =
+            crate::data::bathymetry_cache::load_cached_raster(app_data_dir, asset_id)?;
+        let mut sampled = Vec::with_capacity(grid.nx * grid.ny);
+        for row in 0..grid.ny {
+            let lat = grid.south_lat + (row as f64 + 0.5) * grid.dlat_deg;
+            for column in 0..grid.nx {
+                let lon = grid.west_lon + (column as f64 + 0.5) * grid.dlon_deg;
+                sampled.push(raster.sample_bilinear(lat, lon)?);
+            }
+        }
+        if sampled.iter().all(|depth| *depth <= 0.0) {
+            return Err("local bathymetry crop contains no wet solver cells".into());
+        }
+        grid.h_m = sampled;
+    } else if req.use_real_bathymetry {
+        grid.fill_bathymetry_from(|lat, lon| {
+            let depth = crate::data::bathymetry::sample(lat, lon);
+            depth.max(0.0)
+        });
+    } else {
+        grid.fill_uniform_depth(req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M));
+    }
+    Ok(())
+}
+
 /// Run a real CPU shallow-water-equation simulation. Returns evenly-spaced
 /// PNG snapshots ready to drop into Cesium as a `SingleTileImageryProvider`.
 ///
@@ -1382,6 +1428,15 @@ pub async fn simulate_grid(
     req: SimulateGridRequest,
 ) -> Result<SimulateGridResponse, String> {
     validate_simulate_grid(&req)?;
+    let app_data_dir = req
+        .bathymetry_asset_id
+        .as_ref()
+        .map(|_| {
+            app.path()
+                .app_data_dir()
+                .map_err(|error| format!("application data directory is unavailable: {error}"))
+        })
+        .transpose()?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let memory = SimulationMemoryEstimate::for_plan(&plan, req.n_snapshots.max(2));
 
@@ -1406,17 +1461,7 @@ pub async fn simulate_grid(
             "viridis" => Colormap::Viridis,
             _ => Colormap::Diverging,
         };
-        let fallback_depth = req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M);
-        if req.use_real_bathymetry {
-            grid.fill_bathymetry_from(|lat, lon| {
-                let d = crate::data::bathymetry::sample(lat, lon);
-                // Zero is the dry-bed datum. The positivity-preserving solver
-                // can wet and retreat these cells without a synthetic depth.
-                d.max(0.0)
-            });
-        } else {
-            grid.fill_uniform_depth(fallback_depth);
-        }
+        populate_grid_bathymetry(&mut grid, &req, app_data_dir.as_deref())?;
         inject_source_initial_field(&mut grid, &req)?;
 
         // F4-05 — when include_lamb_wave is set, apply the atmospheric
@@ -1512,6 +1557,7 @@ pub async fn simulate_grid(
             dt_s: dt,
             nx,
             ny,
+            bathymetry_asset_id: req.bathymetry_asset_id.clone(),
             used_gpu,
             max_field,
             run_quality,
@@ -1535,6 +1581,7 @@ pub struct SimulateGridStreamMeta {
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
+    pub bathymetry_asset_id: Option<String>,
     pub used_gpu: bool,
     pub n_snapshots: u32,
     pub cancelled: bool,
@@ -1557,6 +1604,15 @@ pub async fn simulate_grid_streaming(
     on_render_packet: tauri::ipc::Channel<Response>,
 ) -> Result<SimulateGridStreamMeta, String> {
     validate_simulate_grid(&req)?;
+    let app_data_dir = req
+        .bathymetry_asset_id
+        .as_ref()
+        .map(|_| {
+            app.path()
+                .app_data_dir()
+                .map_err(|error| format!("application data directory is unavailable: {error}"))
+        })
+        .transpose()?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let memory = SimulationMemoryEstimate::for_plan(&plan, 0);
 
@@ -1581,15 +1637,7 @@ pub async fn simulate_grid_streaming(
                 "viridis" => Colormap::Viridis,
                 _ => Colormap::Diverging,
             };
-            let fallback_depth = req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M);
-            if req.use_real_bathymetry {
-                grid.fill_bathymetry_from(|lat, lon| {
-                    let d = crate::data::bathymetry::sample(lat, lon);
-                    d.max(0.0)
-                });
-            } else {
-                grid.fill_uniform_depth(fallback_depth);
-            }
+            populate_grid_bathymetry(&mut grid, &req, app_data_dir.as_deref())?;
             inject_source_initial_field(&mut grid, &req)?;
 
             if req.include_lamb_wave {
@@ -1705,6 +1753,7 @@ pub async fn simulate_grid_streaming(
                 dt_s: dt,
                 nx,
                 ny,
+                bathymetry_asset_id: req.bathymetry_asset_id.clone(),
                 used_gpu,
                 n_snapshots: render_stream.frame_count().min(u32::MAX as u64) as u32,
                 cancelled,
@@ -2348,6 +2397,7 @@ mod tests {
             source_geometry,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 10.0,
             t_end_s: 60.0,
@@ -3131,6 +3181,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,
@@ -3142,6 +3193,19 @@ mod tests {
             gauge_points: vec![],
         });
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn simulate_grid_requires_spatial_bathymetry_for_a_local_asset() {
+        let mut request = source_grid_request(None);
+        request.bathymetry_asset_id = Some(format!("local-bathymetry-{}", "a".repeat(64)));
+        let error = validate_simulate_grid(&request).unwrap_err();
+        assert!(error.contains("requires use_real_bathymetry=true"));
+
+        request.use_real_bathymetry = true;
+        assert!(validate_simulate_grid(&request).is_ok());
+        request.bathymetry_asset_id = Some("../depth.tif".into());
+        assert!(validate_simulate_grid(&request).unwrap_err().contains("invalid"));
     }
 
     #[test]
@@ -3167,6 +3231,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,
@@ -3189,6 +3254,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,
@@ -3213,6 +3279,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 10.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,
@@ -3232,6 +3299,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 10.0,
             use_real_bathymetry: true,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,
@@ -3258,6 +3326,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 5.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,
@@ -3317,6 +3386,7 @@ mod tests {
             source_geometry: None,
             mean_depth_m: 4_000.0,
             use_real_bathymetry: false,
+            bathymetry_asset_id: None,
             box_half_size_deg: 2.0,
             cells_per_deg: 1.0,
             t_end_s: 60.0,

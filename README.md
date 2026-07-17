@@ -33,7 +33,7 @@ Existing tools each do one piece:
 - **[Purdue "Impact: Earth!"](https://impact.ese.ic.ac.uk/ImpactEarth/)** — accurate formulas, single-point readout, no animation.
 - **[GeoClaw](http://depts.washington.edu/clawpack/geoclaw/)** / **[COMCOT](https://www.researchgate.net/publication/374553562)** / **[MOST](https://www.pmel.noaa.gov/news-story/first-global-tsunami-simulation-chicxulub-asteroid-impact-66-million-years-ago)** — operational accuracy, Fortran/Python, no consumer UI.
 
-`Cataclysm` combines them: **peer-reviewed source physics + a professional interactive globe workspace**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the app's low-confidence coarse basin/shelf bathymetry, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
+`Cataclysm` combines them: **peer-reviewed source physics + a professional interactive globe workspace**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the default low-confidence coarse basin/shelf bathymetry or a strictly validated local GeoTIFF/NetCDF-CF raster, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
 
 ---
 
@@ -189,9 +189,11 @@ another no-token online option, and a free Cesium ion token unlocks optional
 streamed imagery and visual bathymetric terrain from Settings. Provider terms,
 attribution, spatial metadata, and rights-review dates are visible beside the
 selected Earth source.
-Solver bathymetry remains the app's low-confidence coarse basin/shelf
-approximation until the blocked GEBCO_2026/TID-backed local data path is
-resolved.
+Solver bathymetry defaults to the app's low-confidence coarse basin/shelf
+approximation. Desktop users can instead preflight, cache, and select a local
+WGS 84 GeoTIFF or NetCDF-CF depth/elevation raster from Settings; unknown
+horizontal or vertical metadata fails closed, and solver runs reject uncovered
+or NoData cells rather than silently mixing sources.
 
 The bundled surface mask is intentionally coarse and declares a 550 km worst-
 case horizontal error. It is a consistency contract, not a shoreline product.
@@ -301,7 +303,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 │ │  ─ physics::landslide   Fritz–Hager + Slingerland–Voight         │  │
 │ │  ─ physics::earthquake  Okada 1985 (full I-term)                  │  │
 │ │  ─ physics::shallow_water  NSWE + Synolakis runup                │  │
-│ │  ─ data::bathymetry     coarse basin/shelf depth sampler         │  │
+│ │  ─ data::bathymetry     coarse or validated local raster depth   │  │
 │ │  ─ presets              Chicxulub / Tōhoku / Lituya / …          │  │
 │ └──────────────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────────────┘
@@ -321,7 +323,7 @@ legacy SWE PNG channel remains temporarily for analytical color overlays.
 This is not a forecast tool. Compared to operational models like NOAA MOST:
 
 - **What's accurate** — initial conditions (cavity geometry from Ward–Asphaug, fault displacement from Okada), idealized open-ocean propagation in deep water, far-field arrival times.
-- **What's approximate** — solver bathymetry (coarse basin means with a shelf taper, not GEBCO_2026/TID-backed terrain), coastal runup (we use Synolakis 1987 analytical instead of full wetting/drying), first-order inundation discs, dispersion (linear long-wave first, Boussinesq later).
+- **What's approximate** — default solver bathymetry uses coarse basin means with a shelf taper; local raster accuracy remains the user's documented source accuracy and is bilinearly resampled without datum transformation. Coastal runup uses Synolakis 1987 analytical instead of full wetting/drying; inundation discs are first-order; dispersion is linear long-wave first (Boussinesq later).
 - **What's wrong** — anything involving the atmosphere coupling (Hunga Tonga–style Lamb-wave coupling is a research frontier), tsunami earthquake source-time functions (we use static dislocation), submarine landslide rheology.
 - **The "Russia Poseidon" honest take** — Russian state media's 500-m-wave claim is propaganda. The 1996 Defense Nuclear Agency study put underwater-explosion wave-generation efficiency at ~5%. A 100-Mt warhead at 100 km open ocean produces a ~few-meter wave, not a city-killer. We model both the propaganda yield and a realistic one — the comparison is the point.
 

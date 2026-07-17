@@ -68,9 +68,10 @@ Atmospheric Lamb-wave properties at a given distance from source.
 
 ### `simulate_grid`
 Run a full SWE simulation (batch — returns all snapshots at once). GPU-aware: dispatches to wgpu when `--features gpu` is compiled and an adapter exists.
-- **Input:** `SimulateGridRequest` — source location, `initial_amplitude_m`, `source_sigma_m`, `mean_depth_m`, `use_real_bathymetry`, `box_half_size_deg` (0,60], `cells_per_deg` (0,200], `t_end_s` [0,86400], `n_snapshots` [1,240], `include_lamb_wave`, `colormap` (diverging|cividis)
+- **Input:** `SimulateGridRequest` — source location, `initial_amplitude_m`, `source_sigma_m`, `mean_depth_m`, `use_real_bathymetry`, optional content-addressed `bathymetry_asset_id`, `box_half_size_deg` (0,60], `cells_per_deg` (0,200], `t_end_s` [0,86400], `n_snapshots` [2,240], `include_lamb_wave`, `colormap` (diverging|cividis|viridis)
 - **Output:** `Result<SimulateGridResponse, String>` — `snapshots` (Vec of PNG-encoded GridSnapshot), `dt_s, nx, ny, used_gpu`
 - **Limits:** 4M cells max; 50B cell-steps max; 1M leapfrog steps max
+- **Local raster contract:** an asset ID requires `use_real_bathymetry=true`. The cached manifest and SHA-256 are revalidated; source axes are normalized and depths are bilinearly sampled at solver cell centres. Any uncovered or NoData cell rejects the run rather than mixing bathymetry sources.
 
 ### `simulate_grid_streaming`
 Streaming variant — sends each snapshot via a Tauri Channel as it's computed. GPU-aware (same dispatch as `simulate_grid`).

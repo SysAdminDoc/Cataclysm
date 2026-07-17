@@ -21,6 +21,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   vertical convention, NoData, depth range, and checksum. The same panel lists
   offline imports and offers recoverable removal; browser preview clearly marks
   the workflow as desktop-only.
+- Solver setup can now select a cached raster by its content-addressed asset ID.
+  Batch and streaming runs revalidate the manifest and checksum, normalize
+  GeoTIFF/NetCDF axis order, and bilinearly resample depth onto solver cell
+  centres. Incomplete spatial coverage, NoData intersections, tampering, and
+  ambiguous local/coarse requests fail closed; run metadata preserves the asset ID.
 
 ## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
 

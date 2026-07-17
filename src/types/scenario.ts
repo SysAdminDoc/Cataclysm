@@ -147,6 +147,7 @@ export type GridSnapshot = {
   bbox: [number, number, number, number];
   nx: number;
   ny: number;
+  bathymetry_asset_id?: string | null;
   height_field: HeightFieldMetadata;
   eta_min_m: number;
   eta_max_m: number;

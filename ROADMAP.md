@@ -337,13 +337,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Acceptance: peak, time-of-maximum, arrival, and eta² accumulation update on every accepted GPU step without host readback; eta/u/v read back only at display, cancellation, or completion boundaries; CPU/GPU products stay within declared tolerance and a fixed 4M-cell benchmark records material speedup without extra VRAM beyond budget.
   Complexity: L
 
-- [ ] P1 — Import local NetCDF-CF and GeoTIFF bathymetry through a strict preflight
-  Why: users cannot escape the coarse basin approximation without the blocked bundled-GEBCO channel, while mature tsunami tools accept local scientific rasters and community evidence identifies preprocessing as a primary barrier.
-  Evidence: `data/bathymetry/README.md`; `src-tauri/src/data/bathymetry.rs`; GeoClaw topology work https://github.com/clawpack/geoclaw/issues/705; CF 1.13 https://cfconventions.org/Data/cf-conventions/cf-conventions-1.13/cf-conventions.html.
-  Touches: bounded raster readers, geodesy/surface contracts, crop/resample preview, cache/manifest, Settings/scenario data picker, diagnostics.
-  Acceptance: a user can preview and import a documented NetCDF-CF/GeoTIFF subset; unknown CRS/datum/axis/units fail closed; resolution, nodata, vertical convention, checksum, rights, crop and resampling are shown before commit; imported data is cached atomically and can be removed/rolled back offline.
-  Complexity: L
-
 - [ ] P1 — Extend Inspect into an explainable all-hazard point probe
   Why: tsunami inspect reports wave/runup at a click, but asteroid/nuclear users only see concentric regions rather than the effect, arrival, threshold, formula, and uncertainty at a chosen place.
   Evidence: `src-tauri/src/commands.rs` (`inspect_at_point` is tsunami-only); `src-tauri/src/physics/direct_hazard.rs`; NUKEMAP FAQ https://db.nuclearsecrecy.com/nukemap/faq/.

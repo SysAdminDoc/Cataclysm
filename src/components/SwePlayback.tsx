@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { api, createSimulationRunId, isTauri } from "../lib/tauri";
+import { api, createSimulationRunId, isTauri, type ImportedBathymetryAsset } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
@@ -142,6 +142,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [gaugeExportFailure, setGaugeExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
   const [useBathy, setUseBathy] = useState(true);
+  const [bathymetryAssets, setBathymetryAssets] = useState<ImportedBathymetryAsset[]>([]);
+  const [bathymetryAssetId, setBathymetryAssetId] = useState("");
+  const [bathymetryListError, setBathymetryListError] = useState<string | null>(null);
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
@@ -171,6 +174,29 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const mountedRef = useRef(true);
   const gaugeCounter = useRef(0);
   const handledRunAndWatchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    const refresh = () => {
+      api.listImportedBathymetry()
+        .then((assets) => {
+          if (cancelled) return;
+          setBathymetryAssets(assets);
+          setBathymetryAssetId((current) => assets.some((asset) => asset.asset_id === current) ? current : "");
+          setBathymetryListError(null);
+        })
+        .catch((cause) => {
+          if (!cancelled) setBathymetryListError(cause instanceof Error ? cause.message : String(cause));
+        });
+    };
+    refresh();
+    window.addEventListener("cataclysm:bathymetry-cache-changed", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("cataclysm:bathymetry-cache-changed", refresh);
+    };
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -320,10 +346,15 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const handleGaugeCsvExport = useCallback(() => {
     if (gaugeSeries.length === 0) return;
     const mode = isTauri() ? "Backend SWE solver" : "Browser preview (approximate)";
-    const bathy = useBathy ? "Coarse basin/shelf" : "Uniform depth";
+    const selectedAsset = bathymetryAssets.find((asset) => asset.asset_id === bathymetryAssetId);
+    const bathy = !useBathy
+      ? "Uniform depth"
+      : selectedAsset
+        ? `Local raster: ${selectedAsset.report.file_name} (${selectedAsset.report.sha256})`
+        : "Coarse basin/shelf";
     const result = exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality);
     setGaugeExportFailure(result.ok ? null : result);
-  }, [diag?.quality, gaugeSeries, useBathy]);
+  }, [bathymetryAssetId, bathymetryAssets, diag?.quality, gaugeSeries, useBathy]);
 
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
@@ -399,6 +430,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         source_geometry: initial.source_geometry ?? null,
         mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
         use_real_bathymetry: useBathy,
+        bathymetry_asset_id: useBathy && bathymetryAssetId ? bathymetryAssetId : null,
         box_half_size_deg: halfDeg,
         cells_per_deg: cellsPerDeg,
         t_end_s: 60 * 60,
@@ -505,7 +537,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, useBathy, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS]);
+  }, [initial, snapshots, diag, maxField, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -570,11 +602,24 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             checked={useBathy}
             onChange={(e) => setUseBathy(e.target.checked)}
           />
-          <span>Use simplified ocean-depth model</span>
+          <span>Use spatially varying ocean depths</span>
         </label>
-        {workspaceMode === "advanced" && <div className="swe__confidence" role="note">
+        {useBathy && isTauri() && (
+          <label className="swe__check swe__bathymetry-source">
+            <span>Bathymetry source</span>
+            <select value={bathymetryAssetId} onChange={(event) => setBathymetryAssetId(event.target.value)} aria-label="Bathymetry source">
+              <option value="">Bundled coarse basin / shelf model</option>
+              {bathymetryAssets.map((asset) => <option key={asset.asset_id} value={asset.asset_id}>{asset.report.file_name} · {asset.report.source_label}</option>)}
+            </select>
+          </label>
+        )}
+        {workspaceMode === "advanced" && bathymetryAssetId === "" && <div className="swe__confidence" role="note">
           Low confidence: current solver depths are basin means with a shelf taper, not GEBCO_2026/TID-backed terrain.
         </div>}
+        {workspaceMode === "advanced" && bathymetryAssetId !== "" && <div className="swe__confidence" role="note">
+          Local raster: bilinear solver-grid resampling; the raster must cover every solver cell and NoData intersections fail closed.
+        </div>}
+        {bathymetryListError && <div className="panel-error" role="alert">Cached bathymetry unavailable: {bathymetryListError}</div>}
         <label className="swe__check">
           <input
             type="checkbox"

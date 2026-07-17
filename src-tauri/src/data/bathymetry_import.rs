@@ -102,6 +102,63 @@ struct RasterCore {
     warnings: Vec<String>,
 }
 
+/// Decoded, strictly validated bathymetry normalized to west-to-east columns
+/// and south-to-north rows. Values are still optional at declared NoData cells.
+#[derive(Debug)]
+pub(crate) struct BathymetryRaster {
+    pub width: u32,
+    pub height: u32,
+    pub bounds_wgs84: [f64; 4],
+    pub resolution_deg: [f64; 2],
+    values_depth_m: Vec<Option<f64>>,
+}
+
+impl BathymetryRaster {
+    pub(crate) fn sample_bilinear(&self, lat: f64, lon: f64) -> Result<f64, String> {
+        let [west, south, east, north] = self.bounds_wgs84;
+        if !lat.is_finite()
+            || !lon.is_finite()
+            || lon < west
+            || lon > east
+            || lat < south
+            || lat > north
+        {
+            return Err(format!(
+                "local bathymetry does not cover solver cell at {lat:.6}°, {lon:.6}°"
+            ));
+        }
+        let x = ((lon - west) / self.resolution_deg[0] - 0.5).clamp(0.0, f64::from(self.width - 1));
+        let y =
+            ((lat - south) / self.resolution_deg[1] - 0.5).clamp(0.0, f64::from(self.height - 1));
+        let x0 = x.floor() as usize;
+        let y0 = y.floor() as usize;
+        let x1 = (x0 + 1).min(self.width as usize - 1);
+        let y1 = (y0 + 1).min(self.height as usize - 1);
+        let tx = x - x0 as f64;
+        let ty = y - y0 as f64;
+        let samples = [
+            (x0, y0, (1.0 - tx) * (1.0 - ty)),
+            (x1, y0, tx * (1.0 - ty)),
+            (x0, y1, (1.0 - tx) * ty),
+            (x1, y1, tx * ty),
+        ];
+        let mut interpolated = 0.0;
+        for (column, row, weight) in samples {
+            if weight <= f64::EPSILON {
+                continue;
+            }
+            let value =
+                self.values_depth_m[row * self.width as usize + column].ok_or_else(|| {
+                    format!(
+                        "local bathymetry NoData intersects solver cell at {lat:.6}°, {lon:.6}°"
+                    )
+                })?;
+            interpolated += value * weight;
+        }
+        Ok(interpolated.max(0.0))
+    }
+}
+
 fn bounded_text(value: &str, label: &str) -> Result<String, String> {
     let value = value.trim();
     if value.is_empty() {
@@ -272,6 +329,15 @@ fn preflight_geotiff(
         warnings.push("NoData is not declared; every finite cell will be treated as data.".into());
     }
 
+    let mut values = read_geotiff_values(&file)?;
+    // GeoTIFF rows are north-to-south; the solver samples south-to-north rows.
+    let row_width = file.width() as usize;
+    for row in 0..(file.height() as usize / 2) {
+        let opposite = file.height() as usize - 1 - row;
+        let (before, after) = values.split_at_mut(opposite * row_width);
+        before[row * row_width..(row + 1) * row_width].swap_with_slice(&mut after[..row_width]);
+    }
+
     Ok(RasterCore {
         variable: "band_1".into(),
         width: file.width(),
@@ -282,7 +348,7 @@ fn preflight_geotiff(
         vertical_datum: format!("EPSG:{expected_vertical_epsg}"),
         units: "m".into(),
         nodata,
-        values: read_geotiff_values(&file)?,
+        values,
         warnings,
     })
 }
@@ -439,21 +505,19 @@ fn preflight_netcdf(
         .ok_or_else(|| "NetCDF longitude must be a coordinate variable".to_owned())?
         .name
         .as_str();
-    let (height, width) = match dimension_names.as_slice() {
-        [lat_name, lon_name] if *lat_name == lat_dimension && *lon_name == lon_dimension => {
-            (shape[0], shape[1])
-        }
-        [lon_name, lat_name] if *lat_name == lat_dimension && *lon_name == lon_dimension => {
-            (shape[1], shape[0])
-        }
+    let lat_lon_order = match dimension_names.as_slice() {
+        [lat_name, lon_name] if *lat_name == lat_dimension && *lon_name == lon_dimension => true,
+        [lon_name, lat_name] if *lat_name == lat_dimension && *lon_name == lon_dimension => false,
         _ => {
             return Err(
                 "NetCDF bathymetry dimensions must be the CF latitude/longitude coordinates".into(),
             );
         }
     };
-    let width = u32::try_from(width).map_err(|_| "NetCDF longitude dimension is too large")?;
-    let height = u32::try_from(height).map_err(|_| "NetCDF latitude dimension is too large")?;
+    let width =
+        u32::try_from(lon_values.len()).map_err(|_| "NetCDF longitude dimension is too large")?;
+    let height =
+        u32::try_from(lat_values.len()).map_err(|_| "NetCDF latitude dimension is too large")?;
     checked_dimensions(width, height)?;
 
     let units = attr_string(variable, "units").unwrap_or_default();
@@ -490,12 +554,33 @@ fn preflight_netcdf(
 
     let nodata =
         attr_number(variable, "_FillValue").or_else(|| attr_number(variable, "missing_value"));
-    let values = file
+    let raw_values: Vec<f64> = file
         .read_variable_unpacked_masked(variable.name())
         .map_err(|error| format!("NetCDF bathymetry variable could not be read: {error}"))?
         .iter()
         .copied()
         .collect();
+    let mut values = Vec::with_capacity(raw_values.len());
+    for target_lat in 0..height as usize {
+        let source_lat = if lat_step > 0.0 {
+            target_lat
+        } else {
+            height as usize - 1 - target_lat
+        };
+        for target_lon in 0..width as usize {
+            let source_lon = if lon_step > 0.0 {
+                target_lon
+            } else {
+                width as usize - 1 - target_lon
+            };
+            let source_index = if lat_lon_order {
+                source_lat * width as usize + source_lon
+            } else {
+                source_lon * height as usize + source_lat
+            };
+            values.push(raw_values[source_index]);
+        }
+    }
     let mut warnings = Vec::new();
     if nodata.is_none() {
         warnings.push("NoData is not declared; every finite cell will be treated as data.".into());
@@ -513,6 +598,40 @@ fn preflight_netcdf(
         nodata,
         values,
         warnings,
+    })
+}
+
+pub(crate) fn decode_bathymetry_raster(
+    path: &Path,
+    format: BathymetryRasterFormat,
+    variable: Option<&str>,
+    semantics: BathymetrySampleSemantics,
+) -> Result<BathymetryRaster, String> {
+    let core = match format {
+        BathymetryRasterFormat::GeoTiff => preflight_geotiff(path, semantics)?,
+        BathymetryRasterFormat::NetCdf => preflight_netcdf(path, variable, semantics)?,
+    };
+    let expected_cells = u64::from(core.width) * u64::from(core.height);
+    if core.values.len() as u64 != expected_cells {
+        return Err("bathymetry decoded cell count does not match its declared dimensions".into());
+    }
+    let values_depth_m = core
+        .values
+        .into_iter()
+        .map(|raw| {
+            if !raw.is_finite() || core.nodata.is_some_and(|value| raw == value) {
+                None
+            } else {
+                Some(semantics.to_depth_m(raw))
+            }
+        })
+        .collect();
+    Ok(BathymetryRaster {
+        width: core.width,
+        height: core.height,
+        bounds_wgs84: core.bounds_wgs84,
+        resolution_deg: core.resolution_deg,
+        values_depth_m,
     })
 }
 
@@ -723,6 +842,22 @@ mod tests {
         assert_eq!(report.variable, "depth");
         assert_eq!(report.valid_cell_count, 5);
         assert_eq!(report.nodata_cell_count, 1);
+
+        let raster = decode_bathymetry_raster(
+            &path,
+            BathymetryRasterFormat::NetCdf,
+            Some("depth"),
+            BathymetrySampleSemantics::DepthPositiveDown,
+        )
+        .unwrap();
+        assert_eq!(raster.sample_bilinear(0.5, -2.5).unwrap(), 100.0);
+        assert_eq!(raster.sample_bilinear(1.5, -2.5).unwrap(), 400.0);
+        assert!(
+            raster
+                .sample_bilinear(1.5, -1.5)
+                .unwrap_err()
+                .contains("NoData")
+        );
     }
 
     #[test]
