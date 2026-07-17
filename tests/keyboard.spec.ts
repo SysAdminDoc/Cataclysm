@@ -120,16 +120,16 @@ test.describe("Keyboard-only golden path", () => {
     const scenarioTabs = page.locator(".scenario-tabs");
     const asteroid = scenarioTabs.getByRole("tab", { name: "Asteroid" });
     const nuclear = scenarioTabs.getByRole("tab", { name: "Nuclear" });
-    const landslide = scenarioTabs.getByRole("tab", { name: "Landslide" });
+    const meteotsunami = scenarioTabs.getByRole("tab", { name: "Meteotsunami" });
     await asteroid.focus();
     await expect(asteroid).toHaveAttribute("tabindex", "0");
     await asteroid.press("ArrowRight");
     await expect(nuclear).toBeFocused();
     await expect(nuclear).toHaveAttribute("aria-selected", "true");
     await nuclear.press("End");
-    await expect(landslide).toBeFocused();
-    await expect(landslide).toHaveAttribute("aria-selected", "true");
-    await landslide.press("Home");
+    await expect(meteotsunami).toBeFocused();
+    await expect(meteotsunami).toHaveAttribute("aria-selected", "true");
+    await meteotsunami.press("Home");
     await expect(asteroid).toBeFocused();
     await expect(asteroid).toHaveAttribute("aria-selected", "true");
 

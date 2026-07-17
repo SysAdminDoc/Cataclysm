@@ -60,7 +60,7 @@ describe("CesiumInteractionOwnershipHost", () => {
     const handler = host.attachHandler(mode, 1);
     const listener = host.attachListener(mode, 1);
 
-    expect(test.canvas.style.cursor).toBe("crosshair");
+    expect(test.canvas).toHaveClass("cataclysm-cesium-cursor--pick");
     click(handler);
     expect(positions).toHaveLength(1);
     expect(positions[0][0]).toBeCloseTo(34, 8);
@@ -74,7 +74,7 @@ describe("CesiumInteractionOwnershipHost", () => {
     host.detachHandler(handler);
     host.detachHandler(handler);
     expect(handler.isDestroyed()).toBe(true);
-    expect(test.canvas.style.cursor).toBe("");
+    expect(test.canvas).not.toHaveClass("cataclysm-cesium-cursor--pick");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(cancels).toBe(1);
   });
@@ -91,7 +91,7 @@ describe("CesiumInteractionOwnershipHost", () => {
     const handler = host.attachHandler(mode, 7);
     const listener = host.attachListener(mode, 7);
     expect(listener.generation).toBe(7);
-    expect(test.canvas.style.cursor).toBe("help");
+    expect(test.canvas).toHaveClass("cataclysm-cesium-cursor--inspect");
     test.setPicked(undefined);
     click(handler);
     expect(positions).toBe(0);
@@ -119,7 +119,7 @@ describe("CesiumInteractionOwnershipHost", () => {
 
     expect(test.entities.size).toBe(0);
     expect(test.remove).toHaveBeenCalledWith(entity);
-    expect(test.canvas.style.cursor).toBe("");
+    expect(test.canvas).not.toHaveClass("cataclysm-cesium-cursor--inspect");
     expect(controller.diagnostics()).toMatchObject({
       enabled: false,
       ownedHandlerCount: 0,

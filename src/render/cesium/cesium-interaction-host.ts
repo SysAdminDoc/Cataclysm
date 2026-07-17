@@ -31,7 +31,8 @@ export class CesiumInteractionOwnershipHost implements InteractionOwnershipHost<
   attachHandler(mode: CesiumInteractionMode, _generation: number): Cesium.ScreenSpaceEventHandler {
     this.#requireViewer();
     if (this.#activeHandler) throw new Error("Cesium interaction host already owns an input handler.");
-    this.#viewer.canvas.style.cursor = mode.kind === "pick" ? "crosshair" : "help";
+    this.#viewer.canvas.classList.toggle("cataclysm-cesium-cursor--pick", mode.kind === "pick");
+    this.#viewer.canvas.classList.toggle("cataclysm-cesium-cursor--inspect", mode.kind === "inspect");
     const handler = new Cesium.ScreenSpaceEventHandler(this.#viewer.canvas);
     handler.setInputAction((event: { position: Cesium.Cartesian2 }) => {
       if (this.#viewer.isDestroyed()) return;
@@ -53,7 +54,12 @@ export class CesiumInteractionOwnershipHost implements InteractionOwnershipHost<
     if (!handler.isDestroyed()) handler.destroy();
     if (this.#activeHandler === handler) {
       this.#activeHandler = null;
-      if (!this.#viewer.isDestroyed()) this.#viewer.canvas.style.cursor = "";
+      if (!this.#viewer.isDestroyed()) {
+        this.#viewer.canvas.classList.remove(
+          "cataclysm-cesium-cursor--pick",
+          "cataclysm-cesium-cursor--inspect",
+        );
+      }
     }
   }
 

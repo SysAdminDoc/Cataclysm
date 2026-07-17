@@ -10,6 +10,7 @@ import {
   cargoFeatureArgs,
 } from "./release-contract.mjs";
 import { validateCitationFile } from "./citation-contract.mjs";
+import { scanTrackedApplicationStyles } from "./inline-style-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const srcTauriRoot = path.join(repoRoot, "src-tauri");
@@ -379,6 +380,22 @@ function cspAllowlistGate() {
   }
 }
 
+function inlineStyleOwnershipGate() {
+  const violations = scanTrackedApplicationStyles(repoRoot);
+  if (violations.length === 0) return;
+  console.error("\nInline style ownership gate failed:");
+  for (const violation of violations) {
+    console.error(
+      `- ${violation.relativePath}:${violation.line}: ${violation.rule} (${violation.excerpt})`,
+    );
+  }
+  console.error(
+    "Application code must use tracked stylesheets, classes, data attributes, or SVG presentation attributes. " +
+      "The desktop CSP unsafe-inline style exception is reserved for Cesium's widget internals.",
+  );
+  process.exit(1);
+}
+
 // -- Capability surface gate --
 // The app only uses load/get/set/save/delete store operations (verified across
 // src). The store enumeration, clear, and reload permissions must not be
@@ -457,6 +474,9 @@ dompurifyFloorGate();
 
 console.log("\n==> CSP allowlist gate");
 cspAllowlistGate();
+
+console.log("\n==> Inline style ownership gate");
+inlineStyleOwnershipGate();
 
 console.log("\n==> Capability surface gate");
 capabilitySurfaceGate();

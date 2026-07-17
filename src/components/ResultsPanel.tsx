@@ -396,9 +396,7 @@ export function ResultsPanel({
                   aria-label="Scenario timeline scrubber"
                   aria-valuetext={`${Math.round(safeTimeS / 60)} minutes after source event`}
                 />
-                <div className="timeline__bar">
-                  <div className="timeline__fill" style={{ transform: `scaleX(${progress})` }} />
-                </div>
+                <progress className="timeline__bar" max={1} value={progress} aria-hidden />
                 <div className="timeline__readout">
                   <span>{(safeTimeS / 60).toFixed(0)} min after source</span>
                   <span>{(safeTimeS / 3600).toFixed(2)} h</span>

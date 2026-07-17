@@ -394,6 +394,15 @@ transforms over Tauri raw channels. Cesium decodes and presents those packets;
 future renderers replay the same bytes without reimplementing physics. The
 legacy SWE PNG channel remains temporarily for analytical color overlays.
 
+The WebView loads Cataclysm presentation only from bundled `style-src 'self'`
+stylesheets: tracked application HTML/TypeScript may not create inline style
+attributes, mutate DOM styles, or inject runtime stylesheets. CesiumJS is the
+sole exception because its widget writes inline dimensions and positions under
+`.cesium-viewer` / `.cesium-widget`. CSP cannot scope `'unsafe-inline'` to that
+subtree, so static source verification and a headless rendered-DOM inventory
+enforce the narrower ownership boundary while the desktop policy retains the
+token required by Cesium.
+
 ---
 
 ## The science (and its limits)

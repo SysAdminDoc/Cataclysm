@@ -2086,7 +2086,7 @@ export default function App() {
           <span className="app__viewport-instrument-label">Surface displacement</span>
           <div
             className="app__viewport-legend-ramp"
-            style={{ background: colormapLegend(legendColormap).gradient }}
+            data-colormap={legendColormap}
             aria-hidden
           />
           <div className="app__viewport-legend-scale" aria-hidden>
@@ -2097,10 +2097,12 @@ export default function App() {
           <small>{colormapLegend(legendColormap).caption}</small>
         </div>
         <div className="app__viewport-telemetry" aria-label="Viewport telemetry">
-          <div className="app__viewport-north" style={{ transform: `rotate(${-cameraTelemetry.headingDeg}deg)` }} aria-hidden>
-            <span>N</span>
-            <i />
-          </div>
+          <svg className="app__viewport-north" viewBox="0 0 36 36" aria-hidden>
+            <g transform={`rotate(${-cameraTelemetry.headingDeg} 18 18)`}>
+              <text x="18" y="9">N</text>
+              <path d="M18 11 L13 25 L18 22 L23 25 Z" />
+            </g>
+          </svg>
           <div>
             <span className="app__viewport-instrument-label">Camera</span>
             <strong>{cameraTelemetry.altitudeM >= 1_000_000 ? `${(cameraTelemetry.altitudeM / 1_000_000).toFixed(1)} Mm` : `${(cameraTelemetry.altitudeM / 1000).toFixed(0)} km`} altitude</strong>

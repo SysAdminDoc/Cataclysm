@@ -106,8 +106,18 @@
   height: 10px;
   margin: 9px 0 5px;
   border: 1px solid color-mix(in srgb, #ffffff 24%, transparent);
-  /* Gradient is set inline from the active solver colormap so the legend
-     matches the rendered overlay (see src/lib/colormap-legend.ts). */
+}
+
+.app__viewport-legend-ramp[data-colormap="diverging"] {
+  background: linear-gradient(90deg, rgb(30 120 255) 0%, rgb(65 165 255) 25%, #eef3f8 50%, rgb(255 95 75) 75%, rgb(255 20 10) 100%);
+}
+
+.app__viewport-legend-ramp[data-colormap="cividis"] {
+  background: linear-gradient(90deg, rgb(0 34 78) 0%, rgb(15 20 30) 48%, rgb(60 55 15) 52%, rgb(253 231 37) 100%);
+}
+
+.app__viewport-legend-ramp[data-colormap="viridis"] {
+  background: linear-gradient(90deg, rgb(68 1 84) 0%, rgb(59 82 139) 25%, rgb(33 145 140) 50%, rgb(94 201 98) 75%, rgb(253 231 37) 100%);
 }
 
 .app__viewport-legend-scale {
@@ -155,34 +165,35 @@
 }
 
 .app__viewport-north {
-  position: relative;
-  display: grid;
-  place-items: center;
   width: 36px;
   height: 36px;
   flex: 0 0 36px;
   border: 1px solid color-mix(in srgb, var(--subtext) 58%, transparent);
   border-radius: 50%;
-  color: var(--text);
+}
+
+.app__viewport-north g {
+  transform-origin: 18px 18px;
   transition: transform 120ms linear;
 }
 
-.app__viewport-north span {
-  position: absolute;
-  top: -7px;
-  padding: 0 3px;
-  background: var(--viewport-hud);
+.app__viewport-north text {
+  fill: var(--text);
   font-size: var(--type-micro);
   font-weight: 800;
+  text-anchor: middle;
 }
 
-.app__viewport-north i {
-  width: 0;
-  height: 0;
-  border-right: 5px solid transparent;
-  border-bottom: 13px solid var(--accent-active);
-  border-left: 5px solid transparent;
-  transform: translateY(-2px);
+.app__viewport-north path {
+  fill: var(--accent-active);
+}
+
+.cataclysm-cesium-cursor--pick {
+  cursor: crosshair;
+}
+
+.cataclysm-cesium-cursor--inspect {
+  cursor: help;
 }
 
 .app__viewport-hud--source {

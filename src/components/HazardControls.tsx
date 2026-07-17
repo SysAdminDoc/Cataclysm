@@ -541,7 +541,7 @@ export function HazardControls({
           <ul className="hazard__ring-legend">
             {result.rings.map((ring) => (
               <li key={ring.label}>
-                <i style={{ background: ring.color }} aria-hidden />
+                <i data-ring-color={ring.color} aria-hidden />
                 <span>{ring.label}</span>
                 <span className="hazard__ring-radius">
                   {ring.radiusM < 1000 ? `${ring.radiusM.toFixed(0)} m` : `${(ring.radiusM / 1000).toFixed(1)} km`}

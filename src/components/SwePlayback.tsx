@@ -733,16 +733,12 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">
           <span>Streaming frame {streamProgress} / {N_SNAPSHOTS}</span>
-          <div
+          <progress
             className="swe__progress"
-            role="progressbar"
             aria-label="SWE solver progress"
-            aria-valuemin={0}
-            aria-valuemax={N_SNAPSHOTS}
-            aria-valuenow={streamProgress}
-          >
-            <span style={{ width: `${(streamProgress / N_SNAPSHOTS) * 100}%` }} />
-          </div>
+            max={N_SNAPSHOTS}
+            value={streamProgress}
+          />
         </div>
       )}
       {(status === "error" || status === "stale") && (

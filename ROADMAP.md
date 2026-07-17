@@ -37,18 +37,6 @@ tests locally.
 
 ### P3 — education distribution and larger bets
 
-- [ ] P3 — Remove application-owned inline styles and narrow the CSP exception to Cesium
-  Why: Cesium still injects dynamic inline styles, but that does not block eliminating
-  Cataclysm-owned inline style attributes or proving that the remaining exception is
-  isolated to the embedded Cesium widget surface.
-  Evidence: current Tauri `style-src` policy; Cesium dynamic widget styling.
-  Touches: React components/stylesheets, CSP verification contract, security docs.
-  Acceptance: tracked application components use classes/CSS variables instead of
-  inline styles; verification inventories remaining inline styles and rejects any
-  non-Cesium regression; Cesium remains functional under the documented exception.
-  Complexity: M
-
-
 - [ ] P3 — Zarr v3 scientific output export via `zarrs` (pure Rust)
   Why: gives researchers a chunked, self-describing raw-field export complementary
   to the now-actionable CF-NetCDF export; zarrs 0.23.x is spec-complete Zarr v3.1.

@@ -10,6 +10,8 @@ export function GlossaryTip({ term, children }: Props) {
   const entry = getGlossaryEntry(term);
   const tooltipId = `${useId()}-glossary-tooltip`;
   const [open, setOpen] = useState(false);
+  const [horizontal, setHorizontal] = useState<"center" | "left" | "right">("center");
+  const [vertical, setVertical] = useState<"above" | "below">("above");
   const ref = useRef<HTMLSpanElement>(null);
   const popupRef = useRef<HTMLSpanElement>(null);
 
@@ -24,25 +26,13 @@ export function GlossaryTip({ term, children }: Props) {
 
   const clampPopup = useCallback(() => {
     const popup = popupRef.current;
-    if (!popup) return;
-    popup.style.left = "";
-    popup.style.right = "";
-    popup.style.top = "";
-    popup.style.bottom = "";
-    popup.style.transform = "";
-    const rect = popup.getBoundingClientRect();
-    if (rect.left < 4) {
-      popup.style.left = "0";
-      popup.style.transform = "none";
-    } else if (rect.right > window.innerWidth - 4) {
-      popup.style.left = "auto";
-      popup.style.right = "0";
-      popup.style.transform = "none";
-    }
-    if (rect.top < 4) {
-      popup.style.bottom = "auto";
-      popup.style.top = "calc(100% + 6px)";
-    }
+    const anchor = ref.current;
+    if (!popup || !anchor) return;
+    const anchorRect = anchor.getBoundingClientRect();
+    const centeredLeft = anchorRect.left + anchorRect.width / 2 - popup.offsetWidth / 2;
+    const centeredRight = centeredLeft + popup.offsetWidth;
+    setHorizontal(centeredLeft < 4 ? "left" : centeredRight > window.innerWidth - 4 ? "right" : "center");
+    setVertical(anchorRect.top - popup.offsetHeight - 6 < 4 ? "below" : "above");
   }, []);
 
   useEffect(() => {
@@ -65,7 +55,14 @@ export function GlossaryTip({ term, children }: Props) {
       {children}
       <span className="glossary-tip__indicator" aria-hidden>?</span>
       {open && (
-        <span ref={popupRef} className="glossary-tip__popup" id={tooltipId} role="tooltip">
+        <span
+          ref={popupRef}
+          className="glossary-tip__popup"
+          data-horizontal={horizontal}
+          data-vertical={vertical}
+          id={tooltipId}
+          role="tooltip"
+        >
           <strong className="glossary-tip__term">{entry.term}</strong>
           <span className="glossary-tip__def">{entry.definition}</span>
           {entry.citation && (

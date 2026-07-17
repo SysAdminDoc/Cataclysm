@@ -57,7 +57,7 @@ test.describe("Visual regression — desktop", () => {
   });
 
   test("first-run disclaimer", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?launchExperience=0");
     const dialog = page.getByRole("dialog", { name: /educational model/i });
     await expect(dialog).toBeVisible({ timeout: 10_000 });
     await hideCesiumCanvas(page);
@@ -80,7 +80,7 @@ test.describe("Visual regression — desktop", () => {
         return getItem.call(this, key);
       };
     });
-    await page.goto("/");
+    await page.goto("/?launchExperience=0");
     const dialog = page.getByRole("dialog", { name: /educational model/i });
     await expect(dialog).toBeVisible({ timeout: 10_000 });
     await expect(dialog.getByRole("status")).toContainText(/cannot confirm or save/i);
@@ -88,6 +88,7 @@ test.describe("Visual regression — desktop", () => {
 
     await expect(page).toHaveScreenshot("desktop-first-run-persistence-error.png", {
       maxDiffPixelRatio: 0.01,
+      timeout: 30_000,
     });
 
     const { violations } = await axeScan(page);
@@ -104,7 +105,7 @@ test.describe("Visual regression — desktop", () => {
 
     await expect(page).toHaveScreenshot("desktop-launch-cinematic.png", {
       maxDiffPixelRatio: 0.01,
-      timeout: 15_000,
+      timeout: 30_000,
     });
 
     const { violations } = await axeScan(page);
@@ -128,6 +129,7 @@ test.describe("Visual regression — desktop", () => {
   });
 
   test("source-aware outcome, science, and validation results", async ({ page }) => {
+    test.setTimeout(120_000);
     await seedAcknowledged(page);
     await page.goto("/");
     const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();

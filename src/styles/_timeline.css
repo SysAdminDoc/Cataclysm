@@ -6,18 +6,25 @@
 }
 
 .timeline__bar {
+  width: 100%;
   height: 6px;
+  border: 0;
   border-radius: var(--r-sm);
+  appearance: none;
   background: color-mix(in srgb, var(--surface1) 66%, transparent);
-  position: relative;
   overflow: hidden;
 }
 
-.timeline__fill {
-  position: absolute;
-  inset: 0;
+.timeline__bar::-webkit-progress-bar {
+  background: color-mix(in srgb, var(--surface1) 66%, transparent);
+}
+
+.timeline__bar::-webkit-progress-value {
   background: linear-gradient(90deg, var(--blue), var(--sapphire), var(--teal));
-  transform-origin: left;
+}
+
+.timeline__bar::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--blue), var(--sapphire), var(--teal));
 }
 
 .timeline__readout {

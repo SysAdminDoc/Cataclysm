@@ -685,7 +685,36 @@
   z-index: 1;
   top: 14px;
   min-height: 42px;
+  color: var(--accent);
 }
+
+.timeline__marker[data-position="0"] { left: 0%; }
+.timeline__marker[data-position="5"] { left: 5%; }
+.timeline__marker[data-position="10"] { left: 10%; }
+.timeline__marker[data-position="15"] { left: 15%; }
+.timeline__marker[data-position="20"] { left: 20%; }
+.timeline__marker[data-position="25"] { left: 25%; }
+.timeline__marker[data-position="30"] { left: 30%; }
+.timeline__marker[data-position="35"] { left: 35%; }
+.timeline__marker[data-position="40"] { left: 40%; }
+.timeline__marker[data-position="45"] { left: 45%; }
+.timeline__marker[data-position="50"] { left: 50%; }
+.timeline__marker[data-position="55"] { left: 55%; }
+.timeline__marker[data-position="60"] { left: 60%; }
+.timeline__marker[data-position="65"] { left: 65%; }
+.timeline__marker[data-position="70"] { left: 70%; }
+.timeline__marker[data-position="75"] { left: 75%; }
+.timeline__marker[data-position="80"] { left: 80%; }
+.timeline__marker[data-position="85"] { left: 85%; }
+.timeline__marker[data-position="90"] { left: 90%; }
+.timeline__marker[data-position="95"] { left: 95%; }
+.timeline__marker[data-position="100"] { left: 100%; }
+
+.timeline__marker[data-source="Asteroid"] { color: var(--red); }
+.timeline__marker[data-source="Earthquake"] { color: var(--teal); }
+.timeline__marker[data-source="Nuclear"] { color: var(--mauve); }
+.timeline__marker[data-source="Landslide"] { color: var(--peach); }
+.timeline__marker[data-source="Meteotsunami"] { color: var(--sapphire); }
 
 .timeline__marker:hover .timeline__dot {
   transform: scale(1.4);
@@ -693,6 +722,7 @@
 
 .timeline__marker[data-active="true"] .timeline__dot {
   transform: scale(1.6);
+  box-shadow: 0 0 0 3px currentcolor;
 }
 
 .timeline__dot {
@@ -702,6 +732,7 @@
   border: 2px solid var(--base);
   flex-shrink: 0;
   transition: transform 0.15s ease;
+  background: currentcolor;
 }
 
 .timeline__label {

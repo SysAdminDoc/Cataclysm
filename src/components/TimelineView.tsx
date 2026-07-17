@@ -14,13 +14,6 @@ type TimelineEntry = {
   label: string;
 };
 
-const SOURCE_COLORS: Record<string, string> = {
-  Asteroid: "var(--red)",
-  Earthquake: "var(--teal)",
-  Nuclear: "var(--mauve)",
-  Landslide: "var(--peach)",
-};
-
 function parseDateToYearsAgo(date: string): number | null {
   if (!date || date === "-") return null;
   const maMatch = date.match(/^([\d.]+)\s*Ma$/i);
@@ -71,7 +64,7 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
               ? (idx / (entries.length - 1)) * 100
               : 50
             : ((maxLog - Math.log10(Math.max(e.yearsAgo, 0.1))) / range) * 100;
-          const color = SOURCE_COLORS[e.preset.source.kind] ?? "var(--accent)";
+          const position = Math.round(pct / 5) * 5;
           const isActive = activeId === e.preset.id;
           const isBusy = busyId === e.preset.id;
           return (
@@ -79,7 +72,8 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
               key={e.preset.id}
               className="timeline__marker"
               data-active={isActive ? "true" : "false"}
-              style={{ left: `${pct}%` }}
+              data-position={position}
+              data-source={e.preset.source.kind}
               onClick={() => onSelect(e.preset.id)}
               disabled={isBusy}
               aria-label={`${e.preset.name}, ${e.preset.source.kind} source, ${e.preset.date}`}
@@ -88,7 +82,6 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
             >
               <span
                 className="timeline__dot"
-                style={{ background: color, boxShadow: isActive ? `0 0 0 3px ${color}` : undefined }}
                 aria-hidden
               />
               <span className="timeline__label">

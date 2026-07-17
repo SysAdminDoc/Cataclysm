@@ -85,19 +85,25 @@
 }
 
 .swe__progress {
-  position: relative;
+  width: 100%;
   height: 5px;
+  border: 0;
   overflow: hidden;
   border-radius: var(--r-sm);
+  appearance: none;
   background: color-mix(in srgb, var(--surface1) 55%, transparent);
 }
 
-.swe__progress span {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--r-sm);
+.swe__progress::-webkit-progress-bar {
+  background: color-mix(in srgb, var(--surface1) 55%, transparent);
+}
+
+.swe__progress::-webkit-progress-value {
   background: linear-gradient(90deg, var(--blue), var(--sapphire));
-  transition: width 0.15s ease-out;
+}
+
+.swe__progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--blue), var(--sapphire));
 }
 
 .swe__speed {

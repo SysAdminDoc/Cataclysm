@@ -159,6 +159,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Changed
 
+- Application-owned inline styles have been removed from tracked HTML, React,
+  tooltips, progress indicators, timeline markers, hazard legends, compass
+  telemetry, and Cesium interaction cursors. A source contract now rejects JSX
+  style attributes, DOM style mutation, and runtime stylesheet injection; a
+  headless DOM inventory proves remaining inline style attributes are confined
+  to Cesium widget descendants. The documented desktop `style-src
+  'unsafe-inline'` token is retained solely for those Cesium internals because
+  CSP cannot scope the exception to a DOM subtree.
 - Coastal runup bars and first-order inundation discs remain on their direct
   Cesium buffer collections, while user-created SWE gauges now render through
   one styled `GeoJsonPrimitive` point batch per globe pane instead of adding

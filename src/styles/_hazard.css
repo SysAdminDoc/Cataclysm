@@ -519,7 +519,19 @@
   height: 12px;
   border-radius: var(--r-sm);
   flex: none;
+  background: var(--overlay0);
 }
+
+.hazard__ring-legend i[data-ring-color="#f5c2e7"] { background: #f5c2e7; }
+.hazard__ring-legend i[data-ring-color="#f9e2af"] { background: #f9e2af; }
+.hazard__ring-legend i[data-ring-color="#fef9c3"] { background: #fef9c3; }
+.hazard__ring-legend i[data-ring-color="#fab387"] { background: #fab387; }
+.hazard__ring-legend i[data-ring-color="#cba6f7"] { background: #cba6f7; }
+.hazard__ring-legend i[data-ring-color="#89b4fa"] { background: #89b4fa; }
+.hazard__ring-legend i[data-ring-color="#94e2d5"] { background: #94e2d5; }
+.hazard__ring-legend i[data-ring-color="#f5e0dc"] { background: #f5e0dc; }
+.hazard__ring-legend i[data-ring-color="#eba0ac"] { background: #eba0ac; }
+.hazard__ring-legend i[data-ring-color="#a6e3a1"] { background: #a6e3a1; }
 
 .hazard__ring-radius {
   margin-left: auto;

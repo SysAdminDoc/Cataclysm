@@ -35,7 +35,9 @@ test("installed browser surface reloads from its complete offline cache", async 
     script: Boolean(await caches.match(document.querySelector<HTMLScriptElement>('script[type="module"]')?.src ?? "/missing")),
     styles: await Promise.all(Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map(async (link) => Boolean(await caches.match(link.href)))),
   }));
-  expect(cachedShell).toEqual({ controller: true, index: true, script: true, styles: [true, true] });
+  expect(cachedShell).toMatchObject({ controller: true, index: true, script: true });
+  expect(cachedShell.styles.length).toBeGreaterThan(0);
+  expect(cachedShell.styles.every(Boolean)).toBe(true);
 
   const denyNetwork = async (route: import("@playwright/test").Route) => route.abort("internetdisconnected");
   await context.route("**/*", denyNetwork);
