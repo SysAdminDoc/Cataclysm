@@ -12,6 +12,7 @@ import { api, isTauri } from "../lib/tauri";
 import { getEarthAsset, getEarthProvider, getEarthStyleBinding } from "../lib/earth-assets";
 import { REPLAY_DISCLAIMER_EVENT } from "./FirstRunDisclaimer";
 import { UiIcon } from "./UiIcon";
+import { BathymetryImportPanel } from "./BathymetryImportPanel";
 import {
   RENDERER_QUALITY_BUDGETS,
   RENDERER_QUALITY_TIERS,
@@ -487,6 +488,7 @@ export function Settings({ onClose }: Props) {
           </>
           )}
           {activeSection === "advanced" && <>
+          <BathymetryImportPanel />
           <section className="settings__section">
             <h3 className="settings__h3">Help &amp; onboarding</h3>
             <label className="settings__field">

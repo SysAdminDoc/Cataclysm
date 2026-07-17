@@ -7,9 +7,9 @@ Scope: production npm dependencies and Windows x86_64 GPU Rust runtime dependenc
 Development-only and build-only packages are excluded.
 Application version: 0.10.5
 Generators: cargo-about 0.9.1; generate-license-file 4.2.1
-package-lock.json SHA-256: 6c7cb6ea2944df57e09bbd7242a241e6d93cf86be9967e5691201edf14adf639
-src-tauri/Cargo.lock SHA-256: 9a406ce60c489e7edde2dc81f3622a2cb061ae04a592d2f738c78b00d082ff9e
-Production components: 36 npm; 303 Rust
+package-lock.json SHA-256: f479b0d5bc752ceea4fa03ed2d22c99d061aea19b7bcbd1abde3bdbf7f28d0d8
+src-tauri/Cargo.lock SHA-256: 1d09faa70527ae87a0145e52c8380b095620879015525aae00fb1ec3eebd5cc4
+Production components: 37 npm; 306 Rust
 
 
 NPM PRODUCTION INVENTORY
@@ -43,6 +43,11 @@ Resolved SPDX: Apache-2.0
 Override text SHA-256: 0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594
 Source: https://github.com/tauri-apps/tauri
 Lock integrity: sha512-M2FPuYND2m+wh5hfW9ZpSdxMPdEJovPBWwoHJmwUpysTYNHaOkVFN419m/K0LIgjb/7KU2vBgsUepJWugQCvAA==
+
+@tauri-apps/plugin-dialog@2.7.1
+Declared SPDX: MIT OR Apache-2.0
+Source: https://github.com/tauri-apps/plugins-workspace
+Lock integrity: sha512-OK1UBXYt+ojcmxMktzzuyonYIFta8CmAASpX+CA+DTGK24KlHjhYI6x2iOJ/TjZF4N7/ACK1oFmEOjIY9IhzOQ==
 
 @tauri-apps/plugin-shell@2.3.5
 Declared SPDX: MIT OR Apache-2.0
@@ -889,6 +894,10 @@ renderdoc-sys@1.1.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/ebkalderon/renderdoc-rs
 
+rfd@0.16.0
+Declared SPDX: MIT
+Source: https://github.com/PolyMeilex/rfd
+
 rustc-hash@1.1.0
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/rust-lang-nursery/rustc-hash
@@ -1040,6 +1049,14 @@ Source: https://github.com/tauri-apps/tauri
 tauri-macros@2.6.3
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/tauri-apps/tauri
+
+tauri-plugin-dialog@2.7.1
+Declared SPDX: Apache-2.0 OR MIT
+Source: https://github.com/tauri-apps/plugins-workspace
+
+tauri-plugin-fs@2.5.1
+Declared SPDX: Apache-2.0 OR MIT
+Source: https://github.com/tauri-apps/plugins-workspace
 
 tauri-plugin-shell@2.3.5
 Declared SPDX: Apache-2.0 OR MIT
@@ -3206,6 +3223,32 @@ Text SHA-256: 0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
+
+-------------------------------------------------------------------------------
+
+Applies to: @tauri-apps/plugin-dialog@2.7.1
+Text SHA-256: eb8a6c84630461b352badcab1dbe5d0168c56d377358b2b8c86b51003272d5ef
+
+SPDXVersion: SPDX-2.1
+DataLicense: CC0-1.0
+PackageName: tauri
+DataFormat: SPDXRef-1
+PackageSupplier: Organization: The Tauri Programme in the Commons Conservancy
+PackageHomePage: https://tauri.app
+PackageLicenseDeclared: Apache-2.0
+PackageLicenseDeclared: MIT
+PackageCopyrightText: 2019-2022, The Tauri Programme in the Commons Conservancy
+PackageSummary: <text>Tauri is a rust project that enables developers to make secure
+and small desktop applications using a web frontend.
+                </text>
+PackageComment: <text>The package includes the following libraries; see
+Relationship information.
+                </text>
+Created: 2019-05-20T09:00:00Z
+PackageDownloadLocation: git://github.com/tauri-apps/tauri
+PackageDownloadLocation: git+https://github.com/tauri-apps/tauri.git
+PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
+Creator: Person: Daniel Thompson-Yvetot
 
 -------------------------------------------------------------------------------
 
@@ -9626,7 +9669,7 @@ limitations under the License.
 -------------------------------------------------------------------------------
 
 Apache License 2.0 (Apache-2.0)
-Applies to: allocator-api2@0.2.21, anyhow@1.0.103, dirs-sys@0.5.0, dirs@6.0.0, document-features@0.2.12, dtoa@1.0.11, dunce@1.0.5, dyn-clone@1.0.20, erased-serde@0.4.10, fdeflate@0.3.7, geotiff-core@0.7.0, geotiff-reader@0.7.0, gpu-descriptor-types@0.2.0, gpu-descriptor@0.3.2, half@2.7.1, hdf5-core@0.8.0, hdf5-reader@0.8.0, ident_case@1.0.1, itoa@1.0.18, lerc-band-materialize@0.4.3, lerc-core@0.4.3, lerc-reader@0.4.3, libc@0.2.186, litrs@1.0.0, miniz_oxide@0.8.9, naga@29.0.4, netcdf-core@0.8.0, netcdf-reader@0.8.0, num-conv@0.2.2, pin-project-lite@0.2.17, proc-macro2@1.0.106, profiling@1.0.18, quote@1.0.46, raw-window-handle@0.6.2, rustc-hash@2.1.3, semver@1.0.28, serde_core@1.0.228, serde_derive_internals@0.29.1, serde_derive@1.0.228, serde_json@1.0.150, serde_repr@0.1.20, serde-untagged@0.1.9, serde@1.0.228, siphasher@1.0.3, spirv@0.4.0+sdk-1.4.341.0, syn@2.0.118, tauri-codegen@2.6.3, tauri-macros@2.6.3, tauri-plugin-shell@2.3.5, tauri-plugin-store@2.4.3, tauri-runtime-wry@2.11.4, tauri-runtime@2.11.3, tauri-utils@2.9.3, tauri@2.11.5, thiserror-impl@1.0.69, thiserror-impl@2.0.18, thiserror@1.0.69, thiserror@2.0.18, tiff-core@0.7.0, tiff-reader@0.7.0, time-core@0.1.9, time-macros@0.2.31, time@0.3.53, typeid@1.0.3, unic-char-property@0.9.0, unic-char-range@0.9.0, unic-common@0.9.0, unic-ucd-ident@0.9.0, unic-ucd-version@0.9.0, unicode-ident@1.0.24, wgpu-core-deps-windows-linux-android@29.0.4, wgpu-core@29.0.4, wgpu-hal@29.0.4, wgpu-naga-bridge@29.0.4, wgpu-types@29.0.4, wgpu@29.0.4
+Applies to: allocator-api2@0.2.21, anyhow@1.0.103, dirs-sys@0.5.0, dirs@6.0.0, document-features@0.2.12, dtoa@1.0.11, dunce@1.0.5, dyn-clone@1.0.20, erased-serde@0.4.10, fdeflate@0.3.7, geotiff-core@0.7.0, geotiff-reader@0.7.0, gpu-descriptor-types@0.2.0, gpu-descriptor@0.3.2, half@2.7.1, hdf5-core@0.8.0, hdf5-reader@0.8.0, ident_case@1.0.1, itoa@1.0.18, lerc-band-materialize@0.4.3, lerc-core@0.4.3, lerc-reader@0.4.3, libc@0.2.186, litrs@1.0.0, miniz_oxide@0.8.9, naga@29.0.4, netcdf-core@0.8.0, netcdf-reader@0.8.0, num-conv@0.2.2, pin-project-lite@0.2.17, proc-macro2@1.0.106, profiling@1.0.18, quote@1.0.46, raw-window-handle@0.6.2, rustc-hash@2.1.3, semver@1.0.28, serde_core@1.0.228, serde_derive_internals@0.29.1, serde_derive@1.0.228, serde_json@1.0.150, serde_repr@0.1.20, serde-untagged@0.1.9, serde@1.0.228, siphasher@1.0.3, spirv@0.4.0+sdk-1.4.341.0, syn@2.0.118, tauri-codegen@2.6.3, tauri-macros@2.6.3, tauri-plugin-dialog@2.7.1, tauri-plugin-fs@2.5.1, tauri-plugin-shell@2.3.5, tauri-plugin-store@2.4.3, tauri-runtime-wry@2.11.4, tauri-runtime@2.11.3, tauri-utils@2.9.3, tauri@2.11.5, thiserror-impl@1.0.69, thiserror-impl@2.0.18, thiserror@1.0.69, thiserror@2.0.18, tiff-core@0.7.0, tiff-reader@0.7.0, time-core@0.1.9, time-macros@0.2.31, time@0.3.53, typeid@1.0.3, unic-char-property@0.9.0, unic-char-range@0.9.0, unic-common@0.9.0, unic-ucd-ident@0.9.0, unic-ucd-version@0.9.0, unicode-ident@1.0.24, wgpu-core-deps-windows-linux-android@29.0.4, wgpu-core@29.0.4, wgpu-hal@29.0.4, wgpu-naga-bridge@29.0.4, wgpu-types@29.0.4, wgpu@29.0.4
 Text SHA-256: c274f80372d90c012937370f0e1f15087d22e308ef98b27cea5dc0d2d088366c
 
 Apache License
@@ -10692,6 +10735,34 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+MIT License (MIT)
+Applies to: rfd@0.16.0
+Text SHA-256: 1a6dd9555214dc748e8b80dbfa3432092e210b3068f79c6ce763c390685e4cba
+
+MIT License
+
+Copyright (c) 2022 Bartłomiej Maryńczak
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 -------------------------------------------------------------------------------
 

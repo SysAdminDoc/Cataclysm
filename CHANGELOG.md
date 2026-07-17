@@ -16,6 +16,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   offline cache (eight assets or 2 GiB), with a second SHA-256 check closing the
   preview/import file-change race. Typed commands list cached assets and provide
   recoverable remove/restore operations through an application-owned trash area.
+- Settings now provides a native desktop picker and an explicit pre-commit
+  bathymetry report covering provenance, rights, grid, crop, resampling, CRS,
+  vertical convention, NoData, depth range, and checksum. The same panel lists
+  offline imports and offers recoverable removal; browser preview clearly marks
+  the workflow as desktop-only.
 
 ## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
 

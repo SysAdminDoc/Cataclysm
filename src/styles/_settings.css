@@ -240,6 +240,51 @@
   margin-top: 8px;
 }
 
+.bathymetry-import__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 14px 0;
+}
+
+.bathymetry-import__filename {
+  color: var(--text);
+  font-size: var(--type-caption);
+  overflow-wrap: anywhere;
+}
+
+.bathymetry-import__preview code {
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.bathymetry-import__assets {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bathymetry-import__asset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+}
+
+.bathymetry-import__asset span,
+.bathymetry-import__asset small {
+  display: block;
+  min-width: 0;
+}
+
+.bathymetry-import__asset small {
+  margin-top: 3px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
 .settings__source-card {
   margin-top: 12px;
   padding: 12px;

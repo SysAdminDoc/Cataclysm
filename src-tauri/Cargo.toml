@@ -38,6 +38,7 @@ sha2 = "0.10"
 # a thin community tauri-plugin wrapper: lower supply-chain surface, and
 # tauri-plugin-stronghold is deprecated for Tauri v3.
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
+tauri-plugin-dialog = "2.7"
 
 [dev-dependencies]
 # Property-based tests over the physics parameter space

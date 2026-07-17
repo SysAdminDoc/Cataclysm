@@ -10,6 +10,7 @@
     "store:allow-set",
     "store:allow-save",
     "store:allow-delete",
+    "dialog:allow-open",
     "scientific-queries",
     "bathymetry-import",
     "simulation-runs",
