@@ -309,11 +309,17 @@ const CSP_ALLOWLIST = {
     // Esri tile fetch.
     "https://*.arcgisonline.com",
     "https://server.arcgisonline.com",
+    // NOAA/NCEI HazEL is deliberately absent. Its bounded Rust client keeps
+    // historical-record access out of the WebView network authority.
   ],
   "worker-src": ["'self'", "blob:"],
   "child-src": ["'self'", "blob:"],
   "font-src": ["'self'", "data:"],
 };
+
+const BACKEND_ONLY_NETWORK_ORIGINS = [
+  "https://www.ngdc.noaa.gov",
+];
 
 function cspAllowlistGate() {
   const confPath = path.join(repoRoot, "src-tauri", "tauri.conf.json");
@@ -332,6 +338,13 @@ function cspAllowlistGate() {
     const name = tokens[0];
     const values = tokens.slice(1);
     directives.set(name, values);
+  }
+
+  const connectSources = directives.get("connect-src") ?? [];
+  for (const origin of BACKEND_ONLY_NETWORK_ORIGINS) {
+    if (connectSources.includes(origin)) {
+      failures.push(`${origin}: backend-only origin must not be granted to the WebView connect-src policy.`);
+    }
   }
 
   for (const [directive, allowed] of Object.entries(CSP_ALLOWLIST)) {

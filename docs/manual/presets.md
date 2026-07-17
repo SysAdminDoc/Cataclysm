@@ -2,6 +2,24 @@
 
 Each preset represents a historical or hypothetical tsunami event with parameters drawn from peer-reviewed literature. Presets marked with a warning icon (speculative) have disputed or uncertain source parameters.
 
+## Search NOAA historical records
+
+Installed desktop builds add **Search NOAA historical events** to the scenario
+library toolbar. Enter a year, location, or both—for example, `1960 Chile`—to
+query the NOAA/NCEI Global Historical Tsunami Database through HazEL. The
+lookup requires a network connection; the built-in scenario library remains
+available if the service or connection is unavailable. Browser previews
+deliberately make no HazEL request.
+
+For earthquake-generated records that include a supported magnitude and
+epicentre, **Load into builder** copies only those observed catalog fields into
+the Earthquake tab. Cataclysm's default fault geometry, slip, hypocentre depth,
+and water depth remain in place and must be reviewed before simulation. The
+builder shows the HazEL event ID, database DOI (`10.7289/V5PN93H7`), imported
+values, and the historical-database uncertainty warning. Non-earthquake and
+incomplete records remain visible but cannot be translated into an earthquake
+source.
+
 ## Historical events
 
 ### Chicxulub impact (66 Ma)

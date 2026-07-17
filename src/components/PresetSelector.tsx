@@ -18,6 +18,7 @@ type Props = {
   activeDirectId?: string | null;
   onSelectDirect?: (scenario: DirectScenarioTemplate) => void;
   onCreateScenario?: () => void;
+  onBrowseHistorical?: () => void;
   onRunActive?: () => void;
   recentIds?: string[];
   favoriteIds?: string[];
@@ -120,6 +121,7 @@ export function PresetSelector({
   activeDirectId = null,
   onSelectDirect,
   onCreateScenario,
+  onBrowseHistorical,
   onRunActive,
   recentIds = [],
   favoriteIds = [],
@@ -246,6 +248,17 @@ export function PresetSelector({
               Timeline
             </button>
           </div>
+          {onBrowseHistorical && (
+            <button
+              className="preset-library__historical"
+              type="button"
+              aria-label="Search NOAA historical events"
+              title="Search NOAA/NCEI HazEL historical tsunami events"
+              onClick={onBrowseHistorical}
+            >
+              <UiIcon name="search" size={15} />
+            </button>
+          )}
           {onToggleFavorite && (
             <button
               className="preset-library__favorite"

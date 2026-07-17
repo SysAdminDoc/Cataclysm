@@ -14,6 +14,7 @@ import type {
   RunPresetResponse,
   SimulateGridResponse,
 } from "../types/scenario";
+import type { HazelEventSearchRequest, HazelEventSearchResponse } from "./ncei-hazel";
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
 import type {
@@ -402,6 +403,9 @@ export const api = {
   },
   jplApiRequest(endpoint: "fireball" | "sbdb" | "sentry", params: Record<string, string>) {
     return invoke<unknown>("jpl_api_request", { req: { endpoint, params } });
+  },
+  nceiHazelSearch(req: HazelEventSearchRequest) {
+    return invoke<HazelEventSearchResponse>("ncei_hazel_search", { req });
   },
   simulateGrid(req: {
     source: GeoPoint;

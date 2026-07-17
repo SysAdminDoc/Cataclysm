@@ -34,6 +34,7 @@ fn main() {
         "nuclear_shelter_advisor",
         "asteroid_result_visuals",
         "jpl_api_request",
+        "ncei_hazel_search",
         "diagnostics_bundle",
         "native_panic_record",
         "acknowledge_native_panic_record",

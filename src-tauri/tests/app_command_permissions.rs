@@ -95,6 +95,7 @@ fn runtime_authority_denies_an_unprivileged_window() {
         "simulate_grid",
         "cancel_simulation",
         "diagnostics_bundle",
+        "ncei_hazel_search",
         "native_panic_record",
         "acknowledge_native_panic_record",
         "third_party_notices",

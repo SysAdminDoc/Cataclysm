@@ -155,6 +155,21 @@ test.describe("Cataclysm browser preview", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
+  test("historical event browser explains its desktop-only live data boundary", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /Search NOAA historical events/i }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Historical tsunami events" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Live lookup is disabled in the browser preview");
+    expect((await new AxeBuilder({ page }).include(".historical-browser").analyze()).violations).toEqual([]);
+    await dialog.getByLabel("Year and location").fill("1960 Chile");
+    await dialog.getByRole("button", { name: "Search NOAA" }).click();
+    await expect(dialog.getByRole("alert")).toContainText("installed desktop app");
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(dialog).toHaveCount(0);
+  });
+
   test("keeps Quick Start unobstructed when the long tour has not been completed", async ({ page }) => {
     await page.addInitScript(() => localStorage.removeItem("tsunamisim.tour_completed_at"));
     await page.goto("/");

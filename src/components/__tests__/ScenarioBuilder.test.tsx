@@ -331,6 +331,26 @@ describe("ScenarioBuilder scenario persistence", () => {
     ).toHaveValue(14_000));
   });
 
+  it("keeps historical import provenance visible beside the loaded inputs", async () => {
+    render(
+      <ScenarioBuilder
+        onSimulate={vi.fn()}
+        editRequest={{
+          id: 2,
+          scenario: { kind: "Earthquake", source: { ...INITIAL_EARTHQUAKE, mw: 9.5 } },
+          provenanceNote: "NOAA/NCEI HazEL event 1902; review default fault inputs.",
+        }}
+        pickedLocation={null}
+        onTogglePick={vi.fn()}
+        pickActive={false}
+      />,
+    );
+
+    expect(await screen.findByText("Historical source import")).toBeInTheDocument();
+    expect(screen.getByText(/HazEL event 1902/)).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Magnitude (M_w) exact value" })).toHaveValue(9.5);
+  });
+
   it("auto-fills fault geometry from the nearest subduction zone", async () => {
     const user = setupUser();
     renderBuilder();

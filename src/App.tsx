@@ -5,6 +5,7 @@ import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { PointProbePanel } from "./components/PointProbePanel";
 import { CitationsModal } from "./components/CitationsModal";
+import { HistoricalTsunamiBrowser } from "./components/HistoricalTsunamiBrowser";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { LaunchExperience } from "./components/LaunchExperience";
@@ -46,6 +47,7 @@ import { downloadTextExport } from "./lib/text-export";
 import { exportScientificNetcdf } from "./lib/scientific-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
+import type { HistoricalScenarioImport } from "./lib/ncei-hazel";
 import { subscribeToScenarioDeepLinks } from "./lib/deep-links";
 import {
   DIRECT_SCENARIOS,
@@ -357,6 +359,7 @@ export default function App() {
   const presets = useMemo(() => asyncResultValue(presetsResult) ?? [], [presetsResult]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
   const [showCitations, setShowCitations] = useState(false);
+  const [showHistoricalBrowser, setShowHistoricalBrowser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
@@ -440,7 +443,7 @@ export default function App() {
   const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
   const [outcomeFocus, setOutcomeFocus] = useState<OutcomeFocusRequest | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput } | null>(null);
+  const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput; provenanceNote?: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const lastCameraUpdateAt = useRef(0);
   const outcomeFocusRequestId = useRef(0);
@@ -1399,6 +1402,18 @@ export default function App() {
     });
   }
 
+  function loadHistoricalScenario(result: HistoricalScenarioImport) {
+    setShowHistoricalBrowser(false);
+    setRunJourney(null);
+    changeWorkspaceMode("customize");
+    setCustomEditorOpen(true);
+    setLibraryPreview(null);
+    setLibraryPreviewPending(false);
+    selectHazardMode("tsunami");
+    setInspectorTab("setup");
+    setScenarioEditRequest({ id: Date.now(), ...result });
+  }
+
   function detonateActiveHazard() {
     if (!directHazardMode) return;
     if (directHazardMode === "nuclear") {
@@ -1928,6 +1943,7 @@ export default function App() {
             directScenarios={DIRECT_SCENARIOS}
             onSelectDirect={previewDirectScenario}
             onCreateScenario={createCustomScenario}
+            onBrowseHistorical={() => setShowHistoricalBrowser(true)}
             onRunActive={runLibraryPreview}
             recentIds={libraryPreferences.recentIds}
             favoriteIds={libraryPreferences.favoriteIds}
@@ -2419,6 +2435,12 @@ export default function App() {
         />
       )}
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}
+      {showHistoricalBrowser && (
+        <HistoricalTsunamiBrowser
+          onClose={() => setShowHistoricalBrowser(false)}
+          onLoad={loadHistoricalScenario}
+        />
+      )}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <LogViewer open={showLog} onClose={() => setShowLog(false)} />
       <LaunchExperience />

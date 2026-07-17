@@ -6,6 +6,7 @@
 pub mod commands;
 pub mod data;
 pub mod jpl_api;
+pub mod ncei_hazel;
 pub mod native_diagnostics;
 pub mod physics;
 pub mod presets;
@@ -103,6 +104,7 @@ pub fn run() {
             nuclear_shelter_advisor,
             asteroid_result_visuals,
             jpl_api_request,
+            ncei_hazel_search,
             diagnostics_bundle,
             native_panic_record,
             acknowledge_native_panic_record,

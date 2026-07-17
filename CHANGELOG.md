@@ -6,6 +6,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The installed app can now search NOAA/NCEI HazEL historical tsunami events
+  by year and location, including the `1960 Chile` event set, and load an
+  earthquake record's reported magnitude and epicentre into the scenario
+  builder. Every import retains a visible database/DOI provenance note and
+  leaves fault geometry, slip, depth, and water depth at clearly identified
+  Cataclysm defaults for review. A fixed-shape Rust HTTPS bridge enforces
+  validity filtering, serialization, timeouts, redirect denial, and a 512 KiB
+  response cap; the NCEI host deliberately remains outside WebView CSP, while
+  browser/offline failures leave the bundled library available.
 - Completed desktop shallow-water runs now retain a bounded CF-1.12 NetCDF-3
   Classic artifact for user-selected export without sending raw grids through
   WebView IPC. Files carry time/latitude/longitude coordinates, final surface,

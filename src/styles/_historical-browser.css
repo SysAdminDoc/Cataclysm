@@ -1,0 +1,101 @@
+.preset-library__historical {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--sapphire) 28%, transparent);
+  background: color-mix(in srgb, var(--sapphire) 7%, transparent);
+  color: var(--sapphire);
+}
+
+.historical-browser { width: min(780px, 94vw); }
+.historical-browser__body { display: grid; gap: 14px; }
+.historical-browser__body > * { margin-top: 0; margin-bottom: 0; }
+.historical-browser__eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--sapphire);
+  font-size: var(--type-caption);
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.historical-browser__search { display: grid; gap: 6px; }
+.historical-browser__search label { color: var(--subtext); font-size: var(--type-caption); font-weight: 700; }
+.historical-browser__search > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.historical-browser__search input { min-height: var(--control-lg); }
+.historical-browser__search button { display: inline-flex; align-items: center; gap: 7px; }
+
+.historical-browser__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--sapphire) 28%, var(--divider));
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--sapphire) 7%, var(--metric-bg));
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+.historical-browser__notice svg { flex: 0 0 auto; color: var(--sapphire); }
+.historical-browser__notice[data-tone="error"] {
+  border-color: color-mix(in srgb, var(--red) 40%, var(--divider));
+  background: color-mix(in srgb, var(--red) 8%, var(--metric-bg));
+  color: var(--danger);
+}
+.historical-browser__notice[data-tone="error"] svg { color: var(--red); }
+
+.historical-browser__results { display: grid; gap: 10px; padding: 0; list-style: none; }
+.historical-browser__results > li {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface0) 52%, transparent);
+}
+.historical-browser__result-heading,
+.historical-browser__result-action { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.historical-browser__result-heading > span:first-child { display: grid; gap: 2px; }
+.historical-browser__result-heading strong { color: var(--text); }
+.historical-browser__result-heading small,
+.historical-browser__result-action small { color: var(--subtext); font-size: var(--type-caption); line-height: 1.4; }
+.historical-browser__validity {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--yellow) 12%, var(--metric-bg));
+  color: var(--warning-text);
+  font-size: 11px;
+  font-weight: 720;
+}
+.historical-browser__validity[data-level="4"] { background: color-mix(in srgb, var(--green) 12%, var(--metric-bg)); color: var(--success-text); }
+.historical-browser__results dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.historical-browser__results dl > div { display: grid; gap: 2px; }
+.historical-browser__results dt { color: var(--overlay); font-size: 11px; text-transform: uppercase; }
+.historical-browser__results dd { margin: 0; color: var(--text); font-size: var(--type-caption); }
+.historical-browser__result-action { align-items: center; }
+.historical-browser__result-action small { max-width: 55ch; }
+.historical-browser__result-action button { flex: 0 0 auto; }
+.historical-browser__source { color: var(--overlay); font-size: 11px; line-height: 1.5; }
+
+.scenario-form__import-provenance {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--sapphire);
+  background: color-mix(in srgb, var(--sapphire) 8%, var(--metric-bg));
+}
+.scenario-form__import-provenance strong { color: var(--text); font-size: var(--type-caption); }
+.scenario-form__import-provenance p { margin: 0; color: var(--subtext); font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 620px) {
+  .historical-browser__search > div { grid-template-columns: 1fr; }
+  .historical-browser__results dl { grid-template-columns: 1fr; }
+  .historical-browser__result-heading,
+  .historical-browser__result-action { align-items: stretch; flex-direction: column; }
+  .historical-browser__result-action button { width: 100%; }
+}

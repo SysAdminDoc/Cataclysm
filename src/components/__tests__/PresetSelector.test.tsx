@@ -202,6 +202,20 @@ describe("PresetSelector", () => {
     expect(screen.getByRole("button", { name: /Continue recent/i })).toBeDisabled();
   });
 
+  it("opens the NOAA historical-event browser from the library tools", async () => {
+    const onBrowseHistorical = vi.fn();
+    render(
+      <PresetSelector
+        presets={PRESETS}
+        activeId={null}
+        onSelect={() => {}}
+        onBrowseHistorical={onBrowseHistorical}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Search NOAA historical events" }));
+    expect(onBrowseHistorical).toHaveBeenCalledTimes(1);
+  });
+
   it("previews direct scenarios without running until the primary action is used", async () => {
     const user = userEvent.setup();
     const onSelectDirect = vi.fn();

@@ -32,7 +32,7 @@ import { NumericField } from "./NumericField";
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
-  editRequest?: { id: number; scenario: ScenarioInput } | null;
+  editRequest?: { id: number; scenario: ScenarioInput; provenanceNote?: string } | null;
   /** Latitude/longitude that was just clicked on the globe — auto-fills the form. */
   pickedLocation: { lat: number; lon: number } | null;
   onTogglePick: () => void;
@@ -151,12 +151,14 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [earthquake, setEarthquake] = useState(INITIAL_EARTHQUAKE);
   const [landslide, setLandslide] = useState(INITIAL_LANDSLIDE);
   const [subductionNote, setSubductionNote] = useState<InlineStatus | null>(null);
+  const [importProvenance, setImportProvenance] = useState<string | null>(null);
   const burstModes = sourceEnumValues("Nuclear", "burst_mode", true);
   const landslideKinds = sourceEnumValues("Landslide", "kind", true);
 
   useEffect(() => {
     if (!editRequest) return;
     applyScenario(editRequest.scenario);
+    setImportProvenance(editRequest.provenanceNote ?? null);
   }, [editRequest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When the globe pick reports a location, push it into whichever tab is active.
@@ -246,6 +248,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   }
 
   function applyScenario(data: ScenarioInput) {
+    setImportProvenance(null);
     if (data.kind === "Asteroid") {
       setTab("asteroid");
       setAsteroid(data.source);
@@ -469,6 +472,12 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
         )}
         {tab === "earthquake" && (
           <>
+            {importProvenance && (
+              <div className="scenario-form__import-provenance" role="status">
+                <strong>Historical source import</strong>
+                <p>{importProvenance}</p>
+              </div>
+            )}
             <NumField field="mw" label="Magnitude (M_w)" value={earthquake.mw} step={0.1}
               onChange={(v) => setEarthquake({ ...earthquake, mw: v })} />
             <NumField field="depth_m" label="Hypocentre depth (m)" value={earthquake.depth_m}

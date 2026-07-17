@@ -63,6 +63,13 @@ pub async fn jpl_api_request(
     crate::jpl_api::request(req).await
 }
 
+#[tauri::command]
+pub async fn ncei_hazel_search(
+    req: crate::ncei_hazel::HazelEventSearchRequest,
+) -> Result<crate::ncei_hazel::HazelEventSearchResponse, String> {
+    crate::ncei_hazel::search(req).await
+}
+
 fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
     let total = packets.iter().try_fold(0_usize, |total, packet| {
         total

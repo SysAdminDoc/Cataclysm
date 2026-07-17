@@ -108,6 +108,12 @@ Existing tools each do one piece:
   the current desktop package; lockfile drift is rejected during verification.
 - **Scenario library filters** — recorded and what-if cases stay searchable,
   while guided training remains available without crowding the primary flow.
+- **NOAA historical event import** — installed builds search the NCEI HazEL
+  Global Historical Tsunami Database by year/location and transfer only a
+  supported earthquake record's magnitude and epicentre into the builder.
+  A visible DOI-backed provenance note identifies the remaining default fault
+  inputs that require review; the WebView receives no direct NCEI network
+  authority and the bundled library continues to work offline.
 - **Installed-app scenario links** — `cataclysm://open?scenario=…` and
   `cataclysm://open?preset=…` open the existing desktop app or start it once,
   then pass through the same bounded, fail-closed importer as browser shares.

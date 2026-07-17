@@ -16,6 +16,7 @@ permissions = [
   "allow-nuclear-shelter-advisor",
   "allow-asteroid-result-visuals",
   "allow-jpl-api-request",
+  "allow-ncei-hazel-search",
   "allow-lamb-wave-sample",
   "allow-dart-buoy-rmse",
   "allow-gpu-probe",
