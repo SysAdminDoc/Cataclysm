@@ -4,7 +4,7 @@ import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, RunQualityRecord } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, RunQualityRecord, ScientificExportDescriptor } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
@@ -22,6 +22,7 @@ type Props = {
    *  reset). App uses this for GeoJSON export enrichment. */
   onMaxField?: (product: MaxFieldProduct | null) => void;
   onRunQuality?: (quality: RunQualityRecord | null) => void;
+  onScientificExport?: (descriptor: ScientificExportDescriptor | null, error: string | null) => void;
   /** Fires with the colormap this run's overlay was rendered in, so the
    *  viewport legend can match the actual overlay rather than a fixed ramp. */
   onColormap?: (id: ColormapId) => void;
@@ -142,7 +143,7 @@ function gaugeCoordinateError(
   return null;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -260,9 +261,10 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onSnapshotsReady?.(null);
       onMaxField?.(null);
       onRunQuality?.(null);
+      onScientificExport?.(null, null);
       onRenderFrame?.(null);
     }
-  }, [initial, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame]);
+  }, [initial, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
 
   // Publish the arrival contours to the globe when toggled.
   useEffect(() => {
@@ -400,8 +402,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     onSnapshotsReady?.(null);
     onMaxField?.(null);
     onRunQuality?.(null);
+    onScientificExport?.(null, null);
     onRenderFrame?.(null);
-  }, [onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onRenderFrame, refreshCheckpoints]);
+  }, [onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onRenderFrame, refreshCheckpoints]);
 
   const run = useCallback(async (autoPlay = false, resumeRunId: string | null = null) => {
     if (!initial) return;
@@ -439,6 +442,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       onSnapshotsReady?.(null);
       onMaxField?.(null);
       onRunQuality?.(null);
+      onScientificExport?.(null, null);
     }
     try {
       const halfDeg = Math.min(
@@ -523,6 +527,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setMaxField(meta.max_field ?? null);
         setRecoveredGaugeHistory(meta.recovered_gauge_history ?? []);
         onMaxField?.(meta.max_field ?? null);
+        onScientificExport?.(meta.scientific_export ?? null, meta.scientific_export_error ?? null);
         await refreshCheckpoints();
         if (autoPlay && playbackTimeS === undefined) setIsPlaying(true);
       } else {
@@ -536,6 +541,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setSnapshots(resp.snapshots);
         setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false, quality: resp.run_quality });
         onRunQuality?.(resp.run_quality);
+        onScientificExport?.(null, "CF-NetCDF export is available in the desktop app.");
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(resp.snapshots);
@@ -565,10 +571,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         onSnapshotsReady?.(null);
         onMaxField?.(null);
         onRunQuality?.(null);
+        onScientificExport?.(null, String(err));
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints]);
+  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;

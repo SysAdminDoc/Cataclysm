@@ -78,6 +78,12 @@ pub struct MaxFieldAccumulator {
 }
 
 impl MaxFieldAccumulator {
+    /// Borrow quantitative max-field arrays for scientific interchange before
+    /// the accumulator is consumed by the PNG visualization product.
+    pub(crate) fn scientific_fields(&self) -> [&[f64]; 4] {
+        self.checkpoint_fields()
+    }
+
     pub(super) fn checkpoint_fields(&self) -> [&[f64]; 4] {
         [
             &self.peak_m,

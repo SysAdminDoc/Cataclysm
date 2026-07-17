@@ -147,6 +147,11 @@ Existing tools each do one piece:
   energy-directivity overlays for every solver run, plus labelled
   first-arrival isochrones (NOAA travel-time-map style) exportable as
   GeoJSON.
+- **CF-NetCDF interchange** — completed desktop solver runs can export a
+  bounded CF-1.12 NetCDF-3 Classic file containing final elevation, velocity,
+  depth, maximum, arrival, coordinate, CRS/datum, quality, citation, and
+  provenance data. The pure-Rust writer adds no native NetCDF runtime library;
+  oversized and invalid artifacts are rejected before saving.
 - **Recoverable long solver runs** — authenticated, atomically replaced
   checkpoints preserve the full grid, tick, maximum fields, and gauge history.
   Advanced mode offers 30-second, one-minute, and five-minute wall-clock

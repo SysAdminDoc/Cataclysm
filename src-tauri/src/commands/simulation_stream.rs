@@ -217,6 +217,28 @@ pub async fn simulate_grid_streaming(
                     );
                 }
             }
+            let (scientific_export, scientific_export_error) = if cancelled {
+                (
+                    None,
+                    Some("scientific export is unavailable for a cancelled run".to_string()),
+                )
+            } else {
+                match create_cached_scientific_export(
+                    &app_data_dir,
+                    &response_run_id,
+                    &req,
+                    &grid,
+                    &max_field_acc.borrow(),
+                    &run_quality,
+                    used_gpu,
+                ) {
+                    Ok(descriptor) => (Some(descriptor), None),
+                    Err(error) => {
+                        diagnostics(&error);
+                        (None, Some(error))
+                    }
+                }
+            };
             let max_field = max_field_acc
                 .into_inner()
                 .into_product(&grid, Some(&diagnostics));
@@ -235,6 +257,8 @@ pub async fn simulate_grid_streaming(
                 n_snapshots: render_stream.frame_count().min(u32::MAX as u64) as u32,
                 cancelled,
                 max_field: Some(max_field),
+                scientific_export,
+                scientific_export_error,
                 render_scenario_id: Some(scenario_id),
                 render_frame_count: render_stream.frame_count(),
                 run_quality,

@@ -128,3 +128,11 @@ is included in provenance text and gauge CSV columns.
 | **Video** | 6-second WebM/MP4 recording of the globe |
 | **Text** | Screen-reader-friendly text file with parameters and runup table |
 | **CZML** | Time-dynamic Cesium playback file (viewable in any CesiumJS app) |
+| **NetCDF** | Desktop-only CF-1.12 scientific grid with final SWE and maximum/arrival products |
+
+NetCDF export becomes available after a completed desktop SWE run. The file is
+generated from the live Rust grid before its quantitative arrays are released;
+the export menu receives only an opaque cache handle. Grids above one million
+cells, cancelled or non-finite runs, stale handles, non-`.nc` destinations, and
+relative paths are rejected. Warning-level quality records remain embedded in
+the file so downstream users can assess the result.

@@ -34,6 +34,7 @@ png = "0.17"
 # offline and avoid GDAL/libnetcdf/HDF5 runtime dependencies in installers.
 geotiff-reader = { version = "0.7.0", default-features = false, features = ["local", "rayon"] }
 netcdf-reader = { version = "0.8.0", features = ["cf"] }
+netcdf3 = "0.6.1"
 sha2 = "0.10"
 # OS keychain for the Cesium ion token (Windows Credential Manager /
 # macOS Keychain / Linux Secret Service). Called directly rather than via
@@ -48,7 +49,6 @@ tauri-plugin-deep-link = "2.4.9"
 # (tests/physics_properties.rs).
 proptest = "1"
 geotiff-writer = "0.7.0"
-netcdf3 = "0.6.1"
 ndarray = "0.17"
 tempfile = "3"
 

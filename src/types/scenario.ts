@@ -202,6 +202,14 @@ export type RunQualityRecord = {
   failure: string | null;
 };
 
+export type ScientificExportDescriptor = {
+  export_id: string;
+  suggested_filename: string;
+  bytes: number;
+  format: "NetCDF-3 Classic";
+  conventions: "CF-1.12";
+};
+
 export type SimulateGridResponse = {
   run_id: string;
   lifecycle: "completed" | "cancelled";
@@ -215,6 +223,8 @@ export type SimulateGridResponse = {
    *  Always false on builds compiled without `--features gpu`. */
   used_gpu?: boolean;
   max_field?: MaxFieldProduct | null;
+  scientific_export?: ScientificExportDescriptor | null;
+  scientific_export_error?: string | null;
   run_quality: RunQualityRecord;
 };
 

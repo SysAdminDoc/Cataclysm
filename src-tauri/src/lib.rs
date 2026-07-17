@@ -112,6 +112,7 @@ pub fn run() {
             cancel_simulation,
             list_solver_checkpoints,
             remove_solver_checkpoint,
+            save_scientific_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

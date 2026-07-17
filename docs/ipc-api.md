@@ -107,7 +107,7 @@ Atmospheric Lamb-wave properties at a given distance from source.
 ### `simulate_grid`
 Run a full SWE simulation (batch — returns all snapshots at once). GPU-aware: dispatches to wgpu when `--features gpu` is compiled and an adapter exists.
 - **Input:** `SimulateGridRequest` — source location, `initial_amplitude_m`, `source_sigma_m`, `mean_depth_m`, `use_real_bathymetry`, optional content-addressed `bathymetry_asset_id`, `box_half_size_deg` (0,60], `cells_per_deg` (0,200], `t_end_s` [0,86400], `n_snapshots` [2,240], `include_lamb_wave`, `colormap` (diverging|cividis|viridis)
-- **Output:** `Result<SimulateGridResponse, String>` — `snapshots` (Vec of PNG-encoded GridSnapshot), `dt_s, nx, ny, used_gpu`
+- **Output:** `Result<SimulateGridResponse, String>` — `snapshots` (Vec of PNG-encoded GridSnapshot), `dt_s, nx, ny, used_gpu`, plus an optional opaque `scientific_export` descriptor or non-fatal `scientific_export_error`.
 - **Limits:** 4M cells max; 50B cell-steps max; 1M leapfrog steps max
 - **Local raster contract:** an asset ID requires `use_real_bathymetry=true`. The cached manifest and SHA-256 are revalidated; source axes are normalized and depths are bilinearly sampled at solver cell centres. Any uncovered or NoData cell rejects the run rather than mixing bathymetry sources.
 
@@ -119,8 +119,22 @@ Streaming variant — sends each snapshot via a Tauri Channel as it's computed. 
   scenario/settings/data/solver digests, timestep, schedule prefix, grid,
   bathymetry, tick, and simulated time match the rebuilt run plan.
 - **Output:** `Result<SimulateGridStreamMeta, String>` — `dt_s, nx, ny,
-  used_gpu, n_snapshots`, plus authenticated pre-interruption gauge history for
-  resumed chart/CSV continuity.
+  used_gpu, n_snapshots`, an optional opaque CF-NetCDF descriptor or non-fatal
+  export error, plus authenticated pre-interruption gauge history for resumed
+  chart/CSV continuity.
+
+### `save_scientific_export`
+Copy one retained solver artifact to a user-selected local `.nc` file without
+exposing its application-cache path or quantitative arrays to the WebView.
+- **Input:** a 32-hex-character opaque export ID and an absolute `.nc`
+  destination in an existing directory.
+- **Output:** bytes copied.
+- **Limits:** completed finite runs only; at most 1,000,000 grid cells, 96 MiB
+  per artifact, and four retained cache files. IDs, extensions, parents,
+  filenames, missing/stale artifacts, and artifact sizes fail closed.
+- **Format:** NetCDF-3 Classic with CF-1.12 coordinates, final eta/velocity/
+  depth fields, maximum/arrival products, WGS 84 mapping, mean-sea-level datum,
+  units, citations, scenario SHA-256, solver backend, and quality JSON.
 
 ### `cancel_simulation`
 Signal one owned simulation to stop. The solver polls its run-specific cancel

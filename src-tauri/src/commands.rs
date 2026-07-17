@@ -37,11 +37,13 @@ use tauri::{AppHandle, Emitter, Manager, ipc::Response};
 
 mod direct;
 mod observations;
+mod scientific_export;
 mod simulation;
 mod system;
 mod waves;
 pub use direct::*;
 pub use observations::*;
+pub use scientific_export::*;
 pub use simulation::{GridGaugeHistoryFrame, SimulateGridRequest, SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle, simulate_grid, simulate_grid_streaming};
 pub use system::*;
 use simulation::*;

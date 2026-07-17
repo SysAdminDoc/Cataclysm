@@ -225,9 +225,10 @@ test.describe("Cataclysm browser preview", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const menu = page.getByRole("group", { name: "Export current scenario" });
-    for (const label of ["PNG", "Share", "Video", "Text", "KML", "Link"]) {
+    for (const label of ["PNG", "Share", "Video", "Text", "NetCDF", "KML", "Link"]) {
       await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s|$)`) })).toBeVisible();
     }
+    await expect(menu.getByRole("button", { name: /^NetCDF(?:\s|$)/ })).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("button", { name: "References", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   });

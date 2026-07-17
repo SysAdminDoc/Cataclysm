@@ -11,15 +11,10 @@ pub async fn simulate_grid(
     req: SimulateGridRequest,
 ) -> Result<SimulateGridResponse, String> {
     validate_simulate_grid(&req)?;
-    let app_data_dir = req
-        .bathymetry_asset_id
-        .as_ref()
-        .map(|_| {
-            app.path()
-                .app_data_dir()
-                .map_err(|error| format!("application data directory is unavailable: {error}"))
-        })
-        .transpose()?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let memory = SimulationMemoryEstimate::for_plan(&plan, req.n_snapshots.max(2));
 
@@ -44,7 +39,7 @@ pub async fn simulate_grid(
             "viridis" => Colormap::Viridis,
             _ => Colormap::Diverging,
         };
-        populate_grid_bathymetry(&mut grid, &req, app_data_dir.as_deref())?;
+        populate_grid_bathymetry(&mut grid, &req, Some(&app_data_dir))?;
         inject_source_initial_field(&mut grid, &req)?;
 
         // F4-05 — when include_lamb_wave is set, apply the atmospheric
@@ -109,7 +104,7 @@ pub async fn simulate_grid(
             publish_run_quality(&admission_quality);
             return Err(format!("simulation rejected by numerical-integrity admission gate: {failure}"));
         }
-        let (snapshots, used_gpu, max_field) = run_simulation_dispatch(
+        let (snapshots, used_gpu, max_field_acc) = run_simulation_dispatch(
             &mut grid,
             dt,
             req.t_end_s,
@@ -127,6 +122,26 @@ pub async fn simulate_grid(
         }
         let emitted_snapshots = snapshots.len().min(u32::MAX as usize) as u32;
         let cancelled = cancel.load(Ordering::Acquire);
+        let (scientific_export, scientific_export_error) = if cancelled {
+            (None, Some("scientific export is unavailable for a cancelled run".to_string()))
+        } else {
+            match create_cached_scientific_export(
+                &app_data_dir,
+                &response_run_id,
+                &req,
+                &grid,
+                &max_field_acc,
+                &run_quality,
+                used_gpu,
+            ) {
+                Ok(descriptor) => (Some(descriptor), None),
+                Err(error) => {
+                    diagnostics(&error);
+                    (None, Some(error))
+                }
+            }
+        };
+        let max_field = Some(max_field_acc.into_product(&grid, Some(&diagnostics)));
         Ok(SimulateGridResponse {
             run_id: response_run_id,
             lifecycle: if cancelled {
@@ -143,6 +158,8 @@ pub async fn simulate_grid(
             bathymetry_asset_id: req.bathymetry_asset_id.clone(),
             used_gpu,
             max_field,
+            scientific_export,
+            scientific_export_error,
             run_quality,
         })
         })();
@@ -171,6 +188,8 @@ pub struct SimulateGridStreamMeta {
     /// Max-field products (peak |η|, time of maximum, energy proxy,
     /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
+    pub scientific_export: Option<ScientificExportDescriptor>,
+    pub scientific_export_error: Option<String>,
     /// Stable identity for the Rust-authoritative render stream emitted beside
     /// the legacy PNG snapshots. `None` means no render channel was requested.
     pub render_scenario_id: Option<String>,

@@ -147,6 +147,11 @@ pub struct SimulateGridResponse {
     /// Max-field products (peak |η|, time of maximum, energy proxy,
     /// arrival isochrones) accumulated at solver-step cadence.
     pub max_field: Option<MaxFieldProduct>,
+    /// Opaque handle for a bounded CF-compliant NetCDF artifact retained in
+    /// the application cache. Raw numerical arrays never cross IPC.
+    pub scientific_export: Option<ScientificExportDescriptor>,
+    /// A non-fatal reason why this completed run could not produce NetCDF.
+    pub scientific_export_error: Option<String>,
     pub run_quality: RunQualityRecord,
 }
 

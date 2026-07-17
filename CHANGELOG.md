@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Completed desktop shallow-water runs now retain a bounded CF-1.12 NetCDF-3
+  Classic artifact for user-selected export without sending raw grids through
+  WebView IPC. Files carry time/latitude/longitude coordinates, final surface,
+  velocity and depth fields, solver-step maximum/arrival products, WGS 84 and
+  mean-sea-level metadata, units, citations, scenario hashes, backend identity,
+  and the numerical-quality record. A pinned pure-Rust reader verifies the
+  round trip; cancelled, non-finite, malformed, oversized, stale, and unsafe
+  export requests fail closed.
 - Installed desktop packages now register `cataclysm://open` for shared
   scenario and preset links. Cold starts and warm launches enter the existing
   fail-closed scenario importer through a single-instance event path; the

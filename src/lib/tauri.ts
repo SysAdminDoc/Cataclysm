@@ -527,6 +527,8 @@ export const api = {
     n_snapshots: number;
     cancelled: boolean;
     max_field?: import("../types/scenario").MaxFieldProduct | null;
+    scientific_export?: import("../types/scenario").ScientificExportDescriptor | null;
+    scientific_export_error?: string | null;
     run_quality: import("../types/scenario").RunQualityRecord;
     render_scenario_id: string | null;
     render_frame_count: number;
@@ -560,6 +562,8 @@ export const api = {
       n_snapshots: number;
       cancelled: boolean;
       max_field?: import("../types/scenario").MaxFieldProduct | null;
+      scientific_export?: import("../types/scenario").ScientificExportDescriptor | null;
+      scientific_export_error?: string | null;
       run_quality: import("../types/scenario").RunQualityRecord;
       render_scenario_id: string | null;
       render_frame_count: number;
@@ -597,6 +601,9 @@ export const api = {
   },
   removeSolverCheckpoint(runId: string) {
     return invoke<boolean>("remove_solver_checkpoint", { runId });
+  },
+  saveScientificExport(exportId: string, destination: string) {
+    return invoke<number>("save_scientific_export", { exportId, destination });
   },
 };
 

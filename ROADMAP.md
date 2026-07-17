@@ -35,17 +35,6 @@ tests locally.
 
 ### P2 — cited presets, products, and architecture
 
-- [ ] P2 — Export solver products as CF-compliant NetCDF
-  Why: the old C-library blocker is an installation concern, not an external blocker;
-  the local toolchain may use the maintained `netcdf` crate or a verified pure-Rust
-  writer while preserving a portable release build.
-  Evidence: existing scientific export preflight; NetCDF-CF conventions.
-  Touches: Rust export module/IPC, release toolchain, export UI, interoperability tests.
-  Acceptance: coordinates, time, eta/velocity/depth/max fields, CRS/datum, units,
-  quality warnings, citations, and provenance round-trip through a pinned reader;
-  unsupported or oversized grids fail closed.
-  Complexity: M
-
 - [ ] P2 — Port inundation/gauge overlays to Cesium `GeoJsonPrimitive` + arrival-colored paths via `PathGraphics.materialMode`
   Why: Cesium 1.142's `GeoJsonPrimitive` bypasses the Entity layer for exactly this app's dynamic vector loads; 1.143's "PORTIONS" material mode enables per-interval arrival-time coloring of propagation paths — both free perf/visual wins after the 1.143 bump.
   Evidence: Cesium CHANGES.md 1.142/1.143; runup overlays already migrated to Primitive API (2026-06-19 CLAUDE.md status) — this extends the pattern.

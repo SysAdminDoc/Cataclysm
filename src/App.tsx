@@ -43,6 +43,7 @@ import {
   type AsyncResult,
 } from "./lib/async-result";
 import { downloadTextExport } from "./lib/text-export";
+import { exportScientificNetcdf } from "./lib/scientific-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
 import { subscribeToScenarioDeepLinks } from "./lib/deep-links";
@@ -158,7 +159,7 @@ const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "geojson" | "kml" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "geojson" | "kml" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -235,6 +236,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 3a14 14 0 0 0 0 18M12 3a14 14 0 0 1 0 18M3 12h18" />
+      </svg>
+    );
+  }
+  if (name === "netcdf") {
+    return (
+      <svg {...common}>
+        <path d="M5 3h10l4 4v14H5Z" />
+        <path d="M15 3v5h5M8 12h8M8 16h8" />
       </svg>
     );
   }
@@ -406,6 +415,8 @@ export default function App() {
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [legendColormap, setLegendColormap] = useState<ColormapId>("diverging");
   const [sweMaxField, setSweMaxField] = useState<import("./types/scenario").MaxFieldProduct | null>(null);
+  const [sweScientificExport, setSweScientificExport] = useState<import("./types/scenario").ScientificExportDescriptor | null>(null);
+  const [sweScientificExportError, setSweScientificExportError] = useState<string | null>(null);
   const [sweRunQualityA, setSweRunQualityA] = useState<import("./types/scenario").RunQualityRecord | null>(null);
   const [sweRunQualityB, setSweRunQualityB] = useState<import("./types/scenario").RunQualityRecord | null>(null);
   const [sweRenderFrameA, setSweRenderFrameA] = useState<RenderFrameProvenance | null>(null);
@@ -452,6 +463,14 @@ export default function App() {
   const nextScenarioLinkRequestId = useRef(0);
   const handledScenarioLinkRequestId = useRef(-1);
   const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
+
+  const handleScientificExport = useCallback((
+    descriptor: import("./types/scenario").ScientificExportDescriptor | null,
+    error: string | null,
+  ) => {
+    setSweScientificExport(descriptor);
+    setSweScientificExportError(error);
+  }, []);
 
   const handleMirvPreviewChange = useCallback((preview: MirvPreview | null) => {
     setMirvPreview(preview);
@@ -1754,6 +1773,28 @@ export default function App() {
               CZML
             </ToolbarButton>
             <ToolbarButton
+              icon="netcdf"
+              onClick={() => {
+                if (!sweScientificExport) return;
+                const run = async () => reportExportResult(
+                  await exportScientificNetcdf(sweScientificExport),
+                  "Saved CF-NetCDF solver products.",
+                  () => void run(),
+                );
+                void run();
+              }}
+              title="Export final SWE state and max-field products as a CF-1.12 NetCDF file"
+              disabled={inHazardMode || !inTauri || !sweScientificExport}
+              disabledReason={inHazardMode
+                ? "NetCDF is available for SWE solver runs."
+                : !inTauri
+                  ? "Use the desktop app for CF-NetCDF export."
+                  : sweScientificExportError ?? "Run the SWE solver before exporting NetCDF."}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              NetCDF
+            </ToolbarButton>
+            <ToolbarButton
               icon="geojson"
               onClick={() => {
                 const points: RunupPoint[] = slotA.runupResults.map((r) => ({
@@ -2219,6 +2260,7 @@ export default function App() {
             pendingGauge={pendingGauge}
             dartBuoys={getDartBuoysForPreset(slotA.activePresetId)}
             onMaxField={setSweMaxField}
+            onScientificExport={handleScientificExport}
             onRunQuality={setSweRunQualityA}
             onIsochrones={setSweIsochrones}
             onRenderFrame={setSweRenderFrameA}

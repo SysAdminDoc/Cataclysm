@@ -43,6 +43,7 @@ fn main() {
         "cancel_simulation",
         "list_solver_checkpoints",
         "remove_solver_checkpoint",
+        "save_scientific_export",
     ]);
 
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(app_manifest))

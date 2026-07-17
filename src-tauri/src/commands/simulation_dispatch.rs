@@ -199,7 +199,7 @@ pub(crate) fn run_simulation_dispatch(
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
     max_field_threshold_m: f64,
-) -> (Vec<GridSnapshot>, bool, Option<MaxFieldProduct>) {
+) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
 
@@ -228,8 +228,7 @@ pub(crate) fn run_simulation_dispatch(
             gauges,
             &mut |g| acc.observe(g),
         ) {
-            let product = acc.into_product(grid, diagnostics);
-            return (snaps, true, Some(product));
+            return (snaps, true, acc);
         }
         // Discard partial-GPU observations; CPU rerun observes fresh below.
         *grid = pristine;
@@ -246,8 +245,7 @@ pub(crate) fn run_simulation_dispatch(
         gauges,
         &mut |g| acc.observe(g),
     );
-    let product = acc.into_product(grid, diagnostics);
-    (snaps, false, Some(product))
+    (snaps, false, acc)
 }
 
 #[cfg(not(feature = "gpu"))]
@@ -261,7 +259,7 @@ pub(crate) fn run_simulation_dispatch(
     diagnostics: Option<&DiagnosticSink<'_>>,
     gauges: &[GridGaugePoint],
     max_field_threshold_m: f64,
-) -> (Vec<GridSnapshot>, bool, Option<MaxFieldProduct>) {
+) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     let stepper = TimeStepper::new(dt_s);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
     let snaps = run_simulation_with_gauge_samples(
@@ -274,8 +272,7 @@ pub(crate) fn run_simulation_dispatch(
         gauges,
         &mut |g| acc.observe(g),
     );
-    let product = acc.into_product(grid, diagnostics);
-    (snaps, false, Some(product))
+    (snaps, false, acc)
 }
 
 /// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-spaced

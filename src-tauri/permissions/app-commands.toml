@@ -35,6 +35,7 @@ permissions = [
   "allow-simulate-asteroid-hazard-render",
   "allow-simulate-nuclear-hazard",
   "allow-simulate-nuclear-hazard-render",
+  "allow-save-scientific-export",
 ]
 
 [[set]]
