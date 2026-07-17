@@ -3,9 +3,12 @@ use netcdf3::{DataSet, FileWriter, NC_FILL_F32, Version};
 use sha2::{Digest, Sha256};
 use std::fs;
 
+mod zarr;
+
 const SCIENTIFIC_EXPORT_DIR: &str = "scientific-exports";
 const SCIENTIFIC_EXPORT_MAX_CELLS: usize = 1_000_000;
 const SCIENTIFIC_EXPORT_MAX_BYTES: u64 = 96 * 1024 * 1024;
+const SCIENTIFIC_EXPORT_MAX_FILES: u64 = 4_096;
 const SCIENTIFIC_EXPORT_RETAINED_FILES: usize = 4;
 
 #[derive(Debug, Clone, Serialize)]
@@ -13,6 +16,17 @@ pub struct ScientificExportDescriptor {
     pub export_id: String,
     pub suggested_filename: String,
     pub bytes: u64,
+    pub format: &'static str,
+    pub conventions: &'static str,
+    pub zarr: Option<ScientificZarrDescriptor>,
+    pub zarr_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ScientificZarrDescriptor {
+    pub suggested_directory: String,
+    pub bytes: u64,
+    pub files: u64,
     pub format: &'static str,
     pub conventions: &'static str,
 }
@@ -410,6 +424,9 @@ fn prune_export_cache(root: &Path) {
         .collect();
     files.sort_by_key(|entry| std::cmp::Reverse(entry.0));
     for (_, path) in files.into_iter().skip(SCIENTIFIC_EXPORT_RETAINED_FILES) {
+        if let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) {
+            let _ = fs::remove_dir_all(root.join(format!("{stem}.zarr")));
+        }
         let _ = fs::remove_file(path);
     }
 }
@@ -463,6 +480,64 @@ pub(crate) fn create_cached_scientific_export(
             "scientific export rejected: artifact size {bytes} bytes is outside the supported range"
         ));
     }
+    let zarr_path = root.join(format!("{export_id}.zarr"));
+    let zarr_temporary = root.join(format!(".{export_id}.zarr.tmp"));
+    if zarr_temporary.exists() {
+        let _ = fs::remove_dir_all(&zarr_temporary);
+    }
+    let (zarr, zarr_error) = match zarr::write_scientific_zarr(
+        &zarr_temporary,
+        run_id,
+        req,
+        grid,
+        max_field,
+        run_quality,
+        used_gpu,
+    ) {
+        Ok(stats)
+            if stats.bytes > 0
+                && stats.bytes <= SCIENTIFIC_EXPORT_MAX_BYTES
+                && stats.files > 0
+                && stats.files <= SCIENTIFIC_EXPORT_MAX_FILES =>
+        {
+            if zarr_path.exists() {
+                let _ = fs::remove_dir_all(&zarr_path);
+            }
+            match fs::rename(&zarr_temporary, &zarr_path) {
+                Ok(()) => (
+                    Some(ScientificZarrDescriptor {
+                        suggested_directory: format!("cataclysm-{run_id}.zarr"),
+                        bytes: stats.bytes,
+                        files: stats.files,
+                        format: "Zarr v3",
+                        conventions: "Zarr 3.1 + CF-1.12 metadata",
+                    }),
+                    None,
+                ),
+                Err(error) => {
+                    let _ = fs::remove_dir_all(&zarr_temporary);
+                    (
+                        None,
+                        Some(format!("failed to publish Zarr export: {error}")),
+                    )
+                }
+            }
+        }
+        Ok(stats) => {
+            let _ = fs::remove_dir_all(&zarr_temporary);
+            (
+                None,
+                Some(format!(
+                    "Zarr export rejected: store contains {} bytes across {} files",
+                    stats.bytes, stats.files
+                )),
+            )
+        }
+        Err(error) => {
+            let _ = fs::remove_dir_all(&zarr_temporary);
+            (None, Some(error))
+        }
+    };
     prune_export_cache(&root);
     Ok(ScientificExportDescriptor {
         export_id,
@@ -470,6 +545,8 @@ pub(crate) fn create_cached_scientific_export(
         bytes,
         format: "NetCDF-3 Classic",
         conventions: "CF-1.12",
+        zarr,
+        zarr_error,
     })
 }
 
@@ -480,17 +557,19 @@ fn validate_export_id(export_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_export_destination(destination: &Path) -> Result<(), String> {
+fn validate_export_destination(destination: &Path, extension: &str) -> Result<(), String> {
     if !destination.is_absolute() {
         return Err("scientific export destination must be an absolute path".into());
     }
     if destination
         .extension()
         .and_then(|ext| ext.to_str())
-        .map(|ext| ext.eq_ignore_ascii_case("nc"))
+        .map(|ext| ext.eq_ignore_ascii_case(extension))
         != Some(true)
     {
-        return Err("scientific export destination must use the .nc extension".into());
+        return Err(format!(
+            "scientific export destination must use the .{extension} extension"
+        ));
     }
     let filename = destination
         .file_name()
@@ -508,19 +587,98 @@ fn validate_export_destination(destination: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn copy_zarr_store(source: &Path, destination: &Path) -> Result<u64, String> {
+    if destination.exists() {
+        return Err("Zarr export destination already exists; choose a new directory".into());
+    }
+    let filename = destination
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "Zarr export destination must have a valid directory name".to_string())?;
+    let temporary = destination.with_file_name(format!(".{filename}.cataclysm.tmp"));
+    if temporary.exists() {
+        return Err("temporary Zarr export destination already exists".into());
+    }
+
+    fn copy_directory(
+        source: &Path,
+        destination: &Path,
+        bytes: &mut u64,
+        files: &mut u64,
+    ) -> Result<(), String> {
+        fs::create_dir(destination)
+            .map_err(|error| format!("failed to create Zarr export directory: {error}"))?;
+        for entry in fs::read_dir(source)
+            .map_err(|error| format!("failed to read cached Zarr export: {error}"))?
+        {
+            let entry =
+                entry.map_err(|error| format!("failed to read cached Zarr export: {error}"))?;
+            let file_type = entry
+                .file_type()
+                .map_err(|error| format!("failed to inspect cached Zarr export: {error}"))?;
+            let target = destination.join(entry.file_name());
+            if file_type.is_symlink() {
+                return Err("cached Zarr export contains an unsupported symbolic link".into());
+            }
+            if file_type.is_dir() {
+                copy_directory(&entry.path(), &target, bytes, files)?;
+            } else if file_type.is_file() {
+                let copied = fs::copy(entry.path(), target)
+                    .map_err(|error| format!("failed to copy Zarr export data: {error}"))?;
+                *bytes = bytes.saturating_add(copied);
+                *files = files.saturating_add(1);
+                if *bytes > SCIENTIFIC_EXPORT_MAX_BYTES || *files > SCIENTIFIC_EXPORT_MAX_FILES {
+                    return Err("cached Zarr export exceeds the supported size limits".into());
+                }
+            }
+        }
+        Ok(())
+    }
+
+    let mut bytes = 0;
+    let mut files = 0;
+    if let Err(error) = copy_directory(source, &temporary, &mut bytes, &mut files) {
+        let _ = fs::remove_dir_all(&temporary);
+        return Err(error);
+    }
+    if bytes == 0 || files == 0 {
+        let _ = fs::remove_dir_all(&temporary);
+        return Err("cached Zarr export is empty".into());
+    }
+    fs::rename(&temporary, destination).map_err(|error| {
+        let _ = fs::remove_dir_all(&temporary);
+        format!("failed to publish Zarr export directory: {error}")
+    })?;
+    Ok(bytes)
+}
+
 #[tauri::command]
 pub fn save_scientific_export(
     app: AppHandle,
     export_id: String,
     destination: String,
+    export_kind: Option<String>,
 ) -> Result<u64, String> {
     validate_export_id(&export_id)?;
     let destination = PathBuf::from(destination);
-    validate_export_destination(&destination)?;
+    let export_kind = export_kind.as_deref().unwrap_or("netcdf");
+    let extension = match export_kind {
+        "netcdf" => "nc",
+        "zarr" => "zarr",
+        _ => return Err("scientific export kind must be 'netcdf' or 'zarr'".into()),
+    };
+    validate_export_destination(&destination, extension)?;
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    if export_kind == "zarr" {
+        let source = export_root(&app_data_dir).join(format!("{export_id}.zarr"));
+        if !source.is_dir() {
+            return Err("Zarr export is no longer available; rerun the solver".into());
+        }
+        return copy_zarr_store(&source, &destination);
+    }
     let source = export_root(&app_data_dir).join(format!("{export_id}.nc"));
     let metadata = fs::metadata(&source)
         .map_err(|_| "scientific export is no longer available; rerun the solver".to_string())?;
@@ -668,6 +826,82 @@ mod tests {
     }
 
     #[test]
+    fn zarr_writer_round_trips_with_dimensions_coordinates_and_units() {
+        use std::process::Command;
+        use std::sync::Arc;
+        use zarrs::storage::ReadableWritableListableStorage;
+
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("products.zarr");
+        let mut grid = SwGrid::new(170.0, -1.0, 173.0, 1.0, 1.0, 1.0);
+        grid.fill_uniform_depth(1000.0);
+        grid.eta_m = vec![0.1, -0.2, 0.3, 0.4, -0.5, 0.0];
+        grid.u_ms.fill(1.25);
+        grid.v_ms.fill(-0.75);
+        grid.t_s = 12.5;
+        grid.step_index = 1;
+        let mut max_field = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
+        max_field.observe(&grid);
+        let stats = zarr::write_scientific_zarr(
+            &path,
+            "run-1",
+            &request(),
+            &grid,
+            &max_field,
+            &quality(),
+            false,
+        )
+        .unwrap();
+        assert!(stats.bytes > 0);
+        assert!(stats.files >= 10);
+
+        let store: ReadableWritableListableStorage =
+            Arc::new(zarrs::filesystem::FilesystemStore::new(&path).unwrap());
+        let eta = zarrs::array::Array::open(store.clone(), "/sea_surface_height").unwrap();
+        assert_eq!(eta.shape(), &[1, 2, 3]);
+        assert_eq!(eta.attributes()["units"], "m");
+        assert_eq!(
+            eta.attributes()["_ARRAY_DIMENSIONS"],
+            serde_json::json!(["time", "latitude", "longitude"])
+        );
+        let values: Vec<f32> = eta.retrieve_array_subset(&eta.subset_all()).unwrap();
+        assert!((values[4] + 0.5).abs() < 1.0e-6);
+        let longitude = zarrs::array::Array::open(store, "/longitude").unwrap();
+        assert_eq!(longitude.shape(), &[3]);
+        assert_eq!(longitude.attributes()["units"], "degrees_east");
+        let longitudes: Vec<f64> = longitude
+            .retrieve_array_subset(&longitude.subset_all())
+            .unwrap();
+        assert_eq!(longitudes, vec![170.5, 171.5, 172.5]);
+
+        if let Ok(python) = std::env::var("CATACLYSM_ZARR_PYTHON") {
+            let script = "import sys,zarr; r=zarr.open(sys.argv[1],mode='r'); assert r['sea_surface_height'].shape==(1,2,3); assert r['sea_surface_height'].attrs['units']=='m'; assert r['sea_surface_height'].attrs['_ARRAY_DIMENSIONS']==['time','latitude','longitude']; assert r['longitude'][:].tolist()==[170.5,171.5,172.5]; assert r['longitude'].attrs['units']=='degrees_east'";
+            let status = Command::new(python)
+                .arg("-c")
+                .arg(script)
+                .arg(&path)
+                .status()
+                .expect("Python Zarr acceptance command should start");
+            assert!(status.success(), "Python zarr.open acceptance failed");
+        }
+    }
+
+    #[test]
+    fn zarr_copy_refuses_existing_destinations_and_preserves_store() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source.zarr");
+        fs::create_dir(&source).unwrap();
+        fs::write(source.join("zarr.json"), b"metadata").unwrap();
+        let destination = dir.path().join("saved.zarr");
+        assert_eq!(copy_zarr_store(&source, &destination).unwrap(), 8);
+        assert_eq!(
+            fs::read(destination.join("zarr.json")).unwrap(),
+            b"metadata"
+        );
+        assert!(copy_zarr_store(&source, &destination).is_err());
+    }
+
+    #[test]
     fn oversized_and_unsafe_exports_fail_closed() {
         let mut grid = SwGrid::new(0.0, 0.0, 2.0, 2.0, 1.0, 1.0);
         grid.nx = SCIENTIFIC_EXPORT_MAX_CELLS + 1;
@@ -678,7 +912,7 @@ mod tests {
                 .contains("limited")
         );
         assert!(validate_export_id("../escape").is_err());
-        assert!(validate_export_destination(Path::new("relative.nc")).is_err());
-        assert!(validate_export_destination(Path::new("C:\\temp\\wrong.txt")).is_err());
+        assert!(validate_export_destination(Path::new("relative.nc"), "nc").is_err());
+        assert!(validate_export_destination(Path::new("C:\\temp\\wrong.txt"), "nc").is_err());
     }
 }

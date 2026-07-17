@@ -232,6 +232,13 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
   font-size: 22px;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.app__brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .app__brand-copy {

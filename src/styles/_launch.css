@@ -128,6 +128,14 @@ html[data-launch-experience-active="true"] .app .app__globe {
   animation: launch-identity 4.8s cubic-bezier(0.2, 0.72, 0.2, 1) both;
 }
 
+.launch-experience__logo {
+  display: block;
+  width: clamp(62px, 5.5vw, 84px);
+  height: clamp(62px, 5.5vw, 84px);
+  margin: 0 auto 16px;
+  filter: drop-shadow(0 10px 24px color-mix(in srgb, var(--cinematic-bg) 72%, transparent));
+}
+
 .launch-experience__eyebrow {
   display: block;
   margin-bottom: var(--space-3);

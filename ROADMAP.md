@@ -37,15 +37,6 @@ tests locally.
 
 ### P3 — education distribution and larger bets
 
-- [ ] P3 — Zarr v3 scientific output export via `zarrs` (pure Rust)
-  Why: gives researchers a chunked, self-describing raw-field export complementary
-  to the now-actionable CF-NetCDF export; zarrs 0.23.x is spec-complete Zarr v3.1.
-  Note: raises rust-version to 1.91, so schedule the toolchain change deliberately.
-  Evidence: https://crates.io/crates/zarrs and the active CF-NetCDF export item.
-  Touches: src-tauri/Cargo.toml, new export command (eta/max-field arrays + CF-style attrs), src/lib/export.ts (menu entry, desktop-only).
-  Acceptance: an exported store opens in Python (`zarr.open`) with correct dims/coords/units; documented in the manual.
-  Complexity: M
-
 - [ ] P3 — Humanitarian-impact layer: OSM schools/hospitals/critical facilities inside the runup zone
   Why: NUKEMAP's 2026 roadmap names this the top public-facing addition; it is the ethically softer alternative to the rejected casualty overlay — counts of facilities, not people.
   Evidence: https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/.

@@ -86,6 +86,13 @@
       "upstream_issue": "https://github.com/tauri-apps/tauri/issues/12048", "owner": "SysAdminDoc", "review_by": "2026-10-14"
     },
     {
+      "advisory": "RUSTSEC-2024-0436", "kind": "unmaintained", "package": "paste", "version": "1.0.15",
+      "affected_targets": ["all"],
+      "dependency_path": ["cataclysm", "zarrs", "paste"],
+      "rationale": "The current zarrs release directly inherits paste as a compile-time proc macro; the warning is informational, no patched paste version exists, and the selected minimal zarrs feature set cannot remove it.",
+      "upstream_issue": "https://rustsec.org/advisories/RUSTSEC-2024-0436", "owner": "SysAdminDoc", "review_by": "2026-10-14"
+    },
+    {
       "advisory": "RUSTSEC-2025-0075", "kind": "unmaintained", "package": "unic-char-range", "version": "0.9.0",
       "affected_targets": ["all"],
       "dependency_path": ["cataclysm", "tauri", "tauri-utils", "urlpattern", "unic-ucd-ident", "unic-char-range"],

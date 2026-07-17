@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import cataclysmLogoUrl from "../../assets/branding/logo.svg";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { settings, type LaunchExperiencePolicy } from "../lib/settings";
 
@@ -135,6 +136,7 @@ export function LaunchExperience({ durationMs = 4_800 }: Props) {
         <span className="launch-experience__blast" />
       </div>
       <div className="launch-experience__identity">
+        <img className="launch-experience__logo" src={cataclysmLogoUrl} alt="" aria-hidden="true" />
         <span className="launch-experience__eyebrow">Planetary hazard simulator</span>
         <h1 id="launch-title">Cataclysm</h1>
         <p>Earth systems. Extreme events. One living world.</p>

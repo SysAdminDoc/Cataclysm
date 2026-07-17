@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/branding/logo.svg" width="152" height="152" alt="Cataclysm propagation and fault logo">
+</p>
+
 # Cataclysm
 
 [![Version](https://img.shields.io/badge/version-0.10.5-blue.svg)](./CHANGELOG.md)
@@ -9,6 +13,10 @@
 > A scientifically grounded 3D-globe **multi-hazard disaster simulator**: asteroid impacts (entry, airburst, cratering, thermal/blast), nuclear detonations (fireball, overpressure, thermal, radiation, EMP, fallout, casualties), seafloor earthquakes, subaerial/submarine landslides — and the tsunamis these events generate. Peer-reviewed historical presets span Chicxulub, Tunguska, Chelyabinsk, Hiroshima, Tsar Bomba, Tōhoku 2011, and Lituya Bay 1958.
 
 **Cataclysm** unifies three former projects — **TsunamiSimulator** (its base), **AsteroidSimulator**, and **NukeMap** — into one globe. It began life as "the NukeMap for tsunamis"; it now aims to *be* the NukeMap, the impact simulator, and the tsunami solver at once.
+
+The Cataclysm mark combines three propagating wavefronts, a fault cut, and a
+single event core. The same source artwork is used by the desktop installers,
+mobile targets, PWA, launch experience, and in-app command bar.
 
 > **Migration status (v0.10.5):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. Source-aware Outcome, Science, and Validation views connect named coastal effects to the globe and timeline while retaining auditable assumptions and provenance. Rust remains the sole authority for direct-effect and named-coast inputs.
 
@@ -160,6 +168,11 @@ Existing tools each do one piece:
   depth, maximum, arrival, coordinate, CRS/datum, quality, citation, and
   provenance data. The pure-Rust writer adds no native NetCDF runtime library;
   oversized and invalid artifacts are rejected before saving.
+- **Zarr v3 interchange** — the same run also publishes a chunked Zarr 3.1
+  directory store with named time/latitude/longitude dimensions, CF-1.12-style
+  units and metadata, final state, max-field products, and full provenance.
+  The pure-Rust `zarrs` writer produces stores that open directly with Python
+  `zarr.open`; existing destination directories are never overwritten.
 - **Recoverable long solver runs** — authenticated, atomically replaced
   checkpoints preserve the full grid, tick, maximum fields, and gauge history.
   Advanced mode offers 30-second, one-minute, and five-minute wall-clock
@@ -272,7 +285,7 @@ datum conversion fails closed until the required model grid is supplied.
 Prerequisites:
 
 - **Node.js** ≥ 20 LTS
-- **Rust** ≥ 1.88 (stable) with `rustup`
+- **Rust** ≥ 1.91 (stable) with `rustup`
 - Windows: Visual Studio 2022/2026 with "Desktop development with C++"
   workload (provides MSVC `link.exe`); WebView2 runtime (preinstalled on Win11)
 - macOS: Xcode Command Line Tools

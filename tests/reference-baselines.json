@@ -14,10 +14,20 @@
       "height": 1440
     },
     "ocean-daylight@1440p": {
-      "pngSha256": "b27cb9886a8d36ca6d234403a1d9764fa241c764e6d37d529545971c2b2319db",
+      "pngSha256": "159fcda85042e5b15e815b4f39ce39bdcf6d7ba1bab0c9e8a73827153ece31ae",
       "sceneSha256": "6884ed77f30c1487315da2b0e3760f2170992aae32e316e03e9303b97a0a62ec",
       "width": 2560,
-      "height": 1440
+      "height": 1440,
+      "review": {
+        "reason": "Zarr v3 export control intentionally changes the compiled application surface; reviewed stable headless render",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-17T14:22:03.043Z",
+        "previousPngSha256": "b27cb9886a8d36ca6d234403a1d9764fa241c764e6d37d529545971c2b2319db",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "ac09da72825cc29907a5f14e5002cd59f50dd73750fbcba62418d1c91fb284cc",
+        "requiredScaleCue": "Coastline or horizon context establishes regional ocean scale."
+      }
     },
     "earth-night@1440p": {
       "pngSha256": "c2587d0d125875a8c05d76503027a9bea436d97e13feacab35be8fa4ab6dd1d7",
@@ -94,29 +104,52 @@
       }
     },
     "tsunami-deep-ocean@1440p": {
-      "pngSha256": "fc9c262479d4bfef1c40a59dd7b4d404736a8e0cc5492b16e2ba1c936a432ae1",
+      "pngSha256": "ffcd11323fa1d212498994a8febefc7540f9c5aa16110cf70ff7528221bd934e",
       "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82",
       "width": 2560,
       "height": 1440,
       "review": {
-        "reason": "The committed-WebGL-frame barrier replaces a visibly incomplete SwiftShader capture while preserving the exact reviewed scene contract",
+        "reason": "Zarr v3 companion generation intentionally changes completed-run timing; reviewed stable headless solver scene",
         "approver": "SysAdminDoc",
-        "approvedAt": "2026-07-15T00:15:46.874Z",
-        "previousPngSha256": "0398a49966dba63ff5a396ebe4c2cdd65d939ed7ee39fb05f664b7f7ec5441db",
-        "commit": "cbafa397a367613f7c2a9327ea8e9cf89e0a7e05"
+        "approvedAt": "2026-07-17T14:26:19.654Z",
+        "previousPngSha256": "fc9c262479d4bfef1c40a59dd7b4d404736a8e0cc5492b16e2ba1c936a432ae1",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "7fb900bc64261360f8a3b8b46f68f0ba4aafece55818b1589f84e9435ab0d31c",
+        "requiredScaleCue": "Basin-scale coastlines make the broad wavelength legible."
       }
     },
     "tsunami-shoaling@1440p": {
-      "pngSha256": "ffa37899477df224885807d83ea0c78095243c3a9a4cff49872d711a2d66973d",
+      "pngSha256": "5b2b050bb12ddebf4762870e7ae59f1869cce69cfce2e11cdfce8ec6490f112a",
       "sceneSha256": "f48c353e9b14571761c3f9d8bdb490cc3abd2a5c1d08b5288eb9e973d86f159e",
       "width": 2560,
-      "height": 1440
+      "height": 1440,
+      "review": {
+        "reason": "Zarr v3 companion generation intentionally changes completed-run timing; reviewed stable headless solver scene",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-17T14:27:31.844Z",
+        "previousPngSha256": "ffa37899477df224885807d83ea0c78095243c3a9a4cff49872d711a2d66973d",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "47263473a5a7a0991e0a9702bb5302b761418a3df6922e21d4c83176684b7061",
+        "requiredScaleCue": "The approaching wave field and recognizable coastline are visible together."
+      }
     },
     "urban-inundation@1440p": {
-      "pngSha256": "6a7bc5dbdefe180439e0f445fa267352caeebbd4c802ee8da4f94d95fbcdbbbc",
+      "pngSha256": "cd201dbc4f473c5d15ce8828aac3ba053c74e62278fe67ccd984e80500558357",
       "sceneSha256": "1d665fd2775304b34d9d3c85f732e5d1da5aab15b7800335fc4d10dbff629a6f",
       "width": 2560,
-      "height": 1440
+      "height": 1440,
+      "review": {
+        "reason": "Zarr v3 companion generation intentionally changes completed-run timing; reviewed stable headless solver scene",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-17T14:28:41.749Z",
+        "previousPngSha256": "6a7bc5dbdefe180439e0f445fa267352caeebbd4c802ee8da4f94d95fbcdbbbc",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "c0c94d4ab7ce01ac1ea1663187f1028d399307d960bbe47c1d6938afe3ff1ae8",
+        "requiredScaleCue": "Coastline, terrain, and inundated extent are visible together."
+      }
     },
     "fjord-runup@1440p": {
       "pngSha256": "442f03914fc9be557536aa14a1670b3a5476580dfc228615427cf57620886a6d",
@@ -211,22 +244,52 @@
       }
     },
     "tsunami-deep-ocean@4k": {
-      "pngSha256": "cacde6964827a98b5d9487966d813ff65e29163e0d9acb1731c284cd8bae8afc",
+      "pngSha256": "9807ad742cbcf769c80f1dcd1fcc08653904e9e532fef4383456ffd63f0400ae",
       "sceneSha256": "6fb5b9df0382fe774c1c5f14f652ceadc59edbac3550cdaf7116297386a98d82",
       "width": 3840,
-      "height": 2160
+      "height": 2160,
+      "review": {
+        "reason": "Zarr v3 companion generation intentionally changes completed-run timing; reviewed stable headless solver scene",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-17T14:38:37.207Z",
+        "previousPngSha256": "cacde6964827a98b5d9487966d813ff65e29163e0d9acb1731c284cd8bae8afc",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "7fb900bc64261360f8a3b8b46f68f0ba4aafece55818b1589f84e9435ab0d31c",
+        "requiredScaleCue": "Basin-scale coastlines make the broad wavelength legible."
+      }
     },
     "tsunami-shoaling@4k": {
-      "pngSha256": "fd65719188eb73d143e33de222e863dcf9c285b51840f834bfc1aa71ff3f181d",
+      "pngSha256": "d536714b7beeb77db87503e12eb046c6541cfeb2a6b820de2f91ced9a1d1fb87",
       "sceneSha256": "f48c353e9b14571761c3f9d8bdb490cc3abd2a5c1d08b5288eb9e973d86f159e",
       "width": 3840,
-      "height": 2160
+      "height": 2160,
+      "review": {
+        "reason": "Zarr v3 companion generation intentionally changes completed-run timing; reviewed stable headless solver scene",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-17T14:40:18.106Z",
+        "previousPngSha256": "fd65719188eb73d143e33de222e863dcf9c285b51840f834bfc1aa71ff3f181d",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "47263473a5a7a0991e0a9702bb5302b761418a3df6922e21d4c83176684b7061",
+        "requiredScaleCue": "The approaching wave field and recognizable coastline are visible together."
+      }
     },
     "urban-inundation@4k": {
-      "pngSha256": "10c65a7173b32491e1ff121a9463174a2ffba9a604864f5b6cb744e047c55c63",
+      "pngSha256": "7fe485dcf0db5b91f754f0391a429cd162e032a63858f315ffb2c84ce6d0c527",
       "sceneSha256": "1d665fd2775304b34d9d3c85f732e5d1da5aab15b7800335fc4d10dbff629a6f",
       "width": 3840,
-      "height": 2160
+      "height": 2160,
+      "review": {
+        "reason": "Zarr v3 companion generation intentionally changes completed-run timing; reviewed stable headless solver scene",
+        "approver": "SysAdminDoc",
+        "approvedAt": "2026-07-17T14:41:28.241Z",
+        "previousPngSha256": "10c65a7173b32491e1ff121a9463174a2ffba9a604864f5b6cb744e047c55c63",
+        "commit": "d7b25ae061f89528d009c5b40e34b383c54d2344",
+        "visualQualityStatus": "blocked",
+        "visualQualityContractSha256": "c0c94d4ab7ce01ac1ea1663187f1028d399307d960bbe47c1d6938afe3ff1ae8",
+        "requiredScaleCue": "Coastline, terrain, and inundated extent are visible together."
+      }
     },
     "fjord-runup@4k": {
       "pngSha256": "50ba02d87fa422f206a42b9e79a263c67eb832e8d6e40601d0c3d97eea47cc99",

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import cataclysmLogoUrl from "../assets/branding/logo.svg";
 import { PresetSelector } from "./components/PresetSelector";
 import { ComparisonStories } from "./components/ComparisonStories";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
@@ -44,7 +45,7 @@ import {
   type AsyncResult,
 } from "./lib/async-result";
 import { downloadTextExport } from "./lib/text-export";
-import { exportScientificNetcdf } from "./lib/scientific-export";
+import { exportScientificNetcdf, exportScientificZarr } from "./lib/scientific-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
 import type { HistoricalScenarioImport } from "./lib/ncei-hazel";
@@ -161,7 +162,7 @@ const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "geojson" | "kml" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "geojson" | "kml" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -246,6 +247,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <path d="M5 3h10l4 4v14H5Z" />
         <path d="M15 3v5h5M8 12h8M8 16h8" />
+      </svg>
+    );
+  }
+  if (name === "zarr") {
+    return (
+      <svg {...common}>
+        <path d="m12 2 8 4.5v11L12 22l-8-4.5v-11Z" />
+        <path d="m4 6.5 8 4.5 8-4.5M12 11v11" />
       </svg>
     );
   }
@@ -1529,7 +1538,9 @@ export default function App() {
       </div>
       <header className="app__header">
         <div className="app__brand">
-          <span className="app__brand-mark" aria-hidden="true">≋</span>
+          <span className="app__brand-mark" aria-hidden="true">
+            <img src={cataclysmLogoUrl} alt="" />
+          </span>
           <div className="app__brand-copy">
             <h1 className="app__title">Cataclysm</h1>
             <span className="app__tagline">Planetary hazard simulator</span>
@@ -1810,6 +1821,28 @@ export default function App() {
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               NetCDF
+            </ToolbarButton>
+            <ToolbarButton
+              icon="zarr"
+              onClick={() => {
+                if (!sweScientificExport?.zarr) return;
+                const run = async () => reportExportResult(
+                  await exportScientificZarr(sweScientificExport),
+                  "Saved Zarr v3 solver products.",
+                  () => void run(),
+                );
+                void run();
+              }}
+              title="Export final SWE state and max-field products as a chunked Zarr v3 store"
+              disabled={inHazardMode || !inTauri || !sweScientificExport?.zarr}
+              disabledReason={inHazardMode
+                ? "Zarr is available for SWE solver runs."
+                : !inTauri
+                  ? "Use the desktop app for Zarr export."
+                  : sweScientificExport?.zarr_error ?? sweScientificExportError ?? "Run the SWE solver before exporting Zarr."}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              Zarr
             </ToolbarButton>
             <ToolbarButton
               icon="geojson"
@@ -2121,7 +2154,7 @@ export default function App() {
             <span>Active workspace</span>
             <strong>{inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}</strong>
           </div>
-          <div className="workspace-mode" role="group" aria-label="Workspace detail">
+          {inspectorTab === "setup" && <div className="workspace-mode" role="group" aria-label="Workspace detail">
             {(["simple", "customize", "advanced"] as const).map((mode) => (
               <button
                 key={mode}
@@ -2133,7 +2166,7 @@ export default function App() {
                 {mode[0].toUpperCase() + mode.slice(1)}
               </button>
             ))}
-          </div>
+          </div>}
           <div className="inspector__tabs" role="tablist" aria-label="Simulation inspector">
             {(["setup", "results", "layers"] as const).map((tab) => (
               <button

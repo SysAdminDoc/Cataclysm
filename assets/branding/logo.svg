@@ -1,31 +1,30 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Cataclysm</title>
+  <desc id="desc">Concentric hazard wavefronts split by a diagonal fault around an event core.</desc>
   <defs>
-    <radialGradient id="globeGradient" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="#74c7ec"/>
-      <stop offset="55%" stop-color="#1e3a5f"/>
-      <stop offset="100%" stop-color="#0d1929"/>
-    </radialGradient>
-    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#89b4fa"/>
-      <stop offset="100%" stop-color="#74c7ec"/>
+    <linearGradient id="field" x1="176" y1="112" x2="848" y2="912" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1B2D"/>
+      <stop offset="1" stop-color="#030A12"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="256" y1="244" x2="760" y2="804" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A6ECFA"/>
+      <stop offset="1" stop-color="#43C5E7"/>
     </linearGradient>
   </defs>
 
-  <!-- Background disc (transparent rounded square) -->
-  <rect x="48" y="48" width="928" height="928" rx="120" fill="#1e1e2e"/>
+  <rect x="48" y="48" width="928" height="928" rx="212" fill="url(#field)"/>
+  <rect x="49" y="49" width="926" height="926" rx="211" fill="none" stroke="#17334A" stroke-width="2"/>
 
-  <!-- Earth globe -->
-  <circle cx="512" cy="512" r="360" fill="url(#globeGradient)" stroke="#cdd6f4" stroke-width="6"/>
+  <g fill="none" stroke="url(#signal)" stroke-linecap="butt">
+    <circle cx="512" cy="512" r="314" stroke-width="58"/>
+    <circle cx="512" cy="512" r="210" stroke-width="54"/>
+    <circle cx="512" cy="512" r="111" stroke-width="48"/>
+  </g>
 
-  <!-- Concentric tsunami wavefronts -->
-  <circle cx="512" cy="512" r="200" fill="none" stroke="url(#waveGradient)" stroke-width="14" opacity="0.85"/>
-  <circle cx="512" cy="512" r="280" fill="none" stroke="url(#waveGradient)" stroke-width="10" opacity="0.65"/>
-  <circle cx="512" cy="512" r="360" fill="none" stroke="url(#waveGradient)" stroke-width="6" opacity="0.45"/>
+  <!-- A dark fracture cuts every propagation ring without adding ornament. -->
+  <path d="M806 204 593 454 659 535 342 860" fill="none" stroke="#06111D" stroke-width="112" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M806 204 593 454 659 535 342 860" fill="none" stroke="url(#signal)" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter"/>
 
-  <!-- Impact / source point -->
-  <circle cx="512" cy="512" r="34" fill="#f9e2af" stroke="#11111b" stroke-width="6"/>
-
-  <!-- A stylized wave crest at the bottom -->
-  <path d="M 200 760 Q 312 700 424 760 T 648 760 T 872 760"
-        fill="none" stroke="#74c7ec" stroke-width="22" stroke-linecap="round" opacity="0.85"/>
+  <circle cx="512" cy="512" r="50" fill="#06111D"/>
+  <circle cx="512" cy="512" r="34" fill="#FFB842"/>
 </svg>

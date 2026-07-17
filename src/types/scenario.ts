@@ -222,6 +222,14 @@ export type ScientificExportDescriptor = {
   bytes: number;
   format: "NetCDF-3 Classic";
   conventions: "CF-1.12";
+  zarr: {
+    suggested_directory: string;
+    bytes: number;
+    files: number;
+    format: "Zarr v3";
+    conventions: "Zarr 3.1 + CF-1.12 metadata";
+  } | null;
+  zarr_error: string | null;
 };
 
 export type SimulateGridResponse = {

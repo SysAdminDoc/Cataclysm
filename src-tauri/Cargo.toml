@@ -6,8 +6,8 @@ authors = ["SysAdminDoc"]
 license = "MIT"
 repository = "https://github.com/SysAdminDoc/Cataclysm"
 edition = "2024"
-# Floor set by wgpu/naga 29 (MSRV 1.87) and time-core 0.1.9 (MSRV 1.88).
-rust-version = "1.88"
+# Floor set by zarrs 0.23.x for the Zarr v3 scientific-export store.
+rust-version = "1.91"
 
 [lib]
 name = "tsunami_simulator_lib"
@@ -35,6 +35,7 @@ png = "0.17"
 geotiff-reader = { version = "0.7.0", default-features = false, features = ["local", "rayon"] }
 netcdf-reader = { version = "0.8.0", features = ["cf"] }
 netcdf3 = "0.6.1"
+zarrs = { version = "0.23.13", default-features = false, features = ["filesystem"] }
 sha2 = "0.10"
 # OS keychain for the Cesium ion token (Windows Credential Manager /
 # macOS Keychain / Linux Secret Service). Called directly rather than via

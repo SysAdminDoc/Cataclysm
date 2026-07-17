@@ -119,22 +119,29 @@ Streaming variant — sends each snapshot via a Tauri Channel as it's computed. 
   scenario/settings/data/solver digests, timestep, schedule prefix, grid,
   bathymetry, tick, and simulated time match the rebuilt run plan.
 - **Output:** `Result<SimulateGridStreamMeta, String>` — `dt_s, nx, ny,
-  used_gpu, n_snapshots`, an optional opaque CF-NetCDF descriptor or non-fatal
-  export error, plus authenticated pre-interruption gauge history for resumed
+  used_gpu, n_snapshots`, an optional opaque scientific-export descriptor with
+  CF-NetCDF and independently generated Zarr v3 availability/error metadata,
+  plus authenticated pre-interruption gauge history for resumed
   chart/CSV continuity.
 
 ### `save_scientific_export`
-Copy one retained solver artifact to a user-selected local `.nc` file without
+Copy one retained solver artifact to a user-selected local `.nc` file or new
+`.zarr` directory without
 exposing its application-cache path or quantitative arrays to the WebView.
-- **Input:** a 32-hex-character opaque export ID and an absolute `.nc`
-  destination in an existing directory.
+- **Input:** a 32-hex-character opaque export ID, `export_kind` (`netcdf` or
+  `zarr`), and an absolute destination with the matching extension in an
+  existing parent directory.
 - **Output:** bytes copied.
 - **Limits:** completed finite runs only; at most 1,000,000 grid cells, 96 MiB
-  per artifact, and four retained cache files. IDs, extensions, parents,
-  filenames, missing/stale artifacts, and artifact sizes fail closed.
+  per artifact, 4,096 Zarr files, and four retained run products. IDs,
+  extensions, parents, filenames, missing/stale artifacts, sizes, symbolic
+  links, and existing Zarr destination directories fail closed.
 - **Format:** NetCDF-3 Classic with CF-1.12 coordinates, final eta/velocity/
   depth fields, maximum/arrival products, WGS 84 mapping, mean-sea-level datum,
   units, citations, scenario SHA-256, solver backend, and quality JSON.
+- **Zarr format:** Zarr 3.1 with named dimensions, chunked final eta/velocity/
+  depth and maximum/arrival fields, CF-1.12-style coordinate and variable
+  metadata, WGS 84 mapping, datum, scenario provenance, and quality JSON.
 
 ### `cancel_simulation`
 Signal one owned simulation to stop. The solver polls its run-specific cancel

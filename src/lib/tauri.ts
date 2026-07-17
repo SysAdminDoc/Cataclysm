@@ -612,8 +612,8 @@ export const api = {
   removeSolverCheckpoint(runId: string) {
     return invoke<boolean>("remove_solver_checkpoint", { runId });
   },
-  saveScientificExport(exportId: string, destination: string) {
-    return invoke<number>("save_scientific_export", { exportId, destination });
+  saveScientificExport(exportId: string, destination: string, exportKind: "netcdf" | "zarr" = "netcdf") {
+    return invoke<number>("save_scientific_export", { exportId, destination, exportKind });
   },
 };
 

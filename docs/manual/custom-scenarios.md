@@ -154,6 +154,7 @@ is included in provenance text and gauge CSV columns.
 | **Text** | Screen-reader-friendly text file with parameters and runup table |
 | **CZML** | Time-dynamic Cesium playback file (viewable in any CesiumJS app) |
 | **NetCDF** | Desktop-only CF-1.12 scientific grid with final SWE and maximum/arrival products |
+| **Zarr** | Desktop-only chunked Zarr 3.1 store with the same scientific products and CF-style metadata |
 
 NetCDF export becomes available after a completed desktop SWE run. The file is
 generated from the live Rust grid before its quantitative arrays are released;
@@ -161,3 +162,19 @@ the export menu receives only an opaque cache handle. Grids above one million
 cells, cancelled or non-finite runs, stale handles, non-`.nc` destinations, and
 relative paths are rejected. Warning-level quality records remain embedded in
 the file so downstream users can assess the result.
+
+Zarr export is generated independently beside NetCDF and becomes available on
+the same completed-run menu. Choose a new `.zarr` directory name; Cataclysm
+will not merge into or replace an existing directory. The store contains named
+`time`, `latitude`, and `longitude` dimensions; coordinate units; final surface
+height and velocity; sea-floor depth; maximum height, time-of-maximum,
+first-arrival, and integrated-energy fields; plus the same scenario, solver,
+bathymetry, CRS/datum, and quality provenance. In Python, open it with:
+
+```python
+import zarr
+
+products = zarr.open("cataclysm-run.zarr", mode="r")
+eta = products["sea_surface_height"][:]
+longitude = products["longitude"][:]
+```

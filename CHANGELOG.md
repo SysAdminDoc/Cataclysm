@@ -6,6 +6,30 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Reworked every primary workspace and modal around a compact scientific-tool
+  visual system: larger operational type, a shorter command bar, denser section
+  rhythm, flatter selected states, fewer status chips, divider-led results and
+  references, simplified settings provenance, and a calmer navy/cyan hierarchy.
+  The selected scenario and Run & Watch action now stay above discovery, while
+  setup-only detail controls no longer crowd Results or Layers. Dark, light,
+  forced-colors, keyboard, 320 CSS-pixel, and 200 percent zoom states are locked
+  by refreshed headless accessibility and visual-regression coverage.
+
+- Replaced the generic wave glyph and legacy globe icon with a unified
+  propagation/fault identity. One canonical SVG now drives the in-app command
+  bar, launch experience, README, PWA favicons, Windows tiles, macOS ICNS,
+  Windows ICO, Linux PNGs, and the generated iOS and Android icon families.
+
+- Completed desktop shallow-water runs now generate a bounded Zarr 3.1
+  companion store alongside CF-NetCDF. The pure-Rust `zarrs` writer preserves
+  named dimensions, coordinate arrays, CF-1.12-style units, CRS/datum,
+  final-state and max-field variables, scenario provenance, and quality JSON.
+  Store publication is atomic, cache retention stays paired with NetCDF, and
+  saving rejects stale handles, unsafe paths, oversized stores, symbolic
+  links, and existing destination directories. Rust round-trip tests and a
+  Python `zarr.open` acceptance test verify interoperability. The required
+  Rust toolchain floor is now 1.91.
+
 - Meteotsunami scenarios now prescribe a finite translating Gaussian
   atmospheric-pressure anomaly and apply its pressure gradient at every CPU or
   GPU shallow-water step. The fifth Scenario Builder source type exposes
