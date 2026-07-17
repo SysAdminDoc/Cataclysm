@@ -65,6 +65,7 @@ import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/refere
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
 import type { Preset } from "./types/scenario";
+import type { NukemapLocationResult } from "./types/nukemap-data";
 import { HazardControls } from "./components/HazardControls";
 import { useFireballs } from "./hooks/useFireballs";
 import { SimulationTransport } from "./components/SimulationTransport";
@@ -1145,6 +1146,17 @@ export default function App() {
     setPickMode(false);
   }
 
+  function handleLocationSelect(location: NukemapLocationResult) {
+    void handlePickGlobe(location.lat, location.lon);
+    if (directHazardMode === "nuclear") {
+      setNuclearInput((current) => ({
+        ...current,
+        populationDensity: location.density.peoplePerKm2,
+      }));
+    }
+    setPickMode(false);
+  }
+
   function selectHazardMode(mode: HazardMode) {
     setRunJourney(null);
     setHazardMode(mode);
@@ -2006,6 +2018,7 @@ export default function App() {
             onAsteroidChange={setAsteroidInput}
             center={hazardCenter}
             onTogglePick={() => setPickMode((p) => !p)}
+            onLocationSelect={handleLocationSelect}
             pickActive={pickMode}
             result={hazardResult}
             asteroidVisuals={asteroidVisualReport}

@@ -1,0 +1,2524 @@
+{
+  "schemaVersion": 1,
+  "source": "legacy/nukemap/js/data.js#NM.CITIES",
+  "count": 246,
+  "items": [
+    {
+      "id": "new-york-ny",
+      "name": "New York",
+      "state": "NY",
+      "lat": 40.7128,
+      "lon": -74.006,
+      "population": 8336817,
+      "zipCodes": [
+        "10001",
+        "10019",
+        "10036"
+      ]
+    },
+    {
+      "id": "los-angeles-ca",
+      "name": "Los Angeles",
+      "state": "CA",
+      "lat": 34.0522,
+      "lon": -118.244,
+      "population": 3979576,
+      "zipCodes": [
+        "90001",
+        "90012",
+        "90028"
+      ]
+    },
+    {
+      "id": "chicago-il",
+      "name": "Chicago",
+      "state": "IL",
+      "lat": 41.8781,
+      "lon": -87.6298,
+      "population": 2693976,
+      "zipCodes": [
+        "60601",
+        "60614"
+      ]
+    },
+    {
+      "id": "houston-tx",
+      "name": "Houston",
+      "state": "TX",
+      "lat": 29.7604,
+      "lon": -95.3698,
+      "population": 2320268,
+      "zipCodes": [
+        "77001",
+        "77019"
+      ]
+    },
+    {
+      "id": "phoenix-az",
+      "name": "Phoenix",
+      "state": "AZ",
+      "lat": 33.4484,
+      "lon": -112.074,
+      "population": 1680992,
+      "zipCodes": [
+        "85001",
+        "85016"
+      ]
+    },
+    {
+      "id": "philadelphia-pa",
+      "name": "Philadelphia",
+      "state": "PA",
+      "lat": 39.9526,
+      "lon": -75.1652,
+      "population": 1603797,
+      "zipCodes": [
+        "19102",
+        "19107"
+      ]
+    },
+    {
+      "id": "san-antonio-tx",
+      "name": "San Antonio",
+      "state": "TX",
+      "lat": 29.4241,
+      "lon": -98.4936,
+      "population": 1547253,
+      "zipCodes": [
+        "78201"
+      ]
+    },
+    {
+      "id": "san-diego-ca",
+      "name": "San Diego",
+      "state": "CA",
+      "lat": 32.7157,
+      "lon": -117.161,
+      "population": 1423851,
+      "zipCodes": [
+        "92101"
+      ]
+    },
+    {
+      "id": "dallas-tx",
+      "name": "Dallas",
+      "state": "TX",
+      "lat": 32.7767,
+      "lon": -96.797,
+      "population": 1343573,
+      "zipCodes": [
+        "75201"
+      ]
+    },
+    {
+      "id": "san-jose-ca",
+      "name": "San Jose",
+      "state": "CA",
+      "lat": 37.3382,
+      "lon": -121.886,
+      "population": 1021795,
+      "zipCodes": [
+        "95110"
+      ]
+    },
+    {
+      "id": "austin-tx",
+      "name": "Austin",
+      "state": "TX",
+      "lat": 30.2672,
+      "lon": -97.7431,
+      "population": 978908,
+      "zipCodes": [
+        "78701"
+      ]
+    },
+    {
+      "id": "jacksonville-fl",
+      "name": "Jacksonville",
+      "state": "FL",
+      "lat": 30.3322,
+      "lon": -81.6557,
+      "population": 949611,
+      "zipCodes": [
+        "32202"
+      ]
+    },
+    {
+      "id": "fort-worth-tx",
+      "name": "Fort Worth",
+      "state": "TX",
+      "lat": 32.7555,
+      "lon": -97.3308,
+      "population": 918915,
+      "zipCodes": [
+        "76102"
+      ]
+    },
+    {
+      "id": "columbus-oh",
+      "name": "Columbus",
+      "state": "OH",
+      "lat": 39.9612,
+      "lon": -82.9988,
+      "population": 905748,
+      "zipCodes": [
+        "43215"
+      ]
+    },
+    {
+      "id": "indianapolis-in",
+      "name": "Indianapolis",
+      "state": "IN",
+      "lat": 39.7684,
+      "lon": -86.1581,
+      "population": 887642,
+      "zipCodes": [
+        "46204"
+      ]
+    },
+    {
+      "id": "charlotte-nc",
+      "name": "Charlotte",
+      "state": "NC",
+      "lat": 35.2271,
+      "lon": -80.8431,
+      "population": 874579,
+      "zipCodes": [
+        "28202"
+      ]
+    },
+    {
+      "id": "san-francisco-ca",
+      "name": "San Francisco",
+      "state": "CA",
+      "lat": 37.7749,
+      "lon": -122.419,
+      "population": 873965,
+      "zipCodes": [
+        "94102"
+      ]
+    },
+    {
+      "id": "seattle-wa",
+      "name": "Seattle",
+      "state": "WA",
+      "lat": 47.6062,
+      "lon": -122.332,
+      "population": 737015,
+      "zipCodes": [
+        "98101"
+      ]
+    },
+    {
+      "id": "denver-co",
+      "name": "Denver",
+      "state": "CO",
+      "lat": 39.7392,
+      "lon": -104.99,
+      "population": 715522,
+      "zipCodes": [
+        "80202"
+      ]
+    },
+    {
+      "id": "washington-dc",
+      "name": "Washington",
+      "state": "DC",
+      "lat": 38.9072,
+      "lon": -77.0369,
+      "population": 689545,
+      "zipCodes": [
+        "20001",
+        "20500"
+      ]
+    },
+    {
+      "id": "nashville-tn",
+      "name": "Nashville",
+      "state": "TN",
+      "lat": 36.1627,
+      "lon": -86.7816,
+      "population": 689447,
+      "zipCodes": [
+        "37201"
+      ]
+    },
+    {
+      "id": "oklahoma-city-ok",
+      "name": "Oklahoma City",
+      "state": "OK",
+      "lat": 35.4676,
+      "lon": -97.5164,
+      "population": 681054,
+      "zipCodes": [
+        "73101"
+      ]
+    },
+    {
+      "id": "el-paso-tx",
+      "name": "El Paso",
+      "state": "TX",
+      "lat": 31.7619,
+      "lon": -106.485,
+      "population": 681124,
+      "zipCodes": [
+        "79901"
+      ]
+    },
+    {
+      "id": "boston-ma",
+      "name": "Boston",
+      "state": "MA",
+      "lat": 42.3601,
+      "lon": -71.0589,
+      "population": 675647,
+      "zipCodes": [
+        "02101"
+      ]
+    },
+    {
+      "id": "portland-or",
+      "name": "Portland",
+      "state": "OR",
+      "lat": 45.5152,
+      "lon": -122.678,
+      "population": 652503,
+      "zipCodes": [
+        "97201"
+      ]
+    },
+    {
+      "id": "las-vegas-nv",
+      "name": "Las Vegas",
+      "state": "NV",
+      "lat": 36.1699,
+      "lon": -115.14,
+      "population": 641903,
+      "zipCodes": [
+        "89101"
+      ]
+    },
+    {
+      "id": "memphis-tn",
+      "name": "Memphis",
+      "state": "TN",
+      "lat": 35.1495,
+      "lon": -90.049,
+      "population": 633104,
+      "zipCodes": [
+        "38103"
+      ]
+    },
+    {
+      "id": "louisville-ky",
+      "name": "Louisville",
+      "state": "KY",
+      "lat": 38.2527,
+      "lon": -85.7585,
+      "population": 633045,
+      "zipCodes": [
+        "40202"
+      ]
+    },
+    {
+      "id": "baltimore-md",
+      "name": "Baltimore",
+      "state": "MD",
+      "lat": 39.2904,
+      "lon": -76.6122,
+      "population": 585708,
+      "zipCodes": [
+        "21201"
+      ]
+    },
+    {
+      "id": "milwaukee-wi",
+      "name": "Milwaukee",
+      "state": "WI",
+      "lat": 43.0389,
+      "lon": -87.9065,
+      "population": 577222,
+      "zipCodes": [
+        "53201"
+      ]
+    },
+    {
+      "id": "albuquerque-nm",
+      "name": "Albuquerque",
+      "state": "NM",
+      "lat": 35.0844,
+      "lon": -106.65,
+      "population": 564559,
+      "zipCodes": [
+        "87101"
+      ]
+    },
+    {
+      "id": "tucson-az",
+      "name": "Tucson",
+      "state": "AZ",
+      "lat": 32.2226,
+      "lon": -110.975,
+      "population": 548073,
+      "zipCodes": [
+        "85701"
+      ]
+    },
+    {
+      "id": "fresno-ca",
+      "name": "Fresno",
+      "state": "CA",
+      "lat": 36.7378,
+      "lon": -119.787,
+      "population": 542107,
+      "zipCodes": [
+        "93721"
+      ]
+    },
+    {
+      "id": "sacramento-ca",
+      "name": "Sacramento",
+      "state": "CA",
+      "lat": 38.5816,
+      "lon": -121.494,
+      "population": 524943,
+      "zipCodes": [
+        "95814"
+      ]
+    },
+    {
+      "id": "mesa-az",
+      "name": "Mesa",
+      "state": "AZ",
+      "lat": 33.4152,
+      "lon": -111.832,
+      "population": 518012,
+      "zipCodes": [
+        "85201"
+      ]
+    },
+    {
+      "id": "kansas-city-mo",
+      "name": "Kansas City",
+      "state": "MO",
+      "lat": 39.0997,
+      "lon": -94.5786,
+      "population": 508090,
+      "zipCodes": [
+        "64101"
+      ]
+    },
+    {
+      "id": "atlanta-ga",
+      "name": "Atlanta",
+      "state": "GA",
+      "lat": 33.749,
+      "lon": -84.388,
+      "population": 498715,
+      "zipCodes": [
+        "30303"
+      ]
+    },
+    {
+      "id": "omaha-ne",
+      "name": "Omaha",
+      "state": "NE",
+      "lat": 41.2565,
+      "lon": -95.9345,
+      "population": 486051,
+      "zipCodes": [
+        "68102"
+      ]
+    },
+    {
+      "id": "colorado-springs-co",
+      "name": "Colorado Springs",
+      "state": "CO",
+      "lat": 38.8339,
+      "lon": -104.821,
+      "population": 478961,
+      "zipCodes": [
+        "80903"
+      ]
+    },
+    {
+      "id": "raleigh-nc",
+      "name": "Raleigh",
+      "state": "NC",
+      "lat": 35.7796,
+      "lon": -78.6382,
+      "population": 474069,
+      "zipCodes": [
+        "27601"
+      ]
+    },
+    {
+      "id": "long-beach-ca",
+      "name": "Long Beach",
+      "state": "CA",
+      "lat": 33.77,
+      "lon": -118.194,
+      "population": 466742,
+      "zipCodes": [
+        "90802"
+      ]
+    },
+    {
+      "id": "virginia-beach-va",
+      "name": "Virginia Beach",
+      "state": "VA",
+      "lat": 36.8529,
+      "lon": -75.978,
+      "population": 459470,
+      "zipCodes": [
+        "23451"
+      ]
+    },
+    {
+      "id": "miami-fl",
+      "name": "Miami",
+      "state": "FL",
+      "lat": 25.7617,
+      "lon": -80.1918,
+      "population": 442241,
+      "zipCodes": [
+        "33131"
+      ]
+    },
+    {
+      "id": "oakland-ca",
+      "name": "Oakland",
+      "state": "CA",
+      "lat": 37.8044,
+      "lon": -122.271,
+      "population": 433031,
+      "zipCodes": [
+        "94607"
+      ]
+    },
+    {
+      "id": "minneapolis-mn",
+      "name": "Minneapolis",
+      "state": "MN",
+      "lat": 44.9778,
+      "lon": -93.265,
+      "population": 429954,
+      "zipCodes": [
+        "55401"
+      ]
+    },
+    {
+      "id": "tampa-fl",
+      "name": "Tampa",
+      "state": "FL",
+      "lat": 27.9506,
+      "lon": -82.4572,
+      "population": 399700,
+      "zipCodes": [
+        "33602"
+      ]
+    },
+    {
+      "id": "tulsa-ok",
+      "name": "Tulsa",
+      "state": "OK",
+      "lat": 36.154,
+      "lon": -95.993,
+      "population": 413066,
+      "zipCodes": [
+        "74103"
+      ]
+    },
+    {
+      "id": "arlington-tx",
+      "name": "Arlington",
+      "state": "TX",
+      "lat": 32.7357,
+      "lon": -97.1081,
+      "population": 394266,
+      "zipCodes": [
+        "76010"
+      ]
+    },
+    {
+      "id": "new-orleans-la",
+      "name": "New Orleans",
+      "state": "LA",
+      "lat": 29.9511,
+      "lon": -90.0715,
+      "population": 383997,
+      "zipCodes": [
+        "70112"
+      ]
+    },
+    {
+      "id": "wichita-ks",
+      "name": "Wichita",
+      "state": "KS",
+      "lat": 37.6872,
+      "lon": -97.3301,
+      "population": 397532,
+      "zipCodes": [
+        "67202"
+      ]
+    },
+    {
+      "id": "cleveland-oh",
+      "name": "Cleveland",
+      "state": "OH",
+      "lat": 41.4993,
+      "lon": -81.6944,
+      "population": 372624,
+      "zipCodes": [
+        "44113"
+      ]
+    },
+    {
+      "id": "bakersfield-ca",
+      "name": "Bakersfield",
+      "state": "CA",
+      "lat": 35.3733,
+      "lon": -119.019,
+      "population": 403455,
+      "zipCodes": [
+        "93301"
+      ]
+    },
+    {
+      "id": "aurora-co",
+      "name": "Aurora",
+      "state": "CO",
+      "lat": 39.7294,
+      "lon": -104.832,
+      "population": 386261,
+      "zipCodes": [
+        "80012"
+      ]
+    },
+    {
+      "id": "anaheim-ca",
+      "name": "Anaheim",
+      "state": "CA",
+      "lat": 33.8366,
+      "lon": -117.914,
+      "population": 350365,
+      "zipCodes": [
+        "92801"
+      ]
+    },
+    {
+      "id": "honolulu-hi",
+      "name": "Honolulu",
+      "state": "HI",
+      "lat": 21.3069,
+      "lon": -157.858,
+      "population": 350964,
+      "zipCodes": [
+        "96813"
+      ]
+    },
+    {
+      "id": "henderson-nv",
+      "name": "Henderson",
+      "state": "NV",
+      "lat": 36.0395,
+      "lon": -114.982,
+      "population": 320189,
+      "zipCodes": [
+        "89052"
+      ]
+    },
+    {
+      "id": "stockton-ca",
+      "name": "Stockton",
+      "state": "CA",
+      "lat": 37.9577,
+      "lon": -121.291,
+      "population": 320804,
+      "zipCodes": [
+        "95202"
+      ]
+    },
+    {
+      "id": "riverside-ca",
+      "name": "Riverside",
+      "state": "CA",
+      "lat": 33.9806,
+      "lon": -117.376,
+      "population": 314998,
+      "zipCodes": [
+        "92501"
+      ]
+    },
+    {
+      "id": "corpus-christi-tx",
+      "name": "Corpus Christi",
+      "state": "TX",
+      "lat": 27.8006,
+      "lon": -97.3964,
+      "population": 317863,
+      "zipCodes": [
+        "78401"
+      ]
+    },
+    {
+      "id": "newark-nj",
+      "name": "Newark",
+      "state": "NJ",
+      "lat": 40.7357,
+      "lon": -74.1724,
+      "population": 311549,
+      "zipCodes": [
+        "07102"
+      ]
+    },
+    {
+      "id": "st-paul-mn",
+      "name": "St. Paul",
+      "state": "MN",
+      "lat": 44.9537,
+      "lon": -93.09,
+      "population": 311527,
+      "zipCodes": [
+        "55101"
+      ]
+    },
+    {
+      "id": "cincinnati-oh",
+      "name": "Cincinnati",
+      "state": "OH",
+      "lat": 39.1031,
+      "lon": -84.512,
+      "population": 309317,
+      "zipCodes": [
+        "45202"
+      ]
+    },
+    {
+      "id": "pittsburgh-pa",
+      "name": "Pittsburgh",
+      "state": "PA",
+      "lat": 40.4406,
+      "lon": -79.9959,
+      "population": 302971,
+      "zipCodes": [
+        "15222"
+      ]
+    },
+    {
+      "id": "greensboro-nc",
+      "name": "Greensboro",
+      "state": "NC",
+      "lat": 36.0726,
+      "lon": -79.792,
+      "population": 299035,
+      "zipCodes": [
+        "27401"
+      ]
+    },
+    {
+      "id": "st-louis-mo",
+      "name": "St. Louis",
+      "state": "MO",
+      "lat": 38.627,
+      "lon": -90.1994,
+      "population": 301578,
+      "zipCodes": [
+        "63101"
+      ]
+    },
+    {
+      "id": "orlando-fl",
+      "name": "Orlando",
+      "state": "FL",
+      "lat": 28.5383,
+      "lon": -81.3792,
+      "population": 307573,
+      "zipCodes": [
+        "32801"
+      ]
+    },
+    {
+      "id": "anchorage-ak",
+      "name": "Anchorage",
+      "state": "AK",
+      "lat": 61.2181,
+      "lon": -149.9,
+      "population": 291247,
+      "zipCodes": [
+        "99501"
+      ]
+    },
+    {
+      "id": "durham-nc",
+      "name": "Durham",
+      "state": "NC",
+      "lat": 35.994,
+      "lon": -78.8986,
+      "population": 283506,
+      "zipCodes": [
+        "27701"
+      ]
+    },
+    {
+      "id": "plano-tx",
+      "name": "Plano",
+      "state": "TX",
+      "lat": 33.0198,
+      "lon": -96.6989,
+      "population": 285494,
+      "zipCodes": [
+        "75074"
+      ]
+    },
+    {
+      "id": "lincoln-ne",
+      "name": "Lincoln",
+      "state": "NE",
+      "lat": 40.8136,
+      "lon": -96.7026,
+      "population": 291082,
+      "zipCodes": [
+        "68508"
+      ]
+    },
+    {
+      "id": "buffalo-ny",
+      "name": "Buffalo",
+      "state": "NY",
+      "lat": 42.8864,
+      "lon": -78.8784,
+      "population": 278349,
+      "zipCodes": [
+        "14202"
+      ]
+    },
+    {
+      "id": "chandler-az",
+      "name": "Chandler",
+      "state": "AZ",
+      "lat": 33.3062,
+      "lon": -111.841,
+      "population": 275987,
+      "zipCodes": [
+        "85224"
+      ]
+    },
+    {
+      "id": "madison-wi",
+      "name": "Madison",
+      "state": "WI",
+      "lat": 43.0731,
+      "lon": -89.4012,
+      "population": 269840,
+      "zipCodes": [
+        "53703"
+      ]
+    },
+    {
+      "id": "reno-nv",
+      "name": "Reno",
+      "state": "NV",
+      "lat": 39.5296,
+      "lon": -119.814,
+      "population": 264165,
+      "zipCodes": [
+        "89501"
+      ]
+    },
+    {
+      "id": "lubbock-tx",
+      "name": "Lubbock",
+      "state": "TX",
+      "lat": 33.5779,
+      "lon": -101.855,
+      "population": 263930,
+      "zipCodes": [
+        "79401"
+      ]
+    },
+    {
+      "id": "st-petersburg-fl",
+      "name": "St. Petersburg",
+      "state": "FL",
+      "lat": 27.7676,
+      "lon": -82.6403,
+      "population": 258308,
+      "zipCodes": [
+        "33701"
+      ]
+    },
+    {
+      "id": "laredo-tx",
+      "name": "Laredo",
+      "state": "TX",
+      "lat": 27.5036,
+      "lon": -99.5075,
+      "population": 255205,
+      "zipCodes": [
+        "78040"
+      ]
+    },
+    {
+      "id": "scottsdale-az",
+      "name": "Scottsdale",
+      "state": "AZ",
+      "lat": 33.4942,
+      "lon": -111.926,
+      "population": 241361,
+      "zipCodes": [
+        "85251"
+      ]
+    },
+    {
+      "id": "irving-tx",
+      "name": "Irving",
+      "state": "TX",
+      "lat": 32.814,
+      "lon": -96.949,
+      "population": 256684,
+      "zipCodes": [
+        "75060"
+      ]
+    },
+    {
+      "id": "norfolk-va",
+      "name": "Norfolk",
+      "state": "VA",
+      "lat": 36.8508,
+      "lon": -76.2859,
+      "population": 245115,
+      "zipCodes": [
+        "23510"
+      ]
+    },
+    {
+      "id": "chesapeake-va",
+      "name": "Chesapeake",
+      "state": "VA",
+      "lat": 36.7682,
+      "lon": -76.2875,
+      "population": 249422,
+      "zipCodes": [
+        "23320"
+      ]
+    },
+    {
+      "id": "fremont-ca",
+      "name": "Fremont",
+      "state": "CA",
+      "lat": 37.5485,
+      "lon": -121.989,
+      "population": 230504,
+      "zipCodes": [
+        "94538"
+      ]
+    },
+    {
+      "id": "gilbert-az",
+      "name": "Gilbert",
+      "state": "AZ",
+      "lat": 33.3528,
+      "lon": -111.789,
+      "population": 267918,
+      "zipCodes": [
+        "85233"
+      ]
+    },
+    {
+      "id": "baton-rouge-la",
+      "name": "Baton Rouge",
+      "state": "LA",
+      "lat": 30.4515,
+      "lon": -91.1871,
+      "population": 227470,
+      "zipCodes": [
+        "70801"
+      ]
+    },
+    {
+      "id": "richmond-va",
+      "name": "Richmond",
+      "state": "VA",
+      "lat": 37.5407,
+      "lon": -77.436,
+      "population": 226610,
+      "zipCodes": [
+        "23219"
+      ]
+    },
+    {
+      "id": "boise-id",
+      "name": "Boise",
+      "state": "ID",
+      "lat": 43.615,
+      "lon": -116.202,
+      "population": 235684,
+      "zipCodes": [
+        "83702"
+      ]
+    },
+    {
+      "id": "spokane-wa",
+      "name": "Spokane",
+      "state": "WA",
+      "lat": 47.6588,
+      "lon": -117.426,
+      "population": 228989,
+      "zipCodes": [
+        "99201"
+      ]
+    },
+    {
+      "id": "des-moines-ia",
+      "name": "Des Moines",
+      "state": "IA",
+      "lat": 41.5868,
+      "lon": -93.625,
+      "population": 214133,
+      "zipCodes": [
+        "50309"
+      ]
+    },
+    {
+      "id": "tacoma-wa",
+      "name": "Tacoma",
+      "state": "WA",
+      "lat": 47.2529,
+      "lon": -122.444,
+      "population": 219346,
+      "zipCodes": [
+        "98402"
+      ]
+    },
+    {
+      "id": "san-bernardino-ca",
+      "name": "San Bernardino",
+      "state": "CA",
+      "lat": 34.1083,
+      "lon": -117.289,
+      "population": 222101,
+      "zipCodes": [
+        "92401"
+      ]
+    },
+    {
+      "id": "modesto-ca",
+      "name": "Modesto",
+      "state": "CA",
+      "lat": 37.6391,
+      "lon": -120.997,
+      "population": 218464,
+      "zipCodes": [
+        "95354"
+      ]
+    },
+    {
+      "id": "fontana-ca",
+      "name": "Fontana",
+      "state": "CA",
+      "lat": 34.0922,
+      "lon": -117.435,
+      "population": 214547,
+      "zipCodes": [
+        "92335"
+      ]
+    },
+    {
+      "id": "birmingham-al",
+      "name": "Birmingham",
+      "state": "AL",
+      "lat": 33.5207,
+      "lon": -86.8025,
+      "population": 200733,
+      "zipCodes": [
+        "35203"
+      ]
+    },
+    {
+      "id": "rochester-ny",
+      "name": "Rochester",
+      "state": "NY",
+      "lat": 43.1566,
+      "lon": -77.6088,
+      "population": 211328,
+      "zipCodes": [
+        "14604"
+      ]
+    },
+    {
+      "id": "detroit-mi",
+      "name": "Detroit",
+      "state": "MI",
+      "lat": 42.3314,
+      "lon": -83.0458,
+      "population": 639111,
+      "zipCodes": [
+        "48226"
+      ]
+    },
+    {
+      "id": "salt-lake-city-ut",
+      "name": "Salt Lake City",
+      "state": "UT",
+      "lat": 40.7608,
+      "lon": -111.891,
+      "population": 200133,
+      "zipCodes": [
+        "84101"
+      ]
+    },
+    {
+      "id": "knoxville-tn",
+      "name": "Knoxville",
+      "state": "TN",
+      "lat": 35.9606,
+      "lon": -83.9207,
+      "population": 190740,
+      "zipCodes": [
+        "37902"
+      ]
+    },
+    {
+      "id": "grand-rapids-mi",
+      "name": "Grand Rapids",
+      "state": "MI",
+      "lat": 42.9634,
+      "lon": -85.6681,
+      "population": 198917,
+      "zipCodes": [
+        "49503"
+      ]
+    },
+    {
+      "id": "sioux-falls-sd",
+      "name": "Sioux Falls",
+      "state": "SD",
+      "lat": 43.5446,
+      "lon": -96.7311,
+      "population": 192517,
+      "zipCodes": [
+        "57104"
+      ]
+    },
+    {
+      "id": "chattanooga-tn",
+      "name": "Chattanooga",
+      "state": "TN",
+      "lat": 35.0456,
+      "lon": -85.3097,
+      "population": 181099,
+      "zipCodes": [
+        "37402"
+      ]
+    },
+    {
+      "id": "savannah-ga",
+      "name": "Savannah",
+      "state": "GA",
+      "lat": 32.0809,
+      "lon": -81.0912,
+      "population": 147780,
+      "zipCodes": [
+        "31401"
+      ]
+    },
+    {
+      "id": "charleston-sc",
+      "name": "Charleston",
+      "state": "SC",
+      "lat": 32.7765,
+      "lon": -79.9311,
+      "population": 150227,
+      "zipCodes": [
+        "29401"
+      ]
+    },
+    {
+      "id": "lexington-ky",
+      "name": "Lexington",
+      "state": "KY",
+      "lat": 38.0406,
+      "lon": -84.5037,
+      "population": 322570,
+      "zipCodes": [
+        "40507"
+      ]
+    },
+    {
+      "id": "dayton-oh",
+      "name": "Dayton",
+      "state": "OH",
+      "lat": 39.7589,
+      "lon": -84.1916,
+      "population": 137644,
+      "zipCodes": [
+        "45402"
+      ]
+    },
+    {
+      "id": "fargo-nd",
+      "name": "Fargo",
+      "state": "ND",
+      "lat": 46.8772,
+      "lon": -96.7898,
+      "population": 125990,
+      "zipCodes": [
+        "58102"
+      ]
+    },
+    {
+      "id": "provo-ut",
+      "name": "Provo",
+      "state": "UT",
+      "lat": 40.2338,
+      "lon": -111.659,
+      "population": 115162,
+      "zipCodes": [
+        "84601"
+      ]
+    },
+    {
+      "id": "eugene-or",
+      "name": "Eugene",
+      "state": "OR",
+      "lat": 44.0521,
+      "lon": -123.087,
+      "population": 176654,
+      "zipCodes": [
+        "97401"
+      ]
+    },
+    {
+      "id": "salem-or",
+      "name": "Salem",
+      "state": "OR",
+      "lat": 44.9429,
+      "lon": -123.035,
+      "population": 175535,
+      "zipCodes": [
+        "97301"
+      ]
+    },
+    {
+      "id": "tallahassee-fl",
+      "name": "Tallahassee",
+      "state": "FL",
+      "lat": 30.4383,
+      "lon": -84.2807,
+      "population": 196169,
+      "zipCodes": [
+        "32301"
+      ]
+    },
+    {
+      "id": "little-rock-ar",
+      "name": "Little Rock",
+      "state": "AR",
+      "lat": 34.7465,
+      "lon": -92.2896,
+      "population": 202591,
+      "zipCodes": [
+        "72201"
+      ]
+    },
+    {
+      "id": "jackson-ms",
+      "name": "Jackson",
+      "state": "MS",
+      "lat": 32.2988,
+      "lon": -90.1848,
+      "population": 153701,
+      "zipCodes": [
+        "39201"
+      ]
+    },
+    {
+      "id": "hartford-ct",
+      "name": "Hartford",
+      "state": "CT",
+      "lat": 41.7658,
+      "lon": -72.6734,
+      "population": 121054,
+      "zipCodes": [
+        "06103"
+      ]
+    },
+    {
+      "id": "providence-ri",
+      "name": "Providence",
+      "state": "RI",
+      "lat": 41.824,
+      "lon": -71.4128,
+      "population": 190934,
+      "zipCodes": [
+        "02903"
+      ]
+    },
+    {
+      "id": "springfield-il",
+      "name": "Springfield",
+      "state": "IL",
+      "lat": 39.7817,
+      "lon": -89.6501,
+      "population": 114394,
+      "zipCodes": [
+        "62701"
+      ]
+    },
+    {
+      "id": "topeka-ks",
+      "name": "Topeka",
+      "state": "KS",
+      "lat": 39.0489,
+      "lon": -95.678,
+      "population": 126587,
+      "zipCodes": [
+        "66603"
+      ]
+    },
+    {
+      "id": "columbia-sc",
+      "name": "Columbia",
+      "state": "SC",
+      "lat": 34.0007,
+      "lon": -81.0348,
+      "population": 136632,
+      "zipCodes": [
+        "29201"
+      ]
+    },
+    {
+      "id": "lansing-mi",
+      "name": "Lansing",
+      "state": "MI",
+      "lat": 42.7325,
+      "lon": -84.5555,
+      "population": 112644,
+      "zipCodes": [
+        "48912"
+      ]
+    },
+    {
+      "id": "trenton-nj",
+      "name": "Trenton",
+      "state": "NJ",
+      "lat": 40.2171,
+      "lon": -74.7429,
+      "population": 90871,
+      "zipCodes": [
+        "08608"
+      ]
+    },
+    {
+      "id": "dover-de",
+      "name": "Dover",
+      "state": "DE",
+      "lat": 39.158,
+      "lon": -75.5244,
+      "population": 39403,
+      "zipCodes": [
+        "19901"
+      ]
+    },
+    {
+      "id": "frankfort-ky",
+      "name": "Frankfort",
+      "state": "KY",
+      "lat": 38.2009,
+      "lon": -84.8733,
+      "population": 28602,
+      "zipCodes": [
+        "40601"
+      ]
+    },
+    {
+      "id": "annapolis-md",
+      "name": "Annapolis",
+      "state": "MD",
+      "lat": 38.9784,
+      "lon": -76.4922,
+      "population": 40812,
+      "zipCodes": [
+        "21401"
+      ]
+    },
+    {
+      "id": "bismarck-nd",
+      "name": "Bismarck",
+      "state": "ND",
+      "lat": 46.8083,
+      "lon": -100.784,
+      "population": 73529,
+      "zipCodes": [
+        "58501"
+      ]
+    },
+    {
+      "id": "helena-mt",
+      "name": "Helena",
+      "state": "MT",
+      "lat": 46.5958,
+      "lon": -112.027,
+      "population": 32091,
+      "zipCodes": [
+        "59601"
+      ]
+    },
+    {
+      "id": "carson-city-nv",
+      "name": "Carson City",
+      "state": "NV",
+      "lat": 39.1638,
+      "lon": -119.767,
+      "population": 58639,
+      "zipCodes": [
+        "89701"
+      ]
+    },
+    {
+      "id": "cheyenne-wy",
+      "name": "Cheyenne",
+      "state": "WY",
+      "lat": 41.14,
+      "lon": -104.82,
+      "population": 65132,
+      "zipCodes": [
+        "82001"
+      ]
+    },
+    {
+      "id": "pierre-sd",
+      "name": "Pierre",
+      "state": "SD",
+      "lat": 44.3683,
+      "lon": -100.351,
+      "population": 14091,
+      "zipCodes": [
+        "57501"
+      ]
+    },
+    {
+      "id": "montpelier-vt",
+      "name": "Montpelier",
+      "state": "VT",
+      "lat": 44.2601,
+      "lon": -72.5754,
+      "population": 8074,
+      "zipCodes": [
+        "05602"
+      ]
+    },
+    {
+      "id": "juneau-ak",
+      "name": "Juneau",
+      "state": "AK",
+      "lat": 58.3005,
+      "lon": -134.42,
+      "population": 32255,
+      "zipCodes": [
+        "99801"
+      ]
+    },
+    {
+      "id": "augusta-me",
+      "name": "Augusta",
+      "state": "ME",
+      "lat": 44.3106,
+      "lon": -69.7795,
+      "population": 19136,
+      "zipCodes": [
+        "04330"
+      ]
+    },
+    {
+      "id": "concord-nh",
+      "name": "Concord",
+      "state": "NH",
+      "lat": 43.2081,
+      "lon": -71.5376,
+      "population": 43976,
+      "zipCodes": [
+        "03301"
+      ]
+    },
+    {
+      "id": "santa-fe-nm",
+      "name": "Santa Fe",
+      "state": "NM",
+      "lat": 35.687,
+      "lon": -105.938,
+      "population": 87505,
+      "zipCodes": [
+        "87501"
+      ]
+    },
+    {
+      "id": "jefferson-city-mo",
+      "name": "Jefferson City",
+      "state": "MO",
+      "lat": 38.5767,
+      "lon": -92.1735,
+      "population": 43228,
+      "zipCodes": [
+        "65101"
+      ]
+    },
+    {
+      "id": "olympia-wa",
+      "name": "Olympia",
+      "state": "WA",
+      "lat": 47.0379,
+      "lon": -122.901,
+      "population": 55605,
+      "zipCodes": [
+        "98501"
+      ]
+    },
+    {
+      "id": "harrisburg-pa",
+      "name": "Harrisburg",
+      "state": "PA",
+      "lat": 40.2732,
+      "lon": -76.8867,
+      "population": 50299,
+      "zipCodes": [
+        "17101"
+      ]
+    },
+    {
+      "id": "charleston-wv",
+      "name": "Charleston",
+      "state": "WV",
+      "lat": 38.3498,
+      "lon": -81.6326,
+      "population": 48006,
+      "zipCodes": [
+        "25301"
+      ]
+    },
+    {
+      "id": "london-uk",
+      "name": "London",
+      "state": "UK",
+      "lat": 51.5074,
+      "lon": -0.1278,
+      "population": 8982000,
+      "zipCodes": []
+    },
+    {
+      "id": "paris-france",
+      "name": "Paris",
+      "state": "France",
+      "lat": 48.8566,
+      "lon": 2.3522,
+      "population": 2161000,
+      "zipCodes": []
+    },
+    {
+      "id": "tokyo-japan",
+      "name": "Tokyo",
+      "state": "Japan",
+      "lat": 35.6762,
+      "lon": 139.65,
+      "population": 13960000,
+      "zipCodes": []
+    },
+    {
+      "id": "beijing-china",
+      "name": "Beijing",
+      "state": "China",
+      "lat": 39.9042,
+      "lon": 116.407,
+      "population": 21540000,
+      "zipCodes": []
+    },
+    {
+      "id": "shanghai-china",
+      "name": "Shanghai",
+      "state": "China",
+      "lat": 31.2304,
+      "lon": 121.474,
+      "population": 24870000,
+      "zipCodes": []
+    },
+    {
+      "id": "chongqing-china",
+      "name": "Chongqing",
+      "state": "China",
+      "lat": 29.4316,
+      "lon": 106.912,
+      "population": 16340000,
+      "zipCodes": []
+    },
+    {
+      "id": "guangzhou-china",
+      "name": "Guangzhou",
+      "state": "China",
+      "lat": 23.1291,
+      "lon": 113.264,
+      "population": 18680000,
+      "zipCodes": []
+    },
+    {
+      "id": "shenzhen-china",
+      "name": "Shenzhen",
+      "state": "China",
+      "lat": 22.5431,
+      "lon": 114.058,
+      "population": 17560000,
+      "zipCodes": []
+    },
+    {
+      "id": "chengdu-china",
+      "name": "Chengdu",
+      "state": "China",
+      "lat": 30.5728,
+      "lon": 104.067,
+      "population": 16330000,
+      "zipCodes": []
+    },
+    {
+      "id": "wuhan-china",
+      "name": "Wuhan",
+      "state": "China",
+      "lat": 30.5928,
+      "lon": 114.305,
+      "population": 11080000,
+      "zipCodes": []
+    },
+    {
+      "id": "moscow-russia",
+      "name": "Moscow",
+      "state": "Russia",
+      "lat": 55.7558,
+      "lon": 37.6173,
+      "population": 12540000,
+      "zipCodes": []
+    },
+    {
+      "id": "mumbai-india",
+      "name": "Mumbai",
+      "state": "India",
+      "lat": 19.076,
+      "lon": 72.8777,
+      "population": 12480000,
+      "zipCodes": []
+    },
+    {
+      "id": "delhi-india",
+      "name": "Delhi",
+      "state": "India",
+      "lat": 28.7041,
+      "lon": 77.1025,
+      "population": 16790000,
+      "zipCodes": []
+    },
+    {
+      "id": "seoul-south korea",
+      "name": "Seoul",
+      "state": "South Korea",
+      "lat": 37.5665,
+      "lon": 126.978,
+      "population": 9776000,
+      "zipCodes": []
+    },
+    {
+      "id": "sao-paulo-brazil",
+      "name": "Sao Paulo",
+      "state": "Brazil",
+      "lat": -23.5505,
+      "lon": -46.633,
+      "population": 12330000,
+      "zipCodes": []
+    },
+    {
+      "id": "mexico-city-mexico",
+      "name": "Mexico City",
+      "state": "Mexico",
+      "lat": 19.4326,
+      "lon": -99.133,
+      "population": 9210000,
+      "zipCodes": []
+    },
+    {
+      "id": "cairo-egypt",
+      "name": "Cairo",
+      "state": "Egypt",
+      "lat": 30.0444,
+      "lon": 31.2357,
+      "population": 9540000,
+      "zipCodes": []
+    },
+    {
+      "id": "lagos-nigeria",
+      "name": "Lagos",
+      "state": "Nigeria",
+      "lat": 6.5244,
+      "lon": 3.3792,
+      "population": 16060000,
+      "zipCodes": []
+    },
+    {
+      "id": "istanbul-turkey",
+      "name": "Istanbul",
+      "state": "Turkey",
+      "lat": 41.0082,
+      "lon": 28.9784,
+      "population": 15840000,
+      "zipCodes": []
+    },
+    {
+      "id": "buenos-aires-argentina",
+      "name": "Buenos Aires",
+      "state": "Argentina",
+      "lat": -34.6037,
+      "lon": -58.382,
+      "population": 3076000,
+      "zipCodes": []
+    },
+    {
+      "id": "karachi-pakistan",
+      "name": "Karachi",
+      "state": "Pakistan",
+      "lat": 24.8607,
+      "lon": 67.0011,
+      "population": 14910000,
+      "zipCodes": []
+    },
+    {
+      "id": "jakarta-indonesia",
+      "name": "Jakarta",
+      "state": "Indonesia",
+      "lat": -6.2088,
+      "lon": 106.846,
+      "population": 10560000,
+      "zipCodes": []
+    },
+    {
+      "id": "bangkok-thailand",
+      "name": "Bangkok",
+      "state": "Thailand",
+      "lat": 13.7563,
+      "lon": 100.502,
+      "population": 8281000,
+      "zipCodes": []
+    },
+    {
+      "id": "tehran-iran",
+      "name": "Tehran",
+      "state": "Iran",
+      "lat": 35.6892,
+      "lon": 51.389,
+      "population": 8694000,
+      "zipCodes": []
+    },
+    {
+      "id": "hong-kong-china",
+      "name": "Hong Kong",
+      "state": "China",
+      "lat": 22.3193,
+      "lon": 114.169,
+      "population": 7482000,
+      "zipCodes": []
+    },
+    {
+      "id": "baghdad-iraq",
+      "name": "Baghdad",
+      "state": "Iraq",
+      "lat": 33.3152,
+      "lon": 44.3661,
+      "population": 7144000,
+      "zipCodes": []
+    },
+    {
+      "id": "riyadh-saudi arabia",
+      "name": "Riyadh",
+      "state": "Saudi Arabia",
+      "lat": 24.7136,
+      "lon": 46.6753,
+      "population": 7680000,
+      "zipCodes": []
+    },
+    {
+      "id": "singapore-singapore",
+      "name": "Singapore",
+      "state": "Singapore",
+      "lat": 1.3521,
+      "lon": 103.82,
+      "population": 5686000,
+      "zipCodes": []
+    },
+    {
+      "id": "sydney-australia",
+      "name": "Sydney",
+      "state": "Australia",
+      "lat": -33.8688,
+      "lon": 151.209,
+      "population": 5312000,
+      "zipCodes": []
+    },
+    {
+      "id": "melbourne-australia",
+      "name": "Melbourne",
+      "state": "Australia",
+      "lat": -37.8136,
+      "lon": 144.963,
+      "population": 5078000,
+      "zipCodes": []
+    },
+    {
+      "id": "toronto-canada",
+      "name": "Toronto",
+      "state": "Canada",
+      "lat": 43.6532,
+      "lon": -79.3832,
+      "population": 2930000,
+      "zipCodes": []
+    },
+    {
+      "id": "montreal-canada",
+      "name": "Montreal",
+      "state": "Canada",
+      "lat": 45.5017,
+      "lon": -73.567,
+      "population": 1780000,
+      "zipCodes": []
+    },
+    {
+      "id": "vancouver-canada",
+      "name": "Vancouver",
+      "state": "Canada",
+      "lat": 49.2827,
+      "lon": -123.121,
+      "population": 675218,
+      "zipCodes": []
+    },
+    {
+      "id": "berlin-germany",
+      "name": "Berlin",
+      "state": "Germany",
+      "lat": 52.52,
+      "lon": 13.405,
+      "population": 3645000,
+      "zipCodes": []
+    },
+    {
+      "id": "madrid-spain",
+      "name": "Madrid",
+      "state": "Spain",
+      "lat": 40.4168,
+      "lon": -3.7038,
+      "population": 3223000,
+      "zipCodes": []
+    },
+    {
+      "id": "rome-italy",
+      "name": "Rome",
+      "state": "Italy",
+      "lat": 41.9028,
+      "lon": 12.4964,
+      "population": 2873000,
+      "zipCodes": []
+    },
+    {
+      "id": "kyiv-ukraine",
+      "name": "Kyiv",
+      "state": "Ukraine",
+      "lat": 50.4504,
+      "lon": 30.5234,
+      "population": 2884000,
+      "zipCodes": []
+    },
+    {
+      "id": "taipei-taiwan",
+      "name": "Taipei",
+      "state": "Taiwan",
+      "lat": 25.033,
+      "lon": 121.565,
+      "population": 2646000,
+      "zipCodes": []
+    },
+    {
+      "id": "osaka-japan",
+      "name": "Osaka",
+      "state": "Japan",
+      "lat": 34.6937,
+      "lon": 135.502,
+      "population": 2753000,
+      "zipCodes": []
+    },
+    {
+      "id": "nairobi-kenya",
+      "name": "Nairobi",
+      "state": "Kenya",
+      "lat": -1.2921,
+      "lon": 36.8219,
+      "population": 4397000,
+      "zipCodes": []
+    },
+    {
+      "id": "johannesburg-south africa",
+      "name": "Johannesburg",
+      "state": "South Africa",
+      "lat": -26.2041,
+      "lon": 28.0473,
+      "population": 5783000,
+      "zipCodes": []
+    },
+    {
+      "id": "cape-town-south africa",
+      "name": "Cape Town",
+      "state": "South Africa",
+      "lat": -33.9249,
+      "lon": 18.4241,
+      "population": 4618000,
+      "zipCodes": []
+    },
+    {
+      "id": "pyongyang-north korea",
+      "name": "Pyongyang",
+      "state": "North Korea",
+      "lat": 39.0392,
+      "lon": 125.763,
+      "population": 3255000,
+      "zipCodes": []
+    },
+    {
+      "id": "islamabad-pakistan",
+      "name": "Islamabad",
+      "state": "Pakistan",
+      "lat": 33.6844,
+      "lon": 73.0479,
+      "population": 1015000,
+      "zipCodes": []
+    },
+    {
+      "id": "kabul-afghanistan",
+      "name": "Kabul",
+      "state": "Afghanistan",
+      "lat": 34.5553,
+      "lon": 69.2075,
+      "population": 4222000,
+      "zipCodes": []
+    },
+    {
+      "id": "hanoi-vietnam",
+      "name": "Hanoi",
+      "state": "Vietnam",
+      "lat": 21.0285,
+      "lon": 105.854,
+      "population": 8054000,
+      "zipCodes": []
+    },
+    {
+      "id": "ho-chi-minh-city-vietnam",
+      "name": "Ho Chi Minh City",
+      "state": "Vietnam",
+      "lat": 10.8231,
+      "lon": 106.63,
+      "population": 8994000,
+      "zipCodes": []
+    },
+    {
+      "id": "dubai-uae",
+      "name": "Dubai",
+      "state": "UAE",
+      "lat": 25.2048,
+      "lon": 55.2708,
+      "population": 3330000,
+      "zipCodes": []
+    },
+    {
+      "id": "kuala-lumpur-malaysia",
+      "name": "Kuala Lumpur",
+      "state": "Malaysia",
+      "lat": 3.139,
+      "lon": 101.687,
+      "population": 1808000,
+      "zipCodes": []
+    },
+    {
+      "id": "manila-philippines",
+      "name": "Manila",
+      "state": "Philippines",
+      "lat": 14.5995,
+      "lon": 120.984,
+      "population": 1780000,
+      "zipCodes": []
+    },
+    {
+      "id": "lima-peru",
+      "name": "Lima",
+      "state": "Peru",
+      "lat": -12.0464,
+      "lon": -77.043,
+      "population": 9750000,
+      "zipCodes": []
+    },
+    {
+      "id": "bogota-colombia",
+      "name": "Bogota",
+      "state": "Colombia",
+      "lat": 4.711,
+      "lon": -74.072,
+      "population": 7410000,
+      "zipCodes": []
+    },
+    {
+      "id": "santiago-chile",
+      "name": "Santiago",
+      "state": "Chile",
+      "lat": -33.4489,
+      "lon": -70.669,
+      "population": 6257000,
+      "zipCodes": []
+    },
+    {
+      "id": "havana-cuba",
+      "name": "Havana",
+      "state": "Cuba",
+      "lat": 23.1136,
+      "lon": -82.367,
+      "population": 2130000,
+      "zipCodes": []
+    },
+    {
+      "id": "warsaw-poland",
+      "name": "Warsaw",
+      "state": "Poland",
+      "lat": 52.2297,
+      "lon": 21.0122,
+      "population": 1794000,
+      "zipCodes": []
+    },
+    {
+      "id": "vienna-austria",
+      "name": "Vienna",
+      "state": "Austria",
+      "lat": 48.2082,
+      "lon": 16.3738,
+      "population": 1897000,
+      "zipCodes": []
+    },
+    {
+      "id": "amsterdam-netherlands",
+      "name": "Amsterdam",
+      "state": "Netherlands",
+      "lat": 52.3676,
+      "lon": 4.9041,
+      "population": 873000,
+      "zipCodes": []
+    },
+    {
+      "id": "brussels-belgium",
+      "name": "Brussels",
+      "state": "Belgium",
+      "lat": 50.8503,
+      "lon": 4.3517,
+      "population": 1209000,
+      "zipCodes": []
+    },
+    {
+      "id": "stockholm-sweden",
+      "name": "Stockholm",
+      "state": "Sweden",
+      "lat": 59.3293,
+      "lon": 18.0686,
+      "population": 975000,
+      "zipCodes": []
+    },
+    {
+      "id": "oslo-norway",
+      "name": "Oslo",
+      "state": "Norway",
+      "lat": 59.9139,
+      "lon": 10.7522,
+      "population": 1019000,
+      "zipCodes": []
+    },
+    {
+      "id": "helsinki-finland",
+      "name": "Helsinki",
+      "state": "Finland",
+      "lat": 60.1695,
+      "lon": 24.9354,
+      "population": 656000,
+      "zipCodes": []
+    },
+    {
+      "id": "copenhagen-denmark",
+      "name": "Copenhagen",
+      "state": "Denmark",
+      "lat": 55.6761,
+      "lon": 12.5683,
+      "population": 794000,
+      "zipCodes": []
+    },
+    {
+      "id": "dublin-ireland",
+      "name": "Dublin",
+      "state": "Ireland",
+      "lat": 53.3498,
+      "lon": -6.2603,
+      "population": 1228000,
+      "zipCodes": []
+    },
+    {
+      "id": "lisbon-portugal",
+      "name": "Lisbon",
+      "state": "Portugal",
+      "lat": 38.7223,
+      "lon": -9.1393,
+      "population": 505000,
+      "zipCodes": []
+    },
+    {
+      "id": "athens-greece",
+      "name": "Athens",
+      "state": "Greece",
+      "lat": 37.9838,
+      "lon": 23.7275,
+      "population": 664000,
+      "zipCodes": []
+    },
+    {
+      "id": "prague-czech republic",
+      "name": "Prague",
+      "state": "Czech Republic",
+      "lat": 50.0755,
+      "lon": 14.4378,
+      "population": 1309000,
+      "zipCodes": []
+    },
+    {
+      "id": "budapest-hungary",
+      "name": "Budapest",
+      "state": "Hungary",
+      "lat": 47.4979,
+      "lon": 19.0402,
+      "population": 1752000,
+      "zipCodes": []
+    },
+    {
+      "id": "bucharest-romania",
+      "name": "Bucharest",
+      "state": "Romania",
+      "lat": 44.4268,
+      "lon": 26.1025,
+      "population": 1794000,
+      "zipCodes": []
+    },
+    {
+      "id": "ankara-turkey",
+      "name": "Ankara",
+      "state": "Turkey",
+      "lat": 39.9334,
+      "lon": 32.8597,
+      "population": 5663000,
+      "zipCodes": []
+    },
+    {
+      "id": "minsk-belarus",
+      "name": "Minsk",
+      "state": "Belarus",
+      "lat": 53.9006,
+      "lon": 27.559,
+      "population": 1982000,
+      "zipCodes": []
+    },
+    {
+      "id": "tel-aviv-israel",
+      "name": "Tel Aviv",
+      "state": "Israel",
+      "lat": 32.0853,
+      "lon": 34.7818,
+      "population": 460613,
+      "zipCodes": []
+    },
+    {
+      "id": "colombo-sri lanka",
+      "name": "Colombo",
+      "state": "Sri Lanka",
+      "lat": 6.9271,
+      "lon": 79.8612,
+      "population": 752993,
+      "zipCodes": []
+    },
+    {
+      "id": "dhaka-bangladesh",
+      "name": "Dhaka",
+      "state": "Bangladesh",
+      "lat": 23.8103,
+      "lon": 90.4125,
+      "population": 22480000,
+      "zipCodes": []
+    },
+    {
+      "id": "yangon-myanmar",
+      "name": "Yangon",
+      "state": "Myanmar",
+      "lat": 16.8661,
+      "lon": 96.1951,
+      "population": 5160000,
+      "zipCodes": []
+    },
+    {
+      "id": "addis-ababa-ethiopia",
+      "name": "Addis Ababa",
+      "state": "Ethiopia",
+      "lat": 9.0245,
+      "lon": 38.7468,
+      "population": 3352000,
+      "zipCodes": []
+    },
+    {
+      "id": "dar-es-salaam-tanzania",
+      "name": "Dar es Salaam",
+      "state": "Tanzania",
+      "lat": -6.7924,
+      "lon": 39.2083,
+      "population": 4364541,
+      "zipCodes": []
+    },
+    {
+      "id": "kinshasa-dr congo",
+      "name": "Kinshasa",
+      "state": "DR Congo",
+      "lat": -4.4419,
+      "lon": 15.2663,
+      "population": 14342000,
+      "zipCodes": []
+    },
+    {
+      "id": "algiers-algeria",
+      "name": "Algiers",
+      "state": "Algeria",
+      "lat": 36.7538,
+      "lon": 3.0588,
+      "population": 3415811,
+      "zipCodes": []
+    },
+    {
+      "id": "casablanca-morocco",
+      "name": "Casablanca",
+      "state": "Morocco",
+      "lat": 33.5731,
+      "lon": -7.5898,
+      "population": 3359000,
+      "zipCodes": []
+    },
+    {
+      "id": "pentagon-va",
+      "name": "Pentagon",
+      "state": "VA",
+      "lat": 38.8719,
+      "lon": -77.0563,
+      "population": 0,
+      "zipCodes": [
+        "22202"
+      ]
+    },
+    {
+      "id": "white-house-dc",
+      "name": "White House",
+      "state": "DC",
+      "lat": 38.8977,
+      "lon": -77.037,
+      "population": 0,
+      "zipCodes": [
+        "20500"
+      ]
+    },
+    {
+      "id": "capitol-building-dc",
+      "name": "Capitol Building",
+      "state": "DC",
+      "lat": 38.8899,
+      "lon": -77.009,
+      "population": 0,
+      "zipCodes": [
+        "20003"
+      ]
+    },
+    {
+      "id": "kremlin-russia",
+      "name": "Kremlin",
+      "state": "Russia",
+      "lat": 55.752,
+      "lon": 37.6175,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "cheyenne-mountain-co",
+      "name": "Cheyenne Mountain",
+      "state": "CO",
+      "lat": 38.7445,
+      "lon": -104.845,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "stratcom-offutt-afb-ne",
+      "name": "STRATCOM (Offutt AFB)",
+      "state": "NE",
+      "lat": 41.1187,
+      "lon": -95.913,
+      "population": 0,
+      "zipCodes": [
+        "68113"
+      ]
+    },
+    {
+      "id": "minot-afb-nd",
+      "name": "Minot AFB",
+      "state": "ND",
+      "lat": 48.4159,
+      "lon": -101.331,
+      "population": 0,
+      "zipCodes": [
+        "58705"
+      ]
+    },
+    {
+      "id": "whiteman-afb-mo",
+      "name": "Whiteman AFB",
+      "state": "MO",
+      "lat": 38.7267,
+      "lon": -93.548,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "barksdale-afb-la",
+      "name": "Barksdale AFB",
+      "state": "LA",
+      "lat": 32.5013,
+      "lon": -93.663,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "kings-bay-naval-ga",
+      "name": "Kings Bay Naval",
+      "state": "GA",
+      "lat": 30.7879,
+      "lon": -81.562,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "bangor-sub-base-wa",
+      "name": "Bangor Sub Base",
+      "state": "WA",
+      "lat": 47.7226,
+      "lon": -122.715,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "f-e-warren-afb-wy",
+      "name": "F.E. Warren AFB",
+      "state": "WY",
+      "lat": 41.145,
+      "lon": -104.862,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "malmstrom-afb-mt",
+      "name": "Malmstrom AFB",
+      "state": "MT",
+      "lat": 47.505,
+      "lon": -111.183,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "vandenberg-sfb-ca",
+      "name": "Vandenberg SFB",
+      "state": "CA",
+      "lat": 34.742,
+      "lon": -120.572,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "nellis-afb-area-51-nv",
+      "name": "Nellis AFB / Area 51",
+      "state": "NV",
+      "lat": 37.235,
+      "lon": -115.811,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "los-alamos-nm",
+      "name": "Los Alamos",
+      "state": "NM",
+      "lat": 35.88,
+      "lon": -106.303,
+      "population": 13166,
+      "zipCodes": [
+        "87544"
+      ]
+    },
+    {
+      "id": "oak-ridge-tn",
+      "name": "Oak Ridge",
+      "state": "TN",
+      "lat": 36.0103,
+      "lon": -84.2697,
+      "population": 31400,
+      "zipCodes": [
+        "37830"
+      ]
+    },
+    {
+      "id": "pantex-plant-tx",
+      "name": "Pantex Plant",
+      "state": "TX",
+      "lat": 35.3175,
+      "lon": -101.553,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "lawrence-livermore-ca",
+      "name": "Lawrence Livermore",
+      "state": "CA",
+      "lat": 37.6819,
+      "lon": -121.768,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "cape-canaveral-fl",
+      "name": "Cape Canaveral",
+      "state": "FL",
+      "lat": 28.3922,
+      "lon": -80.608,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "guam-andersen-afb-gu",
+      "name": "Guam (Andersen AFB)",
+      "state": "GU",
+      "lat": 13.584,
+      "lon": 144.924,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "diego-garcia-biot",
+      "name": "Diego Garcia",
+      "state": "BIOT",
+      "lat": -7.3195,
+      "lon": 72.4229,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "ramstein-ab-germany",
+      "name": "Ramstein AB",
+      "state": "Germany",
+      "lat": 49.4369,
+      "lon": 7.6003,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "incirlik-ab-turkey",
+      "name": "Incirlik AB",
+      "state": "Turkey",
+      "lat": 37.002,
+      "lon": 35.4259,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "tiananmen-square-china",
+      "name": "Tiananmen Square",
+      "state": "China",
+      "lat": 39.9054,
+      "lon": 116.398,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "buckingham-palace-uk",
+      "name": "Buckingham Palace",
+      "state": "UK",
+      "lat": 51.5014,
+      "lon": -0.142,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "eiffel-tower-france",
+      "name": "Eiffel Tower",
+      "state": "France",
+      "lat": 48.8584,
+      "lon": 2.2945,
+      "population": 0,
+      "zipCodes": []
+    },
+    {
+      "id": "times-square-ny",
+      "name": "Times Square",
+      "state": "NY",
+      "lat": 40.758,
+      "lon": -73.9855,
+      "population": 0,
+      "zipCodes": [
+        "10036"
+      ]
+    },
+    {
+      "id": "wall-street-ny",
+      "name": "Wall Street",
+      "state": "NY",
+      "lat": 40.7074,
+      "lon": -74.011,
+      "population": 0,
+      "zipCodes": [
+        "10005"
+      ]
+    },
+    {
+      "id": "hollywood-ca",
+      "name": "Hollywood",
+      "state": "CA",
+      "lat": 34.0928,
+      "lon": -118.329,
+      "population": 0,
+      "zipCodes": [
+        "90028"
+      ]
+    },
+    {
+      "id": "silicon-valley-ca",
+      "name": "Silicon Valley",
+      "state": "CA",
+      "lat": 37.323,
+      "lon": -122.032,
+      "population": 60170,
+      "zipCodes": [
+        "95014"
+      ]
+    },
+    {
+      "id": "ground-zero-wtc-ny",
+      "name": "Ground Zero (WTC)",
+      "state": "NY",
+      "lat": 40.7116,
+      "lon": -74.013,
+      "population": 0,
+      "zipCodes": [
+        "10007"
+      ]
+    }
+  ]
+}

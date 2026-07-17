@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "source": "legacy/nukemap/js/data.js#NM.WEAPONS",
+  "count": 39,
+  "items": [
+    {
+      "id": "custom",
+      "name": "Custom",
+      "yieldKt": 15,
+      "country": null,
+      "year": null,
+      "description": "Set any yield",
+      "burstType": "airburst"
+    },
+    {
+      "id": "davy-crockett-m-28",
+      "name": "Davy Crockett (M-28)",
+      "yieldKt": 0.02,
+      "country": "US",
+      "year": 1961,
+      "description": "Smallest US tactical weapon, man-portable",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w-25-air-2-genie",
+      "name": "W-25 (AIR-2 Genie)",
+      "yieldKt": 1.5,
+      "country": "US",
+      "year": 1957,
+      "description": "Unguided air-to-air rocket warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "hiroshima",
+      "name": "Little Boy (Hiroshima)",
+      "yieldKt": 15,
+      "country": "US",
+      "year": 1945,
+      "description": "Gun-type uranium-235 bomb",
+      "burstType": "airburst"
+    },
+    {
+      "id": "fatman",
+      "name": "Fat Man (Nagasaki)",
+      "yieldKt": 21,
+      "country": "US",
+      "year": 1945,
+      "description": "Implosion plutonium-239 bomb",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w76-2-trident-low",
+      "name": "W76-2 (Trident Low)",
+      "yieldKt": 5,
+      "country": "US",
+      "year": 2019,
+      "description": "Low-yield submarine warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "b61-4-tactical",
+      "name": "B61-4 (Tactical)",
+      "yieldKt": 45,
+      "country": "US",
+      "year": 1979,
+      "description": "Tactical gravity bomb",
+      "burstType": "airburst"
+    },
+    {
+      "id": "b61-12-guided",
+      "name": "B61-12 (Guided)",
+      "yieldKt": 50,
+      "country": "US",
+      "year": 2022,
+      "description": "GPS-guided tail kit, precision strike",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w76",
+      "name": "W76-1 (Trident II)",
+      "yieldKt": 100,
+      "country": "US",
+      "year": 2008,
+      "description": "Most numerous US warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w80-1-alcm",
+      "name": "W80-1 (ALCM)",
+      "yieldKt": 150,
+      "country": "US",
+      "year": 1981,
+      "description": "Air-launched cruise missile warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w87-0-minuteman-iii",
+      "name": "W87-0 (Minuteman III)",
+      "yieldKt": 300,
+      "country": "US",
+      "year": 1986,
+      "description": "Land-based ICBM warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "b61-7-strategic",
+      "name": "B61-7 (Strategic)",
+      "yieldKt": 340,
+      "country": "US",
+      "year": 1985,
+      "description": "Strategic gravity bomb",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w88",
+      "name": "W88 (Trident II)",
+      "yieldKt": 455,
+      "country": "US",
+      "year": 1988,
+      "description": "Most powerful US SLBM warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "w87-1-sentinel",
+      "name": "W87-1 (Sentinel)",
+      "yieldKt": 475,
+      "country": "US",
+      "year": 2030,
+      "description": "Next-gen GBSD ICBM warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "ivy-king",
+      "name": "Ivy King",
+      "yieldKt": 500,
+      "country": "US",
+      "year": 1952,
+      "description": "Largest pure-fission bomb ever tested",
+      "burstType": "airburst"
+    },
+    {
+      "id": "b83",
+      "name": "B83-1 (retired)",
+      "yieldKt": 1200,
+      "country": "US",
+      "year": 1983,
+      "description": "Formerly largest US weapon. Retired 2023, all units dismantled per NNSA.",
+      "burstType": "airburst"
+    },
+    {
+      "id": "ivymike",
+      "name": "Ivy Mike",
+      "yieldKt": 10400,
+      "country": "US",
+      "year": 1952,
+      "description": "First thermonuclear device, island-sized",
+      "burstType": "surface"
+    },
+    {
+      "id": "castlebravo",
+      "name": "Castle Bravo",
+      "yieldKt": 15000,
+      "country": "US",
+      "year": 1954,
+      "description": "15 MT, 2.5x expected yield",
+      "burstType": "surface"
+    },
+    {
+      "id": "rsm-56-bulava",
+      "name": "RSM-56 Bulava",
+      "yieldKt": 150,
+      "country": "RU",
+      "year": 2018,
+      "description": "SLBM, 6-10 MIRV warheads",
+      "burstType": "airburst"
+    },
+    {
+      "id": "rt-2pm2-topol-m",
+      "name": "RT-2PM2 Topol-M",
+      "yieldKt": 800,
+      "country": "RU",
+      "year": 1997,
+      "description": "Mobile/silo ICBM, single warhead",
+      "burstType": "airburst"
+    },
+    {
+      "id": "sarmat",
+      "name": "RS-28 Sarmat",
+      "yieldKt": 800,
+      "country": "RU",
+      "year": 2023,
+      "description": "Heavy ICBM, replaces SS-18 Satan, 10-15 MIRV, 18,000 km range",
+      "burstType": "airburst"
+    },
+    {
+      "id": "avangard-hgv",
+      "name": "Avangard HGV",
+      "yieldKt": 800,
+      "country": "RU",
+      "year": 2019,
+      "description": "Hypersonic glide vehicle on UR-100N, Mach 20+, maneuverable",
+      "burstType": "airburst"
+    },
+    {
+      "id": "9m730-burevestnik",
+      "name": "9M730 Burevestnik",
+      "yieldKt": 300,
+      "country": "RU",
+      "year": 2025,
+      "description": "Nuclear-powered cruise missile (SSC-X-9 Skyfall), unlimited range, tested 2024-25",
+      "burstType": "airburst"
+    },
+    {
+      "id": "r-36m2-ss-18-satan",
+      "name": "R-36M2 SS-18 Satan",
+      "yieldKt": 20000,
+      "country": "RU",
+      "year": 1988,
+      "description": "10 MIRV at 750kT or single 20MT, being replaced by Sarmat",
+      "burstType": "airburst"
+    },
+    {
+      "id": "tsar",
+      "name": "Tsar Bomba (50 MT)",
+      "yieldKt": 50000,
+      "country": "RU",
+      "year": 1961,
+      "description": "Largest detonation in history",
+      "burstType": "airburst"
+    },
+    {
+      "id": "tsar-bomba-100-mt",
+      "name": "Tsar Bomba (100 MT)",
+      "yieldKt": 100000,
+      "country": "RU",
+      "year": 1961,
+      "description": "Full uranium tamper design yield",
+      "burstType": "airburst"
+    },
+    {
+      "id": "df-41-china",
+      "name": "DF-41 (China)",
+      "yieldKt": 350,
+      "country": "CN",
+      "year": 2019,
+      "description": "Road-mobile ICBM, 3-10 MIRV, 12,000 km range, rapid silo expansion",
+      "burstType": "airburst"
+    },
+    {
+      "id": "df-26-china",
+      "name": "DF-26 (China)",
+      "yieldKt": 300,
+      "country": "CN",
+      "year": 2015,
+      "description": "IRBM, dual nuclear/conventional, anti-ship capable",
+      "burstType": "airburst"
+    },
+    {
+      "id": "jl-3-china",
+      "name": "JL-3 (China)",
+      "yieldKt": 250,
+      "country": "CN",
+      "year": 2021,
+      "description": "SLBM for Type 096 SSBN, 10,000+ km range",
+      "burstType": "airburst"
+    },
+    {
+      "id": "df-5b-china",
+      "name": "DF-5B (China)",
+      "yieldKt": 5000,
+      "country": "CN",
+      "year": 1981,
+      "description": "Silo-based ICBM, 5 MT single",
+      "burstType": "airburst"
+    },
+    {
+      "id": "trident-d5-uk",
+      "name": "Trident D5 (UK)",
+      "yieldKt": 100,
+      "country": "UK",
+      "year": 1994,
+      "description": "UK submarine deterrent, warhead ceiling raised to 260",
+      "burstType": "airburst"
+    },
+    {
+      "id": "m51-france",
+      "name": "M51 (France)",
+      "yieldKt": 300,
+      "country": "FR",
+      "year": 2010,
+      "description": "French SLBM, 6-10 TN-75 MIRV",
+      "burstType": "airburst"
+    },
+    {
+      "id": "agni-v-india",
+      "name": "Agni-V (India)",
+      "yieldKt": 40,
+      "country": "IN",
+      "year": 2018,
+      "description": "ICBM-range, road/rail mobile",
+      "burstType": "airburst"
+    },
+    {
+      "id": "shaheen-iii-pakistan",
+      "name": "Shaheen-III (Pakistan)",
+      "yieldKt": 40,
+      "country": "PK",
+      "year": 2015,
+      "description": "MRBM, 2750 km range",
+      "burstType": "airburst"
+    },
+    {
+      "id": "hwasong-15-dprk",
+      "name": "Hwasong-15 (DPRK)",
+      "yieldKt": 250,
+      "country": "KP",
+      "year": 2017,
+      "description": "ICBM-class, estimated yield",
+      "burstType": "airburst"
+    },
+    {
+      "id": "hwasong-17-dprk",
+      "name": "Hwasong-17 (DPRK)",
+      "yieldKt": 300,
+      "country": "KP",
+      "year": 2022,
+      "description": "Largest DPRK ICBM, 25m long, road-mobile TEL",
+      "burstType": "airburst"
+    },
+    {
+      "id": "hwasong-18-20-dprk",
+      "name": "Hwasong-18/20 (DPRK)",
+      "yieldKt": 250,
+      "country": "KP",
+      "year": 2025,
+      "description": "Solid-fuel ICBM, faster launch prep than liquid Hwasong-17",
+      "burstType": "airburst"
+    },
+    {
+      "id": "df-31ag-china",
+      "name": "DF-31AG (China)",
+      "yieldKt": 250,
+      "country": "CN",
+      "year": 2018,
+      "description": "Road-mobile ICBM, replaces DF-31A, improved range/accuracy",
+      "burstType": "airburst"
+    },
+    {
+      "id": "jericho-iii-israel",
+      "name": "Jericho III (Israel)",
+      "yieldKt": 200,
+      "country": "IL",
+      "year": 2008,
+      "description": "Estimated ICBM capability",
+      "burstType": "airburst"
+    }
+  ]
+}

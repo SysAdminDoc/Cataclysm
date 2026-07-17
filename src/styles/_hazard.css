@@ -602,3 +602,73 @@
   color: var(--subtext);
   margin-right: 6px;
 }
+
+.location-search {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--surface0) 74%, transparent);
+}
+
+.location-search > label {
+  color: var(--text);
+  font-size: var(--type-caption);
+  font-weight: 650;
+}
+
+.location-search > input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+  color: var(--text);
+  font: inherit;
+}
+
+.location-search > input:focus-visible {
+  border-color: var(--blue);
+  outline: 2px solid color-mix(in srgb, var(--blue) 40%, transparent);
+  outline-offset: 1px;
+}
+
+.location-search > small,
+.location-search__results button small {
+  color: var(--subtext);
+}
+
+.location-search__results {
+  display: grid;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.location-search__results button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.location-search__results button:hover,
+.location-search__results button:focus-visible {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 10%, var(--surface0));
+}
+
+.location-search__results button span {
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  text-transform: capitalize;
+}

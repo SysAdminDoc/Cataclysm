@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Direct-hazard setup now searches a normalized, versioned offline NukeMap
+  catalog containing 246 population-bearing cities, 41,958 US ZIP centroids,
+  and 459 strategic/metro targets, plus pasted coordinates. ZIP data loads only
+  on numeric queries; no search leaves the device. Selecting a result places
+  the globe target, performs the existing surface classification, and applies
+  NukeMap's preserved nearest-city population/distance density bands to nuclear
+  casualty assumptions. The full 39-row NukeMap weapon table is now normalized
+  and available in setup, with count/schema checks and a reproducible importer.
 - Impact setup now includes NASA/JPL SBDB + Sentry object lookup and an
   80-event CNEOS fireball overlay, with bundled Apophis/Bennu/2024 YR4 and
   notable-fireball fallbacks. JPL requests are serialized through a fixed-shape

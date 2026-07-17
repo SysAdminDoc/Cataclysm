@@ -1,6 +1,7 @@
 // Direct-hazard controls are presentation-only. Rust supplies every result,
 // including the detonation timeline and fallout dimensions.
 
+import { useState } from "react";
 import { sourceBound, sourceEnumValues } from "../lib/scenario-schema";
 import {
   WEAPON_PRESETS,
@@ -16,7 +17,9 @@ import {
 } from "../hazards";
 import { CraterDiagram } from "./CraterDiagram";
 import { NeoSearch } from "./NeoSearch";
+import { LocationSearch } from "./LocationSearch";
 import { TrajectoryChart } from "./TrajectoryChart";
+import type { NukemapLocationResult } from "../types/nukemap-data";
 import type { WorkspaceMode } from "../lib/settings";
 import { buildDirectResultEvidence } from "../lib/trust-evidence";
 import { NumericField } from "./NumericField";
@@ -107,6 +110,7 @@ export function HazardControls({
   onAsteroidChange,
   center,
   onTogglePick,
+  onLocationSelect,
   pickActive,
   result,
   asteroidVisuals,
@@ -133,6 +137,7 @@ export function HazardControls({
   onAsteroidChange: (next: AsteroidInput) => void;
   center: { lat: number; lon: number } | null;
   onTogglePick: () => void;
+  onLocationSelect?: (result: NukemapLocationResult) => void;
   pickActive: boolean;
   result: HazardResult | null;
   asteroidVisuals?: AsteroidVisualReport | null;
@@ -153,6 +158,15 @@ export function HazardControls({
   workspaceMode?: WorkspaceMode;
 }) {
   const nuclearYield = sourceBound("DirectNuclear", "yield_kt");
+  const inferredWeaponId = WEAPON_PRESETS.find((preset) =>
+    preset.yieldKt === nuclear.yieldKt && preset.burstType === nuclear.burstType,
+  )?.id ?? "";
+  const [preferredWeaponId, setPreferredWeaponId] = useState(inferredWeaponId);
+  const preferredWeapon = WEAPON_PRESETS.find((preset) => preset.id === preferredWeaponId);
+  const selectedWeaponId = preferredWeapon?.yieldKt === nuclear.yieldKt
+    && preferredWeapon.burstType === nuclear.burstType
+    ? preferredWeaponId
+    : inferredWeaponId;
   const populationDensity = sourceBound("DirectNuclear", "population_density");
   const windFrom = sourceBound("DirectNuclear", "wind_from_deg");
   const asteroidDiameter = sourceBound("DirectAsteroid", "diameter_m");
@@ -175,6 +189,7 @@ export function HazardControls({
       </div>
 
       {showSetup && <>
+      {onLocationSelect && <LocationSearch onSelect={onLocationSelect} />}
       <div className="hazard__location">
         <button
           type="button"
@@ -196,12 +211,13 @@ export function HazardControls({
             <span className="hazard__row-label">Weapon preset</span>
             <select
               className="hazard__select"
-              value={WEAPON_PRESETS.find((preset) =>
-                preset.yieldKt === nuclear.yieldKt && preset.burstType === nuclear.burstType,
-              )?.id ?? ""}
+              value={selectedWeaponId}
               onChange={(e) => {
                 const p = WEAPON_PRESETS.find((w) => w.id === e.target.value);
-                if (p) onNuclearChange({ ...nuclear, yieldKt: p.yieldKt, burstType: p.burstType });
+                if (p) {
+                  setPreferredWeaponId(p.id);
+                  onNuclearChange({ ...nuclear, yieldKt: p.yieldKt, burstType: p.burstType });
+                }
               }}
             >
               <option value="">Custom…</option>
