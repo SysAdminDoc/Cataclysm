@@ -337,13 +337,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Acceptance: peak, time-of-maximum, arrival, and eta² accumulation update on every accepted GPU step without host readback; eta/u/v read back only at display, cancellation, or completion boundaries; CPU/GPU products stay within declared tolerance and a fixed 4M-cell benchmark records material speedup without extra VRAM beyond budget.
   Complexity: L
 
-- [ ] P1 — Checkpoint authoritative solver state and recover interrupted runs
-  Why: crash reports persist but solver fields and progress do not, so an interrupted high-resolution run restarts from zero.
-  Evidence: streaming paths in `src-tauri/src/commands.rs`; ErrorBoundary recovery in `src/components/ErrorBoundary.tsx`; ANUGA checkpointing https://anuga.readthedocs.io/en/stable/setup_anuga_script/checkpointing.html.
-  Touches: versioned checkpoint codec, solver/run registry, app-data retention, recovery UI, diagnostics, migration/corruption tests.
-  Acceptance: configurable wall-clock checkpoints atomically preserve eta/u/v/depth, tick, source/settings/data digests, max fields, gauges, and solver/protocol versions; restart reproduces an uninterrupted golden run; corrupt/incompatible checkpoints are quarantined with diagnostics; completed/stale checkpoints are bounded and removable.
-  Complexity: L
-
 - [ ] P1 — Add deterministic parameter-sensitivity ensembles with percentile products
   Why: exact single outcomes hide epistemic input uncertainty; USGS/OpenQuake practice uses ensembles and uncertainty products, which fit education when labelled sensitivity rather than occurrence probability.
   Evidence: USGS PTHA https://www.usgs.gov/publications/probabilistic-tsunami-hazard-analysis-multiple-sources-and-global-applications; ShakeMap uncertainty https://www.usgs.gov/publications/quantifying-and-qualifying-usgs-shakemap-uncertainty; OpenQuake scenario workflow https://docs.openquake.org/oq-engine/3.22/manual/user-guide/workflows/scenario-hazard.html.

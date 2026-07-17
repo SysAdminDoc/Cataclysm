@@ -105,6 +105,33 @@ describe("SwePlayback", () => {
     );
   });
 
+  it("threads the selected recovery checkpoint cadence into streaming", async () => {
+    tauriApi.simulateGridStreaming.mockResolvedValue({
+      dt_s: 2,
+      nx: 2,
+      ny: 2,
+      used_gpu: false,
+      n_snapshots: 0,
+      cancelled: false,
+      run_quality: RUN_QUALITY,
+      recovered_gauge_history: [],
+    });
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} />);
+
+    await user.selectOptions(screen.getByLabelText("Recovery checkpoint cadence"), "300");
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+
+    expect(tauriApi.simulateGridStreaming).toHaveBeenCalledWith(
+      "run-test",
+      expect.any(Object),
+      expect.any(Function),
+      expect.any(Function),
+      null,
+      300,
+    );
+  });
+
   it("threads a selected content-addressed bathymetry asset into the solver request", async () => {
     const assetId = `local-bathymetry-${"b".repeat(64)}`;
     tauriApi.listImportedBathymetry.mockResolvedValue([{
@@ -142,13 +169,14 @@ describe("SwePlayback", () => {
       expect.any(Function),
       expect.any(Function),
       null,
+      60,
     );
   });
 
   it("streams progress and hands snapshots to the parent", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
-      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean; run_quality: typeof RUN_QUALITY }) => void)
+      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean; run_quality: typeof RUN_QUALITY; recovered_gauge_history?: Array<{ time_s: number; gauge_samples: Array<{ id: string; eta_m: number | null }> }> }) => void)
       | null = null;
     tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
@@ -174,6 +202,7 @@ describe("SwePlayback", () => {
       expect.any(Function),
       expect.any(Function),
       null,
+      60,
     );
 
     act(() => {
@@ -243,13 +272,14 @@ describe("SwePlayback", () => {
       expect.any(Function),
       expect.any(Function),
       "interrupted-run",
+      60,
     );
   });
 
   it("requests backend gauge samples and exports sampled series", async () => {
     let pushSnapshot: ((snap: GridSnapshot) => void) | null = null;
     let finish:
-      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean; run_quality: typeof RUN_QUALITY }) => void)
+      | ((meta: { dt_s: number; nx: number; ny: number; used_gpu: boolean; n_snapshots: number; cancelled: boolean; run_quality: typeof RUN_QUALITY; recovered_gauge_history?: Array<{ time_s: number; gauge_samples: Array<{ id: string; eta_m: number | null }> }> }) => void)
       | null = null;
     tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
       pushSnapshot = onSnapshot;
@@ -274,18 +304,27 @@ describe("SwePlayback", () => {
       expect.any(Function),
       expect.any(Function),
       null,
+      60,
     );
 
     act(() => {
       pushSnapshot?.({
-        ...SNAPSHOTS[0],
-        gauge_samples: [{ id: "gauge-1", eta_m: 0.125 }],
-      });
-      pushSnapshot?.({
         ...SNAPSHOTS[1],
         gauge_samples: [{ id: "gauge-1", eta_m: 0.25 }],
       });
-      finish?.({ dt_s: 2, nx: 2, ny: 2, used_gpu: false, n_snapshots: 2, cancelled: false, run_quality: RUN_QUALITY });
+      finish?.({
+        dt_s: 2,
+        nx: 2,
+        ny: 2,
+        used_gpu: false,
+        n_snapshots: 2,
+        cancelled: false,
+        run_quality: RUN_QUALITY,
+        recovered_gauge_history: [{
+          time_s: 0,
+          gauge_samples: [{ id: "gauge-1", eta_m: 0.125 }],
+        }],
+      });
     });
 
     const semanticSummary = await screen.findByText(

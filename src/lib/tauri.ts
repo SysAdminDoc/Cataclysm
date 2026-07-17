@@ -108,6 +108,11 @@ export type SolverCheckpointSummary = {
   step_index: number;
 };
 
+export type RecoveredGaugeHistoryFrame = {
+  time_s: number;
+  gauge_samples: Array<{ id: string; eta_m: number | null }>;
+};
+
 let simulationRunSequence = 0;
 
 type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
@@ -499,6 +504,7 @@ export const api = {
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
     onRenderPacket?: (packet: DecodedRenderPacket, replay: RenderReplayAdapter) => void,
     resumeRunId: string | null = null,
+    checkpointIntervalSeconds = 60,
   ): Promise<{
     run_id: string;
     lifecycle: "completed" | "cancelled";
@@ -513,6 +519,7 @@ export const api = {
     run_quality: import("../types/scenario").RunQualityRecord;
     render_scenario_id: string | null;
     render_frame_count: number;
+    recovered_gauge_history: RecoveredGaugeHistoryFrame[];
     render_replay: RenderReplayAdapter;
   }> {
     const channel = new Channel<import("../types/scenario").GridSnapshot>();
@@ -545,9 +552,11 @@ export const api = {
       run_quality: import("../types/scenario").RunQualityRecord;
       render_scenario_id: string | null;
       render_frame_count: number;
+      recovered_gauge_history: RecoveredGaugeHistoryFrame[];
     }>("simulate_grid_streaming", {
       runId,
       resumeRunId,
+      checkpointIntervalS: checkpointIntervalSeconds,
       req,
       onSnapshot: channel,
       onRenderPacket: renderChannel,

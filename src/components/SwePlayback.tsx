@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { api, createSimulationRunId, isTauri, type ImportedBathymetryAsset, type SolverCheckpointSummary } from "../lib/tauri";
+import { api, createSimulationRunId, isTauri, type ImportedBathymetryAsset, type RecoveredGaugeHistoryFrame, type SolverCheckpointSummary } from "../lib/tauri";
 import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
@@ -108,15 +108,22 @@ function initialIdentity(initial: InitialDisplacement | null): string | null {
   ]);
 }
 
-function seriesFromBackendSamples(gauges: Gauge[], snapshots: GridSnapshot[]): GaugeTimeSeries[] {
+function seriesFromBackendSamples(
+  gauges: Gauge[],
+  frames: Array<Pick<GridSnapshot, "time_s" | "gauge_samples">>,
+): GaugeTimeSeries[] {
   return gauges
     .map((gauge) => {
-      const samples = snapshots.flatMap((snap) => {
-        const sample = snap.gauge_samples?.find((s) => s.id === gauge.id);
-        return sample && Number.isFinite(sample.eta_m)
-          ? [{ time_s: snap.time_s, eta_m: sample.eta_m as number }]
-          : [];
-      });
+      const samplesByTime = new Map<number, number>();
+      for (const frame of frames) {
+        const sample = frame.gauge_samples?.find((candidate) => candidate.id === gauge.id);
+        if (sample && Number.isFinite(sample.eta_m)) {
+          samplesByTime.set(frame.time_s, sample.eta_m as number);
+        }
+      }
+      const samples = [...samplesByTime]
+        .sort(([left], [right]) => left - right)
+        .map(([time_s, eta_m]) => ({ time_s, eta_m }));
       return { gauge, samples };
     })
     .filter((series) => series.samples.length > 0);
@@ -146,6 +153,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
   const [bathymetryAssetId, setBathymetryAssetId] = useState("");
   const [bathymetryListError, setBathymetryListError] = useState<string | null>(null);
   const [checkpoints, setCheckpoints] = useState<SolverCheckpointSummary[]>([]);
+  const [checkpointIntervalS, setCheckpointIntervalS] = useState(60);
+  const [recoveredGaugeHistory, setRecoveredGaugeHistory] = useState<RecoveredGaugeHistoryFrame[]>([]);
   const [includeLambWave, setIncludeLambWave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
@@ -246,6 +255,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setMaxField(null);
       setOverlay("wave");
       setShowArrivals(false);
+      setRecoveredGaugeHistory([]);
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
       onMaxField?.(null);
@@ -311,13 +321,13 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       return;
     }
     if (isTauri()) {
-      setGaugeSeries(seriesFromBackendSamples(gauges, snapshots));
+      setGaugeSeries(seriesFromBackendSamples(gauges, [...recoveredGaugeHistory, ...snapshots]));
       return;
     }
     const tEndS = snapshots.length > 1 ? snapshots[snapshots.length - 1].time_s : 3600;
     const series = sampleGaugesFromDemo(initial, gauges, snapshots.length, tEndS);
     setGaugeSeries(series);
-  }, [initial, gauges, snapshots]);
+  }, [initial, gauges, snapshots, recoveredGaugeHistory]);
 
   const addGauge = useCallback(() => {
     const lat = Number(gaugeLatInput);
@@ -398,6 +408,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
     const previousSnapshots = snapshots;
     const previousDiag = diag;
     const previousMaxField = maxField;
+    const previousGaugeHistory = recoveredGaugeHistory;
     const previousQuality = diag?.quality ?? null;
     reqIdRef.current += 1;
     const reqId = reqIdRef.current;
@@ -423,6 +434,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       setActiveIdx(0);
       setDiag(null);
       setMaxField(null);
+      setRecoveredGaugeHistory([]);
       onSnapshot?.(null);
       onSnapshotsReady?.(null);
       onMaxField?.(null);
@@ -495,6 +507,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             });
           },
           resumeRunId,
+          checkpointIntervalS,
         );
         if (!mountedRef.current || reqId !== reqIdRef.current) return;
         runIdRef.current = null;
@@ -508,6 +521,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setStatus("ready");
         onSnapshotsReady?.(streamSnaps);
         setMaxField(meta.max_field ?? null);
+        setRecoveredGaugeHistory(meta.recovered_gauge_history ?? []);
         onMaxField?.(meta.max_field ?? null);
         await refreshCheckpoints();
         if (autoPlay && playbackTimeS === undefined) setIsPlaying(true);
@@ -536,6 +550,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
       if (previousSnapshots) {
         setSnapshots(previousSnapshots);
         setMaxField(previousMaxField);
+        setRecoveredGaugeHistory(previousGaugeHistory);
         setDiag(previousDiag);
         setActiveIdx((index) => Math.min(index, previousSnapshots.length - 1));
         onSnapshotsReady?.(previousSnapshots);
@@ -553,7 +568,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints]);
+  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -676,6 +691,18 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, pendingGaug
             aria-label="Grid resolution in cells per degree"
             title="Higher resolution is more accurate but slower. Default is 8."
           />
+        </label>}
+        {workspaceMode === "advanced" && isTauri() && <label className="swe__check swe__bathymetry-source">
+          <span>Recovery checkpoint cadence</span>
+          <select
+            value={checkpointIntervalS}
+            onChange={(event) => setCheckpointIntervalS(Number(event.target.value))}
+            aria-label="Recovery checkpoint cadence"
+          >
+            <option value={30}>Every 30 seconds</option>
+            <option value={60}>Every minute</option>
+            <option value={300}>Every 5 minutes</option>
+          </select>
         </label>}
       </div>}
       {status === "running" && (

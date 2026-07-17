@@ -2,7 +2,7 @@
 //! Every function returns serde-serializable types; errors are stringified.
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, Weak};
@@ -25,7 +25,8 @@ use crate::physics::{
         PropagationSnapshot, long_wave_travel_time_s, sample_wavefront, synolakis_runup_m,
     },
     solver::{
-        Colormap, DiagnosticSink, GridGaugePoint, GridSnapshot, SwGrid, TimeStepper,
+        Colormap, DiagnosticSink, GridGaugePoint, GridGaugeSample, GridSnapshot, SwGrid,
+        TimeStepper,
         max_field::{MaxFieldAccumulator, MaxFieldProduct},
         quality::{QualityBaseline, RunQualityRecord},
         run_simulation_with_gauge_samples, snapshot_step_schedule,
@@ -277,7 +278,9 @@ pub fn simulate_nuclear_hazard_render(
 
 #[tauri::command]
 pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDisplacement, String> {
-    let validate = |field, value| crate::data::source_input_contract::validate_number("Asteroid", field, value);
+    let validate = |field, value| {
+        crate::data::source_input_contract::validate_number("Asteroid", field, value)
+    };
     validate("diameter_m", input.diameter_m)?;
     validate("density_kg_m3", input.density_kg_m3)?;
     validate("velocity_m_s", input.velocity_m_s)?;
@@ -290,8 +293,13 @@ pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDispl
 
 #[tauri::command]
 pub fn nuclear_initial_conditions(input: NuclearBurst) -> Result<InitialDisplacement, String> {
-    let validate = |field, value| crate::data::source_input_contract::validate_number("Nuclear", field, value);
-    crate::data::source_input_contract::validate_serialized_enum("Nuclear", "burst_mode", input.burst_mode)?;
+    let validate =
+        |field, value| crate::data::source_input_contract::validate_number("Nuclear", field, value);
+    crate::data::source_input_contract::validate_serialized_enum(
+        "Nuclear",
+        "burst_mode",
+        input.burst_mode,
+    )?;
     validate("yield_kt", input.yield_kt)?;
     validate("burst_depth_m", input.burst_depth_m)?;
     validate("water_depth_m", input.water_depth_m)?;
@@ -302,7 +310,9 @@ pub fn nuclear_initial_conditions(input: NuclearBurst) -> Result<InitialDisplace
 
 #[tauri::command]
 pub fn landslide_initial_conditions(input: LandslideSource) -> Result<InitialDisplacement, String> {
-    let validate = |field, value| crate::data::source_input_contract::validate_number("Landslide", field, value);
+    let validate = |field, value| {
+        crate::data::source_input_contract::validate_number("Landslide", field, value)
+    };
     crate::data::source_input_contract::validate_serialized_enum("Landslide", "kind", input.kind)?;
     validate("volume_m3", input.volume_m3)?;
     validate("density_kg_m3", input.density_kg_m3)?;
@@ -319,7 +329,9 @@ pub fn landslide_initial_conditions(input: LandslideSource) -> Result<InitialDis
 pub fn earthquake_initial_conditions(
     input: EarthquakeSource,
 ) -> Result<InitialDisplacement, String> {
-    let validate = |field, value| crate::data::source_input_contract::validate_number("Earthquake", field, value);
+    let validate = |field, value| {
+        crate::data::source_input_contract::validate_number("Earthquake", field, value)
+    };
     validate("mw", input.mw)?;
     validate("depth_m", input.depth_m)?;
     validate("strike_deg", input.strike_deg)?;
@@ -617,15 +629,14 @@ pub fn runup_at_points(req: RunupAtPointsRequest) -> Result<Vec<RunupAtPoint>, S
                 }
                 _ => ProvenanceConfidence::High,
             };
-            let quantitative_label = if p.slope_provenance.record.placeholder
-                || p.depth_provenance.record.placeholder
-            {
-                "illustrative"
-            } else if quantitative_confidence == ProvenanceConfidence::High {
-                "quantitative"
-            } else {
-                "screening_estimate"
-            };
+            let quantitative_label =
+                if p.slope_provenance.record.placeholder || p.depth_provenance.record.placeholder {
+                    "illustrative"
+                } else if quantitative_confidence == ProvenanceConfidence::High {
+                    "quantitative"
+                } else {
+                    "screening_estimate"
+                };
             RunupAtPoint {
                 id: p.id,
                 name: p.name,
@@ -1103,13 +1114,12 @@ fn inject_source_initial_field(grid: &mut SwGrid, req: &SimulateGridRequest) -> 
         for i in 0..grid.nx {
             let lon = grid.west_lon + (i as f64 + 0.5) * grid.dlon_deg;
             let value = match geometry {
-                InitialSourceGeometry::CavityRing { rim_radius_m, rim_width_m } => {
-                    let (east_m, north_m) = local_offset_m(
-                        req.source.lat_deg,
-                        req.source.lon_deg,
-                        lat,
-                        lon,
-                    );
+                InitialSourceGeometry::CavityRing {
+                    rim_radius_m,
+                    rim_width_m,
+                } => {
+                    let (east_m, north_m) =
+                        local_offset_m(req.source.lat_deg, req.source.lon_deg, lat, lon);
                     let radial_m = east_m.hypot(north_m);
                     let offset = (radial_m - rim_radius_m) / rim_width_m;
                     req.initial_amplitude_m * (-0.5 * offset * offset).exp()
@@ -1119,12 +1129,8 @@ fn inject_source_initial_field(grid: &mut SwGrid, req: &SimulateGridRequest) -> 
                     longitudinal_sigma_m,
                     transverse_sigma_m,
                 } => {
-                    let (east_m, north_m) = local_offset_m(
-                        req.source.lat_deg,
-                        req.source.lon_deg,
-                        lat,
-                        lon,
-                    );
+                    let (east_m, north_m) =
+                        local_offset_m(req.source.lat_deg, req.source.lon_deg, lat, lon);
                     let azimuth = axis_azimuth_deg.to_radians();
                     let along = east_m * azimuth.sin() + north_m * azimuth.cos();
                     let across = east_m * azimuth.cos() - north_m * azimuth.sin();
@@ -1303,7 +1309,10 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
         return Err("source_sigma_m must be finite and in [0, 10 000 km]".into());
     }
     match &req.source_geometry {
-        Some(InitialSourceGeometry::CavityRing { rim_radius_m, rim_width_m }) => {
+        Some(InitialSourceGeometry::CavityRing {
+            rim_radius_m,
+            rim_width_m,
+        }) => {
             if !rim_radius_m.is_finite()
                 || !rim_width_m.is_finite()
                 || *rim_radius_m <= 0.0
@@ -1413,9 +1422,13 @@ fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), String> {
             "gauge_points must contain at most {SWE_MAX_GAUGES} gauges"
         ));
     }
+    let mut gauge_ids = HashSet::with_capacity(req.gauge_points.len());
     for g in &req.gauge_points {
         if g.id.trim().is_empty() || g.id.len() > 128 {
             return Err("gauge point id must be 1..128 characters".into());
+        }
+        if !gauge_ids.insert(g.id.as_str()) {
+            return Err("gauge point ids must be unique".into());
         }
         if !g.lat_deg.is_finite() || g.lat_deg.abs() > 90.0 {
             return Err(format!("gauge latitude {} out of range", g.lat_deg));
@@ -1640,6 +1653,13 @@ pub struct SimulateGridStreamMeta {
     pub render_scenario_id: Option<String>,
     pub render_frame_count: u64,
     pub run_quality: RunQualityRecord,
+    pub recovered_gauge_history: Vec<GridGaugeHistoryFrame>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GridGaugeHistoryFrame {
+    pub time_s: f64,
+    pub gauge_samples: Vec<GridGaugeSample>,
 }
 
 #[tauri::command]
@@ -1647,11 +1667,13 @@ pub async fn simulate_grid_streaming(
     app: AppHandle,
     run_id: String,
     resume_run_id: Option<String>,
+    checkpoint_interval_s: Option<u64>,
     req: SimulateGridRequest,
     on_snapshot: tauri::ipc::Channel<GridSnapshot>,
     on_render_packet: tauri::ipc::Channel<Response>,
 ) -> Result<SimulateGridStreamMeta, String> {
     validate_simulate_grid(&req)?;
+    let checkpoint_interval = validate_checkpoint_interval(checkpoint_interval_s)?;
     let app_data_dir = app
         .path()
         .app_data_dir()
@@ -1711,7 +1733,9 @@ pub async fn simulate_grid_streaming(
             let admission_quality = quality_baseline.assess(&grid, dt);
             if let Some(failure) = &admission_quality.failure {
                 publish_run_quality(&admission_quality);
-                return Err(format!("simulation rejected by numerical-integrity admission gate: {failure}"));
+                return Err(format!(
+                    "simulation rejected by numerical-integrity admission gate: {failure}"
+                ));
             }
 
             let checkpoint_writer = RefCell::new(StreamCheckpointWriter::new(
@@ -1719,6 +1743,7 @@ pub async fn simulate_grid_streaming(
                 &response_run_id,
                 &req,
                 dt,
+                checkpoint_interval,
             )?);
             let resumed = resume_run_id
                 .as_deref()
@@ -1730,21 +1755,27 @@ pub async fn simulate_grid_streaming(
                     verify_resume_checkpoint(
                         &checkpoint,
                         &checkpoint_writer.borrow().identity,
+                        &req.gauge_points,
                         &grid,
                         &snapshot_schedule,
                     )?;
                     Ok::<_, String>(checkpoint)
                 })
                 .transpose()?;
-            let (start_interval, restored_max_field) = if let Some(checkpoint) = resumed {
-                let start = checkpoint.identity.next_snapshot_interval as usize;
-                grid = checkpoint.grid;
-                (start, Some(checkpoint.max_field))
-            } else {
-                (0, None)
-            };
-            checkpoint_writer.borrow_mut().identity.next_snapshot_interval =
-                start_interval.min(u32::MAX as usize) as u32;
+            let (start_interval, restored_max_field, recovered_gauge_history) =
+                if let Some(checkpoint) = resumed {
+                    let start = checkpoint.identity.next_snapshot_interval as usize;
+                    let recovered_gauge_history = checkpoint_gauge_history_for_ipc(&checkpoint);
+                    checkpoint_writer.borrow_mut().gauge_history = checkpoint.gauge_history;
+                    grid = checkpoint.grid;
+                    (start, Some(checkpoint.max_field), recovered_gauge_history)
+                } else {
+                    (0, None, Vec::new())
+                };
+            checkpoint_writer
+                .borrow_mut()
+                .identity
+                .next_snapshot_interval = start_interval.min(u32::MAX as usize) as u32;
 
             let canonical_scenario = serde_json::to_vec(&req)
                 .map_err(|error| format!("failed to canonicalize render scenario: {error}"))?;
@@ -1781,10 +1812,15 @@ pub async fn simulate_grid_streaming(
                 ));
             }
 
-            // Stream t=0 snapshot immediately
+            // Stream the initial or restored snapshot immediately.
+            let initial_snapshot =
+                grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics));
             on_snapshot
-                .send(grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics)))
+                .send(initial_snapshot)
                 .map_err(|error| format!("simulation snapshot receiver closed: {error}"))?;
+            if start_interval == 0 {
+                checkpoint_writer.borrow_mut().record_gauges(&grid);
+            }
             render_stream.send_frame(&grid)?;
 
             let max_field_threshold_m =
@@ -1817,15 +1853,16 @@ pub async fn simulate_grid_streaming(
             publish_run_quality(&run_quality);
             if let Some(failure) = &run_quality.failure {
                 diagnostics(&format!("numerical-integrity violation: {failure}"));
-                return Err(format!("simulation rejected by numerical-integrity gate: {failure}"));
+                return Err(format!(
+                    "simulation rejected by numerical-integrity gate: {failure}"
+                ));
             }
             render_stream.finish(&grid)?;
             let cancelled = cancel.load(Ordering::Acquire);
             if cancelled {
-                let next_interval = checkpoint_writer
-                    .borrow()
-                    .identity
-                    .next_snapshot_interval as usize;
+                let next_interval =
+                    checkpoint_writer.borrow().identity.next_snapshot_interval as usize;
+                checkpoint_writer.borrow_mut().record_gauges(&grid);
                 checkpoint_writer.borrow_mut().maybe_write(
                     &grid,
                     &max_field_acc.borrow(),
@@ -1863,6 +1900,7 @@ pub async fn simulate_grid_streaming(
                 render_scenario_id: Some(scenario_id),
                 render_frame_count: render_stream.frame_count(),
                 run_quality,
+                recovered_gauge_history,
             })
         })();
         unregister_simulation(&worker_run_id, &cancel);
@@ -1993,7 +2031,10 @@ pub fn diagnostics_bundle() -> DiagnosticsBundle {
         gpu_adapter,
         geodesy: crate::data::geodesy::diagnostics(),
         surface_mask: crate::data::surface::diagnostics(),
-        last_run_quality: LAST_RUN_QUALITY.lock().ok().and_then(|quality| quality.clone()),
+        last_run_quality: LAST_RUN_QUALITY
+            .lock()
+            .ok()
+            .and_then(|quality| quality.clone()),
         active_solver_runs,
         solver_reserved_memory_bytes,
         solver_memory_budget_bytes: SWE_MEMORY_BUDGET_BYTES,
@@ -2166,30 +2207,50 @@ struct StreamSimulationContext<'a> {
     snapshot_interval_offset: usize,
 }
 
-const CHECKPOINT_INTERVAL: Duration = Duration::from_secs(60);
+fn validate_checkpoint_interval(value: Option<u64>) -> Result<Duration, String> {
+    let seconds = value.unwrap_or(60);
+    if !(15..=3_600).contains(&seconds) {
+        return Err("checkpoint_interval_s must be in [15, 3600]".to_string());
+    }
+    Ok(Duration::from_secs(seconds))
+}
 
 struct StreamCheckpointWriter {
     root: PathBuf,
     identity: crate::physics::solver::checkpoint::CheckpointIdentity,
+    gauge_points: Vec<GridGaugePoint>,
+    gauge_history: Vec<crate::physics::solver::checkpoint::CheckpointGaugeFrame>,
+    interval: Duration,
     last_write: Instant,
     disabled: bool,
 }
 
 impl StreamCheckpointWriter {
-    fn new(root: PathBuf, run_id: &str, req: &SimulateGridRequest, dt_s: f64) -> Result<Self, String> {
+    fn new(
+        root: PathBuf,
+        run_id: &str,
+        req: &SimulateGridRequest,
+        dt_s: f64,
+        interval: Duration,
+    ) -> Result<Self, String> {
         let canonical = serde_json::to_vec(req)
             .map_err(|error| format!("failed to identify checkpoint scenario: {error}"))?;
         let mut settings_material = b"cataclysm-checkpoint-settings-v1\0".to_vec();
         settings_material.extend_from_slice(&canonical);
-        let data_source = req.bathymetry_asset_id.as_deref().unwrap_or(if req.use_real_bathymetry {
-            "cataclysm-coarse-bathymetry-v1"
-        } else {
-            "cataclysm-uniform-depth-v1"
-        });
+        let data_source =
+            req.bathymetry_asset_id
+                .as_deref()
+                .unwrap_or(if req.use_real_bathymetry {
+                    "cataclysm-coarse-bathymetry-v1"
+                } else {
+                    "cataclysm-uniform-depth-v1"
+                });
         let data_material = format!("cataclysm-checkpoint-data-v1\0{data_source}");
         let created_at_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_or(0, |duration| duration.as_millis().min(u64::MAX as u128) as u64);
+            .map_or(0, |duration| {
+                duration.as_millis().min(u64::MAX as u128) as u64
+            });
         Ok(Self {
             root,
             identity: crate::physics::solver::checkpoint::CheckpointIdentity {
@@ -2204,9 +2265,27 @@ impl StreamCheckpointWriter {
                 n_snapshots: req.n_snapshots.min(u32::MAX as usize) as u32,
                 next_snapshot_interval: 0,
             },
+            gauge_points: req.gauge_points.clone(),
+            gauge_history: Vec::with_capacity(req.n_snapshots),
+            interval,
             last_write: Instant::now(),
             disabled: false,
         })
+    }
+
+    fn record_gauges(&mut self, grid: &SwGrid) {
+        if self
+            .gauge_history
+            .last()
+            .is_some_and(|frame| frame.time_s.to_bits() == grid.t_s.to_bits())
+        {
+            return;
+        }
+        self.gauge_history
+            .push(crate::physics::solver::checkpoint::CheckpointGaugeFrame {
+                time_s: grid.t_s,
+                eta_m: grid.sample_gauge_values(&self.gauge_points),
+            });
     }
 
     fn maybe_write(
@@ -2218,14 +2297,16 @@ impl StreamCheckpointWriter {
         diagnostics: Option<&DiagnosticSink<'_>>,
     ) {
         self.identity.next_snapshot_interval = next_interval.min(u32::MAX as usize) as u32;
-        if self.disabled || (!force && self.last_write.elapsed() < CHECKPOINT_INTERVAL) {
+        if self.disabled || (!force && self.last_write.elapsed() < self.interval) {
             return;
         }
-        match crate::physics::solver::checkpoint::write_latest_state(
+        match crate::physics::solver::checkpoint::write_latest_state_with_gauges(
             &self.root,
             &self.identity,
             grid,
             max_field,
+            &self.gauge_points,
+            &self.gauge_history,
         ) {
             Ok(_) => self.last_write = Instant::now(),
             Err(error) => {
@@ -2243,9 +2324,31 @@ impl StreamCheckpointWriter {
     }
 }
 
+fn checkpoint_gauge_history_for_ipc(
+    checkpoint: &crate::physics::solver::checkpoint::SolverCheckpoint,
+) -> Vec<GridGaugeHistoryFrame> {
+    checkpoint
+        .gauge_history
+        .iter()
+        .map(|frame| GridGaugeHistoryFrame {
+            time_s: frame.time_s,
+            gauge_samples: checkpoint
+                .gauge_points
+                .iter()
+                .zip(&frame.eta_m)
+                .map(|(gauge, eta_m)| GridGaugeSample {
+                    id: gauge.id.clone(),
+                    eta_m: *eta_m,
+                })
+                .collect(),
+        })
+        .collect()
+}
+
 fn verify_resume_checkpoint(
     checkpoint: &crate::physics::solver::checkpoint::SolverCheckpoint,
     expected: &crate::physics::solver::checkpoint::CheckpointIdentity,
+    expected_gauges: &[GridGaugePoint],
     initial_grid: &SwGrid,
     snapshot_schedule: &[usize],
 ) -> Result<(), String> {
@@ -2263,15 +2366,16 @@ fn verify_resume_checkpoint(
                 .to_string(),
         );
     }
+    if checkpoint.gauge_points != expected_gauges {
+        return Err("checkpoint gauges do not match the current run request".to_string());
+    }
     let start_interval = actual.next_snapshot_interval as usize;
     if start_interval > snapshot_schedule.len() {
         return Err("checkpoint progress exceeds the deterministic snapshot schedule".to_string());
     }
     let expected_steps = snapshot_schedule[..start_interval]
         .iter()
-        .try_fold(0_u64, |total, steps| {
-            total.checked_add(*steps as u64)
-        })
+        .try_fold(0_u64, |total, steps| total.checked_add(*steps as u64))
         .ok_or_else(|| "checkpoint step schedule overflow".to_string())?;
     let expected_time = expected_steps as f64 * expected.dt_s;
     let time_tolerance = (expected_time.abs() * 1.0e-12).max(1.0e-9);
@@ -2287,7 +2391,9 @@ fn verify_resume_checkpoint(
         || grid.colormap != initial_grid.colormap
         || grid.h_m != initial_grid.h_m
     {
-        return Err("checkpoint grid or progress does not match the deterministic run plan".to_string());
+        return Err(
+            "checkpoint grid or progress does not match the deterministic run plan".to_string(),
+        );
     }
     Ok(())
 }
@@ -2353,6 +2459,9 @@ fn stream_simulation_cpu_from(
         {
             ctx.cancel.store(true, Ordering::Release);
             break;
+        }
+        if let Some(checkpoint) = ctx.checkpoint {
+            checkpoint.borrow_mut().record_gauges(grid);
         }
         if let Some(render) = ctx.render
             && !render.try_send_frame(grid)
@@ -2422,7 +2531,10 @@ fn stream_simulation_dispatch(
                 let quality = ctx.quality_baseline.assess(grid, dt_s);
                 if let Some(failure) = quality.failure.clone() {
                     publish_run_quality(&quality);
-                    return Err(format!("GPU simulation rejected at step {}: {failure}", quality.accepted_steps));
+                    return Err(format!(
+                        "GPU simulation rejected at step {}: {failure}",
+                        quality.accepted_steps
+                    ));
                 }
                 completed = completed.saturating_add(1);
                 ctx.max_field.borrow_mut().observe(grid);
@@ -2434,6 +2546,9 @@ fn stream_simulation_dispatch(
             {
                 ctx.cancel.store(true, Ordering::Release);
                 break;
+            }
+            if let Some(checkpoint) = ctx.checkpoint {
+                checkpoint.borrow_mut().record_gauges(grid);
             }
             if let Some(render) = ctx.render
                 && !render.try_send_frame(grid)
@@ -2696,7 +2811,10 @@ mod tests {
         let center = grid.eta_m[(grid.ny / 2) * grid.nx + grid.nx / 2];
         let peak = grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
         assert!(peak > 3.5, "annulus must retain the requested rim peak");
-        assert!(center < peak * 0.05, "annulus centre must remain below the rim");
+        assert!(
+            center < peak * 0.05,
+            "annulus centre must remain below the rim"
+        );
     }
 
     #[test]
@@ -2711,10 +2829,19 @@ mod tests {
 
         let peak = grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
         let trough = grid.eta_m.iter().copied().fold(f64::INFINITY, f64::min);
-        assert!(peak > 3.0, "slide must preserve its positive displacement lobe");
-        assert!(trough < -3.0, "slide must preserve its negative displacement lobe");
+        assert!(
+            peak > 3.0,
+            "slide must preserve its positive displacement lobe"
+        );
+        assert!(
+            trough < -3.0,
+            "slide must preserve its negative displacement lobe"
+        );
         let east_mid = grid.eta_m[(grid.ny / 2) * grid.nx + (3 * grid.nx / 4)];
-        assert!(east_mid.abs() < 0.05, "cross-axis cells must not form a radial bump");
+        assert!(
+            east_mid.abs() < 0.05,
+            "cross-axis cells must not form a radial bump"
+        );
     }
 
     #[test]
@@ -2782,7 +2909,10 @@ mod tests {
     fn legacy_grid_requests_deserialize_without_source_geometry() {
         let request = source_grid_request(None);
         let mut value = serde_json::to_value(request).expect("serialize grid request");
-        value.as_object_mut().expect("request object").remove("source_geometry");
+        value
+            .as_object_mut()
+            .expect("request object")
+            .remove("source_geometry");
         let decoded: SimulateGridRequest = serde_json::from_value(value).expect("legacy request");
         assert!(decoded.source_geometry.is_none());
     }
@@ -2822,8 +2952,9 @@ mod tests {
         );
         assert!(maximum_memory.estimated_bytes > SWE_MEMORY_BUDGET_BYTES);
         let oversize = Arc::new(AtomicBool::new(false));
-        let oversize_error = register_simulation("test-memory-oversize", &oversize, &maximum_memory)
-            .expect_err("a single run above the process budget must be rejected");
+        let oversize_error =
+            register_simulation("test-memory-oversize", &oversize, &maximum_memory)
+                .expect_err("a single run above the process budget must be rejected");
         assert!(oversize_error.contains("2000×2000"), "{oversize_error}");
 
         request.cells_per_deg = 160.0;
@@ -3001,10 +3132,34 @@ mod tests {
         };
         // Matches the frontend SCENARIO_BOUNDS table.
         assert!(earthquake_initial_conditions(base.clone()).is_ok());
-        assert!(earthquake_initial_conditions(EarthquakeSource { rake_deg: 200.0, ..base.clone() }).is_err());
-        assert!(earthquake_initial_conditions(EarthquakeSource { rake_deg: -200.0, ..base.clone() }).is_err());
-        assert!(earthquake_initial_conditions(EarthquakeSource { strike_deg: 400.0, ..base.clone() }).is_err());
-        assert!(earthquake_initial_conditions(EarthquakeSource { strike_deg: -1.0, ..base }).is_err());
+        assert!(
+            earthquake_initial_conditions(EarthquakeSource {
+                rake_deg: 200.0,
+                ..base.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            earthquake_initial_conditions(EarthquakeSource {
+                rake_deg: -200.0,
+                ..base.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            earthquake_initial_conditions(EarthquakeSource {
+                strike_deg: 400.0,
+                ..base.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            earthquake_initial_conditions(EarthquakeSource {
+                strike_deg: -1.0,
+                ..base
+            })
+            .is_err()
+        );
     }
 
     #[test]
@@ -3479,7 +3634,11 @@ mod tests {
         request.use_real_bathymetry = true;
         assert!(validate_simulate_grid(&request).is_ok());
         request.bathymetry_asset_id = Some("../depth.tif".into());
-        assert!(validate_simulate_grid(&request).unwrap_err().contains("invalid"));
+        assert!(
+            validate_simulate_grid(&request)
+                .unwrap_err()
+                .contains("invalid")
+        );
     }
 
     #[test]
@@ -3679,6 +3838,42 @@ mod tests {
     }
 
     #[test]
+    fn simulate_grid_rejects_duplicate_gauge_ids() {
+        let mut request = source_grid_request(None);
+        request.gauge_points = vec![
+            GridGaugePoint {
+                id: "duplicate".to_string(),
+                lat_deg: 0.0,
+                lon_deg: 0.0,
+            },
+            GridGaugePoint {
+                id: "duplicate".to_string(),
+                lat_deg: 1.0,
+                lon_deg: 1.0,
+            },
+        ];
+        assert!(
+            validate_simulate_grid(&request)
+                .unwrap_err()
+                .contains("unique")
+        );
+    }
+
+    #[test]
+    fn checkpoint_interval_defaults_and_bounds_are_explicit() {
+        assert_eq!(validate_checkpoint_interval(None).unwrap().as_secs(), 60);
+        assert_eq!(validate_checkpoint_interval(Some(15)).unwrap().as_secs(), 15);
+        assert_eq!(
+            validate_checkpoint_interval(Some(3_600))
+                .unwrap()
+                .as_secs(),
+            3_600
+        );
+        assert!(validate_checkpoint_interval(Some(14)).is_err());
+        assert!(validate_checkpoint_interval(Some(3_601)).is_err());
+    }
+
+    #[test]
     fn surface_probe_uses_shared_wet_dry_contract() {
         let ocean = surface_probe(SurfaceProbeRequest {
             lat_deg: 0.0,
@@ -3733,7 +3928,10 @@ mod tests {
         assert_eq!(diagnostics.surface_mask.mask_version, "1.0.0");
         assert_eq!(diagnostics.surface_mask.horizontal_crs, "EPSG:4326");
         assert!(diagnostics.surface_mask.declared_horizontal_error_m > 100_000.0);
-        assert_eq!(diagnostics.solver_memory_budget_bytes, SWE_MEMORY_BUDGET_BYTES);
+        assert_eq!(
+            diagnostics.solver_memory_budget_bytes,
+            SWE_MEMORY_BUDGET_BYTES
+        );
         assert!(diagnostics.solver_reserved_memory_bytes <= SWE_MEMORY_BUDGET_BYTES);
     }
 
@@ -3742,6 +3940,11 @@ mod tests {
         let mut req = source_grid_request(None);
         req.t_end_s = 120.0;
         req.n_snapshots = 6;
+        req.gauge_points = vec![GridGaugePoint {
+            id: "golden-gauge".to_string(),
+            lat_deg: req.source.lat_deg,
+            lon_deg: req.source.lon_deg,
+        }];
         let plan = SimulationGridPlan::from_request(&req).unwrap();
         let mut initial = SwGrid::new(
             plan.west,
@@ -3759,11 +3962,14 @@ mod tests {
         let threshold = MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
 
         let mut uninterrupted = initial.clone();
-        let mut uninterrupted_max = MaxFieldAccumulator::new(
-            uninterrupted.nx * uninterrupted.ny,
-            threshold,
-        );
+        let mut uninterrupted_max =
+            MaxFieldAccumulator::new(uninterrupted.nx * uninterrupted.ny, threshold);
         uninterrupted_max.observe(&uninterrupted);
+        let mut uninterrupted_gauges =
+            vec![crate::physics::solver::checkpoint::CheckpointGaugeFrame {
+                time_s: uninterrupted.t_s,
+                eta_m: uninterrupted.sample_gauge_values(&req.gauge_points),
+            }];
         for &steps in &schedule {
             assert!(stepper.step_cancellable_observed(
                 &mut uninterrupted,
@@ -3771,19 +3977,30 @@ mod tests {
                 None,
                 &mut |grid| uninterrupted_max.observe(grid),
             ));
+            uninterrupted_gauges.push(crate::physics::solver::checkpoint::CheckpointGaugeFrame {
+                time_s: uninterrupted.t_s,
+                eta_m: uninterrupted.sample_gauge_values(&req.gauge_points),
+            });
         }
 
         let split = 2;
         let mut partial = initial.clone();
         let mut partial_max = MaxFieldAccumulator::new(partial.nx * partial.ny, threshold);
         partial_max.observe(&partial);
+        let mut partial_gauges = vec![crate::physics::solver::checkpoint::CheckpointGaugeFrame {
+            time_s: partial.t_s,
+            eta_m: partial.sample_gauge_values(&req.gauge_points),
+        }];
         for &steps in &schedule[..split] {
-            assert!(stepper.step_cancellable_observed(
-                &mut partial,
-                steps,
-                None,
-                &mut |grid| partial_max.observe(grid),
-            ));
+            assert!(
+                stepper
+                    .step_cancellable_observed(&mut partial, steps, None, &mut |grid| partial_max
+                        .observe(grid),)
+            );
+            partial_gauges.push(crate::physics::solver::checkpoint::CheckpointGaugeFrame {
+                time_s: partial.t_s,
+                eta_m: partial.sample_gauge_values(&req.gauge_points),
+            });
         }
         let root = tempfile::tempdir().unwrap();
         let mut writer = StreamCheckpointWriter::new(
@@ -3791,41 +4008,62 @@ mod tests {
             "resume-golden",
             &req,
             dt,
+            Duration::from_secs(60),
         )
         .unwrap();
         writer.identity.next_snapshot_interval = split as u32;
-        let encoded = crate::physics::solver::checkpoint::encode_state(
+        let encoded = crate::physics::solver::checkpoint::encode_state_with_gauges(
             &writer.identity,
             &partial,
             &partial_max,
+            &req.gauge_points,
+            &partial_gauges,
         )
         .unwrap();
         let restored = crate::physics::solver::checkpoint::decode(&encoded).unwrap();
-        verify_resume_checkpoint(&restored, &writer.identity, &initial, &schedule).unwrap();
+        verify_resume_checkpoint(
+            &restored,
+            &writer.identity,
+            &req.gauge_points,
+            &initial,
+            &schedule,
+        )
+        .unwrap();
 
         let mut resumed = restored.grid;
         let mut resumed_max = restored.max_field;
+        let mut resumed_gauges = restored.gauge_history;
         for &steps in &schedule[split..] {
-            assert!(stepper.step_cancellable_observed(
-                &mut resumed,
-                steps,
-                None,
-                &mut |grid| resumed_max.observe(grid),
-            ));
+            assert!(
+                stepper
+                    .step_cancellable_observed(&mut resumed, steps, None, &mut |grid| resumed_max
+                        .observe(grid),)
+            );
+            resumed_gauges.push(crate::physics::solver::checkpoint::CheckpointGaugeFrame {
+                time_s: resumed.t_s,
+                eta_m: resumed.sample_gauge_values(&req.gauge_points),
+            });
         }
         assert_eq!(resumed.step_index, uninterrupted.step_index);
         assert_eq!(resumed.t_s, uninterrupted.t_s);
         assert_eq!(resumed.eta_m, uninterrupted.eta_m);
         assert_eq!(resumed.u_ms, uninterrupted.u_ms);
         assert_eq!(resumed.v_ms, uninterrupted.v_ms);
+        assert_eq!(resumed_gauges, uninterrupted_gauges);
         let resumed_product = resumed_max.into_product(&resumed, None);
         let uninterrupted_product = uninterrupted_max.into_product(&uninterrupted, None);
-        assert_eq!(resumed_product.peak_png_b64, uninterrupted_product.peak_png_b64);
+        assert_eq!(
+            resumed_product.peak_png_b64,
+            uninterrupted_product.peak_png_b64
+        );
         assert_eq!(
             resumed_product.t_of_max_png_b64,
             uninterrupted_product.t_of_max_png_b64
         );
-        assert_eq!(resumed_product.energy_png_b64, uninterrupted_product.energy_png_b64);
+        assert_eq!(
+            resumed_product.energy_png_b64,
+            uninterrupted_product.energy_png_b64
+        );
     }
 
     #[cfg(feature = "gpu")]

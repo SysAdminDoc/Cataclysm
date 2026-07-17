@@ -86,10 +86,13 @@ Run a full SWE simulation (batch — returns all snapshots at once). GPU-aware: 
 ### `simulate_grid_streaming`
 Streaming variant — sends each snapshot via a Tauri Channel as it's computed. GPU-aware (same dispatch as `simulate_grid`).
 - **Input:** same as `simulate_grid` + `on_snapshot: Channel<GridSnapshot>` and
-  optional `resume_run_id`. Resume accepts only a retained checkpoint whose
+  optional `resume_run_id` plus `checkpoint_interval_s` in [15,3600] (default
+  60). Resume accepts only a retained checkpoint whose
   scenario/settings/data/solver digests, timestep, schedule prefix, grid,
   bathymetry, tick, and simulated time match the rebuilt run plan.
-- **Output:** `Result<SimulateGridStreamMeta, String>` — `dt_s, nx, ny, used_gpu, n_snapshots`
+- **Output:** `Result<SimulateGridStreamMeta, String>` — `dt_s, nx, ny,
+  used_gpu, n_snapshots`, plus authenticated pre-interruption gauge history for
+  resumed chart/CSV continuity.
 
 ### `cancel_simulation`
 Signal one owned simulation to stop. The solver polls its run-specific cancel

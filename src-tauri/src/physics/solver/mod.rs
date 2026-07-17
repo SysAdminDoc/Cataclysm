@@ -71,7 +71,7 @@ pub(crate) fn report_diagnostic(
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GridGaugePoint {
     pub id: String,
     pub lat_deg: f64,
@@ -499,12 +499,20 @@ impl SwGrid {
             field_tiles,
             gauge_samples: gauges
                 .iter()
-                .map(|g| GridGaugeSample {
-                    id: g.id.clone(),
-                    eta_m: self.sample_eta_at(g.lat_deg, g.lon_deg),
+                .zip(self.sample_gauge_values(gauges))
+                .map(|(gauge, eta_m)| GridGaugeSample {
+                    id: gauge.id.clone(),
+                    eta_m,
                 })
                 .collect(),
         }
+    }
+
+    pub fn sample_gauge_values(&self, gauges: &[GridGaugePoint]) -> Vec<Option<f64>> {
+        gauges
+            .iter()
+            .map(|gauge| self.sample_eta_at(gauge.lat_deg, gauge.lon_deg))
+            .collect()
     }
 
     pub fn sample_eta_at(&self, lat_deg: f64, lon_deg: f64) -> Option<f64> {

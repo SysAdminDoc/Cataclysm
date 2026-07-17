@@ -17,7 +17,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   resume through the normal streaming command. Restore fails closed unless the
   scenario, settings, data source, solver version, grid geometry, bathymetry,
   tick, and simulated time match the rebuilt deterministic run plan; a golden
-  test locks resumed eta/u/v and maximum-field products to an uninterrupted run.
+  test locks resumed eta/u/v, gauge histories, and maximum-field products to an
+  uninterrupted run. Advanced controls can select a 30-second, one-minute, or
+  five-minute wall-clock cadence; bounded binary gauge samples survive restart
+  and are merged back into gauge charts and CSV exports without duplicate times.
 - Inspect now works across tsunami, asteroid, and nuclear scenarios. Completed
   direct-hazard results receive bounded content-addressed handles, so moving a
   point probe reads the existing Rust result rather than rerunning physics. The

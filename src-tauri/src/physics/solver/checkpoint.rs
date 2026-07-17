@@ -8,14 +8,16 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use super::max_field::MaxFieldAccumulator;
-use super::{Colormap, SwGrid};
+use super::{Colormap, GridGaugePoint, SwGrid};
 
 const MAGIC: &[u8; 8] = b"CATCKPT1";
-pub const SCHEMA_VERSION: u16 = 1;
-const MAX_HEADER_BYTES: usize = 64 * 1024;
+pub const SCHEMA_VERSION: u16 = 2;
+const MAX_HEADER_BYTES: usize = 256 * 1024;
 const MAX_CELLS: usize = 4_000_000;
 const FIELD_COUNT: usize = 8;
 const MAX_CHECKPOINTS: usize = 4;
+const MAX_GAUGES: usize = 256;
+const MAX_GAUGE_FRAMES: usize = 240;
 const EXTENSION: &str = "catcheckpoint";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -37,6 +39,14 @@ pub struct SolverCheckpoint {
     pub identity: CheckpointIdentity,
     pub grid: SwGrid,
     pub max_field: MaxFieldAccumulator,
+    pub gauge_points: Vec<GridGaugePoint>,
+    pub gauge_history: Vec<CheckpointGaugeFrame>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CheckpointGaugeFrame {
+    pub time_s: f64,
+    pub eta_m: Vec<Option<f64>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,6 +65,8 @@ struct Header {
     max_field_last_t_s: f64,
     arrival_threshold_m: f64,
     max_field_observed: bool,
+    gauge_points: Vec<GridGaugePoint>,
+    gauge_frame_count: u32,
     payload_sha256: String,
 }
 
@@ -73,10 +85,12 @@ pub struct CheckpointSummary {
 
 pub fn encode(checkpoint: &SolverCheckpoint) -> Result<Vec<u8>, String> {
     validate_checkpoint(checkpoint)?;
-    encode_state(
+    encode_state_with_gauges(
         &checkpoint.identity,
         &checkpoint.grid,
         &checkpoint.max_field,
+        &checkpoint.gauge_points,
+        &checkpoint.gauge_history,
     )
 }
 
@@ -85,8 +99,18 @@ pub fn encode_state(
     grid: &SwGrid,
     max_field: &MaxFieldAccumulator,
 ) -> Result<Vec<u8>, String> {
-    validate_state(identity, grid, max_field)?;
-    let payload = encode_payload(grid, max_field);
+    encode_state_with_gauges(identity, grid, max_field, &[], &[])
+}
+
+pub fn encode_state_with_gauges(
+    identity: &CheckpointIdentity,
+    grid: &SwGrid,
+    max_field: &MaxFieldAccumulator,
+    gauge_points: &[GridGaugePoint],
+    gauge_history: &[CheckpointGaugeFrame],
+) -> Result<Vec<u8>, String> {
+    validate_state(identity, grid, max_field, gauge_points, gauge_history)?;
+    let payload = encode_payload(grid, max_field, gauge_history);
     let (max_field_last_t_s, arrival_threshold_m, max_field_observed) =
         max_field.checkpoint_metadata();
     let header = Header {
@@ -104,6 +128,9 @@ pub fn encode_state(
         max_field_last_t_s,
         arrival_threshold_m,
         max_field_observed,
+        gauge_points: gauge_points.to_vec(),
+        gauge_frame_count: u32::try_from(gauge_history.len())
+            .map_err(|_| "checkpoint gauge history is too large")?,
         payload_sha256: crate::render_protocol::sha256_hex(&payload),
     };
     let header_bytes = serde_json::to_vec(&header)
@@ -162,11 +189,13 @@ pub fn decode(bytes: &[u8]) -> Result<SolverCheckpoint, String> {
 }
 
 pub fn write_latest(root: &Path, checkpoint: &SolverCheckpoint) -> Result<PathBuf, String> {
-    write_latest_state(
+    write_latest_state_with_gauges(
         root,
         &checkpoint.identity,
         &checkpoint.grid,
         &checkpoint.max_field,
+        &checkpoint.gauge_points,
+        &checkpoint.gauge_history,
     )
 }
 
@@ -176,7 +205,18 @@ pub fn write_latest_state(
     grid: &SwGrid,
     max_field: &MaxFieldAccumulator,
 ) -> Result<PathBuf, String> {
-    let encoded = encode_state(identity, grid, max_field)?;
+    write_latest_state_with_gauges(root, identity, grid, max_field, &[], &[])
+}
+
+pub fn write_latest_state_with_gauges(
+    root: &Path,
+    identity: &CheckpointIdentity,
+    grid: &SwGrid,
+    max_field: &MaxFieldAccumulator,
+    gauge_points: &[GridGaugePoint],
+    gauge_history: &[CheckpointGaugeFrame],
+) -> Result<PathBuf, String> {
+    let encoded = encode_state_with_gauges(identity, grid, max_field, gauge_points, gauge_history)?;
     let directory = checkpoint_directory(root);
     fs::create_dir_all(&directory)
         .map_err(|error| format!("checkpoint directory could not be created: {error}"))?;
@@ -279,7 +319,11 @@ pub fn remove(root: &Path, run_id: &str) -> Result<bool, String> {
     Ok(true)
 }
 
-fn encode_payload(grid: &SwGrid, max_field: &MaxFieldAccumulator) -> Vec<u8> {
+fn encode_payload(
+    grid: &SwGrid,
+    max_field: &MaxFieldAccumulator,
+    gauge_history: &[CheckpointGaugeFrame],
+) -> Vec<u8> {
     let fields = [
         grid.h_m.as_slice(),
         grid.eta_m.as_slice(),
@@ -296,6 +340,12 @@ fn encode_payload(grid: &SwGrid, max_field: &MaxFieldAccumulator) -> Vec<u8> {
             payload.extend_from_slice(&value.to_le_bytes());
         }
     }
+    for frame in gauge_history {
+        payload.extend_from_slice(&frame.time_s.to_le_bytes());
+        for value in &frame.eta_m {
+            payload.extend_from_slice(&value.unwrap_or(f64::NAN).to_le_bytes());
+        }
+    }
     payload
 }
 
@@ -306,8 +356,21 @@ fn decode_payload(header: Header, payload: &[u8]) -> Result<SolverCheckpoint, St
         .checked_mul(ny)
         .filter(|cells| (4..=MAX_CELLS).contains(cells))
         .ok_or_else(|| "checkpoint grid dimensions are invalid".to_string())?;
-    let expected_payload = cells
+    let field_payload = cells
         .checked_mul(FIELD_COUNT * 8)
+        .ok_or_else(|| "checkpoint payload size overflow".to_string())?;
+    let gauge_count = header.gauge_points.len();
+    let gauge_frame_count = header.gauge_frame_count as usize;
+    let gauge_payload = gauge_frame_count
+        .checked_mul(
+            gauge_count
+                .checked_add(1)
+                .and_then(|values| values.checked_mul(8))
+                .ok_or_else(|| "checkpoint gauge payload size overflow".to_string())?,
+        )
+        .ok_or_else(|| "checkpoint gauge payload size overflow".to_string())?;
+    let expected_payload = field_payload
+        .checked_add(gauge_payload)
         .ok_or_else(|| "checkpoint payload size overflow".to_string())?;
     if payload.len() != expected_payload {
         return Err("checkpoint field payload length is invalid".to_string());
@@ -357,10 +420,28 @@ fn decode_payload(header: Header, payload: &[u8]) -> Result<SolverCheckpoint, St
         header.arrival_threshold_m,
         header.max_field_observed,
     );
+    let mut gauge_history = Vec::with_capacity(gauge_frame_count);
+    let mut offset = field_payload;
+    for _ in 0..gauge_frame_count {
+        let time_s = f64::from_le_bytes(payload[offset..offset + 8].try_into().unwrap());
+        offset += 8;
+        let mut eta_m = Vec::with_capacity(gauge_count);
+        for _ in 0..gauge_count {
+            let value = f64::from_le_bytes(payload[offset..offset + 8].try_into().unwrap());
+            offset += 8;
+            if value.is_infinite() {
+                return Err("checkpoint gauge payload contains an invalid value".to_string());
+            }
+            eta_m.push(value.is_finite().then_some(value));
+        }
+        gauge_history.push(CheckpointGaugeFrame { time_s, eta_m });
+    }
     let checkpoint = SolverCheckpoint {
         identity: header.identity,
         grid,
         max_field,
+        gauge_points: header.gauge_points,
+        gauge_history,
     };
     validate_checkpoint(&checkpoint)?;
     Ok(checkpoint)
@@ -371,6 +452,8 @@ fn validate_checkpoint(checkpoint: &SolverCheckpoint) -> Result<(), String> {
         &checkpoint.identity,
         &checkpoint.grid,
         &checkpoint.max_field,
+        &checkpoint.gauge_points,
+        &checkpoint.gauge_history,
     )
 }
 
@@ -378,6 +461,8 @@ fn validate_state(
     identity: &CheckpointIdentity,
     grid: &SwGrid,
     max_field: &MaxFieldAccumulator,
+    gauge_points: &[GridGaugePoint],
+    gauge_history: &[CheckpointGaugeFrame],
 ) -> Result<(), String> {
     validate_run_id(&identity.run_id)?;
     for (label, digest) in [
@@ -408,6 +493,42 @@ fn validate_state(
         return Err("checkpoint fields do not match grid dimensions".to_string());
     }
     validate_fields(&fields)?;
+    if gauge_points.len() > MAX_GAUGES || gauge_history.len() > MAX_GAUGE_FRAMES {
+        return Err("checkpoint gauge history exceeds its size budget".to_string());
+    }
+    let mut gauge_ids = std::collections::HashSet::with_capacity(gauge_points.len());
+    for gauge in gauge_points {
+        if gauge.id.trim().is_empty()
+            || gauge.id.len() > 128
+            || !gauge.lat_deg.is_finite()
+            || gauge.lat_deg.abs() > 90.0
+            || !gauge.lon_deg.is_finite()
+            || gauge.lon_deg.abs() > 180.0
+            || !gauge_ids.insert(gauge.id.as_str())
+        {
+            return Err("checkpoint gauge metadata is invalid".to_string());
+        }
+    }
+    let mut previous_time = None;
+    for frame in gauge_history {
+        if !frame.time_s.is_finite()
+            || frame.time_s < 0.0
+            || previous_time.is_some_and(|previous| frame.time_s <= previous)
+            || frame.eta_m.len() != gauge_points.len()
+            || frame.eta_m.iter().flatten().any(|value| !value.is_finite())
+        {
+            return Err("checkpoint gauge history is invalid".to_string());
+        }
+        previous_time = Some(frame.time_s);
+    }
+    if let Some(last_time) = previous_time {
+        let tolerance = (grid.t_s.abs() * 1.0e-12).max(1.0e-9);
+        if (last_time - grid.t_s).abs() > tolerance {
+            return Err(
+                "checkpoint gauge history does not reach the saved solver time".to_string(),
+            );
+        }
+    }
     for (label, value) in [
         ("dt_s", identity.dt_s),
         ("t_end_s", identity.t_end_s),
@@ -476,7 +597,8 @@ fn checkpoint_path(root: &Path, run_id: &str) -> Result<PathBuf, String> {
 }
 
 fn maximum_file_bytes() -> u64 {
-    (MAX_CELLS * FIELD_COUNT * 8 + MAX_HEADER_BYTES + 22) as u64
+    (MAX_CELLS * FIELD_COUNT * 8 + MAX_GAUGE_FRAMES * (MAX_GAUGES + 1) * 8 + MAX_HEADER_BYTES + 22)
+        as u64
 }
 
 fn read_bounded(path: &Path) -> Result<Vec<u8>, String> {
@@ -548,6 +670,15 @@ mod tests {
             },
             grid,
             max_field,
+            gauge_points: vec![GridGaugePoint {
+                id: "harbor".to_string(),
+                lat_deg: 0.5,
+                lon_deg: 0.5,
+            }],
+            gauge_history: vec![CheckpointGaugeFrame {
+                time_s: 12.5,
+                eta_m: vec![Some(0.125)],
+            }],
         }
     }
 
@@ -560,6 +691,8 @@ mod tests {
         assert_eq!(restored.grid.eta_m, original.grid.eta_m);
         assert_eq!(restored.grid.u_ms, original.grid.u_ms);
         assert_eq!(restored.grid.v_ms, original.grid.v_ms);
+        assert_eq!(restored.gauge_points, original.gauge_points);
+        assert_eq!(restored.gauge_history, original.gauge_history);
         assert_eq!(
             restored.max_field.checkpoint_fields(),
             original.max_field.checkpoint_fields()
