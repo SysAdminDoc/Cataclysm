@@ -256,10 +256,15 @@ export function HazardControls({
               onChange={(e) => onNuclearChange({ ...nuclear, burstType: e.target.value as BurstType })}
             >
               {nuclearBurstTypes.map((value) => (
-                <option key={value} value={value}>{value === "airburst" ? "Air burst (optimal height)" : value === "surface" ? "Surface" : "Water"}</option>
+                <option key={value} value={value}>
+                  {value === "airburst" ? "Air burst (optimal height)" : value === "surface" ? "Surface" : value === "hemp" ? "High-altitude EMP (400 km)" : "Water"}
+                </option>
               ))}
             </select>
           </label>}
+          {nuclear.burstType === "hemp" && (
+            <p className="hazard__hint">HEMP mode suppresses ground blast, thermal, prompt-radiation, fallout, and casualty rings. The displayed EMP radius is an educational line-of-sight footprint, not a grid vulnerability forecast.</p>
+          )}
           {workspaceMode === "advanced" && <Slider
             label="Population density"
             value={nuclear.populationDensity ?? 0}

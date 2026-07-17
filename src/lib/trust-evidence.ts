@@ -123,6 +123,7 @@ export function buildDirectScenarioEvidence(scenario: DirectScenarioTemplate): T
   const model = scenario.domain === "asteroid"
     ? "Rust direct asteroid-hazard model"
     : "Rust direct nuclear-hazard model";
+  const recorded = scenario.classification === "recorded";
   return {
     id: `scenario:${scenario.id}`,
     title: scenario.name,
@@ -130,13 +131,21 @@ export function buildDirectScenarioEvidence(scenario: DirectScenarioTemplate): T
     model,
     version: "direct-hazard model 1.0.0",
     confidence: scenario.confidence,
-    tone: "speculative",
-    assumptions: [
-      "The deterministic reference fixture preserves the listed source inputs and camera.",
-      "The scenario is a what-if study, not a prediction that the event will occur.",
+    tone: recorded ? "reference" : "speculative",
+    assumptions: recorded
+      ? [
+          "The historical event and source inputs are distinct from Cataclysm's modeled effect reconstruction.",
+          scenario.historicalContext ?? "The listed location and source inputs preserve the historical preset.",
+        ]
+      : [
+          "The deterministic reference fixture preserves the listed source inputs and camera.",
+          "The scenario is a what-if study, not a prediction that the event will occur.",
+        ],
+    limitations: [
+      ...(scenario.limitations ?? ["Reference-fixture confidence describes reproducibility, not event likelihood."]),
+      EDUCATIONAL_LIMITATION,
     ],
-    limitations: ["Reference-fixture confidence describes reproducibility, not event likelihood.", EDUCATIONAL_LIMITATION],
-    citations: [{ label: scenario.reference }],
+    citations: [{ label: scenario.reference, url: scenario.referenceUrl }],
   };
 }
 

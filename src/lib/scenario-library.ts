@@ -1,15 +1,21 @@
 import type { AsteroidInput, NuclearInput } from "../hazards";
 import referenceScenes from "../data/reference-scenes.json";
+import historicalScenariosJson from "../data/nukemap/historical-scenarios.json";
 
 export type DirectScenarioTemplate = {
   id: string;
   domain: "asteroid" | "nuclear";
+  classification: "recorded" | "what-if";
   name: string;
   date: string;
   blurb: string;
   detail: string;
   reference: string;
-  confidence: "Reference fixture" | "Modelled what-if";
+  confidence: "Reference fixture" | "Modelled what-if" | "Historical source inputs";
+  referenceUrl?: string;
+  historicalContext?: string;
+  physicsContext?: string;
+  limitations?: string[];
   durationS: number;
   expectedHighlights: string[];
   center: { lat: number; lon: number };
@@ -30,11 +36,11 @@ type DirectScenarioMetadata = Omit<
 > & { sceneId: string };
 
 const DIRECT_SCENARIO_METADATA: readonly DirectScenarioMetadata[] = [
-  { id: "direct:asteroid-entry", sceneId: "asteroid-entry", name: "Atmospheric asteroid entry", date: "What-if", blurb: "A shallow atmospheric entry over the central United States.", detail: "19 m body · 19 km/s · 18° entry", confidence: "Reference fixture", durationS: 20, expectedHighlights: ["Atmospheric entry", "Breakup altitude", "Airburst footprint"] },
-  { id: "direct:asteroid-tokyo", sceneId: "asteroid-land-impact", name: "Tokyo asteroid impact", date: "What-if", blurb: "A stony asteroid impact used by the deterministic land-impact scene.", detail: "300 m body · 20 km/s · land target", confidence: "Reference fixture", durationS: 90, expectedHighlights: ["Entry and impact", "Crater formation", "Thermal and blast rings"] },
-  { id: "direct:asteroid-pacific", sceneId: "asteroid-ocean-impact", name: "Pacific asteroid impact", date: "What-if", blurb: "An ocean impact over a 4 km water column in the central Pacific.", detail: "500 m body · 20 km/s · ocean target", confidence: "Reference fixture", durationS: 180, expectedHighlights: ["Ocean impact", "Transient cavity", "Initial wave estimate"] },
-  { id: "direct:nuclear-tokyo", sceneId: "nuclear-airburst", name: "Tokyo 100 kt airburst", date: "What-if", blurb: "An airburst used by the deterministic nuclear-airburst scene.", detail: "100 kt · airburst · urban target", confidence: "Reference fixture", durationS: 30, expectedHighlights: ["Fireball", "Blast and thermal rings", "Effect timeline"] },
-  { id: "direct:nuclear-new-york", sceneId: "nuclear-surface-burst", name: "New York 100 kt surface burst", date: "What-if", blurb: "A surface burst used by the deterministic fallout scene.", detail: "100 kt · surface burst · fallout enabled", confidence: "Reference fixture", durationS: 600, expectedHighlights: ["Surface fireball", "Blast rings", "Wind-driven fallout"] },
+  { id: "direct:asteroid-entry", sceneId: "asteroid-entry", classification: "what-if", name: "Atmospheric asteroid entry", date: "What-if", blurb: "A shallow atmospheric entry over the central United States.", detail: "19 m body · 19 km/s · 18° entry", confidence: "Reference fixture", durationS: 20, expectedHighlights: ["Atmospheric entry", "Breakup altitude", "Airburst footprint"] },
+  { id: "direct:asteroid-tokyo", sceneId: "asteroid-land-impact", classification: "what-if", name: "Tokyo asteroid impact", date: "What-if", blurb: "A stony asteroid impact used by the deterministic land-impact scene.", detail: "300 m body · 20 km/s · land target", confidence: "Reference fixture", durationS: 90, expectedHighlights: ["Entry and impact", "Crater formation", "Thermal and blast rings"] },
+  { id: "direct:asteroid-pacific", sceneId: "asteroid-ocean-impact", classification: "what-if", name: "Pacific asteroid impact", date: "What-if", blurb: "An ocean impact over a 4 km water column in the central Pacific.", detail: "500 m body · 20 km/s · ocean target", confidence: "Reference fixture", durationS: 180, expectedHighlights: ["Ocean impact", "Transient cavity", "Initial wave estimate"] },
+  { id: "direct:nuclear-tokyo", sceneId: "nuclear-airburst", classification: "what-if", name: "Tokyo 100 kt airburst", date: "What-if", blurb: "An airburst used by the deterministic nuclear-airburst scene.", detail: "100 kt · airburst · urban target", confidence: "Reference fixture", durationS: 30, expectedHighlights: ["Fireball", "Blast and thermal rings", "Effect timeline"] },
+  { id: "direct:nuclear-new-york", sceneId: "nuclear-surface-burst", classification: "what-if", name: "New York 100 kt surface burst", date: "What-if", blurb: "A surface burst used by the deterministic fallout scene.", detail: "100 kt · surface burst · fallout enabled", confidence: "Reference fixture", durationS: 600, expectedHighlights: ["Surface fireball", "Blast rings", "Wind-driven fallout"] },
 ];
 
 type ReferenceDirectScene = {
@@ -89,9 +95,30 @@ function buildDirectScenario(metadata: DirectScenarioMetadata): DirectScenarioTe
   };
 }
 
+const historicalFile = historicalScenariosJson as unknown as {
+  schemaVersion: number;
+  count: number;
+  items: DirectScenarioTemplate[];
+};
+if (historicalFile.schemaVersion !== 1 || historicalFile.count !== 16 || historicalFile.items.length !== 16) {
+  throw new Error("Bundled historical direct scenarios failed their count or schema check.");
+}
+for (const scenario of historicalFile.items) {
+  const input = scenario.domain === "asteroid" ? scenario.asteroid : scenario.nuclear;
+  if (scenario.classification !== "recorded" || !input || scenario.expectedHighlights.length < 3) {
+    throw new Error(`Historical direct scenario is incomplete: ${scenario.id}`);
+  }
+  if (scenario.center.lat < -90 || scenario.center.lat > 90 || scenario.center.lon < -180 || scenario.center.lon > 180) {
+    throw new Error(`Historical direct scenario has invalid coordinates: ${scenario.id}`);
+  }
+}
+
 // Product metadata is overlaid on the exact source inputs and cameras already
 // locked by the deterministic reference contract; those values have one owner.
-export const DIRECT_SCENARIOS: readonly DirectScenarioTemplate[] = DIRECT_SCENARIO_METADATA.map(buildDirectScenario);
+export const DIRECT_SCENARIOS: readonly DirectScenarioTemplate[] = [
+  ...DIRECT_SCENARIO_METADATA.map(buildDirectScenario),
+  ...historicalFile.items,
+];
 
 export type ScenarioLibraryPreferences = {
   recentIds: string[];

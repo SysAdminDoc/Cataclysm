@@ -594,6 +594,7 @@
 .hazard__timeline-list li[data-cat="blast"]::before { background: var(--blue); }
 .hazard__timeline-list li[data-cat="firestorm"]::before { background: var(--danger); }
 .hazard__timeline-list li[data-cat="fallout"]::before { background: var(--mauve); }
+.hazard__timeline-list li[data-cat="emp"]::before { background: var(--teal); }
 
 .hazard__timeline-time {
   display: inline-block;

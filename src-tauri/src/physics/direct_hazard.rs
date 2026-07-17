@@ -950,6 +950,8 @@ struct NuclearEffects {
     yield_kt: f64,
     is_surface: bool,
     is_water: bool,
+    is_hemp: bool,
+    emp: f64,
     fireball: f64,
     psi_200: f64,
     psi_20: f64,
@@ -974,8 +976,40 @@ struct NuclearEffects {
 
 fn nuclear_effects(request: &NuclearHazardRequest) -> NuclearEffects {
     let yield_kt = request.yield_kt.max(0.001);
+    let is_hemp = matches!(request.burst_type, NuclearBurstType::Hemp);
     let is_water = matches!(request.burst_type, NuclearBurstType::Water);
     let is_surface = matches!(request.burst_type, NuclearBurstType::Surface) || is_water;
+    if is_hemp {
+        let altitude_km = request.height_m.unwrap_or(400_000.0) / 1_000.0;
+        let line_of_sight_km = (altitude_km * (2.0 * 6_371.0 + altitude_km)).sqrt();
+        return NuclearEffects {
+            yield_kt,
+            is_surface: false,
+            is_water: false,
+            is_hemp: true,
+            emp: line_of_sight_km.min(2_200.0),
+            fireball: 0.0,
+            psi_200: 0.0,
+            psi_20: 0.0,
+            psi_5: 0.0,
+            psi_3: 0.0,
+            psi_1: 0.0,
+            psi_0_25: 0.0,
+            thermal_3: 0.0,
+            thermal_1: 0.0,
+            radiation: 0.0,
+            neutron_rad: 0.0,
+            gamma_rad: 0.0,
+            crater_r: 0.0,
+            cloud_top_h: 0.0,
+            optimal_height: 400_000.0,
+            wave_height: 0.0,
+            fallout: None,
+            flash_blind_day: 0.0,
+            flash_blind_night: 0.0,
+            firestorm_r: 0.0,
+        };
+    }
     let factor = if is_surface { 0.8 } else { 1.0 };
     let cube = yield_kt.powf(1.0 / 3.0);
     let attenuation = if yield_kt > 1_000.0 {
@@ -992,6 +1026,8 @@ fn nuclear_effects(request: &NuclearHazardRequest) -> NuclearEffects {
         yield_kt,
         is_surface,
         is_water,
+        is_hemp: false,
+        emp: (2.5 * yield_kt.powf(0.33)).min(40.0),
         fireball: if is_surface { 0.05 } else { 0.066 } * yield_kt.powf(0.4),
         psi_200: factor * 0.13 * cube,
         psi_20: factor * 0.28 * cube,
@@ -1101,6 +1137,23 @@ fn fmt_time(seconds: f64) -> String {
 }
 
 fn nuclear_timeline(effects: &NuclearEffects) -> Vec<TimelineEvent> {
+    if effects.is_hemp {
+        return vec![
+            timeline(
+                "0 ms",
+                "High-altitude detonation; ground-level blast, thermal, prompt-radiation, and fallout rings are not applied.",
+                "radiation",
+            ),
+            timeline(
+                "<1 sec",
+                &format!(
+                    "Educational line-of-sight EMP screening footprint reaches {}; actual disruption depends on field strength, grid topology, and equipment hardening.",
+                    fmt_km(effects.emp)
+                ),
+                "emp",
+            ),
+        ];
+    }
     let mut events = vec![
         timeline(
             "0 ms",
@@ -1497,64 +1550,74 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         validate("height_m", height)?;
     }
     let effects = nuclear_effects(&request);
-    let mut rings = vec![
-        ring_km(
-            "1st° burns",
-            effects.thermal_1,
-            "#f5c2e7",
-            "thermal",
-            "≥2.5 cal/cm² — first-degree burns to exposed skin.",
-        ),
-        ring_km(
-            "1 psi — window breakage",
-            effects.psi_1,
-            "#f9e2af",
-            "blast",
-            "Glass shatters into shrapnel; light injuries widespread.",
-        ),
-        ring_km(
-            "0.25 psi — light damage",
-            effects.psi_0_25,
-            "#fef9c3",
-            "blast",
-            "Most windows break over a wide area; scattered cuts from flying glass.",
-        ),
-        ring_km(
-            "3rd° burns",
-            effects.thermal_3,
-            "#fab387",
-            "thermal",
-            "≥8 cal/cm² — third-degree burns; ignition of many materials.",
-        ),
-        ring_km(
-            "5 psi — buildings destroyed",
-            effects.psi_5,
-            "#cba6f7",
-            "blast",
-            "Most residential buildings collapse; ~160 mph winds.",
-        ),
-        ring_km(
-            "500 rem radiation",
-            effects.radiation,
+    let mut rings = if effects.is_hemp {
+        vec![ring_km(
+            "HEMP screening footprint",
+            effects.emp,
             "#94e2d5",
-            "radiation",
-            "Acute lethal dose to unsheltered survivors of blast/thermal.",
-        ),
-        ring_km(
-            "20 psi — heavy destruction",
-            effects.psi_20,
-            "#89b4fa",
-            "blast",
-            "Reinforced structures destroyed; near-total fatalities.",
-        ),
-        ring_km(
-            "Fireball",
-            effects.fireball,
-            "#f5e0dc",
-            "fireball",
-            "Everything within is vaporized.",
-        ),
-    ];
+            "emp",
+            "Educational line-of-sight footprint; not a grid-specific damage forecast.",
+        )]
+    } else {
+        vec![
+            ring_km(
+                "1st° burns",
+                effects.thermal_1,
+                "#f5c2e7",
+                "thermal",
+                "≥2.5 cal/cm² — first-degree burns to exposed skin.",
+            ),
+            ring_km(
+                "1 psi — window breakage",
+                effects.psi_1,
+                "#f9e2af",
+                "blast",
+                "Glass shatters into shrapnel; light injuries widespread.",
+            ),
+            ring_km(
+                "0.25 psi — light damage",
+                effects.psi_0_25,
+                "#fef9c3",
+                "blast",
+                "Most windows break over a wide area; scattered cuts from flying glass.",
+            ),
+            ring_km(
+                "3rd° burns",
+                effects.thermal_3,
+                "#fab387",
+                "thermal",
+                "≥8 cal/cm² — third-degree burns; ignition of many materials.",
+            ),
+            ring_km(
+                "5 psi — buildings destroyed",
+                effects.psi_5,
+                "#cba6f7",
+                "blast",
+                "Most residential buildings collapse; ~160 mph winds.",
+            ),
+            ring_km(
+                "500 rem radiation",
+                effects.radiation,
+                "#94e2d5",
+                "radiation",
+                "Acute lethal dose to unsheltered survivors of blast/thermal.",
+            ),
+            ring_km(
+                "20 psi — heavy destruction",
+                effects.psi_20,
+                "#89b4fa",
+                "blast",
+                "Reinforced structures destroyed; near-total fatalities.",
+            ),
+            ring_km(
+                "Fireball",
+                effects.fireball,
+                "#f5e0dc",
+                "fireball",
+                "Everything within is vaporized.",
+            ),
+        ]
+    };
     if let Some(fallout) = &effects.fallout {
         rings.push(ring_km(
             "Light fallout (heavy zone shown)",
@@ -1567,38 +1630,58 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
     rings.retain(|item| item.radius_m > 0.5);
     rings.sort_by(|left, right| right.radius_m.total_cmp(&left.radius_m));
 
-    let mut readout_items = vec![
-        readout("Yield", fmt_yield(effects.yield_kt), None),
-        readout(
-            "Yield context",
-            fmt_yield_context(effects.yield_kt),
-            Some("scale anchor; weapon effects have no natural recurrence".to_string()),
-        ),
-        readout(
-            "Burst",
-            if effects.is_water {
-                "Water"
-            } else if effects.is_surface {
-                "Surface"
-            } else {
-                "Air"
-            }
-            .to_string(),
-            Some(format!(
-                "optimal air-burst height {}",
-                fmt_km(effects.optimal_height / 1_000.0)
-            )),
-        ),
-        readout("Fireball radius", fmt_km(effects.fireball), None),
-        readout(
-            "5 psi radius",
-            fmt_km(effects.psi_5),
-            Some("residential destruction".to_string()),
-        ),
-        readout("3rd° burn radius", fmt_km(effects.thermal_3), None),
-        readout("500 rem radius", fmt_km(effects.radiation), None),
-        readout("Mushroom cloud top", fmt_km(effects.cloud_top_h), None),
-    ];
+    let mut readout_items = if effects.is_hemp {
+        vec![
+            readout("Yield", fmt_yield(effects.yield_kt), None),
+            readout("Burst", "High-altitude EMP".to_string(), None),
+            readout(
+                "Burst height",
+                fmt_km(request.height_m.unwrap_or(400_000.0) / 1_000.0),
+                Some("historical Starfish Prime input: 400 km".to_string()),
+            ),
+            readout(
+                "EMP screening radius",
+                fmt_km(effects.emp),
+                Some(
+                    "line-of-sight educational footprint; local field strength is not modeled"
+                        .to_string(),
+                ),
+            ),
+        ]
+    } else {
+        vec![
+            readout("Yield", fmt_yield(effects.yield_kt), None),
+            readout(
+                "Yield context",
+                fmt_yield_context(effects.yield_kt),
+                Some("scale anchor; weapon effects have no natural recurrence".to_string()),
+            ),
+            readout(
+                "Burst",
+                if effects.is_water {
+                    "Water"
+                } else if effects.is_surface {
+                    "Surface"
+                } else {
+                    "Air"
+                }
+                .to_string(),
+                Some(format!(
+                    "optimal air-burst height {}",
+                    fmt_km(effects.optimal_height / 1_000.0)
+                )),
+            ),
+            readout("Fireball radius", fmt_km(effects.fireball), None),
+            readout(
+                "5 psi radius",
+                fmt_km(effects.psi_5),
+                Some("residential destruction".to_string()),
+            ),
+            readout("3rd° burn radius", fmt_km(effects.thermal_3), None),
+            readout("500 rem radius", fmt_km(effects.radiation), None),
+            readout("Mushroom cloud top", fmt_km(effects.cloud_top_h), None),
+        ]
+    };
     if effects.crater_r > 0.0 {
         readout_items.push(readout("Crater radius", fmt_km(effects.crater_r), None));
     }
@@ -1629,7 +1712,7 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         wave_height: effects.wave_height,
         fallout: effects.fallout.clone(),
         timeline,
-        latent_cancer: (request.population_density > 0.0)
+        latent_cancer: (request.population_density > 0.0 && !effects.is_hemp)
             .then(|| latent_cancer(&effects, request.population_density)),
     };
     Ok(HazardResult {
@@ -1638,7 +1721,7 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         center: request.center,
         rings,
         readout: readout_items,
-        casualties: (request.population_density > 0.0)
+        casualties: (request.population_density > 0.0 && !effects.is_hemp)
             .then(|| nuclear_casualties(&effects, request.population_density)),
         detail: HazardDetail::Nuclear(detail),
         authority: "rust",
@@ -1715,6 +1798,8 @@ mod tests {
             yield_kt: 100.0,
             is_surface: false,
             is_water: false,
+            is_hemp: false,
+            emp: 0.0,
             fireball: 0.1,
             psi_200: 0.3,
             psi_20: 0.6,
@@ -1891,6 +1976,33 @@ mod tests {
                 .iter()
                 .any(|event| event.category == "fallout")
         );
+    }
+
+    #[test]
+    fn hemp_uses_only_the_bounded_emp_screening_footprint() {
+        let result = simulate_nuclear_hazard(NuclearHazardRequest {
+            center: center(),
+            yield_kt: 1_400.0,
+            burst_type: NuclearBurstType::Hemp,
+            height_m: Some(400_000.0),
+            fission_pct: 50.0,
+            population_density: 5_000.0,
+        })
+        .unwrap();
+        assert_eq!(result.rings.len(), 1);
+        assert_eq!(result.rings[0].category, "emp");
+        assert!(result.rings[0].radius_m > 2_000_000.0);
+        assert!(result.casualties.is_none());
+        let HazardDetail::Nuclear(detail) = result.detail else {
+            panic!("wrong detail");
+        };
+        assert_eq!(detail.fireball, 0.0);
+        assert_eq!(detail.psi_1, 0.0);
+        assert_eq!(detail.thermal_1, 0.0);
+        assert_eq!(detail.radiation, 0.0);
+        assert!(detail.fallout.is_none());
+        assert!(detail.latent_cancer.is_none());
+        assert!(detail.timeline.iter().any(|event| event.category == "emp"));
     }
 
     #[test]
@@ -2207,5 +2319,4 @@ mod tests {
         };
         assert!(detail.latent_cancer.is_none());
     }
-
 }

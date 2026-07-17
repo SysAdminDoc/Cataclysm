@@ -68,7 +68,7 @@
     "DirectNuclear": {
       "fields": {
         "yield_kt": { "type": "number", "label": "Yield", "units": "kt TNT", "minimum": 0.001, "maximum": 100000, "minimumInclusive": true, "maximumInclusive": true, "default": 100 },
-        "burst_type": { "type": "enum", "label": "Burst type", "units": null, "values": ["airburst", "surface", "custom", "hemp", "water"], "uiValues": ["airburst", "surface", "water"], "default": "airburst" },
+        "burst_type": { "type": "enum", "label": "Burst type", "units": null, "values": ["airburst", "surface", "custom", "hemp", "water"], "uiValues": ["airburst", "surface", "hemp", "water"], "default": "airburst" },
         "height_m": { "type": "number", "label": "Burst height", "units": "m", "minimum": 0, "maximum": 10000000, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "optional-custom-burst" },
         "fission_pct": { "type": "number", "label": "Fission fraction", "units": "%", "minimum": 0, "maximum": 100, "minimumInclusive": true, "maximumInclusive": true, "default": 50, "applicability": "derived-default" },
         "population_density": { "type": "number", "label": "Population density", "units": "people/km²", "minimum": 0, "maximum": 20000, "minimumInclusive": true, "maximumInclusive": true, "default": 5000 },

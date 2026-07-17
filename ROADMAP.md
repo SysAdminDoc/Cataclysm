@@ -14,10 +14,6 @@ rebuild their **UIs** on the Cesium globe. The standalone NukeMap and
 AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
-### P2 — Impact mode + data
-- **UNI-10** Historical presets: fold NukeMap's 10 tests + AsteroidSimulator's
-  6 impact presets into the unified preset registry alongside the tsunami presets.
-
 ### P3 — Advanced NukeMap features (breadth parity)
 - **UNI-11** WW3 exchange engine: port scenario/target data + casualty aggregation
   (pure) from `js/ww3.js`; rebuild missile arcs + HUD as React/Cesium (708

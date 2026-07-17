@@ -147,6 +147,26 @@ describe("PresetSelector", () => {
     expect(screen.queryByText("Tōhoku 2011")).not.toBeInTheDocument();
   });
 
+  it("classifies imported historical direct scenarios as recorded", async () => {
+    const user = userEvent.setup();
+    const recorded = DIRECT_SCENARIOS.find((scenario) => scenario.classification === "recorded")!;
+    const whatIf = DIRECT_SCENARIOS.find((scenario) => scenario.classification === "what-if")!;
+    render(
+      <PresetSelector
+        presets={[]}
+        activeId={null}
+        onSelect={() => {}}
+        directScenarios={[whatIf, recorded]}
+        onSelectDirect={() => {}}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Recorded" }));
+    expect(screen.getByText(recorded.name)).toBeInTheDocument();
+    expect(screen.queryByText(whatIf.name)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Hypothetical or contested")).not.toBeInTheDocument();
+  });
+
   it("shows preset count in header", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
     expect(screen.getByText("3/3")).toBeInTheDocument();

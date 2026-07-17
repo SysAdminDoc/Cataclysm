@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The unified scenario library now includes all 10 preserved NukeMap historical
+  tests and all six AsteroidSimulator impact presets as recorded-event direct
+  scenarios, distinct from the five deterministic what-if fixtures. Each entry
+  carries its legacy inputs, historical/model context, placement provenance,
+  limitations, and a complete camera/setup contract. Starfish Prime now uses a
+  Rust-authoritative bounded HEMP path that emits only an educational EMP
+  footprint and explicitly suppresses ground blast, thermal, prompt-radiation,
+  fallout, shelter, latent-effect, and casualty products.
 - Direct-hazard setup now searches a normalized, versioned offline NukeMap
   catalog containing 246 population-bearing cities, 41,958 US ZIP centroids,
   and 459 strategic/metro targets, plus pasted coordinates. ZIP data loads only

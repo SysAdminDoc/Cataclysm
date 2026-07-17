@@ -1,0 +1,668 @@
+{
+  "schemaVersion": 1,
+  "source": "legacy/nukemap/js/data.js#NM.HISTORICAL + legacy/asteroid/src/presets/historical.ts",
+  "count": 16,
+  "items": [
+    {
+      "id": "historical:nuclear:trinity",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Trinity",
+      "date": "1945",
+      "blurb": "First nuclear test, Alamogordo NM",
+      "detail": "21 kt · surface model",
+      "reference": "Rhodes, \"The Making of the Atomic Bomb\" (1986)",
+      "confidence": "Historical source inputs",
+      "durationS": 600,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Fallout screening"
+      ],
+      "center": {
+        "lat": 33.6773,
+        "lon": -106.4754
+      },
+      "camera": {
+        "lat": 33.2773,
+        "lon": -105.8754,
+        "altitudeM": 180000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 21,
+        "burstType": "surface",
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "Manhattan Project culmination. J. Robert Oppenheimer quoted the Bhagavad Gita. Ushered in the atomic age.",
+      "physicsContext": "Surface burst created trinitite glass. Demonstrated implosion design viability.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:hiroshima",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Hiroshima",
+      "date": "1945",
+      "blurb": "Little Boy, 80,000 killed instantly",
+      "detail": "15 kt · airburst model",
+      "reference": "Glasstone & Dolan Ch.1; Hiroshima Peace Memorial Museum",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Effect timeline"
+      ],
+      "center": {
+        "lat": 34.3955,
+        "lon": 132.4534
+      },
+      "camera": {
+        "lat": 33.9955,
+        "lon": 133.0534,
+        "altitudeM": 180000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 15,
+        "burstType": "airburst",
+        "heightM": 580,
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "First wartime nuclear attack. Gun-type U-235 weapon. 70,000-80,000 killed instantly; 140,000 dead by year end.",
+      "physicsContext": "Airburst at 580m optimized blast via Mach stem. Firestorm consumed 13 km². Flash burns to 3.5 km.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:nagasaki",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Nagasaki",
+      "date": "1945",
+      "blurb": "Fat Man, 40,000 killed instantly",
+      "detail": "21 kt · airburst model",
+      "reference": "Glasstone & Dolan Ch.1; Nagasaki Atomic Bomb Museum",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Effect timeline"
+      ],
+      "center": {
+        "lat": 32.7736,
+        "lon": 129.8616
+      },
+      "camera": {
+        "lat": 32.3736,
+        "lon": 130.4616,
+        "altitudeM": 180000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 21,
+        "burstType": "airburst",
+        "heightM": 503,
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "Second wartime use. Implosion Pu-239 design. Hilly terrain limited blast; casualties lower than Hiroshima despite higher yield.",
+      "physicsContext": "Terrain shielding reduced effective blast radius by ~30%. Demonstrates non-circular real-world damage.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:ivy-mike",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Ivy Mike",
+      "date": "1952",
+      "blurb": "First H-bomb, Enewetak Atoll",
+      "detail": "10,400 kt · surface model",
+      "reference": "DOE Nevada Operations; Hansen, \"US Nuclear Weapons\" (1988)",
+      "confidence": "Historical source inputs",
+      "durationS": 600,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Fallout screening"
+      ],
+      "center": {
+        "lat": 11.668,
+        "lon": 162.195
+      },
+      "camera": {
+        "lat": 11.268,
+        "lon": 162.795,
+        "altitudeM": 982253.594754995,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 10400,
+        "burstType": "surface",
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "First thermonuclear device. Teller-Ulam two-stage design. Vaporized Elugelab island. Weighed 82 tons (not deliverable).",
+      "physicsContext": "10.4 MT yield proved fusion staging works. Fireball 5 km wide. Crater 1.9 km across, 50m deep.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:castle-bravo",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Castle Bravo",
+      "date": "1954",
+      "blurb": "15 MT, Bikini Atoll",
+      "detail": "15,000 kt · surface model",
+      "reference": "DOE NV-209; DTRA Report",
+      "confidence": "Historical source inputs",
+      "durationS": 600,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Fallout screening"
+      ],
+      "center": {
+        "lat": 11.697,
+        "lon": 165.273
+      },
+      "camera": {
+        "lat": 11.297,
+        "lon": 165.873,
+        "altitudeM": 1109795.4334487114,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 15000,
+        "burstType": "surface",
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "Worst US nuclear accident. Yield 2.5x expected (6 MT predicted). Fallout contaminated Marshall Islanders and Japanese fishing boat Lucky Dragon #5.",
+      "physicsContext": "Li-7 unexpectedly fissioned, boosting yield. Fallout plume 550 km long. Demonstrated fallout danger at scale.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:tsar-bomba",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Tsar Bomba",
+      "date": "1961",
+      "blurb": "50 MT, Novaya Zemlya",
+      "detail": "50,000 kt · airburst model",
+      "reference": "Adamsky & Smirnov, \"Moscow's Biggest Bomb\" (1994)",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Effect timeline"
+      ],
+      "center": {
+        "lat": 73.812,
+        "lon": 54.583
+      },
+      "camera": {
+        "lat": 73.412,
+        "lon": 55.183,
+        "altitudeM": 1657814.1743881737,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 50000,
+        "burstType": "airburst",
+        "heightM": 4000,
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "Largest detonation in history. Designed for 100 MT but lead tamper halved yield. Shockwave circled Earth 3 times. Political demonstration, never weaponized.",
+      "physicsContext": "Fireball 8 km diameter. Mushroom cloud 67 km high. 3rd-degree burns at 100 km. Flash visible 1000 km away.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:sedan-cratering",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Sedan (cratering)",
+      "date": "1962",
+      "blurb": "Underground cratering test, NTS",
+      "detail": "104 kt · surface model proxy",
+      "reference": "DOE NV-209; US Geological Survey",
+      "confidence": "Historical source inputs",
+      "durationS": 600,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Fallout screening"
+      ],
+      "center": {
+        "lat": 37.177,
+        "lon": -116.047
+      },
+      "camera": {
+        "lat": 36.777,
+        "lon": -115.447,
+        "altitudeM": 211620.12189486815,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 104,
+        "burstType": "surface",
+        "fissionPct": 50,
+        "populationDensity": 80
+      },
+      "historicalContext": "Project Plowshare (peaceful nuclear explosions). Created largest man-made crater in US (390m wide, 100m deep). Displaced 12 million tons of earth.",
+      "physicsContext": "Buried 194m underground. Demonstrates crater scaling laws. Radioactive fallout reached Iowa.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements.",
+        "The underground Sedan test is represented by NukeMap's legacy surface-burst screening proxy."
+      ]
+    },
+    {
+      "id": "historical:nuclear:starfish-prime",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Starfish Prime",
+      "date": "1962",
+      "blurb": "Space detonation, 400 km alt, EMP",
+      "detail": "1,400 kt · high-altitude EMP",
+      "reference": "Glasstone & Dolan Ch.11; DTRA DNA-6000F",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "High-altitude burst",
+        "EMP footprint",
+        "Historical context"
+      ],
+      "center": {
+        "lat": 16.28,
+        "lon": -169.53
+      },
+      "camera": {
+        "lat": 15.88,
+        "lon": -168.93,
+        "altitudeM": 6000000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 1400,
+        "burstType": "hemp",
+        "heightM": 400000,
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "High-altitude test over Johnston Island. EMP knocked out street lights and phones in Hawaii (1,445 km away). Led to Partial Test Ban Treaty (1963).",
+      "physicsContext": "Demonstrates HEMP: zero blast at ground, continent-scale EMP. Trapped radiation created artificial radiation belt lasting years.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements.",
+        "The EMP radius is an educational line-of-sight screening footprint, not a grid-specific vulnerability forecast."
+      ]
+    },
+    {
+      "id": "historical:nuclear:canopus",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "Canopus",
+      "date": "1968",
+      "blurb": "French H-bomb, Fangataufa",
+      "detail": "2,600 kt · airburst model",
+      "reference": "Norris et al., \"French Nuclear Testing\" (1994)",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Effect timeline"
+      ],
+      "center": {
+        "lat": -21.87,
+        "lon": -138.72
+      },
+      "camera": {
+        "lat": -22.27,
+        "lon": -138.12,
+        "altitudeM": 618780.9901833633,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 2600,
+        "burstType": "airburst",
+        "heightM": 600,
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "France's first true thermonuclear weapon. Made France the fourth thermonuclear power. Pacific testing continued until 1996.",
+      "physicsContext": "2.6 MT airburst. French two-stage design validated. Atmospheric testing era.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:nuclear:dprk-test-6",
+      "domain": "nuclear",
+      "classification": "recorded",
+      "name": "DPRK Test 6",
+      "date": "2017",
+      "blurb": "North Korea, est. 250 kT",
+      "detail": "250 kt · surface model",
+      "reference": "NORSAR; 38 North Analysis",
+      "confidence": "Historical source inputs",
+      "durationS": 600,
+      "expectedHighlights": [
+        "Fireball",
+        "Blast and thermal rings",
+        "Fallout screening"
+      ],
+      "center": {
+        "lat": 41.3,
+        "lon": 129.078
+      },
+      "camera": {
+        "lat": 40.9,
+        "lon": 129.678,
+        "altitudeM": 283482.23622634646,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "nuclear": {
+        "yieldKt": 250,
+        "burstType": "surface",
+        "fissionPct": 50,
+        "populationDensity": 40
+      },
+      "historicalContext": "North Korea's most powerful test. Claimed thermonuclear capability. Triggered mountain collapse at Punggye-ri. Led to 2018 diplomacy.",
+      "physicsContext": "Underground test. Seismic magnitude 6.3. Estimated 120-250 kT. Possible boosted fission or staged thermonuclear.",
+      "limitations": [
+        "Historical source inputs are reconstructed with Cataclysm's current Rust direct-hazard model; effect rings are not observed measurements."
+      ]
+    },
+    {
+      "id": "historical:asteroid:chelyabinsk",
+      "domain": "asteroid",
+      "classification": "recorded",
+      "name": "Chelyabinsk",
+      "date": "2013",
+      "blurb": "Airburst over Russia, ~1500 injuries from window glass",
+      "detail": "19 m body · 19.0 km/s · ~500 kt",
+      "reference": "AsteroidSimulator historical preset",
+      "referenceUrl": "https://cneos.jpl.nasa.gov/fireballs/",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Atmospheric entry",
+        "Impact or airburst",
+        "Blast and thermal rings"
+      ],
+      "center": {
+        "lat": 54.8,
+        "lon": 61.1
+      },
+      "camera": {
+        "lat": 54.4,
+        "lon": 61.7,
+        "altitudeM": 220000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "asteroid": {
+        "diameterM": 19,
+        "densityKgM3": 3300,
+        "velocityKmS": 19,
+        "angleDeg": 18,
+        "targetType": "sedimentary_rock",
+        "waterDepthM": 0,
+        "beachSlopeRad": 0.02
+      },
+      "historicalContext": "Airburst over Russia, ~1500 injuries from window glass",
+      "physicsContext": "~500 kt",
+      "limitations": [
+        "Projectile parameters come from the preserved AsteroidSimulator preset; Cataclysm's Rust model reconstructs effects rather than reproducing observed outcomes.",
+        "The geographic center is a catalog location added for unified-globe placement because the legacy preset stored no coordinate."
+      ]
+    },
+    {
+      "id": "historical:asteroid:tunguska",
+      "domain": "asteroid",
+      "classification": "recorded",
+      "name": "Tunguska",
+      "date": "1908",
+      "blurb": "Airburst flattened 2,150 km² of forest in Siberia",
+      "detail": "65 m body · 15.0 km/s · 3–15 Mt",
+      "reference": "AsteroidSimulator historical preset",
+      "referenceUrl": "https://cneos.jpl.nasa.gov/fireballs/",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Atmospheric entry",
+        "Impact or airburst",
+        "Blast and thermal rings"
+      ],
+      "center": {
+        "lat": 60.886,
+        "lon": 101.894
+      },
+      "camera": {
+        "lat": 60.486,
+        "lon": 102.494,
+        "altitudeM": 220000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "asteroid": {
+        "diameterM": 65,
+        "densityKgM3": 2000,
+        "velocityKmS": 15,
+        "angleDeg": 30,
+        "targetType": "sedimentary_rock",
+        "waterDepthM": 0,
+        "beachSlopeRad": 0.02
+      },
+      "historicalContext": "Airburst flattened 2,150 km² of forest in Siberia",
+      "physicsContext": "3–15 Mt",
+      "limitations": [
+        "Projectile parameters come from the preserved AsteroidSimulator preset; Cataclysm's Rust model reconstructs effects rather than reproducing observed outcomes.",
+        "The geographic center is a catalog location added for unified-globe placement because the legacy preset stored no coordinate."
+      ]
+    },
+    {
+      "id": "historical:asteroid:meteor-crater",
+      "domain": "asteroid",
+      "classification": "recorded",
+      "name": "Meteor Crater",
+      "date": "~50,000 BP",
+      "blurb": "1.18 km simple crater in Arizona, USA",
+      "detail": "50 m body · 12.8 km/s · 1.18 km diameter · ~10 Mt",
+      "reference": "AsteroidSimulator historical preset",
+      "referenceUrl": "https://pubs.usgs.gov/circ/1300/pdf/Cir1300_508.pdf",
+      "confidence": "Historical source inputs",
+      "durationS": 30,
+      "expectedHighlights": [
+        "Atmospheric entry",
+        "Impact or airburst",
+        "Blast and thermal rings"
+      ],
+      "center": {
+        "lat": 35.033,
+        "lon": -111.017
+      },
+      "camera": {
+        "lat": 34.633,
+        "lon": -110.417,
+        "altitudeM": 220000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "asteroid": {
+        "diameterM": 50,
+        "densityKgM3": 7800,
+        "velocityKmS": 12.8,
+        "angleDeg": 45,
+        "targetType": "sedimentary_rock",
+        "waterDepthM": 0,
+        "beachSlopeRad": 0.02
+      },
+      "historicalContext": "1.18 km simple crater in Arizona, USA",
+      "physicsContext": "1.18 km diameter · ~10 Mt",
+      "limitations": [
+        "Projectile parameters come from the preserved AsteroidSimulator preset; Cataclysm's Rust model reconstructs effects rather than reproducing observed outcomes.",
+        "The geographic center is a catalog location added for unified-globe placement because the legacy preset stored no coordinate."
+      ]
+    },
+    {
+      "id": "historical:asteroid:ries-crater",
+      "domain": "asteroid",
+      "classification": "recorded",
+      "name": "Ries Crater",
+      "date": "~14.8 Ma",
+      "blurb": "24 km complex crater in Bavaria, Germany",
+      "detail": "1,500 m body · 20.0 km/s · 24 km diameter",
+      "reference": "AsteroidSimulator historical preset",
+      "referenceUrl": "https://www.lpi.usra.edu/science/kring/epo_web/impact_cratering/World_Craters_web/europecraters/Ries.html",
+      "confidence": "Historical source inputs",
+      "durationS": 120,
+      "expectedHighlights": [
+        "Atmospheric entry",
+        "Impact or airburst",
+        "Blast and thermal rings"
+      ],
+      "center": {
+        "lat": 48.883,
+        "lon": 10.617
+      },
+      "camera": {
+        "lat": 48.483,
+        "lon": 11.217,
+        "altitudeM": 675000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "asteroid": {
+        "diameterM": 1500,
+        "densityKgM3": 3500,
+        "velocityKmS": 20,
+        "angleDeg": 30,
+        "targetType": "crystalline_rock",
+        "waterDepthM": 0,
+        "beachSlopeRad": 0.02
+      },
+      "historicalContext": "24 km complex crater in Bavaria, Germany",
+      "physicsContext": "24 km diameter",
+      "limitations": [
+        "Projectile parameters come from the preserved AsteroidSimulator preset; Cataclysm's Rust model reconstructs effects rather than reproducing observed outcomes.",
+        "The geographic center is a catalog location added for unified-globe placement because the legacy preset stored no coordinate."
+      ]
+    },
+    {
+      "id": "historical:asteroid:chesapeake-bay",
+      "domain": "asteroid",
+      "classification": "recorded",
+      "name": "Chesapeake Bay",
+      "date": "~35 Ma",
+      "blurb": "85 km crater, ocean impact off Virginia coast",
+      "detail": "3,000 m body · 20.0 km/s · 85 km diameter",
+      "reference": "AsteroidSimulator historical preset",
+      "referenceUrl": "https://www.usgs.gov/centers/virginia-and-west-virginia-water-science-center/chesapeake-bay-impact-crater",
+      "confidence": "Historical source inputs",
+      "durationS": 120,
+      "expectedHighlights": [
+        "Atmospheric entry",
+        "Impact or airburst",
+        "Blast and thermal rings"
+      ],
+      "center": {
+        "lat": 37.283,
+        "lon": -76.017
+      },
+      "camera": {
+        "lat": 36.883,
+        "lon": -75.417,
+        "altitudeM": 1350000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "asteroid": {
+        "diameterM": 3000,
+        "densityKgM3": 3500,
+        "velocityKmS": 20,
+        "angleDeg": 45,
+        "targetType": "water",
+        "waterDepthM": 500,
+        "beachSlopeRad": 0.02
+      },
+      "historicalContext": "85 km crater, ocean impact off Virginia coast",
+      "physicsContext": "85 km diameter",
+      "limitations": [
+        "Projectile parameters come from the preserved AsteroidSimulator preset; Cataclysm's Rust model reconstructs effects rather than reproducing observed outcomes.",
+        "The geographic center is a catalog location added for unified-globe placement because the legacy preset stored no coordinate."
+      ]
+    },
+    {
+      "id": "historical:asteroid:chicxulub",
+      "domain": "asteroid",
+      "classification": "recorded",
+      "name": "Chicxulub",
+      "date": "~66 Ma",
+      "blurb": "Mass extinction event, 180 km crater in Yucatán",
+      "detail": "12,000 m body · 20.0 km/s · 180 km diameter · >1e23 J",
+      "reference": "AsteroidSimulator historical preset",
+      "referenceUrl": "https://impact.uwo.ca/impact-craters/map/?crater_id=26",
+      "confidence": "Historical source inputs",
+      "durationS": 120,
+      "expectedHighlights": [
+        "Atmospheric entry",
+        "Impact or airburst",
+        "Blast and thermal rings"
+      ],
+      "center": {
+        "lat": 21.312,
+        "lon": -89.431
+      },
+      "camera": {
+        "lat": 20.912,
+        "lon": -88.831,
+        "altitudeM": 5400000,
+        "headingDeg": 300,
+        "pitchDeg": -38
+      },
+      "asteroid": {
+        "diameterM": 12000,
+        "densityKgM3": 2600,
+        "velocityKmS": 20,
+        "angleDeg": 60,
+        "targetType": "crystalline_rock",
+        "waterDepthM": 0,
+        "beachSlopeRad": 0.02
+      },
+      "historicalContext": "Mass extinction event, 180 km crater in Yucatán",
+      "physicsContext": "180 km diameter · >1e23 J",
+      "limitations": [
+        "Projectile parameters come from the preserved AsteroidSimulator preset; Cataclysm's Rust model reconstructs effects rather than reproducing observed outcomes.",
+        "The geographic center is a catalog location added for unified-globe placement because the legacy preset stored no coordinate."
+      ]
+    }
+  ]
+}

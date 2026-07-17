@@ -915,7 +915,7 @@ export default function App() {
               if (!cancelled) console.error("asteroid result diagrams failed", error);
             });
         }
-        if (hazardMode === "nuclear" && result.resultId) {
+        if (hazardMode === "nuclear" && result.resultId && result.rings.some((ring) => ring.category === "blast" || ring.category === "thermal")) {
           void api.nuclearShelterAdvisor(result.resultId)
             .then((report) => {
               if (!cancelled && requestId === hazardRequestId.current) {

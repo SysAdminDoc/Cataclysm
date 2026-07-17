@@ -145,7 +145,8 @@ export function PresetSelector({
   );
   const filteredDirect = useMemo(
     () => directScenarios.filter((scenario) => {
-      if (filter === "historical") return false;
+      if (filter === "historical") return scenario.classification === "recorded";
+      if (filter === "hypothetical") return scenario.classification === "what-if";
       if (filter === "favorites") return favoriteIds.includes(scenario.id);
       return true;
     }),
@@ -168,7 +169,7 @@ export function PresetSelector({
     const whatIf = visible.filter((preset) => preset.is_speculative);
     const visibleDirect = normalizedQuery
       ? filteredDirect.filter((scenario) =>
-          [scenario.name, scenario.date, scenario.blurb, scenario.detail, scenario.reference, scenario.domain]
+          [scenario.name, scenario.date, scenario.blurb, scenario.detail, scenario.reference, scenario.domain, scenario.historicalContext, scenario.physicsContext]
             .join(" ")
             .toLowerCase()
             .includes(normalizedQuery),
@@ -180,14 +181,14 @@ export function PresetSelector({
         label: "Recorded events",
         description: "Historical and observed scenarios",
         presets: recorded,
-        directScenarios: [],
+        directScenarios: visibleDirect.filter((scenario) => scenario.classification === "recorded"),
       },
       {
         id: "what-if",
         label: "What-if studies",
         description: "Hypothetical or contested scenarios",
         presets: whatIf,
-        directScenarios: visibleDirect,
+        directScenarios: visibleDirect.filter((scenario) => scenario.classification === "what-if"),
       },
     ].filter((group) => group.presets.length + group.directScenarios.length > 0) as PresetGroup[];
   }, [filteredDirect, normalizedQuery, visible]);
@@ -458,7 +459,7 @@ export function PresetSelector({
                       key={scenario.id}
                       className="preset-card"
                       data-active={activeDirectId === scenario.id ? "true" : "false"}
-                      data-speculative="true"
+                      data-speculative={scenario.classification === "what-if" ? "true" : "false"}
                       aria-pressed={activeDirectId === scenario.id}
                       onClick={() => onSelectDirect?.(scenario)}
                       title={scenario.reference}
@@ -485,7 +486,9 @@ export function PresetSelector({
                         <span className="preset-card__highlights">
                           {scenario.confidence} · {scenario.durationS < 60 ? `${scenario.durationS} s` : `${Math.round(scenario.durationS / 60)} min`} · {scenario.expectedHighlights.join(" · ")}
                         </span>
-                        <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
+                        {scenario.classification === "what-if" && (
+                          <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
+                        )}
                       </span>
                     </button>
                   ))}

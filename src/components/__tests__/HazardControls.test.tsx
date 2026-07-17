@@ -252,6 +252,29 @@ describe("HazardControls", () => {
     expect(screen.getByRole("button", { name: /click the globe/i })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("exposes high-altitude EMP without implying ground-effect rings", () => {
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={{ ...nuclear, burstType: "hemp", heightM: 400_000 }}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 16.28, lon: -169.53 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={null}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+        workspaceMode="advanced"
+      />,
+    );
+    expect(screen.getByLabelText("Burst type")).toHaveValue("hemp");
+    expect(screen.getByRole("option", { name: "High-altitude EMP (400 km)" })).toBeInTheDocument();
+    expect(screen.getByText(/suppresses ground blast, thermal, prompt-radiation, fallout, and casualty rings/i)).toBeInTheDocument();
+  });
+
   it("explains that direct physics is desktop-only in browser preview", () => {
     render(
       <HazardControls

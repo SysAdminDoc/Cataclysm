@@ -154,6 +154,11 @@ Existing tools each do one piece:
   without transmitting the query. Location selection updates the target and a
   clearly shown nearest-city density estimate; the complete 39-row NukeMap
   weapon reference table is available in nuclear setup.
+- **Unified historical direct scenarios** — the scenario library includes all
+  10 NukeMap test events and six AsteroidSimulator impact presets as recorded
+  source inputs, with historical context kept separate from modeled outcomes.
+  Starfish Prime uses a dedicated high-altitude EMP screening path with no
+  implied ground blast, thermal, fallout, or casualty rings.
 - **Teacher mode** — lockable classroom settings profiles (via settings
   export/import) and a printable worksheet for each of the 7 guided lessons.
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.
