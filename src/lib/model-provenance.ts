@@ -42,6 +42,10 @@ export type ModelProvenanceInput = {
   renderFrame?: RenderFrameProvenance | null;
   runQuality?: RunQualityRecord | null;
   evidenceIds?: string[];
+  scenarioName?: string;
+  citationReference?: string;
+  citationUrl?: string | null;
+  limitation?: string;
 };
 
 export type ModelProvenance = {
@@ -72,12 +76,12 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
     assetRegistryVersion: EARTH_ASSET_REGISTRY_VERSION,
     bathymetryAssetId: input.bathymetryAssetId ?? "cataclysm-coarse-bathymetry-v1",
     bathymetrySource: input.bathymetrySource ?? DEFAULT_BATHYMETRY_SOURCE,
-    citationReference: input.preset?.reference ?? "Custom scenario - no preset citation.",
-    citationUrl: input.preset?.reference_url ?? null,
+    citationReference: input.citationReference ?? input.preset?.reference ?? "Custom scenario - no preset citation.",
+    citationUrl: input.citationUrl ?? input.preset?.reference_url ?? null,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     heightField: { ...IDEALIZED_SEA_SURFACE_HEIGHT_FIELD },
-    limitation: EDUCATIONAL_LIMITATION,
-    scenarioName: input.preset?.name ?? input.initial?.label ?? "Custom scenario",
+    limitation: input.limitation ?? EDUCATIONAL_LIMITATION,
+    scenarioName: input.scenarioName ?? input.preset?.name ?? input.initial?.label ?? "Custom scenario",
     scenarioType: input.scenarioKind ?? input.preset?.source?.kind ?? "Custom",
     solverMode: input.solverMode ?? DEFAULT_SOLVER_MODE,
     timeS: Number.isFinite(input.timeS) ? input.timeS ?? 0 : 0,

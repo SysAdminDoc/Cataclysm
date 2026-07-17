@@ -232,6 +232,28 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   });
 
+  test("direct nuclear results unlock provenance-bearing GIS exports", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/?referenceCapture=1&referenceScene=nuclear-surface-burst");
+    await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+    await page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }).click();
+    const coordinates = page.getByRole("form", { name: "Enter coordinates" });
+    await coordinates.getByRole("spinbutton", { name: "Latitude" }).fill("40");
+    await coordinates.getByRole("spinbutton", { name: "Longitude" }).fill("-74");
+    await coordinates.getByRole("button", { name: "Go" }).click();
+
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const menu = page.getByRole("group", { name: "Export current scenario" });
+    for (const label of ["PNG", "Share", "CZML", "GeoJSON", "KML"]) {
+      await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s|$)`) })).not.toHaveAttribute("aria-disabled", "true");
+    }
+
+    const downloadPromise = page.waitForEvent("download");
+    await menu.getByRole("button", { name: /^GeoJSON(?:\s|$)/ }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("cataclysm-nuclear-result-effects.geojson");
+  });
+
   test("nuclear hazard mode reveals desktop-backed detonation controls", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");

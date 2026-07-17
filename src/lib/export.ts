@@ -16,6 +16,7 @@ import {
   type EarthOperationPreflight,
 } from "./earth-assets";
 import { resolveSweImageryTiles } from "../render/cesium/swe-field-tiles";
+import type { GeoPoint, HazardResult } from "../hazards/types";
 
 export type ExportFailureCode =
   | "preflight"
@@ -95,6 +96,7 @@ export type ScreenshotMeta = ModelProvenanceInput & {
   preset?: Preset | null;
   initial?: InitialDisplacement | null;
   timeS: number;
+  fileId?: string;
 };
 
 export function preflightRunQuality(meta: ModelProvenanceInput): { ok: true } | { ok: false; reason: string } {
@@ -131,7 +133,7 @@ export function safeFilenamePart(value: string): string {
 export function suggestedFilename(meta: ScreenshotMeta, ext: "png" | "webm" | "mp4" = "png"): string {
   // Clamp the id so a very long preset/scenario name + timestamp can't blow
   // past path length limits (the extension is appended after the clamp).
-  const id = safeFilenamePart(meta.preset?.id ?? "custom-scenario").slice(0, 64);
+  const id = safeFilenamePart(meta.fileId ?? meta.preset?.id ?? "custom-scenario").slice(0, 64);
   const t = Math.round(meta.timeS / 60);
   return `cataclysm-${id}-t${t}min-${timestampSuffix()}.${ext}`;
 }
@@ -644,15 +646,223 @@ export async function exportGlobeVideo(
   }
 }
 
+export type DirectHazardExportData = Readonly<{
+  result: HazardResult;
+  polygons?: readonly Readonly<{ label: string; color: string; points: readonly GeoPoint[] }>[] | null;
+}>;
+
+function cssHexRgba(color: string, alpha = 96): [number, number, number, number] {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!match) return [203, 166, 247, alpha];
+  return [
+    Number.parseInt(match[1].slice(0, 2), 16),
+    Number.parseInt(match[1].slice(2, 4), 16),
+    Number.parseInt(match[1].slice(4, 6), 16),
+    alpha,
+  ];
+}
+
+function kmlColor(color: string, alpha = "66"): string {
+  const [red, green, blue] = cssHexRgba(color, 255);
+  return `${alpha}${blue.toString(16).padStart(2, "0")}${green.toString(16).padStart(2, "0")}${red.toString(16).padStart(2, "0")}`;
+}
+
+function closeGeoPoints(points: readonly GeoPoint[]): readonly GeoPoint[] {
+  const first = points[0];
+  const last = points.at(-1);
+  if (!first || !last || (first.lat === last.lat && first.lon === last.lon)) return points;
+  return [...points, first];
+}
+
+function directHazardProperties(meta: ScreenshotMeta, data: DirectHazardExportData) {
+  const provenance = buildModelProvenance(meta);
+  return {
+    app_version: provenance.appVersion,
+    authority: data.result.authority,
+    citation_reference: provenance.citationReference,
+    citation_url: provenance.citationUrl,
+    evidence_ids: provenance.evidenceIds,
+    generated_at: provenance.generatedAt,
+    model_version: data.result.modelVersion,
+    scenario: provenance.scenarioName,
+    scenario_type: provenance.scenarioType,
+    solver_mode: provenance.solverMode,
+    limitation: provenance.limitation,
+  };
+}
+
+export function buildDirectHazardGeoJson(meta: ScreenshotMeta, data: DirectHazardExportData) {
+  const common = directHazardProperties(meta, data);
+  const center = data.result.center;
+  const features = [
+    {
+      type: "Feature" as const,
+      properties: {
+        ...common,
+        kind: "effects_origin",
+        casualties: data.result.casualties ?? null,
+        readout: data.result.readout,
+      },
+      geometry: { type: "Point" as const, coordinates: [round5(center.lon), round5(center.lat)] },
+    },
+    ...data.result.rings.map((ring, index) => ({
+      type: "Feature" as const,
+      properties: {
+        ...common,
+        kind: "effect_ring",
+        index,
+        label: ring.label,
+        category: ring.category,
+        radius_m: round5(ring.radiusM),
+        color: ring.color,
+        description: ring.description ?? null,
+      },
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: [circlePolygon(center.lat, center.lon, ring.radiusM, 72)],
+      },
+    })),
+    ...(data.polygons ?? []).map((polygon, index) => ({
+      type: "Feature" as const,
+      properties: {
+        ...common,
+        kind: "hazard_polygon",
+        index,
+        label: polygon.label,
+        color: polygon.color,
+      },
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: [closeGeoPoints(polygon.points).map((point) => [round5(point.lon), round5(point.lat)])],
+      },
+    })),
+  ];
+  return {
+    type: "FeatureCollection" as const,
+    properties: {
+      ...common,
+      geometry_notice: "Circular effect thresholds and supplied fallout polygons are Rust-result-derived screening geometry.",
+    },
+    features,
+  };
+}
+
+export function buildDirectHazardCzml(meta: ScreenshotMeta, data: DirectHazardExportData) {
+  const provenance = buildModelProvenance(meta);
+  const common = directHazardProperties(meta, data);
+  const center = data.result.center;
+  return [
+    {
+      id: "document",
+      name: `Cataclysm — ${provenance.scenarioName}`,
+      version: "1.0",
+      description: provenanceSummary({ ...meta, generatedAt: provenance.generatedAt }),
+    },
+    {
+      id: "effects-origin",
+      name: `${provenance.scenarioName} — Effects origin`,
+      description: `${data.result.modelVersion}; ${provenance.limitation}`,
+      properties: { ...common, casualties: data.result.casualties ?? null, readout: data.result.readout },
+      position: { cartographicDegrees: [center.lon, center.lat, 0] },
+      point: {
+        pixelSize: 10,
+        color: { rgba: [245, 224, 220, 255] },
+        outlineColor: { rgba: [17, 17, 27, 255] },
+        outlineWidth: 2,
+      },
+    },
+    ...data.result.rings.map((ring, index) => ({
+      id: `effect-ring-${index + 1}`,
+      name: ring.label,
+      description: ring.description ?? `${ring.category} threshold at ${ring.radiusM} m`,
+      properties: { ...common, category: ring.category, radius_m: ring.radiusM, color: ring.color },
+      position: { cartographicDegrees: [center.lon, center.lat, 0] },
+      ellipse: {
+        semiMajorAxis: ring.radiusM,
+        semiMinorAxis: ring.radiusM,
+        height: 0,
+        material: { solidColor: { color: { rgba: cssHexRgba(ring.color, 76) } } },
+        outline: true,
+        outlineColor: { rgba: cssHexRgba(ring.color, 220) },
+      },
+    })),
+    ...(data.polygons ?? []).map((polygon, index) => ({
+      id: `hazard-polygon-${index + 1}`,
+      name: polygon.label,
+      properties: { ...common, color: polygon.color },
+      polygon: {
+        positions: {
+          cartographicDegrees: polygon.points.flatMap((point) => [point.lon, point.lat, 0]),
+        },
+        material: { solidColor: { color: { rgba: cssHexRgba(polygon.color, 82) } } },
+        outline: true,
+        outlineColor: { rgba: cssHexRgba(polygon.color, 220) },
+      },
+    })),
+  ];
+}
+
+export function buildDirectHazardKml(meta: ScreenshotMeta, data: DirectHazardExportData): string {
+  const provenance = buildModelProvenance(meta);
+  const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
+  const center = data.result.center;
+  const ringPlacemarks = data.result.rings.map((ring) => {
+    const coordinates = circlePolygon(center.lat, center.lon, ring.radiusM, 72)
+      .map(([lon, lat]) => `${lon},${lat},0`)
+      .join(" ");
+    return `
+    <Placemark>
+      <name>${escapeXml(ring.label)}</name>
+      <description>${escapeXml(`${ring.description ?? ring.category}\nRadius: ${ring.radiusM} m\nModel: ${data.result.modelVersion}`)}</description>
+      <ExtendedData><Data name="category"><value>${escapeXml(ring.category)}</value></Data><Data name="radius_m"><value>${ring.radiusM}</value></Data></ExtendedData>
+      <Style><LineStyle><color>${kmlColor(ring.color, "dd")}</color><width>2</width></LineStyle><PolyStyle><color>${kmlColor(ring.color)}</color></PolyStyle></Style>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>${coordinates}</coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>`;
+  });
+  const polygonPlacemarks = (data.polygons ?? []).map((polygon) => {
+    const points = closeGeoPoints(polygon.points);
+    const coordinates = points.map((point) => `${point.lon},${point.lat},0`).join(" ");
+    return `
+    <Placemark>
+      <name>${escapeXml(polygon.label)}</name>
+      <Style><LineStyle><color>${kmlColor(polygon.color, "dd")}</color><width>2</width></LineStyle><PolyStyle><color>${kmlColor(polygon.color)}</color></PolyStyle></Style>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>${coordinates}</coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>Cataclysm — ${escapeXml(provenance.scenarioName)}</name>
+  <description>${escapeXml(provenanceText)}</description>
+  <Placemark>
+    <name>${escapeXml(provenance.scenarioName)} — Effects origin</name>
+    <description>${escapeXml(`${data.result.modelVersion}; ${provenance.limitation}`)}</description>
+    <Point><coordinates>${center.lon},${center.lat},0</coordinates></Point>
+  </Placemark>
+  <Folder><name>Effect thresholds</name>${ringPlacemarks.join("")}</Folder>
+  <Folder><name>Hazard polygons</name>${polygonPlacemarks.join("")}</Folder>
+</Document>
+</kml>`;
+}
+
 /** Export SWE simulation snapshots as a CZML document for playback in
  *  any CesiumJS viewer. Each snapshot's PNG becomes a time-interval
  *  rectangle overlay. */
 export function exportCzml(
   meta: ScreenshotMeta,
   snapshots: import("../types/scenario").GridSnapshot[],
+  directHazard?: DirectHazardExportData | null,
 ): ExportResult {
   const quality = preflightRunQuality(meta);
   if (!quality.ok) return exportFailure("preflight", quality.reason, false);
+  if (directHazard) {
+    try {
+      const blob = new Blob([JSON.stringify(buildDirectHazardCzml(meta, directHazard), null, 2)], { type: "application/json" });
+      return downloadBlob(blob, `cataclysm-${safeFilenamePart(meta.fileId ?? directHazard.result.kind)}.czml`);
+    } catch (error) {
+      return unexpectedExportFailure("data", "Direct-hazard CZML serialization", error);
+    }
+  }
   if (!snapshots.length) return exportFailure("data", "Run the SWE simulation before exporting CZML.", true);
   try {
   const provenance = buildModelProvenance({
@@ -787,9 +997,18 @@ export function exportGeoJson(
   points: RunupPoint[],
   meta: ScreenshotMeta,
   isochrones?: import("../types/scenario").Isochrone[] | null,
+  directHazard?: DirectHazardExportData | null,
 ): ExportResult {
   const quality = preflightRunQuality(meta);
   if (!quality.ok) return exportFailure("preflight", quality.reason, false);
+  if (directHazard) {
+    try {
+      const blob = new Blob([JSON.stringify(buildDirectHazardGeoJson(meta, directHazard), null, 2)], { type: "application/geo+json" });
+      return downloadBlob(blob, `cataclysm-${safeFilenamePart(meta.fileId ?? directHazard.result.kind)}-effects.geojson`);
+    } catch (error) {
+      return unexpectedExportFailure("data", "Direct-hazard GeoJSON serialization", error);
+    }
+  }
   if (!points.length && !(isochrones && isochrones.length)) {
     return exportFailure("data", "No runup points or arrival isochrones are available for GeoJSON export.", true);
   }
@@ -891,9 +1110,18 @@ export function exportGeoJson(
 export function exportKml(
   meta: ScreenshotMeta,
   runupPoints: RunupPoint[],
+  directHazard?: DirectHazardExportData | null,
 ): ExportResult {
   const quality = preflightRunQuality(meta);
   if (!quality.ok) return exportFailure("preflight", quality.reason, false);
+  if (directHazard) {
+    try {
+      const blob = new Blob([buildDirectHazardKml(meta, directHazard)], { type: "application/vnd.google-earth.kml+xml" });
+      return downloadBlob(blob, `cataclysm-${safeFilenamePart(meta.fileId ?? directHazard.result.kind)}.kml`);
+    } catch (error) {
+      return unexpectedExportFailure("data", "Direct-hazard KML serialization", error);
+    }
+  }
   try {
   const provenance = buildModelProvenance(meta);
   const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });

@@ -14,11 +14,6 @@ rebuild their **UIs** on the Cesium globe. The standalone NukeMap and
 AsteroidSimulator repos are already retired; their history and reference code
 remain safe in-tree under `legacy/` while this section reaches parity.
 
-### P3 — Advanced NukeMap features (breadth parity)
-- **UNI-14** Export/PWA parity: extend existing exporters (PNG/CZML/GeoJSON/KML)
-  to nuclear/impact results; preserve NukeMap's offline single-file capability
-  path where feasible under Vite/Tauri.
-
 ### Standalone repos retired (2026-07-10)
 - **`SysAdminDoc/AsteroidSimulator` and `SysAdminDoc/NukeMap` deleted** (GitHub +
   local) by owner direction: Cataclysm is the single primary repo. Their code and
@@ -26,8 +21,8 @@ remain safe in-tree under `legacy/` while this section reaches parity.
   subtree). NukeMap's old GitHub Pages site (`sysadmindoc.github.io/NukeMap/`) is
   offline as a result; the nuclear experience now lives in Cataclysm's Nuclear
   mode and will ship on Cataclysm's own Pages deploy.
-- The UNI-08..14 items below remain the parity backlog, now worked entirely
-  inside Cataclysm against the preserved `legacy/` reference.
+- The UNI-08..14 parity backlog is complete inside Cataclysm against the
+  preserved `legacy/` reference.
 
 ---
 

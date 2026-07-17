@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { primeCesiumToken } from "./lib/cesium";
 import { importNativePanicReport, installGlobalCrashHandlers } from "./lib/diagnosticsLog";
 import { settings } from "./lib/settings";
+import { isTauri } from "./lib/tauri";
 import "./styles.css";
 
 // Prime the Cesium token from persisted settings before React renders the
@@ -30,6 +31,13 @@ if (typeof window !== "undefined") {
   });
   installGlobalCrashHandlers(window);
   void importNativePanicReport();
+  if (import.meta.env.PROD && !isTauri() && "serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+        console.warn("[pwa] offline service worker registration failed", error);
+      });
+    });
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

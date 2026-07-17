@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Nuclear and asteroid results now export the current analytical globe as PNG
+  or an attributed share card, plus Rust-derived effect rings and supplied
+  hazard polygons as provenance-bearing GeoJSON, KML, and static CZML. The
+  production web build is now an installable PWA whose generated service worker
+  precaches the complete local Cesium/Natural Earth application surface for a
+  verified network-blocked reload; Tauri deliberately retains its native asset
+  path without registering the browser worker.
 - Nuclear setup now offers all eight preserved NukeMap MIRV payload presets as
   deterministic pattern previews around the selected effects origin. The pure
   TypeScript port retains the legacy circle, triangle, grid, and cross geometry

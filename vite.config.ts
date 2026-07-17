@@ -21,7 +21,11 @@ export default defineConfig(async ({ command, mode }) => {
   // builds should leave VITE_CESIUM_TOKEN unset or explicitly empty.
   if (command === "build") {
     const env = loadEnv(mode, process.cwd(), "");
-    if (env.VITE_CESIUM_TOKEN && env.VITE_CESIUM_TOKEN.trim() && !process.env.ALLOW_TOKEN_IN_BUNDLE) {
+    if (
+      env.VITE_CESIUM_TOKEN &&
+      env.VITE_CESIUM_TOKEN.trim() &&
+      !process.env.ALLOW_TOKEN_IN_BUNDLE
+    ) {
       throw new Error(
         "VITE_CESIUM_TOKEN is set and would be inlined into the distributable bundle.\n" +
           "Unset it for production builds (the desktop app reads the token from the in-app\n" +
@@ -30,57 +34,81 @@ export default defineConfig(async ({ command, mode }) => {
     }
   }
   return {
-  plugins: [
-    react(),
-    viteStaticCopy({
-      targets: [
-        { src: `${cesiumSource}/Workers`, dest: "cesium", rename: { stripBase: 4 } },
-        { src: `${cesiumSource}/ThirdParty`, dest: "cesium", rename: { stripBase: 4 } },
-        { src: `${cesiumSource}/Assets`, dest: "cesium", rename: { stripBase: 4 } },
-        { src: `${cesiumSource}/Widgets`, dest: "cesium", rename: { stripBase: 4 } },
-      ],
-    }),
-  ],
-  resolve: {
-    preserveSymlinks: true,
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    plugins: [
+      react(),
+      viteStaticCopy({
+        targets: [
+          {
+            src: "src-tauri/icons/128x128.png",
+            dest: "pwa",
+            rename: { stripBase: true, name: "icon-128.png" },
+          },
+          {
+            src: "src-tauri/icons/128x128@2x.png",
+            dest: "pwa",
+            rename: { stripBase: true, name: "icon-256.png" },
+          },
+          {
+            src: `${cesiumSource}/Workers`,
+            dest: "cesium",
+            rename: { stripBase: 4 },
+          },
+          {
+            src: `${cesiumSource}/ThirdParty`,
+            dest: "cesium",
+            rename: { stripBase: 4 },
+          },
+          {
+            src: `${cesiumSource}/Assets`,
+            dest: "cesium",
+            rename: { stripBase: 4 },
+          },
+          {
+            src: `${cesiumSource}/Widgets`,
+            dest: "cesium",
+            rename: { stripBase: 4 },
+          },
+        ],
+      }),
+    ],
+    resolve: {
+      preserveSymlinks: true,
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  define: {
-    // Tell CesiumJS where to load its workers from at runtime.
-    CESIUM_BASE_URL: JSON.stringify("/cesium"),
-  },
+    define: {
+      // Tell CesiumJS where to load its workers from at runtime.
+      CESIUM_BASE_URL: JSON.stringify("/cesium"),
+    },
 
-  // Prevent Vite from obscuring Rust errors during `tauri dev`.
-  clearScreen: false,
-  server: {
-    port: 1420,
-    strictPort: true,
-    host: host || false,
-    hmr: host
-      ? { protocol: "ws", host, port: 1421 }
-      : undefined,
-    watch: {
-      ignored: ["**/src-tauri/**"],
+    // Prevent Vite from obscuring Rust errors during `tauri dev`.
+    clearScreen: false,
+    server: {
+      port: 1420,
+      strictPort: true,
+      host: host || false,
+      hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
+      watch: {
+        ignored: ["**/src-tauri/**"],
+      },
     },
-  },
-  build: {
-    target: ["es2022", "chrome105", "safari15"],
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
-    sourcemap: !!process.env.TAURI_DEBUG,
-    chunkSizeWarningLimit: 4000, // Cesium ships a big bundle
-    rolldownOptions: {
-      input: htmlEntry,
-      output: {
-        codeSplitting: {
-          groups: [
-            { name: "cesium", test: /node_modules\/cesium/ },
-            { name: "react-vendor", test: /node_modules\/(react|scheduler)/ },
-          ],
+    build: {
+      target: ["es2022", "chrome105", "safari15"],
+      minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+      sourcemap: !!process.env.TAURI_DEBUG,
+      chunkSizeWarningLimit: 4000, // Cesium ships a big bundle
+      rolldownOptions: {
+        input: htmlEntry,
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: "cesium", test: /node_modules\/cesium/ },
+              { name: "react-vendor", test: /node_modules\/(react|scheduler)/ },
+            ],
+          },
         },
       },
     },
-  },
   };
 });

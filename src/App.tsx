@@ -25,7 +25,7 @@ import { dartPinsForPreset } from "./lib/dart";
 import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { copyExportText, exportFailureLabel, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { copyExportText, exportFailureLabel, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import {
   buildDirectResultEvidence,
@@ -1045,6 +1045,7 @@ export default function App() {
     : "Select a preset or simulate a custom source first.";
   const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
   const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
+  const directExportRequiredReason = "Run the direct nuclear or impact model before exporting this result.";
   const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
   const directRenderProvenance: RenderFrameProvenance | null = directRenderFrame
     ? {
@@ -1114,7 +1115,31 @@ export default function App() {
     slotB.runupResults.length ? buildLayerEvidence("coastal-runup", activePresetB, slotB.initial, activeScenarioKindB) : null,
     dartPinsForPreset(slotB.activePresetId).length ? buildLayerEvidence("dart-observations", activePresetB, slotB.initial, activeScenarioKindB) : null,
   ]);
-  const exportMetaA = (): ScreenshotMeta => ({
+  const activeDirectScenario = libraryPreview?.kind === "direct" && libraryPreview.scenario.domain === directHazardMode
+    ? libraryPreview.scenario
+    : null;
+  const directExportData: DirectHazardExportData | null = inHazardMode && hazardResult
+    ? { result: hazardResult, polygons: hazardPolygons }
+    : null;
+  const exportMetaA = (): ScreenshotMeta => inHazardMode ? ({
+    preset: null,
+    initial: null,
+    timeS: directRenderFrame?.simulation_time_s ?? timeS,
+    fileId: activeDirectScenario?.id ?? `${directHazardMode ?? "direct"}-result`,
+    scenarioName: activeDirectScenario?.name
+      ?? `${directHazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact"} at ${hazardResult?.center.lat.toFixed(3) ?? "—"}°, ${hazardResult?.center.lon.toFixed(3) ?? "—"}°`,
+    scenarioKind: directHazardMode === "nuclear" ? "Nuclear" : "Asteroid",
+    solverMode: `Rust-authoritative ${hazardResult?.modelVersion ?? "direct-hazard"} result`,
+    citationReference: activeDirectScenario?.reference ?? "Cataclysm direct-hazard model citations embedded in result evidence.",
+    citationUrl: activeDirectScenario?.referenceUrl ?? null,
+    limitation: activeDirectScenario?.limitations?.join(" ")
+      ?? "Educational screening model only; geometry is not emergency guidance or a prediction.",
+    bathymetryAssetId: "not-applicable-direct-hazard",
+    bathymetrySource: "Not used by this direct-hazard result.",
+    renderFrame: directRenderProvenance,
+    runQuality: null,
+    evidenceIds: exportEvidenceIdsA(),
+  }) : ({
     preset: activePresetA,
     initial: slotA.initial,
     timeS,
@@ -1539,8 +1564,8 @@ export default function App() {
                 run();
               }}
               title="Save the current globe view as PNG"
-              disabled={inHazardMode || !slotA.initial}
-              disabledReason={sourceRequiredReason}
+              disabled={inHazardMode ? !hazardResult : !slotA.initial}
+              disabledReason={inHazardMode ? directExportRequiredReason : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               PNG
@@ -1584,8 +1609,8 @@ export default function App() {
                 run();
               }}
               title="Save a branded share-card with scenario metadata + citation overlay"
-              disabled={inHazardMode || !slotA.initial}
-              disabledReason={sourceRequiredReason}
+              disabled={inHazardMode ? !hazardResult : !slotA.initial}
+              disabledReason={inHazardMode ? directExportRequiredReason : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               Share
@@ -1674,10 +1699,10 @@ export default function App() {
             <ToolbarButton
               icon="czml"
               onClick={() => {
-                if (sweSnapshots && sweSnapshots.length > 0) {
+                if (directExportData || (sweSnapshots && sweSnapshots.length > 0)) {
                   const run = () => reportExportResult(
-                    exportCzml(exportMetaA(), sweSnapshots),
-                    "Saved CZML playback file.",
+                    exportCzml(exportMetaA(), sweSnapshots ?? [], directExportData),
+                    directExportData ? "Saved direct-effects CZML file." : "Saved CZML playback file.",
                     run,
                   );
                   run();
@@ -1685,9 +1710,9 @@ export default function App() {
                   showToast("Run SWE simulation first to export CZML.", "error");
                 }
               }}
-              title="Export SWE simulation as a CZML file for playback in any Cesium viewer"
-              disabled={inHazardMode || !sweSnapshots || sweSnapshots.length === 0}
-              disabledReason={snapshotsRequiredReason}
+              title={inHazardMode ? "Export direct-effect rings and hazard polygons as static CZML" : "Export SWE simulation as a CZML file for playback in any Cesium viewer"}
+              disabled={inHazardMode ? !directExportData : !sweSnapshots || sweSnapshots.length === 0}
+              disabledReason={inHazardMode ? directExportRequiredReason : snapshotsRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               CZML
@@ -1712,15 +1737,15 @@ export default function App() {
                   quantitative_label: r.quantitative_label,
                 }));
                 const run = () => reportExportResult(
-                  exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null),
-                  "Saved GeoJSON inundation file.",
+                  exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null, directExportData),
+                  directExportData ? "Saved direct-effects GeoJSON file." : "Saved GeoJSON inundation file.",
                   run,
                 );
                 run();
               }}
-              title="Export inundation polygons as GeoJSON"
-              disabled={inHazardMode || slotA.runupResults.length === 0}
-              disabledReason={runupRequiredReason}
+              title={inHazardMode ? "Export direct-effect rings and hazard polygons as GeoJSON" : "Export inundation polygons as GeoJSON"}
+              disabled={inHazardMode ? !directExportData : slotA.runupResults.length === 0}
+              disabledReason={inHazardMode ? directExportRequiredReason : runupRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               GeoJSON
@@ -1745,15 +1770,15 @@ export default function App() {
                   quantitative_label: r.quantitative_label,
                 }));
                 const run = () => reportExportResult(
-                  exportKml(exportMetaA(), points),
-                  "Saved KML file for Google Earth.",
+                  exportKml(exportMetaA(), points, directExportData),
+                  directExportData ? "Saved direct-effects KML file." : "Saved KML file for Google Earth.",
                   run,
                 );
                 run();
               }}
-              title="Export source and runup data as KML for Google Earth"
-              disabled={inHazardMode || !slotA.initial}
-              disabledReason={sourceRequiredReason}
+              title={inHazardMode ? "Export direct-effect rings and hazard polygons as KML" : "Export source and runup data as KML for Google Earth"}
+              disabled={inHazardMode ? !directExportData : !slotA.initial}
+              disabledReason={inHazardMode ? directExportRequiredReason : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               KML

@@ -237,6 +237,14 @@ WGS 84 GeoTIFF or NetCDF-CF depth/elevation raster from Settings; unknown
 horizontal or vertical metadata fails closed, and solver runs reject uncovered
 or NoData cells rather than silently mixing sources.
 
+The production web build is installable as a PWA. Its generated service worker
+precaches the complete local application, including Cesium workers, widgets,
+and bundled Natural Earth imagery, so a previously loaded build can start and
+run with the network unavailable. Tauri keeps its native asset-loading path and
+does not register the browser service worker. This packaged cache preserves the
+old NukeMap single-file build's offline intent without pretending the full
+Cesium application can remain one practical HTML file.
+
 The bundled surface mask is intentionally coarse and declares a 550 km worst-
 case horizontal error. It is a consistency contract, not a shoreline product.
 Three official NOAA GEOID18 coastal fixtures validate ellipsoid/orthometric

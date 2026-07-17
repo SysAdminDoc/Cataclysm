@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { captureGlobePng, copyExportText, downloadBlob, downloadDataUrl, encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportGlobeVideo, exportKml, exportRunupCsv, preflightRunQuality, suggestedFilename, type ScreenshotMeta, type RunupPoint } from "../export";
+import { buildDirectHazardCzml, buildDirectHazardGeoJson, buildDirectHazardKml, captureGlobePng, copyExportText, downloadBlob, downloadDataUrl, encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportGlobeVideo, exportKml, exportRunupCsv, preflightRunQuality, suggestedFilename, type DirectHazardExportData, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
+import type { HazardResult } from "../../hazards/types";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
 import { getCoastalPoints } from "../data";
 
@@ -32,6 +33,85 @@ describe("run-quality export preflight", () => {
       ok: false,
       reason: "non-finite field",
     });
+  });
+});
+
+describe("direct-hazard GIS exports", () => {
+  const result: HazardResult = {
+    resultId: "result:test",
+    kind: "nuclear",
+    authority: "rust",
+    modelVersion: "nuclear-direct-test",
+    center: { lat: 40, lon: -74 },
+    rings: [
+      { label: "Fireball", radiusM: 500, color: "#f5e0dc", category: "fireball", description: "Everything within is vaporized." },
+      { label: "5 psi", radiusM: 5_000, color: "#cba6f7", category: "blast" },
+    ],
+    readout: [{ label: "Yield", value: "100 kT" }],
+    casualties: { deaths: 1_000, injuries: 2_000, childDeaths: 250, childInjuries: 500, populationDensity: 5_000 },
+    detail: {
+      yieldKt: 100,
+      isSurface: true,
+      isWater: false,
+      fireball: 0.5,
+      psi20: 1,
+      psi5: 5,
+      psi1: 10,
+      thermal3: 7,
+      thermal1: 12,
+      radiation: 2,
+      neutronRad: 1,
+      gammaRad: 1,
+      craterR: 0.4,
+      cloudTopH: 12,
+      optimalHeight: 0,
+      waveHeight: 0,
+      fallout: null,
+      timeline: [],
+      latentCancer: null,
+    },
+  };
+  const meta: ScreenshotMeta = {
+    timeS: 30,
+    fileId: "nuclear-test",
+    scenarioName: "Nuclear <test>",
+    scenarioKind: "Nuclear",
+    solverMode: "Rust-authoritative direct hazard",
+    citationReference: "Test reference",
+    generatedAt: "2026-07-17T00:00:00.000Z",
+  };
+  const direct: DirectHazardExportData = {
+    result,
+    polygons: [{
+      label: "Heavy fallout",
+      color: "#f38ba8",
+      points: [{ lat: 40, lon: -74 }, { lat: 40.1, lon: -73.9 }, { lat: 39.9, lon: -73.8 }, { lat: 40, lon: -74 }],
+    }],
+  };
+
+  it("builds provenance-bearing GeoJSON effect and fallout polygons", () => {
+    const geojson = buildDirectHazardGeoJson(meta, direct);
+    expect(geojson.features).toHaveLength(4);
+    expect(geojson.properties).toMatchObject({ authority: "rust", model_version: "nuclear-direct-test" });
+    expect(geojson.features[1].geometry.type).toBe("Polygon");
+    expect(geojson.features[1].geometry.coordinates[0]).toHaveLength(73);
+    expect(geojson.features[3].properties.kind).toBe("hazard_polygon");
+  });
+
+  it("builds static CZML ellipses and supplied hazard polygons", () => {
+    const czml = buildDirectHazardCzml(meta, direct);
+    expect(czml).toHaveLength(5);
+    expect(czml[0]).toMatchObject({ id: "document", version: "1.0" });
+    expect(czml[2]).toMatchObject({ id: "effect-ring-1", ellipse: { semiMajorAxis: 500, semiMinorAxis: 500 } });
+    expect(czml[4]).toMatchObject({ id: "hazard-polygon-1" });
+  });
+
+  it("builds escaped KML with effect and hazard folders", () => {
+    const kml = buildDirectHazardKml(meta, direct);
+    expect(kml).toContain("Cataclysm — Nuclear &lt;test&gt;");
+    expect(kml).toContain("<name>Effect thresholds</name>");
+    expect(kml).toContain("<name>Hazard polygons</name>");
+    expect(kml).toContain("<value>5000</value>");
   });
 });
 
