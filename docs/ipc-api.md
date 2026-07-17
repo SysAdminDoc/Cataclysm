@@ -91,6 +91,25 @@ the application cache.
 - **Output:** format, filename, size, SHA-256, variable/band, dimensions, WGS 84 bounds/resolution, horizontal and vertical CRS, units, NoData, wet/dry/valid counts, depth range, and warnings.
 - **Validation:** GeoTIFF requires an unrotated north-up EPSG:4326 grid plus EPSG:5714/5715 and metre vertical units; NetCDF requires regular one-dimensional CF latitude/longitude coordinates, metre units, matching `positive`, and an explicit mean-sea-level vertical datum. Files are capped at 512 MiB and 16,777,216 cells.
 
+### `import_bathymetry`
+Repeat strict preflight, verify the preview SHA-256, and atomically copy the
+raster plus a provenance manifest into the application-owned offline cache.
+- **Input:** the original preflight request and its `expected_sha256`.
+- **Output:** schema version, stable content-addressed asset ID, import time, cache filename, and the complete preflight report.
+- **Limits:** at most eight active imports and 2 GiB of declared raster bytes. The copied file is re-hashed before commit so a changed source is rejected.
+
+### `list_imported_bathymetry`
+List active cached rasters newest-first after validating each manifest and source size.
+- **Input:** none.
+- **Output:** `Vec<ImportedBathymetryAsset>`.
+
+### `remove_imported_bathymetry` / `restore_imported_bathymetry`
+Move one content-addressed raster and manifest between the active cache and an
+application-owned trash directory without requiring network access.
+- **Input:** validated `asset_id`.
+- **Output:** remove returns no value; restore returns the recovered asset.
+- **Safety:** partial two-file moves are rolled back, and restore re-applies active-cache quotas.
+
 ### `list_presets`
 Return the full preset registry.
 - **Input:** none

@@ -12,6 +12,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   vertical metadata, metre units, positive-axis agreement, NoData accounting,
   physical value limits, a rights statement, and a streaming SHA-256 before any
   future cache/import step may mutate application data.
+- A preflighted bathymetry raster can now be copied atomically into a bounded
+  offline cache (eight assets or 2 GiB), with a second SHA-256 check closing the
+  preview/import file-change race. Typed commands list cached assets and provide
+  recoverable remove/restore operations through an application-owned trash area.
 
 ## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
 

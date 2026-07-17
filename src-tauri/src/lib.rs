@@ -12,6 +12,10 @@ pub mod render_protocol;
 pub mod support_resources;
 
 use commands::*;
+use data::bathymetry_cache::{
+    import_bathymetry, list_imported_bathymetry, remove_imported_bathymetry,
+    restore_imported_bathymetry,
+};
 use data::bathymetry_import::preflight_bathymetry_import;
 use native_diagnostics::{
     NativeDiagnosticsState, acknowledge_native_panic_record, install_native_panic_hook,
@@ -75,6 +79,10 @@ pub fn run() {
             render_protocol_capabilities,
             surface_probe,
             preflight_bathymetry_import,
+            import_bathymetry,
+            list_imported_bathymetry,
+            remove_imported_bathymetry,
+            restore_imported_bathymetry,
             simulate_asteroid_hazard,
             simulate_asteroid_hazard_render,
             simulate_nuclear_hazard,

@@ -43,7 +43,7 @@ impl BathymetrySampleSemantics {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BathymetryPreflightRequest {
     pub path: String,
@@ -53,14 +53,14 @@ pub struct BathymetryPreflightRequest {
     pub sample_semantics: BathymetrySampleSemantics,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BathymetryRasterFormat {
     GeoTiff,
     NetCdf,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BathymetryPreflight {
     pub format: BathymetryRasterFormat,
     pub file_name: String,
@@ -137,7 +137,7 @@ fn canonical_input(path: &str) -> Result<(PathBuf, u64), String> {
     Ok((canonical, metadata.len()))
 }
 
-fn sha256_file(path: &Path) -> Result<String, String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String, String> {
     let mut reader = BufReader::new(
         File::open(path).map_err(|error| format!("bathymetry file could not be read: {error}"))?,
     );

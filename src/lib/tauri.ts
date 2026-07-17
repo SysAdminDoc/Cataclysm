@@ -77,6 +77,22 @@ export type BathymetryPreflight = {
   warnings: string[];
 };
 
+export type BathymetryPreflightRequest = {
+  path: string;
+  variable?: string | null;
+  source_label: string;
+  rights_statement: string;
+  sample_semantics: BathymetrySampleSemantics;
+};
+
+export type ImportedBathymetryAsset = {
+  schema_version: number;
+  asset_id: string;
+  imported_at_ms: number;
+  cache_file: string;
+  report: BathymetryPreflight;
+};
+
 let simulationRunSequence = 0;
 
 type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
@@ -378,14 +394,26 @@ export const api = {
   surfaceProbe(req: { lat_deg: number; lon_deg: number }): Promise<SurfaceProbe> {
     return invoke<SurfaceProbe>("surface_probe", { req });
   },
-  preflightBathymetryImport(req: {
-    path: string;
-    variable?: string | null;
-    source_label: string;
-    rights_statement: string;
-    sample_semantics: BathymetrySampleSemantics;
-  }): Promise<BathymetryPreflight> {
+  preflightBathymetryImport(req: BathymetryPreflightRequest): Promise<BathymetryPreflight> {
     return invoke<BathymetryPreflight>("preflight_bathymetry_import", { req });
+  },
+  importBathymetry(
+    req: BathymetryPreflightRequest,
+    expectedSha256: string,
+  ): Promise<ImportedBathymetryAsset> {
+    return invoke<ImportedBathymetryAsset>("import_bathymetry", {
+      req,
+      expectedSha256,
+    });
+  },
+  listImportedBathymetry(): Promise<ImportedBathymetryAsset[]> {
+    return invoke<ImportedBathymetryAsset[]>("list_imported_bathymetry");
+  },
+  removeImportedBathymetry(assetId: string): Promise<void> {
+    return invoke<void>("remove_imported_bathymetry", { assetId });
+  },
+  restoreImportedBathymetry(assetId: string): Promise<ImportedBathymetryAsset> {
+    return invoke<ImportedBathymetryAsset>("restore_imported_bathymetry", { assetId });
   },
   /** Cesium ion token in the OS keychain. `null` = no token stored. */
   keychainGetToken(): Promise<string | null> {

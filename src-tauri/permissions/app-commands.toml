@@ -34,9 +34,13 @@ permissions = [
 
 [[set]]
 identifier = "bathymetry-import"
-description = "Read and validate one user-selected local scientific bathymetry raster without mutating the cache."
+description = "Preflight and manage bounded user-selected local scientific bathymetry rasters in the application cache."
 permissions = [
   "allow-preflight-bathymetry-import",
+  "allow-import-bathymetry",
+  "allow-list-imported-bathymetry",
+  "allow-remove-imported-bathymetry",
+  "allow-restore-imported-bathymetry",
 ]
 
 [[set]]
