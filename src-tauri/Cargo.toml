@@ -41,6 +41,7 @@ sha2 = "0.10"
 # tauri-plugin-stronghold is deprecated for Tauri v3.
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
 tauri-plugin-dialog = "2.7"
+tauri-plugin-deep-link = "2.4.9"
 
 [dev-dependencies]
 # Property-based tests over the physics parameter space
@@ -97,3 +98,6 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = { version = "2.4.3", features = ["deep-link"] }

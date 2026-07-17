@@ -98,6 +98,21 @@ After clicking **Simulate**, the initial conditions panel shows the source reado
 3. Use the scrubber or Play button to animate the wave propagation
 4. Toggle **Coastal runup** to see Synolakis 1987 low-confidence screening estimates at 79 coastal points. Expand a Result to audit the legacy slope and nominal depth records; CSV, GeoJSON, KML, and text exports preserve the same IDs.
 
+## Opening an installed desktop link
+
+Installed packages register `cataclysm://open` for the same encoded scenario
+or preset query used by browser share links. Opening one starts Cataclysm when
+needed or routes it to the existing instance:
+
+```text
+cataclysm://open?scenario=<encoded scenario payload>
+cataclysm://open?preset=<preset id>
+```
+
+The route accepts exactly one bounded `scenario` or `preset` value. Unknown
+routes, extra or duplicate parameters, fragments, malformed payloads, and
+oversized links are rejected without loading fallback physics.
+
 ## Export options
 
 Desktop solver runs publish a run-quality record covering finite fields,

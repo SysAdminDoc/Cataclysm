@@ -9,6 +9,13 @@
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["cataclysm"]
+      }
+    }
+  },
   "app": {
     "windows": [
       {

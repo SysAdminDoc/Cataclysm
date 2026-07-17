@@ -108,6 +108,9 @@ Existing tools each do one piece:
   the current desktop package; lockfile drift is rejected during verification.
 - **Scenario library filters** — recorded and what-if cases stay searchable,
   while guided training remains available without crowding the primary flow.
+- **Installed-app scenario links** — `cataclysm://open?scenario=…` and
+  `cataclysm://open?preset=…` open the existing desktop app or start it once,
+  then pass through the same bounded, fail-closed importer as browser shares.
 - **Deterministic global-exchange lab** — seven preserved NukeMap scenarios,
   427 target records, and 712 assigned warheads can be explored through
   Cesium-native great-circle arcs and an accessible React HUD. Phase filters,

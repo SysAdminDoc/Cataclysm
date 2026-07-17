@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "deep-link:default",
     "store:allow-load",
     "store:allow-get",
     "store:allow-set",

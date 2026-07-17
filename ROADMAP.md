@@ -35,17 +35,6 @@ tests locally.
 
 ### P2 — cited presets, products, and architecture
 
-- [ ] P2 — Add desktop deep-link import for shared scenario URLs
-  Why: Rust and installer compilation work locally, so the old toolchain blocker no
-  longer justifies deferring the OS routing that completes the existing URL codec.
-  Evidence: `scenarioFromUrl` / `scenarioToUrlParams`; Tauri 2 deep-link plugin docs.
-  Touches: Tauri plugin/capabilities, single-instance routing, scenario import flow,
-  installer metadata, headless/integration fixtures.
-  Acceptance: a bounded `cataclysm://open?scenario=...` payload reaches the existing
-  fail-closed importer on cold and warm launch; malformed/oversized input is rejected;
-  platform registration is verified without foreground automation.
-  Complexity: M
-
 - [ ] P2 — Export solver products as CF-compliant NetCDF
   Why: the old C-library blocker is an installation concern, not an external blocker;
   the local toolchain may use the maintained `netcdf` crate or a verified pure-Rust

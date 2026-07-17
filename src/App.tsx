@@ -44,7 +44,8 @@ import {
 } from "./lib/async-result";
 import { downloadTextExport } from "./lib/text-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
-import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput } from "./lib/scenario-schema";
+import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
+import { subscribeToScenarioDeepLinks } from "./lib/deep-links";
 import {
   DIRECT_SCENARIOS,
   loadScenarioLibraryPreferences,
@@ -444,8 +445,12 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get("referenceScene"),
     [],
   );
-  const startupScenario = useMemo(() => scenarioFromUrl(window.location.search), []);
-  const startupScenarioHandled = useRef(false);
+  const [scenarioLinkRequest, setScenarioLinkRequest] = useState<{
+    id: number;
+    result: UrlScenarioResult;
+  }>(() => ({ id: 0, result: scenarioFromUrl(window.location.search) }));
+  const nextScenarioLinkRequestId = useRef(0);
+  const handledScenarioLinkRequestId = useRef(-1);
   const [referenceEffectTimeMs, setReferenceEffectTimeMs] = useState<number | null>(null);
 
   const handleMirvPreviewChange = useCallback((preview: MirvPreview | null) => {
@@ -702,32 +707,63 @@ export default function App() {
     });
   }, []);
 
-  // Restore scenario from URL query params (?preset=id or ?scenario=base64).
-  // Preset IDs wait for the live registry so an unknown link cannot silently
-  // fall back to a different demo scenario.
+  // Desktop cold- and warm-launch URLs enter the same request queue as browser
+  // share links. The deep-link adapter validates the complete custom URL before
+  // forwarding only its query to the canonical scenario decoder.
   useEffect(() => {
-    if (startupScenarioHandled.current) return;
-    if (startupScenario.type === "invalid") {
-      startupScenarioHandled.current = true;
-      showToast(`Couldn't open scenario link: ${startupScenario.reason}`, "error");
+    if (!inTauri) return;
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToScenarioDeepLinks((result) => {
+      if (!active) return;
+      nextScenarioLinkRequestId.current += 1;
+      setScenarioLinkRequest({ id: nextScenarioLinkRequestId.current, result });
+    })
+      .then((unlisten) => {
+        if (active) unsubscribe = unlisten;
+        else unlisten();
+      })
+      .catch((error) => {
+        console.warn("[deep-link] listener unavailable", error);
+        if (active) showToast("Desktop scenario links are unavailable in this session.", "error");
+      });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [inTauri, showToast]);
+
+  // Restore scenario from browser/deep-link query params. Preset IDs wait for
+  // the live registry so an unknown link cannot silently fall back to a
+  // different demo scenario. Each request ID is consumed at most once.
+  useEffect(() => {
+    if (handledScenarioLinkRequestId.current === scenarioLinkRequest.id) return;
+    const request = scenarioLinkRequest.result;
+    if (request.type === "none") {
+      handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
       return;
     }
-    if (startupScenario.type === "scenario") {
-      startupScenarioHandled.current = true;
-      slotA.simulate(startupScenario.scenario);
+    if (request.type === "invalid") {
+      handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
+      showToast(`Couldn't open scenario link: ${request.reason}`, "error");
       return;
     }
-    if (startupScenario.type !== "preset" || presets.length === 0) return;
-    startupScenarioHandled.current = true;
-    if (presets.some((preset) => preset.id === startupScenario.presetId)) {
-      setLibraryPreview({ kind: "preset", presetId: startupScenario.presetId });
+    if (request.type === "scenario") {
+      handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
+      slotA.simulate(request.scenario);
+      return;
+    }
+    if (presets.length === 0) return;
+    handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
+    if (presets.some((preset) => preset.id === request.presetId)) {
+      setLibraryPreview({ kind: "preset", presetId: request.presetId });
       setLibraryPreviewPending(false);
-      slotA.setActivePresetId(startupScenario.presetId);
+      slotA.setActivePresetId(request.presetId);
     } else {
-      showToast(`Scenario link not found: ${startupScenario.presetId}`, "error");
+      showToast(`Scenario link not found: ${request.presetId}`, "error");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presets, startupScenario]);
+  }, [presets, scenarioLinkRequest]);
 
   // Quick Start is the first usable surface after the safety acknowledgement.
   // Settings can explicitly request the longer tour without obscuring launch.

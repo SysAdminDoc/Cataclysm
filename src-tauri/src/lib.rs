@@ -40,7 +40,17 @@ fn native_diagnostics_directory(app: &tauri::App) -> Result<PathBuf, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Deep links on Windows/Linux arrive through a short-lived second process.
+    // Register single-instance first so the configured URL is forwarded to the
+    // existing WebView without activating or focusing the application window.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(
+        |_app, _arguments, _working_directory| {},
+    ));
+
+    builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::default().build())

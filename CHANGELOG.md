@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Installed desktop packages now register `cataclysm://open` for shared
+  scenario and preset links. Cold starts and warm launches enter the existing
+  fail-closed scenario importer through a single-instance event path; the
+  outer URL enforces an exact route, one bounded payload, and rejects extra,
+  duplicate, malformed, fragmented, or oversized input before decoding.
 - The validation feature now cross-checks Synolakis run-up against seven
   official, non-breaking NTHMP BP4 laboratory measurements across
   `H/d = 0.005..0.019`, each with a cited ±25% acceptance band. The NTHMP

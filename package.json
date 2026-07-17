@@ -35,7 +35,7 @@
     "test:rust-advisory-policy": "node --test scripts/rust-advisory-policy.test.mjs",
     "test:pwa-contract": "node --test scripts/pwa-offline-contract.test.mjs",
     "test:installed-release": "node --test scripts/installed-release-smoke.test.mjs",
-    "test:release-contracts": "node --test scripts/deps-check.test.mjs scripts/release-artifact-contract.test.mjs scripts/version-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",
+    "test:release-contracts": "node --test scripts/deep-link-contract.test.mjs scripts/deps-check.test.mjs scripts/release-artifact-contract.test.mjs scripts/version-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",
     "test:e2e": "playwright test",
     "capture:screenshots": "node scripts/capture-screenshots.mjs",
     "capture:references": "node scripts/capture-reference-scenes.mjs --record",
@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-store": "^2.4.3",
