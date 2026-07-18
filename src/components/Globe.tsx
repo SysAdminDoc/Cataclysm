@@ -911,6 +911,12 @@ export function Globe({
   }, [directHazardResultId, formatNumber, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport, t]);
 
   useEffect(() => {
+    // A familiar-place probe must rerun when its governing source/result
+    // changes, even though the geographic coordinate itself is unchanged.
+    setLastInspectCoord(null);
+  }, [directHazardResultId, initial]);
+
+  useEffect(() => {
     if (!inspectMode || !inspectionCoordinate) return;
     const current = lastInspectCoord;
     if (current?.lat === inspectionCoordinate.lat && current.lon === inspectionCoordinate.lon) return;

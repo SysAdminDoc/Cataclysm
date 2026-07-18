@@ -202,7 +202,7 @@ export function HazardControls({
       </div>
 
       {showSetup && <>
-      {onLocationSelect && <LocationSearch onSelect={onLocationSelect} />}
+      {onLocationSelect && <LocationSearch onSelect={onLocationSelect} purpose="target" />}
       <div className="hazard__location">
         <button
           type="button"

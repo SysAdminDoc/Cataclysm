@@ -44,6 +44,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added a Quick Start “Near a place I know” workflow over the fully packaged
+  city, ZIP, landmark/target, and coordinate index. Historical tsunami origins
+  remain fixed while the selected place becomes an explainable point probe;
+  direct hazards create a clearly labeled custom copy. Local result summaries
+  lead with distance, arrival/effect timing, and qualified nearest-city density
+  context. Search is fully keyboard operable, requests no live location, sends
+  no query off-device, and is complete in all four interface languages.
+
 - Rebuilt scenario discovery around seven curated visual packs with compact,
   information-rich cards that expose hazard, scale, runtime, confidence, and a
   key promise. Per-card favorites, a recoverable Recent filter, and deterministic

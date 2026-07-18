@@ -219,11 +219,15 @@ Existing tools each do one piece:
 - **NASA/JPL impact data** — desktop impact setup can populate inputs from SBDB,
   show Sentry risk context when available, and plot the latest 80 located CNEOS
   fireballs. Bounded built-in references keep both workflows useful offline.
-- **Offline NukeMap location catalog** — search 246 population-bearing cities,
-  41,958 US ZIP centroids, 459 strategic/metro targets, or pasted coordinates
-  without transmitting the query. Location selection updates the target and a
-  clearly shown nearest-city density estimate; the complete 39-row NukeMap
-  weapon reference table is available in nuclear setup.
+- **Near a place I know** — Quick Start searches 246 population-bearing cities,
+  41,958 US ZIP centroids, 459 landmarks/strategic targets, or pasted
+  coordinates from a packaged index without requesting live location or
+  transmitting the query. Historical tsunami sources stay at their factual
+  origin while the familiar place becomes a Rust-backed analysis probe;
+  asteroid/nuclear use creates an explicit custom copy. Results lead with
+  source/effect distance, modeled arrival timing, and a clearly qualified
+  nearest-city density band. The complete 39-row NukeMap weapon reference
+  table remains available in nuclear setup.
 - **Unified historical direct scenarios** — the scenario library includes all
   10 NukeMap test events and six AsteroidSimulator impact presets as recorded
   source inputs, with historical context kept separate from modeled outcomes.

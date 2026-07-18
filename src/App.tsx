@@ -5,6 +5,7 @@ import { ComparisonStories } from "./components/ComparisonStories";
 import { ScenarioBuilder } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { PointProbePanel } from "./components/PointProbePanel";
+import { FamiliarPlacePanel } from "./components/FamiliarPlacePanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { HistoricalTsunamiBrowser } from "./components/HistoricalTsunamiBrowser";
 import { Settings } from "./components/Settings";
@@ -391,6 +392,7 @@ export default function App() {
   const [comparisonInspectCoordinate, setComparisonInspectCoordinate] = useState<GeoPoint | null>(null);
   const [pointProbeA, setPointProbeA] = useState<PointProbeReport | null>(null);
   const [pointProbeB, setPointProbeB] = useState<PointProbeReport | null>(null);
+  const [familiarPlace, setFamiliarPlace] = useState<NukemapLocationResult | null>(null);
   useEffect(() => {
     if (!inspectMode) setComparisonInspectCoordinate(null);
   }, [inspectMode]);
@@ -1179,10 +1181,11 @@ export default function App() {
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? t("layers.noSource");
+  const directWorkspaceLabel = hazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact");
   const activeWorkspaceLabel = inHazardMode
-    ? hazardMode === "nuclear"
-      ? t("app.nuclearDetonation")
-      : t("app.asteroidImpact")
+    ? familiarPlace
+      ? t("place.whatIfTitle", { name: familiarPlace.name })
+      : directWorkspaceLabel
     : activeSourceLabel;
   const viewportSourceLabel = libraryPreviewPending && libraryPreviewLabel && !slotA.initial && !hazardCenter
     ? t("app.previewLabel", { label: libraryPreviewLabel })
@@ -1265,6 +1268,12 @@ export default function App() {
   const activeDirectScenario = libraryPreview?.kind === "direct" && libraryPreview.scenario.domain === directHazardMode
     ? libraryPreview.scenario
     : null;
+  const familiarPlaceReport = familiarPlace
+    && pointProbeA
+    && pointProbeA.lat === familiarPlace.lat
+    && pointProbeA.lon === familiarPlace.lon
+      ? pointProbeA
+      : null;
   const directExportData: DirectHazardExportData | null = inHazardMode && hazardResult
     ? { result: hazardResult, polygons: hazardPolygons }
     : null;
@@ -1316,8 +1325,14 @@ export default function App() {
     evidenceIds: exportEvidenceIdsB(),
   });
 
-  async function handlePickGlobe(lat: number, lon: number) {
+  async function handlePickGlobe(lat: number, lon: number, preserveFamiliarPlace = false) {
     if (directHazardMode) {
+      if (!preserveFamiliarPlace) {
+        setFamiliarPlace(null);
+        setComparisonInspectCoordinate(null);
+        setPointProbeA(null);
+        setPointProbeB(null);
+      }
       setHazardCenters((current) => ({ ...current, [directHazardMode]: { lat, lon } }));
       try {
         const surface = inTauri
@@ -1361,15 +1376,55 @@ export default function App() {
     setPickMode(false);
   }
 
-  function handleLocationSelect(location: NukemapLocationResult) {
-    void handlePickGlobe(location.lat, location.lon);
+  function handleLocationSelect(location: NukemapLocationResult, openResults = false) {
+    setFamiliarPlace(location);
+    setComparisonInspectCoordinate({ lat: location.lat, lon: location.lon });
+    setPointProbeA(null);
+    setPointProbeB(null);
+    setInspectMode(true);
+    if (directHazardMode) {
+      void handlePickGlobe(location.lat, location.lon, true);
+    } else {
+      outcomeFocusRequestId.current += 1;
+      setOutcomeFocus({
+        request_id: `familiar-place-${outcomeFocusRequestId.current}`,
+        place: {
+          label: location.name,
+          lat_deg: location.lat,
+          lon_deg: location.lon,
+          range_m: 900_000,
+        },
+        simulation_time_s: timeS,
+      });
+    }
     if (directHazardMode === "nuclear") {
       setNuclearInput((current) => ({
         ...current,
         populationDensity: location.density.peoplePerKm2,
       }));
     }
+    if (openResults && (directHazardMode ? hazardCenter : slotA.initial)) {
+      setInspectorTab("results");
+    }
     setPickMode(false);
+  }
+
+  function clearFamiliarPlace() {
+    setFamiliarPlace(null);
+    setComparisonInspectCoordinate(null);
+    setPointProbeA(null);
+    setPointProbeB(null);
+    setInspectMode(false);
+    if (!directHazardMode || !activeDirectScenario) return;
+    setHazardCenters((current) => ({
+      ...current,
+      [directHazardMode]: { ...activeDirectScenario.center },
+    }));
+    if (activeDirectScenario.domain === "asteroid" && activeDirectScenario.asteroid) {
+      setAsteroidInput({ ...activeDirectScenario.asteroid });
+    } else if (activeDirectScenario.domain === "nuclear" && activeDirectScenario.nuclear) {
+      setNuclearInput({ ...activeDirectScenario.nuclear });
+    }
   }
 
   function selectHazardMode(mode: HazardMode) {
@@ -1378,9 +1433,22 @@ export default function App() {
     setLibraryPreviewPending(false);
     if (mode !== "tsunami") {
       setDetonateNonces((current) => ({ ...current, [mode]: 0 }));
+      if (familiarPlace) {
+        setHazardCenters((current) => ({
+          ...current,
+          [mode]: { lat: familiarPlace.lat, lon: familiarPlace.lon },
+        }));
+        setComparisonInspectCoordinate({ lat: familiarPlace.lat, lon: familiarPlace.lon });
+        if (mode === "nuclear") {
+          setNuclearInput((current) => ({
+            ...current,
+            populationDensity: familiarPlace.density.peoplePerKm2,
+          }));
+        }
+      }
     }
     setPickMode(false);
-    setInspectMode(false);
+    setInspectMode(Boolean(familiarPlace));
     setCompareMode(false);
     setExportMenuOpen(false);
     setTimelinePlaying(false);
@@ -1467,13 +1535,16 @@ export default function App() {
     }
 
     const scenario = libraryPreview.scenario;
+    const scenarioCenter = familiarPlace
+      ? { lat: familiarPlace.lat, lon: familiarPlace.lon }
+      : scenario.center;
     const currentCenter = hazardCenters[scenario.domain];
     const currentInput = scenario.domain === "asteroid" ? asteroidInput : nuclearInput;
     const scenarioInput = scenario.domain === "asteroid" ? scenario.asteroid : scenario.nuclear;
     const canReuseResult = hazardMode === scenario.domain
       && hazardResult?.kind === scenario.domain
-      && currentCenter?.lat === scenario.center.lat
-      && currentCenter?.lon === scenario.center.lon
+      && currentCenter?.lat === scenarioCenter.lat
+      && currentCenter?.lon === scenarioCenter.lon
       && JSON.stringify(currentInput) === JSON.stringify(scenarioInput);
     setWw3Session(null);
     setMirvPreview(null);
@@ -1485,9 +1556,16 @@ export default function App() {
       if (scenario.domain === "asteroid" && scenario.asteroid) {
         setAsteroidInput({ ...scenario.asteroid });
       } else if (scenario.domain === "nuclear" && scenario.nuclear) {
-        setNuclearInput({ ...scenario.nuclear });
+        setNuclearInput({
+          ...scenario.nuclear,
+          populationDensity: familiarPlace?.density.peoplePerKm2 ?? scenario.nuclear.populationDensity,
+        });
       }
-      setHazardCenters((current) => ({ ...current, [scenario.domain]: { ...scenario.center } }));
+      setHazardCenters((current) => ({ ...current, [scenario.domain]: { ...scenarioCenter } }));
+    }
+    if (familiarPlace) {
+      setComparisonInspectCoordinate({ lat: familiarPlace.lat, lon: familiarPlace.lon });
+      setInspectMode(true);
     }
     setDetonateNonces((current) => ({
       ...current,
@@ -2101,6 +2179,7 @@ export default function App() {
             recentIds={libraryPreferences.recentIds}
             favoriteIds={libraryPreferences.favoriteIds}
             onToggleFavorite={(id) => updateLibraryPreferences((current) => toggleFavoriteScenario(current, id))}
+            onSelectFamiliarPlace={(place) => handleLocationSelect(place, true)}
             busyId={slotA.busyPresetId}
             onStartLesson={startGuidedLesson}
             completedLessons={lessonCompletions}
@@ -2156,7 +2235,7 @@ export default function App() {
                 inspectIsImpact={activeScenarioKindA === "Asteroid"}
                 inspectTimeS={timeS}
                 directHazardResultId={inHazardMode ? hazardResult?.resultId ?? null : null}
-                inspectionCoordinate={compareMode ? comparisonInspectCoordinate : null}
+                inspectionCoordinate={comparisonInspectCoordinate}
                 onInspectionCoordinate={compareMode ? (coordinate) => {
                   setComparisonInspectCoordinate((current) =>
                     current?.lat === coordinate.lat && current.lon === coordinate.lon
@@ -2281,7 +2360,7 @@ export default function App() {
         <div className="inspector__header">
           <div className="inspector__identity">
             <span>{t("app.activeWorkspace")}</span>
-            <strong>{inHazardMode ? (hazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact")) : activeSourceLabel}</strong>
+            <strong>{activeWorkspaceLabel}</strong>
           </div>
           {inspectorTab === "setup" && <div className="workspace-mode" role="group" aria-label={t("app.workspaceDetail")}>
             {(["simple", "customize", "advanced"] as const).map((mode) => (
@@ -2471,6 +2550,17 @@ export default function App() {
             />
           </div>
         </div>
+        {inspectorTab === "results" && familiarPlace && (
+          <FamiliarPlacePanel
+            place={familiarPlace}
+            report={familiarPlaceReport}
+            mode={hazardMode}
+            sourceLabel={inHazardMode ? activeDirectScenario?.name ?? directWorkspaceLabel : activeSourceLabel}
+            historicalSource={Boolean(activePresetA && !activePresetA.is_speculative)}
+            pending={inHazardMode ? hazardPending : Boolean(slotA.initial && inspectMode && !familiarPlaceReport)}
+            onClear={clearFamiliarPlace}
+          />
+        )}
         {inspectorTab === "results" && inHazardMode && <HazardControls
           mode={hazardMode === "nuclear" ? "nuclear" : "asteroid"}
           nuclear={nuclearInput}
@@ -2550,7 +2640,7 @@ export default function App() {
             />
           </div>
         )}
-        {inspectorTab === "results" && (
+        {inspectorTab === "results" && (!familiarPlace || compareMode) && (
           <PointProbePanel
             primary={pointProbeA}
             comparison={compareMode
@@ -2641,7 +2731,7 @@ export default function App() {
         rate={timelineRate}
         onRateChange={setTimelineRate}
         hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
-        sourceLabel={inHazardMode ? (hazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact")) : activeSourceLabel}
+        sourceLabel={activeWorkspaceLabel}
         solverReady={!inHazardMode && hasSwePlayback}
         domain={hazardMode}
         frameCount={inHazardMode ? 0 : sweSnapshots?.length ?? 0}

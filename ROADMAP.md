@@ -53,13 +53,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ### P1
 
-- [ ] P1 - UX-11: Add a Near a place I know experience over the UNI-09 location data
-  Why: scientific scale becomes emotionally legible when users can relate arrival times and effect distances to a familiar city; current direct hazards require a precise globe click and tsunami outcomes are organized around model internals.
-  Evidence: live Impact/Nuclear targeting audit; UNI-09 city/ZIP dataset work; NUKEMAP deliberately combines city search, historical yields, auto-zoom, and familiar local context (https://db.nuclearsecrecy.com/nukemap/faq/).
-  Touches: UX layer over the UNI-09 typed location index, Quick Start, hazard targeting, tsunami place probes, result summaries, privacy copy, local search and keyboard tests.
-  Acceptance: users can search city, ZIP, landmark, or paste coordinates; the app never requests or infers live location by default; historical presets retain their factual origin while What if near... creates a clearly labeled custom copy; results lead with distance, arrival/effect timing, and defensible local context; searches work offline from the packaged index and never transmit the query.
-  Complexity: M
-
 - [ ] P1 - UX-12: Turn UNI-08 into a Planetary Defense Live discovery surface
   Why: a live catalog of real close approaches gives average users an immediate reason to return and connects asteroid spectacle to current science, while the current asteroid experience begins with anonymous diameter/velocity sliders.
   Evidence: UNI-08 NEO/fireball integration; NASA Eyes tracks more than 30,000 near-Earth objects, highlights the next five close approaches, and separates real-time orbit exploration from educational stories (https://science.nasa.gov/eyes/ and https://www.jpl.nasa.gov/asteroid-watch/eyes-on-asteroids/).

@@ -155,6 +155,36 @@ test.describe("Cataclysm browser preview", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
+  test("relates a historical scenario to a familiar place without moving its source or sending the query", async ({ page }) => {
+    const leakedQueries: string[] = [];
+    page.on("request", (request) => {
+      const payload = `${request.url()} ${request.postData() ?? ""}`;
+      if (/02134|Allston/i.test(payload)) leakedQueries.push(payload);
+    });
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "Near a place I know" }).click();
+    const search = page.getByRole("combobox", { name: "Near a place I know" });
+    await search.fill("02134");
+    await page.getByRole("option", { name: /02134.*Allston, MA/i }).click();
+
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
+    await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await page.getByRole("tab", { name: "Results" }).click();
+
+    const place = page.getByRole("region", { name: "Near 02134 · Allston, MA" });
+    await expect(place).toBeVisible({ timeout: 15_000 });
+    await expect(place).toContainText("Distance from source");
+    await expect(place).toContainText("Arrival / effect timing");
+    await expect(place).toContainText("remains at its factual source coordinates");
+    await expect(place).toContainText("search queries never leave this device");
+    expect((await new AxeBuilder({ page }).include(".familiar-place").analyze()).violations).toEqual([]);
+    expect(leakedQueries).toEqual([]);
+  });
+
   test("browser preview displays the shared Rust/WASM source fixture", async ({ page }) => {
     await page.goto("/");
     const eltanin = page.locator(".preset-card").filter({

@@ -18,6 +18,8 @@ import { buildDirectScenarioEvidence, buildSourceEvidence } from "../lib/trust-e
 import type { Preset } from "../types/scenario";
 import { TrustDisclosure } from "./TrustDisclosure";
 import { useI18n } from "../lib/i18n";
+import { LocationSearch } from "./LocationSearch";
+import type { NukemapLocationResult } from "../types/nukemap-data";
 
 type Props = {
   presets: Preset[];
@@ -35,6 +37,7 @@ type Props = {
   recentIds?: string[];
   favoriteIds?: string[];
   onToggleFavorite?: (id: string) => void;
+  onSelectFamiliarPlace?: (place: NukemapLocationResult) => void;
 };
 
 type ViewMode = "cards" | "timeline";
@@ -197,6 +200,7 @@ export function PresetSelector({
   recentIds = [],
   favoriteIds = [],
   onToggleFavorite,
+  onSelectFamiliarPlace,
 }: Props) {
   const { locale, t } = useI18n();
   const instanceId = useId();
@@ -207,6 +211,7 @@ export function PresetSelector({
   const [surpriseCursor, setSurpriseCursor] = useState(0);
   const [surpriseResultId, setSurpriseResultId] = useState<string | null>(null);
   const [lessonsOpen, setLessonsOpen] = useState(false);
+  const [placeSearchOpen, setPlaceSearchOpen] = useState(false);
   const guidedLessons = useMemo(() => getGuidedLessons(locale), [locale]);
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
   const catalog = useMemo(() => buildScenarioCatalog(sorted, directScenarios), [directScenarios, sorted]);
@@ -414,7 +419,22 @@ export function PresetSelector({
             <UiIcon name="play" size={12} />
             {t("scenario.continueRecent")}
           </button>
+          <button
+            type="button"
+            disabled={!onSelectFamiliarPlace}
+            aria-expanded={placeSearchOpen}
+            aria-controls={`${instanceId}-familiar-place-search`}
+            onClick={() => setPlaceSearchOpen((open) => !open)}
+          >
+            <UiIcon name="mapPin" size={13} />
+            {t("location.nearLabel")}
+          </button>
         </div>
+        {placeSearchOpen && onSelectFamiliarPlace && (
+          <div id={`${instanceId}-familiar-place-search`} className="scenario-discovery__place-search">
+            <LocationSearch onSelect={onSelectFamiliarPlace} purpose="near" />
+          </div>
+        )}
         {surpriseResult && (
           <div className="scenario-surprise" role="status" aria-live="polite">
             <strong>{surpriseResult.kind === "preset" ? surpriseResult.preset.name : surpriseResult.scenario.name}</strong>
