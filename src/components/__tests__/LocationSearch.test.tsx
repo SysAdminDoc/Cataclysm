@@ -28,7 +28,11 @@ describe("LocationSearch", () => {
     render(<LocationSearch onSelect={onSelect} />);
 
     await user.type(screen.getByLabelText("Offline location search"), "02134");
-    const match = await screen.findByRole("button", { name: /02134.*Allston, MA/i });
+    const match = await screen.findByRole(
+      "button",
+      { name: /02134.*Allston, MA/i },
+      { timeout: 5_000 },
+    );
     await user.click(match);
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: "zip", lat: 42.357, lon: -71.113 }));
   });

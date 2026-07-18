@@ -6,7 +6,7 @@ import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId, type LaunchExperiencePolicy } from "../lib/settings";
 import type { UnitSystem } from "../lib/units";
-import { downloadBlob, exportFailureLabel, type ExportResult } from "../lib/export";
+import { downloadBlob, type ExportResult } from "../lib/export";
 import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
 import { api, isTauri } from "../lib/tauri";
@@ -20,7 +20,7 @@ import {
   type RendererQualityTier,
 } from "../render/quality/quality-controller";
 import { useI18n } from "../lib/i18n";
-import { LANGUAGE_TAGS, LOCALE_OPTIONS, translate, type Locale } from "../lib/i18n-core";
+import { LANGUAGE_TAGS, LOCALE_OPTIONS, translate, type Locale, type MessageKey } from "../lib/i18n-core";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
 type SettingsSection = "visual" | "performance" | "advanced";
@@ -73,7 +73,9 @@ export function Settings({ onClose }: Props) {
       result = {
         ok: false,
         code: "filesystem",
-        message: `Settings could not be read for export: ${error instanceof Error ? error.message : String(error)}`,
+        message: translate(locale, "settings.exportReadFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
         retryable: true,
       };
     }
@@ -111,8 +113,8 @@ export function Settings({ onClose }: Props) {
       .catch((err) => {
         console.warn("[settings] failed to load", err);
         if (!cancelled) {
-          const detail = err instanceof Error ? ` ${err.message}` : "";
-          setSaveErr(`Your settings could not be loaded, so defaults are shown.${detail} Non-token changes can still be saved.`);
+          const detail = err instanceof Error ? `${err.message} ` : "";
+          setSaveErr(t("settings.loadFailed", { detail }));
           setAppliedSettings({
             token: "",
             theme: "mocha",
@@ -144,7 +146,7 @@ export function Settings({ onClose }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   async function save() {
     if (saving) return;
@@ -697,7 +699,7 @@ export function Settings({ onClose }: Props) {
                       window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                     }
                     setSaveErr(null);
-                    setStatusMsg(translate("en", "settings.resetDone"));
+                    setStatusMsg(translate(locale, "settings.resetDone"));
                   } catch (err) {
                     setSaveErr(translate(locale, "settings.resetFailed", { error: err instanceof Error ? err.message : String(err) }));
                   }
@@ -710,7 +712,7 @@ export function Settings({ onClose }: Props) {
             </div>
             {settingsExportFailure && (
               <div className="panel-error" role="alert">
-                <span>{exportFailureLabel(settingsExportFailure.code)}: {settingsExportFailure.message}</span>
+                <span>{translate(locale, `app.export.failure.${settingsExportFailure.code}` as MessageKey)}: {settingsExportFailure.message}</span>
                 {settingsExportFailure.retryable && (
                   <button type="button" onClick={() => void handleSettingsExport()}>{t("settings.retry")}</button>
                 )}

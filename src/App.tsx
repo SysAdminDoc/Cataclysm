@@ -19,6 +19,7 @@ import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
 import { useI18n } from "./lib/i18n";
+import type { MessageKey } from "./lib/i18n-core";
 import { colormapLegend } from "./lib/colormap-legend";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay } from "./components/DartOverlay";
@@ -29,7 +30,7 @@ import { dartPinsForPreset } from "./lib/dart";
 import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { copyExportText, exportFailureLabel, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { copyExportText, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import {
   buildDirectResultEvidence,
@@ -316,6 +317,7 @@ function ToolbarButton({
   onUnavailable?: (reason: string) => void;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   const unavailable = disabled === true;
   const resolvedTitle = unavailable && disabledReason ? disabledReason : title;
 
@@ -328,7 +330,7 @@ function ToolbarButton({
       aria-disabled={unavailable}
       onClick={() => {
         if (unavailable) {
-          onUnavailable?.(disabledReason ?? "This action is not available yet.");
+          onUnavailable?.(disabledReason ?? t("app.unavailable"));
           return;
         }
         onClick();
@@ -339,7 +341,7 @@ function ToolbarButton({
       <ToolbarIcon name={icon} />
       <span className="icon-button__label">{children}</span>
       {variant === "export" && unavailable && disabledReason && (
-        <small className="icon-button__reason">Requires: {disabledReason}</small>
+        <small className="icon-button__reason">{t("app.requires", { reason: disabledReason })}</small>
       )}
     </button>
   );
@@ -369,7 +371,7 @@ function ExportGroup({
 }
 
 export default function App() {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
   const [presetsResult, setPresetsResult] = useState<AsyncResult<Preset[]>>({ status: "loading" });
   const presets = useMemo(() => asyncResultValue(presetsResult) ?? [], [presetsResult]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
@@ -606,18 +608,18 @@ export default function App() {
       return;
     }
     showToast(
-      `${exportFailureLabel(result.code)}: ${result.message}`,
+      `${t(`app.export.failure.${result.code}` as MessageKey)}: ${result.message}`,
       "error",
-      result.retryable ? { label: "Retry", run: retry } : undefined,
+      result.retryable ? { label: t("app.retry"), run: retry } : undefined,
     );
-  }, [showToast]);
+  }, [showToast, t]);
   const changeWorkspaceMode = useCallback((mode: WorkspaceMode) => {
     setWorkspaceMode(mode);
     void settings.setWorkspaceMode(mode).catch((error) => {
       console.warn("[settings] failed to persist workspace mode", error);
-      showToast("Workspace detail changed for this session, but could not be saved.", "error");
+      showToast(t("app.workspacePersistFailed"), "error");
     });
-  }, [showToast]);
+  }, [showToast, t]);
   useEffect(() => {
     settings.getWorkspaceMode().then(setWorkspaceMode).catch((error) => {
       console.warn("[settings] failed to load workspace mode", error);
@@ -770,13 +772,13 @@ export default function App() {
       })
       .catch((error) => {
         console.warn("[deep-link] listener unavailable", error);
-        if (active) showToast("Desktop scenario links are unavailable in this session.", "error");
+        if (active) showToast(t("app.deepLinksUnavailable"), "error");
       });
     return () => {
       active = false;
       unsubscribe?.();
     };
-  }, [inTauri, showToast]);
+  }, [inTauri, showToast, t]);
 
   // Restore scenario from browser/deep-link query params. Preset IDs wait for
   // the live registry so an unknown link cannot silently fall back to a
@@ -790,7 +792,7 @@ export default function App() {
     }
     if (request.type === "invalid") {
       handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
-      showToast(`Couldn't open scenario link: ${request.reason}`, "error");
+      showToast(t("app.linkInvalid", { reason: request.reason }), "error");
       return;
     }
     if (request.type === "scenario") {
@@ -805,7 +807,7 @@ export default function App() {
       setLibraryPreviewPending(false);
       slotA.setActivePresetId(request.presetId);
     } else {
-      showToast(`Scenario link not found: ${request.presetId}`, "error");
+      showToast(t("app.linkNotFound", { id: request.presetId }), "error");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presets, scenarioLinkRequest]);
@@ -1048,7 +1050,7 @@ export default function App() {
         } else {
           console.error("direct hazard render stream failed", renderOutcome.reason);
           setDirectRenderReplay(null);
-          showToast("Effects were calculated, but the staged animation could not be prepared.", "error");
+          showToast(t("app.directAnimationFailed"), "error");
         }
       })
       .catch((error) => {
@@ -1057,7 +1059,7 @@ export default function App() {
         setHazardResult(null);
         setAsteroidVisualReport(null);
         setNuclearShelterReport(null);
-        const message = `Direct hazard simulation failed: ${String(error)}`;
+        const message = t("app.directSimulationFailed", { error: String(error) });
         setHazardError(message);
         showToast(message, "error");
       })
@@ -1077,6 +1079,7 @@ export default function App() {
     referenceCaptureMode,
     referenceCaptureSceneId,
     showToast,
+    t,
   ]);
 
   useEffect(() => {
@@ -1112,21 +1115,21 @@ export default function App() {
     if (!eff?.fallout) return null;
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
-  const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? "No source selected";
+  const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? t("layers.noSource");
   const activeWorkspaceLabel = inHazardMode
     ? hazardMode === "nuclear"
-      ? "Nuclear detonation"
-      : "Asteroid impact"
+      ? t("app.nuclearDetonation")
+      : t("app.asteroidImpact")
     : activeSourceLabel;
   const viewportSourceLabel = libraryPreviewPending && libraryPreviewLabel && !slotA.initial && !hazardCenter
-    ? `Preview · ${libraryPreviewLabel}`
+    ? t("app.previewLabel", { label: libraryPreviewLabel })
     : activeWorkspaceLabel;
   const sourceRequiredReason = inHazardMode
-    ? "Tsunami inspection and exports are unavailable in direct hazard workspaces."
-    : "Select a preset or simulate a custom source first.";
-  const snapshotsRequiredReason = "Run the SWE solver before exporting CZML.";
-  const runupRequiredReason = "Select a source and wait for coastal runup results before exporting GeoJSON.";
-  const directExportRequiredReason = "Run the direct nuclear or impact model before exporting this result.";
+    ? t("app.reason.directWorkspace")
+    : t("app.reason.selectSource");
+  const snapshotsRequiredReason = t("app.reason.czml");
+  const runupRequiredReason = t("app.reason.runup");
+  const directExportRequiredReason = t("app.reason.directExport");
   const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
   const directRenderProvenance: RenderFrameProvenance | null = directRenderFrame
     ? {
@@ -1143,23 +1146,23 @@ export default function App() {
     : null;
   const modelStatus = inHazardMode
     ? !inTauri && hazardCenter && !hazardResult
-      ? "Desktop physics required"
+      ? t("app.status.desktopPhysics")
       : hazardPending
-      ? "Computing effects"
+      ? t("app.status.computingEffects")
       : hazardResult
-      ? "Effects ready"
-      : "Awaiting target"
+      ? t("app.status.effectsReady")
+      : t("app.status.awaitingTarget")
     : recording
-      ? "Recording export"
+      ? t("app.status.recordingExport")
       : timelinePlaying
-        ? "Playback active"
+        ? t("app.status.playbackActive")
         : slotA.busyPresetId
-          ? "Loading source"
+          ? t("app.status.loadingSource")
           : hasSwePlayback
-            ? "SWE field ready"
+            ? t("app.status.sweReady")
             : slotA.initial
-              ? "Source ready"
-              : "Awaiting source";
+              ? t("results.sourceReady")
+              : t("app.status.awaitingSource");
   const exportEvidenceIdsA = () => {
     if (inHazardMode) {
       const scenarioEvidence = libraryPreview?.kind === "direct" && libraryPreview.scenario.domain === directHazardMode
@@ -1208,15 +1211,19 @@ export default function App() {
     timeS: directRenderFrame?.simulation_time_s ?? timeS,
     fileId: activeDirectScenario?.id ?? `${directHazardMode ?? "direct"}-result`,
     scenarioName: activeDirectScenario?.name
-      ?? `${directHazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact"} at ${hazardResult?.center.lat.toFixed(3) ?? "—"}°, ${hazardResult?.center.lon.toFixed(3) ?? "—"}°`,
+      ?? t("app.directScenarioAt", {
+        kind: directHazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact"),
+        lat: hazardResult ? formatNumber(hazardResult.center.lat, { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—",
+        lon: hazardResult ? formatNumber(hazardResult.center.lon, { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—",
+      }),
     scenarioKind: directHazardMode === "nuclear" ? "Nuclear" : "Asteroid",
-    solverMode: `Rust-authoritative ${hazardResult?.modelVersion ?? "direct-hazard"} result`,
-    citationReference: activeDirectScenario?.reference ?? "Cataclysm direct-hazard model citations embedded in result evidence.",
+    solverMode: t("app.solver.direct", { version: hazardResult?.modelVersion ?? "direct-hazard" }),
+    citationReference: activeDirectScenario?.reference ?? t("app.directCitation"),
     citationUrl: activeDirectScenario?.referenceUrl ?? null,
     limitation: activeDirectScenario?.limitations?.join(" ")
-      ?? "Educational screening model only; geometry is not emergency guidance or a prediction.",
+      ?? t("app.directLimitation"),
     bathymetryAssetId: "not-applicable-direct-hazard",
-    bathymetrySource: "Not used by this direct-hazard result.",
+    bathymetrySource: t("app.directBathymetry"),
     renderFrame: directRenderProvenance,
     runQuality: null,
     evidenceIds: exportEvidenceIdsA(),
@@ -1226,8 +1233,8 @@ export default function App() {
     timeS,
     scenarioKind: activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? "Custom",
     solverMode: hasSwePlayback
-      ? "Shallow-water-equation snapshot playback"
-      : "Analytical source geometry and coastal runup sampling",
+      ? t("app.solver.swe")
+      : t("app.solver.analytical"),
     renderFrame: inHazardMode ? directRenderProvenance : sweRenderFrameA,
     runQuality: sweRunQualityA,
     evidenceIds: exportEvidenceIdsA(),
@@ -1239,8 +1246,8 @@ export default function App() {
     timeS,
     scenarioKind: activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? "Custom",
     solverMode: hasSwePlayback
-      ? "Shallow-water-equation snapshot playback"
-      : "Analytical source geometry and coastal runup sampling",
+      ? t("app.solver.swe")
+      : t("app.solver.analytical"),
     renderFrame: sweRenderFrameB,
     runQuality: sweRunQualityB,
     evidenceIds: exportEvidenceIdsB(),
@@ -1255,7 +1262,7 @@ export default function App() {
           : probeSurfaceLocal(lat, lon);
         if (surface.surface_class === "coast" || surface.surface_class === "unknown") {
           showToast(
-            `Target is ${surface.surface_class}; preserving the selected material because the coarse mask cannot resolve the shoreline.`,
+            t("app.surface.unresolved", { surface: surface.surface_class }),
             "info",
           );
         } else {
@@ -1273,13 +1280,17 @@ export default function App() {
             }));
           }
           showToast(
-            `Target classified as ${surface.surface_class.replace("_", " ")} by surface mask ${surface.mask_version} (${surface.confidence} confidence).`,
+            t("app.surface.classified", {
+              surface: surface.surface_class.replace("_", " "),
+              version: surface.mask_version,
+              confidence: surface.confidence,
+            }),
             "info",
           );
         }
       } catch (error) {
         console.warn("[surface] target probe failed", error);
-        showToast("Target placed, but automatic surface classification failed; material was preserved.", "error");
+        showToast(t("app.surface.failed"), "error");
       }
     } else {
       setPickedLocation({ lat, lon });
@@ -1648,16 +1659,20 @@ export default function App() {
             >
             <ExportGroup
               id="image"
-              label="Image"
-              description="Capture the current analytical view or comparison."
+              label={t("app.export.image")}
+              description={t("app.export.imageDescription")}
             >
             <ToolbarButton
               icon="image"
               onClick={() => {
-                const run = () => reportExportResult(exportGlobePng(exportMetaA()), "Saved globe PNG.", run);
+                const run = () => reportExportResult(
+                  exportGlobePng(exportMetaA()),
+                  t("app.export.saved", { item: t("app.export.item.globePng") }),
+                  run,
+                );
                 run();
               }}
-              title="Save the current globe view as PNG"
+              title={t("app.export.title.png")}
               disabled={inHazardMode ? !hazardResult : !slotA.initial}
               disabledReason={inHazardMode ? directExportRequiredReason : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
@@ -1672,71 +1687,75 @@ export default function App() {
                     exportComparisonPng({
                       metaA: exportMetaA(),
                       metaB: exportMetaB(),
-                      labelA: activePresetA?.name ?? "Slot A",
-                      labelB: activePresetB?.name ?? "Slot B",
+                      labelA: activePresetA?.name ?? t("app.slotA"),
+                      labelB: activePresetB?.name ?? t("app.slotB"),
                       storyTitle: activeComparisonStory?.title,
                       storySummary: comparisonMetricLines(activeComparisonMetrics),
                     }),
-                    "Saved comparison PNG.",
+                    t("app.export.saved", { item: t("app.export.item.comparisonPng") }),
                     run,
                   );
                   run();
                 }}
-                title="Export both comparison globes side-by-side as a single PNG"
+                title={t("app.export.title.comparison")}
                 disabled={!slotA.initial || !slotB.initial}
-                disabledReason="Select a source in both comparison slots first."
+                disabledReason={t("app.export.reason.bothSlots")}
                 onUnavailable={(reason) => showToast(reason, "info")}
               >
-                Compare
+                {t("app.export.compare")}
               </ToolbarButton>
             )}
             </ExportGroup>
             <ExportGroup
               id="share"
-              label="Share"
-              description="Create an attributed card or copy a reproducible scenario link."
+              label={t("app.export.share")}
+              description={t("app.export.shareDescription")}
             >
             <ToolbarButton
               icon="share"
               onClick={() => {
-                const run = () => reportExportResult(exportGlobeShareCard(exportMetaA()), "Saved share card.", run);
+                const run = () => reportExportResult(
+                  exportGlobeShareCard(exportMetaA()),
+                  t("app.export.saved", { item: t("app.export.item.shareCard") }),
+                  run,
+                );
                 run();
               }}
-              title="Save a branded share-card with scenario metadata + citation overlay"
+              title={t("app.export.title.share")}
               disabled={inHazardMode ? !hazardResult : !slotA.initial}
               disabledReason={inHazardMode ? directExportRequiredReason : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              Share
+              {t("app.export.share")}
             </ToolbarButton>
             <ToolbarButton
               icon="link"
               onClick={() => {
                 const params = scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario);
                 if (!params) {
-                  showToast("Select a preset or run a custom scenario to share as a link.", "info");
+                  showToast(t("app.export.reason.shareLink"), "info");
                   return;
                 }
                 const url = `${window.location.origin}${window.location.pathname}${params}`;
                 const run = async () => reportExportResult(
                   await copyExportText(url),
-                  "Scenario link copied to clipboard.",
+                  t("app.export.linkCopied"),
                   () => void run(),
                 );
                 void run();
               }}
-              title="Copy a shareable URL for the current scenario"
+              title={t("app.export.title.link")}
               disabled={inHazardMode || (!slotA.activePresetId && !slotA.lastCustomScenario)}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              Link
+              {t("app.export.link")}
             </ToolbarButton>
             </ExportGroup>
             <ExportGroup
               id="replay"
-              label="Replay"
-              description="Record the visible timeline as a local media replay."
+              label={t("app.export.replay")}
+              description={t("app.export.replayDescription")}
             >
             <ToolbarButton
               icon="video"
@@ -1749,25 +1768,29 @@ export default function App() {
                       exportMetaA(),
                       { fps: 30, durationMs: 6_000, bitsPerSecond: 6_000_000 },
                     );
-                    reportExportResult(result, "Saved globe recording.", () => void run());
+                    reportExportResult(
+                      result,
+                      t("app.export.saved", { item: t("app.export.item.recording") }),
+                      () => void run(),
+                    );
                   } finally {
                     setRecording(false);
                   }
                 };
                 void run();
               }}
-              title="Record 6 s of the globe to WebM/MP4. Start SWE playback first to capture the wave."
+              title={t("app.export.title.video")}
               disabled={inHazardMode || !slotA.initial || recording}
-              disabledReason={recording ? "Recording is already in progress." : sourceRequiredReason}
+              disabledReason={recording ? t("app.export.reason.recording") : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              {recording ? "Recording" : "Video"}
+              {recording ? t("app.export.recording") : t("app.export.video")}
             </ToolbarButton>
             </ExportGroup>
             <ExportGroup
               id="data"
-              label="Data"
-              description="Export accessible results and interoperable GIS or Cesium files."
+              label={t("app.export.data")}
+              description={t("app.export.dataDescription")}
             >
             <ToolbarButton
               icon="text"
@@ -1778,17 +1801,17 @@ export default function App() {
                     runupResults: slotA.runupResults,
                     sourceKind: activeScenarioKindA,
                   }),
-                  "Saved text results.",
+                  t("app.export.saved", { item: t("app.export.item.textResults") }),
                   run,
                 );
                 run();
               }}
-              title="Export scenario parameters and runup results as a screen-reader-friendly text file"
+              title={t("app.export.title.text")}
               disabled={inHazardMode || !slotA.initial}
               disabledReason={sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              Text
+              {t("app.export.text")}
             </ToolbarButton>
             <ToolbarButton
               icon="czml"
@@ -1796,15 +1819,17 @@ export default function App() {
                 if (directExportData || (sweSnapshots && sweSnapshots.length > 0)) {
                   const run = () => reportExportResult(
                     exportCzml(exportMetaA(), sweSnapshots ?? [], directExportData),
-                    directExportData ? "Saved direct-effects CZML file." : "Saved CZML playback file.",
+                    t("app.export.saved", {
+                      item: t(directExportData ? "app.export.item.directCzml" : "app.export.item.czml"),
+                    }),
                     run,
                   );
                   run();
                 } else {
-                  showToast("Run SWE simulation first to export CZML.", "error");
+                  showToast(t("app.export.czmlRunFirst"), "error");
                 }
               }}
-              title={inHazardMode ? "Export direct-effect rings and hazard polygons as static CZML" : "Export SWE simulation as a CZML file for playback in any Cesium viewer"}
+              title={t(inHazardMode ? "app.export.title.directCzml" : "app.export.title.czml")}
               disabled={inHazardMode ? !directExportData : !sweSnapshots || sweSnapshots.length === 0}
               disabledReason={inHazardMode ? directExportRequiredReason : snapshotsRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
@@ -1817,18 +1842,18 @@ export default function App() {
                 if (!sweScientificExport) return;
                 const run = async () => reportExportResult(
                   await exportScientificNetcdf(sweScientificExport),
-                  "Saved CF-NetCDF solver products.",
+                  t("app.export.saved", { item: t("app.export.item.netcdf") }),
                   () => void run(),
                 );
                 void run();
               }}
-              title="Export final SWE state and max-field products as a CF-1.12 NetCDF file"
+              title={t("app.export.title.netcdf")}
               disabled={inHazardMode || !inTauri || !sweScientificExport}
               disabledReason={inHazardMode
-                ? "NetCDF is available for SWE solver runs."
+                ? t("app.export.reason.netcdfSwe")
                 : !inTauri
-                  ? "Use the desktop app for CF-NetCDF export."
-                  : sweScientificExportError ?? "Run the SWE solver before exporting NetCDF."}
+                  ? t("app.export.reason.netcdfDesktop")
+                  : sweScientificExportError ?? t("app.export.reason.netcdfRun")}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               NetCDF
@@ -1839,18 +1864,18 @@ export default function App() {
                 if (!sweScientificExport?.zarr) return;
                 const run = async () => reportExportResult(
                   await exportScientificZarr(sweScientificExport),
-                  "Saved Zarr v3 solver products.",
+                  t("app.export.saved", { item: t("app.export.item.zarr") }),
                   () => void run(),
                 );
                 void run();
               }}
-              title="Export final SWE state and max-field products as a chunked Zarr v3 store"
+              title={t("app.export.title.zarr")}
               disabled={inHazardMode || !inTauri || !sweScientificExport?.zarr}
               disabledReason={inHazardMode
-                ? "Zarr is available for SWE solver runs."
+                ? t("app.export.reason.zarrSwe")
                 : !inTauri
-                  ? "Use the desktop app for Zarr export."
-                  : sweScientificExport?.zarr_error ?? sweScientificExportError ?? "Run the SWE solver before exporting Zarr."}
+                  ? t("app.export.reason.zarrDesktop")
+                  : sweScientificExport?.zarr_error ?? sweScientificExportError ?? t("app.export.reason.zarrRun")}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               Zarr
@@ -1876,12 +1901,14 @@ export default function App() {
                 }));
                 const run = () => reportExportResult(
                   exportGeoJson(points, exportMetaA(), sweMaxField?.isochrones ?? null, directExportData),
-                  directExportData ? "Saved direct-effects GeoJSON file." : "Saved GeoJSON inundation file.",
+                  t("app.export.saved", {
+                    item: t(directExportData ? "app.export.item.directGeojson" : "app.export.item.geojson"),
+                  }),
                   run,
                 );
                 run();
               }}
-              title={inHazardMode ? "Export direct-effect rings and hazard polygons as GeoJSON" : "Export inundation polygons as GeoJSON"}
+              title={t(inHazardMode ? "app.export.title.directGeojson" : "app.export.title.geojson")}
               disabled={inHazardMode ? !directExportData : slotA.runupResults.length === 0}
               disabledReason={inHazardMode ? directExportRequiredReason : runupRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
@@ -1909,12 +1936,14 @@ export default function App() {
                 }));
                 const run = () => reportExportResult(
                   exportKml(exportMetaA(), points, directExportData),
-                  directExportData ? "Saved direct-effects KML file." : "Saved KML file for Google Earth.",
+                  t("app.export.saved", {
+                    item: t(directExportData ? "app.export.item.directKml" : "app.export.item.kml"),
+                  }),
                   run,
                 );
                 run();
               }}
-              title={inHazardMode ? "Export direct-effect rings and hazard polygons as KML" : "Export source and runup data as KML for Google Earth"}
+              title={t(inHazardMode ? "app.export.title.directKml" : "app.export.title.kml")}
               disabled={inHazardMode ? !directExportData : !slotA.initial}
               disabledReason={inHazardMode ? directExportRequiredReason : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
@@ -2107,7 +2136,10 @@ export default function App() {
                   onInspectCancel={() => setInspectMode(false)}
                   primary={false}
                   previewCamera={comparisonCameraB}
-                  accessibleSceneLabel={`Comparison slot B · ${activePresetB?.name ?? slotB.initial?.label ?? "No source selected"}`}
+                  accessibleSceneLabel={t("app.comparisonScene", {
+                    slot: t("app.slotB"),
+                    source: activePresetB?.name ?? slotB.initial?.label ?? t("layers.noSource"),
+                  })}
                   simulationTimeS={timeS}
                 />
                 <div className="app__globe-tag" data-slot="b">{t("app.slotB")}</div>
@@ -2119,12 +2151,12 @@ export default function App() {
         <div className="app__viewport-hud app__viewport-hud--source" aria-label={t("app.scenarioTimeAria", { minutes: Math.round(timeS / 60) })}>
           <div className="app__viewport-time">
             <span aria-hidden="true">◷</span>
-            <strong>T+{Math.round(timeS / 60)} min</strong>
+            <strong>{t("app.timeMinutes", { minutes: formatNumber(Math.round(timeS / 60)) })}</strong>
           </div>
           <small>{t("app.scenarioTime")}</small>
           <span className="app__viewport-source-name">{viewportSourceLabel}</span>
-          {inHazardMode && hazardCenter && <strong>{hazardCenter.lat.toFixed(2)}°, {hazardCenter.lon.toFixed(2)}°</strong>}
-          {!inHazardMode && slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}°, {slotA.initial.center.lon_deg.toFixed(2)}°</strong>}
+          {inHazardMode && hazardCenter && <strong>{formatNumber(hazardCenter.lat, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°, {formatNumber(hazardCenter.lon, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°</strong>}
+          {!inHazardMode && slotA.initial && <strong>{formatNumber(slotA.initial.center.lat_deg, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°, {formatNumber(slotA.initial.center.lon_deg, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°</strong>}
         </div>
         <button className="app__viewport-layers" type="button" onClick={() => setInspectorTab("layers")} aria-label={t("app.openLayers")}>
           {t("app.layers")}
@@ -2147,14 +2179,19 @@ export default function App() {
         <div className="app__viewport-telemetry" aria-label={t("app.viewportTelemetry")}>
           <svg className="app__viewport-north" viewBox="0 0 36 36" aria-hidden>
             <g transform={`rotate(${-cameraTelemetry.headingDeg} 18 18)`}>
-              <text x="18" y="9">N</text>
+              <text x="18" y="9">{t("app.direction.northShort")}</text>
               <path d="M18 11 L13 25 L18 22 L23 25 Z" />
             </g>
           </svg>
           <div>
             <span className="app__viewport-instrument-label">{t("app.camera")}</span>
-            <strong>{t("app.altitude", { value: cameraTelemetry.altitudeM >= 1_000_000 ? `${(cameraTelemetry.altitudeM / 1_000_000).toFixed(1)} Mm` : `${(cameraTelemetry.altitudeM / 1000).toFixed(0)} km` })}</strong>
-            <small>{Math.abs(cameraTelemetry.lat).toFixed(2)}° {cameraTelemetry.lat >= 0 ? "N" : "S"} · {Math.abs(cameraTelemetry.lon).toFixed(2)}° {cameraTelemetry.lon >= 0 ? "E" : "W"}</small>
+            <strong>{t("app.altitude", { value: cameraTelemetry.altitudeM >= 1_000_000 ? `${formatNumber(cameraTelemetry.altitudeM / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mm` : `${formatNumber(cameraTelemetry.altitudeM / 1000, { maximumFractionDigits: 0 })} km` })}</strong>
+            <small>{t("app.cameraCoordinates", {
+              lat: formatNumber(Math.abs(cameraTelemetry.lat), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+              latDirection: t(cameraTelemetry.lat >= 0 ? "app.direction.northShort" : "app.direction.southShort"),
+              lon: formatNumber(Math.abs(cameraTelemetry.lon), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+              lonDirection: t(cameraTelemetry.lon >= 0 ? "app.direction.eastShort" : "app.direction.westShort"),
+            })}</small>
           </div>
         </div>
       </main>
@@ -2337,12 +2374,12 @@ export default function App() {
             onRenderFrame={setSweRenderFrameA}
             playbackTimeS={timeS}
             onPlaybackTimeChange={setTimeS}
-            slotLabel={compareMode ? "Slot A" : undefined}
+            slotLabel={compareMode ? t("app.slotA") : undefined}
             runAndWatchNonce={sweRunAndWatchNonce}
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
-          <div hidden={!compareMode} aria-label="Comparison slot B solver">
-            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel="Slot B" />
+          <div hidden={!compareMode} aria-label={t("app.comparisonSolver", { slot: t("app.slotB") })}>
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel={t("app.slotB")} />
           </div>
           <div hidden={compareMode || !customEditorOpen || workspaceMode === "simple"}>
             <ScenarioBuilder
@@ -2410,7 +2447,7 @@ export default function App() {
         />}
         {inspectorTab === "results" && compareMode && (
           <div className="app__compare-rail">
-            <div className="app__compare-rail-label">Slot B readout</div>
+            <div className="app__compare-rail-label">{t("app.comparisonReadout", { slot: t("app.slotB") })}</div>
             <ResultsPanel
               initial={slotB.initial}
               preset={activePresetB}
@@ -2526,7 +2563,7 @@ export default function App() {
         rate={timelineRate}
         onRateChange={setTimelineRate}
         hasSource={inHazardMode ? Boolean(hazardResult) : Boolean(slotA.initial)}
-        sourceLabel={inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}
+        sourceLabel={inHazardMode ? (hazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact")) : activeSourceLabel}
         solverReady={!inHazardMode && hasSwePlayback}
         domain={hazardMode}
         frameCount={inHazardMode ? 0 : sweSnapshots?.length ?? 0}

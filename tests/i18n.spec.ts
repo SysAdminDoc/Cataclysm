@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("language switch persists across settings, simulation results, layers, and lessons", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(150_000);
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const language = page.getByRole("combobox", { name: "Interface language" });
@@ -54,6 +54,17 @@ test("language switch persists across settings, simulation results, layers, and 
   await expect(page.getByRole("button", { name: "表示レイヤーを開く" })).toBeVisible();
   await expect(page.getByText("クイックスタート", { exact: true })).toBeVisible();
   await expect(page.locator(".simulation-transport")).toContainText("シナリオ時刻");
+  await expect(page.getByRole("region", { name: "発生源なしの解析地球儀" })).toBeVisible();
+  const globeSummary = page.locator("[data-globe-scene-summary]").first();
+  await expect(globeSummary).toContainText("表示中の解析レイヤー");
+  await expect(globeSummary).toContainText("緯度と経度を入力できます");
+  await expect(globeSummary).not.toContainText(/Camera|Visible analytical|Renderer imagery|Latitude and longitude/);
+  await page.getByRole("button", { name: "書き出し", exact: true }).click();
+  const exportPanel = page.locator(".app__export-panel");
+  await expect(exportPanel).toContainText("現在の解析表示または比較をキャプチャします。");
+  await expect(exportPanel).toContainText("アクセシブルな結果と互換GIS・Cesiumファイルを書き出します。");
+  await expect(page.getByRole("button", { name: "PNG" })).toHaveAttribute("title", "最初にプリセットを選ぶか、カスタムソースをシミュレートしてください。");
+  await page.getByRole("button", { name: "書き出し", exact: true }).click();
   const headerBounds = await page.locator(".app__header").boundingBox();
   expect(headerBounds).not.toBeNull();
   expect(await page.screenshot({ clip: headerBounds! })).toMatchSnapshot("localized-header-ja.png");

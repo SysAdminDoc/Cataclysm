@@ -44,6 +44,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Completed the four-language interface across the analytical globe and its
+  hidden text equivalent, provider/fallback lifecycle, coordinate and point
+  inspection flows, renderer recovery/performance diagnostics, export command
+  groups, disabled-action guidance, and localized application telemetry.
+  Structured imagery status codes keep provider messages translatable without
+  weakening renderer tests; the full Japanese journey now verifies that globe
+  narration and export controls contain no English UI fallback.
+
 - The complete Custom scenario editor now follows the selected locale across
   all five source types, scientific field labels and cited help, burst and
   landslide choices, fault auto-fill feedback, saved-scenario recovery,

@@ -53,7 +53,6 @@ import { CesiumTsunamiAnalyticalHost } from "../render/cesium/cesium-tsunami-ana
 import {
   buildInspectionRequest,
   directHazardProbeReport,
-  formatPointProbeReport,
   tsunamiProbeReport,
   type PointProbeReport,
 } from "../render/cesium/inspection";
@@ -74,6 +73,7 @@ import { CesiumInspectionPresenter } from "../render/cesium/cesium-inspection-pr
 import {
   CesiumImageryController,
   type ImageryControllerStatus,
+  type ImageryStatusMessage,
 } from "../render/cesium/imagery-controller";
 import { CesiumImageryHost } from "../render/cesium/cesium-imagery-host";
 import {
@@ -87,9 +87,14 @@ import {
   type AsyncResult,
 } from "../lib/async-result";
 import { useStrategicGlobeOverlays } from "./globe-strategic-overlays";
-import { useGlobeAccessibilitySummary } from "./globe-accessibility";
+import {
+  localizedGlobeStyleLabel,
+  useGlobeAccessibilitySummary,
+} from "./globe-accessibility";
 import { useGlobeControllerSync } from "./globe-controller-sync";
 import { OSM_ATTRIBUTION_URL, type HumanitarianFacility } from "../lib/osm-facilities";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -173,6 +178,116 @@ type SweImageryResource = {
   providers: Cesium.SingleTileImageryProvider[];
   layers: Cesium.ImageryLayer[];
 };
+
+type Translate = (key: MessageKey, values?: Record<string, string | number>) => string;
+type FormatNumber = (value: number, options?: Intl.NumberFormatOptions) => string;
+
+function localizedCanonicalStyleLabel(label: string, t: Translate): string {
+  const style = [
+    "natural-earth-2",
+    "osm",
+    "esri-world-imagery",
+    "cesium-world-imagery",
+    "cesium-bathymetry",
+  ].find((id) => findStyle(id).label === label) as GlobeStyleId | undefined;
+  return style ? localizedGlobeStyleLabel(style, t) : label;
+}
+
+function localizedImageryMessage(
+  fallback: string,
+  detail: ImageryStatusMessage,
+  t: Translate,
+): string {
+  const style = detail.styleLabel
+    ? localizedCanonicalStyleLabel(detail.styleLabel, t)
+    : "";
+  switch (detail.kind) {
+    case "connecting": return style
+      ? t("globe.imagery.connecting", { style })
+      : t("globe.imagery.connectingGeneric");
+    case "fallback-loading": return t("globe.imagery.fallbackLoading", { style });
+    case "fallback-active": return t("globe.imagery.fallbackActive", { style });
+    case "all-failed": return t("globe.imagery.allFailed");
+    case "offline-fallback": return t("globe.imagery.offlineFallback", { style });
+    case "missing-token": return t("globe.imagery.missingToken", { style });
+    case "ready": return t("globe.imagery.ready", { style });
+    case "bundled-failed": return t("globe.imagery.bundledFailed");
+    case "tiles-degraded": return t("globe.imagery.tilesDegraded", { style });
+    default: return fallback;
+  }
+}
+
+function localizedProbeText(value: string, t: Translate): string {
+  switch (value) {
+    case "Wave arrived by scenario time": return t("globe.probe.waveArrived");
+    case "Wave in transit": return t("globe.probe.waveTransit");
+    case "No displayed threshold reached — not a safety finding": return t("globe.probe.noThreshold");
+    case "No numeric displayed threshold": return t("globe.probe.noNumericThreshold");
+    case "analytical far-field model": return t("globe.probe.defaultModel");
+    case "Nominal 1° slope / 50 m depth": return t("globe.probe.defaultAssumption");
+    case "Local bathymetry and shoreline effects are unresolved": return t("globe.probe.defaultUnknown");
+    case "illustrative": return t("globe.probe.illustrative");
+    case "unknown": return t("globe.probe.unknownValue");
+    default: {
+      const thresholdMatch = /^(\d+) displayed thresholds? reached$/.exec(value);
+      if (!thresholdMatch) return value;
+      const count = Number(thresholdMatch[1]);
+      return count === 1
+        ? t("globe.probe.thresholdsOne")
+        : t("globe.probe.thresholdsMany", { count });
+    }
+  }
+}
+
+function localizedMetricLabel(label: string, t: Translate): string {
+  const key = ({
+    "Threshold lower bounds": "globe.probe.metric.thresholds",
+    "Earliest modeled arrival": "globe.probe.metric.earliest",
+    Arrival: "globe.probe.metric.arrival",
+    "Offshore amplitude": "globe.probe.metric.offshore",
+    Runup: "globe.probe.metric.runup",
+    Inundation: "globe.probe.metric.inundation",
+  } as const)[label as keyof {
+    "Threshold lower bounds": string;
+    "Earliest modeled arrival": string;
+    Arrival: string;
+    "Offshore amplitude": string;
+    Runup: string;
+    Inundation: string;
+  }];
+  return key ? t(key as MessageKey) : label;
+}
+
+function formatLocalizedPointProbeReport(
+  report: PointProbeReport,
+  t: Translate,
+  formatNumber: FormatNumber,
+): string {
+  const fixed = (value: number, digits: number) => Number.isFinite(value)
+    ? formatNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    : "—";
+  return [
+    `${fixed(report.lat, 2)}°, ${fixed(report.lon, 2)}°`,
+    t("globe.probe.rangeStatus", {
+      range: fixed(report.rangeM / 1_000, 1),
+      status: localizedProbeText(report.status, t),
+    }),
+    ...report.metrics.map((metric) =>
+      `${localizedMetricLabel(metric.label, t)}: ${localizedProbeText(metric.value, t)}`),
+    t("globe.probe.model", {
+      model: localizedProbeText(report.governingModel, t),
+      confidence: localizedProbeText(report.confidence, t),
+    }),
+    t("globe.probe.basis", { value: report.citations[0] ?? t("globe.probe.noCitation") }),
+    t("globe.probe.assumption", {
+      value: localizedProbeText(report.assumptions[1] ?? report.assumptions[0] ?? t("globe.probe.notSupplied"), t),
+    }),
+    t("globe.probe.unknown", {
+      value: localizedProbeText(report.unknowns[0] ?? t("globe.probe.notSupplied"), t),
+    }),
+  ].join("\n");
+}
+
 function CoordEntryForm({
   onSubmit,
   label,
@@ -180,6 +295,7 @@ function CoordEntryForm({
   onSubmit: (lat: number, lon: number) => void;
   label: string;
 }) {
+  const { t } = useI18n();
   const [lat, setLat] = useState("");
   const [lon, setLon] = useState("");
   const validationId = useId();
@@ -189,10 +305,10 @@ function CoordEntryForm({
   const coordinatesValid =
     Number.isFinite(la) && Number.isFinite(lo) && la >= -90 && la <= 90 && lo >= -180 && lo <= 180;
   const validationMessage = !hasBoth
-    ? "Enter both latitude and longitude."
+    ? t("globe.coord.enterBoth")
     : coordinatesValid
       ? null
-      : "Latitude must be -90 to 90 and longitude -180 to 180.";
+      : t("globe.coord.bounds");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -205,8 +321,8 @@ function CoordEntryForm({
       <span className="coord-entry__label">{label}</span>
       <input
         type="number"
-        placeholder="Lat (°)"
-        aria-label="Latitude"
+        placeholder={t("globe.coord.latPlaceholder")}
+        aria-label={t("globe.coord.latitude")}
         step="any"
         min={-90}
         max={90}
@@ -219,8 +335,8 @@ function CoordEntryForm({
       />
       <input
         type="number"
-        placeholder="Lon (°)"
-        aria-label="Longitude"
+        placeholder={t("globe.coord.lonPlaceholder")}
+        aria-label={t("globe.coord.longitude")}
         step="any"
         min={-180}
         max={180}
@@ -231,7 +347,7 @@ function CoordEntryForm({
         onChange={(e) => setLon(e.target.value)}
         className="coord-entry__input"
       />
-      <button type="submit" className="coord-entry__go" disabled={!coordinatesValid}>Go</button>
+      <button type="submit" className="coord-entry__go" disabled={!coordinatesValid}>{t("globe.coord.go")}</button>
       <span id={validationId} className="coord-entry__validation" role="status">
         {validationMessage}
       </span>
@@ -295,10 +411,12 @@ export function Globe({
   outcomeFocus,
   onOutcomeFocusTime,
   onCameraTelemetry,
-  accessibleSceneLabel = "Unconfigured planetary hazard scene",
+  accessibleSceneLabel,
   simulationTimeS = 0,
   accessibleCameraTelemetry,
 }: Props) {
+  const { t, formatNumber } = useI18n();
+  const sceneLabel = accessibleSceneLabel ?? t("globe.unconfiguredScene");
   const sceneSummaryId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
@@ -347,7 +465,18 @@ export function Globe({
     dynamicAttributions: string[];
   } | null>(null);
   const [imageryStatus, setImageryStatus] = useState<ImageryControllerStatus>("connecting");
-  const [imageryMessage, setImageryMessage] = useState("Connecting to globe imagery…");
+  const [imageryMessageState, setImageryMessageState] = useState<{
+    fallback: string;
+    detail: ImageryStatusMessage;
+  }>({
+    fallback: "Connecting to globe imagery…",
+    detail: { kind: "connecting" },
+  });
+  const imageryMessage = localizedImageryMessage(
+    imageryMessageState.fallback,
+    imageryMessageState.detail,
+    t,
+  );
   const [activeImageryStyle, setActiveImageryStyle] = useState<GlobeStyleId | null>(null);
   const [networkOnline, setNetworkOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
   const [imageryRetryNonce, setImageryRetryNonce] = useState(0);
@@ -364,6 +493,13 @@ export function Globe({
     automatic: boolean;
   }>({ tier: "High", automatic: true });
   const [qualityDiagnostics, setQualityDiagnostics] = useState<CesiumQualityDiagnostics | null>(null);
+  const rendererErrorMessage = rendererError === "Graphics context was lost. Simulation state is safe; reset the renderer to continue."
+    ? t("globe.renderer.contextLost")
+    : rendererError?.startsWith("Graphics context restored, but renderer reset failed: ")
+      ? t("globe.renderer.resetFailed", {
+          error: rendererError.slice("Graphics context restored, but renderer reset failed: ".length),
+        })
+      : rendererError;
   const {
     summary: accessibilitySummary,
     announcedSummary: announcedAccessibilitySummary,
@@ -383,9 +519,9 @@ export function Globe({
     hasWw3Plan: Boolean(ww3Plan),
     mirvPointCount: mirvPreview?.points.length ?? 0,
     camera: accessibleCameraTelemetry,
-    sceneLabel: accessibleSceneLabel,
+    sceneLabel,
     simulationTimeS,
-    rendererError,
+    rendererError: rendererErrorMessage,
     imageryStatus,
     imageryMessage,
     lastInspectionSummary,
@@ -482,9 +618,9 @@ export function Globe({
         }),
       buildTerrain: (style) => buildTerrain(style),
       host: new CesiumImageryHost(viewer),
-      onStatus: (status, message) => {
+      onStatus: (status, message, detail) => {
         setImageryStatus(status);
-        setImageryMessage(message);
+        setImageryMessageState({ fallback: message, detail });
       },
       onActiveStyle: setActiveImageryStyle,
       publishSelection: (session) => {
@@ -727,7 +863,12 @@ export function Globe({
     setLastInspectCoord({ lat, lon });
     onInspectionCoordinate?.({ lat, lon });
     setInspectionResult((current) => startAsyncResult(current));
-    setLastInspectionSummary(`Inspection at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude is in progress.`);
+    const formattedLat = formatNumber(lat, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formattedLon = formatNumber(lon, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    setLastInspectionSummary(t("globe.inspection.inProgress", {
+      lat: formattedLat,
+      lon: formattedLon,
+    }));
     const directRequest = directHazardResultId
       ? { result_id: directHazardResultId, click_lat: lat, click_lon: lon }
       : null;
@@ -749,7 +890,7 @@ export function Globe({
           interactionControllerRef.current !== interactionController ||
           inspectionPresenterRef.current !== inspectionPresenter
         ) return;
-        const text = formatPointProbeReport(result);
+        const text = formatLocalizedPointProbeReport(result, t, formatNumber);
         onInspectionReport?.(result);
         inspectionPresenter.present({
           lat,
@@ -757,14 +898,17 @@ export function Globe({
           text,
         });
         setInspectionResult({ status: "ready", value: { lat, lon, text } });
-        setLastInspectionSummary(`Inspected point ${text}`);
+        setLastInspectionSummary(t("globe.inspection.complete", { report: text }));
       })
       .catch((error) => {
         setInspectionResult((current) => rejectAsyncResult(current, error));
-        setLastInspectionSummary(`Inspection failed at ${lat.toFixed(2)} degrees latitude, ${lon.toFixed(2)} degrees longitude.`);
+        setLastInspectionSummary(t("globe.inspection.failedAt", {
+          lat: formattedLat,
+          lon: formattedLon,
+        }));
         console.warn("[globe] inspect_at_point failed", error);
       });
-  }, [directHazardResultId, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport]);
+  }, [directHazardResultId, formatNumber, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport, t]);
 
   useEffect(() => {
     if (!inspectMode || !inspectionCoordinate) return;
@@ -915,7 +1059,7 @@ export function Globe({
         className="app__globe-mount"
         ref={containerRef}
         role="region"
-        aria-label={`${accessibleSceneLabel} analytical globe`}
+        aria-label={t("globe.analyticalGlobe", { scene: sceneLabel })}
         aria-describedby={sceneSummaryId}
         data-imagery-status={imageryStatus}
         data-imagery-style={activeImageryStyle ?? "none"}
@@ -933,7 +1077,7 @@ export function Globe({
           target="_blank"
           rel="noreferrer"
         >
-          Facility data © OpenStreetMap contributors
+          {t("globe.facilityAttribution")}
         </a>
       )}
       <p id={sceneSummaryId} className="sr-only" data-globe-scene-summary>
@@ -951,14 +1095,14 @@ export function Globe({
       {pickMode && (
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">
-            <span>Click anywhere on the globe to set scenario location.</span>
+            <span>{t("globe.pickInstruction")}</span>
             <button className="app__globe-banner-cancel" onClick={onPickCancel} type="button">
-              Cancel
+              {t("globe.cancel")}
             </button>
           </div>
           <CoordEntryForm
             onSubmit={(lat, lon) => onPick?.(lat, lon)}
-            label="Enter coordinates"
+            label={t("globe.enterCoordinates")}
           />
         </div>
       )}
@@ -966,8 +1110,8 @@ export function Globe({
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">
             <span>{domain === "tsunami"
-              ? "Click anywhere on the globe to read amplitude, arrival, and runup."
-              : "Click anywhere to inspect modeled thresholds, arrival, assumptions, and unknowns."}</span>
+              ? t("globe.inspectTsunami")
+              : t("globe.inspectDirect")}</span>
             {lastInspectCoord && onAddGauge && (
               <button
                 className="app__globe-banner-action"
@@ -976,26 +1120,29 @@ export function Globe({
                 }}
                 type="button"
               >
-                Add gauge at {lastInspectCoord.lat.toFixed(2)}°, {lastInspectCoord.lon.toFixed(2)}°
+                {t("globe.addGauge", {
+                  lat: formatNumber(lastInspectCoord.lat, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                  lon: formatNumber(lastInspectCoord.lon, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                })}
               </button>
             )}
             <button className="app__globe-banner-cancel" onClick={onInspectCancel} type="button">
-              Cancel
+              {t("globe.cancel")}
             </button>
           </div>
           <CoordEntryForm
             onSubmit={runInspection}
-            label="Enter coordinates"
+            label={t("globe.enterCoordinates")}
           />
           {inspectionResult.status === "loading" && (
             <div className="app__globe-status" data-status="connecting" role="status" aria-live="polite">
-              {inspectionResult.previous ? "Refreshing inspection; the last point remains visible." : "Inspecting selected point…"}
+              {inspectionResult.previous ? t("globe.inspection.refreshing") : t("globe.inspection.inspecting")}
             </div>
           )}
           {(inspectionResult.status === "error" || inspectionResult.status === "stale") && (
             <div className="app__globe-status" data-status="degraded" role="alert">
-              <span>{inspectionResult.status === "stale" ? "Showing the last valid inspection: " : "Inspection failed: "}{inspectionResult.error}</span>
-              {lastInspectCoord && <button type="button" onClick={() => runInspection(lastInspectCoord.lat, lastInspectCoord.lon)}>Retry inspection</button>}
+              <span>{inspectionResult.status === "stale" ? t("globe.inspection.showingLast") : t("globe.inspection.failed")}{inspectionResult.error}</span>
+              {lastInspectCoord && <button type="button" onClick={() => runInspection(lastInspectCoord.lat, lastInspectCoord.lon)}>{t("globe.inspection.retry")}</button>}
             </div>
           )}
         </div>
@@ -1009,7 +1156,7 @@ export function Globe({
         <div className="app__globe-status" data-status="degraded" role="status" aria-live="polite">
           <span>{imageryMessage}</span>
           {networkOnline && resolvedStyle !== OFFLINE_STYLE && (
-            <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry provider</button>
+            <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>{t("globe.retryProvider")}</button>
           )}
         </div>
       )}
@@ -1017,19 +1164,19 @@ export function Globe({
         <div className="app__globe-status" data-status="fallback" role="status" aria-live="polite">
           <span>{imageryMessage}</span>
           {networkOnline && resolvedStyle !== OFFLINE_STYLE && (
-            <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry {findStyle(resolvedStyle).label}</button>
+            <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>{t("globe.retryStyle", { style: localizedGlobeStyleLabel(resolvedStyle, t) })}</button>
           )}
         </div>
       )}
       {imageryStatus === "failed" && (
         <div className="app__globe-status" data-status="failed" role="alert">
           <span>{imageryMessage}</span>
-          <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>Retry imagery</button>
+          <button type="button" onClick={() => setImageryRetryNonce((nonce) => nonce + 1)}>{t("globe.retryImagery")}</button>
         </div>
       )}
       {rendererError && (
         <div className="app__globe-status" data-status="failed" role="alert">
-          <span>{rendererError}</span>
+          <span>{rendererErrorMessage}</span>
           <button
             type="button"
             onClick={() => {
@@ -1037,25 +1184,28 @@ export function Globe({
               setRendererResetNonce((nonce) => nonce + 1);
             }}
           >
-            Reset renderer
+            {t("globe.renderer.reset")}
           </button>
         </div>
       )}
       {!rendererError && qualityDiagnostics && qualityDiagnostics.activeTier !== qualityDiagnostics.requestedTier && (
         <div className="app__globe-status" data-status="degraded" role="status" aria-live="polite">
-          Renderer protected at {qualityDiagnostics.activeTier} · target remains {qualityDiagnostics.targetFps} FPS. Scientific fields unchanged.
+          {t("globe.renderer.qualityProtected", {
+            tier: t(`globe.quality.${qualityDiagnostics.activeTier}` as MessageKey),
+            fps: formatNumber(qualityDiagnostics.targetFps),
+          })}
         </div>
       )}
       {!initial && !hazardCenter && ["ready", "degraded", "fallback"].includes(imageryStatus) && (
         <div className="app__globe-hint" role="status" aria-live="polite">
-          <span className="app__globe-hint-kicker">{previewLabel ? "Scenario preview" : domain === "tsunami" ? "Ready for a source" : "Ready for a target"}</span>
-          <strong>{previewLabel ?? (domain === "tsunami" ? "Select a preset or simulate a custom source." : "Choose an effects origin.")}</strong>
+          <span className="app__globe-hint-kicker">{previewLabel ? t("globe.hint.preview") : domain === "tsunami" ? t("globe.hint.source") : t("globe.hint.target")}</span>
+          <strong>{previewLabel ?? (domain === "tsunami" ? t("globe.hint.selectSource") : t("globe.hint.chooseOrigin"))}</strong>
           <span>
             {previewLabel
-              ? "Review the framing, then choose Run & Watch to start the model."
+              ? t("globe.hint.previewBody")
               : domain === "tsunami"
-              ? "Wavefronts, runup bars, exports, and inspection unlock after a scenario is active."
-              : `Pick a location to calculate ${domain === "nuclear" ? "blast, thermal, radiation, and fallout" : "entry, crater, blast, and thermal"} effects.`}
+              ? t("globe.hint.tsunamiBody")
+              : t(domain === "nuclear" ? "globe.hint.nuclearBody" : "globe.hint.asteroidBody")}
           </span>
         </div>
       )}

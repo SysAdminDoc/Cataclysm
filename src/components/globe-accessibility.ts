@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { findStyle, type GlobeStyleId } from "../lib/globe-styles";
+import { LANGUAGE_TAGS, translate, type MessageKey } from "../lib/i18n-core";
+import { useI18n } from "../lib/i18n";
 import type { ImageryControllerStatus } from "../render/cesium/imagery-controller";
 
 type CameraTelemetry = Readonly<{
@@ -36,43 +38,107 @@ type GlobeAccessibilityState = Readonly<{
   pickMode: boolean;
 }>;
 
-export function buildGlobeAccessibilitySummary(state: GlobeAccessibilityState): string {
-  const layers = [`${findStyle(state.resolvedStyle).label} base imagery`];
-  if (state.hasInitial) layers.push("source geometry");
-  if (state.hasWavefront) layers.push("analytical wavefront");
-  if (state.hasSweSnapshot) layers.push("SWE water field");
-  if (state.isochroneCount > 0) layers.push("arrival isochrones");
-  if (state.runupResultCount > 0) layers.push("coastal runup samples");
-  if (state.gaugeCount > 0) layers.push(`${state.gaugeCount} user gauges`);
-  if (state.dartBuoyCount > 0) layers.push("DART observations");
-  if (state.hasHazardCenter) layers.push("effects origin");
-  if (state.hazardRingCount > 0) layers.push("hazard effect rings");
-  if (state.hazardPolygonCount > 0) layers.push("fallout plume");
-  if (state.hasDirectRenderFrame) layers.push("authoritative direct-effects frame");
-  if (state.hasWw3Plan) layers.push("illustrative exchange targets and missile arcs");
-  if (state.mirvPointCount > 0) layers.push(`MIRV pattern preview with ${state.mirvPointCount} aim points`);
+type AccessibilityFormatter = Readonly<{
+  t: (key: MessageKey, values?: Record<string, string | number>) => string;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
+}>;
+
+const ENGLISH_FORMATTER: AccessibilityFormatter = {
+  t: (key, values) => translate("en", key, values),
+  formatNumber: (value, options) => value.toLocaleString(LANGUAGE_TAGS.en, options),
+};
+
+export function localizedGlobeStyleLabel(
+  style: GlobeStyleId,
+  t: AccessibilityFormatter["t"],
+): string {
+  switch (style) {
+    case "natural-earth-2": return t("style.naturalLabel");
+    case "osm": return t("style.osmLabel");
+    case "esri-world-imagery": return t("style.esriLabel");
+    case "cesium-world-imagery": return t("style.cesiumLabel");
+    case "cesium-bathymetry": return t("style.bathymetryLabel");
+    default: return findStyle(style).label;
+  }
+}
+
+export function buildGlobeAccessibilitySummary(
+  state: GlobeAccessibilityState,
+  formatter: AccessibilityFormatter = ENGLISH_FORMATTER,
+): string {
+  const { t, formatNumber } = formatter;
+  const layers = [t("globe.access.layer.base", {
+    style: localizedGlobeStyleLabel(state.resolvedStyle, t),
+  })];
+  if (state.hasInitial) layers.push(t("globe.access.layer.source"));
+  if (state.hasWavefront) layers.push(t("globe.access.layer.wavefront"));
+  if (state.hasSweSnapshot) layers.push(t("globe.access.layer.swe"));
+  if (state.isochroneCount > 0) layers.push(t("globe.access.layer.isochrones"));
+  if (state.runupResultCount > 0) layers.push(t("globe.access.layer.runup"));
+  if (state.gaugeCount > 0) layers.push(t("globe.access.layer.gauges", {
+    count: formatNumber(state.gaugeCount),
+  }));
+  if (state.dartBuoyCount > 0) layers.push(t("globe.access.layer.dart"));
+  if (state.hasHazardCenter) layers.push(t("globe.access.layer.origin"));
+  if (state.hazardRingCount > 0) layers.push(t("globe.access.layer.rings"));
+  if (state.hazardPolygonCount > 0) layers.push(t("globe.access.layer.fallout"));
+  if (state.hasDirectRenderFrame) layers.push(t("globe.access.layer.directFrame"));
+  if (state.hasWw3Plan) layers.push(t("globe.access.layer.exchange"));
+  if (state.mirvPointCount > 0) layers.push(t("globe.access.layer.mirv", {
+    count: formatNumber(state.mirvPointCount),
+  }));
 
   const camera = state.camera;
   const cameraSummary = camera
-    ? `Camera centered at ${Math.abs(camera.lat).toFixed(2)} degrees ${camera.lat >= 0 ? "north" : "south"}, ${Math.abs(camera.lon).toFixed(2)} degrees ${camera.lon >= 0 ? "east" : "west"}, at ${camera.altitudeM >= 1_000_000 ? `${(camera.altitudeM / 1_000_000).toFixed(1)} megametres` : `${(camera.altitudeM / 1_000).toFixed(0)} kilometres`} altitude.`
-    : "Camera position is not available for this comparison pane.";
+    ? t("globe.access.camera", {
+        lat: formatNumber(Math.abs(camera.lat), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        latDirection: t(camera.lat >= 0 ? "globe.access.north" : "globe.access.south"),
+        lon: formatNumber(Math.abs(camera.lon), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        lonDirection: t(camera.lon >= 0 ? "globe.access.east" : "globe.access.west"),
+        altitude: camera.altitudeM >= 1_000_000
+          ? t("globe.access.megametres", {
+              value: formatNumber(camera.altitudeM / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+            })
+          : t("globe.access.kilometres", {
+              value: formatNumber(camera.altitudeM / 1_000, { maximumFractionDigits: 0 }),
+            }),
+      })
+    : t("globe.access.cameraUnavailable");
   const rendererSummary = state.rendererError
-    ? `Renderer failed: ${state.rendererError}`
+    ? t("globe.access.rendererFailed", { error: state.rendererError })
     : state.imageryStatus === "ready"
-      ? "Renderer and base imagery are ready."
-      : `Renderer imagery is ${state.imageryStatus}: ${state.imageryMessage}`;
+      ? t("globe.access.rendererReady")
+      : t("globe.access.rendererStatus", {
+          status: t(`globe.access.status.${state.imageryStatus}` as MessageKey),
+          message: state.imageryMessage,
+        });
   const interactionSummary = state.lastInspectionSummary
     ?? (state.inspectMode
-      ? "Inspect mode is active; choose the globe or enter latitude and longitude."
+      ? t("globe.access.inspectActive")
       : state.pickMode
-        ? "Location picking is active; choose the globe or enter latitude and longitude."
-        : "Latitude and longitude entry is available when location picking or inspection is active.");
+        ? t("globe.access.pickActive")
+        : t("globe.access.entryAvailable"));
 
-  return `${state.sceneLabel}. ${cameraSummary} Scenario time T plus ${Math.round(state.simulationTimeS / 60)} minutes. Visible analytical layers: ${layers.join(", ")}. ${rendererSummary} ${interactionSummary}`;
+  return t("globe.access.summary", {
+    scene: state.sceneLabel,
+    camera: cameraSummary,
+    time: t("globe.access.time", {
+      minutes: formatNumber(Math.round(state.simulationTimeS / 60)),
+    }),
+    layers: t("globe.access.layers", {
+      layers: layers.join(t("globe.access.listSeparator")),
+    }),
+    renderer: rendererSummary,
+    interaction: interactionSummary,
+  });
 }
 
 export function useGlobeAccessibilitySummary(state: GlobeAccessibilityState) {
-  const summary = useMemo(() => buildGlobeAccessibilitySummary(state), [state]);
+  const { t, formatNumber } = useI18n();
+  const summary = useMemo(
+    () => buildGlobeAccessibilitySummary(state, { t, formatNumber }),
+    [formatNumber, state, t],
+  );
   const [announcedSummary, setAnnouncedSummary] = useState("");
   const announcedSummaryRef = useRef("");
 

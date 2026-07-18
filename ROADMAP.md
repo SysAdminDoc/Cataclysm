@@ -37,13 +37,6 @@ tests locally.
 
 ### P3 — education distribution and larger bets
 
-- [ ] P3 — i18n foundation + Spanish/Japanese/Bahasa Indonesia
-  Why: IOC/ITIC distributes tsunami education in exactly these languages and PhET's translated+offline model proves distribution value; do the string-catalog extraction first, translations second. Cross-ref Roadmap_Blocked "Multi-language UI" — this refines its language order with evidence.
-  Evidence: http://itic.ioc-unesco.org/index.php?option=com_content&view=article&id=1349&Itemid=+1075&lang=en; https://phet.colorado.edu/en/simulations/translated.
-  Touches: all user-facing strings (extraction to catalog), src/lib/ (locale plumbing), Settings.tsx (language picker), glossary/lesson content.
-  Acceptance: language switch swaps full UI including lessons/glossary; en remains canonical; missing keys fall back to en with a dev warning.
-  Complexity: XL
-
 ## Research-Driven Additions (2026-07-11 — living Earth data stack)
 
 Grounded in `RESEARCH.md` (2026-07-11). These are prerequisites and data/render

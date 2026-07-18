@@ -4,6 +4,19 @@ export type ImageryControllerStatus =
   | "degraded"
   | "fallback"
   | "failed";
+export type ImageryStatusMessage = Readonly<{
+  kind:
+    | "connecting"
+    | "fallback-loading"
+    | "fallback-active"
+    | "all-failed"
+    | "offline-fallback"
+    | "missing-token"
+    | "ready"
+    | "bundled-failed"
+    | "tiles-degraded";
+  styleLabel?: string;
+}>;
 export type ImageryAssetHealth = "ready" | "degraded" | "failed";
 export type ImageryFallbackReason = "offline" | "missing-token" | "provider-error" | null;
 export type ImageryControllerOutcomeStatus =
@@ -53,7 +66,11 @@ export interface CesiumImageryControllerOptions<Style, Provider, Terrain, Layer>
   ) => Promise<ImagerySelection<Style, Provider>>;
   buildTerrain: (style: Style, signal: AbortSignal) => Promise<Terrain | undefined>;
   host: CesiumImageryHost<Provider, Terrain, Layer>;
-  onStatus: (status: ImageryControllerStatus, message: string) => void;
+  onStatus: (
+    status: ImageryControllerStatus,
+    message: string,
+    detail: ImageryStatusMessage,
+  ) => void;
   onActiveStyle: (style: Style) => void;
   publishSelection: (session: ImagerySessionSnapshot<Style>) => void;
   publishHealth: (health: ImageryAssetHealth) => void;
@@ -169,6 +186,7 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
     this.emitStatus(
       "connecting",
       `Connecting to ${this.options.styleLabel(desired.style)}…`,
+      { kind: "connecting", styleLabel: this.options.styleLabel(desired.style) },
     );
     return this.track(this.runUpdate(request, desired));
   }
@@ -289,7 +307,11 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
     requestedStyle: Style,
     reason: string,
   ): Promise<ImageryControllerOutcome> {
-    this.emitStatus("degraded", `${reason} Loading bundled Natural Earth II…`);
+    this.emitStatus(
+      "degraded",
+      `${reason} Loading bundled Natural Earth II…`,
+      { kind: "fallback-loading", styleLabel: this.options.styleLabel(requestedStyle) },
+    );
     try {
       const candidate = await this.prepareCandidate(
         request,
@@ -301,7 +323,11 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
         return this.staleOutcome(request);
       }
       this.options.onActiveStyle(this.options.offlineStyle);
-      this.emitStatus("fallback", `${reason} Using bundled Natural Earth II.`);
+      this.emitStatus(
+        "fallback",
+        `${reason} Using bundled Natural Earth II.`,
+        { kind: "fallback-active", styleLabel: this.options.styleLabel(requestedStyle) },
+      );
       this.options.publishSelection({
         requestedStyle,
         resolvedStyle: this.options.offlineStyle,
@@ -319,7 +345,11 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
       this.pending = null;
       this.failedRequestCount += 1;
       this.options.error?.("[globe] bundled Natural Earth fallback failed", error);
-      this.emitStatus("failed", "Online imagery and bundled Natural Earth II both failed.");
+      this.emitStatus(
+        "failed",
+        "Online imagery and bundled Natural Earth II both failed.",
+        { kind: "all-failed" },
+      );
       this.options.publishSelection({
         requestedStyle,
         resolvedStyle: this.options.offlineStyle,
@@ -434,6 +464,7 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
       this.emitStatus(
         "fallback",
         `Offline — using bundled Natural Earth II instead of ${this.options.styleLabel(requestedStyle)}.`,
+        { kind: "offline-fallback", styleLabel: this.options.styleLabel(requestedStyle) },
       );
       this.options.publishSelection({
         requestedStyle,
@@ -446,6 +477,7 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
       this.emitStatus(
         "fallback",
         `${this.options.styleLabel(requestedStyle)} needs a Cesium token; using bundled Natural Earth II.`,
+        { kind: "missing-token", styleLabel: this.options.styleLabel(requestedStyle) },
       );
       this.options.publishSelection({
         requestedStyle,
@@ -455,7 +487,11 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
         dynamicAttributions: [],
       });
     } else {
-      this.emitStatus("ready", `${this.options.styleLabel(requestedStyle)} ready.`);
+      this.emitStatus(
+        "ready",
+        `${this.options.styleLabel(requestedStyle)} ready.`,
+        { kind: "ready", styleLabel: this.options.styleLabel(requestedStyle) },
+      );
       this.options.publishSelection({
         requestedStyle,
         resolvedStyle: selection.resolvedStyle,
@@ -474,13 +510,21 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
     active.failures += 1;
     this.options.warn?.(`[globe] tile provider error ${active.failures}`, error);
     if (active.localProvider) {
-      this.emitStatus("failed", "Bundled Natural Earth imagery could not be read.");
+      this.emitStatus(
+        "failed",
+        "Bundled Natural Earth imagery could not be read.",
+        { kind: "bundled-failed" },
+      );
       this.options.publishHealth("failed");
       return;
     }
     const label = this.options.styleLabel(active.requestedStyle);
     if (active.failures < TILE_FAILURES_BEFORE_FALLBACK) {
-      this.emitStatus("degraded", `${label} is losing tiles; retrying before fallback.`);
+      this.emitStatus(
+        "degraded",
+        `${label} is losing tiles; retrying before fallback.`,
+        { kind: "tiles-degraded", styleLabel: label },
+      );
       this.options.publishHealth("degraded");
       return;
     }
@@ -551,8 +595,12 @@ export class CesiumImageryController<Style, Provider, Terrain, Layer> {
     return { status: "aborted", requestId: request.id, viewerGeneration: request.generation };
   }
 
-  private emitStatus(status: ImageryControllerStatus, message: string): void {
-    this.options.onStatus(status, message);
+  private emitStatus(
+    status: ImageryControllerStatus,
+    message: string,
+    detail: ImageryStatusMessage,
+  ): void {
+    this.options.onStatus(status, message, detail);
   }
 
   private track(task: Promise<ImageryControllerOutcome>): Promise<ImageryControllerOutcome> {

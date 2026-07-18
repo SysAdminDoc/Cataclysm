@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildGlobeAccessibilitySummary } from "../globe-accessibility";
+import { LANGUAGE_TAGS, translate } from "../../lib/i18n-core";
 
 const baseState = {
   resolvedStyle: "esri-world-imagery" as const,
@@ -63,5 +64,29 @@ describe("buildGlobeAccessibilitySummary", () => {
     expect(summary).toContain("2 user gauges");
     expect(summary).toContain("Renderer and base imagery are ready.");
     expect(summary).toContain("Inspect mode is active");
+  });
+
+  it("localizes the complete canvas text equivalent and numeric narration", () => {
+    const summary = buildGlobeAccessibilitySummary({
+      ...baseState,
+      hasInitial: true,
+      hasWavefront: true,
+      gaugeCount: 2,
+      camera: { lat: -35.5, lon: 140.25, altitudeM: 2_500_000, headingDeg: 0 },
+      simulationTimeS: 7_200,
+      imageryStatus: "ready",
+      imageryMessage: "準備完了",
+      inspectMode: true,
+    }, {
+      t: (key, values) => translate("ja", key, values),
+      formatNumber: (value, options) => value.toLocaleString(LANGUAGE_TAGS.ja, options),
+    });
+
+    expect(summary).toContain("カメラ中心は緯度35.50度南、経度140.25度東、高度2.5メガメートルです。");
+    expect(summary).toContain("シナリオ時刻はTプラス120分です。");
+    expect(summary).toContain("Esri World Imagery（衛星、トークン不要）ベース画像");
+    expect(summary).toContain("ユーザーゲージ2点");
+    expect(summary).toContain("検査モードが有効です");
+    expect(summary).not.toMatch(/Camera|Visible analytical|Renderer|Inspect mode/);
   });
 });

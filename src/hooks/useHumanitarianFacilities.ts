@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunupAtPointResult } from "../lib/tauri";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 import {
   buildFacilityQueryPlan,
   fetchHumanitarianFacilities,
@@ -23,11 +25,14 @@ export type HumanitarianFacilityState = {
   plan: FacilityQueryPlan;
 };
 
-function initialState(plan: FacilityQueryPlan): HumanitarianFacilityState {
+function initialState(
+  plan: FacilityQueryPlan,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): HumanitarianFacilityState {
   return {
     status: "idle",
     facilities: [],
-    message: "Off — no network request has been made.",
+    message: t("layers.noRequest"),
     cached: false,
     stale: false,
     fetchedAt: null,
@@ -40,6 +45,7 @@ export function useHumanitarianFacilities(
   enabled: boolean,
   runupResults: readonly RunupAtPointResult[],
 ): { state: HumanitarianFacilityState; refresh: () => void } {
+  const { t, formatNumber } = useI18n();
   const planKey = runupResults.map((result) => [
     result.id,
     result.lat,
@@ -53,18 +59,18 @@ export function useHumanitarianFacilities(
   }
   const plan = planCacheRef.current.plan;
   const [refreshNonce, setRefreshNonce] = useState(0);
-  const [state, setState] = useState<HumanitarianFacilityState>(() => initialState(plan));
+  const [state, setState] = useState<HumanitarianFacilityState>(() => initialState(plan, t));
 
   useEffect(() => {
     if (!enabled) {
-      setState(initialState(plan));
+      setState(initialState(plan, t));
       return;
     }
     if (plan.discs.length === 0) {
       setState({
-        ...initialState(plan),
+        ...initialState(plan, t),
         status: "empty",
-        message: "Advance the timeline until a modeled coastal inundation extent is active.",
+        message: t("layers.advanceTimeline"),
       });
       return;
     }
@@ -75,8 +81,8 @@ export function useHumanitarianFacilities(
         status: freshCache.dataset.facilities.length > 0 ? "ready" : "empty",
         facilities: freshCache.dataset.facilities,
         message: freshCache.dataset.facilities.length > 0
-          ? "Loaded from the local 24-hour cache."
-          : "No mapped facilities were found inside the screened extents.",
+          ? t("layers.loadedCache")
+          : t("layers.noMappedFacilities"),
         cached: true,
         stale: false,
         fetchedAt: freshCache.dataset.fetchedAt,
@@ -93,8 +99,8 @@ export function useHumanitarianFacilities(
         status: "offline",
         facilities: staleCache?.dataset.facilities ?? [],
         message: staleCache
-          ? "Offline — showing an older local cache."
-          : "Offline — no cached facility data is available for these extents.",
+          ? t("layers.offlineOlderCache")
+          : t("layers.offlineNoCache"),
         cached: Boolean(staleCache),
         stale: Boolean(staleCache?.stale),
         fetchedAt: staleCache?.dataset.fetchedAt ?? null,
@@ -108,7 +114,7 @@ export function useHumanitarianFacilities(
     setState({
       status: "loading",
       facilities: staleCache?.dataset.facilities ?? [],
-      message: "Querying the public OpenStreetMap Overpass service…",
+      message: t("layers.queryingOsm"),
       cached: Boolean(staleCache),
       stale: Boolean(staleCache),
       fetchedAt: staleCache?.dataset.fetchedAt ?? null,
@@ -123,8 +129,8 @@ export function useHumanitarianFacilities(
             status: dataset.facilities.length > 0 ? "ready" : "empty",
             facilities: dataset.facilities,
             message: dataset.facilities.length > 0
-              ? `Mapped ${dataset.facilities.length} facilities inside the screened extents.`
-              : "No mapped facilities were found inside the screened extents.",
+              ? t("layers.mappedFacilities", { count: formatNumber(dataset.facilities.length) })
+              : t("layers.noMappedFacilities"),
             cached: false,
             stale: false,
             fetchedAt: dataset.fetchedAt,
@@ -134,13 +140,11 @@ export function useHumanitarianFacilities(
         })
         .catch((error) => {
           if (controller.signal.aborted) return;
-          const message = error instanceof Error ? error.message : String(error);
+          console.warn("[facilities] OpenStreetMap query failed", error);
           setState({
             status: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "error",
             facilities: staleCache?.dataset.facilities ?? [],
-            message: staleCache
-              ? `${message} Showing the last local cache.`
-              : message,
+            message: staleCache ? t("layers.showingCache") : t("layers.unavailable"),
             cached: Boolean(staleCache),
             stale: Boolean(staleCache),
             fetchedAt: staleCache?.dataset.fetchedAt ?? null,
@@ -153,7 +157,7 @@ export function useHumanitarianFacilities(
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [enabled, plan, refreshNonce]);
+  }, [enabled, formatNumber, plan, refreshNonce, t]);
 
   const refresh = useCallback(() => {
     removeFacilityCache(plan.signature);

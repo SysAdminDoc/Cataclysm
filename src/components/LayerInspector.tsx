@@ -100,7 +100,7 @@ function HumanitarianFacilityLayer({
             ? state.plan.discs.length === 0 ? t("layers.advanceTimeline") : t("layers.noMappedFacilities")
             : state.status === "offline"
               ? facilities.length > 0 ? t("layers.offlineOlderCache") : t("layers.offlineNoCache")
-              : state.cached ? `${state.message} ${t("layers.showingCache")}` : state.message;
+              : state.message;
   const visibleFacilities = facilities.slice(0, 18);
   return (
     <li className="layer-inspector__row layer-inspector__row--facilities" data-active={enabled ? "true" : "false"}>
