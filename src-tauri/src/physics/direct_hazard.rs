@@ -708,37 +708,54 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
     let seismic_magnitude = (0.67 * effective_energy.log10() - 5.87).max(0.0);
     let tsunami = asteroid_tsunami(&request, effective_energy);
 
+    let blast_source_note = if entry.reaches_ground {
+        ""
+    } else {
+        " (from elevated burst)"
+    };
     let mut rings = vec![
         ring(
             "1st° burns",
             thermal_first,
             "#f5c2e7",
             "thermal",
-            "First-degree burns to exposed skin.",
+            if entry.reaches_ground {
+                "First-degree burns to exposed skin."
+            } else {
+                "First-degree burns from elevated thermal pulse."
+            },
         ),
         ring(
-            "Window breakage (1 psi)",
+            &format!("Window breakage (1 psi){blast_source_note}"),
             blast_window,
             "#f9e2af",
             "blast",
-            "Glass shatters; light injuries.",
+            if entry.reaches_ground {
+                "Glass shatters; light injuries."
+            } else {
+                "Glass shatters from airwave; dominant injury mechanism in airbursts."
+            },
         ),
         ring(
             "3rd° burns",
             thermal_third,
             "#fab387",
             "thermal",
-            "Third-degree burns; widespread ignition.",
+            if entry.reaches_ground {
+                "Third-degree burns; widespread ignition."
+            } else {
+                "Third-degree burns from elevated thermal pulse."
+            },
         ),
         ring(
-            "Severe damage (7 psi)",
+            &format!("Severe damage (7 psi){blast_source_note}"),
             blast_severe,
             "#cba6f7",
             "blast",
             "Most buildings collapse.",
         ),
         ring(
-            "Total destruction (20 psi)",
+            &format!("Total destruction (20 psi){blast_source_note}"),
             blast_total,
             "#89b4fa",
             "blast",
@@ -764,37 +781,72 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
     rings.retain(|item| item.radius_m > 0.5);
     rings.sort_by(|left, right| right.radius_m.total_cmp(&left.radius_m));
 
-    let mut readout_items = vec![
-        readout(
-            "Impact energy",
-            fmt_energy(kinetic_energy / MT_TO_JOULES),
-            None,
-        ),
-        readout(
-            "Recurrence interval",
-            fmt_recurrence_interval(impact_recurrence_interval_years(
-                kinetic_energy / MT_TO_JOULES,
-            )),
-            Some("order-of-magnitude average; Collins et al. 2005".to_string()),
-        ),
-        readout(
-            "Reaches ground",
-            if entry.reaches_ground {
-                "Yes".to_string()
-            } else {
-                "No (airburst)".to_string()
-            },
-            (!entry.reaches_ground)
-                .then(|| format!("burst @ {}", fmt_meters(entry.airburst_altitude))),
-        ),
-        readout(
-            "Seismic magnitude",
-            format!("M {seismic_magnitude:.1}"),
-            None,
-        ),
-        readout("Fireball radius", fmt_meters(fireball_radius), None),
-        readout("20 psi radius", fmt_meters(blast_total), None),
-    ];
+    let mut readout_items = if entry.reaches_ground {
+        vec![
+            readout(
+                "Impact energy",
+                fmt_energy(kinetic_energy / MT_TO_JOULES),
+                None,
+            ),
+            readout(
+                "Outcome",
+                "Ground impact".to_string(),
+                Some(format!("impact velocity {:.1} km/s", entry.impact_velocity / 1000.0)),
+            ),
+        ]
+    } else {
+        vec![
+            readout(
+                "Kinetic energy",
+                fmt_energy(kinetic_energy / MT_TO_JOULES),
+                None,
+            ),
+            readout(
+                "Outcome",
+                "Airburst — did not reach the ground".to_string(),
+                None,
+            ),
+            readout(
+                "Airburst altitude",
+                fmt_meters(entry.airburst_altitude),
+                Some("altitude of peak energy deposition".to_string()),
+            ),
+            readout(
+                "Energy deposited in atmosphere",
+                fmt_energy(entry.airburst_energy / MT_TO_JOULES),
+                Some(format!(
+                    "{:.0}% of kinetic energy",
+                    if kinetic_energy > 0.0 {
+                        entry.airburst_energy / kinetic_energy * 100.0
+                    } else {
+                        0.0
+                    }
+                )),
+            ),
+        ]
+    };
+    readout_items.push(readout(
+        "Recurrence interval",
+        fmt_recurrence_interval(impact_recurrence_interval_years(
+            kinetic_energy / MT_TO_JOULES,
+        )),
+        Some("order-of-magnitude average; Collins et al. 2005".to_string()),
+    ));
+    readout_items.push(readout(
+        "Seismic magnitude",
+        format!("M {seismic_magnitude:.1}"),
+        None,
+    ));
+    readout_items.push(readout("Fireball radius", fmt_meters(fireball_radius), None));
+    if entry.reaches_ground {
+        readout_items.push(readout("20 psi radius", fmt_meters(blast_total), None));
+    } else {
+        readout_items.push(readout(
+            "Ground overpressure (20 psi)",
+            fmt_meters(blast_total),
+            Some(format!("from burst at {} altitude", fmt_meters(entry.airburst_altitude))),
+        ));
+    }
     if let Some(crater) = &crater {
         readout_items.push(readout(
             "Crater diameter",

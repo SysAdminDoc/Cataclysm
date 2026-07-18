@@ -40,18 +40,28 @@
     "readout": [
       {
         "hint": null,
-        "label": "Impact energy",
+        "label": "Kinetic energy",
         "value": "511 kt"
+      },
+      {
+        "hint": null,
+        "label": "Outcome",
+        "value": "Airburst — did not reach the ground"
+      },
+      {
+        "hint": "altitude of peak energy deposition",
+        "label": "Airburst altitude",
+        "value": "29.01 km"
+      },
+      {
+        "hint": "78% of kinetic energy",
+        "label": "Energy deposited in atmosphere",
+        "value": "397 kt"
       },
       {
         "hint": "order-of-magnitude average; Collins et al. 2005",
         "label": "Recurrence interval",
         "value": "~1 in 65 yr"
-      },
-      {
-        "hint": "burst @ 29.01 km",
-        "label": "Reaches ground",
-        "value": "No (airburst)"
       },
       {
         "hint": null,
@@ -64,8 +74,8 @@
         "value": "237 m"
       },
       {
-        "hint": null,
-        "label": "20 psi radius",
+        "hint": "from burst at 29.01 km altitude",
+        "label": "Ground overpressure (20 psi)",
         "value": "1 m"
       }
     ],
@@ -80,21 +90,21 @@
       {
         "category": "thermal",
         "color": "#f5c2e7",
-        "description": "First-degree burns to exposed skin.",
+        "description": "First-degree burns from elevated thermal pulse.",
         "label": "1st° burns",
         "radiusM": 1.0
       },
       {
         "category": "blast",
         "color": "#f9e2af",
-        "description": "Glass shatters; light injuries.",
-        "label": "Window breakage (1 psi)",
+        "description": "Glass shatters from airwave; dominant injury mechanism in airbursts.",
+        "label": "Window breakage (1 psi) (from elevated burst)",
         "radiusM": 1.0
       },
       {
         "category": "thermal",
         "color": "#fab387",
-        "description": "Third-degree burns; widespread ignition.",
+        "description": "Third-degree burns from elevated thermal pulse.",
         "label": "3rd° burns",
         "radiusM": 1.0
       },
@@ -102,14 +112,14 @@
         "category": "blast",
         "color": "#cba6f7",
         "description": "Most buildings collapse.",
-        "label": "Severe damage (7 psi)",
+        "label": "Severe damage (7 psi) (from elevated burst)",
         "radiusM": 1.0
       },
       {
         "category": "blast",
         "color": "#89b4fa",
         "description": "Reinforced structures destroyed.",
-        "label": "Total destruction (20 psi)",
+        "label": "Total destruction (20 psi) (from elevated burst)",
         "radiusM": 1.0
       }
     ]
@@ -163,14 +173,14 @@
         "value": "2703.1 Mt"
       },
       {
+        "hint": "impact velocity 19.2 km/s",
+        "label": "Outcome",
+        "value": "Ground impact"
+      },
+      {
         "hint": "order-of-magnitude average; Collins et al. 2005",
         "label": "Recurrence interval",
         "value": "~1 in 52 thousand yr"
-      },
-      {
-        "hint": null,
-        "label": "Reaches ground",
-        "value": "Yes"
       },
       {
         "hint": null,
@@ -294,14 +304,14 @@
         "value": "9385.7 Mt"
       },
       {
+        "hint": "impact velocity 19.6 km/s",
+        "label": "Outcome",
+        "value": "Ground impact"
+      },
+      {
         "hint": "order-of-magnitude average; Collins et al. 2005",
         "label": "Recurrence interval",
         "value": "~1 in 137 thousand yr"
-      },
-      {
-        "hint": null,
-        "label": "Reaches ground",
-        "value": "Yes"
       },
       {
         "hint": null,

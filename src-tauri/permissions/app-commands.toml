@@ -31,6 +31,7 @@ identifier = "simulation-runs"
 description = "Start authoritative preset, grid, streaming, asteroid, and nuclear simulation work."
 permissions = [
   "allow-run-preset",
+  "allow-sample-preset-wavefront",
   "allow-simulate-grid",
   "allow-simulate-grid-streaming",
   "allow-simulate-asteroid-hazard",

@@ -445,8 +445,8 @@ export function HazardControls({
             ))}
           </div>
           {mode === "asteroid" && asteroidEffects && asteroidVisuals ? (
-            <section className="hazard__diagrams" aria-label="Impact profile">
-              <h3>Impact profile</h3>
+            <section className="hazard__diagrams" aria-label={asteroidEffects.atmosphericEntry.reachesGround ? "Impact profile" : "Airburst profile"}>
+              <h3>{asteroidEffects.atmosphericEntry.reachesGround ? "Impact profile" : "Airburst profile"}</h3>
               <p>Bounded visualization samples retained by {asteroidVisuals.model}; the browser only draws the returned values.</p>
               <TrajectoryChart
                 trajectory={asteroidVisuals.trajectory}
