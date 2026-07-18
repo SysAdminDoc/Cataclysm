@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { AttenuationChart } from "../AttenuationChart";
 import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../../lib/data";
+import { I18nProvider } from "../../lib/i18n";
 
 vi.mock("../../lib/browser-physics", () => ({
   browserAttenuation: vi.fn(async (request: {
@@ -42,6 +43,8 @@ const INITIAL: InitialDisplacement = {
 };
 
 describe("AttenuationChart", () => {
+  beforeEach(() => localStorage.clear());
+
   it("renders empty state when no initial displacement", () => {
     render(<AttenuationChart initial={null} isImpact={true} timeS={0} runupResults={[]} />);
     expect(screen.getByText("Amplitude curve appears after source selection")).toBeInTheDocument();
@@ -101,6 +104,15 @@ describe("AttenuationChart", () => {
   it("shows section title 'Wave attenuation'", () => {
     render(<AttenuationChart initial={INITIAL} isImpact={true} timeS={0} runupResults={[]} />);
     expect(screen.getByText("Wave attenuation")).toBeInTheDocument();
+  });
+
+  it("localizes the analytical chart and data controls in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><AttenuationChart initial={INITIAL} isImpact={true} timeS={3600} runupResults={[]} /></I18nProvider>);
+    expect(screen.getByText("波の減衰")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "距離別のモデル波高減衰" })).toBeInTheDocument();
+    expect(screen.getByText("モデル減衰", { selector: ".chart-legend span" })).toBeInTheDocument();
+    expect(screen.getByText(/波の減衰のデータを表示/)).toBeInTheDocument();
   });
 
   it("provides a non-live summary and keyboard-accessible provenance table", async () => {

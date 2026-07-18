@@ -5,6 +5,7 @@ import { CoastalRunupOverlay } from "../CoastalRunupOverlay";
 import type { AsyncResult } from "../../lib/async-result";
 import type { RunupAtPointResult } from "../../lib/tauri";
 import type { InitialDisplacement } from "../../types/scenario";
+import { I18nProvider } from "../../lib/i18n";
 
 const tauriApi = vi.hoisted(() => ({ runupAtPoints: vi.fn() }));
 
@@ -48,7 +49,10 @@ function Harness({ timeS }: { timeS: number }) {
 }
 
 describe("CoastalRunupOverlay async state", () => {
-  beforeEach(() => tauriApi.runupAtPoints.mockReset());
+  beforeEach(() => {
+    localStorage.clear();
+    tauriApi.runupAtPoints.mockReset();
+  });
 
   it("distinguishes a failed first computation from a valid empty result", async () => {
     tauriApi.runupAtPoints.mockRejectedValueOnce(new Error("backend unavailable"));
@@ -70,5 +74,12 @@ describe("CoastalRunupOverlay async state", () => {
     rerender(<Harness timeS={60} />);
     await waitFor(() => expect(screen.getByTestId("coastal-state")).toHaveTextContent("stale:1"));
     expect(screen.getByText(/Coastal screening is stale: refresh failed/)).toBeInTheDocument();
+  });
+
+  it("announces localized coastal arrivals in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    tauriApi.runupAtPoints.mockResolvedValueOnce([RESULT]);
+    render(<I18nProvider><Harness timeS={0} /></I18nProvider>);
+    expect(await screen.findByText("津波が沿岸地点 1 か所に到達しました。")).toBeInTheDocument();
   });
 });

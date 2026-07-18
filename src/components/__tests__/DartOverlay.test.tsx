@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DartOverlay } from "../DartOverlay";
 import type { GridSnapshot } from "../../types/scenario";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../../lib/geodesy";
+import { I18nProvider } from "../../lib/i18n";
 
 const tauriApi = vi.hoisted(() => ({
   dartBuoyRmse: vi.fn(),
@@ -54,6 +55,7 @@ function snapshotAt(timeS: number, etaM: number): GridSnapshot {
 
 describe("DartOverlay RMSE", () => {
   beforeEach(() => {
+    localStorage.clear();
     tauriApi.dartBuoyRmse.mockReset();
   });
 
@@ -63,6 +65,15 @@ describe("DartOverlay RMSE", () => {
     expect(screen.queryByText("SWE model")).not.toBeInTheDocument();
     expect(screen.queryByText("Arrival markers")).not.toBeInTheDocument();
     expect(tauriApi.dartBuoyRmse).not.toHaveBeenCalled();
+  });
+
+  it("localizes DART observations and chart semantics in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><DartOverlay presetId="tohoku_2011" timeS={0} /></I18nProvider>);
+    expect(screen.getByRole("button", { name: "DARTブイ観測" })).toBeInTheDocument();
+    expect(screen.getByText(/このイベントのNOAA DARTブイ観測水面標高/)).toBeInTheDocument();
+    expect(screen.getAllByText("観測", { selector: ".chart-legend span" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("img", { name: /DART水位/ }).length).toBeGreaterThan(0);
   });
 
   it("shows Rust-derived overlap, peaks, arrivals, and method from dart gauge samples", async () => {

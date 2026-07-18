@@ -120,6 +120,12 @@ test("language switch persists across settings, simulation results, layers, and 
   })).toMatchSnapshot("localized-swe-ja.png");
 
   await page.getByRole("tab", { name: "結果", exact: true }).click();
+  const pauseTimeline = page.getByRole("button", { name: "シナリオ時系列を一時停止" });
+  await expect(pauseTimeline).toBeVisible();
+  await pauseTimeline.click();
+  const timelineScrubber = page.getByRole("slider", { name: "シナリオ時系列スライダー" });
+  await timelineScrubber.fill("0");
+  await expect(timelineScrubber).toHaveValue("0");
   await inspector.evaluate((element) => { element.scrollTop = 0; });
   await expect(page.getByRole("tab", { name: "影響" })).toBeVisible();
   await expect(page.getByText("何が起きたか", { exact: true })).toBeVisible();
@@ -129,6 +135,22 @@ test("language switch persists across settings, simulation results, layers, and 
   expect(await page.screenshot({ clip: inspectorBounds! })).toMatchSnapshot("localized-results-ja.png");
   const resultsAccessibility = await new AxeBuilder({ page }).include(".app__panel--right").analyze();
   expect(resultsAccessibility.violations).toEqual([]);
+
+  await page.getByRole("tab", { name: "科学情報", exact: true }).click();
+  const attenuation = page.locator(".results__tabpanel > .section").last();
+  await expect(attenuation).toBeVisible();
+  await attenuation.scrollIntoViewIfNeeded();
+  expect(await attenuation.screenshot()).toMatchSnapshot("localized-attenuation-ja.png");
+  const attenuationAccessibility = await new AxeBuilder({ page }).include(".results__tabpanel > .section:last-child").analyze();
+  expect(attenuationAccessibility.violations).toEqual([]);
+
+  await page.getByRole("tab", { name: "検証", exact: true }).click();
+  const dart = page.locator(".results__tabpanel > .section").last();
+  await expect(dart).toBeVisible();
+  await dart.scrollIntoViewIfNeeded();
+  expect(await dart.screenshot()).toMatchSnapshot("localized-dart-ja.png");
+  const dartAccessibility = await new AxeBuilder({ page }).include(".results__tabpanel > .section:last-child").analyze();
+  expect(dartAccessibility.violations).toEqual([]);
 
   await page.getByRole("tab", { name: "レイヤー", exact: true }).click();
   await inspector.evaluate((element) => { element.scrollTop = 0; });

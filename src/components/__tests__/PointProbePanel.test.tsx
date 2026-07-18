@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PointProbeReport } from "../../render/cesium/inspection";
 import { PointProbePanel } from "../PointProbePanel";
+import { I18nProvider } from "../../lib/i18n";
 
 const exportMocks = vi.hoisted(() => ({ downloadBlob: vi.fn(() => ({ ok: true })) }));
 vi.mock("../../lib/export", () => ({
@@ -26,6 +27,8 @@ const REPORT: PointProbeReport = {
 };
 
 describe("PointProbePanel", () => {
+  beforeEach(() => localStorage.clear());
+
   it("shows both comparison reports at one coordinate with full explainability", () => {
     render(<PointProbePanel primary={REPORT} comparison={{ ...REPORT, domain: "asteroid" }} />);
     expect(screen.getByText(/Slot A: 10.00°, 20.00°/)).toBeInTheDocument();
@@ -51,5 +54,14 @@ describe("PointProbePanel", () => {
       expect.any(Blob),
       "cataclysm-point-probe.csv",
     );
+  });
+
+  it("localizes point-probe chrome and locale-aware coordinates in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><PointProbePanel primary={REPORT} /></I18nProvider>);
+    expect(screen.getByText("地点プローブ")).toBeInTheDocument();
+    expect(screen.getByText("説明可能")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "プローブCSVをエクスポート" })).toBeInTheDocument();
+    expect(screen.getByText(/震源から 30\.0 km/)).toBeInTheDocument();
   });
 });

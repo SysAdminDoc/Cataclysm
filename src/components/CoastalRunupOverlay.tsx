@@ -3,6 +3,7 @@ import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
 import { getCoastalPoints } from "../lib/data";
 import { demoRunupAtPoints } from "../lib/demo";
 import type { CoastalPoint, InitialDisplacement, Preset } from "../types/scenario";
+import { useI18n } from "../lib/i18n";
 import {
   rejectAsyncResult,
   resolveAsyncResult,
@@ -32,6 +33,7 @@ const VALID_POINTS: readonly CoastalPoint[] = getCoastalPoints();
  * and a mounted ref to avoid setting state on an unmounted component.
  */
 export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, result, onResult, retryNonce = 0 }: Props) {
+  const { t } = useI18n();
   const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
   const lastArrivedCountRef = useRef(0);
@@ -88,7 +90,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
         lastArrivedCountRef.current = arrived;
         setAnnouncement(
           arrived > 0
-            ? `Tsunami wave has reached ${arrived} coastal ${arrived === 1 ? "point" : "points"}.`
+            ? t(arrived === 1 ? "coastal.arrivedOne" : "coastal.arrivedMany", { count: arrived })
             : "",
         );
       }).catch((error) => {
@@ -116,7 +118,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
             setAnnouncement("");
           } else {
             setAnnouncement(
-              `Tsunami wave has reached ${arrived} coastal ${arrived === 1 ? "point" : "points"}.`,
+              t(arrived === 1 ? "coastal.arrivedOne" : "coastal.arrivedMany", { count: arrived }),
             );
           }
         }
@@ -126,7 +128,7 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
         console.error("runup_at_points failed", err);
         onResult((current) => rejectAsyncResult(current, err));
       });
-  }, [initial, isImpact, isMovingPressure, timeS, retryNonce, onResult]);
+  }, [initial, isImpact, isMovingPressure, timeS, retryNonce, onResult, t]);
 
   // Screen-reader-only aria-live region. Visually hidden via the global
   // `.sr-only` utility class (styles.css). Sighted users get the same
@@ -134,11 +136,11 @@ export function CoastalRunupOverlay({ initial, activePreset, sourceKind, timeS, 
   return (
     <div role="status" aria-live="polite" className="sr-only">
       {result.status === "loading"
-        ? result.previous ? "Refreshing coastal screening; current results remain visible." : "Computing coastal screening."
+        ? result.previous ? t("coastal.refreshing") : t("coastal.computing")
         : result.status === "stale"
-          ? `Coastal screening is stale: ${result.error}`
+          ? t("coastal.stale", { error: result.error })
           : result.status === "error"
-            ? `Coastal screening failed: ${result.error}`
+            ? t("coastal.failed", { error: result.error })
             : announcement}
     </div>
   );

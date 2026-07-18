@@ -10,6 +10,7 @@ import {
   startAsyncResult,
   type AsyncResult,
 } from "../lib/async-result";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -33,13 +34,14 @@ type Sample = { range_km: number; amplitude_m: number };
 const CURVE_SAMPLES = 80;
 const CURVE_MAX_RANGE_M = 10_000_000;
 
-function formatAxis(v: number): string {
-  if (v >= 1000) return `${(v / 1000).toFixed(0)}k`;
-  if (v >= 1) return v.toFixed(v < 10 ? 1 : 0);
-  return v.toFixed(2);
+function formatAxis(v: number, formatNumber: ReturnType<typeof useI18n>["formatNumber"]): string {
+  if (v >= 1000) return `${formatNumber(v / 1000, { maximumFractionDigits: 0 })}k`;
+  if (v >= 1) return formatNumber(v, { minimumFractionDigits: v < 10 ? 1 : 0, maximumFractionDigits: v < 10 ? 1 : 0 });
+  return formatNumber(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function AttenuationChart({ initial, isImpact, timeS, runupResults, movingPressure = false }: Props) {
+  const { t, formatNumber } = useI18n();
   const [curveResult, setCurveResult] = useState<AsyncResult<Sample[]>>({ status: "idle" });
   const curve = asyncResultValue(curveResult);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -115,14 +117,14 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
     return (
       <div className="section">
         <div className="section__title">
-          <span>Wave attenuation</span>
-          <span className="section__badge" data-tone="muted">Waiting</span>
+          <span>{t("attenuation.title")}</span>
+          <span className="section__badge" data-tone="muted">{t("attenuation.waiting")}</span>
         </div>
         <div className="empty-state empty-state--compact">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>Amplitude curve appears after source selection</strong>
-            <p>The chart compares modeled decay, the active wavefront, and arrived coastal samples.</p>
+            <strong>{t("attenuation.waitingTitle")}</strong>
+            <p>{t("attenuation.waitingBody")}</p>
           </div>
         </div>
       </div>
@@ -133,14 +135,14 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
     return (
       <div className="section">
         <div className="section__title">
-          <span>Wave attenuation</span>
-          <span className="section__badge" data-tone="muted">SWE only</span>
+          <span>{t("attenuation.title")}</span>
+          <span className="section__badge" data-tone="muted">{t("attenuation.sweOnly")}</span>
         </div>
         <div className="empty-state empty-state--compact">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>Radial attenuation does not apply</strong>
-            <p>This moving pressure source is generated along a track. Run the SWE solver to see its resonant, bathymetry-dependent response.</p>
+            <strong>{t("attenuation.radialTitle")}</strong>
+            <p>{t("attenuation.radialBody")}</p>
           </div>
         </div>
       </div>
@@ -153,17 +155,17 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
     return (
       <div className="section">
         <div className="section__title">
-          <span>Wave attenuation</span>
+          <span>{t("attenuation.title")}</span>
           <span className="section__badge" data-tone={failed ? "danger" : "muted"}>
-            {failed ? "Error" : empty ? "Empty" : "Loading"}
+            {failed ? t("attenuation.error") : empty ? t("attenuation.empty") : t("attenuation.loading")}
           </span>
         </div>
         <div className={failed ? "panel-error" : "empty-state empty-state--compact"} role={failed ? "alert" : "status"}>
           {!failed && <span className="empty-state__icon" aria-hidden />}
           <div>
-            <strong>{failed ? "Couldn't compute wave attenuation" : empty ? "No attenuation samples returned" : "Computing attenuation curve…"}</strong>
-            <p>{failed ? curveResult.error : empty ? "The computation completed successfully but returned no samples." : "The current source remains selected while the analytical curve is prepared."}</p>
-            {(failed || empty) && <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry attenuation</button>}
+            <strong>{failed ? t("attenuation.computeFailed") : empty ? t("attenuation.noSamples") : t("attenuation.computing")}</strong>
+            <p>{failed ? curveResult.error : empty ? t("attenuation.noSamplesBody") : t("attenuation.computingBody")}</p>
+            {(failed || empty) && <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>{t("attenuation.retry")}</button>}
           </div>
         </div>
       </div>
@@ -208,75 +210,75 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
     null,
   );
   const modelProvenance = isTauri()
-    ? "Rust attenuation_curve command"
-    : "Rust attenuation_curve compiled to browser WASM";
+    ? t("attenuation.provenanceDesktop")
+    : t("attenuation.provenanceBrowser");
   const semanticRows: SemanticDataRow[] = [
     ...curve.map((sample, index) => ({
-      series: "Modeled decay",
-      selection: `${sample.range_km.toFixed(2)} km from source`,
+      series: t("attenuation.modeledDecay"),
+      selection: t("attenuation.distance", { value: formatNumber(sample.range_km, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }),
       value: sample.amplitude_m.toPrecision(6),
-      unit: "m surface amplitude",
-      significance: index === 0 ? "Maximum" : index === curve.length - 1 ? "Minimum" : index === nearestWavefrontIndex ? "Nearest active wavefront" : "Sample",
-      confidence: "Illustrative far-field analytical estimate",
+      unit: t("attenuation.unitAmplitude"),
+      significance: index === 0 ? t("attenuation.maximum") : index === curve.length - 1 ? t("attenuation.minimum") : index === nearestWavefrontIndex ? t("attenuation.nearestWavefront") : t("attenuation.sample"),
+      confidence: t("attenuation.analyticalConfidence"),
       provenance: modelProvenance,
     })),
     ...(wavefrontRange == null ? [] : [{
-      series: "Active wavefront",
-      selection: `T+${timeS.toFixed(0)} s`,
+      series: t("attenuation.activeWavefront"),
+      selection: t("attenuation.time", { value: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
       value: wavefrontRange.toFixed(3),
-      unit: "km from source",
-      significance: "Current timeline selection",
-      confidence: "Kinematic shallow-water travel estimate",
-      provenance: `sqrt(g × ${depth.toFixed(0)} m depth) × time`,
+      unit: t("attenuation.unitDistance"),
+      significance: t("attenuation.currentTimeline"),
+      confidence: t("attenuation.kinematicConfidence"),
+      provenance: t("attenuation.wavefrontFormula", { depth: formatNumber(depth, { maximumFractionDigits: 0 }) }),
     }]),
     {
-      series: "Coastal inclusion threshold",
-      selection: "Arrived samples only",
+      series: t("attenuation.coastalThreshold"),
+      selection: t("attenuation.arrivedOnly"),
       value: 0,
-      unit: "m offshore amplitude",
-      significance: "Strictly greater than threshold",
-      confidence: "Display filter, not an alert threshold",
-      provenance: "runup_at_points arrival flag and offshore amplitude",
+      unit: t("attenuation.unitOffshore"),
+      significance: t("attenuation.strictThreshold"),
+      confidence: t("attenuation.displayFilter"),
+      provenance: t("attenuation.runupProvenance"),
     },
     ...arrivedPoints.map((point) => ({
-      series: `Coastal sample — ${point.name}`,
-      selection: `${point.range_km.toFixed(2)} km from source`,
+      series: t("attenuation.coastalSample", { name: point.name }),
+      selection: t("attenuation.distance", { value: formatNumber(point.range_km, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }),
       value: point.amplitude_m.toPrecision(6),
-      unit: "m offshore amplitude",
-      significance: point === highestArrived ? "Highest arrived sample" : "Arrived sample",
-      confidence: `${point.quantitative_label}; ${point.quantitative_confidence} confidence`,
+      unit: t("attenuation.unitOffshore"),
+      significance: point === highestArrived ? t("attenuation.highestArrived") : t("attenuation.arrivedSample"),
+      confidence: t("attenuation.coastalConfidence", { label: point.quantitative_label, confidence: point.quantitative_confidence }),
       provenance: `${point.slope_provenance.source}; ${point.depth_provenance.source}`,
     })),
   ];
   const semanticSummary = [
-    `Modeled decay spans ${maxAmp.toPrecision(4)} m at ${minRange.toFixed(2)} km to ${curve[curve.length - 1].amplitude_m.toPrecision(4)} m at ${maxRange.toFixed(0)} km.`,
-    wavefrontRange == null ? "No active wavefront at the source time." : `The active wavefront estimate is ${wavefrontRange.toFixed(1)} km at T+${timeS.toFixed(0)} s.`,
-    highestArrived ? `${arrivedPoints.length} coastal samples have arrived; ${highestArrived.name} is highest at ${highestArrived.amplitude_m.toFixed(2)} m offshore amplitude.` : "No positive arrived coastal sample is active.",
+    t("attenuation.summaryDecay", { maxAmp: formatNumber(maxAmp, { maximumSignificantDigits: 4 }), minRange: formatNumber(minRange, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), endAmp: formatNumber(curve[curve.length - 1].amplitude_m, { maximumSignificantDigits: 4 }), maxRange: formatNumber(maxRange, { maximumFractionDigits: 0 }) }),
+    wavefrontRange == null ? t("attenuation.summaryNoWavefront") : t("attenuation.summaryWavefront", { range: formatNumber(wavefrontRange, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), time: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
+    highestArrived ? t("attenuation.summaryArrived", { count: arrivedPoints.length, name: highestArrived.name, amplitude: formatNumber(highestArrived.amplitude_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }) : t("attenuation.summaryNoArrived"),
   ].join(" ");
 
   return (
     <div className="section">
       <div className="section__title">
-        <span>Wave attenuation</span>
+        <span>{t("attenuation.title")}</span>
         <span className="section__badge" data-tone={curveResult.status === "stale" ? "danger" : curveResult.status === "loading" ? "active" : undefined}>
-          {curveResult.status === "stale" ? "Stale" : curveResult.status === "loading" ? "Refreshing" : `${arrivedPoints.length} arrived`}
+          {curveResult.status === "stale" ? t("attenuation.stale") : curveResult.status === "loading" ? t("attenuation.refreshing") : t("attenuation.arrived", { count: arrivedPoints.length })}
         </span>
       </div>
       {curveResult.status === "stale" && (
         <div className="panel-error" role="alert">
-          <span>Showing the last valid attenuation curve: {curveResult.error}</span>
-          <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>Retry attenuation</button>
+          <span>{t("attenuation.staleBody", { error: curveResult.error })}</span>
+          <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>{t("attenuation.retry")}</button>
         </div>
       )}
       <div className="chart-shell">
-        <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label="Modeled wave amplitude decay by distance" aria-describedby={`${semanticId}-summary`}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="attenuation-chart" role="img" aria-label={t("attenuation.chartAria")} aria-describedby={`${semanticId}-summary`}>
           {yTicks.map((logV) => {
             const y = toY(10 ** logV);
             return (
               <g key={`y-${logV}`}>
                 <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="var(--surface1)" strokeWidth={0.5} />
                 <text x={PAD_L - 6} y={y + 4} textAnchor="end" fill="var(--overlay0)" fontSize={12}>
-                  {formatAxis(10 ** logV)} m
+                  {formatAxis(10 ** logV, formatNumber)} m
                 </text>
               </g>
             );
@@ -285,7 +287,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
             const x = toX(10 ** logV);
             return (
               <text key={`x-${logV}`} x={x} y={H - 6} textAnchor="middle" fill="var(--overlay0)" fontSize={12}>
-                {formatAxis(10 ** logV)} km
+                {formatAxis(10 ** logV, formatNumber)} km
               </text>
             );
           })}
@@ -310,27 +312,27 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
               fill="var(--teal)"
               opacity={0.8}
             >
-              <title>{p.name}: {p.amplitude_m.toFixed(2)} m @ {p.range_km.toFixed(0)} km</title>
+              <title>{t("attenuation.pointTitle", { name: p.name, amplitude: formatNumber(p.amplitude_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), range: formatNumber(p.range_km, { maximumFractionDigits: 0 }) })}</title>
             </circle>
           ))}
         </svg>
         <div className="chart-legend" aria-hidden>
-          <span><i data-tone="curve" /> Modeled decay</span>
-          <span><i data-tone="front" /> Wavefront</span>
-          <span><i data-tone="coast" /> Coast samples</span>
+          <span><i data-tone="curve" /> {t("attenuation.modeledDecay")}</span>
+          <span><i data-tone="front" /> {t("attenuation.wavefront")}</span>
+          <span><i data-tone="coast" /> {t("attenuation.coastSamples")}</span>
         </div>
         <SemanticDataTable
           id={semanticId}
-          title="wave attenuation"
+          title={t("attenuation.dataTitle")}
           summary={semanticSummary}
           columns={[
-            { key: "series", label: "Series" },
-            { key: "selection", label: "Distance or selection" },
-            { key: "value", label: "Value", dataType: "number" },
-            { key: "unit", label: "Unit" },
-            { key: "significance", label: "Extrema, threshold, or active state" },
-            { key: "confidence", label: "Confidence" },
-            { key: "provenance", label: "Provenance" },
+            { key: "series", label: t("attenuation.columnSeries") },
+            { key: "selection", label: t("attenuation.columnSelection") },
+            { key: "value", label: t("attenuation.columnValue"), dataType: "number" },
+            { key: "unit", label: t("attenuation.columnUnit") },
+            { key: "significance", label: t("attenuation.columnSignificance") },
+            { key: "confidence", label: t("attenuation.columnConfidence") },
+            { key: "provenance", label: t("attenuation.columnProvenance") },
           ]}
           rows={semanticRows}
           filename="cataclysm-wave-attenuation.csv"

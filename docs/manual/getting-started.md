@@ -36,6 +36,9 @@ the launch, first-run, tour, crash-recovery, fatal-error surfaces, and scientifi
 glossary, advanced bibliography, and analytical CSV table controls are
 translated now, along with diagnostics, crash evidence, and support-bundle
 controls, plus the scientific bathymetry import and offline-cache workflow.
+Wave-attenuation charts, DART observation/model comparisons, explainable point
+probes and coastal-arrival announcements use the same locale, including their
+accessible chart summaries, recovery states and exported data labels.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 
