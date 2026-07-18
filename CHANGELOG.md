@@ -44,6 +44,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Turned Layers into a scenario-scoped simulator controller. Available layers
+  now support keyboard-accessible visibility, opacity, ordering, reset, legend,
+  temporal, and provenance controls; unavailable layers name their prerequisite.
+  State persists independently per scenario and is recorded in share cards,
+  PNG provenance, GeoJSON, CZML, and KML exports.
+
 - Added deterministic highlight stories to Export. A 15, 30, or 60 second
   editorial cut is assembled from named moments in the completed SWE replay,
   with clean-cinematic and analytical presentation contracts plus optional

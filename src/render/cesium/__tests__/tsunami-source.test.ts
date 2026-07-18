@@ -109,6 +109,16 @@ function input(overrides: Partial<SourceControllerInput> = {}): SourceController
 }
 
 describe("TsunamiSourceController", () => {
+  it("applies user opacity to every source presentation channel", () => {
+    const host = new FakeSourceHost();
+    const controller = new TsunamiSourceController(host, 1);
+    controller.update(input({ layer_opacity: 0.4, reference_capture: true }));
+    expect(host.entity?.descriptor.point.fill.alpha).toBe(0.4);
+    expect(host.entity?.descriptor.cavity.fill.alpha).toBeCloseTo(0.12);
+    expect(host.entity?.descriptor.rim.fill.alpha).toBeCloseTo(0.072);
+    expect(host.entity?.descriptor.label.background.alpha).toBeCloseTo(0.36);
+  });
+
   it("preserves the current source marker and default camera framing semantics", () => {
     const host = new FakeSourceHost();
     const controller = new TsunamiSourceController(host, 11);

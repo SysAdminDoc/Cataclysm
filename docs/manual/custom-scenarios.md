@@ -120,13 +120,22 @@ After clicking **Simulate**, the initial conditions panel shows the source reado
 
 After a runup extent is active, open **Layers** and explicitly enable
 **Humanitarian facilities** to request mapped schools, healthcare sites, and
-emergency-response facilities from OpenStreetMap. The switch is off by default.
+emergency-response facilities from OpenStreetMap. The layer is off by default.
 Enabling it sends only bounded boxes for up to the 30 largest active extents to
 the public Overpass service, caps the response at 2 MiB / 500 facilities, and
 caches results locally for 24 hours. Offline mode shows a clearly marked older
 cache when one exists. OpenStreetMap completeness and tags vary; these
 first-order disc matches do not establish damage, operability, access,
 evacuation status, or emergency need.
+
+The same Layers view is the scenario's render controller. Use the checkbox to
+show or hide an available layer, the slider to change opacity, and the arrow
+buttons to change render priority (higher rows draw above lower analytical
+overlays). **Legend and provenance** explains the palette, time coupling, model
+basis, and prerequisite when data are not yet available. **Reset** restores the
+domain defaults. The stack persists locally per scenario, and export metadata
+records every layer's visibility, opacity percentage, and order so a shared
+image or scientific file describes the view that produced it.
 
 Advanced mode also lets you place named SWE gauges. Each gauge appears in the
 accessible table and as a blue, outlined marker on the active globe pane;

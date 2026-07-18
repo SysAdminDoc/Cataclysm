@@ -56,6 +56,24 @@ type ControllerState = Readonly<{
   dartBuoys?: DartBuoy[];
   runupResults?: RunupAtPointResult[];
   gauges?: Gauge[];
+  layerOpacity?: Readonly<{
+    source: number;
+    wavefront: number;
+    isochrones: number;
+    runup: number;
+    dart: number;
+    hazardRings: number;
+    fallout: number;
+  }>;
+  showDirectSource?: boolean;
+  layerOrder?: Readonly<{
+    source: number;
+    wavefront: number;
+    isochrones: number;
+    dart: number;
+    hazardRings: number;
+    fallout: number;
+  }>;
 }>;
 
 export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerState) {
@@ -84,6 +102,9 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
     dartBuoys,
     runupResults,
     gauges,
+    layerOpacity,
+    showDirectSource,
+    layerOrder,
   } = state;
 
   useEffect(() => {
@@ -93,8 +114,10 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       reduced_motion:
         typeof window !== "undefined"
         && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+      layer_opacity: layerOpacity?.source,
+      layer_order: layerOrder?.source,
     });
-  }, [initial, tsunamiSourceControllerRef, viewerEpoch]);
+  }, [initial, layerOpacity?.source, layerOrder?.source, tsunamiSourceControllerRef, viewerEpoch]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -115,6 +138,13 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         color_css: polygon.color,
         points: polygon.points.map((point) => ({ lat_deg: point.lat, lon_deg: point.lon })),
       })),
+      show_source: showDirectSource,
+      source_opacity: layerOpacity?.source,
+      ring_opacity: layerOpacity?.hazardRings,
+      fallout_opacity: layerOpacity?.fallout,
+      source_order: layerOrder?.source,
+      ring_order: layerOrder?.hazardRings,
+      fallout_order: layerOrder?.fallout,
     });
 
     const outerRadius = diagnostics.active.outer_radius_m;
@@ -133,7 +163,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         ),
       },
     );
-  }, [hazardCenter, hazardPolygons, hazardRings, staticHazardControllerRef, viewerEpoch, viewerRef]);
+  }, [hazardCenter, hazardPolygons, hazardRings, layerOpacity?.fallout, layerOpacity?.hazardRings, layerOpacity?.source, layerOrder?.fallout, layerOrder?.hazardRings, layerOrder?.source, showDirectSource, staticHazardControllerRef, viewerEpoch, viewerRef]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -192,8 +222,14 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       wavefront,
       isochrones: isochrones ?? [],
       dart_buoys: dartBuoys ?? [],
+      wavefront_opacity: layerOpacity?.wavefront,
+      isochrone_opacity: layerOpacity?.isochrones,
+      dart_opacity: layerOpacity?.dart,
+      wavefront_order: layerOrder?.wavefront,
+      isochrone_order: layerOrder?.isochrones,
+      dart_order: layerOrder?.dart,
     });
-  }, [dartBuoys, initial, isochrones, tsunamiAnalyticalControllerRef, viewerEpoch, wavefront]);
+  }, [dartBuoys, initial, isochrones, layerOpacity?.dart, layerOpacity?.isochrones, layerOpacity?.wavefront, layerOrder?.dart, layerOrder?.isochrones, layerOrder?.wavefront, tsunamiAnalyticalControllerRef, viewerEpoch, wavefront]);
 
   useEffect(() => {
     runupOverlayControllerRef.current?.update(
@@ -219,6 +255,8 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         lat: gauge.lat_deg,
         lon: gauge.lon_deg,
       })),
+      layerOpacity?.runup,
+      layerOpacity?.runup,
     );
-  }, [gauges, runupOverlayControllerRef, runupResults, viewerEpoch]);
+  }, [gauges, layerOpacity?.runup, runupOverlayControllerRef, runupResults, viewerEpoch]);
 }

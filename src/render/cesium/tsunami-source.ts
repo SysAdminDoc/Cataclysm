@@ -24,6 +24,8 @@ export type SourceControllerInput = Readonly<{
   source: TsunamiSourceInput | null;
   reference_capture: boolean;
   reduced_motion: boolean;
+  layer_opacity?: number;
+  layer_order?: number;
 }>;
 
 export type SourceCameraMode = "none" | "flight" | "instant" | "reference_capture";
@@ -70,6 +72,10 @@ const ZERO_OPERATIONS: SourceOperationCounts = Object.freeze({
 
 function theme(token: string, fallback_css: string, alpha = 1): ThemeColorReference {
   return Object.freeze({ token, fallback_css, alpha });
+}
+
+function opacity(value: number | undefined): number {
+  return Number.isFinite(value) ? Math.max(0.1, Math.min(1, value ?? 1)) : 1;
 }
 
 function sumCounts(left: ResourceCounts, right: ResourceCounts): ResourceCounts {
@@ -152,7 +158,7 @@ export class TsunamiSourceController<Handle = unknown> {
     }
 
     const source = input.source;
-    const descriptor = this.#descriptor(source);
+    const descriptor = this.#descriptor(source, opacity(input.layer_opacity), input.layer_order ?? 12);
     const nextEntitySignature = JSON.stringify(descriptor);
     let created = 0;
     let updated = 0;
@@ -295,11 +301,11 @@ export class TsunamiSourceController<Handle = unknown> {
     });
   }
 
-  #descriptor(source: TsunamiSourceInput): TsunamiSourceEntityDescriptor {
+  #descriptor(source: TsunamiSourceInput, layerOpacity: number, layerOrder: number): TsunamiSourceEntityDescriptor {
     const sourcePosition: SourceGeoPosition = Object.freeze({
       lat_deg: source.center.lat_deg,
       lon_deg: source.center.lon_deg,
-      height_m: 0,
+      height_m: Math.max(0, 12 - layerOrder) * 20,
     });
     const cavityDepthM = Math.max(2 * source.cavity_radius_m / 2.83, 1);
     return Object.freeze({
@@ -309,33 +315,33 @@ export class TsunamiSourceController<Handle = unknown> {
       position: sourcePosition,
       point: Object.freeze({
         pixel_size: 12,
-        fill: theme("--yellow", "#f9e2af"),
-        outline: theme("--crust", "#11111b"),
+        fill: theme("--yellow", "#f9e2af", layerOpacity),
+        outline: theme("--crust", "#11111b", layerOpacity),
         outline_width_px: 2,
       }),
       cavity: Object.freeze({
         length_m: cavityDepthM,
         top_radius_m: Math.max(source.cavity_radius_m, 500),
         bottom_radius_m: Math.max(source.cavity_radius_m * 0.3, 250),
-        fill: theme("--red", "#f38ba8", 0.3),
-        outline: theme("--maroon", "#eba0ac"),
+        fill: theme("--red", "#f38ba8", 0.3 * layerOpacity),
+        outline: theme("--maroon", "#eba0ac", layerOpacity),
       }),
       rim: Object.freeze({
         semi_major_axis_m: Math.max(source.cavity_radius_m, 1_000),
         semi_minor_axis_m: Math.max(source.cavity_radius_m, 1_000),
-        fill: theme("--red", "#f38ba8", 0.18),
-        outline: theme("--maroon", "#eba0ac"),
+        fill: theme("--red", "#f38ba8", 0.18 * layerOpacity),
+        outline: theme("--maroon", "#eba0ac", layerOpacity),
         height_m: 0,
       }),
       label: Object.freeze({
         text: `${source.label}\nA₀ = ${source.peak_amplitude_m.toFixed(1)} m`,
         font: "12px Inter, sans-serif",
-        fill: theme("--text", "#cdd6f4"),
-        outline: theme("--crust", "#11111b"),
+        fill: theme("--text", "#cdd6f4", layerOpacity),
+        outline: theme("--crust", "#11111b", layerOpacity),
         outline_width_px: 3,
         pixel_offset: Object.freeze([0, -16] as const),
         show_background: true,
-        background: theme("--viewport-hud", "#1e1e2e", 0.9),
+        background: theme("--viewport-hud", "#1e1e2e", 0.9 * layerOpacity),
         background_padding: Object.freeze([8, 6] as const),
       }),
     });

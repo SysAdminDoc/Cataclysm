@@ -21,9 +21,9 @@ export interface RunupPrimitivePresentation {
   lon: number;
   heightM: number;
   colorCss: string;
-  colorAlpha: 0.85;
+  colorAlpha: number;
   outlineColorCss: "#11111b";
-  outlineAlpha: 0.6;
+  outlineAlpha: number;
   outlineWidth: 1;
   width: 8;
 }
@@ -37,9 +37,9 @@ export interface GaugeOverlayInput {
 
 export interface GaugePrimitivePresentation extends GaugeOverlayInput {
   colorCss: "#89b4fa";
-  colorAlpha: 0.95;
+  colorAlpha: number;
   outlineColorCss: "#11111b";
-  outlineAlpha: 0.9;
+  outlineAlpha: number;
   outlineWidth: 2;
   pixelSize: 10;
 }
@@ -51,8 +51,8 @@ export interface InundationPrimitivePresentation {
   radiusM: number;
   segments: 40;
   colorCss: string;
-  colorAlpha: 0.25;
-  outlineAlpha: 0.7;
+  colorAlpha: number;
+  outlineAlpha: number;
   outlineWidth: 2;
 }
 
@@ -186,7 +186,11 @@ function labelPresentation(input: RunupOverlayInput, heightM: number): RunupLabe
 function normalize(
   inputs: readonly RunupOverlayInput[],
   gaugeInputs: readonly GaugeOverlayInput[],
+  runupOpacity = 1,
+  gaugeOpacity = 1,
 ): NormalizedOverlay {
+  const boundedRunupOpacity = Number.isFinite(runupOpacity) ? Math.max(0.1, Math.min(1, runupOpacity)) : 1;
+  const boundedGaugeOpacity = Number.isFinite(gaugeOpacity) ? Math.max(0.1, Math.min(1, gaugeOpacity)) : 1;
   const valid = inputs.filter(validBaseInput);
   const invalidCount = inputs.length - valid.length;
   const groups = new Map<string, RunupOverlayInput[]>();
@@ -216,9 +220,9 @@ function normalize(
         lon: input.lon,
         heightM,
         colorCss,
-        colorAlpha: 0.85,
+        colorAlpha: 0.85 * boundedRunupOpacity,
         outlineColorCss: "#11111b",
-        outlineAlpha: 0.6,
+        outlineAlpha: 0.6 * boundedRunupOpacity,
         outlineWidth: 1,
         width: 8,
       });
@@ -236,8 +240,8 @@ function normalize(
         radiusM: Math.min(Math.max(input.inundation_extent_m, 200), 50_000),
         segments: 40,
         colorCss,
-        colorAlpha: 0.25,
-        outlineAlpha: 0.7,
+        colorAlpha: 0.25 * boundedRunupOpacity,
+        outlineAlpha: 0.7 * boundedRunupOpacity,
         outlineWidth: 2,
       });
     }
@@ -261,9 +265,9 @@ function normalize(
     gauges.push({
       ...input,
       colorCss: "#89b4fa",
-      colorAlpha: 0.95,
+      colorAlpha: 0.95 * boundedGaugeOpacity,
       outlineColorCss: "#11111b",
-      outlineAlpha: 0.9,
+      outlineAlpha: 0.9 * boundedGaugeOpacity,
       outlineWidth: 2,
       pixelSize: 10,
     });
@@ -325,9 +329,11 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, GaugePr
   update(
     inputs: readonly RunupOverlayInput[] | null | undefined,
     gauges: readonly GaugeOverlayInput[] | null | undefined = [],
+    runupOpacity = 1,
+    gaugeOpacity = 1,
   ): void {
     if (this.destroyed) return;
-    const normalized = normalize(inputs ?? [], gauges ?? []);
+    const normalized = normalize(inputs ?? [], gauges ?? [], runupOpacity, gaugeOpacity);
     this.invalidInputCount += normalized.invalidCount;
     this.duplicateInputCount += normalized.duplicateCount;
 

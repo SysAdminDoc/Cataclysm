@@ -436,6 +436,142 @@
   display: inline-block;
   margin-top: 6px;
 }
+
+/* Scenario-scoped analytical layer controller. The surface stays flat and
+ * separator-led so dense controls read as one professional stack. */
+.layer-inspector__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  width: auto;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.layer-inspector__visibility {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 28px;
+}
+
+.layer-inspector__visibility input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent-active);
+}
+
+.layer-inspector__row[data-available="false"] {
+  opacity: 1;
+}
+
+.layer-inspector__row[data-available="false"] .layer-inspector__status,
+.layer-inspector__row[data-available="false"] .layer-inspector__label small {
+  color: var(--subtext);
+}
+
+.layer-inspector__controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 7px 0 0 29px;
+}
+
+.layer-inspector__order {
+  display: flex;
+  gap: 2px;
+}
+
+.layer-inspector__order button {
+  min-width: 26px;
+  min-height: 26px;
+  width: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--subtext);
+  font-size: 15px;
+}
+
+.layer-inspector__order button:hover:not(:disabled),
+.layer-inspector__order button:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--surface1) 52%, transparent);
+  color: var(--text);
+}
+
+.layer-inspector__opacity {
+  display: grid;
+  grid-template-columns: auto minmax(54px, 1fr) 36px;
+  align-items: center;
+  gap: 7px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.layer-inspector__opacity input {
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--accent-active);
+}
+
+.layer-inspector__opacity output {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.layer-inspector__evidence {
+  margin: 6px 0 0 29px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.layer-inspector__evidence > summary {
+  width: max-content;
+  cursor: pointer;
+  color: var(--accent-text);
+}
+
+.layer-inspector__legend {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 5px 7px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--divider) 56%, transparent);
+  line-height: 1.4;
+}
+
+.layer-inspector__legend > span:last-child {
+  grid-column: 2;
+  color: var(--overlay);
+}
+
+.layer-inspector__legend-mark {
+  width: 18px;
+  height: 8px;
+  margin-top: 3px;
+  background: var(--accent-active);
+}
+
+.layer-inspector__legend-mark.is-wavefront { height: 2px; background: var(--sky); }
+.layer-inspector__legend-mark.is-field { background: linear-gradient(90deg, var(--blue), var(--teal), var(--yellow), var(--red)); }
+.layer-inspector__legend-mark.is-arrival { height: 2px; background: var(--yellow); }
+.layer-inspector__legend-mark.is-runup { background: linear-gradient(90deg, var(--green), var(--yellow), var(--red)); }
+.layer-inspector__legend-mark.is-facility { width: 8px; height: 8px; background: var(--green); }
+.layer-inspector__legend-mark.is-dart { width: 8px; height: 8px; background: var(--maroon); }
+.layer-inspector__legend-mark.is-hazard { background: linear-gradient(90deg, var(--yellow), var(--peach), var(--red)); }
+.layer-inspector__legend-mark.is-fallout { background: linear-gradient(90deg, var(--green), var(--yellow)); }
+
+.layer-inspector__facility-body {
+  margin-left: 29px;
+}
 .source-model {
   margin: 16px 0 0;
   border: 0;

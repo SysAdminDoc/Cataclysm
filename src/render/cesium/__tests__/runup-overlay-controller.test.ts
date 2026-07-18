@@ -117,6 +117,14 @@ function harness() {
 }
 
 describe("RunupOverlayController", () => {
+  it("applies independent opacity to runup and gauge primitives", () => {
+    const { controller, runupBatches, inundationBatches, gaugeBatches } = harness();
+    controller.update([point()], [gauge()], 0.5, 0.4);
+    expect(runupBatches[0][0].colorAlpha).toBeCloseTo(0.425);
+    expect(inundationBatches[0][0].colorAlpha).toBeCloseTo(0.125);
+    expect(gaugeBatches[0][0].colorAlpha).toBeCloseTo(0.38);
+  });
+
   it("validates, deduplicates, sorts, and preserves presentation calculations", () => {
     const { controller, runupBatches, inundationBatches, labels } = harness();
     controller.update([

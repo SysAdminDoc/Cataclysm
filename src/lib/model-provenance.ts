@@ -4,6 +4,7 @@ import {
   IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
   type HeightFieldMetadata,
 } from "./geodesy";
+import type { LayerExportRecord } from "./layer-controller";
 
 export const APP_VERSION = "0.10.5";
 
@@ -46,6 +47,7 @@ export type ModelProvenanceInput = {
   citationReference?: string;
   citationUrl?: string | null;
   limitation?: string;
+  layerState?: LayerExportRecord[];
 };
 
 export type ModelProvenance = {
@@ -67,6 +69,7 @@ export type ModelProvenance = {
   renderFrame: RenderFrameProvenance | null;
   runQuality: RunQualityRecord | null;
   evidenceIds: string[];
+  layerState: LayerExportRecord[];
 };
 
 export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenance {
@@ -95,6 +98,9 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
       : null,
     runQuality: input.runQuality ? { ...input.runQuality, warnings: [...input.runQuality.warnings] } : null,
     evidenceIds: [...new Set(input.evidenceIds ?? [])].sort(),
+    layerState: [...(input.layerState ?? [])]
+      .map((layer) => ({ ...layer }))
+      .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)),
   };
 }
 
@@ -115,6 +121,9 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
     `Visual assets: ${p.visualAssetIds.join(", ")}`,
     `Citation: ${citation}`,
     `Evidence IDs: ${p.evidenceIds.length > 0 ? p.evidenceIds.join(", ") : "none"}`,
+    `Layers: ${p.layerState.length > 0
+      ? p.layerState.map((layer) => `${layer.order}:${layer.id}=${layer.visible ? "on" : "off"}@${layer.opacityPct}%`).join(", ")
+      : "defaults"}`,
     `Model limitation: ${p.limitation}`,
   ];
   if (p.renderFrame) {

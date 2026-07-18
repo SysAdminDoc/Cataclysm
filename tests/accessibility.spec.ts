@@ -201,7 +201,9 @@ for (const theme of THEMES) {
       await openWorkspace(page);
       await page.getByRole("tab", { name: "Layers" }).click();
       await expect(page.getByText("SWE water field")).toBeVisible();
-      const trust = page.getByLabel("Why trust this? SWE water-field layer");
+      const sweLayer = page.locator(".layer-inspector__row", { hasText: "SWE water field" });
+      await sweLayer.getByText("Legend and provenance").click();
+      const trust = sweLayer.getByLabel("Why trust this? SWE water-field layer");
       await trust.click();
       await expect(page.getByText("layer:preset:tohoku_2011:swe-field")).toBeVisible();
       await assertAccessiblePage(page);

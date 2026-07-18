@@ -100,6 +100,8 @@ export function installMirvOverlay(viewer: Cesium.Viewer, preview: MirvPreview |
 export function installHumanitarianFacilityOverlay(
   viewer: Cesium.Viewer,
   facilities: readonly HumanitarianFacility[],
+  opacity = 1,
+  order = 12,
 ) {
   if (viewer.isDestroyed() || facilities.length === 0) return undefined;
   const colors: Record<HumanitarianFacilityCategory, string> = {
@@ -111,10 +113,10 @@ export function installHumanitarianFacilityOverlay(
   for (const facility of facilities) {
     points.add({
       id: `osm-facility:${facility.id}`,
-      position: Cesium.Cartesian3.fromDegrees(facility.lon, facility.lat, 90),
+      position: Cesium.Cartesian3.fromDegrees(facility.lon, facility.lat, 90 + Math.max(0, 12 - order) * 20),
       pixelSize: facility.category === "health" ? 9 : 8,
-      color: Cesium.Color.fromCssColorString(colors[facility.category]).withAlpha(0.92),
-      outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+      color: Cesium.Color.fromCssColorString(colors[facility.category]).withAlpha(0.92 * opacity),
+      outlineColor: Cesium.Color.fromCssColorString("#11111b").withAlpha(opacity),
       outlineWidth: 1.5,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
       scaleByDistance: new Cesium.NearFarScalar(25_000, 1.25, 8_000_000, 0.55),
@@ -131,6 +133,8 @@ export function useStrategicGlobeOverlays({
   ww3Plan,
   mirvPreview,
   humanitarianFacilities,
+  humanitarianOpacity = 1,
+  humanitarianOrder = 0,
 }: {
   viewerRef: RefObject<Cesium.Viewer | null>;
   viewerEpoch: number;
@@ -138,6 +142,8 @@ export function useStrategicGlobeOverlays({
   ww3Plan?: Ww3ExchangePlan | null;
   mirvPreview?: MirvPreview | null;
   humanitarianFacilities?: readonly HumanitarianFacility[];
+  humanitarianOpacity?: number;
+  humanitarianOrder?: number;
 }) {
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -160,6 +166,6 @@ export function useStrategicGlobeOverlays({
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
-    return installHumanitarianFacilityOverlay(viewer, humanitarianFacilities ?? []);
-  }, [humanitarianFacilities, viewerEpoch, viewerRef]);
+    return installHumanitarianFacilityOverlay(viewer, humanitarianFacilities ?? [], humanitarianOpacity, humanitarianOrder);
+  }, [humanitarianFacilities, humanitarianOpacity, humanitarianOrder, viewerEpoch, viewerRef]);
 }

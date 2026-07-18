@@ -95,6 +95,7 @@ import { useGlobeControllerSync } from "./globe-controller-sync";
 import { OSM_ATTRIBUTION_URL, type HumanitarianFacility } from "../lib/osm-facilities";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { defaultLayerState, type LayerState } from "../lib/layer-controller";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -172,6 +173,8 @@ type Props = {
   accessibleSceneLabel?: string;
   simulationTimeS?: number;
   accessibleCameraTelemetry?: { lat: number; lon: number; altitudeM: number; headingDeg: number };
+  /** Scenario-scoped user layer settings. Omitted compare panes use domain defaults. */
+  layerState?: LayerState;
 };
 
 type SweImageryResource = {
@@ -414,10 +417,21 @@ export function Globe({
   accessibleSceneLabel,
   simulationTimeS = 0,
   accessibleCameraTelemetry,
+  layerState,
 }: Props) {
   const { t, formatNumber } = useI18n();
   const sceneLabel = accessibleSceneLabel ?? t("globe.unconfiguredScene");
   const sceneSummaryId = useId();
+  const layers = layerState ?? defaultLayerState(domain);
+  const sourceLayer = layers.source;
+  const wavefrontLayer = layers.wavefront;
+  const sweLayer = layers["swe-field"];
+  const isochroneLayer = layers["arrival-isochrones"];
+  const runupLayer = layers["coastal-runup"];
+  const dartLayer = layers["dart-observations"];
+  const humanitarianLayer = layers["humanitarian-facilities"];
+  const hazardRingLayer = layers["hazard-rings"];
+  const falloutLayer = layers["fallout-plume"];
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const viewerLifecycleRef = useRef<ViewerLifecycle<Cesium.Viewer> | null>(null);
@@ -505,16 +519,16 @@ export function Globe({
     announcedSummary: announcedAccessibilitySummary,
   } = useGlobeAccessibilitySummary({
     resolvedStyle,
-    hasInitial: Boolean(initial),
-    hasWavefront: Boolean(wavefront),
-    hasSweSnapshot: Boolean(sweSnapshot),
-    isochroneCount: isochrones?.length ?? 0,
-    runupResultCount: runupResults?.length ?? 0,
+    hasInitial: sourceLayer.visible && Boolean(initial),
+    hasWavefront: wavefrontLayer.visible && Boolean(wavefront),
+    hasSweSnapshot: sweLayer.visible && Boolean(sweSnapshot),
+    isochroneCount: isochroneLayer.visible ? isochrones?.length ?? 0 : 0,
+    runupResultCount: runupLayer.visible ? runupResults?.length ?? 0 : 0,
     gaugeCount: gauges?.length ?? 0,
-    dartBuoyCount: dartBuoys?.length ?? 0,
-    hasHazardCenter: Boolean(hazardCenter),
-    hazardRingCount: hazardRings?.length ?? 0,
-    hazardPolygonCount: hazardPolygons?.length ?? 0,
+    dartBuoyCount: dartLayer.visible ? dartBuoys?.length ?? 0 : 0,
+    hasHazardCenter: sourceLayer.visible && Boolean(hazardCenter),
+    hazardRingCount: hazardRingLayer.visible ? hazardRings?.length ?? 0 : 0,
+    hazardPolygonCount: falloutLayer.visible ? hazardPolygons?.length ?? 0 : 0,
     hasDirectRenderFrame: Boolean(directRenderFrame),
     hasWw3Plan: Boolean(ww3Plan),
     mirvPointCount: mirvPreview?.points.length ?? 0,
@@ -978,19 +992,37 @@ export function Globe({
     },
     {
       viewerEpoch,
-      initial,
-      hazardRings,
+      initial: sourceLayer.visible ? initial : null,
+      hazardRings: hazardRingLayer.visible ? hazardRings : null,
       hazardCenter,
-      hazardPolygons,
+      hazardPolygons: falloutLayer.visible ? hazardPolygons : null,
       previewCamera,
       outcomeFocus,
       impactKind,
       directRenderFrame,
-      wavefront,
-      isochrones,
-      dartBuoys,
-      runupResults,
+      wavefront: wavefrontLayer.visible ? wavefront : null,
+      isochrones: isochroneLayer.visible ? isochrones : null,
+      dartBuoys: dartLayer.visible ? dartBuoys : [],
+      runupResults: runupLayer.visible ? runupResults : [],
       gauges,
+      showDirectSource: domain !== "tsunami" && sourceLayer.visible,
+      layerOpacity: {
+        source: sourceLayer.opacity,
+        wavefront: wavefrontLayer.opacity,
+        isochrones: isochroneLayer.opacity,
+        runup: runupLayer.opacity,
+        dart: dartLayer.opacity,
+        hazardRings: hazardRingLayer.opacity,
+        fallout: falloutLayer.opacity,
+      },
+      layerOrder: {
+        source: sourceLayer.order,
+        wavefront: wavefrontLayer.order,
+        isochrones: isochroneLayer.order,
+        dart: dartLayer.order,
+        hazardRings: hazardRingLayer.order,
+        fallout: falloutLayer.order,
+      },
     },
   );
 
@@ -1007,7 +1039,7 @@ export function Globe({
     const ownership = sweCoordinatorRef.current;
     if (!viewer || !ownership) return;
 
-    if (!sweSnapshot || (!sweSnapshot.eta_png_b64 && !sweSnapshot.field_tiles?.length)) {
+    if (!sweLayer.visible || !sweSnapshot || (!sweSnapshot.eta_png_b64 && !sweSnapshot.field_tiles?.length)) {
       ownership.coordinator.invalidate("snapshot_cleared");
       return;
     }
@@ -1037,7 +1069,7 @@ export function Globe({
           }
           for (const provider of resource.providers) {
             const layer = viewer.imageryLayers.addImageryProvider(provider);
-            layer.alpha = 0.9;
+            layer.alpha = sweLayer.opacity;
             resource.layers.push(layer);
           }
         },
@@ -1048,7 +1080,7 @@ export function Globe({
       });
 
     return () => ownership.coordinator.abortPending("snapshot_changed");
-  }, [sweSnapshot, viewerEpoch]);
+  }, [sweLayer.opacity, sweLayer.visible, sweSnapshot, viewerEpoch]);
 
   useStrategicGlobeOverlays({
     viewerRef,
@@ -1056,7 +1088,9 @@ export function Globe({
     fireballs,
     ww3Plan,
     mirvPreview,
-    humanitarianFacilities,
+    humanitarianFacilities: humanitarianLayer.visible ? humanitarianFacilities : [],
+    humanitarianOpacity: humanitarianLayer.opacity,
+    humanitarianOrder: humanitarianLayer.order,
   });
 
   return (
@@ -1069,14 +1103,14 @@ export function Globe({
         aria-describedby={sceneSummaryId}
         data-imagery-status={imageryStatus}
         data-imagery-style={activeImageryStyle ?? "none"}
-        data-swe-field-tiles={sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
+        data-swe-field-tiles={sweLayer.visible && sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
         data-ww3-plan={ww3Plan?.id ?? "none"}
         data-ww3-strikes={ww3Plan?.strikes.length ?? 0}
         data-mirv-preview={mirvPreview?.id ?? "none"}
         data-mirv-warheads={mirvPreview?.points.length ?? 0}
-        data-humanitarian-facilities={humanitarianFacilities.length}
+        data-humanitarian-facilities={humanitarianLayer.visible ? humanitarianFacilities.length : 0}
       />
-      {humanitarianFacilities.length > 0 && (
+      {humanitarianLayer.visible && humanitarianFacilities.length > 0 && (
         <a
           className="app__globe-osm-attribution"
           href={OSM_ATTRIBUTION_URL}

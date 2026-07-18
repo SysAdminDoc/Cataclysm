@@ -75,6 +75,18 @@ function input(overrides: Partial<TsunamiAnalyticalInput> = {}): TsunamiAnalytic
 }
 
 describe("TsunamiAnalyticalController", () => {
+  it("applies independent opacity to wavefront, arrivals, and DART channels", () => {
+    const host = new FakeHost();
+    const controller = new TsunamiAnalyticalController(host, 1);
+    controller.update(input({ wavefront_opacity: 0.5, isochrone_opacity: 0.4, dart_opacity: 0.3 }));
+    const wavefront = host.descriptorFor("wavefront:ring:0");
+    const arrival = host.descriptorFor("isochrone:600:0:line:0");
+    const dart = host.descriptorFor("dart:21418");
+    expect(wavefront?.kind === "wavefront_ring" ? wavefront.outline_alpha : null).toBeCloseTo(0.19375);
+    expect(arrival?.kind === "isochrone_polyline" ? arrival.alpha : null).toBeCloseTo(0.34);
+    expect(dart?.kind === "dart_buoy" ? dart.fill_alpha : null).toBe(0.3);
+  });
+
   it("preserves Globe wavefront, isochrone, label, and DART presentation semantics", () => {
     const host = new FakeHost();
     const controller = new TsunamiAnalyticalController(host, 20);
@@ -144,7 +156,9 @@ describe("TsunamiAnalyticalController", () => {
       position: { lat_deg: 38.7, lon_deg: 148.7, height_m: 0 },
       pixel_size: 9,
       fill_css: "#eba0ac",
+      fill_alpha: 1,
       outline_css: "#11111b",
+      outline_alpha: 1,
       outline_width_px: 2,
       label: "DART 21418",
       label_font: "10px Inter, sans-serif",

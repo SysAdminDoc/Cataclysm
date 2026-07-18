@@ -373,6 +373,10 @@ const PROVENANCE_META: ScreenshotMeta = {
   solverMode: "SWE snapshot playback",
   timeS: 900,
   evidenceIds: ["scenario:preset:chicxulub", "result:preset:chicxulub:outcome"],
+  layerState: [
+    { id: "swe-field", visible: true, opacityPct: 65, order: 0 },
+    { id: "arrival-isochrones", visible: false, opacityPct: 100, order: 1 },
+  ],
 };
 
 describe("suggestedFilename", () => {
@@ -461,7 +465,7 @@ describe("suggestedFilename", () => {
     const ok = exportGeoJson([SAMPLE_POINT], PROVENANCE_META);
 
     expect(ok.ok).toBe(true);
-    const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, string | number | null> };
+    const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, unknown> };
     expect(fc.properties.app_version).toBe("0.10.5");
     expect(fc.properties.generated_at).toBe("2026-06-28T00:00:00.000Z");
     expect(fc.properties.scenario_type).toBe("Asteroid");
@@ -473,6 +477,7 @@ describe("suggestedFilename", () => {
     expect(fc.properties.bathymetry_source).toContain("Low-confidence coarse basin/shelf approximation");
     expect(fc.properties.bathymetry_source).toContain("GEBCO_2026/TID raster sampling is not bundled");
     expect(fc.properties.model_notice).toContain("Educational model only");
+    expect(fc.properties.layer_state).toEqual(PROVENANCE_META.layerState);
   });
 });
 
@@ -498,12 +503,13 @@ describe("exportCzml", () => {
     const czml = JSON.parse(await getBlob()!.text()) as Array<{
       description?: string;
       id: string;
-      properties?: Record<string, string | null>;
+      properties?: Record<string, unknown>;
     }>;
     expect(czml[0].description).toContain("Scenario type: Asteroid");
     expect(czml[1].properties?.appVersion).toBe("0.10.5");
     expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
     expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
+    expect(czml[1].properties?.layerState).toEqual(PROVENANCE_META.layerState);
   });
 
   it("emits a spec-correct time-tagged image material with transparency", async () => {

@@ -22,7 +22,7 @@ export type IsochronePolylineDescriptor = Readonly<{
   positions: readonly AnalyticalGeoPosition[];
   width_px: 1.6;
   color_css: "#f9e2af";
-  alpha: 0.85;
+  alpha: number;
   dash_length_px: 12;
   clamp_to_ground: false;
 }>;
@@ -35,7 +35,7 @@ export type IsochroneLabelDescriptor = Readonly<{
   font: "11px 'JetBrains Mono', monospace";
   fill_css: "#f9e2af";
   outline_css: "#000000";
-  outline_alpha: 0.7;
+  outline_alpha: number;
   outline_width_px: 2;
   scale: 1;
   disable_depth_test_distance_m: number;
@@ -47,8 +47,10 @@ export type DartBuoyDescriptor = Readonly<{
   name: string;
   position: AnalyticalGeoPosition;
   pixel_size: 9;
-  fill_css: "#eba0ac";
-  outline_css: "#11111b";
+  fill_css: string;
+  fill_alpha: number;
+  outline_css: string;
+  outline_alpha: number;
   outline_width_px: 2;
   label: string;
   label_font: "10px Inter, sans-serif";

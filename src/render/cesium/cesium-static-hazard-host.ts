@@ -9,8 +9,8 @@ function color(css: string, alpha = 1): Cesium.Color {
   return Cesium.Color.fromCssColorString(css).withAlpha(alpha);
 }
 
-function position(latDeg: number, lonDeg: number): Cesium.Cartesian3 {
-  return Cesium.Cartesian3.fromDegrees(lonDeg, latDeg, 0);
+function position(latDeg: number, lonDeg: number, heightM = 0): Cesium.Cartesian3 {
+  return Cesium.Cartesian3.fromDegrees(lonDeg, latDeg, heightM);
 }
 
 function applyDescriptor(
@@ -29,7 +29,7 @@ function applyDescriptor(
 
   if (descriptor.kind === "hazard_ring") {
     entity.position = new Cesium.ConstantPositionProperty(
-      position(descriptor.position.lat_deg, descriptor.position.lon_deg),
+      position(descriptor.position.lat_deg, descriptor.position.lon_deg, descriptor.position.height_m),
     );
     entity.ellipse = new Cesium.EllipseGraphics({
       semiMajorAxis: descriptor.semi_major_axis_m,
@@ -38,19 +38,19 @@ function applyDescriptor(
       outline: true,
       outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
       outlineWidth: descriptor.outline_width_px,
-      height: 0,
+      height: descriptor.position.height_m,
     });
     return;
   }
 
   if (descriptor.kind === "ground_zero") {
     entity.position = new Cesium.ConstantPositionProperty(
-      position(descriptor.position.lat_deg, descriptor.position.lon_deg),
+      position(descriptor.position.lat_deg, descriptor.position.lon_deg, descriptor.position.height_m),
     );
     entity.point = new Cesium.PointGraphics({
       pixelSize: descriptor.pixel_size,
-      color: color(descriptor.fill_css),
-      outlineColor: color(descriptor.outline_css),
+      color: color(descriptor.fill_css, descriptor.fill_alpha),
+      outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
       outlineWidth: descriptor.outline_width_px,
       disableDepthTestDistance: deterministicCapture ? Number.POSITIVE_INFINITY : 0,
     });
@@ -78,12 +78,12 @@ function applyDescriptor(
   entity.position = undefined;
   entity.polygon = new Cesium.PolygonGraphics({
     hierarchy: new Cesium.PolygonHierarchy(
-      descriptor.points.map((point) => position(point.lat_deg, point.lon_deg)),
+      descriptor.points.map((point) => position(point.lat_deg, point.lon_deg, point.height_m)),
     ),
     material: color(descriptor.fill_css, descriptor.fill_alpha),
     outline: true,
     outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
-    height: 0,
+    height: descriptor.points[0]?.height_m ?? 0,
   });
 }
 

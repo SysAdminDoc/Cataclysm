@@ -26,7 +26,9 @@ export type GroundZeroEntityDescriptor = Readonly<{
   position: HazardGeoPosition;
   pixel_size: number;
   fill_css: string;
+  fill_alpha: number;
   outline_css: string;
+  outline_alpha: number;
   outline_width_px: number;
   label: string;
 }>;

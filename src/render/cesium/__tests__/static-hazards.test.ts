@@ -66,6 +66,21 @@ function input(overrides: Partial<StaticHazardInput> = {}): StaticHazardInput {
 }
 
 describe("StaticHazardController", () => {
+  it("renders direct source independently and applies per-layer opacity", () => {
+    const host = new FakeHost();
+    const controller = new StaticHazardController(host, 1);
+    controller.update(input({
+      rings: [],
+      show_source: true,
+      source_opacity: 0.45,
+      fallout_opacity: 0.5,
+    }));
+    const source = [...host.entities.values()].find((entry) => entry.handle.key === "footprint:ground-zero")?.descriptor;
+    const fallout = [...host.entities.values()].find((entry) => entry.handle.key === "fallout:heavy:0")?.descriptor;
+    expect(source?.kind === "ground_zero" ? source.fill_alpha : null).toBe(0.45);
+    expect(fallout?.kind === "fallout_polygon" ? fallout.fill_alpha : null).toBeCloseTo(0.11);
+  });
+
   it("creates exact footprint/fallout descriptors and diagnostics", () => {
     const host = new FakeHost();
     const controller = new StaticHazardController(host, 12);

@@ -28,6 +28,13 @@ export type StaticHazardInput = Readonly<{
   center: Readonly<{ lat_deg: number; lon_deg: number }> | null;
   rings: readonly HazardFootprintRing[];
   fallout_polygons: readonly FalloutPolygon[];
+  show_source?: boolean;
+  source_opacity?: number;
+  ring_opacity?: number;
+  fallout_opacity?: number;
+  source_order?: number;
+  ring_order?: number;
+  fallout_order?: number;
 }>;
 
 export type StaticHazardOperationCounts = Readonly<{
@@ -74,8 +81,8 @@ const ZERO_OPERATIONS: StaticHazardOperationCounts = Object.freeze({
   invalid_inputs: 0,
 });
 
-function frozenPosition(lat_deg: number, lon_deg: number): HazardGeoPosition {
-  return Object.freeze({ lat_deg, lon_deg, height_m: 0 });
+function frozenPosition(lat_deg: number, lon_deg: number, height_m = 0): HazardGeoPosition {
+  return Object.freeze({ lat_deg, lon_deg, height_m });
 }
 
 function finiteCoordinate(value: Readonly<{ lat_deg: number; lon_deg: number }> | null): value is Readonly<{ lat_deg: number; lon_deg: number }> {
@@ -104,6 +111,10 @@ function signature(descriptor: StaticHazardEntityDescriptor): string {
 
 function freezeOperations(value: StaticHazardOperationCounts): StaticHazardOperationCounts {
   return Object.freeze({ ...value });
+}
+
+function opacity(value: number | undefined): number {
+  return Number.isFinite(value) ? Math.max(0.1, Math.min(1, value ?? 1)) : 1;
 }
 
 /** Stable, generation-bound entity lifecycle for hazard footprints and fallout. */
@@ -239,11 +250,23 @@ export class StaticHazardController<Handle = unknown> {
   #buildDesired(input: StaticHazardInput): DesiredBuild {
     const entities: StaticHazardEntityDescriptor[] = [];
     let invalidInputs = 0;
+    const sourceOpacity = opacity(input.source_opacity);
+    const ringOpacity = opacity(input.ring_opacity);
+    const falloutOpacity = opacity(input.fallout_opacity);
     const centerValid = finiteCoordinate(input.center);
     if (input.center && !centerValid) invalidInputs += 1;
 
     if (centerValid) {
-      const position = frozenPosition(input.center.lat_deg, input.center.lon_deg);
+      const ringPosition = frozenPosition(
+        input.center.lat_deg,
+        input.center.lon_deg,
+        Math.max(0, 12 - (input.ring_order ?? 12)) * 20,
+      );
+      const sourcePosition = frozenPosition(
+        input.center.lat_deg,
+        input.center.lon_deg,
+        Math.max(0, 12 - (input.source_order ?? 12)) * 20,
+      );
       const rings = stableKeys("footprint:ring", input.rings)
         .filter(({ value }) => {
           const valid = value.label.trim().length > 0
@@ -260,26 +283,28 @@ export class StaticHazardController<Handle = unknown> {
           key,
           name: value.label,
           description: value.description ?? value.label,
-          position,
+          position: ringPosition,
           semi_major_axis_m: radius,
           semi_minor_axis_m: radius,
           fill_css: value.color_css,
-          fill_alpha: 0.16,
+          fill_alpha: 0.16 * ringOpacity,
           outline_css: value.color_css,
-          outline_alpha: 0.9,
+          outline_alpha: 0.9 * ringOpacity,
           outline_width_px: 2,
           z_order: index,
         });
         entities.push(descriptor);
       });
-      if (rings.length > 0) {
+      if (rings.length > 0 || input.show_source === true) {
         const groundZero: GroundZeroEntityDescriptor = Object.freeze({
           kind: "ground_zero",
           key: "footprint:ground-zero",
-          position,
+          position: sourcePosition,
           pixel_size: 9,
           fill_css: "#f38ba8",
+          fill_alpha: sourceOpacity,
           outline_css: "#11111b",
+          outline_alpha: sourceOpacity,
           outline_width_px: 2,
           label: "Ground zero",
         });
@@ -300,7 +325,11 @@ export class StaticHazardController<Handle = unknown> {
           invalidInputs += 1;
           continue;
         }
-        points.push(frozenPosition(point.lat_deg, point.lon_deg));
+        points.push(frozenPosition(
+          point.lat_deg,
+          point.lon_deg,
+          Math.max(0, 12 - (input.fallout_order ?? 12)) * 20,
+        ));
       }
       if (points.length < 3) {
         invalidInputs += 1;
@@ -313,9 +342,9 @@ export class StaticHazardController<Handle = unknown> {
         description: value.label,
         points: Object.freeze(points),
         fill_css: value.color_css,
-        fill_alpha: 0.22,
+        fill_alpha: 0.22 * falloutOpacity,
         outline_css: value.color_css,
-        outline_alpha: 0.8,
+        outline_alpha: 0.8 * falloutOpacity,
       });
       entities.push(polygon);
     }

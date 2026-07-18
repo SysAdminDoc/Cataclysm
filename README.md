@@ -180,10 +180,16 @@ Existing tools each do one piece:
   and DART buoy historical observations with per-buoy model-vs-observed RMSE
   for the four instrumented presets. Gauge markers are batched for rendering;
   the accessible gauge table remains the interaction and export surface.
+- **Scenario layer controller** — the Layers inspector now controls real
+  visibility, opacity, and render priority for every applicable analytical
+  overlay. Native keyboard controls expose prerequisites, compact legends,
+  temporal coupling, and evidence; Reset restores domain defaults. Each
+  scenario keeps its own local layer stack, and PNG/share/scientific exports
+  record the exact visible state, opacity, and order used for the view.
 - **Opt-in humanitarian context** — Layers can query OpenStreetMap schools,
   healthcare sites, and emergency-response facilities whose mapped point or
   feature center falls inside active first-order runup discs. Nothing is sent
-  until the switch is enabled; requests are limited to the 30 largest active
+  until the layer visibility control is enabled; requests are limited to the 30 largest active
   extents, 2 MiB, and 500 results, then cached locally for 24 hours. An older
   cache remains visible offline. Coverage and tagging vary, and the layer does
   not claim damage, operability, access, evacuation status, or emergency need.

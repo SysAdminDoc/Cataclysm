@@ -248,7 +248,8 @@ function stampProvenanceStrip(
   const citation = p.citationUrl ? p.citationUrl : p.citationReference;
   const line1 = `Cataclysm v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
   const line2 = `${p.bathymetrySource} | ${citation} | ${p.limitation}`;
-  const line3 = `Evidence ${p.evidenceIds.join(", ") || "none"} | Earth assets ${p.assetRegistryVersion}: ${p.visualAssetIds.join(", ")} | ${attributions.join(" · ")}`;
+  const layerSummary = p.layerState.map((layer) => `${layer.id}:${layer.visible ? "on" : "off"}@${layer.opacityPct}%`).join(",") || "defaults";
+  const line3 = `Layers ${layerSummary} | Evidence ${p.evidenceIds.join(", ") || "none"} | Earth assets ${p.assetRegistryVersion}: ${p.visualAssetIds.join(", ")} | ${attributions.join(" · ")}`;
 
   ctx.save();
   ctx.fillStyle = "rgba(17, 17, 27, 0.86)";
@@ -392,7 +393,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
   ctx.font = "12px Inter, system-ui, sans-serif";
   ctx.textBaseline = "top";
   ctx.fillText(
-    `Cataclysm v${provenance.appVersion} | Evidence ${provenance.evidenceIds.join(", ") || "none"} | ${provenance.generatedAt} | ${provenance.solverMode}`,
+    `Cataclysm v${provenance.appVersion} | Layers ${provenance.layerState.filter((layer) => layer.visible).map((layer) => layer.id).join(", ") || "defaults"} | ${provenance.generatedAt} | ${provenance.solverMode}`,
     24,
     H - FOOTER_H + 10,
   );
@@ -686,6 +687,7 @@ function directHazardProperties(meta: ScreenshotMeta, data: DirectHazardExportDa
     citation_reference: provenance.citationReference,
     citation_url: provenance.citationUrl,
     evidence_ids: provenance.evidenceIds,
+    layer_state: provenance.layerState,
     generated_at: provenance.generatedAt,
     model_version: data.result.modelVersion,
     scenario: provenance.scenarioName,
@@ -908,6 +910,7 @@ export function exportCzml(
     citationReference: provenance.citationReference,
     citationUrl: provenance.citationUrl,
     evidenceIds: provenance.evidenceIds,
+    layerState: provenance.layerState,
     generatedAt: provenance.generatedAt,
     scenarioType: provenance.scenarioType,
     solverMode: provenance.solverMode,
@@ -1088,6 +1091,7 @@ export function exportGeoJson(
       citation_reference: provenance.citationReference,
       citation_url: provenance.citationUrl,
       evidence_ids: provenance.evidenceIds,
+      layer_state: provenance.layerState,
       generated_at: provenance.generatedAt,
       geometry_notice: "First-order circular inundation discs from runup and beach-slope estimates.",
       model_notice: provenance.limitation,

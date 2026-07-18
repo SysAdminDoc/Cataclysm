@@ -17,7 +17,9 @@ describe("CesiumStaticHazardHost", () => {
       position: { lat_deg: -2, lon_deg: -137, height_m: 0 },
       pixel_size: 9,
       fill_css: "#f38ba8",
+      fill_alpha: 1,
       outline_css: "#11111b",
+      outline_alpha: 1,
       outline_width_px: 2,
       label: "Ground zero",
     });
@@ -40,7 +42,9 @@ describe("CesiumStaticHazardHost", () => {
       position: { lat_deg: -2, lon_deg: -137, height_m: 0 },
       pixel_size: 9,
       fill_css: "#f38ba8",
+      fill_alpha: 1,
       outline_css: "#11111b",
+      outline_alpha: 1,
       outline_width_px: 2,
       label: "Ground zero",
     });

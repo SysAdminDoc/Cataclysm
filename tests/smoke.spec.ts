@@ -263,6 +263,17 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("link", { name: "Harbor Clinic" })).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(".app__globe-mount").first()).toHaveAttribute("data-humanitarian-facilities", "1");
     await expect(page.locator(".app__globe-osm-attribution").first()).toBeVisible();
+    const facilityRow = page.locator(".layer-inspector__row", { hasText: "Humanitarian facilities" });
+    await facilityRow.getByRole("slider", { name: "Opacity for Humanitarian facilities" }).fill("55");
+    await facilityRow.getByRole("button", { name: "Move Humanitarian facilities down" }).click();
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem("cataclysm.layer-controller.v1") ?? "null") as {
+        scenarios?: Array<{ scenarioKey: string; layers: Array<{ id: string; visible: boolean; opacity: number; order: number }> }>;
+      } | null;
+      return workspace?.scenarios
+        ?.find((scenario) => scenario.scenarioKey === "tsunami:id:chicxulub")
+        ?.layers.find((layer) => layer.id === "humanitarian-facilities") ?? null;
+    })).toEqual({ id: "humanitarian-facilities", visible: true, opacity: 0.55, order: 1 });
     expect((await new AxeBuilder({ page }).include(".layer-inspector").analyze()).violations).toEqual([]);
     expect(overpassRequests).toBe(1);
   });
@@ -437,7 +448,10 @@ test.describe("Cataclysm browser preview", () => {
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const menu = page.getByRole("group", { name: "Export current scenario" });
     for (const label of ["PNG", "Share", "CZML", "GeoJSON", "KML"]) {
-      await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s|$)`) })).not.toHaveAttribute("aria-disabled", "true");
+      const action = label === "Share"
+        ? menu.getByRole("button", { name: "Share", exact: true })
+        : menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s|$)`) });
+      await expect(action).not.toHaveAttribute("aria-disabled", "true");
     }
 
     const downloadPromise = page.waitForEvent("download");

@@ -1,7 +1,7 @@
 export type SourceGeoPosition = Readonly<{
   lat_deg: number;
   lon_deg: number;
-  height_m: 0;
+  height_m: number;
 }>;
 
 export type ThemeColorReference = Readonly<{
@@ -33,7 +33,7 @@ export type TsunamiSourceEntityDescriptor = Readonly<{
     semi_minor_axis_m: number;
     fill: ThemeColorReference;
     outline: ThemeColorReference;
-    height_m: 0;
+    height_m: number;
   }>;
   label: Readonly<{
     text: string;

@@ -32,6 +32,12 @@ export type TsunamiAnalyticalInput = Readonly<{
   wavefront: AnalyticalWavefront | null;
   isochrones: readonly AnalyticalIsochrone[];
   dart_buoys: readonly AnalyticalDartBuoy[];
+  wavefront_opacity?: number;
+  isochrone_opacity?: number;
+  dart_opacity?: number;
+  wavefront_order?: number;
+  isochrone_order?: number;
+  dart_order?: number;
 }>;
 
 export type AnalyticalOperationCounts = Readonly<{
@@ -82,8 +88,8 @@ const ZERO_OPERATIONS: AnalyticalOperationCounts = Object.freeze({
   invalid_inputs: 0,
 });
 
-function position(lat_deg: number, lon_deg: number): AnalyticalGeoPosition {
-  return Object.freeze({ lat_deg, lon_deg, height_m: 0 });
+function position(lat_deg: number, lon_deg: number, height_m = 0): AnalyticalGeoPosition {
+  return Object.freeze({ lat_deg, lon_deg, height_m });
 }
 
 function validCoordinate(lat_deg: number, lon_deg: number): boolean {
@@ -95,10 +101,11 @@ function validCoordinate(lat_deg: number, lon_deg: number): boolean {
     && lon_deg <= 180;
 }
 
-function clampedPosition(lon_deg: number, lat_deg: number): AnalyticalGeoPosition {
+function clampedPosition(lon_deg: number, lat_deg: number, height_m = 0): AnalyticalGeoPosition {
   return position(
     Math.max(-90, Math.min(90, lat_deg)),
     Math.max(-180, Math.min(180, lon_deg)),
+    height_m,
   );
 }
 
@@ -108,6 +115,10 @@ function signature(descriptor: TsunamiAnalyticalEntityDescriptor): string {
 
 function freezeOperations(value: AnalyticalOperationCounts): AnalyticalOperationCounts {
   return Object.freeze({ ...value });
+}
+
+function opacity(value: number | undefined): number {
+  return Number.isFinite(value) ? Math.max(0.1, Math.min(1, value ?? 1)) : 1;
 }
 
 /** Stable entity lifecycle for analytical tsunami overlays; contains no solver physics. */
@@ -241,6 +252,12 @@ export class TsunamiAnalyticalController<Handle = unknown> {
     const entities: TsunamiAnalyticalEntityDescriptor[] = [];
     let invalidInputs = 0;
     let wavefrontTimeS: number | null = null;
+    const wavefrontOpacity = opacity(input.wavefront_opacity);
+    const isochroneOpacity = opacity(input.isochrone_opacity);
+    const dartOpacity = opacity(input.dart_opacity);
+    const wavefrontHeight = Math.max(0, 12 - (input.wavefront_order ?? 12)) * 20;
+    const isochroneHeight = Math.max(0, 12 - (input.isochrone_order ?? 12)) * 20;
+    const dartHeight = Math.max(0, 12 - (input.dart_order ?? 12)) * 20;
 
     if (input.wavefront) {
       if (!input.source_center || !validCoordinate(input.source_center.lat_deg, input.source_center.lon_deg)) {
@@ -249,7 +266,7 @@ export class TsunamiAnalyticalController<Handle = unknown> {
         invalidInputs += 1;
       } else {
         wavefrontTimeS = input.wavefront.time_s;
-        const sourcePosition = position(input.source_center.lat_deg, input.source_center.lon_deg);
+        const sourcePosition = position(input.source_center.lat_deg, input.source_center.lon_deg, wavefrontHeight);
         const maximumAmplitude = Math.max(
           1e-9,
           input.wavefront.amplitudes_m.reduce(
@@ -275,7 +292,7 @@ export class TsunamiAnalyticalController<Handle = unknown> {
             fill_css: "#74c7ec",
             fill_alpha: 0,
             outline_css: "#74c7ec",
-            outline_alpha: 0.25 + 0.55 * normalized,
+            outline_alpha: (0.25 + 0.55 * normalized) * wavefrontOpacity,
           });
           entities.push(descriptor);
         }
@@ -306,7 +323,7 @@ export class TsunamiAnalyticalController<Handle = unknown> {
             invalidInputs += 1;
             continue;
           }
-          points.push(clampedPosition(lon, lat));
+          points.push(clampedPosition(lon, lat, isochroneHeight));
         }
         if (points.length < 2) {
           invalidInputs += 1;
@@ -318,7 +335,7 @@ export class TsunamiAnalyticalController<Handle = unknown> {
           positions: Object.freeze(points),
           width_px: 1.6,
           color_css: "#f9e2af",
-          alpha: 0.85,
+          alpha: 0.85 * isochroneOpacity,
           dash_length_px: 12,
           clamp_to_ground: false,
         });
@@ -333,7 +350,7 @@ export class TsunamiAnalyticalController<Handle = unknown> {
             font: "11px 'JetBrains Mono', monospace",
             fill_css: "#f9e2af",
             outline_css: "#000000",
-            outline_alpha: 0.7,
+            outline_alpha: 0.7 * isochroneOpacity,
             outline_width_px: 2,
             scale: 1,
             disable_depth_test_distance_m: Number.POSITIVE_INFINITY,
@@ -364,10 +381,12 @@ export class TsunamiAnalyticalController<Handle = unknown> {
         kind: "dart_buoy",
         key: `dart:${buoy.id}`,
         name: label,
-        position: position(buoy.lat, buoy.lon),
+        position: position(buoy.lat, buoy.lon, dartHeight),
         pixel_size: 9,
         fill_css: "#eba0ac",
+        fill_alpha: dartOpacity,
         outline_css: "#11111b",
+        outline_alpha: dartOpacity,
         outline_width_px: 2,
         label,
         label_font: "10px Inter, sans-serif",

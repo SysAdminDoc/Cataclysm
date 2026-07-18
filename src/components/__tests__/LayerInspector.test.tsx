@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LayerInspector } from "../LayerInspector";
 import { I18nProvider } from "../../lib/i18n";
+import { defaultLayerState, updateLayerSetting } from "../../lib/layer-controller";
 
 describe("LayerInspector trust evidence", () => {
   beforeEach(() => localStorage.clear());
@@ -20,13 +21,19 @@ describe("LayerInspector trust evidence", () => {
         runupCount={2}
         dartCount={1}
         hasFallout={false}
+        layerState={defaultLayerState("tsunami")}
+        timeS={1800}
+        onLayerStateChange={vi.fn()}
         onOpenSettings={vi.fn()}
       />,
     );
 
     const disclosures = screen.getAllByText("Why trust this?");
-    expect(disclosures).toHaveLength(8);
-    await user.click(disclosures[2]);
+    expect(disclosures).toHaveLength(7);
+    const sweRow = screen.getByText("SWE water field").closest("li");
+    expect(sweRow).not.toBeNull();
+    await user.click(within(sweRow!).getByText("Legend and provenance"));
+    await user.click(within(sweRow!).getByText("Why trust this?"));
     expect(screen.getByText("Finite-volume shallow-water-equation solver")).toBeInTheDocument();
     expect(screen.getByText("layer:custom:scenario:swe-field")).toBeInTheDocument();
   });
@@ -43,18 +50,22 @@ describe("LayerInspector trust evidence", () => {
         runupCount={0}
         dartCount={0}
         hasFallout={false}
+        layerState={defaultLayerState("tsunami")}
+        timeS={0}
+        onLayerStateChange={vi.fn()}
         onOpenSettings={vi.fn()}
       />,
     );
 
-    expect(screen.getAllByText("Waiting")).toHaveLength(7);
-    expect(screen.getAllByText("Evidence")).toHaveLength(7);
-    expect(screen.getByText("Off")).toBeInTheDocument();
+    expect(screen.getAllByText("Needs data")).toHaveLength(7);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(7);
+    expect(screen.getByText("Run the SWE solver to create a surface field.")).toBeInTheDocument();
   });
 
   it("requires explicit opt-in and lists grouped OSM facilities with limitations", async () => {
     const user = userEvent.setup();
-    const onEnabledChange = vi.fn();
+    const onLayerStateChange = vi.fn();
+    const visibleFacilities = updateLayerSetting(defaultLayerState("tsunami"), "humanitarian-facilities", { visible: true });
     render(
       <LayerInspector
         domain="tsunami"
@@ -66,7 +77,6 @@ describe("LayerInspector trust evidence", () => {
         runupCount={1}
         dartCount={0}
         hasFallout={false}
-        humanitarianEnabled
         humanitarianState={{
           status: "ready",
           facilities: [{
@@ -95,7 +105,9 @@ describe("LayerInspector trust evidence", () => {
             clampedDiscCount: 0,
           },
         }}
-        onHumanitarianEnabledChange={onEnabledChange}
+        layerState={visibleFacilities}
+        timeS={1200}
+        onLayerStateChange={onLayerStateChange}
         onOpenSettings={vi.fn()}
       />,
     );
@@ -104,7 +116,9 @@ describe("LayerInspector trust evidence", () => {
     expect(screen.getByText(/does not establish damage, operability, access/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "© OpenStreetMap contributors" })).toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Show humanitarian facilities from OpenStreetMap" }));
-    expect(onEnabledChange).toHaveBeenCalledWith(false);
+    expect(onLayerStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      "humanitarian-facilities": expect.objectContaining({ visible: false }),
+    }));
   });
 
   it("localizes analytical layers and humanitarian privacy states", () => {
@@ -121,6 +135,9 @@ describe("LayerInspector trust evidence", () => {
           runupCount={1}
           dartCount={0}
           hasFallout={false}
+          layerState={defaultLayerState("tsunami")}
+          timeS={0}
+          onLayerStateChange={vi.fn()}
           onOpenSettings={vi.fn()}
         />
       </I18nProvider>,
@@ -129,8 +146,49 @@ describe("LayerInspector trust evidence", () => {
     expect(screen.getByText("可視化レイヤー")).toBeInTheDocument();
     expect(screen.getByText("解析的波面")).toBeInTheDocument();
     expect(screen.getByText("人道支援施設")).toBeInTheDocument();
-    expect(screen.getAllByText("信頼性の根拠").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("凡例と由来").length).toBeGreaterThan(0);
     expect(screen.getByRole("checkbox", { name: "OpenStreetMapの人道支援施設を表示" })).toBeInTheDocument();
-    expect(screen.getByText(/シナリオ名と発生源パラメータは送信しません/)).toBeInTheDocument();
+  });
+
+  it("exposes native keyboard controls for visibility, opacity, order, and reset", async () => {
+    const user = userEvent.setup();
+    const onLayerStateChange = vi.fn();
+    render(
+      <LayerInspector
+        domain="nuclear"
+        hasSource
+        hasWavefront={false}
+        hasSweField={false}
+        hasMaxField={false}
+        arrivalCount={0}
+        runupCount={0}
+        dartCount={0}
+        hasFallout
+        layerState={defaultLayerState("nuclear")}
+        timeS={0}
+        onLayerStateChange={onLayerStateChange}
+        onOpenSettings={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "Show Fallout plume" }));
+    expect(onLayerStateChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      "fallout-plume": expect.objectContaining({ visible: false }),
+    }));
+
+    fireEvent.change(screen.getByRole("slider", { name: "Opacity for Hazard effect rings" }), {
+      target: { value: "55" },
+    });
+    expect(onLayerStateChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      "hazard-rings": expect.objectContaining({ opacity: 0.55 }),
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Move Effects origin up" }));
+    expect(onLayerStateChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      source: expect.objectContaining({ order: 1 }),
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Reset scenario layers to defaults" }));
+    expect(onLayerStateChange).toHaveBeenLastCalledWith(defaultLayerState("nuclear"));
   });
 });

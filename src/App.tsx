@@ -90,6 +90,14 @@ import type { MirvPreview } from "./lib/mirv";
 import { useFireballs } from "./hooks/useFireballs";
 import { SimulationTransport } from "./components/SimulationTransport";
 import { LayerInspector } from "./components/LayerInspector";
+import {
+  buildLayerScenarioKey,
+  defaultLayerState,
+  layerExportRecords,
+  loadScenarioLayerState,
+  saveScenarioLayerState,
+  type LayerState,
+} from "./lib/layer-controller";
 import { SourceModelSummary } from "./components/SourceModelSummary";
 import {
   type AsteroidInput,
@@ -430,6 +438,10 @@ export default function App() {
   const [mirvPreview, setMirvPreview] = useState<MirvPreview | null>(null);
   const [showFireballs, setShowFireballs] = useState(false);
   const [humanitarianFacilitiesEnabled, setHumanitarianFacilitiesEnabled] = useState(false);
+  const [layerWorkspace, setLayerWorkspace] = useState<{
+    context: string | null;
+    state: LayerState;
+  }>({ context: null, state: defaultLayerState("tsunami") });
   const fireballFeed = useFireballs(hazardMode === "asteroid" && showFireballs);
   const [asteroidVisualReport, setAsteroidVisualReport] = useState<AsteroidVisualReport | null>(null);
   const [nuclearShelterReport, setNuclearShelterReport] = useState<NuclearShelterReport | null>(null);
@@ -975,6 +987,42 @@ export default function App() {
       : null;
   const activeScenarioKindA = activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? null;
   const activeScenarioKindB = activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? null;
+  const layerScenarioKey = useMemo(() => {
+    if (hazardMode === "tsunami") {
+      return buildLayerScenarioKey("tsunami", slotA.activePresetId, slotA.lastCustomScenario ?? slotA.initial);
+    }
+    const directId = libraryPreview?.kind === "direct" && libraryPreview.scenario.domain === hazardMode
+      ? libraryPreview.scenario.id
+      : null;
+    return buildLayerScenarioKey(
+      hazardMode,
+      directId,
+      hazardMode === "nuclear" ? { input: nuclearInput, windFromDeg } : asteroidInput,
+    );
+  }, [asteroidInput, hazardMode, libraryPreview, nuclearInput, slotA.activePresetId, slotA.initial, slotA.lastCustomScenario, windFromDeg]);
+  const layerContext = `${hazardMode}|${layerScenarioKey}`;
+  const layerDefaults = useMemo(() => defaultLayerState(hazardMode), [hazardMode]);
+  const layerState = layerWorkspace.context === layerContext ? layerWorkspace.state : layerDefaults;
+
+  useEffect(() => {
+    const loaded = loadScenarioLayerState(layerScenarioKey, hazardMode);
+    setLayerWorkspace({ context: layerContext, state: loaded });
+  }, [hazardMode, layerContext, layerScenarioKey]);
+
+  useEffect(() => {
+    if (layerWorkspace.context !== layerContext) return;
+    saveScenarioLayerState(layerScenarioKey, hazardMode, layerWorkspace.state);
+  }, [hazardMode, layerContext, layerScenarioKey, layerWorkspace]);
+
+  useEffect(() => {
+    if (hazardMode === "tsunami") {
+      setHumanitarianFacilitiesEnabled(layerState["humanitarian-facilities"].visible);
+    }
+  }, [hazardMode, layerState]);
+
+  const updateLayerState = useCallback((next: LayerState) => {
+    setLayerWorkspace({ context: layerContext, state: next });
+  }, [layerContext]);
   const comparisonCameraA = useMemo(() => (
     compareMode && activeComparisonStory && slotA.initial
       ? {
@@ -1320,6 +1368,7 @@ export default function App() {
     renderFrame: directRenderProvenance,
     runQuality: null,
     evidenceIds: exportEvidenceIdsA(),
+    layerState: layerExportRecords(layerState, hazardMode),
   }) : ({
     preset: activePresetA,
     initial: slotA.initial,
@@ -1331,6 +1380,7 @@ export default function App() {
     renderFrame: inHazardMode ? directRenderProvenance : sweRenderFrameA,
     runQuality: sweRunQualityA,
     evidenceIds: exportEvidenceIdsA(),
+    layerState: layerExportRecords(layerState, hazardMode),
   });
 
   const exportMetaB = (): ScreenshotMeta => ({
@@ -2369,6 +2419,7 @@ export default function App() {
                 accessibleCameraTelemetry={cameraTelemetry}
                 outcomeFocus={inHazardMode ? null : outcomeFocus}
                 onOutcomeFocusTime={setTimeS}
+                layerState={layerState}
               />
               {compareMode && <div className="app__globe-tag">{t("app.slotA")}</div>}
             </div>
@@ -2773,9 +2824,10 @@ export default function App() {
           initial={slotA.initial}
           sourceKind={activeScenarioKindA}
           directResult={hazardResult}
-          humanitarianEnabled={humanitarianFacilitiesEnabled}
           humanitarianState={humanitarianFacilities.state}
-          onHumanitarianEnabledChange={setHumanitarianFacilitiesEnabled}
+          layerState={layerState}
+          timeS={timeS}
+          onLayerStateChange={updateLayerState}
           onRefreshHumanitarian={humanitarianFacilities.refresh}
           onOpenSettings={() => setShowSettings(true)}
         />}

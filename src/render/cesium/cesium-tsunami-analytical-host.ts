@@ -159,15 +159,15 @@ export class CesiumTsunamiAnalyticalHost implements TsunamiAnalyticalEntityHost<
       position: cartesian(descriptor.position),
       point: {
         pixelSize: descriptor.pixel_size,
-        color: color(descriptor.fill_css),
-        outlineColor: color(descriptor.outline_css),
+        color: color(descriptor.fill_css, descriptor.fill_alpha),
+        outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
         outlineWidth: descriptor.outline_width_px,
       },
       label: {
         text: descriptor.label,
         font: descriptor.label_font,
-        fillColor: color(descriptor.fill_css),
-        outlineColor: color(descriptor.outline_css),
+        fillColor: color(descriptor.fill_css, descriptor.fill_alpha),
+        outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
         outlineWidth: descriptor.outline_width_px,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         verticalOrigin: Cesium.VerticalOrigin.TOP,
@@ -186,13 +186,13 @@ export class CesiumTsunamiAnalyticalHost implements TsunamiAnalyticalEntityHost<
     entity.name = descriptor.name;
     entity.position = new Cesium.ConstantPositionProperty(cartesian(descriptor.position));
     entity.point.pixelSize = new Cesium.ConstantProperty(descriptor.pixel_size);
-    entity.point.color = new Cesium.ConstantProperty(color(descriptor.fill_css));
-    entity.point.outlineColor = new Cesium.ConstantProperty(color(descriptor.outline_css));
+    entity.point.color = new Cesium.ConstantProperty(color(descriptor.fill_css, descriptor.fill_alpha));
+    entity.point.outlineColor = new Cesium.ConstantProperty(color(descriptor.outline_css, descriptor.outline_alpha));
     entity.point.outlineWidth = new Cesium.ConstantProperty(descriptor.outline_width_px);
     entity.label.text = new Cesium.ConstantProperty(descriptor.label);
     entity.label.font = new Cesium.ConstantProperty(descriptor.label_font);
-    entity.label.fillColor = new Cesium.ConstantProperty(color(descriptor.fill_css));
-    entity.label.outlineColor = new Cesium.ConstantProperty(color(descriptor.outline_css));
+    entity.label.fillColor = new Cesium.ConstantProperty(color(descriptor.fill_css, descriptor.fill_alpha));
+    entity.label.outlineColor = new Cesium.ConstantProperty(color(descriptor.outline_css, descriptor.outline_alpha));
     entity.label.outlineWidth = new Cesium.ConstantProperty(descriptor.outline_width_px);
     entity.label.style = new Cesium.ConstantProperty(Cesium.LabelStyle.FILL_AND_OUTLINE);
     entity.label.verticalOrigin = new Cesium.ConstantProperty(Cesium.VerticalOrigin.TOP);
