@@ -11,6 +11,7 @@ import { DEFAULT_STYLE, type GlobeStyleId } from "./globe-styles";
 import { isGlobeStyleId } from "./earth-assets";
 import { parseScenarioPayload } from "./scenario-schema";
 import type { RendererQualityTier } from "../rendering/quality-profiles";
+import { isLocale, type Locale } from "./i18n-core";
 
 export type Theme = "mocha" | "latte";
 
@@ -22,6 +23,7 @@ export type WorkspaceMode = "simple" | "customize" | "advanced";
 export type Settings = {
   cesium_token: string;
   theme: Theme;
+  locale: Locale;
   globe_style: GlobeStyleId;
   colormap: ColormapId;
   renderer_quality: RendererQualityTier;
@@ -42,12 +44,13 @@ export type Settings = {
   classroom_locked: boolean;
 };
 
-export const SETTINGS_SCHEMA_VERSION = 4;
+export const SETTINGS_SCHEMA_VERSION = 5;
 const SCHEMA_VERSION_KEY = "_settings_schema_version";
 
 const DEFAULTS: Settings = {
   cesium_token: "",
   theme: "mocha",
+  locale: "en",
   globe_style: DEFAULT_STYLE,
   colormap: "diverging",
   renderer_quality: "High",
@@ -65,6 +68,7 @@ const DEFAULTS: Settings = {
 const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
   "cesium_token",
   "theme",
+  "locale",
   "globe_style",
   "colormap",
   "renderer_quality",
@@ -81,6 +85,7 @@ const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
 const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>(SETTINGS_KEY_LIST);
 const VISUAL_SETTINGS_KEYS: readonly (keyof Settings)[] = [
   "theme",
+  "locale",
   "globe_style",
   "colormap",
   "renderer_quality",
@@ -239,6 +244,9 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
       break;
     case "theme":
       result = (value === "mocha" || value === "latte" ? value : undefined) as Settings[K] | undefined;
+      break;
+    case "locale":
+      result = (isLocale(value) ? value : undefined) as Settings[K] | undefined;
       break;
     case "globe_style":
       result = (isGlobeStyleId(value)
@@ -777,6 +785,12 @@ export const settings = {
   async setTheme(t: Theme): Promise<void> {
     return write("theme", t);
   },
+  async getLocale(): Promise<Locale> {
+    return read("locale");
+  },
+  async setLocale(locale: Locale): Promise<void> {
+    return write("locale", locale);
+  },
   async getGlobeStyle(): Promise<GlobeStyleId> {
     return read("globe_style");
   },
@@ -864,6 +878,7 @@ export const settings = {
     return {
       cesium_token: await read("cesium_token"),
       theme: await read("theme"),
+      locale: await read("locale"),
       globe_style: await read("globe_style"),
       colormap: await read("colormap"),
       renderer_quality: await read("renderer_quality"),

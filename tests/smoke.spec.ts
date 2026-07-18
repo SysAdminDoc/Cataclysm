@@ -4,7 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 async function seedAcknowledgedPreview(page: { addInitScript: (script: () => void) => Promise<void> }) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "4");
+    localStorage.setItem("tsunamisim._settings_schema_version", "5");
     localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);

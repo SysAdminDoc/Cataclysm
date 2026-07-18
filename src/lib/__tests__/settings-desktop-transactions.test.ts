@@ -94,6 +94,7 @@ const SCHEMA_VERSION_KEY = "_settings_schema_version";
 const SETTINGS_KEYS: readonly (keyof Settings)[] = [
   "cesium_token",
   "theme",
+  "locale",
   "globe_style",
   "colormap",
   "renderer_quality",
@@ -111,6 +112,7 @@ const SETTINGS_KEYS: readonly (keyof Settings)[] = [
 const DESKTOP_BASELINE: Settings = {
   cesium_token: "",
   theme: "mocha",
+  locale: "en",
   globe_style: "osm",
   colormap: "cividis",
   renderer_quality: "Low",

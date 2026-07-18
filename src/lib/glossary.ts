@@ -91,12 +91,34 @@ const GLOSSARY: Record<string, GlossaryEntry> = {
   },
 };
 
-export function getGlossaryEntry(key: string): GlossaryEntry | undefined {
-  return GLOSSARY[key.toLowerCase().replace(/[\s_-]+/g, "_")];
+const LOCALIZED_GLOSSARIES: Partial<Record<Locale, Record<string, GlossaryEntry>>> = {
+  es: glossaryEs,
+  ja: glossaryJa,
+  id: glossaryId,
+};
+
+function normalizeGlossaryKey(key: string): string {
+  return key.toLowerCase().replace(/[\s_-]+/g, "_");
 }
 
-export function getAllEntries(): GlossaryEntry[] {
-  return Object.values(GLOSSARY);
+export function getGlossaryEntry(key: string, locale: Locale = "en"): GlossaryEntry | undefined {
+  const normalizedKey = normalizeGlossaryKey(key);
+  const canonical = GLOSSARY[normalizedKey];
+  if (!canonical || locale === "en") return canonical;
+  const localized = LOCALIZED_GLOSSARIES[locale]?.[normalizedKey];
+  if (localized === undefined) warnMissingTranslation(locale, `glossary.${normalizedKey}`);
+  return localized ?? canonical;
+}
+
+export function getAllEntries(locale: Locale = "en"): GlossaryEntry[] {
+  return GLOSSARY_KEYS.flatMap((key) => {
+    const entry = getGlossaryEntry(key, locale);
+    return entry ? [entry] : [];
+  });
 }
 
 export const GLOSSARY_KEYS = Object.keys(GLOSSARY);
+import glossaryEs from "../data/i18n/glossary.es.json";
+import glossaryJa from "../data/i18n/glossary.ja.json";
+import glossaryId from "../data/i18n/glossary.id.json";
+import { warnMissingTranslation, type Locale } from "./i18n-core";

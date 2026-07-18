@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useId, type ReactNode } from "react";
 import { getGlossaryEntry } from "../lib/glossary";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   term: string;
@@ -7,7 +8,8 @@ type Props = {
 };
 
 export function GlossaryTip({ term, children }: Props) {
-  const entry = getGlossaryEntry(term);
+  const { locale } = useI18n();
+  const entry = getGlossaryEntry(term, locale);
   const tooltipId = `${useId()}-glossary-tooltip`;
   const [open, setOpen] = useState(false);
   const [horizontal, setHorizontal] = useState<"center" | "left" | "right">("center");

@@ -66,6 +66,21 @@ describe("Settings", () => {
     window.removeEventListener("tsunamisim:settings-saved", saved);
   });
 
+  it("persists the selected interface language", async () => {
+    const saved = vi.fn();
+    window.addEventListener("tsunamisim:settings-saved", saved);
+    const user = userEvent.setup();
+    render(<Settings onClose={() => {}} />);
+
+    const language = await screen.findByRole("combobox", { name: "Interface language" });
+    await user.selectOptions(language, "ja");
+    await user.click(screen.getByRole("button", { name: "Apply Changes" }));
+
+    expect(JSON.parse(localStorage.getItem("tsunamisim.locale") ?? '""')).toBe("ja");
+    expect(saved).toHaveBeenCalled();
+    window.removeEventListener("tsunamisim:settings-saved", saved);
+  });
+
   it("resets persisted settings to defaults", async () => {
     localStorage.setItem("tsunamisim.cesium_token", JSON.stringify("secret"));
     localStorage.setItem("tsunamisim.theme", JSON.stringify("latte"));

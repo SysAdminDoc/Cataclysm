@@ -1,0 +1,17 @@
+{
+  "mw": { "term": "Mw（モーメントマグニチュード）", "definition": "地震が放出した総エネルギーを表す対数尺度です。値が1増えると、エネルギーは約32倍になります。", "citation": "Kanamori 1977; Hanks & Kanamori 1979" },
+  "swe": { "term": "SWE（浅水方程式）", "definition": "長波の伝播をモデル化する、水深方向に平均化した2次元流体方程式です。波長が水深より十分に長い場合に有効です。", "citation": "de Saint-Venant 1871" },
+  "okada": { "term": "Okadaモデル", "definition": "弾性半無限体内の矩形断層による地表変形の解析解です。地震パラメーターから海底隆起を計算するために使われます。", "citation": "Okada 1985, BSSA 75:1135–1154" },
+  "synolakis": { "term": "Synolakis遡上則", "definition": "沖合の波高と海浜勾配から、平面海浜での最大鉛直遡上高を求める解析式です。", "citation": "Synolakis 1987, J. Fluid Mech. 185:523–545" },
+  "dart": { "term": "DART（深海津波評価・報告システム）", "definition": "外洋の津波をミリメートル精度で検出する、NOAAの海底圧力センサーネットワークです。", "citation": "NOAA PMEL" },
+  "cfl": { "term": "CFL（Courant–Friedrichs–Lewy）条件", "definition": "1回の時間ステップで情報が格子1セルを超えて進まないよう、時間刻みを十分小さくすることを求める安定条件です。", "citation": "Courant, Friedrichs & Lewy 1928" },
+  "runup": { "term": "遡上高", "definition": "津波が陸上で到達する静水面からの最大鉛直高度です。静水面から波が接触した最も高い地点までを測ります。" },
+  "eta": { "term": "η（イータ、水面変位）", "definition": "静止した海面に対する水面の上下変位です。ηが正なら水面上昇、負なら水面低下を示します。" },
+  "cavity_radius": { "term": "キャビティ半径", "definition": "衝突や爆発で一時的に生じる水中クレーターの半径です。初期波高と波長を決めます。", "citation": "Ward & Asphaug 2000" },
+  "attenuation": { "term": "減衰", "definition": "幾何学的拡散とエネルギー散逸により、発生源から離れるほど波高が低下することです。深海では一般に r^(-5/6) に従います。" },
+  "boussinesq": { "term": "Boussinesq方程式", "definition": "周波数分散を含み、短い波が異なる速度で進むことを表せる浅水方程式の拡張です。衝突で生じる波の解析に重要です。", "citation": "Boussinesq 1872; Peregrine 1967" },
+  "manning": { "term": "Manning摩擦", "definition": "粗度係数 n を使う経験的な底面摩擦モデルです。n が大きいほど海底が粗く、沿岸で波のエネルギーが速く失われます。", "citation": "Manning 1891" },
+  "leapfrog": { "term": "リープフロッグ法", "definition": "ずらした格子上で流速と水位を交互に更新する数値時間積分法です。2次精度で、数値散逸を生じません。" },
+  "wavefront": { "term": "波面", "definition": "広がる津波の先端です。深海では √(g·h) で進み、水深4 kmの海では約200 m/s（720 km/h）です。" },
+  "inundation": { "term": "浸水", "definition": "海岸線から内陸へ広がる水平方向の浸水範囲です。遡上高、沿岸地形、地表の粗さに左右されます。" }
+}

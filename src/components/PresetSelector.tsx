@@ -6,6 +6,7 @@ import type { DirectScenarioTemplate } from "../lib/scenario-library";
 import { buildDirectScenarioEvidence, buildSourceEvidence } from "../lib/trust-evidence";
 import type { Preset } from "../types/scenario";
 import { TrustDisclosure } from "./TrustDisclosure";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   presets: Preset[];
@@ -135,6 +136,7 @@ export function PresetSelector({
   favoriteIds = [],
   onToggleFavorite,
 }: Props) {
+  const { t } = useI18n();
   const instanceId = useId();
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
@@ -523,7 +525,10 @@ export function PresetSelector({
       {onStartLesson && (
         <div className="lesson-launcher" data-open={lessonsOpen ? "true" : "false"}>
           <button className="lesson-launcher__toggle" type="button" aria-expanded={lessonsOpen} onClick={() => setLessonsOpen((open) => !open)}>
-            <span><strong>Guided training</strong><small>{GUIDED_LESSONS.length} model walkthroughs</small></span>
+            <span>
+              <strong>{t("guided.training")}</strong>
+              <small>{t("guided.walkthroughs", { count: GUIDED_LESSONS.length })}</small>
+            </span>
             <UiIcon name={lessonsOpen ? "chevronDown" : "chevronRight"} size={14} />
           </button>
           {lessonsOpen && <div className="lesson-launcher__list">
@@ -541,8 +546,8 @@ export function PresetSelector({
               >
                 <span className="lesson-launcher__name">{lesson.title}</span>
                 {completedLessons[lesson.id] && (
-                  <span className="lesson-launcher__complete" aria-label="Lesson completed">
-                    Done
+                  <span className="lesson-launcher__complete" aria-label={t("guided.completed")}>
+                    {t("guided.done")}
                   </span>
                 )}
                 <UiIcon name="chevronRight" size={13} />

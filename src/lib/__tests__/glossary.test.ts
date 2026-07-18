@@ -29,4 +29,18 @@ describe("glossary", () => {
       expect(entry.definition).toBeTruthy();
     }
   });
+
+  it("ships a complete glossary catalog for every supported language", () => {
+    for (const locale of ["en", "es", "ja", "id"] as const) {
+      const entries = getAllEntries(locale);
+      expect(entries).toHaveLength(GLOSSARY_KEYS.length);
+      for (const entry of entries) {
+        expect(entry.term.trim()).not.toBe("");
+        expect(entry.definition.trim()).not.toBe("");
+      }
+    }
+    expect(getGlossaryEntry("mw", "es")?.term).toContain("magnitud de momento");
+    expect(getGlossaryEntry("mw", "ja")?.term).toContain("モーメントマグニチュード");
+    expect(getGlossaryEntry("mw", "id")?.term).toContain("magnitudo momen");
+  });
 });

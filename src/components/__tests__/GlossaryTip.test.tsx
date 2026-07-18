@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GlossaryTip } from "../GlossaryTip";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("GlossaryTip", () => {
   it("uses instance-unique tooltip relationships for repeated terms", () => {
@@ -19,5 +20,14 @@ describe("GlossaryTip", () => {
     expect(tooltips[0].id).not.toBe(tooltips[1].id);
     expect(tips[0]).toHaveAttribute("aria-describedby", tooltips[0].id);
     expect(tips[1]).toHaveAttribute("aria-describedby", tooltips[1].id);
+  });
+
+  it("renders glossary content in the persisted interface language", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const { container } = render(
+      <I18nProvider><GlossaryTip term="mw">Mw</GlossaryTip></I18nProvider>,
+    );
+    fireEvent.mouseEnter(container.querySelector(".glossary-tip") as HTMLElement);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("モーメントマグニチュード");
   });
 });

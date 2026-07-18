@@ -3,6 +3,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { UiIcon } from "./UiIcon";
 import type { GuidedLesson as LessonDef } from "../lib/guided-lessons";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   lesson: LessonDef;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
+  const { t } = useI18n();
   const [stepIdx, setStepIdx] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true);
@@ -40,7 +42,7 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
       <div className="lesson-worksheet" aria-hidden>
         <h1>{lesson.title}</h1>
         <p className="lesson-worksheet__meta">
-          Cataclysm classroom worksheet · Name: ______________________ · Date: ____________
+          {t("guided.worksheetMeta")}
         </p>
         <p>{lesson.summary}</p>
         <ol>
@@ -52,14 +54,14 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
           ))}
         </ol>
         <p className="lesson-worksheet__footer">
-          Educational model — first-order estimates, not an operational forecast.
+          {t("guided.worksheetFooter")}
         </p>
       </div>
       <div className="lesson-card" ref={dialogRef} tabIndex={-1}>
         <div className="lesson-card__topline">
-          <span className="lesson-card__badge">Guided lesson</span>
+          <span className="lesson-card__badge">{t("guided.badge")}</span>
           <span className="lesson-card__step">
-            Step {stepIdx + 1} of {lesson.steps.length}
+            {t("guided.step", { current: stepIdx + 1, total: lesson.steps.length })}
           </span>
           <div className="lesson-card__progress" aria-hidden>
             {lesson.steps.map((s, i) => (
@@ -75,16 +77,16 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
         <p className="lesson-card__body">{step.body}</p>
         <div className="lesson-card__actions">
           <button className="scenario-tab" onClick={onClose} type="button">
-            Close lesson
+            {t("guided.close")}
           </button>
           {lesson.worksheet.length > 0 && (
             <button
               className="scenario-tab"
               onClick={printWorksheet}
               type="button"
-              title="Print a classroom worksheet with this lesson's questions"
+              title={t("guided.printTitle")}
             >
-              Print worksheet
+              {t("guided.print")}
             </button>
           )}
           <div className="lesson-card__spacer" />
@@ -95,7 +97,7 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
             type="button"
           >
             <UiIcon name="chevronRight" size={14} className="icon--flip" />
-            Back
+            {t("guided.back")}
           </button>
           <button
             className="primary"
@@ -110,10 +112,10 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
             type="button"
           >
             {isLast ? (
-              "Done"
+              t("guided.done")
             ) : (
               <>
-                Next
+                {t("guided.next")}
                 <UiIcon name="chevronRight" size={14} />
               </>
             )}

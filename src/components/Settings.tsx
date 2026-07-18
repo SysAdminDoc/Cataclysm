@@ -18,6 +18,8 @@ import {
   RENDERER_QUALITY_TIERS,
   type RendererQualityTier,
 } from "../render/quality/quality-controller";
+import { useI18n } from "../lib/i18n";
+import { LOCALE_OPTIONS, type Locale } from "../lib/i18n-core";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
 type SettingsSection = "visual" | "performance" | "advanced";
@@ -25,6 +27,7 @@ type SettingsSection = "visual" | "performance" | "advanced";
 type StagedSettings = {
   token: string;
   theme: Theme;
+  locale: Locale;
   globeStyle: GlobeStyleId;
   colormapId: ColormapId;
   rendererQuality: RendererQualityTier;
@@ -35,11 +38,13 @@ type StagedSettings = {
 type Props = { onClose: () => void };
 
 export function Settings({ onClose }: Props) {
+  const { t } = useI18n();
   useEscapeKey(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
   const [token, setTokenLocal] = useState("");
   const [theme, setThemeLocal] = useState<Theme>("mocha");
+  const [locale, setLocale] = useState<Locale>("en");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>(DEFAULT_STYLE);
   const [colormapId, setColormapId] = useState<ColormapId>("diverging");
   const [rendererQuality, setRendererQuality] = useState<RendererQualityTier>("High");
@@ -80,6 +85,7 @@ export function Settings({ onClose }: Props) {
         if (cancelled) return;
         setTokenLocal(s.cesium_token);
         setThemeLocal(s.theme);
+        setLocale(s.locale);
         setGlobeStyle(s.globe_style);
         setColormapId(s.colormap);
         setRendererQuality(s.renderer_quality);
@@ -89,6 +95,7 @@ export function Settings({ onClose }: Props) {
         setAppliedSettings({
           token: s.cesium_token,
           theme: s.theme,
+          locale: s.locale,
           globeStyle: s.globe_style,
           colormapId: s.colormap,
           rendererQuality: s.renderer_quality,
@@ -104,6 +111,7 @@ export function Settings({ onClose }: Props) {
           setAppliedSettings({
             token: "",
             theme: "mocha",
+            locale: "en",
             globeStyle: DEFAULT_STYLE,
             colormapId: "diverging",
             rendererQuality: "High",
@@ -141,6 +149,7 @@ export function Settings({ onClose }: Props) {
     try {
       const patch: Parameters<typeof settings.apply>[0] = {
         theme,
+        locale,
         globe_style: globeStyle,
         colormap: colormapId,
         renderer_quality: rendererQuality,
@@ -154,7 +163,7 @@ export function Settings({ onClose }: Props) {
       setTokenLocal(trimmedToken);
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
-      setAppliedSettings({ token: trimmedToken, theme, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
+      setAppliedSettings({ token: trimmedToken, theme, locale, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
       setStatusMsg(`Changes applied at ${new Date().toLocaleTimeString()}`);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
@@ -176,6 +185,7 @@ export function Settings({ onClose }: Props) {
   const hasUnsavedChanges = appliedSettings !== null && (
     token !== appliedSettings.token
     || theme !== appliedSettings.theme
+    || locale !== appliedSettings.locale
     || globeStyle !== appliedSettings.globeStyle
     || colormapId !== appliedSettings.colormapId
     || rendererQuality !== appliedSettings.rendererQuality
@@ -249,6 +259,21 @@ export function Settings({ onClose }: Props) {
             </nav>
             <div className="settings__content">
           {activeSection === "visual" && <>
+          <section className="settings__section">
+            <h3 className="settings__h3">{t("language.heading")}</h3>
+            <p className="modal__intro">{t("language.description")}</p>
+            <label className="settings__field">
+              <span>{t("language.label")}</span>
+              <select value={locale} onChange={(event) => setLocale(event.target.value as Locale)}>
+                {LOCALE_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id} lang={option.id}>
+                    {option.nativeName}{option.nativeName === option.englishName ? "" : ` — ${option.englishName}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="modal__footnote settings__description">{t("language.canonical")}</p>
+          </section>
           <section className="settings__section">
             <h3 className="settings__h3">Earth rendering</h3>
             <p className="modal__intro">
@@ -592,6 +617,7 @@ export function Settings({ onClose }: Props) {
                       const all = await settings.loadAll();
                       setTokenLocal(all.cesium_token);
                       setThemeLocal(all.theme);
+                      setLocale(all.locale);
                       setGlobeStyle(all.globe_style);
                       setColormapId(all.colormap);
                       setRendererQuality(all.renderer_quality);
@@ -601,6 +627,7 @@ export function Settings({ onClose }: Props) {
                       setAppliedSettings({
                         token: all.cesium_token,
                         theme: all.theme,
+                        locale: all.locale,
                         globeStyle: all.globe_style,
                         colormapId: all.colormap,
                         rendererQuality: all.renderer_quality,
@@ -635,6 +662,7 @@ export function Settings({ onClose }: Props) {
                     await settings.resetAll();
                     setTokenLocal("");
                     setThemeLocal("mocha");
+                    setLocale("en");
                     setGlobeStyle(DEFAULT_STYLE);
                     setColormapId("diverging");
                     setRendererQuality("High");
@@ -644,6 +672,7 @@ export function Settings({ onClose }: Props) {
                     setAppliedSettings({
                       token: "",
                       theme: "mocha",
+                      locale: "en",
                       globeStyle: DEFAULT_STYLE,
                       colormapId: "diverging",
                       rendererQuality: "High",

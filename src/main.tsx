@@ -6,6 +6,7 @@ import { primeCesiumToken } from "./lib/cesium";
 import { importNativePanicReport, installGlobalCrashHandlers } from "./lib/diagnosticsLog";
 import { settings } from "./lib/settings";
 import { isTauri } from "./lib/tauri";
+import { I18nProvider } from "./lib/i18n";
 import "./styles.css";
 
 // Prime the Cesium token from persisted settings before React renders the
@@ -43,7 +44,9 @@ if (typeof window !== "undefined") {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

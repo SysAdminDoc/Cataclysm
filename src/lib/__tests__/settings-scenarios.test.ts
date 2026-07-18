@@ -13,6 +13,7 @@ const SCHEMA_VERSION_KEY = "_settings_schema_version";
 const TRANSACTION_BASELINE: Settings = {
   cesium_token: "old-token",
   theme: "mocha",
+  locale: "en",
   globe_style: "osm",
   colormap: "cividis",
   renderer_quality: "Low",
@@ -30,6 +31,7 @@ const TRANSACTION_BASELINE: Settings = {
 const APPLY_PATCH: Partial<Settings> = {
   cesium_token: "new-token",
   theme: "latte",
+  locale: "ja",
   globe_style: "esri-world-imagery",
   colormap: "viridis",
   renderer_quality: "Cinematic",
@@ -202,6 +204,7 @@ describe("settings schema versioning", () => {
 
   it("preserves schema version after resetAll", async () => {
     await settings.setTheme("latte");
+    await settings.setLocale("id");
     expect(JSON.parse(localStorage.getItem(LS_PREFIX + SCHEMA_VERSION_KEY)!)).toBe(
       SETTINGS_SCHEMA_VERSION,
     );
@@ -246,6 +249,7 @@ describe("settings schema versioning", () => {
 
   it("round-trips settings through export/import", async () => {
     await settings.setTheme("latte");
+    await settings.setLocale("id");
     await settings.setColormap("viridis");
     await settings.setGlobeStyle("osm");
     await settings.setRendererQuality("Cinematic");
@@ -255,6 +259,7 @@ describe("settings schema versioning", () => {
     const json = await settings.exportSettings();
     const parsed = JSON.parse(json);
     expect(parsed.theme).toBe("latte");
+    expect(parsed.locale).toBe("id");
     expect(parsed.colormap).toBe("viridis");
     expect(parsed.globe_style).toBe("osm");
     expect(parsed.renderer_quality).toBe("Cinematic");
@@ -268,6 +273,7 @@ describe("settings schema versioning", () => {
     const result = await settings.importSettings(json);
     expect(result.applied).toBeGreaterThanOrEqual(3);
     expect(await settings.getTheme()).toBe("latte");
+    expect(await settings.getLocale()).toBe("id");
     expect(await settings.getColormap()).toBe("viridis");
     expect(await settings.getGlobeStyle()).toBe("osm");
     expect(await settings.getRendererQuality()).toBe("Cinematic");

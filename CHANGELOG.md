@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Began the four-language interface foundation with a persisted English,
+  Spanish, Japanese, or Bahasa Indonesia preference, live document-language
+  updates, locale-aware number formatting, canonical-English fallback with a
+  development warning, and portable settings import/export. Settings and
+  guided-lesson chrome use the catalog, and all 15 scientific glossary entries
+  now ship as complete human-readable catalogs in every supported language.
+
 - Layers now offers an explicit opt-in humanitarian context view that queries
   OpenStreetMap schools, healthcare sites, and emergency-response facilities
   inside active first-order runup discs. The Overpass client uses bounded

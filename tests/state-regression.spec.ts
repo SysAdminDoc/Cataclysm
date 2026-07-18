@@ -13,7 +13,7 @@ async function seedWorkspace(page: Page, theme: Theme, { crash = false } = {}) {
   await page.setViewportSize(DESKTOP);
   await page.addInitScript(({ selectedTheme, includeCrash }) => {
     const fixed = JSON.stringify("2026-07-14T12:00:00.000Z");
-    localStorage.setItem("tsunamisim._settings_schema_version", "4");
+    localStorage.setItem("tsunamisim._settings_schema_version", "5");
     localStorage.setItem("tsunamisim.launch_experience_seen_at", fixed);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", fixed);
     localStorage.setItem("tsunamisim.tour_completed_at", fixed);
