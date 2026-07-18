@@ -19,7 +19,7 @@ import {
   type RendererQualityTier,
 } from "../render/quality/quality-controller";
 import { useI18n } from "../lib/i18n";
-import { LOCALE_OPTIONS, type Locale } from "../lib/i18n-core";
+import { LANGUAGE_TAGS, LOCALE_OPTIONS, translate, type Locale } from "../lib/i18n-core";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
 type SettingsSection = "visual" | "performance" | "advanced";
@@ -38,7 +38,7 @@ type StagedSettings = {
 type Props = { onClose: () => void };
 
 export function Settings({ onClose }: Props) {
-  const { t } = useI18n();
+  const { formatNumber, t } = useI18n();
   useEscapeKey(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
@@ -75,7 +75,7 @@ export function Settings({ onClose }: Props) {
       };
     }
     setSettingsExportFailure(result.ok ? null : result);
-    if (result.ok) setStatusMsg("Settings exported.");
+    if (result.ok) setStatusMsg(translate(locale, "settings.exported"));
   };
 
   useEffect(() => {
@@ -164,13 +164,13 @@ export function Settings({ onClose }: Props) {
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
       setAppliedSettings({ token: trimmedToken, theme, locale, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
-      setStatusMsg(`Changes applied at ${new Date().toLocaleTimeString()}`);
+      setStatusMsg(translate(locale, "settings.applied", { time: new Date().toLocaleTimeString(LANGUAGE_TAGS[locale]) }));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
       }
     } catch (err) {
       console.error("[settings] save failed", err);
-      setSaveErr(err instanceof Error ? err.message : String(err));
+      setSaveErr(translate(locale, "settings.applyFailed", { error: err instanceof Error ? err.message : String(err) }));
     } finally {
       setSaving(false);
     }
@@ -182,6 +182,15 @@ export function Settings({ onClose }: Props) {
   const earthTerrain = getEarthAsset(earthBinding.terrain_asset_id);
   const earthProvider = getEarthProvider(earthImagery.provider_id);
   const earthTerrainProvider = getEarthProvider(earthTerrain.provider_id);
+  const localizedGlobeStyles = GLOBE_STYLES.map((style) => {
+    switch (style.id) {
+      case "natural-earth-2": return { ...style, label: t("style.naturalLabel"), description: t("style.naturalDescription") };
+      case "osm": return { ...style, label: t("style.osmLabel"), description: t("style.osmDescription") };
+      case "esri-world-imagery": return { ...style, label: t("style.esriLabel"), description: t("style.esriDescription") };
+      case "cesium-world-imagery": return { ...style, label: t("style.cesiumLabel"), description: t("style.cesiumDescription") };
+      case "cesium-bathymetry": return { ...style, label: t("style.bathymetryLabel"), description: t("style.bathymetryDescription") };
+    }
+  });
   const hasUnsavedChanges = appliedSettings !== null && (
     token !== appliedSettings.token
     || theme !== appliedSettings.theme
@@ -195,27 +204,27 @@ export function Settings({ onClose }: Props) {
 
   function handleBackdropClick() {
     if (hasUnsavedChanges) {
-      setStatusMsg("Unsaved changes remain. Apply them or choose Cancel.");
+      setStatusMsg(t("settings.unsavedBody"));
       return;
     }
     onClose();
   }
 
   function openCesiumSignup() {
-    openTrustedUrl(CESIUM_SIGNUP_URL, "Cesium signup");
+    openTrustedUrl(CESIUM_SIGNUP_URL, t("settings.signup"));
   }
 
   function openTrustedUrl(url: string, label: string) {
     const validation = validateTrustedExternalUrl(url);
     if (!validation.ok) {
-      setStatusMsg(`${label} link blocked: ${validation.reason}`);
+      setStatusMsg(t("settings.linkBlocked", { label, reason: validation.reason }));
       return;
     }
 
     if (isTauri()) {
       openExternal(validation.url).catch((err) => {
         console.error("shell open failed", err);
-        setStatusMsg(`${label} link could not be opened by the desktop shell policy.`);
+        setStatusMsg(t("settings.linkFailed", { label }));
       });
     } else {
       window.open(validation.url, "_blank", "noopener,noreferrer");
@@ -226,36 +235,33 @@ export function Settings({ onClose }: Props) {
     <div className="modal-overlay" onClick={handleBackdropClick}>
       <div className="modal modal--settings" data-loading={loading ? "true" : "false"} ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="modal__header">
-          <h2 id="settings-title">Settings</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Cancel and close settings" type="button">
+          <h2 id="settings-title">{t("settings.title")}</h2>
+          <button className="modal__close" onClick={onClose} aria-label={t("settings.close")} type="button">
             <UiIcon name="close" size={16} />
           </button>
         </header>
         <div className="modal__body settings__modal-body">
-          {loading && <div className="settings__loading" role="status">Loading settings…</div>}
+          {loading && <div className="settings__loading" role="status">{t("settings.loading")}</div>}
           {classroomLocked && (
             <div className="settings__classroom-note" role="note">
-              <strong>Classroom profile active.</strong> Imagery, theme, and
-              colormap are pinned by the imported teacher profile, and token
-              entry is hidden. This is a convenience lock, not a security
-              boundary.
+              <strong>{t("settings.classroomTitle")}</strong> {t("settings.classroomBody")}
               <button
                 type="button"
                 onClick={async () => {
                   await settings.setClassroomLocked(false);
                   setClassroomLocked(false);
-                  setStatusMsg("Classroom profile unlocked.");
+                  setStatusMsg(t("settings.unlocked"));
                 }}
               >
-                Unlock
+                {t("settings.unlock")}
               </button>
             </div>
           )}
           <div className="settings__workspace" inert={loading ? true : undefined}>
-            <nav className="settings__nav" aria-label="Settings categories">
-              <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>Earth &amp; appearance</button>
-              <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>Simulation performance</button>
-              <button type="button" aria-current={activeSection === "advanced" ? "page" : undefined} onClick={() => setActiveSection("advanced")}>Data &amp; onboarding</button>
+            <nav className="settings__nav" aria-label={t("settings.categories")}>
+              <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>{t("settings.visual")}</button>
+              <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>{t("settings.performance")}</button>
+              <button type="button" aria-current={activeSection === "advanced" ? "page" : undefined} onClick={() => setActiveSection("advanced")}>{t("settings.advanced")}</button>
             </nav>
             <div className="settings__content">
           {activeSection === "visual" && <>
@@ -267,7 +273,7 @@ export function Settings({ onClose }: Props) {
               <select value={locale} onChange={(event) => setLocale(event.target.value as Locale)}>
                 {LOCALE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id} lang={option.id}>
-                    {option.nativeName}{option.nativeName === option.englishName ? "" : ` — ${option.englishName}`}
+                    {option.nativeName}
                   </option>
                 ))}
               </select>
@@ -275,48 +281,44 @@ export function Settings({ onClose }: Props) {
             <p className="modal__footnote settings__description">{t("language.canonical")}</p>
           </section>
           <section className="settings__section">
-            <h3 className="settings__h3">Earth rendering</h3>
-            <p className="modal__intro">
-              Choose the visual map beneath the simulation. <strong>Natural
-              Earth II</strong> is bundled and works offline; online street,
-              satellite, bathymetry, and terrain maps provide more context.
-            </p>
+            <h3 className="settings__h3">{t("settings.earthRendering")}</h3>
+            <p className="modal__intro">{t("settings.earthIntro")}</p>
             <select
               value={globeStyle}
               onChange={(e) => setGlobeStyle(e.target.value as GlobeStyleId)}
-              aria-label="Globe imagery style"
+              aria-label={t("settings.globeStyle")}
               disabled={classroomLocked}
             >
-              {GLOBE_STYLES.map((s) => (
+              {localizedGlobeStyles.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
                 </option>
               ))}
             </select>
             <p className="modal__footnote settings__description">
-              {GLOBE_STYLES.find((s) => s.id === globeStyle)?.description}
+              {localizedGlobeStyles.find((s) => s.id === globeStyle)?.description}
             </p>
-            <div className="settings__source-card" role="group" aria-label="Selected Earth source provenance">
+            <div className="settings__source-card" role="group" aria-label={t("settings.provenance")}>
               <div className="settings__source-heading">
-                <strong>Active source contract</strong>
+                <strong>{t("settings.activeContract")}</strong>
                 <span data-delivery={earthImagery.delivery}>{earthImagery.delivery}</span>
               </div>
               <dl className="settings__source-grid">
-                <div><dt>Imagery</dt><dd>{earthProvider.name} · {earthImagery.role}</dd></div>
-                <div><dt>Terrain</dt><dd>{earthTerrainProvider.name} · {earthTerrain.role}</dd></div>
-                <div><dt>Coverage</dt><dd>{earthImagery.spatial.bounds.join("°, ")}° · {earthImagery.spatial.horizontal_crs}</dd></div>
-                <div><dt>Vertical datum</dt><dd>{earthTerrain.spatial.vertical_datum}</dd></div>
-                <div><dt>Resolution</dt><dd>{earthImagery.resolution.notes}</dd></div>
-                <div><dt>Version</dt><dd>{earthImagery.version.provider_asset_id ?? earthImagery.version.upstream ?? earthImagery.version.package ?? "Mutable service"}</dd></div>
-                <div><dt>Quality tiers</dt><dd>{earthImagery.quality_tiers.join(", ")}</dd></div>
-                <div><dt>Attribution</dt><dd>{earthImagery.license.attribution_text}</dd></div>
-                <div><dt>Rights review</dt><dd>Checked {earthProvider.policy_checked_at}; renew by {earthProvider.policy_review_by}</dd></div>
+                <div><dt>{t("settings.imagery")}</dt><dd>{earthProvider.name} · {earthImagery.role}</dd></div>
+                <div><dt>{t("settings.terrain")}</dt><dd>{earthTerrainProvider.name} · {earthTerrain.role}</dd></div>
+                <div><dt>{t("settings.coverage")}</dt><dd>{earthImagery.spatial.bounds.join("°, ")}° · {earthImagery.spatial.horizontal_crs}</dd></div>
+                <div><dt>{t("settings.verticalDatum")}</dt><dd>{earthTerrain.spatial.vertical_datum}</dd></div>
+                <div><dt>{t("settings.resolution")}</dt><dd>{earthImagery.resolution.notes}</dd></div>
+                <div><dt>{t("settings.version")}</dt><dd>{earthImagery.version.provider_asset_id ?? earthImagery.version.upstream ?? earthImagery.version.package ?? t("settings.mutableService")}</dd></div>
+                <div><dt>{t("settings.qualityTiers")}</dt><dd>{earthImagery.quality_tiers.join(", ")}</dd></div>
+                <div><dt>{t("settings.attribution")}</dt><dd>{earthImagery.license.attribution_text}</dd></div>
+                <div><dt>{t("settings.rightsReview")}</dt><dd>{t("settings.rightsChecked", { checked: earthProvider.policy_checked_at, renew: earthProvider.policy_review_by })}</dd></div>
               </dl>
               <div className="settings__source-links">
-                <a href={earthProvider.terms_url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthProvider.terms_url, `${earthProvider.name} terms`); }}>Provider terms</a>
-                <a href={earthProvider.license_url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthProvider.license_url, `${earthProvider.name} license`); }}>License &amp; attribution</a>
+                <a href={earthProvider.terms_url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthProvider.terms_url, `${earthProvider.name} ${t("settings.providerTerms")}`); }}>{t("settings.providerTerms")}</a>
+                <a href={earthProvider.license_url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthProvider.license_url, `${earthProvider.name} ${t("settings.licenseAttribution")}`); }}>{t("settings.licenseAttribution")}</a>
                 {earthTerrainProvider.id !== earthProvider.id && (
-                  <a href={earthTerrain.license.url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthTerrain.license.url, `${earthTerrainProvider.name} terrain license`); }}>Terrain license</a>
+                  <a href={earthTerrain.license.url} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); openTrustedUrl(earthTerrain.license.url, `${earthTerrainProvider.name} ${t("settings.terrainLicense")}`); }}>{t("settings.terrainLicense")}</a>
                 )}
               </div>
             </div>
@@ -325,14 +327,10 @@ export function Settings({ onClose }: Props) {
           {!classroomLocked && (
           <section className="settings__section">
             <h3 className="settings__h3">
-              Online map access{!needsToken && " (optional)"}
+              {t("settings.onlineAccess")}{!needsToken && ` (${t("settings.optional")})`}
             </h3>
             <p className="modal__intro">
-              A Cesium ion token enables optional streamed terrain,
-              bathymetry, and satellite imagery. The desktop app stores it in
-              your operating system keychain and sends it only to{" "}
-              <code>cesium.com</code>. Browser preview stores it locally in
-              this browser.{" "}
+              {t("settings.onlineIntro")}{" "}
               <a
                 href={CESIUM_SIGNUP_URL}
                 target="_blank"
@@ -342,16 +340,16 @@ export function Settings({ onClose }: Props) {
                   openCesiumSignup();
                 }}
               >
-                Create a free Cesium ion token
+                {t("settings.createToken")}
               </a>
               .
             </p>
             <label className="settings__field">
-              <span>Cesium ion token</span>
+              <span>{t("settings.token")}</span>
               <input
                 type="password"
                 autoComplete="off"
-                placeholder={needsToken ? "Required for the selected map" : "Paste token (optional)"}
+                placeholder={needsToken ? t("settings.tokenRequired") : t("settings.tokenOptional")}
                 value={token}
                 onChange={(e) => setTokenLocal(e.target.value)}
               />
@@ -360,7 +358,7 @@ export function Settings({ onClose }: Props) {
           )}
 
           <section className="settings__section">
-            <h3 className="settings__h3">Theme</h3>
+            <h3 className="settings__h3">{t("settings.theme")}</h3>
             <div className="settings__theme-grid">
               <button
                 className="scenario-tab"
@@ -370,7 +368,7 @@ export function Settings({ onClose }: Props) {
                 type="button"
                 disabled={classroomLocked}
               >
-                Catppuccin Mocha (dark)
+                {t("settings.mocha")}
               </button>
               <button
                 className="scenario-tab"
@@ -380,13 +378,13 @@ export function Settings({ onClose }: Props) {
                 type="button"
                 disabled={classroomLocked}
               >
-                Catppuccin Latte (light)
+                {t("settings.latte")}
               </button>
             </div>
           </section>
 
           <section className="settings__section">
-            <h3 className="settings__h3">Colormap</h3>
+            <h3 className="settings__h3">{t("settings.colormap")}</h3>
             <div className="settings__theme-grid">
               <button
                 className="scenario-tab"
@@ -396,7 +394,7 @@ export function Settings({ onClose }: Props) {
                 type="button"
                 disabled={classroomLocked}
               >
-                Blue &rarr; Red (classic)
+                {t("settings.blueRed")}
               </button>
               <button
                 className="scenario-tab"
@@ -406,7 +404,7 @@ export function Settings({ onClose }: Props) {
                 type="button"
                 disabled={classroomLocked}
               >
-                Cividis (CVD-safe)
+                {t("settings.cividis")}
               </button>
               <button
                 className="scenario-tab"
@@ -416,7 +414,7 @@ export function Settings({ onClose }: Props) {
                 type="button"
                 disabled={classroomLocked}
               >
-                Viridis (sequential)
+                {t("settings.viridis")}
               </button>
             </div>
           </section>
@@ -424,11 +422,9 @@ export function Settings({ onClose }: Props) {
           {activeSection === "performance" && (
           <>
           <section className="settings__section">
-            <h3 className="settings__h3">Renderer quality budget</h3>
-            <p className="modal__intro">
-              Choose the maximum visual budget. Automatic control can step down one tier at a time when sustained frame time misses the target, then recover after headroom returns. Solver fields and event timing are never reduced.
-            </p>
-            <div className="settings__quality-grid" role="radiogroup" aria-label="Renderer quality tier">
+            <h3 className="settings__h3">{t("settings.qualityBudget")}</h3>
+            <p className="modal__intro">{t("settings.qualityIntro")}</p>
+            <div className="settings__quality-grid" role="radiogroup" aria-label={t("settings.qualityTier")}>
               {RENDERER_QUALITY_TIERS.map((tier) => {
                 const budget = RENDERER_QUALITY_BUDGETS[tier];
                 return (
@@ -462,8 +458,8 @@ export function Settings({ onClose }: Props) {
                     disabled={classroomLocked}
                   >
                     <strong>{tier}</strong>
-                    <span>{budget.resolution.width} x {budget.resolution.height} at {budget.targetFps} FPS</span>
-                    <small>{budget.gpu.totalMemoryMb / 1024} GB GPU budget · {budget.features.msaaSamples}x MSAA · {budget.features.maximumParticles.toLocaleString()} particles</small>
+                    <span>{t("settings.qualitySummary", { width: budget.resolution.width, height: budget.resolution.height, fps: budget.targetFps })}</span>
+                    <small>{t("settings.qualityDetail", { memory: budget.gpu.totalMemoryMb / 1024, msaa: budget.features.msaaSamples, particles: formatNumber(budget.features.maximumParticles) })}</small>
                   </button>
                 );
               })}
@@ -475,38 +471,34 @@ export function Settings({ onClose }: Props) {
                 onChange={(event) => setRendererAutoQuality(event.target.checked)}
                 disabled={classroomLocked}
               />
-              <span><strong>Automatic performance protection</strong><small>Uses rolling P95 frame time with hysteresis; never changes scientific data.</small></span>
+              <span><strong>{t("settings.autoPerformance")}</strong><small>{t("settings.autoPerformanceBody")}</small></span>
             </label>
           </section>
           <section className="settings__section">
-            <h3 className="settings__h3">Simulation acceleration</h3>
-            <p className="modal__intro">
-              The shallow-water solver can use a compatible graphics processor
-              in accelerated desktop builds. Hardware is checked when this panel opens.
-            </p>
+            <h3 className="settings__h3">{t("settings.acceleration")}</h3>
+            <p className="modal__intro">{t("settings.accelerationIntro")}</p>
             <div className="settings__row">
-              <strong>Status:</strong>{" "}
+              <strong>{t("settings.status")}</strong>{" "}
               {gpuStatus === "available" && (
-                <span className="settings__status" data-tone="success">Available — simulations will use the GPU.</span>
+                <span className="settings__status" data-tone="success">{t("settings.gpuAvailable")}</span>
               )}
               {gpuStatus === "no-adapter" && (
                 <span className="settings__status" data-tone="warning">
-                  No usable adapter — falling back to CPU. Check Vulkan/Metal/D3D12 drivers.
+                  {t("settings.gpuNoAdapter")}
                 </span>
               )}
               {gpuStatus === "feature-off" && (
                 <span className="settings__status" data-tone="muted">
-                  This desktop build uses the CPU. GPU acceleration is
-                  available in accelerated builds.
+                  {t("settings.gpuFeatureOff")}
                 </span>
               )}
               {gpuStatus === "browser-preview" && (
                 <span className="settings__status" data-tone="muted">
-                  Desktop build only — browser preview uses deterministic demo frames.
+                  {t("settings.gpuBrowser")}
                 </span>
               )}
               {gpuStatus === "unknown" && (
-                <span className="settings__status" data-tone="muted">Checking hardware...</span>
+                <span className="settings__status" data-tone="muted">{t("settings.gpuChecking")}</span>
               )}
             </div>
           </section>
@@ -515,20 +507,20 @@ export function Settings({ onClose }: Props) {
           {activeSection === "advanced" && <>
           <BathymetryImportPanel />
           <section className="settings__section">
-            <h3 className="settings__h3">Help &amp; onboarding</h3>
+            <h3 className="settings__h3">{t("settings.help")}</h3>
             <label className="settings__field">
-              <span>Launch cinematic</span>
+              <span>{t("settings.launchCinematic")}</span>
               <select
                 value={launchExperiencePolicy}
                 onChange={(event) => setLaunchExperiencePolicy(event.target.value as LaunchExperiencePolicy)}
               >
-                <option value="first">First launch only</option>
-                <option value="always">Every launch</option>
-                <option value="never">Never</option>
+                <option value="first">{t("settings.firstLaunch")}</option>
+                <option value="always">{t("settings.everyLaunch")}</option>
+                <option value="never">{t("settings.never")}</option>
               </select>
             </label>
             <p className="modal__footnote settings__description">
-              The cinematic prewarms the live globe behind the title sequence. Sound remains off unless a future licensed sound pack is enabled.
+              {t("settings.launchBody")}
             </p>
             <div className="settings__button-row">
               <button
@@ -540,19 +532,19 @@ export function Settings({ onClose }: Props) {
                 type="button"
               >
                 <UiIcon name="play" size={14} />
-                Preview cinematic
+                {t("settings.previewCinematic")}
               </button>
               <button
                 className="scenario-tab"
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent(REPLAY_DISCLAIMER_EVENT));
-                  setStatusMsg("Reopened the first-run notice.");
+                  setStatusMsg(t("settings.noticeReopened"));
                   onClose();
                 }}
                 type="button"
               >
                 <UiIcon name="info" size={14} />
-                Replay first-run notice
+                {t("settings.replayNotice")}
               </button>
               <button
                 className="scenario-tab"
@@ -561,13 +553,13 @@ export function Settings({ onClose }: Props) {
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:tour-requested"));
                   }
-                  setStatusMsg("Tour will replay shortly.");
+                  setStatusMsg(t("settings.tourReplay"));
                   onClose();
                 }}
                 type="button"
               >
                 <UiIcon name="refresh" size={14} />
-                Replay tour
+                {t("settings.replayTour")}
               </button>
               <button
                 className="scenario-tab"
@@ -576,22 +568,19 @@ export function Settings({ onClose }: Props) {
                   if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                   }
-                  setStatusMsg("The online-map notice will appear again.");
+                  setStatusMsg(t("settings.mapNoticeAgain"));
                 }}
                 type="button"
               >
                 <UiIcon name="alert" size={14} />
-                Show online-map notice again
+                {t("settings.showMapNotice")}
               </button>
             </div>
           </section>
 
           <section className="settings__section">
-            <h3 className="settings__h3">Configuration data</h3>
-            <p className="modal__intro">
-              Export a portable settings file or restore one created by
-              Cataclysm. Imported settings take effect immediately.
-            </p>
+            <h3 className="settings__h3">{t("settings.configuration")}</h3>
+            <p className="modal__intro">{t("settings.configurationBody")}</p>
             <div className="settings__button-row">
               <button
                 className="scenario-tab"
@@ -599,7 +588,7 @@ export function Settings({ onClose }: Props) {
                 type="button"
               >
                 <UiIcon name="download" size={14} />
-                Export settings
+                {t("settings.export")}
               </button>
               <button
                 className="scenario-tab"
@@ -611,7 +600,7 @@ export function Settings({ onClose }: Props) {
                     const file = input.files?.[0];
                     if (!file) return;
                     try {
-                      if (file.size > 256 * 1024) throw new Error("Settings file exceeds the 256 KB import limit.");
+                      if (file.size > 256 * 1024) throw new Error(t("settings.fileTooLarge"));
                       const text = await file.text();
                       const result = await settings.importSettings(text);
                       const all = await settings.loadAll();
@@ -640,11 +629,11 @@ export function Settings({ onClose }: Props) {
                         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                       }
                       const msg = result.skipped.length > 0
-                        ? `Imported ${result.applied} settings (skipped: ${result.skipped.join(", ")}).`
-                        : `Imported ${result.applied} settings.`;
+                        ? translate(all.locale, "settings.importedSkipped", { count: result.applied, skipped: result.skipped.join(", ") })
+                        : translate(all.locale, "settings.imported", { count: result.applied });
                       setStatusMsg(msg);
                     } catch (err) {
-                      setSaveErr(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+                      setSaveErr(translate(locale, "settings.importFailed", { error: err instanceof Error ? err.message : String(err) }));
                     }
                   };
                   input.click();
@@ -652,7 +641,7 @@ export function Settings({ onClose }: Props) {
                 type="button"
               >
                 <UiIcon name="folder" size={14} />
-                Import settings
+                {t("settings.import")}
               </button>
               <button
                 className="scenario-tab"
@@ -685,30 +674,29 @@ export function Settings({ onClose }: Props) {
                       window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                     }
                     setSaveErr(null);
-                    setStatusMsg("Settings reset to defaults.");
+                    setStatusMsg(translate("en", "settings.resetDone"));
                   } catch (err) {
-                    setSaveErr(`Reset failed: ${err instanceof Error ? err.message : String(err)}`);
+                    setSaveErr(translate(locale, "settings.resetFailed", { error: err instanceof Error ? err.message : String(err) }));
                   }
                 }}
                 type="button"
               >
                 <UiIcon name="reset" size={14} />
-                Reset to defaults
+                {t("settings.reset")}
               </button>
             </div>
             {settingsExportFailure && (
               <div className="panel-error" role="alert">
                 <span>{exportFailureLabel(settingsExportFailure.code)}: {settingsExportFailure.message}</span>
                 {settingsExportFailure.retryable && (
-                  <button type="button" onClick={() => void handleSettingsExport()}>Retry</button>
+                  <button type="button" onClick={() => void handleSettingsExport()}>{t("settings.retry")}</button>
                 )}
               </div>
             )}
           </section>
 
           <p className="modal__footnote">
-            For evacuation warnings use <strong>NOAA NTWC / PTWC</strong> — this
-            tool is for education and hazard awareness only.
+            {t("settings.safety")}
           </p>
           </>}
             </div>
@@ -717,21 +705,21 @@ export function Settings({ onClose }: Props) {
           <section className="settings__actions settings__actions--footer">
             <div className="settings__footer-status" aria-live="polite">
               {hasUnsavedChanges && (
-                <span className="settings__status" data-tone="warning">Unsaved changes</span>
+                <span className="settings__status" data-tone="warning">{t("settings.unsaved")}</span>
               )}
               {statusMsg && !saveErr && (
                 <span className="settings__footer-message" role="status">{statusMsg}</span>
               )}
               {saveErr && (
                 <span className="settings__status" data-tone="danger" role="alert">
-                  {saveErr.startsWith("Import failed:") ? saveErr : `Could not apply changes: ${saveErr}`}
+                  {saveErr}
                 </span>
               )}
             </div>
             <div className="settings__footer-buttons">
-              <button type="button" onClick={onClose}>Cancel</button>
+              <button type="button" onClick={onClose}>{t("settings.cancel")}</button>
               <button className="primary" type="button" onClick={save} disabled={loading || saving || !hasUnsavedChanges}>
-                {saving ? "Applying Changes..." : "Apply Changes"}
+                {saving ? t("settings.applying") : t("settings.apply")}
               </button>
             </div>
           </section>

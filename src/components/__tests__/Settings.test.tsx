@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Settings } from "../Settings";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("Settings", () => {
   beforeEach(() => {
@@ -18,6 +19,17 @@ describe("Settings", () => {
     expect(screen.getByRole("option", { name: "Natural Earth II (offline-friendly)" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Simulation performance" }));
     expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();
+  });
+
+  it("renders the complete settings chrome in the persisted locale", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><Settings onClose={() => {}} /></I18nProvider>);
+
+    expect(await screen.findByRole("heading", { name: "設定" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "地球表示と外観" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "地球表示" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Natural Earth II（オフライン）" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "変更を適用" })).toBeInTheDocument();
   });
 
   it("uses roving focus and arrow keys for renderer quality radios", async () => {

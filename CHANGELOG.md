@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Settings is now fully catalog-driven across all four locales, including its
+  navigation, Earth styles and provenance labels, token disclosure, themes and
+  colormaps, renderer budgets, GPU states, onboarding controls, portable data
+  actions, validation/recovery messages, and footer transaction state. Locale
+  changes update the dialog immediately, use native-only language names, and
+  format the applied timestamp with the selected locale.
+
 - The global command shell now switches across all four locales: brand tagline
   and safety copy, hazard and analysis modes, library recovery states,
   reference/settings actions, direct-workspace context, globe loading and

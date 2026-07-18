@@ -118,12 +118,12 @@ Existing tools each do one piece:
   while guided training remains available without crowding the primary flow.
 - **Four-language foundation** — Settings persists English, Spanish, Japanese,
   or Bahasa Indonesia locally and includes the preference in portable profiles.
-  The command bar, hazard/workspace navigation, viewport instruments, scenario
-  library, quick start, search/filter/selection flow, persistent playback
-  transport, all seven lesson narratives and printable worksheets, and the
-  full scientific glossary follow the selected language. English remains the
-  canonical fallback while the remaining advanced surfaces are progressively
-  extracted into the same completeness-checked catalog.
+  Settings (including map provenance, renderer/GPU states, onboarding, and
+  portable data actions), the command bar, hazard/workspace navigation,
+  viewport instruments, scenario library, quick start, persistent playback,
+  all seven lessons and worksheets, and the full glossary follow the selected
+  language. English remains the canonical fallback while remaining advanced
+  surfaces are progressively extracted into the completeness-checked catalog.
 - **NOAA historical event import** — installed builds search the NCEI HazEL
   Global Historical Tsunami Database by year/location and transfer only a
   supported earthquake record's magnitude and epicentre into the builder.

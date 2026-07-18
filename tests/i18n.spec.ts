@@ -25,7 +25,13 @@ test("language switch persists and translates the complete guided lesson surface
   await expect(page.locator("html")).toHaveAttribute("lang", "ja");
   await expect(page.getByRole("combobox", { name: "表示言語" })).toHaveValue("ja");
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("tsunamisim.locale") ?? "null"))).toBe("ja");
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "地球表示と外観" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Esri World Imagery（衛星、トークン不要）" })).toBeAttached();
+  const settingsBounds = await page.locator(".modal--settings").boundingBox();
+  expect(settingsBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: settingsBounds! })).toMatchSnapshot("localized-settings-ja.png");
+  await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 
   await expect(page.locator(".app__tagline")).toHaveText("惑星災害シミュレーター");
   const hazardModes = page.getByRole("group", { name: "災害種別" });
