@@ -173,6 +173,49 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByText("Rust attenuation_curve compiled to browser WASM").first()).toBeVisible();
   });
 
+  test("keeps humanitarian facility lookup off until consent, then lists and pins exact OSM matches", async ({ page }) => {
+    let overpassRequests = 0;
+    await page.route("https://overpass-api.de/**", async (route) => {
+      overpassRequests += 1;
+      const query = new URLSearchParams(route.request().postData() ?? "").get("data") ?? "";
+      expect(query).toContain('[out:json][timeout:15][maxsize:67108864]');
+      const box = query.match(/\]\((-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)\);/);
+      expect(box).not.toBeNull();
+      const lat = (Number(box![1]) + Number(box![3])) / 2;
+      const lon = (Number(box![2]) + Number(box![4])) / 2;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          version: 0.6,
+          osm3s: { timestamp_osm_base: "2026-07-17T15:00:00Z" },
+          elements: [{ type: "node", id: 7001, lat, lon, tags: { amenity: "clinic", name: "Harbor Clinic" } }],
+        }),
+      });
+    });
+    await page.goto("/");
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
+    await expect(chicxulub).toBeVisible({ timeout: 10_000 });
+    await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: /Run and Watch:/i }))
+      .toHaveAttribute("aria-label", "Run and Watch: Understand", { timeout: 15_000 });
+    await page.getByRole("tab", { name: "Layers" }).click();
+
+    const facilityToggle = page.getByRole("checkbox", { name: "Show humanitarian facilities from OpenStreetMap" });
+    await expect(facilityToggle).toBeVisible();
+    expect(overpassRequests).toBe(0);
+    await facilityToggle.check();
+
+    await expect(page.getByRole("link", { name: "Harbor Clinic" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".app__globe-mount").first()).toHaveAttribute("data-humanitarian-facilities", "1");
+    await expect(page.locator(".app__globe-osm-attribution").first()).toBeVisible();
+    expect((await new AxeBuilder({ page }).include(".layer-inspector").analyze()).violations).toEqual([]);
+    expect(overpassRequests).toBe(1);
+  });
+
   test("historical event browser explains its desktop-only live data boundary", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /Search NOAA historical events/i }).click();

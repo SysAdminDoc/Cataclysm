@@ -3,6 +3,7 @@ import * as Cesium from "cesium";
 import type { FireballEvent } from "../types/jpl";
 import { WW3_SIDE_COLORS, type Ww3ExchangePlan, type Ww3TargetType } from "../lib/ww3";
 import { mirvSpreadCircle, type MirvPreview } from "../lib/mirv";
+import type { HumanitarianFacility, HumanitarianFacilityCategory } from "../lib/osm-facilities";
 
 function removePrimitives(viewer: Cesium.Viewer, collections: readonly Cesium.PrimitiveCollection[]) {
   if (viewer.isDestroyed()) return;
@@ -96,18 +97,47 @@ export function installMirvOverlay(viewer: Cesium.Viewer, preview: MirvPreview |
   return () => removePrimitives(viewer, [boundary, points]);
 }
 
+export function installHumanitarianFacilityOverlay(
+  viewer: Cesium.Viewer,
+  facilities: readonly HumanitarianFacility[],
+) {
+  if (viewer.isDestroyed() || facilities.length === 0) return undefined;
+  const colors: Record<HumanitarianFacilityCategory, string> = {
+    school: "#89b4fa",
+    health: "#a6e3a1",
+    emergency: "#fab387",
+  };
+  const points = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
+  for (const facility of facilities) {
+    points.add({
+      id: `osm-facility:${facility.id}`,
+      position: Cesium.Cartesian3.fromDegrees(facility.lon, facility.lat, 90),
+      pixelSize: facility.category === "health" ? 9 : 8,
+      color: Cesium.Color.fromCssColorString(colors[facility.category]).withAlpha(0.92),
+      outlineColor: Cesium.Color.fromCssColorString("#11111b"),
+      outlineWidth: 1.5,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      scaleByDistance: new Cesium.NearFarScalar(25_000, 1.25, 8_000_000, 0.55),
+    });
+  }
+  viewer.scene.requestRender();
+  return () => removePrimitives(viewer, [points]);
+}
+
 export function useStrategicGlobeOverlays({
   viewerRef,
   viewerEpoch,
   fireballs,
   ww3Plan,
   mirvPreview,
+  humanitarianFacilities,
 }: {
   viewerRef: RefObject<Cesium.Viewer | null>;
   viewerEpoch: number;
   fireballs: readonly FireballEvent[];
   ww3Plan?: Ww3ExchangePlan | null;
   mirvPreview?: MirvPreview | null;
+  humanitarianFacilities?: readonly HumanitarianFacility[];
 }) {
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -126,4 +156,10 @@ export function useStrategicGlobeOverlays({
     if (!viewer) return;
     return installMirvOverlay(viewer, mirvPreview);
   }, [mirvPreview, viewerEpoch, viewerRef]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    return installHumanitarianFacilityOverlay(viewer, humanitarianFacilities ?? []);
+  }, [humanitarianFacilities, viewerEpoch, viewerRef]);
 }

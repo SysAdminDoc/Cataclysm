@@ -307,6 +307,9 @@ const CSP_ALLOWLIST = {
     // OSM tile fetch.
     "https://*.openstreetmap.org",
     "https://tile.openstreetmap.org",
+    // Explicitly opted-in, bounded humanitarian facility queries. The client
+    // never contacts Overpass until the user enables the layer.
+    "https://overpass-api.de",
     // Esri tile fetch.
     "https://*.arcgisonline.com",
     "https://server.arcgisonline.com",

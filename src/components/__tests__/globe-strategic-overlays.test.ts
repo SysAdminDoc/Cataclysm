@@ -1,7 +1,7 @@
 import * as Cesium from "cesium";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { installFireballOverlay, installMirvOverlay } from "../globe-strategic-overlays";
+import { installFireballOverlay, installHumanitarianFacilityOverlay, installMirvOverlay } from "../globe-strategic-overlays";
 import type { FireballEvent } from "../../types/jpl";
 import { buildMirvPreview, MIRV_PRESETS } from "../../lib/mirv";
 
@@ -101,5 +101,28 @@ describe("strategic globe overlay lifecycles", () => {
 
     expect(harness.removed).toHaveLength(0);
     expect(harness.requestRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders opted-in humanitarian facilities as one primitive-backed collection", () => {
+    const harness = makeViewerHarness();
+    const cleanup = installHumanitarianFacilityOverlay(harness.viewer, [{
+      id: "node/7",
+      osmType: "node",
+      osmId: 7,
+      osmUrl: "https://www.openstreetmap.org/node/7",
+      name: "Harbor Clinic",
+      category: "health",
+      kind: "clinic",
+      lat: 38,
+      lon: 142,
+      runupPointIds: ["coast-1"],
+    }]);
+
+    expect(harness.added).toHaveLength(1);
+    expect(harness.added[0]).toBeInstanceOf(Cesium.PointPrimitiveCollection);
+    expect((harness.added[0] as Cesium.PointPrimitiveCollection).length).toBe(1);
+
+    cleanup?.();
+    expect(harness.removed).toEqual(harness.added);
   });
 });

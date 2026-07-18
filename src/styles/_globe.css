@@ -326,6 +326,24 @@
   inset: 0;
 }
 
+.app__globe-osm-attribution {
+  position: absolute;
+  z-index: 7;
+  right: 142px;
+  bottom: 3px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--crust) 88%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.app__globe-osm-attribution:hover {
+  text-decoration: underline;
+}
+
 .app__compare-rail {
   border-top: 1px dashed var(--surface1);
   padding-top: 12px;

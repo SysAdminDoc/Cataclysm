@@ -30,6 +30,7 @@ export type EvidenceLayerId =
   | "maximum-field"
   | "arrival-isochrones"
   | "coastal-runup"
+  | "humanitarian-facilities"
   | "dart-observations"
   | "hazard-rings"
   | "fallout-plume";
@@ -281,6 +282,29 @@ export function buildLayerEvidence(
         assumptions: ["Each point uses its recorded offshore depth and beach slope.", "The non-breaking solitary-wave relation is used within its model gate."],
         limitations: ["First-order screening does not resolve local structures, harbor resonance, or evacuation conditions.", EDUCATIONAL_LIMITATION],
         citations: [{ label: "Synolakis 1987, Journal of Fluid Mechanics 185:523–545" }],
+      };
+    case "humanitarian-facilities":
+      return {
+        ...common,
+        title: "Humanitarian facilities layer",
+        sourceTitle: "OpenStreetMap contributor data via the public Overpass API",
+        model: "OSM tag selection filtered against Cataclysm inundation screening discs",
+        confidence: "Community-mapped context; completeness varies",
+        tone: "limited",
+        assumptions: [
+          "Schools, healthcare sites, and emergency-response facilities are selected from explicit OSM tags.",
+          "A facility is included only when its mapped point or feature center falls inside a modeled runup disc.",
+        ],
+        limitations: [
+          "OpenStreetMap coverage, names, locations, tags, and update times vary by region.",
+          "This layer does not establish damage, operability, access, evacuation status, or emergency needs.",
+          "Public-query budgets can limit the view to the 30 largest active coastal extents and 500 facilities.",
+          EDUCATIONAL_LIMITATION,
+        ],
+        citations: [
+          { label: "© OpenStreetMap contributors (ODbL)", url: "https://www.openstreetmap.org/copyright" },
+          { label: "Overpass API documentation", url: "https://wiki.openstreetmap.org/wiki/Overpass_API" },
+        ],
       };
     case "dart-observations":
       return {

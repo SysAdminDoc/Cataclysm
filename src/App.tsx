@@ -47,6 +47,7 @@ import {
 import { downloadTextExport } from "./lib/text-export";
 import { exportScientificNetcdf, exportScientificZarr } from "./lib/scientific-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
+import { useHumanitarianFacilities } from "./hooks/useHumanitarianFacilities";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
 import type { HistoricalScenarioImport } from "./lib/ncei-hazel";
 import { subscribeToScenarioDeepLinks } from "./lib/deep-links";
@@ -408,6 +409,7 @@ export default function App() {
   const [ww3Session, setWw3Session] = useState<ActiveWw3ExchangeSession | null>(null);
   const [mirvPreview, setMirvPreview] = useState<MirvPreview | null>(null);
   const [showFireballs, setShowFireballs] = useState(false);
+  const [humanitarianFacilitiesEnabled, setHumanitarianFacilitiesEnabled] = useState(false);
   const fireballFeed = useFireballs(hazardMode === "asteroid" && showFireballs);
   const [asteroidVisualReport, setAsteroidVisualReport] = useState<AsteroidVisualReport | null>(null);
   const [nuclearShelterReport, setNuclearShelterReport] = useState<NuclearShelterReport | null>(null);
@@ -549,6 +551,10 @@ export default function App() {
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
+  const humanitarianFacilities = useHumanitarianFacilities(
+    humanitarianFacilitiesEnabled && hazardMode === "tsunami",
+    slotA.runupResults,
+  );
   useEffect(() => {
     setPointProbeA(null);
     setPointProbeB(null);
@@ -2028,6 +2034,9 @@ export default function App() {
                 runupResults={inHazardMode ? [] : slotA.runupResults}
                 gauges={inHazardMode ? [] : sweGaugesA}
                 dartBuoys={inHazardMode ? [] : dartPinsForPreset(slotA.activePresetId)}
+                humanitarianFacilities={!inHazardMode && humanitarianFacilitiesEnabled
+                  ? humanitarianFacilities.state.facilities
+                  : []}
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
                 onPickCancel={() => setPickMode(false)}
@@ -2446,6 +2455,10 @@ export default function App() {
           initial={slotA.initial}
           sourceKind={activeScenarioKindA}
           directResult={hazardResult}
+          humanitarianEnabled={humanitarianFacilitiesEnabled}
+          humanitarianState={humanitarianFacilities.state}
+          onHumanitarianEnabledChange={setHumanitarianFacilitiesEnabled}
+          onRefreshHumanitarian={humanitarianFacilities.refresh}
           onOpenSettings={() => setShowSettings(true)}
         />}
         </div>

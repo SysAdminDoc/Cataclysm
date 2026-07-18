@@ -6,6 +6,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Layers now offers an explicit opt-in humanitarian context view that queries
+  OpenStreetMap schools, healthcare sites, and emergency-response facilities
+  inside active first-order runup discs. The Overpass client uses bounded
+  bounding-box queries followed by exact in-disc filtering, a 15-second / 2 MiB
+  response guard, a 30-extent / 500-facility display budget, a bounded 24-hour
+  local cache, and stale offline fallback. Facilities render through one
+  primitive-backed Cesium collection and an accessible grouped inventory;
+  persistent OSM attribution, network disclosure, and limitations explicitly
+  avoid claims about damage, access, operability, evacuation, or need.
+
 - Reworked every primary workspace and modal around a compact scientific-tool
   visual system: larger operational type, a shorter command bar, denser section
   rhythm, flatter selected states, fewer status chips, divider-led results and

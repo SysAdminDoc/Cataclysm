@@ -89,6 +89,7 @@ import {
 import { useStrategicGlobeOverlays } from "./globe-strategic-overlays";
 import { useGlobeAccessibilitySummary } from "./globe-accessibility";
 import { useGlobeControllerSync } from "./globe-controller-sync";
+import { OSM_ATTRIBUTION_URL, type HumanitarianFacility } from "../lib/osm-facilities";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -102,6 +103,8 @@ type Props = {
   gauges?: Gauge[];
   /** DART buoy pins for the active historical preset. */
   dartBuoys?: DartBuoy[];
+  /** Explicitly opted-in OpenStreetMap facilities inside modeled runup discs. */
+  humanitarianFacilities?: readonly HumanitarianFacility[];
   /** Override style; if absent, the persisted Settings style is used. */
   styleId?: GlobeStyleId;
   /**
@@ -263,6 +266,7 @@ export function Globe({
   runupResults,
   gauges,
   dartBuoys,
+  humanitarianFacilities = [],
   styleId,
   pickMode,
   onPick,
@@ -896,7 +900,14 @@ export function Globe({
     return () => ownership.coordinator.abortPending("snapshot_changed");
   }, [sweSnapshot, viewerEpoch]);
 
-  useStrategicGlobeOverlays({ viewerRef, viewerEpoch, fireballs, ww3Plan, mirvPreview });
+  useStrategicGlobeOverlays({
+    viewerRef,
+    viewerEpoch,
+    fireballs,
+    ww3Plan,
+    mirvPreview,
+    humanitarianFacilities,
+  });
 
   return (
     <>
@@ -913,7 +924,18 @@ export function Globe({
         data-ww3-strikes={ww3Plan?.strikes.length ?? 0}
         data-mirv-preview={mirvPreview?.id ?? "none"}
         data-mirv-warheads={mirvPreview?.points.length ?? 0}
+        data-humanitarian-facilities={humanitarianFacilities.length}
       />
+      {humanitarianFacilities.length > 0 && (
+        <a
+          className="app__globe-osm-attribution"
+          href={OSM_ATTRIBUTION_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Facility data © OpenStreetMap contributors
+        </a>
+      )}
       <p id={sceneSummaryId} className="sr-only" data-globe-scene-summary>
         {accessibilitySummary}
       </p>

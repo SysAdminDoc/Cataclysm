@@ -159,6 +159,15 @@ Existing tools each do one piece:
   and DART buoy historical observations with per-buoy model-vs-observed RMSE
   for the four instrumented presets. Gauge markers are batched for rendering;
   the accessible gauge table remains the interaction and export surface.
+- **Opt-in humanitarian context** — Layers can query OpenStreetMap schools,
+  healthcare sites, and emergency-response facilities whose mapped point or
+  feature center falls inside active first-order runup discs. Nothing is sent
+  until the switch is enabled; requests are limited to the 30 largest active
+  extents, 2 MiB, and 500 results, then cached locally for 24 hours. An older
+  cache remains visible offline. Coverage and tagging vary, and the layer does
+  not claim damage, operability, access, evacuation status, or emergency need.
+  Facility data is attributed to
+  [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright) under ODbL.
 - **Max-field products** — fgmax-style peak-amplitude, time-of-maximum, and
   energy-directivity overlays for every solver run, plus labelled
   first-arrival isochrones (NOAA travel-time-map style) exportable as
@@ -260,6 +269,11 @@ another no-token online option, and a free Cesium ion token unlocks optional
 streamed imagery and visual bathymetric terrain from Settings. Provider terms,
 attribution, spatial metadata, and rights-review dates are visible beside the
 selected Earth source.
+The separate humanitarian-facilities layer is also online-only and off by
+default. Enabling it sends bounded boxes for the currently active modeled
+coastal extents to the public OpenStreetMap Overpass service; scenario names,
+source parameters, and raw solver fields are not transmitted. Cached results
+degrade to a clearly marked stale view when offline.
 Solver bathymetry defaults to the app's low-confidence coarse basin/shelf
 approximation. Desktop users can instead preflight, cache, and select a local
 WGS 84 GeoTIFF or NetCDF-CF depth/elevation raster from Settings; unknown
