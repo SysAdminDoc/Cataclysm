@@ -3,7 +3,6 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import {
   canImportHistoricalEvent,
-  eventValidityLabel,
   historicalEventDate,
   historicalEventImport,
   historicalEventPlace,
@@ -13,6 +12,7 @@ import {
 } from "../lib/ncei-hazel";
 import { api, isTauri } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   onClose: () => void;
@@ -20,6 +20,7 @@ type Props = {
 };
 
 export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
+  const { t, formatNumber } = useI18n();
   useEscapeKey(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
@@ -28,18 +29,36 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
   const [result, setResult] = useState<HazelEventSearchResponse | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const searchError = (reason: string) => reason === "Enter a year, location, or both."
+    ? t("historical.error.empty")
+    : reason === "Search text must be 65 printable characters or fewer."
+      ? t("historical.error.length")
+      : reason === "Search year must be between 0001 and 2100."
+        ? t("historical.error.year")
+        : reason === "Location text must contain at least two characters."
+          ? t("historical.error.location")
+          : reason;
+  const validityLabel = (value: number | null | undefined) => value === 4
+    ? t("historical.validity.definite")
+    : value === 3
+      ? t("historical.validity.probable")
+      : value === 2
+        ? t("historical.validity.questionable")
+        : value === 1
+          ? t("historical.validity.doubtful")
+          : t("historical.validity.unrated");
 
   async function search(event: FormEvent) {
     event.preventDefault();
     const parsed = parseHistoricalEventSearch(query);
     if (!parsed.ok) {
       setStatus("error");
-      setMessage(parsed.reason);
+      setMessage(searchError(parsed.reason));
       return;
     }
     if (!desktop) {
       setStatus("error");
-      setMessage("Live NOAA search is available in the installed desktop app. The browser preview makes no external data requests.");
+      setMessage(t("historical.browserOnly"));
       return;
     }
     setStatus("loading");
@@ -49,12 +68,12 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
       setResult(response);
       setStatus("idle");
       setMessage(response.items.length === 0
-        ? "No matching HazEL events were found. Try a broader year or location."
-        : `${response.items.length} of ${response.totalItems.toLocaleString()} matching records shown.`);
+        ? t("historical.noMatches")
+        : t(response.items.length === 1 ? "historical.matchesOne" : "historical.matchesMany", { shown: formatNumber(response.items.length), total: formatNumber(response.totalItems) }));
     } catch (error) {
       console.warn("[ncei-hazel] historical event search failed", error);
       setStatus("error");
-      setMessage("NOAA/NCEI HazEL is unavailable. Check the connection and try again; the built-in scenario library remains available offline.");
+      setMessage(t("historical.unavailable"));
     }
   }
 
@@ -72,18 +91,18 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
         <div className="modal__header">
           <div>
             <span className="historical-browser__eyebrow">NOAA/NCEI HazEL</span>
-            <h2 id="historical-browser-title">Historical tsunami events</h2>
+            <h2 id="historical-browser-title">{t("historical.title")}</h2>
           </div>
-          <button onClick={onClose} aria-label="Close" className="modal__close" type="button">
+          <button onClick={onClose} aria-label={t("historical.close")} className="modal__close" type="button">
             <UiIcon name="close" size={16} />
           </button>
         </div>
         <div className="modal__body historical-browser__body">
           <p className="modal__intro">
-            Search the Global Historical Tsunami Database by year, location, or both. Results are source records, not ready-made fault models.
+            {t("historical.intro")}
           </p>
           <form className="historical-browser__search" onSubmit={(event) => void search(event)}>
-            <label htmlFor="historical-event-query">Year and location</label>
+            <label htmlFor="historical-event-query">{t("historical.queryLabel")}</label>
             <div>
               <input
                 id="historical-event-query"
@@ -96,7 +115,7 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
               />
               <button type="submit" disabled={status === "loading"}>
                 <UiIcon name="search" size={14} />
-                {status === "loading" ? "Searching…" : "Search NOAA"}
+                {status === "loading" ? t("historical.searching") : t("historical.search")}
               </button>
             </div>
           </form>
@@ -104,7 +123,7 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
           {!desktop && status === "idle" && (
             <div className="historical-browser__notice" role="status">
               <UiIcon name="info" size={16} />
-              <span><strong>Desktop data source</strong> Live lookup is disabled in the browser preview, which remains network-isolated.</span>
+              <span><strong>{t("historical.desktopSource")}</strong> {t("historical.desktopNotice")}</span>
             </div>
           )}
           {message && (
@@ -120,7 +139,7 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
           )}
 
           {result && result.items.length > 0 && (
-            <ul className="historical-browser__results" aria-label="Historical tsunami search results">
+            <ul className="historical-browser__results" aria-label={t("historical.resultsLabel")}>
               {result.items.map((item) => {
                 const loadable = canImportHistoricalEvent(item);
                 const mapped = loadable ? historicalEventImport(item) : null;
@@ -128,26 +147,26 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
                   <li key={item.id}>
                     <div className="historical-browser__result-heading">
                       <span>
-                        <strong>{historicalEventPlace(item)}</strong>
-                        <small>{historicalEventDate(item)} · Record {item.id}</small>
+                        <strong>{historicalEventPlace(item) === "Unnamed location" ? t("historical.unnamed") : historicalEventPlace(item)}</strong>
+                        <small>{historicalEventDate(item)} · {t("historical.record", { id: formatNumber(item.id) })}</small>
                       </span>
                       <span className="historical-browser__validity" data-level={item.eventValidity ?? 0}>
-                        {eventValidityLabel(item.eventValidity)}
+                        {validityLabel(item.eventValidity)}
                       </span>
                     </div>
                     <dl>
-                      <div><dt>Magnitude</dt><dd>{Number.isFinite(item.eqMagnitude) ? `M_w ${item.eqMagnitude!.toFixed(1)}` : "Not recorded"}</dd></div>
-                      <div><dt>Epicentre</dt><dd>{Number.isFinite(item.latitude) && Number.isFinite(item.longitude) ? `${item.latitude!.toFixed(3)}°, ${item.longitude!.toFixed(3)}°` : "Not recorded"}</dd></div>
-                      <div><dt>Observed runups</dt><dd>{item.numRunups?.toLocaleString() ?? "Not recorded"}</dd></div>
+                      <div><dt>{t("historical.magnitude")}</dt><dd>{Number.isFinite(item.eqMagnitude) ? `M_w ${formatNumber(item.eqMagnitude!, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : t("historical.notRecorded")}</dd></div>
+                      <div><dt>{t("historical.epicentre")}</dt><dd>{Number.isFinite(item.latitude) && Number.isFinite(item.longitude) ? `${formatNumber(item.latitude!, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}°, ${formatNumber(item.longitude!, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}°` : t("historical.notRecorded")}</dd></div>
+                      <div><dt>{t("historical.observedRunups")}</dt><dd>{item.numRunups == null ? t("historical.notRecorded") : formatNumber(item.numRunups)}</dd></div>
                     </dl>
                     <div className="historical-browser__result-action">
                       <small>{loadable
-                        ? "Imports magnitude and epicentre; review every remaining fault input."
+                        ? t("historical.importReview")
                         : item.causeCode !== 1
-                          ? "This non-earthquake source cannot be mapped to the earthquake builder."
-                          : "Magnitude or epicentre is missing or outside supported bounds."}</small>
+                          ? t("historical.nonEarthquake")
+                          : t("historical.missingInputs")}</small>
                       <button type="button" disabled={!mapped} onClick={() => mapped && onLoad(mapped)}>
-                        Load into builder
+                        {t("historical.load")}
                       </button>
                     </div>
                   </li>
@@ -157,7 +176,7 @@ export function HistoricalTsunamiBrowser({ onClose, onLoad }: Props) {
           )}
 
           <p className="historical-browser__source">
-            Source: NOAA National Centers for Environmental Information, Global Historical Tsunami Database, doi:10.7289/V5PN93H7. Records may contain location, datum, transcription, or classification uncertainty.
+            {t("historical.source")}
           </p>
         </div>
       </div>

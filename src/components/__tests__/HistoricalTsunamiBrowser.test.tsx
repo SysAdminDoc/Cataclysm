@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HistoricalTsunamiBrowser } from "../HistoricalTsunamiBrowser";
+import { I18nProvider } from "../../lib/i18n";
 
 const mocks = vi.hoisted(() => ({
   desktop: true,
@@ -36,6 +37,7 @@ const RESPONSE = {
 
 describe("HistoricalTsunamiBrowser", () => {
   beforeEach(() => {
+    localStorage.clear();
     mocks.desktop = true;
     mocks.search.mockReset();
   });
@@ -80,5 +82,20 @@ describe("HistoricalTsunamiBrowser", () => {
     await user.type(screen.getByLabelText("Year and location"), "1960 Chile");
     await user.click(screen.getByRole("button", { name: "Search NOAA" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("built-in scenario library remains available offline");
+  });
+
+  it("localizes NOAA search, result semantics, and import guidance in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    mocks.search.mockResolvedValue(RESPONSE);
+    const user = userEvent.setup();
+    render(<I18nProvider><HistoricalTsunamiBrowser onClose={() => {}} onLoad={() => {}} /></I18nProvider>);
+
+    expect(screen.getByRole("heading", { name: "歴史津波イベント" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("年と場所"), "1960 Chile");
+    await user.click(screen.getByRole("button", { name: "NOAAを検索" }));
+    expect(await screen.findByText("確実な津波")).toBeInTheDocument();
+    expect(screen.getByText("マグニチュード")).toBeInTheDocument();
+    expect(screen.getByText("観測遡上件数")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ビルダーに読み込む" })).toBeInTheDocument();
   });
 });

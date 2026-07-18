@@ -78,6 +78,15 @@ test("language switch persists across settings, simulation results, layers, and 
   const timelineAccessibility = await new AxeBuilder({ page }).include(".timeline").analyze();
   expect(timelineAccessibility.violations).toEqual([]);
 
+  await page.getByRole("button", { name: "NOAAの過去事例を検索" }).click();
+  const historicalBrowser = page.getByRole("dialog", { name: "歴史津波イベント" });
+  await expect(historicalBrowser).toBeVisible();
+  await expect(historicalBrowser.getByText("デスクトップデータソース")).toBeVisible();
+  expect(await historicalBrowser.screenshot()).toMatchSnapshot("localized-historical-browser-ja.png");
+  const historicalAccessibility = await new AxeBuilder({ page }).include(".historical-browser").analyze();
+  expect(historicalAccessibility.violations).toEqual([]);
+  await historicalBrowser.getByRole("button", { name: "閉じる" }).click();
+
   await page.getByRole("button", { name: "比較", exact: true }).click();
   const comparisonStories = page.getByRole("region", { name: "比較ストーリー" });
   await expect(comparisonStories).toBeVisible();

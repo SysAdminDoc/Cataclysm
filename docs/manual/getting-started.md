@@ -41,6 +41,8 @@ probes and coastal-arrival announcements use the same locale, including their
 accessible chart summaries, recovery states and exported data labels.
 The chronological event rail and curated side-by-side comparison stories also
 translate source categories, scientific questions, metric deltas and controls.
+The NOAA/NCEI historical-event browser translates its search, source-quality,
+import-safety and recovery guidance while keeping database records canonical.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 
