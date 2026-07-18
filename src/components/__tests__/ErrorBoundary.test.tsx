@@ -82,4 +82,13 @@ describe("ErrorBoundary", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent(/desktop store unavailable/);
   });
+
+  it("localizes the fatal recovery surface from the stored locale", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<ErrorBoundary><ThrowingChild /></ErrorBoundary>);
+    expect(screen.getByRole("alert")).toHaveTextContent("問題が発生しました");
+    expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "診断情報を保存" })).toBeInTheDocument();
+  });
 });

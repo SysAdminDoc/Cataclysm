@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import cataclysmLogoUrl from "../../assets/branding/logo.svg";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { settings, type LaunchExperiencePolicy } from "../lib/settings";
+import { useI18n } from "../lib/i18n";
 
 export const LAUNCH_COMPLETE_EVENT = "cataclysm:launch-complete";
 
@@ -32,6 +33,7 @@ type Props = {
 };
 
 export function LaunchExperience({ durationMs = 4_800 }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(() => {
     const visible = initialVisibility();
     if (visible) document.documentElement.dataset.launchExperienceActive = "true";
@@ -137,25 +139,25 @@ export function LaunchExperience({ durationMs = 4_800 }: Props) {
       </div>
       <div className="launch-experience__identity">
         <img className="launch-experience__logo" src={cataclysmLogoUrl} alt="" aria-hidden="true" />
-        <span className="launch-experience__eyebrow">Planetary hazard simulator</span>
+        <span className="launch-experience__eyebrow">{t("launch.eyebrow")}</span>
         <h1 id="launch-title">Cataclysm</h1>
-        <p>Earth systems. Extreme events. One living world.</p>
+        <p>{t("launch.tagline")}</p>
         <div className="launch-experience__domains" aria-hidden="true">
-          <span>Ocean dynamics</span>
-          <span>Impact physics</span>
-          <span>Nuclear effects</span>
+          <span>{t("launch.ocean")}</span>
+          <span>{t("launch.impact")}</span>
+          <span>{t("launch.nuclear")}</span>
         </div>
       </div>
       <div className="launch-experience__status" role="status" aria-live="polite">
         <span className="launch-experience__status-mark" aria-hidden="true" />
-        Preparing the live Earth
+        {t("launch.preparing")}
       </div>
       <button
         className="launch-experience__skip"
         type="button"
         onClick={() => complete("skipped")}
       >
-        Skip intro
+        {t("launch.skip")}
       </button>
     </section>
   );

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FirstRunDisclaimer, REPLAY_DISCLAIMER_EVENT } from "../FirstRunDisclaimer";
 import { LAUNCH_COMPLETE_EVENT } from "../LaunchExperience";
 import { settings } from "../../lib/settings";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("FirstRunDisclaimer", () => {
   beforeEach(() => {
@@ -98,5 +99,14 @@ describe("FirstRunDisclaimer", () => {
 
     window.removeEventListener("tsunamisim:disclaimer-acknowledged", acknowledged);
     warning.mockRestore();
+  });
+
+  it("localizes first-run safety guidance in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><FirstRunDisclaimer /></I18nProvider>);
+
+    expect(await screen.findByRole("dialog", { name: "教育用モデルであり、警報システムではありません" })).toBeInTheDocument();
+    expect(screen.getByText("適した用途")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "理解しました" })).toBeInTheDocument();
   });
 });

@@ -6,12 +6,14 @@ import {
   type CrashReport,
 } from "../lib/diagnosticsLog";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   onInspect: () => void;
 };
 
 export function CrashRecoveryNotice({ onInspect }: Props) {
+  const { t } = useI18n();
   const [report, setReport] = useState<CrashReport | null>(() => readPersistedCrashReport());
   const refresh = useCallback(() => setReport(readPersistedCrashReport()), []);
 
@@ -32,18 +34,18 @@ export function CrashRecoveryNotice({ onInspect }: Props) {
         <UiIcon name="alert" size={15} />
       </span>
       <span>
-        <strong>A report from the previous failure is available.</strong>{" "}
-        Inspect the redacted evidence before clearing it.
+        <strong>{t("crash.title")}</strong>{" "}
+        {t("crash.body")}
       </span>
       <button className="crash-recovery-notice__inspect" type="button" onClick={onInspect}>
-        Inspect report
+        {t("crash.inspect")}
       </button>
       <button
         className="crash-recovery-notice__clear"
         type="button"
         onClick={clearPersistedCrashReport}
       >
-        Clear report
+        {t("crash.clear")}
       </button>
     </div>
   );

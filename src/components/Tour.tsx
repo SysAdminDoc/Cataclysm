@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 /**
  * Lightweight 5-step onboarding tour. In-house implementation rather
@@ -14,47 +16,41 @@ import { UiIcon } from "./UiIcon";
  */
 
 export type TourStep = {
-  title: string;
-  body: string;
+  title: MessageKey;
+  body: MessageKey;
   /** Where to position the card relative to the viewport. */
   pos: "top-left" | "top-right" | "top-center" | "bottom-left" | "bottom-right" | "center";
 };
 
 const STEPS: TourStep[] = [
   {
-    title: "Welcome to Cataclysm",
-    body:
-      "Explore scientifically grounded tsunami source models, propagation, and coastal runup. Educational only — not for evacuation planning.",
+    title: "tour.welcome.title",
+    body: "tour.welcome.body",
     pos: "center",
   },
   {
-    title: "1 · Pick a historical event",
-    body:
-      "Choose a curated preset to render the source on the globe with its geometry, energy, and citation trail.",
+    title: "tour.preset.title",
+    body: "tour.preset.body",
     pos: "top-left",
   },
   {
-    title: "2 · Read the results",
-    body:
-      "Use the readout and timeline to inspect energy, equivalent magnitude, source scale, and wavefront timing.",
+    title: "tour.results.title",
+    body: "tour.results.body",
     pos: "top-right",
   },
   {
-    title: "3 · Run wave propagation",
-    body:
-      "Run a 60-frame shallow-water simulation, then scrub or play the resulting propagation layer on the globe.",
+    title: "tour.propagation.title",
+    body: "tour.propagation.body",
     pos: "bottom-right",
   },
   {
-    title: "4 · Inspect any coast",
-    body:
-      "Turn on Inspect, click the globe, and read arrival, offshore amplitude, runup, and inundation at that point.",
+    title: "tour.coast.title",
+    body: "tour.coast.body",
     pos: "top-center",
   },
   {
-    title: "5 · Build your own scenario",
-    body:
-      "Create asteroid, nuclear, earthquake, or landslide scenarios, pick a location on the globe, and compare two runs side by side.",
+    title: "tour.custom.title",
+    body: "tour.custom.body",
     pos: "bottom-right",
   },
 ];
@@ -65,6 +61,7 @@ type Props = {
 };
 
 export function Tour({ open, onClose }: Props) {
+  const { t, formatNumber } = useI18n();
   const [idx, setIdx] = useState(0);
   const step = useMemo(() => STEPS[idx], [idx]);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -83,7 +80,7 @@ export function Tour({ open, onClose }: Props) {
     <div className="tour-overlay" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       <div className={`tour-card tour-card--${step.pos}`} ref={dialogRef} tabIndex={-1}>
         <div className="tour-card__topline">
-          <span className="tour-card__step">Step {idx + 1} of {STEPS.length}</span>
+          <span className="tour-card__step">{t("tour.step", { current: formatNumber(idx + 1), total: formatNumber(STEPS.length) })}</span>
           <div className="tour-card__progress" aria-hidden>
             {STEPS.map((item, stepIdx) => (
               <span
@@ -95,12 +92,12 @@ export function Tour({ open, onClose }: Props) {
           </div>
         </div>
         <h3 id="tour-title" className="tour-card__title">
-          {step.title}
+          {t(step.title)}
         </h3>
-        <p className="tour-card__body">{step.body}</p>
+        <p className="tour-card__body">{t(step.body)}</p>
         <div className="tour-card__actions">
           <button className="scenario-tab" onClick={onClose} type="button">
-            Close tour
+            {t("tour.close")}
           </button>
           <div className="tour-card__spacer" />
           <button
@@ -110,7 +107,7 @@ export function Tour({ open, onClose }: Props) {
             type="button"
           >
             <UiIcon name="chevronRight" size={14} className="icon--flip" />
-            Back
+            {t("tour.back")}
           </button>
           <button
             className="primary"
@@ -121,10 +118,10 @@ export function Tour({ open, onClose }: Props) {
             type="button"
           >
             {isLast ? (
-              "Done"
+              t("tour.done")
             ) : (
               <>
-                Next
+                {t("tour.next")}
                 <UiIcon name="chevronRight" size={14} />
               </>
             )}

@@ -7,6 +7,7 @@ import {
   readPersistedCrashReport,
 } from "../../lib/diagnosticsLog";
 import { CrashRecoveryNotice } from "../CrashRecoveryNotice";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("CrashRecoveryNotice", () => {
   beforeEach(() => localStorage.clear());
@@ -43,5 +44,14 @@ describe("CrashRecoveryNotice", () => {
     await user.click(screen.getByRole("button", { name: "Clear report" }));
     expect(readPersistedCrashReport()).toBeNull();
     expect(screen.queryByText(/previous failure is available/i)).not.toBeInTheDocument();
+  });
+
+  it("localizes recovery actions in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    persistCrashReport({ source: "window-error", name: "Error", message: "previous failure" });
+    render(<I18nProvider><CrashRecoveryNotice onInspect={() => {}} /></I18nProvider>);
+    expect(screen.getByText("前回の障害レポートを確認できます。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "レポートを確認" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "レポートを消去" })).toBeInTheDocument();
   });
 });

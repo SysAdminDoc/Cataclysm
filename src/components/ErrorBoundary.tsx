@@ -5,6 +5,11 @@ import {
   serializeRedactedDiagnostics,
 } from "../lib/diagnosticsLog";
 import { settings } from "../lib/settings";
+import { readStoredLocale, translate, type MessageKey } from "../lib/i18n-core";
+
+function localizedMessage(key: MessageKey, values?: Record<string, string | number>): string {
+  return translate(readStoredLocale(), key, values);
+}
 
 type Props = {
   children: ReactNode;
@@ -43,12 +48,12 @@ export class ErrorBoundary extends Component<Props, State> {
     const text = this.buildReportText();
     const writeText = navigator.clipboard?.writeText;
     if (!writeText) {
-      this.setState({ actionNote: "Clipboard access is unavailable. Save the diagnostics file instead." });
+      this.setState({ actionNote: localizedMessage("fatal.clipboardUnavailable") });
       return;
     }
     void writeText.call(navigator.clipboard, text).then(
-      () => this.setState({ actionNote: "Diagnostics copied to clipboard." }),
-      () => this.setState({ actionNote: "Could not access the clipboard." }),
+      () => this.setState({ actionNote: localizedMessage("fatal.copied") }),
+      () => this.setState({ actionNote: localizedMessage("fatal.copyFailed") }),
     );
   };
 
@@ -61,18 +66,20 @@ export class ErrorBoundary extends Component<Props, State> {
       a.download = "cataclysm-diagnostics.json";
       a.click();
       URL.revokeObjectURL(url);
-      this.setState({ actionNote: "Saved diagnostics file." });
+      this.setState({ actionNote: localizedMessage("fatal.saved") });
     } catch {
-      this.setState({ actionNote: "Could not save the diagnostics file." });
+      this.setState({ actionNote: localizedMessage("fatal.saveFailed") });
     }
   };
 
   private resetVisualSettings = (): void => {
-    this.setState({ actionNote: "Resetting visual settings…" });
+    this.setState({ actionNote: localizedMessage("fatal.resetting") });
     void settings.resetVisualSettings().then(
       () => window.location.reload(),
       (error) => this.setState({
-        actionNote: `Could not reset visual settings: ${error instanceof Error ? error.message : String(error)}`,
+        actionNote: localizedMessage("fatal.resetFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       }),
     );
   };
@@ -91,36 +98,33 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <main className="app-fatal" role="alert" aria-labelledby="app-fatal-title">
         <section className="app-fatal__panel">
-          <p className="app-fatal__eyebrow">Runtime recovery</p>
-          <h1 id="app-fatal-title">Something went wrong</h1>
-          <p>
-            The interface hit an unexpected rendering error. The diagnostics
-            log captured the component stack so the failure can be reviewed.
-          </p>
+          <p className="app-fatal__eyebrow">{localizedMessage("fatal.eyebrow")}</p>
+          <h1 id="app-fatal-title">{localizedMessage("fatal.title")}</h1>
+          <p>{localizedMessage("fatal.body")}</p>
           <pre className="app-fatal__message">
             {this.state.error.name}: {this.state.error.message}
           </pre>
           {this.state.stack && (
             <details className="app-fatal__details">
-              <summary>Component stack</summary>
+              <summary>{localizedMessage("fatal.componentStack")}</summary>
               <pre>{this.state.stack}</pre>
             </details>
           )}
           <div className="app-fatal__actions">
             <button className="primary" type="button" onClick={this.retry}>
-              Try again
+              {localizedMessage("fatal.tryAgain")}
             </button>
             <button type="button" onClick={this.resetVisualSettings}>
-              Reset visual settings
+              {localizedMessage("fatal.resetVisual")}
             </button>
             <button type="button" onClick={this.reload}>
-              Reload app
+              {localizedMessage("fatal.reload")}
             </button>
             <button type="button" onClick={this.copyDiagnostics}>
-              Copy diagnostics
+              {localizedMessage("fatal.copy")}
             </button>
             <button type="button" onClick={this.saveDiagnostics}>
-              Save diagnostics
+              {localizedMessage("fatal.save")}
             </button>
           </div>
           {this.state.actionNote && (

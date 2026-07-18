@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { settings } from "../lib/settings";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { LAUNCH_COMPLETE_EVENT } from "./LaunchExperience";
+import { useI18n } from "../lib/i18n";
 
 /** Dispatch to reopen the first-run notice immediately (e.g. from Settings). */
 export const REPLAY_DISCLAIMER_EVENT = "cataclysm:replay-disclaimer";
@@ -11,6 +12,7 @@ export const REPLAY_DISCLAIMER_EVENT = "cataclysm:replay-disclaimer";
  * in settings so the modal never appears again on subsequent runs.
  */
 export function FirstRunDisclaimer() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [persistenceUnavailable, setPersistenceUnavailable] = useState(false);
   const [launchReady, setLaunchReady] = useState(
@@ -80,51 +82,38 @@ export function FirstRunDisclaimer() {
   return (
     <div className="modal-overlay">
       <div className="modal modal--notice" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="first-run-title">
-        <header className="modal__header">
-          <h2 id="first-run-title">Educational model, not a warning system</h2>
-        </header>
+        <div className="modal__header">
+          <h2 id="first-run-title">{t("firstRun.title")}</h2>
+        </div>
         <div className="modal__body">
-          <p className="notice-lede">
-            Cataclysm is an exploratory simulator for planetary-hazard source
-            physics, propagation, and first-order effects. Its outputs are
-            model estimates—not observations, forecasts, or official
-            warnings—and must not guide evacuation, routing, insurance, or
-            operations.
-          </p>
-          <div className="notice-grid" aria-label="Use guidance">
+          <p className="notice-lede">{t("firstRun.lede")}</p>
+          <div className="notice-grid" aria-label={t("firstRun.guidance")}>
             <div className="notice-grid__item">
-              <strong>Good for</strong>
-              <span>Scenario exploration, classroom demonstrations, and model intuition.</span>
+              <strong>{t("firstRun.goodFor")}</strong>
+              <span>{t("firstRun.goodForBody")}</span>
             </div>
             <div className="notice-grid__item" data-tone="warning">
-              <strong>Not for</strong>
-              <span>Forecasts, evacuation timing, route choice, or emergency decisions.</span>
+              <strong>{t("firstRun.notFor")}</strong>
+              <span>{t("firstRun.notForBody")}</span>
             </div>
             <div className="notice-grid__item">
-              <strong>Official sources</strong>
-              <span>Use NOAA NTWC/PTWC, JMA, IOC/UNESCO systems, or your local authority.</span>
+              <strong>{t("firstRun.official")}</strong>
+              <span>{t("firstRun.officialBody")}</span>
             </div>
             <div className="notice-grid__item" data-tone="warning">
-              <strong>Limits to expect</strong>
-              <span>Idealized source physics, coarse bathymetry, simplified atmosphere and runup, and approximate effect geometry.</span>
+              <strong>{t("firstRun.limits")}</strong>
+              <span>{t("firstRun.limitsBody")}</span>
             </div>
           </div>
-          <p className="modal__copy">
-            Physics references are available from <em>References</em>. Treat
-            every map, overlay, and export as approximate.
-          </p>
-          <p className="modal__copy modal__copy--muted">
-            This notice is shown once. You can show it again from Settings.
-          </p>
+          <p className="modal__copy">{t("firstRun.references")}</p>
+          <p className="modal__copy modal__copy--muted">{t("firstRun.repeat")}</p>
           {persistenceUnavailable && (
             <p className="notice-persistence-warning" role="status">
-              Settings are unavailable, so Cataclysm cannot confirm or save
-              this acknowledgement. You can continue for this session, but
-              this notice may appear again the next time the app starts.
+              {t("firstRun.persistence")}
             </p>
           )}
           <div className="modal__actions">
-            <button className="primary" onClick={acknowledge}>I understand</button>
+            <button className="primary" onClick={acknowledge}>{t("firstRun.understand")}</button>
           </div>
         </div>
       </div>

@@ -146,4 +146,48 @@ test("language switch persists across settings, simulation results, layers, and 
   const bounds = await lesson.boundingBox();
   expect(bounds).not.toBeNull();
   expect(await page.screenshot({ clip: bounds! })).toMatchSnapshot("localized-guided-lesson-ja.png");
+
+  await lesson.getByRole("button", { name: "閉じる" }).click();
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("tsunamisim:tour-requested")));
+  const tour = page.getByRole("dialog", { name: "Cataclysmへようこそ" });
+  await expect(tour).toBeVisible();
+  await expect(tour.getByText("6ステップ中1")).toBeVisible();
+  await expect(tour.getByRole("button", { name: "次へ" })).toBeVisible();
+  const tourAccessibility = await new AxeBuilder({ page }).include(".tour-card").analyze();
+  expect(tourAccessibility.violations).toEqual([]);
+  const tourBounds = await page.locator(".tour-card").boundingBox();
+  expect(tourBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: tourBounds! })).toMatchSnapshot("localized-tour-ja.png");
+});
+
+test("first-run launch and safety guidance honor the stored language", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/");
+  await page.evaluate(() => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    window.history.replaceState({}, "", "/?launchExperience=1&launchHold=1&launchMotion=reduce");
+    window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
+    window.dispatchEvent(new CustomEvent("cataclysm:preview-launch"));
+  });
+
+  const launch = page.getByRole("dialog", { name: "Cataclysm" });
+  await expect(launch.getByText("惑星災害シミュレーター")).toBeVisible();
+  await expect(launch.getByText("生きた地球を準備中")).toBeVisible();
+  await expect(launch.getByRole("button", { name: "イントロをスキップ" })).toBeVisible();
+  const launchAccessibility = await new AxeBuilder({ page }).include(".launch-experience").analyze();
+  expect(launchAccessibility.violations).toEqual([]);
+  expect(await page.screenshot()).toMatchSnapshot("localized-launch-ja.png");
+
+  await launch.getByRole("button", { name: "イントロをスキップ" }).click();
+  await expect(launch).not.toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("cataclysm:replay-disclaimer")));
+  const notice = page.getByRole("dialog", { name: "教育用モデルであり、警報システムではありません" });
+  await expect(notice).toBeVisible();
+  await expect(notice.getByText("適した用途")).toBeVisible();
+  await expect(notice.getByRole("button", { name: "理解しました" })).toBeVisible();
+  const noticeAccessibility = await new AxeBuilder({ page }).include(".modal--notice").analyze();
+  expect(noticeAccessibility.violations).toEqual([]);
+  const noticeBounds = await page.locator(".modal--notice").boundingBox();
+  expect(noticeBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: noticeBounds! })).toMatchSnapshot("localized-first-run-ja.png");
 });

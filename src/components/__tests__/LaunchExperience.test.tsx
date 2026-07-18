@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LaunchExperience, LAUNCH_COMPLETE_EVENT } from "../LaunchExperience";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("LaunchExperience", () => {
   beforeEach(() => {
@@ -47,5 +48,13 @@ describe("LaunchExperience", () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true });
     render(<LaunchExperience durationMs={60_000} />);
     expect(screen.getByRole("dialog", { name: "Cataclysm" })).toHaveAttribute("data-reduced-motion", "true");
+  });
+
+  it("localizes the launch identity and controls in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><LaunchExperience durationMs={60_000} /></I18nProvider>);
+    expect(screen.getByText("惑星災害シミュレーター")).toBeInTheDocument();
+    expect(screen.getByText("生きた地球を準備中")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "イントロをスキップ" })).toBeInTheDocument();
   });
 });
