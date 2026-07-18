@@ -191,20 +191,20 @@ export function PresetSelector({
     return [
       {
         id: "recorded",
-        label: "Recorded events",
-        description: "Historical and observed scenarios",
+        label: t("scenario.recordedEvents"),
+        description: t("scenario.recordedDescription"),
         presets: recorded,
         directScenarios: visibleDirect.filter((scenario) => scenario.classification === "recorded"),
       },
       {
         id: "what-if",
-        label: "What-if studies",
-        description: "Hypothetical or contested scenarios",
+        label: t("scenario.whatIfStudies"),
+        description: t("scenario.whatIfDescription"),
         presets: whatIf,
         directScenarios: visibleDirect.filter((scenario) => scenario.classification === "what-if"),
       },
     ].filter((group) => group.presets.length + group.directScenarios.length > 0) as PresetGroup[];
-  }, [filteredDirect, normalizedQuery, visible]);
+  }, [filteredDirect, normalizedQuery, t, visible]);
   const visibleCount = groups.reduce((count, group) => count + group.presets.length + group.directScenarios.length, 0);
   const timelinePresets = useMemo(() => visible.filter(hasTimelineDate), [visible]);
   const famousPreset = sorted.find((preset) => preset.id === "tohoku_2011")
@@ -225,12 +225,12 @@ export function PresetSelector({
   if (totalCount === 0) {
     return (
       <div className="section">
-        <div className="section__title">Scenario library</div>
+        <div className="section__title">{t("scenario.library")}</div>
         <div className="empty-state" role="status" aria-live="polite">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>Loading source library</strong>
-            <p>Curated historical events and peer-reviewed source models are being prepared.</p>
+            <strong>{t("scenario.loadingTitle")}</strong>
+            <p>{t("scenario.loadingBody")}</p>
           </div>
         </div>
       </div>
@@ -240,31 +240,31 @@ export function PresetSelector({
     <div className="section preset-library">
       <div className="preset-library__header">
         <div className="preset-library__identity">
-          <strong>Scenarios</strong>
+          <strong>{t("scenario.heading")}</strong>
         </div>
         <div className="preset-library__actions">
-          <div className="preset-view-toggle" role="group" aria-label="View mode">
+          <div className="preset-view-toggle" role="group" aria-label={t("scenario.viewMode")}>
             <button
               type="button"
               aria-pressed={viewMode === "cards"}
               onClick={() => setViewMode("cards")}
             >
-              Cards
+              {t("scenario.cards")}
             </button>
             <button
               type="button"
               aria-pressed={viewMode === "timeline"}
               onClick={() => setViewMode("timeline")}
             >
-              Timeline
+              {t("scenario.timeline")}
             </button>
           </div>
           {onBrowseHistorical && (
             <button
               className="preset-library__historical"
               type="button"
-              aria-label="Search NOAA historical events"
-              title="Search NOAA/NCEI HazEL historical tsunami events"
+              aria-label={t("scenario.searchHistorical")}
+              title={t("scenario.searchHistoricalTitle")}
               onClick={onBrowseHistorical}
             >
               <UiIcon name="search" size={15} />
@@ -275,22 +275,22 @@ export function PresetSelector({
               className="preset-library__favorite"
               type="button"
               disabled={!activeLibraryId}
-              aria-label={activeLibraryId && favoriteIds.includes(activeLibraryId) ? "Remove selected scenario from favorites" : "Favorite selected scenario"}
+              aria-label={activeLibraryId && favoriteIds.includes(activeLibraryId) ? t("scenario.removeFavorite") : t("scenario.addFavorite")}
               aria-pressed={Boolean(activeLibraryId && favoriteIds.includes(activeLibraryId))}
               onClick={() => activeLibraryId && onToggleFavorite(activeLibraryId)}
-              title={activeLibraryId ? "Toggle favorite for the selected scenario" : "Select a scenario to favorite it"}
+              title={activeLibraryId ? t("scenario.toggleFavorite") : t("scenario.selectToFavorite")}
             >
               {activeLibraryId && favoriteIds.includes(activeLibraryId) ? "★" : "☆"}
             </button>
           )}
-          <span className="section__count" aria-label={`${visibleCount} of ${totalCount} scenarios shown`}>{visibleCount}/{totalCount}</span>
+          <span className="section__count" aria-label={t("scenario.shown", { visible: visibleCount, total: totalCount })}>{visibleCount}/{totalCount}</span>
         </div>
       </div>
 
       <section className="quick-start" aria-labelledby={`${instanceId}-quick-start-title`}>
         <div className="quick-start__heading">
-          <span>Quick start</span>
-          <strong id={`${instanceId}-quick-start-title`}>Choose the experience, not the tool</strong>
+          <span>{t("scenario.quickStart")}</span>
+          <strong id={`${instanceId}-quick-start-title`}>{t("scenario.quickStartTitle")}</strong>
         </div>
         <div className="quick-start__grid">
           <button
@@ -300,7 +300,7 @@ export function PresetSelector({
             onClick={() => famousPreset && onSelect(famousPreset.id)}
           >
             <UiIcon name="play" size={15} />
-            <span><strong>Watch a famous event</strong><small>Curated historical scenario</small></span>
+            <span><strong>{t("scenario.watchFamous")}</strong><small>{t("scenario.curatedHistorical")}</small></span>
           </button>
           <button
             type="button"
@@ -309,11 +309,11 @@ export function PresetSelector({
             onClick={() => whatIfScenario && onSelectDirect?.(whatIfScenario)}
           >
             <UiIcon name="mapPin" size={15} />
-            <span><strong>Explore a what-if</strong><small>Direct-effects study</small></span>
+            <span><strong>{t("scenario.exploreWhatIf")}</strong><small>{t("scenario.directStudy")}</small></span>
           </button>
           <button type="button" data-intent="custom" disabled={!onCreateScenario} onClick={onCreateScenario}>
             <UiIcon name="reset" size={15} />
-            <span><strong>Create my own</strong><small>Build a custom source</small></span>
+            <span><strong>{t("scenario.createOwn")}</strong><small>{t("scenario.customSource")}</small></span>
           </button>
           <button
             type="button"
@@ -329,29 +329,29 @@ export function PresetSelector({
             }}
           >
             <UiIcon name="refresh" size={15} />
-            <span><strong>Continue recent</strong><small>{recentId ? "Return to the last setup" : "No recent scenario yet"}</small></span>
+            <span><strong>{t("scenario.continueRecent")}</strong><small>{recentId ? t("scenario.returnLast") : t("scenario.noRecent")}</small></span>
           </button>
         </div>
       </section>
 
       {activeLibraryId && onRunActive && (
-        <section className="preset-active-action" aria-label="Selected scenario">
-          <small className="preset-active-action__eyebrow">Selected scenario</small>
+        <section className="preset-active-action" aria-label={t("scenario.selected")}>
+          <small className="preset-active-action__eyebrow">{t("scenario.selected")}</small>
           <div className="preset-active-action__body">
             <span className="preset-active-action__visual" data-kind={selectedPreset?.source.kind ?? (selectedDirect ? directSourceKind(selectedDirect) : undefined)}>
               <SourceGlyph kind={selectedPreset?.source.kind ?? (selectedDirect ? directSourceKind(selectedDirect) : "Earthquake")} />
             </span>
             <span className="preset-active-action__copy">
-              <strong>{selectedDirect?.name ?? selectedPreset?.name ?? "Reference event"}</strong>
-              <span>{selectedDirect?.detail ?? (selectedPreset ? `${sourceDetail(selectedPreset)} · ${selectedPreset.date}` : "Ready to configure")}</span>
-              <small>{selectedDirect?.blurb ?? selectedPreset?.blurb ?? "Review the setup before running."}</small>
+              <strong>{selectedDirect?.name ?? selectedPreset?.name ?? t("scenario.referenceEvent")}</strong>
+              <span>{selectedDirect?.detail ?? (selectedPreset ? `${sourceDetail(selectedPreset)} · ${selectedPreset.date}` : t("scenario.readyConfigure"))}</span>
+              <small>{selectedDirect?.blurb ?? selectedPreset?.blurb ?? t("scenario.reviewSetup")}</small>
             </span>
           </div>
           {selectedPreset && <TrustDisclosure evidence={buildSourceEvidence(selectedPreset)} compact />}
           {selectedDirect && <TrustDisclosure evidence={buildDirectScenarioEvidence(selectedDirect)} compact />}
           <button type="button" onClick={onRunActive}>
             <UiIcon name="play" size={14} />
-            Run &amp; Watch
+            {t("scenario.runWatch")}
           </button>
         </section>
       )}
@@ -361,15 +361,15 @@ export function PresetSelector({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search scenarios..."
-          aria-label="Search presets"
+          placeholder={t("scenario.searchPlaceholder")}
+          aria-label={t("scenario.searchLabel")}
           type="search"
         />
         {query && (
           <button
             className="preset-search__clear"
             type="button"
-            aria-label="Clear preset search"
+            aria-label={t("scenario.clearSearch")}
             onClick={() => setQuery("")}
           >
             <UiIcon name="close" size={13} />
@@ -377,7 +377,7 @@ export function PresetSelector({
         )}
       </div>
 
-      <div className="preset-library-tabs" role="group" aria-label="Scenario library filter">
+      <div className="preset-library-tabs" role="group" aria-label={t("scenario.filterLabel")}>
         {(["all", "historical", "hypothetical", "favorites"] as const).map((item) => (
           <button
             type="button"
@@ -386,7 +386,7 @@ export function PresetSelector({
             data-active={filter === item ? "true" : "false"}
             onClick={() => setFilter(item)}
           >
-            {item === "all" ? "All" : item === "historical" ? "Recorded" : item === "hypothetical" ? "What-if" : "Favorites"}
+            {item === "all" ? t("scenario.all") : item === "historical" ? t("scenario.recorded") : item === "hypothetical" ? t("scenario.whatIf") : t("scenario.favorites")}
           </button>
         ))}
       </div>
@@ -398,10 +398,10 @@ export function PresetSelector({
           <div className="empty-state empty-state--compact" role="status">
             <span className="empty-state__icon" aria-hidden />
             <div>
-              <strong>No dated timeline events</strong>
-              <p>These scenarios do not have a calendar or geologic date to plot.</p>
+              <strong>{t("scenario.noDated")}</strong>
+              <p>{t("scenario.noDatedBody")}</p>
               <button className="empty-state__action" type="button" onClick={() => { setQuery(""); setFilter("all"); }}>
-                Show all scenarios
+                {t("scenario.showAll")}
               </button>
             </div>
           </div>
@@ -413,10 +413,10 @@ export function PresetSelector({
               <div className="empty-state empty-state--compact" role="status">
                 <span className="empty-state__icon" aria-hidden />
                 <div>
-                  <strong>No matching presets</strong>
-                  <p>Try a source type, date, event name, or citation keyword.</p>
+                  <strong>{t("scenario.noMatches")}</strong>
+                  <p>{t("scenario.noMatchesBody")}</p>
                   <button className="empty-state__action" type="button" onClick={() => { setQuery(""); setFilter("all"); }}>
-                    Show all scenarios
+                    {t("scenario.showAll")}
                   </button>
                 </div>
               </div>
@@ -428,7 +428,7 @@ export function PresetSelector({
                     <h3 id={`${instanceId}-preset-group-${group.id}`}>{group.label}</h3>
                     <small>{group.description}</small>
                   </span>
-                  <b aria-label={`${group.presets.length + group.directScenarios.length} ${group.presets.length + group.directScenarios.length === 1 ? "scenario" : "scenarios"}`}>{group.presets.length + group.directScenarios.length}</b>
+                  <b aria-label={group.presets.length + group.directScenarios.length === 1 ? t("scenario.countOne") : t("scenario.countMany", { count: group.presets.length + group.directScenarios.length })}>{group.presets.length + group.directScenarios.length}</b>
                 </header>
                 <div className="preset-list">
                   {group.presets.map((p) => {
@@ -451,11 +451,11 @@ export function PresetSelector({
                           <span className="preset-card__name">
                             <span>{p.name}</span>
                             {activeId === p.id && (
-                              <span className="preset-card__active" aria-label="Selected">
+                              <span className="preset-card__active" aria-label={t("scenario.selectedState")}>
                                 <UiIcon name="check" size={13} />
                               </span>
                             )}
-                            {isBusy && <span className="preset-card__busy" aria-label="Loading">Loading</span>}
+                            {isBusy && <span className="preset-card__busy" aria-label={t("scenario.loading")}>{t("scenario.loading")}</span>}
                           </span>
                           <span className="preset-card__meta">
                             <span className="preset-card__date">{p.date}</span>
@@ -466,10 +466,10 @@ export function PresetSelector({
                           </span>
                           <span className="preset-card__blurb">{p.blurb}</span>
                           <span className="preset-card__highlights">
-                            {p.is_speculative ? "Exploratory model" : "Reference scenario"} · {presetHighlights(p).join(" → ")}
+                            {p.is_speculative ? t("scenario.exploratory") : t("scenario.reference")} · {presetHighlights(p).join(" → ")}
                           </span>
                           {p.is_speculative && (
-                            <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
+                            <span className="preset-card__warning" aria-label={t("scenario.hypothetical")}>{t("scenario.whatIf")}</span>
                           )}
                           {p.is_speculative && p.controversy_note && (
                             <span className="preset-card__warn-note">{p.controversy_note}</span>
@@ -494,7 +494,7 @@ export function PresetSelector({
                         <span className="preset-card__name">
                           <span>{scenario.name}</span>
                           {activeDirectId === scenario.id && (
-                            <span className="preset-card__active" aria-label="Selected">
+                            <span className="preset-card__active" aria-label={t("scenario.selectedState")}>
                               <UiIcon name="check" size={13} />
                             </span>
                           )}
@@ -502,7 +502,7 @@ export function PresetSelector({
                         <span className="preset-card__meta">
                           <span className="preset-card__date">{scenario.date}</span>
                           <span aria-hidden>·</span>
-                          <span className="preset-card__source">{scenario.domain === "asteroid" ? "Impact" : "Nuclear"}</span>
+                          <span className="preset-card__source">{scenario.domain === "asteroid" ? t("scenario.impact") : t("scenario.nuclear")}</span>
                           <span aria-hidden>·</span>
                           <span className="preset-card__detail">{scenario.detail}</span>
                         </span>
@@ -511,7 +511,7 @@ export function PresetSelector({
                           {scenario.confidence} · {scenario.durationS < 60 ? `${scenario.durationS} s` : `${Math.round(scenario.durationS / 60)} min`} · {scenario.expectedHighlights.join(" · ")}
                         </span>
                         {scenario.classification === "what-if" && (
-                          <span className="preset-card__warning" aria-label="Hypothetical or contested">What-if</span>
+                          <span className="preset-card__warning" aria-label={t("scenario.hypothetical")}>{t("scenario.whatIf")}</span>
                         )}
                       </span>
                     </button>

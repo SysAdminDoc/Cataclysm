@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The primary scenario-library journey and persistent playback transport now
+  use the four-language catalog: quick start, cards/timeline controls, search,
+  filters, favorites, empty/loading states, selection/run actions, accessible
+  labels, effect-renderer guidance, play/reset/scrub controls, speed, frame,
+  and solver status all switch immediately with the saved locale. Catalog
+  tests reject any missing key in a supported language.
+
 - All seven guided lessons now include complete Spanish, Japanese, and Bahasa
   Indonesia titles, summaries, step narratives, and printable worksheet
   questions while retaining the canonical English scientific constants and

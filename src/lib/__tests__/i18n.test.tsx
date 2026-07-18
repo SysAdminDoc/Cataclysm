@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOCALE_OPTIONS,
+  getMissingMessageKeys,
   resetMissingTranslationWarningsForTests,
   translate,
   warnMissingTranslation,
@@ -37,6 +38,7 @@ describe("i18n", () => {
       id: "Bahasa",
     };
     for (const locale of LOCALE_OPTIONS.map(({ id }) => id)) {
+      expect(getMissingMessageKeys(locale)).toEqual([]);
       expect(translate(locale, "language.heading")).toBe(expectedHeadings[locale]);
       expect(translate(locale, "guided.step", { current: 2, total: 4 })).not.toContain("{current}");
     }

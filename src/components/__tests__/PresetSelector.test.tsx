@@ -107,7 +107,7 @@ describe("PresetSelector", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
     const search = screen.getByPlaceholderText(/search/i);
     await userEvent.type(search, "nonexistent");
-    expect(screen.getByText("No matching presets")).toBeInTheDocument();
+    expect(screen.getByText("No matching scenarios")).toBeInTheDocument();
   });
 
   it("shows loading state when presets list is empty", () => {

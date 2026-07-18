@@ -27,6 +27,8 @@ test("language switch persists and translates the complete guided lesson surface
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("tsunamisim.locale") ?? "null"))).toBe("ja");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
+  await expect(page.getByText("クイックスタート", { exact: true })).toBeVisible();
+  await expect(page.locator(".simulation-transport")).toContainText("シナリオ時刻");
   await page.getByRole("button", { name: /ガイド付き学習/ }).click();
   await expect(page.locator(".lesson-launcher__item")).toHaveCount(7);
   await expect(page.locator(".lesson-launcher__item").first()).toContainText("チクシュルーブ");
