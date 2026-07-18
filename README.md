@@ -114,8 +114,15 @@ Existing tools each do one piece:
 - **Auditable installed notices** — References exposes the production npm and
   Rust versions, SPDX identifiers, source links, and license texts bundled with
   the current desktop package; lockfile drift is rejected during verification.
-- **Scenario library filters** — recorded and what-if cases stay searchable,
-  while seven guided globe stories can load a cited source, move the camera,
+- **Visual scenario discovery** — seven curated packs (Start Here, Asteroid
+  Scale Ladder, Nuclear Scale Ladder, Ocean Disasters, Fact Check, Near-Earth
+  Objects, and Scenario Duels) organize the full catalog without hiding search
+  or timeline views. Every card leads with hazard, scale, runtime, confidence,
+  and a key promise; favorites and recents stay on-device and survive restarts.
+  Deterministic Surprise Me only chooses complete HTTP-cited entries and states
+  why it chose one. Pack art comes from the hash-locked, highlight-approved
+  global-Earth capture and explicitly does not claim event-level realism.
+- **Guided globe stories** — seven lessons load a cited source, move the camera,
   direct real simulator controls, and seek key moments without blocking free
   exploration. Story progress stays local and resumes where the learner left.
 - **Four-language foundation** — Settings persists English, Spanish, Japanese,
@@ -400,6 +407,13 @@ Before / Event / Aftermath review sheets. A stable analytical baseline may be
 explicitly blocked from highlight use; `verify:highlight-assets` fails unless
 both the metrics and the dated human review approve that exact scene for the
 launch opener, scenario thumbnails, or other promotional presentation.
+
+Scenario-library thumbnails add a second fail-closed check:
+`npm run verify:scenario-thumbnails` confirms the three optimized WebP crops,
+their dimensions and hashes, and their continued link to the approved
+`orbit-global@1440p` source. Regeneration requires a freshly verified reference
+capture under `artifacts/visual-reference/latest/` and is intentionally separate
+from concept-art assets.
 
 To bake a Cesium ion token at build time, `cp .env.example .env` and paste
 it in; otherwise leave it blank and paste at runtime in **Settings**.

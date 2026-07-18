@@ -52,7 +52,7 @@ test("language switch persists across settings, simulation results, layers, and 
   await expect(hazardModes.getByRole("button", { name: "衝突" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "設定" })).toBeVisible();
   await expect(page.getByRole("button", { name: "表示レイヤーを開く" })).toBeVisible();
-  await expect(page.getByText("クイックスタート", { exact: true })).toBeVisible();
+  await expect(page.getByText("シナリオパックを探索", { exact: true })).toBeVisible();
   await expect(page.locator(".simulation-transport")).toContainText("シナリオ時刻");
   await expect(page.getByRole("region", { name: "発生源なしの解析地球儀" })).toBeVisible();
   const globeSummary = page.locator("[data-globe-scene-summary]").first();

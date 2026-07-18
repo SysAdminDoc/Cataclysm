@@ -12,7 +12,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build-browser-physics.mjs --check && node scripts/validate-earth-assets.mjs && node scripts/validate-source-input-contract.mjs && tsc --noEmit && vite build && node scripts/build-pwa.mjs",
+    "build": "node scripts/build-browser-physics.mjs --check && node scripts/validate-earth-assets.mjs && node scripts/validate-source-input-contract.mjs && node scripts/generate-scenario-thumbnails.mjs --check && tsc --noEmit && vite build && node scripts/build-pwa.mjs",
     "build:physics": "node scripts/build-browser-physics.mjs --build",
     "build:pwa": "npm run build",
     "doctor": "node scripts/doctor.mjs",
@@ -22,6 +22,8 @@
     "verify:version-contract": "node scripts/verify-version-contract.mjs",
     "validate:earth-assets": "node scripts/validate-earth-assets.mjs",
     "validate:source-input-contract": "node scripts/validate-source-input-contract.mjs",
+    "generate:scenario-thumbnails": "node scripts/generate-scenario-thumbnails.mjs",
+    "verify:scenario-thumbnails": "node scripts/generate-scenario-thumbnails.mjs --check",
     "deps-check": "node scripts/deps-check.mjs",
     "generate:notices": "node scripts/generate-third-party-notices.mjs",
     "generate:sbom": "node scripts/generate-sbom.mjs",

@@ -12,6 +12,7 @@ const PRESETS: Preset[] = [
     date: "66 Ma",
     blurb: "14-km asteroid into a shallow Yucatan sea.",
     reference: "Range et al. 2022",
+    reference_url: "https://doi.org/10.1029/2021AV000627",
     source: {
       kind: "Asteroid",
       source: {
@@ -30,6 +31,7 @@ const PRESETS: Preset[] = [
     date: "2011-03-11",
     blurb: "M 9.1 megathrust earthquake off Japan.",
     reference: "Mori et al. 2011",
+    reference_url: "https://doi.org/10.1029/2011GL049210",
     source: {
       kind: "Earthquake",
       source: {
@@ -50,6 +52,7 @@ const PRESETS: Preset[] = [
     date: "—",
     blurb: "100 Mt underwater deployment.",
     reference: "DNA 1996",
+    reference_url: "https://www.osti.gov/biblio/6852629",
     is_speculative: true,
     controversy_note: "Disputed propaganda-grade claim.",
     source: {
@@ -130,7 +133,7 @@ describe("PresetSelector", () => {
 
   it("shows what-if badge on speculative presets", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
-    expect(screen.getByLabelText("Hypothetical or contested")).toHaveTextContent("What-if");
+    expect(screen.getByText("What-if", { selector: ".preset-card__warning" })).toBeInTheDocument();
   });
 
   it("preserves recorded and what-if filters across card and timeline views", async () => {
@@ -164,7 +167,7 @@ describe("PresetSelector", () => {
     await user.click(screen.getByRole("button", { name: "Recorded" }));
     expect(screen.getByText(recorded.name)).toBeInTheDocument();
     expect(screen.queryByText(whatIf.name)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Hypothetical or contested")).not.toBeInTheDocument();
+    expect(screen.queryByText("What-if", { selector: ".preset-card__warning" })).not.toBeInTheDocument();
   });
 
   it("shows preset count in header", () => {
@@ -193,13 +196,33 @@ describe("PresetSelector", () => {
     expect(screen.getByLabelText("Lesson completed")).toHaveTextContent("Done");
   });
 
-  it("exposes the three Quick Start choices and a disabled recent action", () => {
+  it("exposes all seven visual packs, Surprise Me, and local utility actions", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} directScenarios={DIRECT_SCENARIOS} />);
 
-    expect(screen.getByRole("button", { name: /Watch a famous event/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /Explore a what-if/i })).toBeDisabled();
+    for (const name of ["Start Here", "Asteroid Scale Ladder", "Nuclear Scale Ladder", "Ocean Disasters", "Fact Check", "Near-Earth Objects", "Scenario Duels"]) {
+      expect(screen.getByRole("button", { name: new RegExp(name, "i") })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("button", { name: "Surprise me" })).toBeEnabled();
     expect(screen.getByRole("button", { name: /Create my own/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Continue recent/i })).toBeDisabled();
+  });
+
+  it("uses only complete cited scenarios for deterministic Surprise Me and explains the choice", async () => {
+    const onSelect = vi.fn();
+    const onSelectDirect = vi.fn();
+    render(
+      <PresetSelector
+        presets={PRESETS}
+        activeId={null}
+        onSelect={onSelect}
+        directScenarios={DIRECT_SCENARIOS}
+        onSelectDirect={onSelectDirect}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Surprise me" }));
+    expect(onSelect.mock.calls.length + onSelectDirect.mock.calls.length).toBe(1);
+    expect(screen.getByRole("status")).toHaveTextContent(/complete citation, reviewed inputs/i);
   });
 
   it("opens the NOAA historical-event browser from the library tools", async () => {
@@ -263,7 +286,7 @@ describe("PresetSelector", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Favorite selected scenario" }));
+    await user.click(screen.getByRole("button", { name: "Add Chicxulub Impact to favorites" }));
     expect(onToggleFavorite).toHaveBeenCalledWith("preset:chicxulub");
 
     rerender(
@@ -278,5 +301,22 @@ describe("PresetSelector", () => {
     await user.click(screen.getByRole("button", { name: "Favorites" }));
     expect(screen.getByText("Chicxulub Impact")).toBeInTheDocument();
     expect(screen.queryByText("Poseidon")).not.toBeInTheDocument();
+  });
+
+  it("restores recent scenarios through the local recent filter", async () => {
+    const user = userEvent.setup();
+    render(
+      <PresetSelector
+        presets={PRESETS}
+        activeId={null}
+        onSelect={() => {}}
+        recentIds={["preset:tohoku"]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Recent" }));
+    expect(screen.getByText("Tōhoku 2011")).toBeInTheDocument();
+    expect(screen.queryByText("Chicxulub Impact")).not.toBeInTheDocument();
+    expect(screen.getByText(/Saved only on this device/i)).toBeInTheDocument();
   });
 });

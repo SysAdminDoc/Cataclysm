@@ -44,6 +44,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Rebuilt scenario discovery around seven curated visual packs with compact,
+  information-rich cards that expose hazard, scale, runtime, confidence, and a
+  key promise. Per-card favorites, a recoverable Recent filter, and deterministic
+  Surprise Me selection remain local; Surprise Me rejects incomplete or
+  non-HTTP-cited entries and explains each choice. Three optimized thumbnails
+  derive only from the hash-locked, highlight-approved global-Earth capture and
+  retain its explicit non-event-realism limitation through a build-time
+  provenance gate.
+
 - Guided training is now a real interactive globe-story system rather than a
   static modal. All seven lessons load their cited scenario and can direct the
   existing camera, Setup/Solver/Results controls, timeline, or comparison view

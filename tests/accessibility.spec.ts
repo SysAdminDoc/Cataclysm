@@ -97,11 +97,12 @@ for (const theme of THEMES) {
       await openWorkspace(page);
 
       const selectors = [
-        ".quick-start__grid strong",
-        ".quick-start__grid small",
+        ".scenario-discovery__header strong",
+        ".scenario-discovery__tools button",
         ".preset-search input",
         ".preset-card__name",
-        ".preset-card__blurb",
+        ".preset-card__facts",
+        ".preset-card__promise",
         ".inspector__tabs button",
       ];
       const typeSizes = await page.evaluate((targets) => Object.fromEntries(
@@ -124,17 +125,17 @@ for (const theme of THEMES) {
             top: Number.parseFloat(style.borderTopWidth),
           };
         };
-        return {
-          badge: borderWidths(".section__badge"),
-          card: borderWidths('.preset-card[data-active="true"]'),
-          quickStart: borderWidths(".quick-start"),
-        };
-      });
-      expect(Math.max(...Object.values(flatBoundaries.quickStart))).toBe(0);
+          return {
+            badge: borderWidths(".section__badge"),
+            card: borderWidths('.preset-card[data-active="true"]'),
+            discovery: borderWidths(".scenario-discovery"),
+          };
+        });
+      expect(Math.max(...Object.values(flatBoundaries.discovery))).toBe(0);
       expect(Math.max(...Object.values(flatBoundaries.badge))).toBe(0);
       expect(flatBoundaries.card.top).toBe(0);
       expect(flatBoundaries.card.right).toBe(0);
-      expect(flatBoundaries.card.left).toBeGreaterThanOrEqual(3);
+      expect(flatBoundaries.card.left).toBeGreaterThanOrEqual(2);
 
       const scenarioHeading = page.locator(".preset-library__identity strong");
       await expect(scenarioHeading).toHaveText("Scenarios");

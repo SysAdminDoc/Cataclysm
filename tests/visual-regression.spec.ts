@@ -191,7 +191,8 @@ test.describe("Visual regression — desktop", () => {
   test("direct what-if preview", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");
-    await page.getByRole("button", { name: /Explore a what-if/i }).click();
+    await page.getByRole("button", { name: /Asteroid Scale Ladder/i }).click();
+    await page.locator(".preset-card").filter({ hasText: "Tokyo asteroid impact" }).click();
     await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible();
 
     await expect(page).toHaveScreenshot("desktop-direct-preview.png", {

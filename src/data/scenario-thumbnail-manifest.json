@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "captureContract": "reference-scenes@1.0.0",
+  "source": {
+    "sceneId": "orbit-global",
+    "resolution": "1440p",
+    "pngSha256": "f8e8e9840d3f26da91b9f5d5f87747d02ea6053faa9d2a35e1fe14d2ce8f7a23",
+    "sceneSha256": "4f0bab7eefd7aa1b77dc32eda906a5b7144eb1a2ab8a44acbf0ff3059935bc86",
+    "usage": "environment-only",
+    "limitation": "Current orbit frame clearly presents the complete Earth and atmospheric limb; approved only for globe-scale identity shots, not local realism."
+  },
+  "thumbnails": [
+    {
+      "id": "earth-global",
+      "file": "earth-global.webp",
+      "width": 360,
+      "height": 210,
+      "sha256": "78ab392f703280f67f39847c9ebecaab4c0e59c73d54bca631f502a08b88d6ad"
+    },
+    {
+      "id": "earth-ocean",
+      "file": "earth-ocean.webp",
+      "width": 360,
+      "height": 210,
+      "sha256": "3deba3ce0a1a6971a24bcdfcf4e6b10efb7a0147b33bf8d46a14c21858fd2781"
+    },
+    {
+      "id": "earth-limb",
+      "file": "earth-limb.webp",
+      "width": 360,
+      "height": 210,
+      "sha256": "0f94ef13d9ea1bb15c1902f0939a72032d203f0e3d2f3763b9aab64f2a6fcbf4"
+    }
+  ]
+}

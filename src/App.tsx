@@ -875,7 +875,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presets, scenarioLinkRequest]);
 
-  // Quick Start is the first usable surface after the safety acknowledgement.
+  // Scenario discovery is the first usable surface after the safety acknowledgement.
   // Settings can explicitly request the longer tour without obscuring launch.
   useEffect(() => {
     const onRequested = () => setTourOpen(true);

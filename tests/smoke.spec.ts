@@ -231,23 +231,26 @@ test.describe("Cataclysm browser preview", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("keeps Quick Start unobstructed when the long tour has not been completed", async ({ page }) => {
+  test("keeps scenario discovery unobstructed when the long tour has not been completed", async ({ page }) => {
     await page.addInitScript(() => localStorage.removeItem("tsunamisim.tour_completed_at"));
     await page.goto("/");
 
-    await expect(page.getByText("Choose the experience, not the tool")).toBeVisible();
+    await expect(page.getByText("Explore scenario packs")).toBeVisible();
     await expect(page.getByRole("dialog", { name: /Welcome to Cataclysm/i })).toHaveCount(0);
   });
 
-  test("Quick Start previews without computing and runs direct what-if scenarios explicitly", async ({ page }) => {
+  test("visual packs preview without computing and run direct what-if scenarios explicitly", async ({ page }) => {
     await page.goto("/");
     const app = page.locator(".app");
-    await expect(page.getByRole("button", { name: /Watch a famous event/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Explore a what-if/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Start Here/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Asteroid Scale Ladder/i })).toBeVisible();
+    await expect(page.locator(".scenario-pack-strip img")).toHaveCount(7);
+    await expect(page.getByRole("button", { name: "Surprise me" })).toBeEnabled();
     await expect(page.getByRole("button", { name: /Create my own/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Continue recent/i })).toBeDisabled();
 
-    await page.getByRole("button", { name: /Explore a what-if/i }).click();
+    await page.getByRole("button", { name: /Asteroid Scale Ladder/i }).click();
+    await page.locator(".preset-card").filter({ hasText: "Tokyo asteroid impact" }).click();
     await expect(app).toHaveAttribute("data-domain", "tsunami");
     await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible();
     await expect(page.locator(".app__viewport-telemetry")).toContainText(/35\.\d+° N/, { timeout: 10_000 });

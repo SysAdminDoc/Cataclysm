@@ -3,6 +3,17 @@ import { UiIcon } from "./UiIcon";
 import { TimelineView } from "./TimelineView";
 import { getGuidedLessons, type GuidedLesson } from "../lib/guided-lessons";
 import type { DirectScenarioTemplate } from "../lib/scenario-library";
+import {
+  buildScenarioCatalog,
+  deterministicSurprise,
+  presentationForDirectScenario,
+  presentationForPreset,
+  presetLibraryId,
+  SCENARIO_PACKS,
+  scenarioMatchesPack,
+  type ScenarioPackId,
+  type ScenarioPresentation,
+} from "../lib/scenario-presentation";
 import { buildDirectScenarioEvidence, buildSourceEvidence } from "../lib/trust-evidence";
 import type { Preset } from "../types/scenario";
 import { TrustDisclosure } from "./TrustDisclosure";
@@ -27,7 +38,7 @@ type Props = {
 };
 
 type ViewMode = "cards" | "timeline";
-type LibraryFilter = "all" | "historical" | "hypothetical" | "favorites";
+type LibraryFilter = "all" | "historical" | "hypothetical" | "recent" | "favorites";
 
 type PresetGroup = {
   id: "recorded" | "what-if";
@@ -45,47 +56,8 @@ function hasTimelineDate(preset: Preset): boolean {
   return /^(?:[\d.]+\s*Ma|~?\d+\s*BP|\d{4})/i.test(preset.date);
 }
 
-function formatCompact(value: number, divisor: number, suffix: string): string | null {
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const scaled = value / divisor;
-  return `${scaled.toLocaleString(undefined, { maximumFractionDigits: scaled >= 10 ? 0 : 1 })} ${suffix}`;
-}
-
-function sourceDetail(preset: Preset): string {
-  switch (preset.source.kind) {
-    case "Asteroid":
-      return preset.source.source.diameter_m >= 1_000
-        ? formatCompact(preset.source.source.diameter_m, 1_000, "km body") ?? "Impact model"
-        : formatCompact(preset.source.source.diameter_m, 1, "m body") ?? "Impact model";
-    case "Earthquake":
-      return Number.isFinite(preset.source.source.mw) ? `M_w ${preset.source.source.mw.toFixed(1)}` : "Fault model";
-    case "Nuclear":
-      return preset.source.source.yield_kt >= 1_000
-        ? formatCompact(preset.source.source.yield_kt, 1_000, "Mt yield") ?? "Burst model"
-        : formatCompact(preset.source.source.yield_kt, 1, "kt yield") ?? "Burst model";
-    case "Landslide":
-      return formatCompact(preset.source.source.volume_m3, 1_000_000, "Mm³ slide") ?? "Slide model";
-    case "Meteotsunami":
-      return `${preset.source.source.peak_pressure_pa.toLocaleString()} Pa · ${preset.source.source.speed_m_s.toFixed(1)} m/s`;
-  }
-}
-
-function presetLibraryId(presetId: string): string {
-  return `preset:${presetId}`;
-}
-
 function directSourceKind(scenario: DirectScenarioTemplate): Preset["source"]["kind"] {
   return scenario.domain === "asteroid" ? "Asteroid" : "Nuclear";
-}
-
-function presetHighlights(preset: Preset): string[] {
-  switch (preset.source.kind) {
-    case "Earthquake": return ["Fault uplift", "Ocean propagation", "Coastal arrival"];
-    case "Landslide": return ["Slide source", "Confined wave", "Runup estimate"];
-    case "Asteroid": return ["Impact source", "Basin propagation", "Coastal runup"];
-    case "Nuclear": return ["Underwater source", "Wave attenuation", "Coastal arrival"];
-    case "Meteotsunami": return ["Moving pressure", "Proudman resonance", "Coastal response"];
-  }
 }
 
 function SourceGlyph({ kind }: { kind: Preset["source"]["kind"] }) {
@@ -119,6 +91,96 @@ function SourceGlyph({ kind }: { kind: Preset["source"]["kind"] }) {
   );
 }
 
+function ScenarioCard({
+  id,
+  name,
+  date,
+  presentation,
+  sourceKind,
+  selected,
+  busy = false,
+  speculative = false,
+  favorite,
+  onSelect,
+  onToggleFavorite,
+  selectedLabel,
+  loadingLabel,
+  whatIfLabel,
+  previewLabel,
+  favoriteLabel,
+  removeFavoriteLabel,
+}: {
+  id: string;
+  name: string;
+  date: string;
+  presentation: ScenarioPresentation;
+  sourceKind: Preset["source"]["kind"];
+  selected: boolean;
+  busy?: boolean;
+  speculative?: boolean;
+  favorite: boolean;
+  onSelect: () => void;
+  onToggleFavorite?: (id: string) => void;
+  selectedLabel: string;
+  loadingLabel: string;
+  whatIfLabel: string;
+  previewLabel: string;
+  favoriteLabel: string;
+  removeFavoriteLabel: string;
+}) {
+  return (
+    <div className="preset-card-shell" data-active={selected ? "true" : "false"} data-speculative={speculative ? "true" : "false"}>
+      <button
+        className="preset-card"
+        data-active={selected ? "true" : "false"}
+        data-speculative={speculative ? "true" : "false"}
+        aria-pressed={selected}
+        aria-busy={busy}
+        aria-description={presentation.thumbnail.limitation}
+        onClick={onSelect}
+        disabled={busy}
+        type="button"
+      >
+        <span className="preset-card__visual" title={presentation.thumbnail.limitation}>
+          <img src={presentation.thumbnail.src} alt="" width="360" height="210" loading="lazy" />
+          <SourceGlyph kind={sourceKind} />
+          <span>{previewLabel}</span>
+        </span>
+        <span className="preset-card__content">
+          <span className="preset-card__name">
+            <span>{name}</span>
+            {selected && (
+              <span className="preset-card__active" aria-label={selectedLabel}>
+                <UiIcon name="check" size={13} />
+              </span>
+            )}
+            {busy && <span className="preset-card__busy" aria-label={loadingLabel}>{loadingLabel}</span>}
+          </span>
+          <span className="preset-card__facts">
+            <span>{presentation.hazard}</span>
+            <span>{presentation.scale}</span>
+            <span>{presentation.runtime}</span>
+          </span>
+          <span className="preset-card__confidence">{date} · {presentation.confidence}</span>
+          <span className="preset-card__promise">{presentation.promise}</span>
+          {speculative && <span className="preset-card__warning">{whatIfLabel}</span>}
+        </span>
+      </button>
+      {onToggleFavorite && (
+        <button
+          className="preset-card__favorite"
+          type="button"
+          aria-label={favorite ? removeFavoriteLabel : favoriteLabel}
+          aria-pressed={favorite}
+          onClick={() => onToggleFavorite(id)}
+        >
+          {favorite ? "★" : "☆"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function PresetSelector({
   presets,
   activeId,
@@ -141,29 +203,45 @@ export function PresetSelector({
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [filter, setFilter] = useState<LibraryFilter>("all");
+  const [selectedPack, setSelectedPack] = useState<ScenarioPackId | null>(null);
+  const [surpriseCursor, setSurpriseCursor] = useState(0);
+  const [surpriseResultId, setSurpriseResultId] = useState<string | null>(null);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const guidedLessons = useMemo(() => getGuidedLessons(locale), [locale]);
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
+  const catalog = useMemo(() => buildScenarioCatalog(sorted, directScenarios), [directScenarios, sorted]);
+  const catalogById = useMemo(() => new Map(catalog.map((entry) => [entry.id, entry])), [catalog]);
   const totalCount = sorted.length + directScenarios.length;
   const activeLibraryId = activeDirectId ?? (activeId ? presetLibraryId(activeId) : null);
   const normalizedQuery = query.trim().toLowerCase();
   const filtered = useMemo(
     () => sorted.filter((preset) => {
-      if (filter === "all") return true;
+      const id = presetLibraryId(preset.id);
+      const entry = catalogById.get(id);
+      if (selectedPack && (!entry || !scenarioMatchesPack(entry, selectedPack))) return false;
       if (filter === "historical") return !preset.is_speculative;
-      if (filter === "hypothetical") return preset.is_speculative;
-      return favoriteIds.includes(presetLibraryId(preset.id));
-    }),
-    [favoriteIds, filter, sorted],
+      if (filter === "hypothetical") return Boolean(preset.is_speculative);
+      if (filter === "recent") return recentIds.includes(id);
+      if (filter === "favorites") return favoriteIds.includes(id);
+      return true;
+    }).sort((left, right) => filter === "recent"
+      ? recentIds.indexOf(presetLibraryId(left.id)) - recentIds.indexOf(presetLibraryId(right.id))
+      : 0),
+    [catalogById, favoriteIds, filter, recentIds, selectedPack, sorted],
   );
   const filteredDirect = useMemo(
     () => directScenarios.filter((scenario) => {
+      const entry = catalogById.get(scenario.id);
+      if (selectedPack && (!entry || !scenarioMatchesPack(entry, selectedPack))) return false;
       if (filter === "historical") return scenario.classification === "recorded";
       if (filter === "hypothetical") return scenario.classification === "what-if";
+      if (filter === "recent") return recentIds.includes(scenario.id);
       if (filter === "favorites") return favoriteIds.includes(scenario.id);
       return true;
-    }),
-    [directScenarios, favoriteIds, filter],
+    }).sort((left, right) => filter === "recent"
+      ? recentIds.indexOf(left.id) - recentIds.indexOf(right.id)
+      : 0),
+    [catalogById, directScenarios, favoriteIds, filter, recentIds, selectedPack],
   );
   const visible = useMemo(
     () =>
@@ -207,12 +285,6 @@ export function PresetSelector({
   }, [filteredDirect, normalizedQuery, t, visible]);
   const visibleCount = groups.reduce((count, group) => count + group.presets.length + group.directScenarios.length, 0);
   const timelinePresets = useMemo(() => visible.filter(hasTimelineDate), [visible]);
-  const famousPreset = sorted.find((preset) => preset.id === "tohoku_2011")
-    ?? sorted.find((preset) => !preset.is_speculative)
-    ?? null;
-  const whatIfScenario = directScenarios.find((scenario) => scenario.id === "direct:asteroid-tokyo")
-    ?? directScenarios[0]
-    ?? null;
   const recentId = recentIds.find((id) =>
     id.startsWith("preset:")
       ? sorted.some((preset) => presetLibraryId(preset.id) === id)
@@ -222,6 +294,20 @@ export function PresetSelector({
   const selectedDirect = activeDirectId
     ? directScenarios.find((scenario) => scenario.id === activeDirectId) ?? null
     : null;
+  const surprisePool = selectedPack
+    ? catalog.filter((entry) => scenarioMatchesPack(entry, selectedPack))
+    : catalog;
+  const surpriseResult = surpriseResultId ? catalogById.get(surpriseResultId) ?? null : null;
+  const surpriseAvailable = deterministicSurprise(surprisePool, 0) !== null;
+  const packName = (id: ScenarioPackId) => t(`scenario.pack.${id}.name` as Parameters<typeof t>[0]);
+  const chooseSurprise = () => {
+    const entry = deterministicSurprise(surprisePool, surpriseCursor);
+    if (!entry) return;
+    setSurpriseResultId(entry.id);
+    setSurpriseCursor((cursor) => cursor + 1);
+    if (entry.kind === "preset") onSelect(entry.preset.id);
+    else onSelectDirect?.(entry.scenario);
+  };
   if (totalCount === 0) {
     return (
       <div className="section">
@@ -270,54 +356,51 @@ export function PresetSelector({
               <UiIcon name="search" size={15} />
             </button>
           )}
-          {onToggleFavorite && (
-            <button
-              className="preset-library__favorite"
-              type="button"
-              disabled={!activeLibraryId}
-              aria-label={activeLibraryId && favoriteIds.includes(activeLibraryId) ? t("scenario.removeFavorite") : t("scenario.addFavorite")}
-              aria-pressed={Boolean(activeLibraryId && favoriteIds.includes(activeLibraryId))}
-              onClick={() => activeLibraryId && onToggleFavorite(activeLibraryId)}
-              title={activeLibraryId ? t("scenario.toggleFavorite") : t("scenario.selectToFavorite")}
-            >
-              {activeLibraryId && favoriteIds.includes(activeLibraryId) ? "★" : "☆"}
-            </button>
-          )}
           <span className="section__count" aria-label={t("scenario.shown", { visible: visibleCount, total: totalCount })}>{visibleCount}/{totalCount}</span>
         </div>
       </div>
 
-      <section className="quick-start" aria-labelledby={`${instanceId}-quick-start-title`}>
-        <div className="quick-start__heading">
-          <span>{t("scenario.quickStart")}</span>
-          <strong id={`${instanceId}-quick-start-title`}>{t("scenario.quickStartTitle")}</strong>
+      <section className="scenario-discovery" aria-labelledby={`${instanceId}-scenario-packs-title`}>
+        <div className="scenario-discovery__header">
+          <span>
+            <small>{t("scenario.discoveryEyebrow")}</small>
+            <strong id={`${instanceId}-scenario-packs-title`}>{t("scenario.discoveryTitle")}</strong>
+          </span>
+          <button type="button" disabled={!surpriseAvailable} onClick={chooseSurprise}>
+            <UiIcon name="refresh" size={13} />
+            {t("scenario.surpriseMe")}
+          </button>
         </div>
-        <div className="quick-start__grid">
-          <button
-            type="button"
-            data-intent="famous"
-            disabled={!famousPreset}
-            onClick={() => famousPreset && onSelect(famousPreset.id)}
-          >
-            <UiIcon name="play" size={15} />
-            <span><strong>{t("scenario.watchFamous")}</strong><small>{t("scenario.curatedHistorical")}</small></span>
+        <div className="scenario-pack-strip" role="group" aria-label={t("scenario.packFilterLabel")}>
+          {SCENARIO_PACKS.map((pack) => {
+            const count = catalog.filter((entry) => scenarioMatchesPack(entry, pack.id)).length;
+            return (
+              <button
+                type="button"
+                key={pack.id}
+                aria-pressed={selectedPack === pack.id}
+                disabled={count === 0}
+                onClick={() => {
+                  setSelectedPack((current) => current === pack.id ? null : pack.id);
+                  setViewMode("cards");
+                  setFilter("all");
+                  setQuery("");
+                  setSurpriseResultId(null);
+                }}
+              >
+                <img src={`/scenario-thumbnails/${pack.thumbnail}.webp`} alt="" width="360" height="210" />
+                <span><strong>{packName(pack.id)}</strong><small>{t("scenario.packCount", { count })}</small></span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="scenario-discovery__tools">
+          <button type="button" disabled={!onCreateScenario} onClick={onCreateScenario}>
+            <UiIcon name="reset" size={13} />
+            {t("scenario.createOwn")}
           </button>
           <button
             type="button"
-            data-intent="what-if"
-            disabled={!whatIfScenario || !onSelectDirect}
-            onClick={() => whatIfScenario && onSelectDirect?.(whatIfScenario)}
-          >
-            <UiIcon name="mapPin" size={15} />
-            <span><strong>{t("scenario.exploreWhatIf")}</strong><small>{t("scenario.directStudy")}</small></span>
-          </button>
-          <button type="button" data-intent="custom" disabled={!onCreateScenario} onClick={onCreateScenario}>
-            <UiIcon name="reset" size={15} />
-            <span><strong>{t("scenario.createOwn")}</strong><small>{t("scenario.customSource")}</small></span>
-          </button>
-          <button
-            type="button"
-            data-intent="recent"
             disabled={!recentId}
             onClick={() => {
               if (!recentId) return;
@@ -328,10 +411,19 @@ export function PresetSelector({
               }
             }}
           >
-            <UiIcon name="refresh" size={15} />
-            <span><strong>{t("scenario.continueRecent")}</strong><small>{recentId ? t("scenario.returnLast") : t("scenario.noRecent")}</small></span>
+            <UiIcon name="play" size={12} />
+            {t("scenario.continueRecent")}
           </button>
         </div>
+        {surpriseResult && (
+          <div className="scenario-surprise" role="status" aria-live="polite">
+            <strong>{surpriseResult.kind === "preset" ? surpriseResult.preset.name : surpriseResult.scenario.name}</strong>
+            <span>{t("scenario.surpriseReason", {
+              pack: selectedPack ? packName(selectedPack) : t("scenario.allPacks"),
+              promise: surpriseResult.presentation.promise,
+            })}</span>
+          </div>
+        )}
       </section>
 
       {activeLibraryId && onRunActive && (
@@ -343,7 +435,7 @@ export function PresetSelector({
             </span>
             <span className="preset-active-action__copy">
               <strong>{selectedDirect?.name ?? selectedPreset?.name ?? t("scenario.referenceEvent")}</strong>
-              <span>{selectedDirect?.detail ?? (selectedPreset ? `${sourceDetail(selectedPreset)} · ${selectedPreset.date}` : t("scenario.readyConfigure"))}</span>
+              <span>{selectedDirect?.detail ?? (selectedPreset ? `${presentationForPreset(selectedPreset).scale} · ${selectedPreset.date}` : t("scenario.readyConfigure"))}</span>
               <small>{selectedDirect?.blurb ?? selectedPreset?.blurb ?? t("scenario.reviewSetup")}</small>
             </span>
           </div>
@@ -378,18 +470,26 @@ export function PresetSelector({
       </div>
 
       <div className="preset-library-tabs" role="group" aria-label={t("scenario.filterLabel")}>
-        {(["all", "historical", "hypothetical", "favorites"] as const).map((item) => (
-          <button
-            type="button"
-            key={item}
-            aria-pressed={filter === item}
-            data-active={filter === item ? "true" : "false"}
-            onClick={() => setFilter(item)}
-          >
-            {item === "all" ? t("scenario.all") : item === "historical" ? t("scenario.recorded") : item === "hypothetical" ? t("scenario.whatIf") : t("scenario.favorites")}
-          </button>
-        ))}
+        {(["all", "historical", "hypothetical", "recent", "favorites"] as const).map((item) => {
+          const label = item === "all" ? t("scenario.all") : item === "historical" ? t("scenario.recorded") : item === "hypothetical" ? t("scenario.whatIf") : item === "recent" ? t("scenario.recent") : t("scenario.favorites");
+          const shortLabel = item === "historical" ? t("scenario.past") : item === "favorites" ? t("scenario.saved") : label;
+          return (
+            <button
+              type="button"
+              key={item}
+              aria-label={label}
+              aria-pressed={filter === item}
+              data-active={filter === item ? "true" : "false"}
+              onClick={() => setFilter(item)}
+            >
+              {shortLabel}
+            </button>
+          );
+        })}
       </div>
+      {(filter === "recent" || filter === "favorites") && (
+        <small className="preset-library__local-note">{t("scenario.localStateNote")}</small>
+      )}
 
       {viewMode === "timeline" ? (
         timelinePresets.length > 0 ? (
@@ -400,7 +500,7 @@ export function PresetSelector({
             <div>
               <strong>{t("scenario.noDated")}</strong>
               <p>{t("scenario.noDatedBody")}</p>
-              <button className="empty-state__action" type="button" onClick={() => { setQuery(""); setFilter("all"); }}>
+              <button className="empty-state__action" type="button" onClick={() => { setQuery(""); setFilter("all"); setSelectedPack(null); }}>
                 {t("scenario.showAll")}
               </button>
             </div>
@@ -415,7 +515,7 @@ export function PresetSelector({
                 <div>
                   <strong>{t("scenario.noMatches")}</strong>
                   <p>{t("scenario.noMatchesBody")}</p>
-                  <button className="empty-state__action" type="button" onClick={() => { setQuery(""); setFilter("all"); }}>
+                  <button className="empty-state__action" type="button" onClick={() => { setQuery(""); setFilter("all"); setSelectedPack(null); }}>
                     {t("scenario.showAll")}
                   </button>
                 </div>
@@ -434,87 +534,48 @@ export function PresetSelector({
                   {group.presets.map((p) => {
                     const isBusy = busyId === p.id;
                     return (
-                      <button
+                      <ScenarioCard
                         key={p.id}
-                        className="preset-card"
-                        data-active={activeId === p.id ? "true" : "false"}
-                        data-speculative={p.is_speculative ? "true" : "false"}
-                        aria-pressed={activeId === p.id}
-                        aria-busy={isBusy}
-                        onClick={() => onSelect(p.id)}
-                        disabled={isBusy}
-                        title={p.controversy_note ?? p.reference}
-                        type="button"
-                      >
-                        <SourceGlyph kind={p.source.kind} />
-                        <span className="preset-card__content">
-                          <span className="preset-card__name">
-                            <span>{p.name}</span>
-                            {activeId === p.id && (
-                              <span className="preset-card__active" aria-label={t("scenario.selectedState")}>
-                                <UiIcon name="check" size={13} />
-                              </span>
-                            )}
-                            {isBusy && <span className="preset-card__busy" aria-label={t("scenario.loading")}>{t("scenario.loading")}</span>}
-                          </span>
-                          <span className="preset-card__meta">
-                            <span className="preset-card__date">{p.date}</span>
-                            <span aria-hidden>·</span>
-                            <span className="preset-card__source" data-kind={p.source.kind}>{p.source.kind}</span>
-                            <span aria-hidden>·</span>
-                            <span className="preset-card__detail">{sourceDetail(p)}</span>
-                          </span>
-                          <span className="preset-card__blurb">{p.blurb}</span>
-                          <span className="preset-card__highlights">
-                            {p.is_speculative ? t("scenario.exploratory") : t("scenario.reference")} · {presetHighlights(p).join(" → ")}
-                          </span>
-                          {p.is_speculative && (
-                            <span className="preset-card__warning" aria-label={t("scenario.hypothetical")}>{t("scenario.whatIf")}</span>
-                          )}
-                          {p.is_speculative && p.controversy_note && (
-                            <span className="preset-card__warn-note">{p.controversy_note}</span>
-                          )}
-                        </span>
-                      </button>
+                        id={presetLibraryId(p.id)}
+                        name={p.name}
+                        date={p.date}
+                        presentation={presentationForPreset(p)}
+                        sourceKind={p.source.kind}
+                        selected={activeId === p.id}
+                        busy={isBusy}
+                        speculative={Boolean(p.is_speculative)}
+                        favorite={favoriteIds.includes(presetLibraryId(p.id))}
+                        onSelect={() => onSelect(p.id)}
+                        onToggleFavorite={onToggleFavorite}
+                        selectedLabel={t("scenario.selectedState")}
+                        loadingLabel={t("scenario.loading")}
+                        whatIfLabel={t("scenario.whatIf")}
+                        previewLabel={t("scenario.globalPreview")}
+                        favoriteLabel={t("scenario.favoriteNamed", { name: p.name })}
+                        removeFavoriteLabel={t("scenario.removeFavoriteNamed", { name: p.name })}
+                      />
                     );
                   })}
                   {group.directScenarios.map((scenario) => (
-                    <button
+                    <ScenarioCard
                       key={scenario.id}
-                      className="preset-card"
-                      data-active={activeDirectId === scenario.id ? "true" : "false"}
-                      data-speculative={scenario.classification === "what-if" ? "true" : "false"}
-                      aria-pressed={activeDirectId === scenario.id}
-                      onClick={() => onSelectDirect?.(scenario)}
-                      title={scenario.reference}
-                      type="button"
-                    >
-                      <SourceGlyph kind={directSourceKind(scenario)} />
-                      <span className="preset-card__content">
-                        <span className="preset-card__name">
-                          <span>{scenario.name}</span>
-                          {activeDirectId === scenario.id && (
-                            <span className="preset-card__active" aria-label={t("scenario.selectedState")}>
-                              <UiIcon name="check" size={13} />
-                            </span>
-                          )}
-                        </span>
-                        <span className="preset-card__meta">
-                          <span className="preset-card__date">{scenario.date}</span>
-                          <span aria-hidden>·</span>
-                          <span className="preset-card__source">{scenario.domain === "asteroid" ? t("scenario.impact") : t("scenario.nuclear")}</span>
-                          <span aria-hidden>·</span>
-                          <span className="preset-card__detail">{scenario.detail}</span>
-                        </span>
-                        <span className="preset-card__blurb">{scenario.blurb}</span>
-                        <span className="preset-card__highlights">
-                          {scenario.confidence} · {scenario.durationS < 60 ? `${scenario.durationS} s` : `${Math.round(scenario.durationS / 60)} min`} · {scenario.expectedHighlights.join(" · ")}
-                        </span>
-                        {scenario.classification === "what-if" && (
-                          <span className="preset-card__warning" aria-label={t("scenario.hypothetical")}>{t("scenario.whatIf")}</span>
-                        )}
-                      </span>
-                    </button>
+                      id={scenario.id}
+                      name={scenario.name}
+                      date={scenario.date}
+                      presentation={presentationForDirectScenario(scenario)}
+                      sourceKind={directSourceKind(scenario)}
+                      selected={activeDirectId === scenario.id}
+                      speculative={scenario.classification === "what-if"}
+                      favorite={favoriteIds.includes(scenario.id)}
+                      onSelect={() => onSelectDirect?.(scenario)}
+                      onToggleFavorite={onToggleFavorite}
+                      selectedLabel={t("scenario.selectedState")}
+                      loadingLabel={t("scenario.loading")}
+                      whatIfLabel={t("scenario.whatIf")}
+                      previewLabel={t("scenario.globalPreview")}
+                      favoriteLabel={t("scenario.favoriteNamed", { name: scenario.name })}
+                      removeFavoriteLabel={t("scenario.removeFavoriteNamed", { name: scenario.name })}
+                    />
                   ))}
                 </div>
               </section>

@@ -36,6 +36,329 @@ html[data-theme="mocha"] {
   --r-lg: 9px;
 }
 
+/* Scenario discovery: governed captures, compact packs, and information-rich rows. */
+.scenario-discovery {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scenario-discovery__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scenario-discovery__header > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.scenario-discovery__header small {
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 740;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scenario-discovery__header strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-discovery__header > button,
+.scenario-discovery__tools > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 7px;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.scenario-discovery__header > button {
+  color: var(--accent-text);
+}
+
+.scenario-discovery__header > button:hover:not(:disabled),
+.scenario-discovery__tools > button:hover:not(:disabled) {
+  border-bottom-color: var(--accent-active);
+  background: color-mix(in srgb, var(--accent-active) 8%, transparent);
+}
+
+.scenario-pack-strip {
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0 0 4px;
+  scrollbar-color: var(--divider) transparent;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+
+.scenario-pack-strip > button {
+  position: relative;
+  flex: 0 0 112px;
+  height: 68px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  background: var(--crust);
+  color: white;
+  scroll-snap-align: start;
+  text-align: left;
+}
+
+.scenario-pack-strip > button::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(180deg, transparent 15%, rgb(0 0 0 / 82%) 100%);
+}
+
+.scenario-pack-strip > button:hover:not(:disabled) {
+  border-bottom-color: color-mix(in srgb, var(--accent-active) 55%, transparent);
+}
+
+.scenario-pack-strip > button[aria-pressed="true"] {
+  border-bottom-color: var(--accent-active);
+}
+
+.scenario-pack-strip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scenario-pack-strip button > span {
+  position: absolute;
+  z-index: 1;
+  right: 7px;
+  bottom: 5px;
+  left: 7px;
+  display: grid;
+  gap: 0;
+}
+
+.scenario-pack-strip strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-pack-strip small {
+  color: rgb(255 255 255 / 78%);
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.scenario-discovery__tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.scenario-surprise {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent-active);
+  color: var(--subtext);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.scenario-surprise strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.preset-library__local-note {
+  display: block;
+  margin-top: -6px;
+  color: var(--overlay);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.preset-library-tabs {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow-x: auto;
+}
+
+.preset-library-tabs button {
+  min-width: 0;
+  padding-inline: 2px;
+  font-size: 12px;
+}
+
+.preset-card-shell {
+  position: relative;
+  border-bottom: 1px solid color-mix(in srgb, var(--divider) 62%, transparent);
+}
+
+.preset-card-shell .preset-card {
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 9px;
+  min-height: 110px;
+  padding: 8px 30px 8px 4px;
+  border-bottom: 0;
+  border-left-width: 2px;
+}
+
+.preset-card-shell .preset-card__visual {
+  position: relative;
+  display: block;
+  width: 76px;
+  height: 76px;
+  align-self: center;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--crust);
+}
+
+.preset-card__visual > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preset-card__visual > .preset-card__glyph {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgb(4 12 20 / 84%) !important;
+  color: white;
+}
+
+.preset-card__visual > .preset-card__glyph svg {
+  width: 14px;
+  height: 14px;
+}
+
+.preset-card__visual > span:last-child {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: 4px;
+  overflow: hidden;
+  color: rgb(255 255 255 / 82%);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 90%);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.preset-card-shell .preset-card__content {
+  justify-content: center;
+  gap: 2px;
+}
+
+.preset-card-shell .preset-card__name > span:first-child {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-card__facts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  color: var(--subtext);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.preset-card__facts > span {
+  flex: 0 0 auto;
+}
+
+.preset-card__facts > span + span::before {
+  margin-inline: 4px;
+  color: var(--overlay);
+  content: "·";
+}
+
+.preset-card__confidence {
+  overflow: hidden;
+  color: var(--accent-text);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-card__promise {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--subtext);
+  font-size: 12px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.preset-card-shell .preset-card__warning {
+  margin-top: 0;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.preset-card__favorite {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 1px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--overlay);
+  font-size: 17px;
+}
+
+.preset-card__favorite:hover,
+.preset-card__favorite[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  color: var(--warning-text);
+}
+
 html[data-theme="latte"] {
   --text: #263342;
   --subtext: #4c5d70;
@@ -229,13 +552,15 @@ select {
 
 .preset-library__header { order: 0; gap: 7px; }
 .preset-active-action { order: 1; }
+.scenario-discovery,
 .quick-start { order: 2; }
 .preset-search { order: 3; }
 .preset-library-tabs { order: 4; }
+.preset-library__local-note { order: 5; }
 .preset-groups,
 .timeline,
-.preset-library > .empty-state { order: 5; }
-.lesson-launcher { order: 6; }
+.preset-library > .empty-state { order: 6; }
+.lesson-launcher { order: 7; }
 
 .preset-library__header {
   flex-direction: column;
@@ -839,5 +1164,19 @@ select {
 
   .app__brand {
     min-width: 266px;
+  }
+}
+
+@media (max-width: 980px) {
+  .scenario-pack-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .scenario-pack-strip > button {
+    width: 100%;
+    min-width: 0;
   }
 }
