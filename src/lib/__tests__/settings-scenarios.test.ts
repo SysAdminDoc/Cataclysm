@@ -14,6 +14,7 @@ const TRANSACTION_BASELINE: Settings = {
   cesium_token: "old-token",
   theme: "mocha",
   locale: "en",
+  units: "metric",
   globe_style: "osm",
   colormap: "cividis",
   renderer_quality: "Low",

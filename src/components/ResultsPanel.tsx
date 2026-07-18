@@ -11,6 +11,15 @@ import { type AsyncResult } from "../lib/async-result";
 import { buildOutcomeEvidence } from "../lib/trust-evidence";
 import { TrustDisclosure } from "./TrustDisclosure";
 import { useI18n } from "../lib/i18n";
+import {
+  formatLength,
+  formatEnergy,
+  formatMagnitude,
+  formatResultTime,
+  formatCoord,
+  type UnitSystem,
+} from "../lib/units";
+import { useUnits } from "../hooks/useUnits";
 
 /** The modelled tsunami source families. `null` covers presets/custom
  * scenarios whose discrete kind is not known to the caller. */
@@ -58,10 +67,11 @@ function describeOutcome(
   kind: SourceKind,
   t: Translate,
   formatNumber: FormatNumber,
+  system: UnitSystem,
 ): { headline: string; detail: string } {
-  const energy = formatEnergy(initial.source_energy_j, formatNumber);
-  const energyText = energy.value === "—" ? t("results.uncertainEnergy") : `${energy.value} ${energy.unit}`;
-  const amp = formatLength(initial.peak_amplitude_m, formatNumber);
+  const energy = formatEnergy(initial.source_energy_j, formatNumber, system);
+  const energyText = energy.value === "—" ? t("results.uncertainEnergy") : `${energy.value} ${energy.unit}${energy.anchor ? ` (${energy.anchor})` : ""}`;
+  const amp = formatLength(initial.peak_amplitude_m, formatNumber, system);
   const ampText = amp.value === "—" ? t("results.uncertainHeight") : `${amp.value} ${amp.unit}`;
   const mw = formatMagnitude(initial.seismic_mw_equivalent);
   switch (kind) {
@@ -98,54 +108,6 @@ function describeOutcome(
   }
 }
 
-function formatEnergy(j: number, formatNumber: FormatNumber): { value: string; unit: string } {
-  if (!Number.isFinite(j)) return { value: "—", unit: "" };
-  const mt = j / 4.184e15;
-  if (mt >= 1) {
-    const value =
-      mt >= 10_000
-        ? formatNumber(mt, { notation: "compact", maximumFractionDigits: 1 })
-        : formatNumber(mt, { maximumFractionDigits: 1 });
-    return { value, unit: "Mt TNT" };
-  }
-  const kt = j / 4.184e12;
-  if (kt >= 1) return { value: formatNumber(kt, { maximumFractionDigits: 1 }), unit: "kt TNT" };
-  const tons = j / 4.184e9;
-  if (tons >= 1) return { value: formatNumber(tons, { maximumFractionDigits: 1 }), unit: "t TNT" };
-  // Sub-tonne energies: compact notation stays consistent with the rest of the
-  // ladder (e.g. "3.1B J") rather than raw exponential ("3.14e+9 J").
-  return {
-    value: formatNumber(j, { notation: "compact", maximumFractionDigits: 2 }),
-    unit: "J",
-  };
-}
-
-function formatLength(m: number, formatNumber: FormatNumber): { value: string; unit: string } {
-  if (!Number.isFinite(m)) return { value: "—", unit: "" };
-  if (m >= 1000) return { value: formatNumber(m / 1000, { maximumFractionDigits: 1 }), unit: "km" };
-  return { value: formatNumber(m, { maximumFractionDigits: 1 }), unit: "m" };
-}
-
-function formatResultTime(seconds: number, t: Translate, formatNumber: FormatNumber): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return t("results.timeUnavailable");
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return t("results.timeMinutes", { minutes: formatNumber(minutes) });
-  const hours = Math.floor(minutes / 60);
-  const remaining = minutes % 60;
-  return remaining === 0
-    ? t("results.timeHours", { hours: formatNumber(hours) })
-    : t("results.timeHoursMinutes", { hours: formatNumber(hours), minutes: formatNumber(remaining) });
-}
-
-function formatMagnitude(mw: number): string {
-  return Number.isFinite(mw) ? mw.toFixed(2) : "—";
-}
-
-function formatCoord(lat: number, lon: number): string {
-  const ns = lat >= 0 ? "N" : "S";
-  const ew = lon >= 0 ? "E" : "W";
-  return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`;
-}
 
 function handleTabKeys(
   event: KeyboardEvent<HTMLButtonElement>,
@@ -180,6 +142,7 @@ export function ResultsPanel({
   onFocusOutcome,
 }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [view, setView] = useState<ResultView>("outcome");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [csvExportFailure, setCsvExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
@@ -213,15 +176,15 @@ export function ResultsPanel({
     );
   }
 
-  const energy = formatEnergy(initial.source_energy_j, formatNumber);
-  const cavity = formatLength(initial.cavity_radius_m, formatNumber);
-  const amp = formatLength(initial.peak_amplitude_m, formatNumber);
-  const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m, formatNumber) : null;
-  const depth = formatLength(initial.center.depth_m ?? 0, formatNumber);
+  const energy = formatEnergy(initial.source_energy_j, formatNumber, unitSystem);
+  const cavity = formatLength(initial.cavity_radius_m, formatNumber, unitSystem);
+  const amp = formatLength(initial.peak_amplitude_m, formatNumber, unitSystem);
+  const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m, formatNumber, unitSystem) : null;
+  const depth = formatLength(initial.center.depth_m ?? 0, formatNumber, unitSystem);
   const totalT = 6 * 3600;
   const safeTimeS = Number.isFinite(timeS) ? Math.max(0, timeS) : 0;
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
-  const outcome = describeOutcome(initial, sourceKind, t, formatNumber);
+  const outcome = describeOutcome(initial, sourceKind, t, formatNumber, unitSystem);
   const evidence = buildOutcomeEvidence(preset, initial, sourceKind);
   const cavity_label = cavityLabel(sourceKind, t);
   const story = buildCoastalOutcomeStory(runupResults, safeTimeS);

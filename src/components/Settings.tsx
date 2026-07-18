@@ -5,6 +5,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId, type LaunchExperiencePolicy } from "../lib/settings";
+import type { UnitSystem } from "../lib/units";
 import { downloadBlob, exportFailureLabel, type ExportResult } from "../lib/export";
 import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
@@ -28,6 +29,7 @@ type StagedSettings = {
   token: string;
   theme: Theme;
   locale: Locale;
+  units: UnitSystem;
   globeStyle: GlobeStyleId;
   colormapId: ColormapId;
   rendererQuality: RendererQualityTier;
@@ -45,6 +47,7 @@ export function Settings({ onClose }: Props) {
   const [token, setTokenLocal] = useState("");
   const [theme, setThemeLocal] = useState<Theme>("mocha");
   const [locale, setLocale] = useState<Locale>("en");
+  const [units, setUnitsLocal] = useState<UnitSystem>("metric");
   const [globeStyle, setGlobeStyle] = useState<GlobeStyleId>(DEFAULT_STYLE);
   const [colormapId, setColormapId] = useState<ColormapId>("diverging");
   const [rendererQuality, setRendererQuality] = useState<RendererQualityTier>("High");
@@ -86,6 +89,7 @@ export function Settings({ onClose }: Props) {
         setTokenLocal(s.cesium_token);
         setThemeLocal(s.theme);
         setLocale(s.locale);
+        setUnitsLocal(s.units);
         setGlobeStyle(s.globe_style);
         setColormapId(s.colormap);
         setRendererQuality(s.renderer_quality);
@@ -96,6 +100,7 @@ export function Settings({ onClose }: Props) {
           token: s.cesium_token,
           theme: s.theme,
           locale: s.locale,
+          units: s.units,
           globeStyle: s.globe_style,
           colormapId: s.colormap,
           rendererQuality: s.renderer_quality,
@@ -112,6 +117,7 @@ export function Settings({ onClose }: Props) {
             token: "",
             theme: "mocha",
             locale: "en",
+            units: "metric",
             globeStyle: DEFAULT_STYLE,
             colormapId: "diverging",
             rendererQuality: "High",
@@ -150,6 +156,7 @@ export function Settings({ onClose }: Props) {
       const patch: Parameters<typeof settings.apply>[0] = {
         theme,
         locale,
+        units,
         globe_style: globeStyle,
         colormap: colormapId,
         renderer_quality: rendererQuality,
@@ -163,7 +170,7 @@ export function Settings({ onClose }: Props) {
       setTokenLocal(trimmedToken);
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
-      setAppliedSettings({ token: trimmedToken, theme, locale, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
+      setAppliedSettings({ token: trimmedToken, theme, locale, units, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
       setStatusMsg(translate(locale, "settings.applied", { time: new Date().toLocaleTimeString(LANGUAGE_TAGS[locale]) }));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
@@ -195,6 +202,7 @@ export function Settings({ onClose }: Props) {
     token !== appliedSettings.token
     || theme !== appliedSettings.theme
     || locale !== appliedSettings.locale
+    || units !== appliedSettings.units
     || globeStyle !== appliedSettings.globeStyle
     || colormapId !== appliedSettings.colormapId
     || rendererQuality !== appliedSettings.rendererQuality
@@ -279,6 +287,17 @@ export function Settings({ onClose }: Props) {
               </select>
             </label>
             <p className="modal__footnote settings__description">{t("language.canonical")}</p>
+          </section>
+          <section className="settings__section">
+            <h3 className="settings__h3">{t("units.heading")}</h3>
+            <p className="modal__intro">{t("units.description")}</p>
+            <label className="settings__field">
+              <span>{t("units.label")}</span>
+              <select value={units} onChange={(event) => setUnitsLocal(event.target.value as UnitSystem)}>
+                <option value="metric">{t("units.metric")}</option>
+                <option value="imperial">{t("units.imperial")}</option>
+              </select>
+            </label>
           </section>
           <section className="settings__section">
             <h3 className="settings__h3">{t("settings.earthRendering")}</h3>
@@ -607,6 +626,7 @@ export function Settings({ onClose }: Props) {
                       setTokenLocal(all.cesium_token);
                       setThemeLocal(all.theme);
                       setLocale(all.locale);
+                      setUnitsLocal(all.units);
                       setGlobeStyle(all.globe_style);
                       setColormapId(all.colormap);
                       setRendererQuality(all.renderer_quality);
@@ -617,6 +637,7 @@ export function Settings({ onClose }: Props) {
                         token: all.cesium_token,
                         theme: all.theme,
                         locale: all.locale,
+                        units: all.units,
                         globeStyle: all.globe_style,
                         colormapId: all.colormap,
                         rendererQuality: all.renderer_quality,
@@ -652,6 +673,7 @@ export function Settings({ onClose }: Props) {
                     setTokenLocal("");
                     setThemeLocal("mocha");
                     setLocale("en");
+                    setUnitsLocal("metric");
                     setGlobeStyle(DEFAULT_STYLE);
                     setColormapId("diverging");
                     setRendererQuality("High");
@@ -662,6 +684,7 @@ export function Settings({ onClose }: Props) {
                       token: "",
                       theme: "mocha",
                       locale: "en",
+                      units: "metric",
                       globeStyle: DEFAULT_STYLE,
                       colormapId: "diverging",
                       rendererQuality: "High",
