@@ -1,395 +1,452 @@
 {
   "asteroid-entry": {
-    "authority": "rust",
-    "casualties": null,
+    "kind": "asteroid",
     "center": {
       "lat": 42.5,
       "lon": -102.5
     },
-    "detail": {
-      "atmosphericEntry": {
-        "airburstAltitude": 29005.84966775951,
-        "airburstEnergy": 1659585761646078.5,
-        "breakupAltitude": 32056.720127519922,
-        "impactVelocity": 18279.604812724276,
-        "reachesGround": false
+    "rings": [
+      {
+        "label": "Light glass breakage (200 Pa)",
+        "radiusM": 298816.3820082181,
+        "color": "#94e2d5",
+        "category": "glass",
+        "description": "Window cracking; glass fragments possible. Popova et al. 2013."
       },
-      "crater": null,
-      "fireballRadiusM": 236.78992995197615,
-      "impactorMassKg": 11851501.206034815,
+      {
+        "label": "Heavy glass breakage (500 Pa)",
+        "radiusM": 124809.46206898824,
+        "color": "#74c7ec",
+        "category": "glass",
+        "description": "Windows shatter inward; dominant injury mechanism in airbursts. Popova et al. 2013."
+      },
+      {
+        "label": "Fireball",
+        "radiusM": 236.78992995197615,
+        "color": "#f5e0dc",
+        "category": "fireball",
+        "description": "Thermal fireball radius."
+      },
+      {
+        "label": "1st° burns",
+        "radiusM": 1.0,
+        "color": "#f5c2e7",
+        "category": "thermal",
+        "description": "First-degree burns from elevated thermal pulse."
+      },
+      {
+        "label": "Window breakage (1 psi) (from elevated burst)",
+        "radiusM": 1.0,
+        "color": "#f9e2af",
+        "category": "blast",
+        "description": "Glass shatters from airwave; dominant injury mechanism in airbursts."
+      },
+      {
+        "label": "3rd° burns",
+        "radiusM": 1.0,
+        "color": "#fab387",
+        "category": "thermal",
+        "description": "Third-degree burns from elevated thermal pulse."
+      },
+      {
+        "label": "Severe damage (7 psi) (from elevated burst)",
+        "radiusM": 1.0,
+        "color": "#cba6f7",
+        "category": "blast",
+        "description": "Most buildings collapse."
+      },
+      {
+        "label": "Total destruction (20 psi) (from elevated burst)",
+        "radiusM": 1.0,
+        "color": "#89b4fa",
+        "category": "blast",
+        "description": "Reinforced structures destroyed."
+      }
+    ],
+    "readout": [
+      {
+        "label": "Kinetic energy",
+        "value": "511 kt",
+        "hint": null
+      },
+      {
+        "label": "Outcome",
+        "value": "Airburst — did not reach the ground",
+        "hint": null
+      },
+      {
+        "label": "Airburst altitude",
+        "value": "29.01 km",
+        "hint": "altitude of peak energy deposition"
+      },
+      {
+        "label": "Energy deposited in atmosphere",
+        "value": "397 kt",
+        "hint": "78% of kinetic energy"
+      },
+      {
+        "label": "Recurrence interval",
+        "value": "~1 in 65 yr",
+        "hint": "order-of-magnitude average; Collins et al. 2005"
+      },
+      {
+        "label": "Seismic magnitude",
+        "value": "M 4.3",
+        "hint": null
+      },
+      {
+        "label": "Fireball radius",
+        "value": "237 m",
+        "hint": null
+      },
+      {
+        "label": "Ground overpressure (20 psi)",
+        "value": "1 m",
+        "hint": "from burst at 29.01 km altitude"
+      },
+      {
+        "label": "Glass-injury radius",
+        "value": "125 km",
+        "hint": "500 Pa shattering threshold; Popova et al. 2013"
+      }
+    ],
+    "casualties": null,
+    "detail": {
       "kineticEnergyJ": 2139195967689284.0,
       "megatons": 0.5112801070003069,
+      "impactorMassKg": 11851501.206034815,
+      "atmosphericEntry": {
+        "reachesGround": false,
+        "airburstAltitude": 29005.84966775951,
+        "airburstEnergy": 1659585761646078.5,
+        "impactVelocity": 18279.604812724276,
+        "breakupAltitude": 32056.720127519922
+      },
+      "crater": null,
+      "seismicMagnitude": 4.327399799106979,
+      "fireballRadiusM": 236.78992995197615,
+      "radiusWindowBreakageM": 1.0,
       "radiusSevereDamageM": 1.0,
       "radiusTotalDestructionM": 1.0,
-      "radiusWindowBreakageM": 1.0,
-      "seismicMagnitude": 4.327399799106979,
       "thermalRadiusFirstDegreeM": 1.0,
       "thermalRadiusThirdDegreeM": 1.0,
       "tsunami": {
-        "amplitudeAtDistance": 0.0,
         "applies": false,
-        "arrivalTime": 0.0,
-        "cavityDepth": 0.0,
         "cavityDiameter": 0.0,
+        "cavityDepth": 0.0,
         "initialAmplitude": 0.0,
-        "runupHeight": 0.0
+        "amplitudeAtDistance": 0.0,
+        "runupHeight": 0.0,
+        "arrivalTime": 0.0
       }
     },
-    "kind": "asteroid",
-    "modelVersion": "asteroid-direct-1.0.0",
-    "readout": [
-      {
-        "hint": null,
-        "label": "Kinetic energy",
-        "value": "511 kt"
-      },
-      {
-        "hint": null,
-        "label": "Outcome",
-        "value": "Airburst — did not reach the ground"
-      },
-      {
-        "hint": "altitude of peak energy deposition",
-        "label": "Airburst altitude",
-        "value": "29.01 km"
-      },
-      {
-        "hint": "78% of kinetic energy",
-        "label": "Energy deposited in atmosphere",
-        "value": "397 kt"
-      },
-      {
-        "hint": "order-of-magnitude average; Collins et al. 2005",
-        "label": "Recurrence interval",
-        "value": "~1 in 65 yr"
-      },
-      {
-        "hint": null,
-        "label": "Seismic magnitude",
-        "value": "M 4.3"
-      },
-      {
-        "hint": null,
-        "label": "Fireball radius",
-        "value": "237 m"
-      },
-      {
-        "hint": "from burst at 29.01 km altitude",
-        "label": "Ground overpressure (20 psi)",
-        "value": "1 m"
-      }
-    ],
-    "rings": [
-      {
-        "category": "fireball",
-        "color": "#f5e0dc",
-        "description": "Thermal fireball radius.",
-        "label": "Fireball",
-        "radiusM": 236.78992995197615
-      },
-      {
-        "category": "thermal",
-        "color": "#f5c2e7",
-        "description": "First-degree burns from elevated thermal pulse.",
-        "label": "1st° burns",
-        "radiusM": 1.0
-      },
-      {
-        "category": "blast",
-        "color": "#f9e2af",
-        "description": "Glass shatters from airwave; dominant injury mechanism in airbursts.",
-        "label": "Window breakage (1 psi) (from elevated burst)",
-        "radiusM": 1.0
-      },
-      {
-        "category": "thermal",
-        "color": "#fab387",
-        "description": "Third-degree burns from elevated thermal pulse.",
-        "label": "3rd° burns",
-        "radiusM": 1.0
-      },
-      {
-        "category": "blast",
-        "color": "#cba6f7",
-        "description": "Most buildings collapse.",
-        "label": "Severe damage (7 psi) (from elevated burst)",
-        "radiusM": 1.0
-      },
-      {
-        "category": "blast",
-        "color": "#89b4fa",
-        "description": "Reinforced structures destroyed.",
-        "label": "Total destruction (20 psi) (from elevated burst)",
-        "radiusM": 1.0
-      }
-    ]
+    "authority": "rust",
+    "modelVersion": "asteroid-direct-1.0.0"
   },
   "asteroid-land-impact": {
-    "authority": "rust",
-    "casualties": null,
+    "kind": "asteroid",
     "center": {
       "lat": 35.68,
       "lon": 139.76
     },
+    "rings": [
+      {
+        "label": "Light glass breakage (200 Pa)",
+        "radiusM": 5169898.183535127,
+        "color": "#94e2d5",
+        "category": "glass",
+        "description": "Window cracking; glass fragments possible. Popova et al. 2013."
+      },
+      {
+        "label": "Heavy glass breakage (500 Pa)",
+        "radiusM": 2311192.645767997,
+        "color": "#74c7ec",
+        "category": "glass",
+        "description": "Windows shatter inward; dominant injury mechanism in airbursts. Popova et al. 2013."
+      },
+      {
+        "label": "Window breakage (1 psi)",
+        "radiusM": 268687.7651574273,
+        "color": "#f9e2af",
+        "category": "blast",
+        "description": "Glass shatters; light injuries."
+      },
+      {
+        "label": "Severe damage (7 psi)",
+        "radiusM": 82790.08495423695,
+        "color": "#cba6f7",
+        "category": "blast",
+        "description": "Most buildings collapse."
+      },
+      {
+        "label": "1st° burns",
+        "radiusM": 75996.13097063318,
+        "color": "#f5c2e7",
+        "category": "thermal",
+        "description": "First-degree burns to exposed skin."
+      },
+      {
+        "label": "Total destruction (20 psi)",
+        "radiusM": 49985.08806052699,
+        "color": "#89b4fa",
+        "category": "blast",
+        "description": "Reinforced structures destroyed."
+      },
+      {
+        "label": "3rd° burns",
+        "radiusM": 46461.84360577518,
+        "color": "#fab387",
+        "category": "thermal",
+        "description": "Third-degree burns; widespread ignition."
+      },
+      {
+        "label": "Fireball",
+        "radiusM": 4077.597395706634,
+        "color": "#f5e0dc",
+        "category": "fireball",
+        "description": "Thermal fireball radius."
+      },
+      {
+        "label": "Final crater",
+        "radiusM": 2961.0466425453947,
+        "color": "#eba0ac",
+        "category": "crater",
+        "description": "Excavated crater (radius)."
+      }
+    ],
+    "readout": [
+      {
+        "label": "Impact energy",
+        "value": "2703.1 Mt",
+        "hint": null
+      },
+      {
+        "label": "Outcome",
+        "value": "Ground impact",
+        "hint": "impact velocity 19.2 km/s"
+      },
+      {
+        "label": "Recurrence interval",
+        "value": "~1 in 52 thousand yr",
+        "hint": "order-of-magnitude average; Collins et al. 2005"
+      },
+      {
+        "label": "Seismic magnitude",
+        "value": "M 6.8",
+        "hint": null
+      },
+      {
+        "label": "Fireball radius",
+        "value": "4.08 km",
+        "hint": null
+      },
+      {
+        "label": "20 psi radius",
+        "value": "49.99 km",
+        "hint": null
+      },
+      {
+        "label": "Crater diameter",
+        "value": "5.92 km",
+        "hint": "complex crater"
+      },
+      {
+        "label": "Glass-injury radius",
+        "value": "2311 km",
+        "hint": "500 Pa shattering threshold; Popova et al. 2013"
+      }
+    ],
+    "casualties": null,
     "detail": {
-      "atmosphericEntry": {
-        "airburstAltitude": 0.0,
-        "airburstEnergy": 8.474674813161789e+18,
-        "breakupAltitude": 32927.74205247725,
-        "impactVelocity": 19203.92438194841,
-        "reachesGround": true
-      },
-      "crater": {
-        "craterDepth": 625.4478467171882,
-        "finalDiameter": 5922.093285090789,
-        "isComplex": true
-      },
-      "fireballRadiusM": 4077.597395706634,
-      "impactorMassKg": 56548667764.61628,
       "kineticEnergyJ": 1.1309733552923257e+19,
       "megatons": 2703.0911933372986,
+      "impactorMassKg": 56548667764.61628,
+      "atmosphericEntry": {
+        "reachesGround": true,
+        "airburstAltitude": 0.0,
+        "airburstEnergy": 8.474674813161789e+18,
+        "impactVelocity": 19203.92438194841,
+        "breakupAltitude": 32927.74205247725
+      },
+      "crater": {
+        "finalDiameter": 5922.093285090789,
+        "craterDepth": 625.4478467171882,
+        "isComplex": true
+      },
+      "seismicMagnitude": 6.8118424385556535,
+      "fireballRadiusM": 4077.597395706634,
+      "radiusWindowBreakageM": 268687.7651574273,
       "radiusSevereDamageM": 82790.08495423695,
       "radiusTotalDestructionM": 49985.08806052699,
-      "radiusWindowBreakageM": 268687.7651574273,
-      "seismicMagnitude": 6.8118424385556535,
       "thermalRadiusFirstDegreeM": 75996.13097063318,
       "thermalRadiusThirdDegreeM": 46461.84360577518,
       "tsunami": {
-        "amplitudeAtDistance": 0.0,
         "applies": false,
-        "arrivalTime": 0.0,
-        "cavityDepth": 0.0,
         "cavityDiameter": 0.0,
+        "cavityDepth": 0.0,
         "initialAmplitude": 0.0,
-        "runupHeight": 0.0
+        "amplitudeAtDistance": 0.0,
+        "runupHeight": 0.0,
+        "arrivalTime": 0.0
       }
     },
-    "kind": "asteroid",
-    "modelVersion": "asteroid-direct-1.0.0",
-    "readout": [
-      {
-        "hint": null,
-        "label": "Impact energy",
-        "value": "2703.1 Mt"
-      },
-      {
-        "hint": "impact velocity 19.2 km/s",
-        "label": "Outcome",
-        "value": "Ground impact"
-      },
-      {
-        "hint": "order-of-magnitude average; Collins et al. 2005",
-        "label": "Recurrence interval",
-        "value": "~1 in 52 thousand yr"
-      },
-      {
-        "hint": null,
-        "label": "Seismic magnitude",
-        "value": "M 6.8"
-      },
-      {
-        "hint": null,
-        "label": "Fireball radius",
-        "value": "4.08 km"
-      },
-      {
-        "hint": null,
-        "label": "20 psi radius",
-        "value": "49.99 km"
-      },
-      {
-        "hint": "complex crater",
-        "label": "Crater diameter",
-        "value": "5.92 km"
-      }
-    ],
-    "rings": [
-      {
-        "category": "blast",
-        "color": "#f9e2af",
-        "description": "Glass shatters; light injuries.",
-        "label": "Window breakage (1 psi)",
-        "radiusM": 268687.7651574273
-      },
-      {
-        "category": "blast",
-        "color": "#cba6f7",
-        "description": "Most buildings collapse.",
-        "label": "Severe damage (7 psi)",
-        "radiusM": 82790.08495423695
-      },
-      {
-        "category": "thermal",
-        "color": "#f5c2e7",
-        "description": "First-degree burns to exposed skin.",
-        "label": "1st° burns",
-        "radiusM": 75996.13097063318
-      },
-      {
-        "category": "blast",
-        "color": "#89b4fa",
-        "description": "Reinforced structures destroyed.",
-        "label": "Total destruction (20 psi)",
-        "radiusM": 49985.08806052699
-      },
-      {
-        "category": "thermal",
-        "color": "#fab387",
-        "description": "Third-degree burns; widespread ignition.",
-        "label": "3rd° burns",
-        "radiusM": 46461.84360577518
-      },
-      {
-        "category": "fireball",
-        "color": "#f5e0dc",
-        "description": "Thermal fireball radius.",
-        "label": "Fireball",
-        "radiusM": 4077.597395706634
-      },
-      {
-        "category": "crater",
-        "color": "#eba0ac",
-        "description": "Excavated crater (radius).",
-        "label": "Final crater",
-        "radiusM": 2961.0466425453947
-      }
-    ]
+    "authority": "rust",
+    "modelVersion": "asteroid-direct-1.0.0"
   },
   "asteroid-ocean-impact": {
-    "authority": "rust",
-    "casualties": null,
+    "kind": "asteroid",
     "center": {
       "lat": 0.0,
       "lon": -140.0
     },
+    "rings": [
+      {
+        "label": "Light glass breakage (200 Pa)",
+        "radiusM": 8198125.010176677,
+        "color": "#94e2d5",
+        "category": "glass",
+        "description": "Window cracking; glass fragments possible. Popova et al. 2013."
+      },
+      {
+        "label": "Heavy glass breakage (500 Pa)",
+        "radiusM": 3664955.3936961554,
+        "color": "#74c7ec",
+        "category": "glass",
+        "description": "Windows shatter inward; dominant injury mechanism in airbursts. Popova et al. 2013."
+      },
+      {
+        "label": "Window breakage (1 psi)",
+        "radiusM": 426069.4909777455,
+        "color": "#f9e2af",
+        "category": "blast",
+        "description": "Glass shatters; light injuries."
+      },
+      {
+        "label": "Severe damage (7 psi)",
+        "radiusM": 131283.72009714844,
+        "color": "#cba6f7",
+        "category": "blast",
+        "description": "Most buildings collapse."
+      },
+      {
+        "label": "1st° burns",
+        "radiusM": 104829.00102125082,
+        "color": "#f5c2e7",
+        "category": "thermal",
+        "description": "First-degree burns to exposed skin."
+      },
+      {
+        "label": "Total destruction (20 psi)",
+        "radiusM": 79263.45665180657,
+        "color": "#89b4fa",
+        "category": "blast",
+        "description": "Reinforced structures destroyed."
+      },
+      {
+        "label": "3rd° burns",
+        "radiusM": 67796.74582256257,
+        "color": "#fab387",
+        "category": "thermal",
+        "description": "Third-degree burns; widespread ignition."
+      },
+      {
+        "label": "Fireball",
+        "radiusM": 6466.017705655404,
+        "color": "#f5e0dc",
+        "category": "fireball",
+        "description": "Thermal fireball radius."
+      },
+      {
+        "label": "Final crater",
+        "radiusM": 5891.530931845863,
+        "color": "#eba0ac",
+        "category": "crater",
+        "description": "Excavated crater (radius)."
+      }
+    ],
+    "readout": [
+      {
+        "label": "Impact energy",
+        "value": "9385.7 Mt",
+        "hint": null
+      },
+      {
+        "label": "Outcome",
+        "value": "Ground impact",
+        "hint": "impact velocity 19.6 km/s"
+      },
+      {
+        "label": "Recurrence interval",
+        "value": "~1 in 137 thousand yr",
+        "hint": "order-of-magnitude average; Collins et al. 2005"
+      },
+      {
+        "label": "Seismic magnitude",
+        "value": "M 7.2",
+        "hint": null
+      },
+      {
+        "label": "Fireball radius",
+        "value": "6.47 km",
+        "hint": null
+      },
+      {
+        "label": "20 psi radius",
+        "value": "79.26 km",
+        "hint": null
+      },
+      {
+        "label": "Crater diameter",
+        "value": "11.78 km",
+        "hint": "complex crater"
+      },
+      {
+        "label": "Tsunami runup",
+        "value": "16.83 km",
+        "hint": null
+      },
+      {
+        "label": "Glass-injury radius",
+        "value": "3665 km",
+        "hint": "500 Pa shattering threshold; Popova et al. 2013"
+      }
+    ],
+    "casualties": null,
     "detail": {
-      "atmosphericEntry": {
-        "airburstAltitude": 0.0,
-        "airburstEnergy": 3.379252793470104e+19,
-        "breakupAltitude": 38825.25106601889,
-        "impactVelocity": 19604.18059053095,
-        "reachesGround": true
-      },
-      "crater": {
-        "craterDepth": 840.7517008397764,
-        "finalDiameter": 11783.061863691726,
-        "isComplex": true
-      },
-      "fireballRadiusM": 6466.017705655404,
-      "impactorMassKg": 196349540849.36206,
       "kineticEnergyJ": 3.926990816987241e+19,
       "megatons": 9385.73331019895,
+      "impactorMassKg": 196349540849.36206,
+      "atmosphericEntry": {
+        "reachesGround": true,
+        "airburstAltitude": 0.0,
+        "airburstEnergy": 3.379252793470104e+19,
+        "impactVelocity": 19604.18059053095,
+        "breakupAltitude": 38825.25106601889
+      },
+      "crater": {
+        "finalDiameter": 11783.061863691726,
+        "craterDepth": 840.7517008397764,
+        "isComplex": true
+      },
+      "seismicMagnitude": 7.214309856589426,
+      "fireballRadiusM": 6466.017705655404,
+      "radiusWindowBreakageM": 426069.4909777455,
       "radiusSevereDamageM": 131283.72009714844,
       "radiusTotalDestructionM": 79263.45665180657,
-      "radiusWindowBreakageM": 426069.4909777455,
-      "seismicMagnitude": 7.214309856589426,
       "thermalRadiusFirstDegreeM": 104829.00102125082,
       "thermalRadiusThirdDegreeM": 67796.74582256257,
       "tsunami": {
-        "amplitudeAtDistance": 2000.0,
         "applies": true,
-        "arrivalTime": 5.048187773461523,
-        "cavityDepth": 4000.0,
         "cavityDiameter": 9669.648182463916,
+        "cavityDepth": 4000.0,
         "initialAmplitude": 2000.0,
-        "runupHeight": 16833.226712863518
+        "amplitudeAtDistance": 2000.0,
+        "runupHeight": 16833.226712863518,
+        "arrivalTime": 5.048187773461523
       }
     },
-    "kind": "asteroid",
-    "modelVersion": "asteroid-direct-1.0.0",
-    "readout": [
-      {
-        "hint": null,
-        "label": "Impact energy",
-        "value": "9385.7 Mt"
-      },
-      {
-        "hint": "impact velocity 19.6 km/s",
-        "label": "Outcome",
-        "value": "Ground impact"
-      },
-      {
-        "hint": "order-of-magnitude average; Collins et al. 2005",
-        "label": "Recurrence interval",
-        "value": "~1 in 137 thousand yr"
-      },
-      {
-        "hint": null,
-        "label": "Seismic magnitude",
-        "value": "M 7.2"
-      },
-      {
-        "hint": null,
-        "label": "Fireball radius",
-        "value": "6.47 km"
-      },
-      {
-        "hint": null,
-        "label": "20 psi radius",
-        "value": "79.26 km"
-      },
-      {
-        "hint": "complex crater",
-        "label": "Crater diameter",
-        "value": "11.78 km"
-      },
-      {
-        "hint": null,
-        "label": "Tsunami runup",
-        "value": "16.83 km"
-      }
-    ],
-    "rings": [
-      {
-        "category": "blast",
-        "color": "#f9e2af",
-        "description": "Glass shatters; light injuries.",
-        "label": "Window breakage (1 psi)",
-        "radiusM": 426069.4909777455
-      },
-      {
-        "category": "blast",
-        "color": "#cba6f7",
-        "description": "Most buildings collapse.",
-        "label": "Severe damage (7 psi)",
-        "radiusM": 131283.72009714844
-      },
-      {
-        "category": "thermal",
-        "color": "#f5c2e7",
-        "description": "First-degree burns to exposed skin.",
-        "label": "1st° burns",
-        "radiusM": 104829.00102125082
-      },
-      {
-        "category": "blast",
-        "color": "#89b4fa",
-        "description": "Reinforced structures destroyed.",
-        "label": "Total destruction (20 psi)",
-        "radiusM": 79263.45665180657
-      },
-      {
-        "category": "thermal",
-        "color": "#fab387",
-        "description": "Third-degree burns; widespread ignition.",
-        "label": "3rd° burns",
-        "radiusM": 67796.74582256257
-      },
-      {
-        "category": "fireball",
-        "color": "#f5e0dc",
-        "description": "Thermal fireball radius.",
-        "label": "Fireball",
-        "radiusM": 6466.017705655404
-      },
-      {
-        "category": "crater",
-        "color": "#eba0ac",
-        "description": "Excavated crater (radius).",
-        "label": "Final crater",
-        "radiusM": 5891.530931845863
-      }
-    ]
+    "authority": "rust",
+    "modelVersion": "asteroid-direct-1.0.0"
   },
   "nuclear-airburst": {
     "authority": "rust",

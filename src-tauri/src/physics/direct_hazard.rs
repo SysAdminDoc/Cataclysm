@@ -705,6 +705,12 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
     let blast_window = blast_radius(6.9e3, effective_energy, entry.airburst_altitude);
     let blast_severe = blast_radius(48.3e3, effective_energy, entry.airburst_altitude);
     let blast_total = blast_radius(137.9e3, effective_energy, entry.airburst_altitude);
+    // Glass-breakage thresholds per Popova et al. 2013 / Brown et al. 2013
+    // (Chelyabinsk bolide window-damage survey, doi:10.1111/maps.13085):
+    // - Light breakage (cracking): ~200 Pa ground overpressure
+    // - Heavy breakage (shattering, injury risk): ~500 Pa
+    let glass_light_m = blast_radius(200.0, effective_energy, entry.airburst_altitude);
+    let glass_heavy_m = blast_radius(500.0, effective_energy, entry.airburst_altitude);
     let seismic_magnitude = (0.67 * effective_energy.log10() - 5.87).max(0.0);
     let tsunami = asteroid_tsunami(&request, effective_energy);
 
@@ -776,6 +782,24 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             "#eba0ac",
             "crater",
             "Excavated crater (radius).",
+        ));
+    }
+    if glass_light_m > 1.0 {
+        rings.push(ring(
+            "Light glass breakage (200 Pa)",
+            glass_light_m,
+            "#94e2d5",
+            "glass",
+            "Window cracking; glass fragments possible. Popova et al. 2013.",
+        ));
+    }
+    if glass_heavy_m > 1.0 {
+        rings.push(ring(
+            "Heavy glass breakage (500 Pa)",
+            glass_heavy_m,
+            "#74c7ec",
+            "glass",
+            "Windows shatter inward; dominant injury mechanism in airbursts. Popova et al. 2013.",
         ));
     }
     rings.retain(|item| item.radius_m > 0.5);
@@ -866,6 +890,13 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             "Tsunami runup",
             fmt_meters(tsunami.runup_height),
             None,
+        ));
+    }
+    if glass_heavy_m > 1.0 {
+        readout_items.push(readout(
+            "Glass-injury radius",
+            fmt_meters(glass_heavy_m),
+            Some("500 Pa shattering threshold; Popova et al. 2013".to_string()),
         ));
     }
     let detail = AsteroidDetail {
