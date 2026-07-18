@@ -185,6 +185,26 @@ test.describe("Cataclysm browser preview", () => {
     expect(leakedQueries).toEqual([]);
   });
 
+  test("keeps real close approaches separate from hypothetical impacts", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Planetary Defense Live" }).click();
+    const defense = page.getByRole("region", { name: "Planetary Defense Live" });
+    await expect(defense).toBeVisible();
+    await expect(defense).toContainText("JPL documentation examples, not today's feed");
+    await expect(defense.getByText("A close approach is not a predicted impact.").first()).toBeVisible();
+
+    await defense.getByRole("button", { name: "Explore real approach" }).first().click();
+    await expect(defense).toContainText("no risk claim made");
+    await expect(defense.getByRole("img", { name: /Schematic close approach/i })).toBeVisible();
+
+    await defense.getByRole("button", { name: "Try hypothetical impact" }).first().click();
+    const workspace = page.getByRole("complementary", { name: "Simulation controls and results" });
+    await expect(workspace.getByText(/Hypothetical impact: 153814/i).first()).toBeVisible();
+    await expect(workspace).toContainText("Non-prediction");
+    await expect(workspace).toContainText("JPL does not predict this object will hit Earth");
+    expect((await new AxeBuilder({ page }).include(".hazard__scenario-context").analyze()).violations).toEqual([]);
+  });
+
   test("browser preview displays the shared Rust/WASM source fixture", async ({ page }) => {
     await page.goto("/");
     const eltanin = page.locator(".preset-card").filter({
@@ -295,14 +315,14 @@ test.describe("Cataclysm browser preview", () => {
     await page.goto("/?preset=missing-scenario");
 
     await expect(page.getByRole("alert")).toContainText("Scenario link not found: missing-scenario");
-    await expect(page.locator(".app__viewport-hud--source")).toContainText("No source selected");
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("No source");
   });
 
   test("explains malformed shared scenarios without loading fallback physics", async ({ page }) => {
     await page.goto("/?scenario=not-valid-base64!!!");
 
     await expect(page.getByRole("alert")).toContainText(/Couldn't open scenario link:.*malformed or corrupted/i);
-    await expect(page.locator(".app__viewport-hud--source")).toContainText("No source selected");
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("No source");
   });
 
   test("Run & Watch advances to outcomes with one playhead and reuses cached frames", async ({ page }) => {

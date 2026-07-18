@@ -20,6 +20,8 @@ import { TrustDisclosure } from "./TrustDisclosure";
 import { useI18n } from "../lib/i18n";
 import { LocationSearch } from "./LocationSearch";
 import type { NukemapLocationResult } from "../types/nukemap-data";
+import { PlanetaryDefensePanel } from "./PlanetaryDefensePanel";
+import type { HypotheticalImpactDraft } from "../types/jpl";
 
 type Props = {
   presets: Preset[];
@@ -38,6 +40,7 @@ type Props = {
   favoriteIds?: string[];
   onToggleFavorite?: (id: string) => void;
   onSelectFamiliarPlace?: (place: NukemapLocationResult) => void;
+  onTryHypotheticalImpact?: (draft: HypotheticalImpactDraft) => void;
 };
 
 type ViewMode = "cards" | "timeline";
@@ -201,6 +204,7 @@ export function PresetSelector({
   favoriteIds = [],
   onToggleFavorite,
   onSelectFamiliarPlace,
+  onTryHypotheticalImpact,
 }: Props) {
   const { locale, t } = useI18n();
   const instanceId = useId();
@@ -212,6 +216,7 @@ export function PresetSelector({
   const [surpriseResultId, setSurpriseResultId] = useState<string | null>(null);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const [placeSearchOpen, setPlaceSearchOpen] = useState(false);
+  const [planetaryDefenseOpen, setPlanetaryDefenseOpen] = useState(false);
   const guidedLessons = useMemo(() => getGuidedLessons(locale), [locale]);
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
   const catalog = useMemo(() => buildScenarioCatalog(sorted, directScenarios), [directScenarios, sorted]);
@@ -429,10 +434,26 @@ export function PresetSelector({
             <UiIcon name="mapPin" size={13} />
             {t("location.nearLabel")}
           </button>
+          <button
+            type="button"
+            disabled={!onTryHypotheticalImpact}
+            aria-label={t("pd.title")}
+            aria-expanded={planetaryDefenseOpen}
+            aria-controls={`${instanceId}-planetary-defense`}
+            onClick={() => setPlanetaryDefenseOpen((open) => !open)}
+          >
+            <UiIcon name="info" size={13} />
+            {t("pd.launch")}
+          </button>
         </div>
         {placeSearchOpen && onSelectFamiliarPlace && (
           <div id={`${instanceId}-familiar-place-search`} className="scenario-discovery__place-search">
             <LocationSearch onSelect={onSelectFamiliarPlace} purpose="near" />
+          </div>
+        )}
+        {planetaryDefenseOpen && onTryHypotheticalImpact && (
+          <div id={`${instanceId}-planetary-defense`}>
+            <PlanetaryDefensePanel onTryHypotheticalImpact={onTryHypotheticalImpact} />
           </div>
         )}
         {surpriseResult && (

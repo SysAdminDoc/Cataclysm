@@ -80,6 +80,7 @@ import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
 import type { Gauge, Preset } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
+import type { HypotheticalImpactDraft } from "./types/jpl";
 import { HazardControls } from "./components/HazardControls";
 import { WW3ExchangeHud, WW3ExchangePanel, type Ww3ExchangeSession } from "./components/WW3Exchange";
 import { MIRVPatternPanel } from "./components/MIRVPatternPanel";
@@ -393,6 +394,7 @@ export default function App() {
   const [pointProbeA, setPointProbeA] = useState<PointProbeReport | null>(null);
   const [pointProbeB, setPointProbeB] = useState<PointProbeReport | null>(null);
   const [familiarPlace, setFamiliarPlace] = useState<NukemapLocationResult | null>(null);
+  const [hypotheticalApproach, setHypotheticalApproach] = useState<HypotheticalImpactDraft | null>(null);
   useEffect(() => {
     if (!inspectMode) setComparisonInspectCoordinate(null);
   }, [inspectMode]);
@@ -1181,12 +1183,25 @@ export default function App() {
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? t("layers.noSource");
-  const directWorkspaceLabel = hazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact");
+  const directWorkspaceLabel = hazardMode === "nuclear"
+    ? t("app.nuclearDetonation")
+    : hypotheticalApproach
+      ? t("pd.hypotheticalTitle", { name: hypotheticalApproach.object.fullname })
+      : t("app.asteroidImpact");
   const activeWorkspaceLabel = inHazardMode
     ? familiarPlace
       ? t("place.whatIfTitle", { name: familiarPlace.name })
       : directWorkspaceLabel
     : activeSourceLabel;
+  const hypotheticalApproachContext = hypotheticalApproach ? {
+    title: t("pd.hypotheticalTitle", { name: hypotheticalApproach.object.fullname }),
+    description: t("pd.hypotheticalNotice"),
+    assumptions: [
+      t("pd.assumption.size", { value: formatNumber(hypotheticalApproach.diameterM, { maximumFractionDigits: 0 }) }),
+      t("pd.assumption.density", { value: formatNumber(hypotheticalApproach.densityKgM3) }),
+      t("pd.assumption.speed", { value: formatNumber(hypotheticalApproach.velocityMps / 1_000, { maximumFractionDigits: 1 }) }),
+    ],
+  } : undefined;
   const viewportSourceLabel = libraryPreviewPending && libraryPreviewLabel && !slotA.initial && !hazardCenter
     ? t("app.previewLabel", { label: libraryPreviewLabel })
     : activeWorkspaceLabel;
@@ -1430,6 +1445,7 @@ export default function App() {
   function selectHazardMode(mode: HazardMode) {
     setRunJourney(null);
     setHazardMode(mode);
+    if (mode !== "asteroid") setHypotheticalApproach(null);
     setLibraryPreviewPending(false);
     if (mode !== "tsunami") {
       setDetonateNonces((current) => ({ ...current, [mode]: 0 }));
@@ -1457,6 +1473,26 @@ export default function App() {
       setMirvPreview(null);
     }
     setPendingGauge(null);
+    setInspectorTab("setup");
+  }
+
+  function tryHypotheticalApproachImpact(draft: HypotheticalImpactDraft) {
+    setLibraryPreview(null);
+    setLibraryPreviewPending(false);
+    setHypotheticalApproach(draft);
+    setAsteroidInput((current) => ({
+      ...current,
+      diameterM: draft.diameterM,
+      densityKgM3: draft.densityKgM3,
+      velocityKmS: draft.velocityMps / 1_000,
+    }));
+    selectHazardMode("asteroid");
+    setHazardCenters((current) => ({
+      ...current,
+      asteroid: familiarPlace ? { lat: familiarPlace.lat, lon: familiarPlace.lon } : null,
+    }));
+    setHazardResult(null);
+    setDirectRenderReplay(null);
     setInspectorTab("setup");
   }
 
@@ -1535,6 +1571,7 @@ export default function App() {
     }
 
     const scenario = libraryPreview.scenario;
+    setHypotheticalApproach(null);
     const scenarioCenter = familiarPlace
       ? { lat: familiarPlace.lat, lon: familiarPlace.lon }
       : scenario.center;
@@ -2180,6 +2217,7 @@ export default function App() {
             favoriteIds={libraryPreferences.favoriteIds}
             onToggleFavorite={(id) => updateLibraryPreferences((current) => toggleFavoriteScenario(current, id))}
             onSelectFamiliarPlace={(place) => handleLocationSelect(place, true)}
+            onTryHypotheticalImpact={tryHypotheticalApproachImpact}
             busyId={slotA.busyPresetId}
             onStartLesson={startGuidedLesson}
             completedLessons={lessonCompletions}
@@ -2454,6 +2492,7 @@ export default function App() {
             error={hazardError}
             canAnimate={Boolean(directRenderReplay)}
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
+            scenarioContext={hypotheticalApproachContext}
           />
           {hazardMode === "nuclear" && !ww3Session && (
             <MIRVPatternPanel
@@ -2587,6 +2626,7 @@ export default function App() {
           error={hazardError}
           canAnimate={Boolean(directRenderReplay)}
           workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
+          scenarioContext={hypotheticalApproachContext}
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel
           initial={slotA.initial}

@@ -1,6 +1,14 @@
 import { FALLBACK_FIREBALLS } from "../data/fallback-fireballs";
 import { findFallbackNeo } from "../data/fallback-neos";
-import type { FireballEvent, NeoLookupResult, SentryRisk } from "../types/jpl";
+import { FALLBACK_CLOSE_APPROACHES } from "../data/fallback-close-approaches";
+import type {
+  FireballEvent,
+  HypotheticalImpactDraft,
+  NeoApproachFeed,
+  NeoCloseApproach,
+  NeoLookupResult,
+  SentryRisk,
+} from "../types/jpl";
 import { api, isTauri } from "./tauri";
 
 type JsonRecord = Record<string, unknown>;
@@ -21,6 +29,11 @@ function numberValue(value: unknown): number | null {
 function fieldNumber(row: unknown[], fields: string[], name: string): number | null {
   const index = fields.indexOf(name);
   return index < 0 ? null : numberValue(row[index]);
+}
+
+function fieldString(row: unknown[], fields: string[], name: string): string | null {
+  const index = fields.indexOf(name);
+  return index < 0 ? null : stringValue(row[index]);
 }
 
 function signedCoordinate(value: number | null, direction: unknown): number | null {
@@ -68,6 +81,200 @@ export async function loadFireballs(): Promise<{ events: FireballEvent[]; notice
   } catch {
     return { events: FALLBACK_FIREBALLS, notice: "Live CNEOS feed unavailable; showing built-in notable events." };
   }
+}
+
+const APPROACH_CACHE_KEY = "cataclysm.neo.close-approaches.v1";
+const CAD_DOCUMENTATION_FETCHED_AT = "2023-03-01T00:00:00.000Z";
+const MONTHS: Readonly<Record<string, string>> = {
+  Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06",
+  Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+};
+
+function cadDateToIso(value: string): string | null {
+  const match = value.trim().match(/^(\d{4})-([A-Z][a-z]{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
+  if (!match || !MONTHS[match[2]]) return null;
+  const iso = `${match[1]}-${MONTHS[match[2]]}-${match[3]}T${match[4]}:${match[5]}:00.000Z`;
+  return Number.isFinite(Date.parse(iso)) ? iso : null;
+}
+
+function diameterRange(
+  diameterKm: number | null,
+  sigmaKm: number | null,
+  absoluteMagnitude: number | null,
+): Pick<NeoCloseApproach, "diameterMinM" | "diameterMaxM" | "diameterBasis"> {
+  if (diameterKm !== null && diameterKm > 0) {
+    const sigma = sigmaKm !== null && sigmaKm > 0 ? sigmaKm : 0;
+    const meters = (valueKm: number) => Math.round(valueKm * 1_000_000) / 1_000;
+    return {
+      diameterMinM: meters(Math.max(0, diameterKm - sigma)),
+      diameterMaxM: meters(diameterKm + sigma),
+      diameterBasis: "measured",
+    };
+  }
+  if (absoluteMagnitude !== null) {
+    const estimateM = (albedo: number) => (1_329 / Math.sqrt(albedo)) * 10 ** (-0.2 * absoluteMagnitude) * 1_000;
+    return {
+      diameterMinM: estimateM(0.25),
+      diameterMaxM: estimateM(0.05),
+      diameterBasis: "estimated_from_h",
+    };
+  }
+  return { diameterMinM: 0, diameterMaxM: 0, diameterBasis: "unknown" };
+}
+
+/** Parses only the bounded Earth-approach fields requested from CAD API v1.5. */
+export function parseCloseApproaches(payload: unknown): NeoCloseApproach[] {
+  const root = record(payload);
+  const fields = Array.isArray(root?.fields) ? root.fields.filter((field): field is string => typeof field === "string") : [];
+  const rows = Array.isArray(root?.data) ? root.data : [];
+  return rows.flatMap((value, index) => {
+    if (!Array.isArray(value)) return [];
+    const designation = fieldString(value, fields, "des")?.trim() ?? "";
+    const fullname = fieldString(value, fields, "fullname")?.trim() || designation;
+    const approachAtIso = cadDateToIso(fieldString(value, fields, "cd") ?? "");
+    const nominalDistanceAu = fieldNumber(value, fields, "dist");
+    const minimumDistanceAu = fieldNumber(value, fields, "dist_min");
+    const maximumDistanceAu = fieldNumber(value, fields, "dist_max");
+    const relativeVelocityKmS = fieldNumber(value, fields, "v_rel");
+    const infinityVelocityKmS = fieldNumber(value, fields, "v_inf");
+    const absoluteMagnitude = fieldNumber(value, fields, "h");
+    if (
+      !designation || !approachAtIso
+      || nominalDistanceAu === null || nominalDistanceAu <= 0
+      || minimumDistanceAu === null || minimumDistanceAu <= 0
+      || maximumDistanceAu === null || maximumDistanceAu < minimumDistanceAu
+      || relativeVelocityKmS === null || relativeVelocityKmS <= 0
+      || infinityVelocityKmS === null || infinityVelocityKmS <= 0
+    ) return [];
+    return [{
+      id: `cad-${designation}-${approachAtIso}-${index}`,
+      designation,
+      fullname,
+      approachAtIso,
+      nominalDistanceAu,
+      minimumDistanceAu,
+      maximumDistanceAu,
+      relativeVelocityKmS,
+      infinityVelocityKmS,
+      timeUncertainty: fieldString(value, fields, "t_sigma_f")?.trim() || "",
+      absoluteMagnitude,
+      ...diameterRange(
+        fieldNumber(value, fields, "diameter"),
+        fieldNumber(value, fields, "diameter_sigma"),
+        absoluteMagnitude,
+      ),
+      source: "NASA/JPL SBDB Close Approach Data API" as const,
+    }];
+  }).slice(0, 12);
+}
+
+function isCloseApproach(value: unknown): value is NeoCloseApproach {
+  const entry = record(value);
+  const finite = (candidate: unknown): candidate is number => typeof candidate === "number" && Number.isFinite(candidate);
+  return typeof entry?.id === "string" && entry.id.length <= 160
+    && typeof entry.designation === "string"
+    && entry.designation.length <= 80
+    && typeof entry.fullname === "string" && entry.fullname.length <= 160
+    && typeof entry.approachAtIso === "string"
+    && Number.isFinite(Date.parse(entry.approachAtIso))
+    && finite(entry.nominalDistanceAu) && entry.nominalDistanceAu > 0 && entry.nominalDistanceAu <= 0.05
+    && finite(entry.minimumDistanceAu) && entry.minimumDistanceAu > 0
+    && finite(entry.maximumDistanceAu) && entry.maximumDistanceAu >= entry.minimumDistanceAu
+    && finite(entry.relativeVelocityKmS) && entry.relativeVelocityKmS > 0
+    && finite(entry.infinityVelocityKmS) && entry.infinityVelocityKmS > 0
+    && finite(entry.diameterMinM) && entry.diameterMinM >= 0
+    && finite(entry.diameterMaxM) && entry.diameterMaxM >= entry.diameterMinM
+    && typeof entry.timeUncertainty === "string" && entry.timeUncertainty.length <= 80
+    && (entry.absoluteMagnitude === null || finite(entry.absoluteMagnitude))
+    && ["measured", "estimated_from_h", "unknown"].includes(String(entry.diameterBasis))
+    && ["NASA/JPL SBDB Close Approach Data API", "Built-in reference"].includes(String(entry.source));
+}
+
+function readApproachCache(): { approaches: NeoCloseApproach[]; fetchedAtIso: string } | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const cached = record(JSON.parse(localStorage.getItem(APPROACH_CACHE_KEY) ?? "null"));
+    const approaches = Array.isArray(cached?.approaches) ? cached.approaches.filter(isCloseApproach).slice(0, 12) : [];
+    const fetchedAtIso = stringValue(cached?.fetchedAtIso);
+    if (!approaches.length || !fetchedAtIso || !Number.isFinite(Date.parse(fetchedAtIso))) return null;
+    return { approaches, fetchedAtIso };
+  } catch {
+    return null;
+  }
+}
+
+function writeApproachCache(approaches: NeoCloseApproach[], fetchedAtIso: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(APPROACH_CACHE_KEY, JSON.stringify({ schemaVersion: 1, approaches, fetchedAtIso }));
+  } catch {
+    // Browsing live data still works when storage is unavailable.
+  }
+}
+
+export async function loadCloseApproaches(): Promise<NeoApproachFeed> {
+  if (!isTauri()) {
+    return {
+      approaches: [...FALLBACK_CLOSE_APPROACHES],
+      fetchedAtIso: CAD_DOCUMENTATION_FETCHED_AT,
+      status: "reference",
+      stale: false,
+      notice: "Live close approaches are available in the desktop app; showing JPL API documentation examples.",
+    };
+  }
+  try {
+    const payload = await api.jplApiRequest("cad", {
+      "date-min": "now",
+      "date-max": "+60",
+      "dist-max": "0.05",
+      sort: "date",
+      limit: "12",
+      diameter: "true",
+      fullname: "true",
+    });
+    const approaches = parseCloseApproaches(payload);
+    if (!approaches.length) throw new Error("NASA/JPL returned no bounded close approaches.");
+    const fetchedAtIso = new Date().toISOString();
+    writeApproachCache(approaches, fetchedAtIso);
+    return { approaches, fetchedAtIso, status: "live", stale: false, notice: null };
+  } catch {
+    const cached = readApproachCache();
+    if (cached) {
+      return {
+        ...cached,
+        status: "cached",
+        stale: true,
+        notice: "NASA/JPL is unavailable; showing the last successful on-device cache.",
+      };
+    }
+    return {
+      approaches: [...FALLBACK_CLOSE_APPROACHES],
+      fetchedAtIso: CAD_DOCUMENTATION_FETCHED_AT,
+      status: "reference",
+      stale: true,
+      notice: "NASA/JPL and the on-device cache are unavailable; showing documentation examples, not today's feed.",
+    };
+  }
+}
+
+/** Converts observed approach facts into an explicitly hypothetical impact draft. */
+export function hypotheticalImpactFromApproach(approach: NeoCloseApproach): HypotheticalImpactDraft {
+  const hasSize = approach.diameterMaxM > 0;
+  const diameterM = hasSize ? (approach.diameterMinM + approach.diameterMaxM) / 2 : 100;
+  const velocityMps = Math.sqrt(approach.infinityVelocityKmS ** 2 + 11.186 ** 2) * 1_000;
+  return {
+    object: approach,
+    diameterM,
+    velocityMps,
+    densityKgM3: 2_600,
+    assumptions: [
+      hasSize
+        ? "Diameter uses the midpoint of the displayed JPL measured/estimated range."
+        : "Diameter defaults to 100 m because the close-approach feed has no size estimate.",
+      "Density uses a generic 2,600 kg/m³ asteroid assumption; CAD does not supply composition.",
+      "Impact speed combines JPL V-infinity with Earth escape speed. This is a what-if input, not a predicted trajectory or impact corridor.",
+    ],
+  };
 }
 
 function valueOf(items: unknown, name: string): string | null {

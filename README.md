@@ -216,9 +216,16 @@ Existing tools each do one piece:
 - **Impact profile diagrams** — responsive SVGs plot the bounded atmospheric
   trajectory and modeled crater cross-section returned by the registered Rust
   result, including breakup/airburst markers and accessible descriptions.
-- **NASA/JPL impact data** — desktop impact setup can populate inputs from SBDB,
-  show Sentry risk context when available, and plot the latest 80 located CNEOS
-  fireballs. Bounded built-in references keep both workflows useful offline.
+- **Planetary Defense Live + NASA/JPL impact data** — Quick Start shows the
+  next bounded close approaches with size range, miss distance, date, timing
+  uncertainty, source version, and last-updated time. Real flybys are rendered
+  as non-intersecting approach schematics and never presented as impacts or
+  danger claims; a separate hypothetical-impact action exposes its cited input
+  assumptions and an explicit non-prediction notice. The desktop cache stays
+  browsable offline with a stale state, while built-in JPL documentation
+  examples cover an empty first-run cache. Impact setup can also populate inputs
+  from SBDB, show Sentry risk context when available, and plot the latest 80
+  located CNEOS fireballs.
 - **Near a place I know** — Quick Start searches 246 population-bearing cities,
   41,958 US ZIP centroids, 459 landmarks/strategic targets, or pasted
   coordinates from a packaged index without requesting live location or

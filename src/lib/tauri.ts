@@ -411,7 +411,7 @@ export const api = {
   asteroidResultVisuals(resultId: string) {
     return invoke<AsteroidVisualReport>("asteroid_result_visuals", { resultId });
   },
-  jplApiRequest(endpoint: "fireball" | "sbdb" | "sentry", params: Record<string, string>) {
+  jplApiRequest(endpoint: "fireball" | "sbdb" | "sentry" | "cad", params: Record<string, string>) {
     return invoke<unknown>("jpl_api_request", { req: { endpoint, params } });
   },
   nceiHazelSearch(req: HazelEventSearchRequest) {

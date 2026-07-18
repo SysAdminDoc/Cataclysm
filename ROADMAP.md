@@ -53,13 +53,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ### P1
 
-- [ ] P1 - UX-12: Turn UNI-08 into a Planetary Defense Live discovery surface
-  Why: a live catalog of real close approaches gives average users an immediate reason to return and connects asteroid spectacle to current science, while the current asteroid experience begins with anonymous diameter/velocity sliders.
-  Evidence: UNI-08 NEO/fireball integration; NASA Eyes tracks more than 30,000 near-Earth objects, highlights the next five close approaches, and separates real-time orbit exploration from educational stories (https://science.nasa.gov/eyes/ and https://www.jpl.nasa.gov/asteroid-watch/eyes-on-asteroids/).
-  Touches: UX shell over UNI-08 data/cache, live discovery cards, orbit/approach camera view, uncertainty/provenance panel, hypothetical-impact copy boundary, offline stale-data state.
-  Acceptance: a Today / Next approaches collection shows current JPL objects with size range, miss distance, date, uncertainty, and last-updated time; Explore real approach never depicts an impact; Try a hypothetical impact creates an explicit non-prediction scenario using cited assumptions; cached data remains browsable offline with a stale badge; no object is described as dangerous without authoritative risk data.
-  Complexity: L
-
 - [ ] P1 - UX-13: Make deterministic replays shareable as short highlight stories
   Why: the current Export menu is format-first and Video is simply unavailable; the most compelling output for a casual user is a short, trustworthy story they can replay or share, not a raw GIS file.
   Evidence: live Export audit; existing HR-53 deterministic replay/capture contract; Google Earth presents authored stories and shareable projects (https://earth.google.com/intl/versions/); Universe Sandbox supports sharing simulations (https://universesandbox.com/presskit/).

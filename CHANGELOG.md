@@ -44,6 +44,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added Planetary Defense Live to Quick Start. Installed desktop builds fetch
+  the next bounded NASA/JPL close approaches with size ranges, nominal and
+  three-sigma miss distances, approach time, timing uncertainty, source version,
+  and fetch time; a last-successful on-device cache remains browsable offline
+  with a stale state. Real flybys use a deliberately non-intersecting schematic
+  and make no risk claim. “Try hypothetical impact” creates a separately labeled
+  non-prediction draft whose diameter, density, and speed assumptions remain
+  visible in Setup. Built-in JPL documentation examples cover first-run offline
+  use without pretending to be a current feed.
+
 - Added a Quick Start “Near a place I know” workflow over the fully packaged
   city, ZIP, landmark/target, and coordinate index. Historical tsunami origins
   remain fixed while the selected place becomes an explainable point probe;

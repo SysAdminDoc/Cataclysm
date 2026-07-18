@@ -3,7 +3,7 @@
 //! JPL's fair-use policy disallows browser embedding and requires clients to
 //! serialize requests and verify response versions. The WebView therefore has
 //! no JPL CSP authority: this module permits only the fixed query shapes used by
-//! the fireball feed, SBDB lookup, and Sentry detail lookup.
+//! the fireball feed, SBDB lookup, Sentry detail lookup, and close approaches.
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -31,6 +31,7 @@ pub enum JplEndpoint {
     Fireball,
     Sbdb,
     Sentry,
+    Cad,
 }
 
 impl JplEndpoint {
@@ -39,6 +40,7 @@ impl JplEndpoint {
             Self::Fireball => "https://ssd-api.jpl.nasa.gov/fireball.api",
             Self::Sbdb => "https://ssd-api.jpl.nasa.gov/sbdb.api",
             Self::Sentry => "https://ssd-api.jpl.nasa.gov/sentry.api",
+            Self::Cad => "https://ssd-api.jpl.nasa.gov/cad.api",
         }
     }
 
@@ -47,6 +49,7 @@ impl JplEndpoint {
             Self::Fireball => "1.2",
             Self::Sbdb => "1.3",
             Self::Sentry => "2.0",
+            Self::Cad => "1.5",
         }
     }
 }
@@ -89,7 +92,11 @@ pub async fn request(input: JplApiRequest) -> Result<serde_json::Value, String> 
 }
 
 fn validate_request(input: &JplApiRequest) -> Result<(), String> {
-    if input.params.len() > 3 {
+    let max_params = match input.endpoint {
+        JplEndpoint::Cad => 7,
+        _ => 3,
+    };
+    if input.params.len() > max_params {
         return Err("NASA/JPL request has too many parameters".to_string());
     }
     if input
@@ -124,6 +131,27 @@ fn validate_request(input: &JplApiRequest) -> Result<(), String> {
                 return Err("Sentry lookup requires a designation".to_string());
             }
             reject_unknown(&input.params, &["des"])
+        }
+        JplEndpoint::Cad => {
+            require_exact(&input.params, "date-min", "now")?;
+            require_exact(&input.params, "date-max", "+60")?;
+            require_exact(&input.params, "dist-max", "0.05")?;
+            require_exact(&input.params, "sort", "date")?;
+            require_exact(&input.params, "limit", "12")?;
+            require_exact(&input.params, "diameter", "true")?;
+            require_exact(&input.params, "fullname", "true")?;
+            reject_unknown(
+                &input.params,
+                &[
+                    "date-min",
+                    "date-max",
+                    "dist-max",
+                    "sort",
+                    "limit",
+                    "diameter",
+                    "fullname",
+                ],
+            )
         }
     }
 }
@@ -188,6 +216,19 @@ mod tests {
         ))
         .is_ok());
         assert!(validate_request(&fixture(
+            JplEndpoint::Cad,
+            &[
+                ("date-min", "now"),
+                ("date-max", "+60"),
+                ("dist-max", "0.05"),
+                ("sort", "date"),
+                ("limit", "12"),
+                ("diameter", "true"),
+                ("fullname", "true"),
+            ],
+        ))
+        .is_ok());
+        assert!(validate_request(&fixture(
             JplEndpoint::Fireball,
             &[("req-loc", "true"), ("limit", "500"), ("sort", "-date")],
         ))
@@ -195,6 +236,19 @@ mod tests {
         assert!(validate_request(&fixture(
             JplEndpoint::Sbdb,
             &[("sstr", "Apophis"), ("phys-par", "1"), ("url", "https://example.com")],
+        ))
+        .is_err());
+        assert!(validate_request(&fixture(
+            JplEndpoint::Cad,
+            &[
+                ("date-min", "now"),
+                ("date-max", "+60"),
+                ("dist-max", "1.0"),
+                ("sort", "date"),
+                ("limit", "12"),
+                ("diameter", "true"),
+                ("fullname", "true"),
+            ],
         ))
         .is_err());
     }
@@ -211,5 +265,10 @@ mod tests {
             &serde_json::json!({ "signature": { "version": "1.3" } }),
         )
         .is_err());
+        assert!(validate_signature(
+            JplEndpoint::Cad,
+            &serde_json::json!({ "signature": { "version": "1.5" } }),
+        )
+        .is_ok());
     }
 }

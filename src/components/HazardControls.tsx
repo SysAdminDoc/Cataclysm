@@ -130,6 +130,7 @@ export function HazardControls({
   error = null,
   canAnimate = true,
   workspaceMode = "advanced",
+  scenarioContext,
 }: {
   mode: HazardMode;
   nuclear: NuclearInput;
@@ -157,6 +158,7 @@ export function HazardControls({
   error?: string | null;
   canAnimate?: boolean;
   workspaceMode?: WorkspaceMode;
+  scenarioContext?: { title: string; description: string; assumptions: readonly string[] };
 }) {
   const { t, formatNumber } = useI18n();
   const nuclearYield = sourceBound("DirectNuclear", "yield_kt");
@@ -200,6 +202,17 @@ export function HazardControls({
         <span>{display === "results" ? t("hazard.title.results") : mode === "nuclear" ? t("hazard.title.nuclear") : t("hazard.title.asteroid")}</span>
         <span className="section__badge" data-tone={result ? "success" : "muted"}>{result ? t("hazard.status.ready") : t("hazard.status.setup")}</span>
       </div>
+
+      {scenarioContext && (
+        <aside className="hazard__scenario-context" aria-label={scenarioContext.title}>
+          <strong>{scenarioContext.title}</strong>
+          <p>{scenarioContext.description}</p>
+          <details>
+            <summary>{t("pd.assumptions")}</summary>
+            <ul>{scenarioContext.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+          </details>
+        </aside>
+      )}
 
       {showSetup && <>
       {onLocationSelect && <LocationSearch onSelect={onLocationSelect} purpose="target" />}
