@@ -133,6 +133,18 @@
   accent-color: var(--accent);
 }
 
+.hazard__slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hazard__slider-label {
+  color: var(--overlay);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .hazard__select {
   grid-column: 2 / 4;
   width: 100%;

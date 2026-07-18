@@ -49,6 +49,30 @@ test("language switch persists across settings, simulation results, layers, and 
   expect(headerBounds).not.toBeNull();
   expect(await page.screenshot({ clip: headerBounds! })).toMatchSnapshot("localized-header-ja.png");
 
+  await page.getByRole("button", { name: "独自に作成" }).click();
+  const customBuilder = page.locator(".scenario-builder");
+  await expect(customBuilder.getByText("カスタムシナリオ", { exact: true })).toBeVisible();
+  await expect(customBuilder.getByRole("tab", { name: "小惑星" })).toBeVisible();
+  await expect(customBuilder.getByRole("spinbutton", { name: "直径 (m) 正確な値" })).toBeVisible();
+  await customBuilder.getByRole("tab", { name: "地震" }).click();
+  await expect(customBuilder.getByRole("spinbutton", { name: "マグニチュード (M_w) 正確な値" })).toBeVisible();
+  await expect(customBuilder.getByRole("button", { name: "沈み込み帯から断層を自動入力" })).toBeVisible();
+  const customAccessibility = await new AxeBuilder({ page }).include(".scenario-builder").analyze();
+  expect(customAccessibility.violations).toEqual([]);
+  const customBounds = await customBuilder.boundingBox();
+  expect(customBounds).not.toBeNull();
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  expect(await page.screenshot({
+    clip: {
+      x: customBounds!.x,
+      y: Math.max(0, customBounds!.y),
+      width: customBounds!.width,
+      height: Math.min(customBounds!.height, 390, viewport!.height - Math.max(0, customBounds!.y) - 12),
+    },
+    style: ".simulation-transport { display: none !important; }",
+  })).toMatchSnapshot("localized-scenario-builder-ja.png");
+
   const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
   await expect(tohoku).toBeVisible();
   await tohoku.click();

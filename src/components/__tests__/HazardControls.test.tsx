@@ -248,7 +248,7 @@ describe("HazardControls", () => {
       />,
     );
     expect(screen.getByLabelText("Weapon preset")).toHaveValue("hiroshima");
-    expect(screen.getByRole("slider", { name: "Yield coarse slider" })).toHaveAttribute("aria-valuetext", "15 kT");
+    expect(screen.getByRole("slider", { name: "Yield quick adjust" })).toHaveAttribute("aria-valuetext", "15 kT");
     expect(screen.getByRole("button", { name: /click the globe/i })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -421,7 +421,7 @@ describe("HazardControls", () => {
     );
     for (const label of labels) {
       const exact = screen.getByRole("spinbutton", { name: `${label} exact value` });
-      const slider = screen.getByRole("slider", { name: `${label} coarse slider` });
+      const slider = screen.getByRole("slider", { name: `${label} quick adjust` });
       expect(exact).toHaveAttribute("aria-invalid", "false");
       expect(slider).toHaveAttribute("aria-valuetext");
       for (const control of [exact, slider]) {

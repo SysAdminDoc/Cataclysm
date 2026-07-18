@@ -9,6 +9,7 @@ import {
   SCENARIO_SCHEMA_VERSION,
 } from "../../lib/scenario-schema";
 import { settings } from "../../lib/settings";
+import { I18nProvider } from "../../lib/i18n";
 
 const clipboard = {
   readText: vi.fn<() => Promise<string>>(),
@@ -97,7 +98,7 @@ describe("ScenarioBuilder scenario persistence", () => {
 
     await user.click(screen.getByRole("button", { name: "Copy" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed: clipboard is unavailable.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Copy failed: the clipboard is unavailable.");
   });
 
   it("saves and deletes scenarios from the saved list", async () => {
@@ -126,7 +127,7 @@ describe("ScenarioBuilder scenario persistence", () => {
     try {
       renderBuilder();
       await user.click(screen.getByRole("button", { name: "Load" }));
-      expect(await screen.findByRole("alert")).toHaveTextContent(/Couldn't load saved scenarios: storage unavailable/);
+      expect(await screen.findByRole("alert")).toHaveTextContent(/Could not load saved scenarios: storage unavailable/);
       await user.click(screen.getByRole("button", { name: "Retry saved scenarios" }));
       expect(await screen.findByText("No saved scenarios yet.")).toBeInTheDocument();
     } finally {
@@ -211,7 +212,7 @@ describe("ScenarioBuilder scenario persistence", () => {
 
     await user.click(screen.getByRole("button", { name: "Paste" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Paste failed: clipboard is unavailable.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Paste failed: the clipboard is unavailable.");
   });
 
   it("migrates valid legacy clipboard payloads before simulation", async () => {
@@ -227,7 +228,7 @@ describe("ScenarioBuilder scenario persistence", () => {
 
     await user.click(screen.getByRole("button", { name: "Paste" }));
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "Pasted scenario (added schemaVersion 1).",
+      "Pasted scenario after 1 compatibility update.",
     );
 
     await user.click(screen.getByRole("button", { name: "Simulate" }));
@@ -261,7 +262,7 @@ describe("ScenarioBuilder scenario persistence", () => {
     await user.click(await screen.findByRole("button", { name: /Load \(1\)/ }));
     await user.click(screen.getByRole("button", { name: "Old quake" }));
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "Loaded scenario (added schemaVersion 1).",
+      "Loaded scenario after 1 compatibility update.",
     );
 
     await user.click(screen.getByRole("button", { name: "Simulate" }));
@@ -291,7 +292,7 @@ describe("ScenarioBuilder scenario persistence", () => {
     expect(diameter).toHaveAccessibleName("Diameter (m) exact value");
   });
 
-  it("gives every numeric field a distinct exact control and coarse slider relationship", async () => {
+  it("gives every numeric field a distinct exact control and quick-adjust slider relationship", async () => {
     const user = setupUser();
     renderBuilder();
     const fieldsByTab = {
@@ -315,7 +316,7 @@ describe("ScenarioBuilder scenario persistence", () => {
         expect(helpId).toBeTruthy();
       }
       for (const slider of screen.queryAllByRole("slider")) {
-        expect(slider).toHaveAccessibleName(/coarse slider$/);
+        expect(slider).toHaveAccessibleName(/quick adjust$/);
         expect(slider).toHaveAttribute("aria-valuetext");
         slider.getAttribute("aria-describedby")?.split(" ").forEach((id) => {
           expect(document.getElementById(id)).not.toBeNull();
@@ -403,7 +404,40 @@ describe("ScenarioBuilder scenario persistence", () => {
     );
 
     expect(
-      await screen.findByText(/No mapped subduction zone in range/i),
+      await screen.findByText(/No mapped subduction zone is in range/i),
     ).toBeInTheDocument();
+  });
+
+  it("localizes the complete custom-source editor and numeric accessibility text in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const user = setupUser();
+    render(
+      <I18nProvider>
+        <ScenarioBuilder
+          onSimulate={vi.fn()}
+          pickedLocation={null}
+          onTogglePick={vi.fn()}
+          pickActive={false}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("カスタムシナリオ")).toBeInTheDocument();
+    expect(screen.getByRole("tablist", { name: "シナリオの発生源タイプ" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "直径 (m) 正確な値" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "直径 (m)について" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "地球上で選択" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存" })).toHaveAttribute(
+      "title",
+      "現在のシナリオを後で使うために保存",
+    );
+
+    await user.click(screen.getByRole("tab", { name: "地震" }));
+    expect(screen.getByRole("spinbutton", { name: "マグニチュード (M_w) 正確な値" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "沈み込み帯から断層を自動入力" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "気象津波" }));
+    expect(screen.getByText("時間依存の発生源")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "シミュレーション" })).toBeInTheDocument();
   });
 });

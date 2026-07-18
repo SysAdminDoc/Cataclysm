@@ -244,7 +244,7 @@ for (const theme of THEMES) {
         const hazardForm = page.locator(".hazard");
         const fieldLabel = hazard === "Impact" ? "Diameter" : "Yield";
         const exact = hazardForm.getByRole("spinbutton", { name: `${fieldLabel} exact value` });
-        const coarse = hazardForm.getByRole("slider", { name: `${fieldLabel} coarse slider` });
+        const coarse = hazardForm.getByRole("slider", { name: `${fieldLabel} quick adjust` });
         await expect(exact).toHaveAttribute("aria-describedby", /-bounds.*-unit/);
         await expect(coarse).toHaveAttribute("aria-valuetext", /.+/);
         const invalid = Number(await exact.getAttribute("max")) + 1;

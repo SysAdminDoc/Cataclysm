@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { useI18n } from "../lib/i18n";
 import { UiIcon } from "./UiIcon";
 
 type SliderConfig = {
@@ -23,10 +24,16 @@ type Props = {
   slider?: SliderConfig;
 };
 
-function validationMessage(label: string, draft: string, min: number, max: number): string | null {
+function validationMessage(
+  label: string,
+  draft: string,
+  min: number,
+  max: number,
+  t: ReturnType<typeof useI18n>["t"],
+): string | null {
   const parsed = Number(draft);
-  if (draft.trim() === "" || !Number.isFinite(parsed)) return `${label} must be a number.`;
-  if (parsed < min || parsed > max) return `${label} must be between ${min} and ${max}.`;
+  if (draft.trim() === "" || !Number.isFinite(parsed)) return t("numeric.mustBeNumber", { label });
+  if (parsed < min || parsed > max) return t("numeric.between", { label, min, max });
   return null;
 }
 
@@ -45,6 +52,7 @@ export function NumericField({
   layout,
   slider,
 }: Props) {
+  const { t, formatNumber } = useI18n();
   const baseId = useId();
   const numberId = `${baseId}-number`;
   const labelId = `${baseId}-label`;
@@ -69,7 +77,7 @@ export function NumericField({
     .join(" ");
 
   function commit() {
-    const nextError = validationMessage(label, draft, min, max);
+    const nextError = validationMessage(label, draft, min, max, t);
     if (nextError) {
       setError(nextError);
       return;
@@ -82,7 +90,7 @@ export function NumericField({
 
   const exactInput = (
     <span className={layout === "hazard" ? "hazard__num" : "scenario-field__exact"}>
-      <span id={exactId} className="sr-only">exact value</span>
+      <span id={exactId} className="sr-only">{t("numeric.exactValue")}</span>
       <input
         id={numberId}
         type="number"
@@ -105,7 +113,7 @@ export function NumericField({
           numberFocused.current = false;
           commit();
         }}
-        onInvalid={() => setError(validationMessage(label, draft, min, max))}
+        onInvalid={() => setError(validationMessage(label, draft, min, max, t))}
         onKeyDown={(event) => {
           if (event.key === "Enter") event.currentTarget.blur();
         }}
@@ -115,8 +123,14 @@ export function NumericField({
   );
 
   const sliderInput = slider ? (
-    <>
-      <span id={sliderLabelId} className="sr-only">coarse slider</span>
+    <span className={layout === "hazard" ? "hazard__slider-wrap" : "scenario-field__slider-wrap"}>
+      <label
+        id={sliderLabelId}
+        className={layout === "hazard" ? "hazard__slider-label" : "scenario-field__slider-label"}
+        htmlFor={sliderId}
+      >
+        {t("numeric.coarseSlider")}
+      </label>
       <input
         id={sliderId}
         type="range"
@@ -135,7 +149,7 @@ export function NumericField({
           slider.onChange(Math.min(slider.max, Math.max(slider.min, Number(snapped.toPrecision(12)))));
         }}
       />
-    </>
+    </span>
   ) : null;
 
   const header = (
@@ -145,13 +159,15 @@ export function NumericField({
         id={boundsId}
         className={layout === "hazard" ? "sr-only" : "scenario-form__bound"}
       >
-        {layout === "scenario" ? ` (${min} … ${max})` : `Allowed range: ${min} to ${max}.`}
+        {layout === "scenario"
+          ? ` (${formatNumber(min)} … ${formatNumber(max)})`
+          : t("numeric.allowedRange", { min: formatNumber(min), max: formatNumber(max) })}
       </span>
       {help && (
         <button
           type="button"
           className="scenario-field__help-btn"
-          aria-label={`About ${label}`}
+          aria-label={t("numeric.about", { label })}
           aria-expanded={helpOpen}
           aria-controls={helpId}
           onClick={() => setHelpOpen((open) => !open)}
