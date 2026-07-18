@@ -226,6 +226,13 @@ Existing tools each do one piece:
   examples cover an empty first-run cache. Impact setup can also populate inputs
   from SBDB, show Sentry risk context when available, and plot the latest 80
   located CNEOS fireballs.
+- **Deterministic highlight stories** — Export turns an existing completed SWE
+  replay into a previewable 15, 30, or 60 second sequence of named key moments.
+  Clean-cinematic and analytical cuts are explicit, captions are optional, and
+  every story carries scenario time, scale anchors, uncertainty/educational
+  limits, Cesium/source attribution, evidence provenance, and a stable replay
+  identity label. The local `.catstory.json` file embeds the exact cached frames;
+  save, link copy, and retry never rerun the physics.
 - **Near a place I know** — Quick Start searches 246 population-bearing cities,
   41,958 US ZIP centroids, 459 landmarks/strategic targets, or pasted
   coordinates from a packaged index without requesting live location or

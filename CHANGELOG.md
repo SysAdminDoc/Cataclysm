@@ -44,6 +44,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added deterministic highlight stories to Export. A 15, 30, or 60 second
+  editorial cut is assembled from named moments in the completed SWE replay,
+  with clean-cinematic and analytical presentation contracts plus optional
+  captions. The preview seeks only cached frames; the portable `.catstory.json`
+  file embeds those exact frame payloads, scale anchors, uncertainty and
+  educational limits, renderer/source attribution, evidence provenance, and a
+  stable non-cryptographic replay identity. Reproducible story links retain cut
+  options, while save/copy failures keep the frozen replay available for retry
+  without another physics run.
+
 - Added Planetary Defense Live to Quick Start. Installed desktop builds fetch
   the next bounded NASA/JPL close approaches with size ranges, nominal and
   three-sigma miss distances, approach time, timing uncertainty, source version,

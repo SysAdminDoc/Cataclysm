@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
 
 async function seedAcknowledgedPreview(page: { addInitScript: (script: () => void) => Promise<void> }) {
   await page.addInitScript(() => {
@@ -354,12 +355,69 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("progressbar", { name: "SWE solver progress" })).toHaveCount(0);
   });
 
+  test("builds a shareable highlight story from cached frames without recomputing physics", async ({ page }) => {
+    await page.goto("/");
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
+    await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const shareStory = page.getByRole("button", { name: "Share story", exact: true });
+    await expect(shareStory).toHaveAttribute("aria-disabled", "false");
+    await shareStory.click();
+
+    const dialog = page.getByRole("dialog", { name: "Share story" });
+    await expect(dialog).toContainText("60 cached frames");
+    await expect(dialog).toContainText("Replay identity");
+    await expect(dialog).toContainText("CesiumJS");
+    await dialog.getByRole("button", { name: "15 sec" }).click();
+    await dialog.getByRole("button", { name: "Clean cinematic" }).click();
+    await expect(dialog).toContainText("analytical labels and overlays are omitted");
+    expect((await new AxeBuilder({ page }).include(".highlight-story").analyze()).violations).toEqual([]);
+
+    const downloadPromise = page.waitForEvent("download");
+    await dialog.getByRole("button", { name: "Save story file" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("cataclysm-chicxulub-15s.catstory.json");
+    const path = await download.path();
+    expect(path).not.toBeNull();
+    const manifest = JSON.parse(await readFile(path!, "utf8")) as {
+      cut: { durationS: number; overlayPolicy: string; frameSource: string };
+      replay: { frameCount: number; fingerprint: string; frames: unknown[] };
+      scenarioUrl: string;
+    };
+    expect(manifest.cut).toEqual(expect.objectContaining({
+      durationS: 15,
+      overlayPolicy: "clean_cinematic",
+      frameSource: "cached_authoritative_replay",
+    }));
+    expect(manifest.replay.frameCount).toBe(60);
+    expect(manifest.replay.frames).toHaveLength(60);
+    expect(manifest.replay.fingerprint).toMatch(/^fnv1a32-/);
+    const storyLink = new URL(manifest.scenarioUrl);
+    expect(storyLink.searchParams.get("preset")).toBe("chicxulub");
+    expect(storyLink.searchParams.get("highlight")).toBe("15");
+    expect(storyLink.searchParams.get("highlightView")).toBe("clean_cinematic");
+    await expect(page.getByRole("progressbar", { name: "SWE solver progress" })).toHaveCount(0);
+
+    await page.goto(`${storyLink.pathname}${storyLink.search}`);
+    await expect(page.getByRole("button", { name: "Run & Watch" })).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    const linkedDialog = page.getByRole("dialog", { name: "Share story" });
+    await expect(linkedDialog).toBeVisible({ timeout: 20_000 });
+    await expect(linkedDialog.getByRole("button", { name: "15 sec" })).toHaveAttribute("aria-pressed", "true");
+    await expect(linkedDialog.getByRole("button", { name: "Clean cinematic" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("export menu exposes all supported formats", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const menu = page.getByRole("group", { name: "Export current scenario" });
-    for (const label of ["PNG", "Share", "Video", "Text", "NetCDF", "KML", "Link"]) {
-      await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s|$)`) })).toBeVisible();
+    for (const label of ["PNG", "Share", "Share story", "Video", "Text", "NetCDF", "KML", "Link"]) {
+      await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s+Requires:|$)`) })).toBeVisible();
     }
     await expect(menu.getByRole("button", { name: /^NetCDF(?:\s|$)/ })).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("button", { name: "References", exact: true })).toBeVisible();

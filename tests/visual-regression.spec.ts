@@ -128,6 +128,27 @@ test.describe("Visual regression — desktop", () => {
     });
   });
 
+  test("highlight story composer", async ({ page }) => {
+    test.setTimeout(120_000);
+    await seedAcknowledged(page);
+    await page.goto("/");
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
+    await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await page.getByRole("button", { name: "Share story", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Share story" })).toBeVisible();
+    await hideCesiumCanvas(page);
+
+    await expect(page).toHaveScreenshot("desktop-highlight-story.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+  });
+
   test("source-aware outcome, science, and validation results", async ({ page }) => {
     test.setTimeout(120_000);
     await seedAcknowledged(page);

@@ -7,6 +7,7 @@ import { ResultsPanel } from "./components/ResultsPanel";
 import { PointProbePanel } from "./components/PointProbePanel";
 import { FamiliarPlacePanel } from "./components/FamiliarPlacePanel";
 import { CitationsModal } from "./components/CitationsModal";
+import { HighlightStoryDialog, type HighlightStorySource } from "./components/HighlightStoryDialog";
 import { HistoricalTsunamiBrowser } from "./components/HistoricalTsunamiBrowser";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
@@ -37,6 +38,7 @@ import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { copyExportText, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
+import { parseHighlightStoryOptions, type HighlightStoryOptions } from "./lib/highlight-story";
 import {
   buildDirectResultEvidence,
   buildDirectScenarioEvidence,
@@ -384,6 +386,9 @@ export default function App() {
   const [showCitations, setShowCitations] = useState(false);
   const [showHistoricalBrowser, setShowHistoricalBrowser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [highlightStorySource, setHighlightStorySource] = useState<HighlightStorySource | null>(null);
+  const [highlightStoryInitialOptions, setHighlightStoryInitialOptions] = useState<HighlightStoryOptions | undefined>(undefined);
+  const inboundHighlightOptions = useRef<HighlightStoryOptions | null>(parseHighlightStoryOptions(window.location.search));
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineRate, setTimelineRate] = useState(1);
@@ -1212,6 +1217,7 @@ export default function App() {
   const runupRequiredReason = t("app.reason.runup");
   const directExportRequiredReason = t("app.reason.directExport");
   const hasSwePlayback = !inHazardMode && (sweSnapshots?.length ?? 0) > 0;
+  const hasHighlightReplay = !inHazardMode && (sweSnapshots?.length ?? 0) >= 2;
   const directRenderProvenance: RenderFrameProvenance | null = directRenderFrame
     ? {
         protocolVersion: "1.0",
@@ -1339,6 +1345,52 @@ export default function App() {
     runQuality: sweRunQualityB,
     evidenceIds: exportEvidenceIdsB(),
   });
+
+  function createHighlightStorySource(): HighlightStorySource | null {
+    const params = scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario);
+    if (!hasHighlightReplay || !slotA.initial || !sweSnapshots || !params) return null;
+    const scenarioId = activePresetA?.id ?? `custom-${slotA.initial.label}`;
+    const peakFieldM = sweSnapshots.reduce((peak, frame) => Math.max(peak, frame.eta_abs_max_m), 0);
+    return {
+      meta: { ...exportMetaA(), generatedAt: new Date().toISOString() },
+      scenarioId,
+      scenarioTitle: activePresetA?.name ?? slotA.initial.label,
+      availableTimesS: sweSnapshots.map((frame) => frame.time_s),
+      frameFingerprints: sweSnapshots.map((frame) => (
+        `${frame.time_s}:${frame.nx}x${frame.ny}:${frame.eta_abs_max_m}:${frame.eta_png_b64.slice(0, 24)}`
+      )),
+      framePayloads: sweSnapshots.map((frame) => structuredClone(frame)),
+      uncertaintyLabel: sweRunQualityA
+        ? t("story.quality", {
+            status: t(`story.quality.${sweRunQualityA.status}` as MessageKey),
+            count: sweRunQualityA.warnings.length,
+          })
+        : t("story.quality.unavailable"),
+      educationalLabel: t("story.educationalBoundary"),
+      scaleAnchors: [
+        t("story.anchor.center", {
+          lat: formatNumber(slotA.initial.center.lat_deg, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          lon: formatNumber(slotA.initial.center.lon_deg, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        }),
+        t("story.anchor.sourcePeak", { value: formatNumber(Math.abs(slotA.initial.peak_amplitude_m), { maximumFractionDigits: 2 }) }),
+        t("story.anchor.fieldPeak", { value: formatNumber(peakFieldM, { maximumFractionDigits: 2 }) }),
+        t("story.anchor.duration", { value: formatNumber((sweSnapshots.at(-1)?.time_s ?? 0) / 60, { maximumFractionDigits: 0 }) }),
+      ],
+      baseScenarioUrl: `${window.location.origin}${window.location.pathname}${params}`,
+    };
+  }
+
+  useEffect(() => {
+    if (!inboundHighlightOptions.current || highlightStorySource || !hasHighlightReplay) return;
+    const source = createHighlightStorySource();
+    if (!source) return;
+    setHighlightStoryInitialOptions(inboundHighlightOptions.current);
+    inboundHighlightOptions.current = null;
+    setHighlightStorySource(source);
+    // The source builder freezes the exact cached replay only when the linked
+    // scenario has completed its existing run; opening the link never starts a solver.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHighlightReplay, highlightStorySource]);
 
   async function handlePickGlobe(lat: number, lon: number, preserveFamiliarPlace = false) {
     if (directHazardMode) {
@@ -1952,6 +2004,22 @@ export default function App() {
               label={t("app.export.replay")}
               description={t("app.export.replayDescription")}
             >
+            <ToolbarButton
+              icon="share"
+              onClick={() => {
+                const source = createHighlightStorySource();
+                if (source) {
+                  setHighlightStoryInitialOptions(undefined);
+                  setHighlightStorySource(source);
+                }
+              }}
+              title={t("story.openTitle")}
+              disabled={!hasHighlightReplay || !scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario)}
+              disabledReason={t("story.requiresReplay")}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              {t("story.open")}
+            </ToolbarButton>
             <ToolbarButton
               icon="video"
               onClick={() => {
@@ -2735,6 +2803,17 @@ export default function App() {
         />
       )}
       {showCitations && <CitationsModal presets={presets} onClose={() => setShowCitations(false)} />}
+      {highlightStorySource && (
+        <HighlightStoryDialog
+          source={highlightStorySource}
+          initialOptions={highlightStoryInitialOptions}
+          onSeek={setTimeS}
+          onClose={() => {
+            setHighlightStorySource(null);
+            setHighlightStoryInitialOptions(undefined);
+          }}
+        />
+      )}
       {showHistoricalBrowser && (
         <HistoricalTsunamiBrowser
           onClose={() => setShowHistoricalBrowser(false)}
