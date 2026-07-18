@@ -7,6 +7,7 @@ import {
   readPersistedCrashReport,
 } from "../../lib/diagnosticsLog";
 import { LogViewer } from "../LogViewer";
+import { I18nProvider } from "../../lib/i18n";
 
 const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
 
@@ -171,5 +172,22 @@ describe("LogViewer", () => {
     expect(readPersistedCrashReport()?.seen).toBe(true);
     await user.click(screen.getByRole("button", { name: "Clear report" }));
     expect(readPersistedCrashReport()).toBeNull();
+  });
+
+  it("localizes diagnostics, severity, and recovery controls in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    persistCrashReport({ source: "native-panic", name: "Panic", message: "inspect me" });
+    const user = userEvent.setup();
+    render(<I18nProvider><LogViewer open onClose={() => {}} /></I18nProvider>);
+
+    expect(screen.getByRole("dialog", { name: "アプリケーションログ" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "診断ログ" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "前回の障害レポート" })).toHaveTextContent("ネイティブパニック");
+    await user.click(screen.getByRole("button", { name: "消去" }));
+    act(() => pushExternalDiagnostic({ level: "warn", message: "localized-warning" }));
+    expect(await screen.findByText("localized-warning")).toBeInTheDocument();
+    expect(screen.getByText("警告")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ログをコピー" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "診断情報をコピー" })).toBeInTheDocument();
   });
 });

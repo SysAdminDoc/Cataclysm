@@ -170,6 +170,22 @@ test("language switch persists across settings, simulation results, layers, and 
   const citationBounds = await page.locator(".modal").boundingBox();
   expect(citationBounds).not.toBeNull();
   expect(await page.screenshot({ clip: citationBounds! })).toMatchSnapshot("localized-citations-ja.png");
+
+  await citations.getByRole("button", { name: "閉じる" }).click();
+  await page.getByRole("button", { name: "診断ログ" }).click();
+  const diagnostics = page.getByRole("dialog", { name: "アプリケーションログ" });
+  await expect(diagnostics).toBeVisible();
+  await expect(diagnostics.getByRole("heading", { name: "診断ログ" })).toBeVisible();
+  await expect(diagnostics.getByRole("button", { name: "ログをコピー" })).toBeVisible();
+  await expect(diagnostics.getByRole("button", { name: "診断情報をコピー" })).toBeVisible();
+  const diagnosticsAccessibility = await new AxeBuilder({ page }).include(".log-viewer").analyze();
+  expect(diagnosticsAccessibility.violations).toEqual([]);
+  const diagnosticsBounds = await page.locator(".log-viewer").boundingBox();
+  expect(diagnosticsBounds).not.toBeNull();
+  expect(await page.screenshot({
+    clip: diagnosticsBounds!,
+    style: ".log-viewer__time { visibility: hidden !important; }",
+  })).toMatchSnapshot("localized-diagnostics-ja.png");
 });
 
 test("first-run launch and safety guidance honor the stored language", async ({ page }) => {

@@ -24,10 +24,26 @@ import { getGeodesyDiagnosticsSnapshot } from "../lib/geodesy";
 import { getSurfaceMaskDiagnosticsSnapshot } from "../lib/surface";
 import { UiIcon } from "./UiIcon";
 import { getRendererQualityDiagnostics } from "../render/quality/cesium-quality-runtime";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 type CopyStatus = "idle" | "copied" | "error";
 
 let tauriDiagnosticsListenerInstalled = false;
+
+const LOG_LEVEL_KEYS: Record<LogEntry["level"], MessageKey> = {
+  error: "log.level.error",
+  info: "log.level.info",
+  log: "log.level.log",
+  warn: "log.level.warn",
+};
+
+const CRASH_SOURCE_KEYS: Record<CrashReport["source"], MessageKey> = {
+  "native-panic": "log.crashSource.native",
+  "react-boundary": "log.crashSource.react",
+  "unhandled-rejection": "log.crashSource.rejection",
+  "window-error": "log.crashSource.window",
+};
 
 installConsoleLogInterception();
 
@@ -53,6 +69,7 @@ type Props = {
 };
 
 export function LogViewer({ open, onClose }: Props) {
+  const { t, formatNumber, languageTag } = useI18n();
   const [entries, setEntries] = useState<LogEntry[]>(readDiagnosticsLog());
   const [crashReport, setCrashReport] = useState<CrashReport | null>(null);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
@@ -195,43 +212,43 @@ export function LogViewer({ open, onClose }: Props) {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Application log"
+        aria-label={t("log.aria")}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal__header">
-          <h2 className="modal__title">Diagnostics log</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close log viewer" type="button">
+          <h2 className="modal__title">{t("log.title")}</h2>
+          <button className="modal__close" onClick={onClose} aria-label={t("log.close")} type="button">
             <UiIcon name="close" size={16} />
           </button>
         </div>
         <p className="log-viewer__intro">
-          Local session diagnostics for export, imagery, and solver errors. Copy this log when reporting a reproducible issue.
+          {t("log.intro")}
         </p>
-        <div className="log-viewer__summary" aria-label="Log severity counts">
-          <span data-level="error">{counts.error} errors</span>
-          <span data-level="warn">{counts.warn} warnings</span>
-          <span data-level="info">{counts.info} info</span>
+        <div className="log-viewer__summary" aria-label={t("log.severity")}>
+          <span data-level="error">{t("log.errors", { count: formatNumber(counts.error) })}</span>
+          <span data-level="warn">{t("log.warnings", { count: formatNumber(counts.warn) })}</span>
+          <span data-level="info">{t("log.info", { count: formatNumber(counts.info) })}</span>
         </div>
         {crashReport && (
-          <section className="log-viewer__crash" aria-label="Previous crash report">
+          <section className="log-viewer__crash" aria-label={t("log.previousCrash")}>
             <div>
-              <span>Previous crash report</span>
+              <span>{t("log.previousCrash")}</span>
               <strong>{crashReport.name}: {crashReport.message}</strong>
               <small>
-                {new Date(crashReport.at).toLocaleString()} · {crashReport.source.replaceAll("-", " ")}
+                {new Date(crashReport.at).toLocaleString(languageTag)} · {t(CRASH_SOURCE_KEYS[crashReport.source])}
               </small>
             </div>
             <details>
-              <summary>Inspect redacted evidence</summary>
+              <summary>{t("log.inspectEvidence")}</summary>
               <pre>{serializeRedactedDiagnostics(crashReport)}</pre>
             </details>
             <button className="log-viewer__btn" type="button" onClick={clearCrashReport}>
-              Clear report
+              {t("log.clearReport")}
             </button>
           </section>
         )}
         <div className="log-viewer__toolbar">
-          <span className="log-viewer__count">{entries.length} entries</span>
+          <span className="log-viewer__count">{t(entries.length === 1 ? "log.entries.one" : "log.entries.many", { count: formatNumber(entries.length) })}</span>
           <button
             onClick={copyAll}
             className="log-viewer__btn"
@@ -239,16 +256,16 @@ export function LogViewer({ open, onClose }: Props) {
             aria-describedby={copyStatus !== "idle" ? "log-copy-status" : undefined}
           >
             <UiIcon name="copy" size={14} />
-            Copy log
+            {t("log.copy")}
           </button>
           <button
             onClick={copyBundle}
             className="log-viewer__btn"
             type="button"
-            title="Copy a JSON support bundle: app/OS/GPU facts plus the last 50 log entries. Contains no paths, tokens, or settings values."
+            title={t("log.copyDiagnosticsTitle")}
           >
             <UiIcon name="copy" size={14} />
-            Copy diagnostics
+            {t("log.copyDiagnostics")}
           </button>
           {copyStatus !== "idle" && (
             <span
@@ -257,12 +274,12 @@ export function LogViewer({ open, onClose }: Props) {
               data-tone={copyStatus === "copied" ? "success" : "error"}
               role={copyStatus === "copied" ? "status" : "alert"}
             >
-              {copyStatus === "copied" ? "Copied." : "Copy failed."}
+              {copyStatus === "copied" ? t("log.copied") : t("log.copyFailed")}
             </span>
           )}
           <button onClick={clearLog} className="log-viewer__btn" type="button">
             <UiIcon name="trash" size={14} />
-            Clear
+            {t("log.clear")}
           </button>
         </div>
         <div
@@ -277,8 +294,8 @@ export function LogViewer({ open, onClose }: Props) {
             <div className="empty-state empty-state--compact log-viewer__empty">
               <span className="empty-state__icon" aria-hidden />
               <div>
-                <strong>No diagnostics yet</strong>
-                <p>Warnings and export or solver failures will appear here during this session.</p>
+                <strong>{t("log.empty")}</strong>
+                <p>{t("log.emptyBody")}</p>
               </div>
             </div>
           )}
@@ -287,7 +304,7 @@ export function LogViewer({ open, onClose }: Props) {
               <span className="log-viewer__time">
                 {new Date(e.timestamp).toISOString().slice(11, 23)}
               </span>
-              <span className="log-viewer__level">{e.level}</span>
+              <span className="log-viewer__level">{t(LOG_LEVEL_KEYS[e.level])}</span>
               <span className="log-viewer__msg">{e.message}</span>
             </div>
           ))}

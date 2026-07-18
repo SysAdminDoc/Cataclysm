@@ -34,7 +34,8 @@ coastal validation, Visualization Layers and humanitarian context, shared
 trust/evidence controls, direct nuclear/asteroid setup and visual profiles, and
 the launch, first-run, tour, crash-recovery, fatal-error surfaces, and scientific
 glossary, advanced bibliography, and analytical CSV table controls are
-translated now.
+translated now, along with diagnostics, crash evidence, and support-bundle
+controls.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 
