@@ -31,6 +31,8 @@ import type {
 import { UiIcon } from "./UiIcon";
 import { GlossaryTip } from "./GlossaryTip";
 import { NumericField } from "./NumericField";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
@@ -48,50 +50,58 @@ type InlineStatus = {
   action?: { label: string; run: () => void };
 };
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "asteroid", label: "Asteroid" },
-  { key: "nuclear", label: "Nuclear" },
-  { key: "earthquake", label: "Earthquake" },
-  { key: "landslide", label: "Landslide" },
-  { key: "meteotsunami", label: "Meteotsunami" },
+const TABS: { key: TabKey; labelKey: MessageKey }[] = [
+  { key: "asteroid", labelKey: "builder.tab.asteroid" },
+  { key: "nuclear", labelKey: "builder.tab.nuclear" },
+  { key: "earthquake", labelKey: "builder.tab.earthquake" },
+  { key: "landslide", labelKey: "builder.tab.landslide" },
+  { key: "meteotsunami", labelKey: "builder.tab.meteotsunami" },
 ];
 
-const TAB_DESCRIPTIONS: Record<TabKey, string> = {
-  asteroid: "Impact cavity model with water-depth-aware source geometry.",
-  nuclear: "Underwater and surface burst coupling with yield and depth controls.",
-  earthquake: "Fault-source parameters for Okada-style seafloor displacement.",
-  landslide: "Subaerial and submarine slide source geometry for confined or open water.",
-  meteotsunami: "A moving atmospheric-pressure anomaly that forces the water column throughout its track.",
+const TAB_DESCRIPTIONS: Record<TabKey, MessageKey> = {
+  asteroid: "builder.description.asteroid",
+  nuclear: "builder.description.nuclear",
+  earthquake: "builder.description.earthquake",
+  landslide: "builder.description.landslide",
+  meteotsunami: "builder.description.meteotsunami",
 };
 
-const PARAM_HELP: Record<string, string> = {
-  diameter_m: "Impactor diameter. Chicxulub: ~14 km; typical NEO: 100–500 m. Ward & Asphaug 2000.",
-  density_kg_m3: "Material density. Iron: ~7 800; stony: ~3 000; cometary ice: ~500. Schmidt & Holsapple 1982.",
-  velocity_m_s: "Impact speed. Earth-crossing asteroids average ~18 km/s; comets up to 72 km/s.",
-  angle_deg: "Impact angle from horizontal. 45° is most probable. Steeper = deeper cavity.",
-  water_depth_m: "Ocean depth at the source. Controls wave speed c = √(gh) and cavity geometry.",
-  yield_kt: "Nuclear yield in kilotons TNT equivalent. Glasstone & Dolan 1977.",
-  burst_depth_m: "Detonation depth below surface. Deeper = more coupling to water column. Le Méhauté 1996.",
-  mw: "Moment magnitude. Controls fault slip area and displacement. Kanamori 1977.",
-  depth_m: "Hypocentre depth below seafloor. Shallower = more seafloor displacement.",
-  strike_deg: "Fault strike azimuth (0–360°). Direction the fault plane faces. Okada 1985.",
-  dip_deg: "Fault dip angle (0–90°). Angle the fault plane makes with horizontal. Okada 1985.",
-  rake_deg: "Slip direction on the fault plane (−180 to 180°). 90° = pure thrust. Okada 1985.",
-  slip_m: "Average coseismic displacement on the fault. Tōhoku 2011: ~15 m. Okada 1985.",
-  fault_length_m: "Along-strike fault dimension. 0 = auto from Wells–Coppersmith 1994 scaling.",
-  fault_width_m: "Down-dip fault dimension. 0 = auto from Wells–Coppersmith 1994 scaling.",
-  volume_m3: "Slide volume. Lituya Bay 1958: ~30 M m³; Storegga: ~3 000 km³.",
-  drop_height_m: "Vertical fall of the slide mass centre. Fritz & Hager 2001.",
-  slope_deg: "Slope angle of the failure surface. Steeper = faster slide. Slingerland & Voight.",
-  water_body_width_m: "Width of the receiving water body. Constrains 2D channel geometry.",
-  peak_pressure_pa: "Peak surface-pressure anomaly. NOAA guidance reports known meteotsunami sources commonly below 500 Pa.",
-  speed_m_s: "Translation speed. Proudman amplification peaks when this matches the long-wave speed √(gh).",
-  heading_deg: "Direction of pressure-centre travel clockwise from true north.",
-  along_track_sigma_m: "One-standard-deviation length of the Gaussian pressure footprint along its track.",
-  cross_track_sigma_m: "One-standard-deviation width of the Gaussian pressure footprint across its track.",
-  track_length_m: "Distance over which the atmospheric pressure source remains active.",
-  lat_deg: "Source latitude (−90° to 90°).",
-  lon_deg: "Source longitude (−180° to 180°).",
+const PARAM_HELP: Record<string, MessageKey> = {
+  diameter_m: "builder.help.diameter",
+  density_kg_m3: "builder.help.density",
+  velocity_m_s: "builder.help.velocity",
+  angle_deg: "builder.help.angle",
+  water_depth_m: "builder.help.waterDepth",
+  yield_kt: "builder.help.yield",
+  burst_depth_m: "builder.help.burstDepth",
+  mw: "builder.help.magnitude",
+  depth_m: "builder.help.hypocentreDepth",
+  strike_deg: "builder.help.strike",
+  dip_deg: "builder.help.dip",
+  rake_deg: "builder.help.rake",
+  slip_m: "builder.help.slip",
+  fault_length_m: "builder.help.faultLength",
+  fault_width_m: "builder.help.faultWidth",
+  volume_m3: "builder.help.volume",
+  drop_height_m: "builder.help.dropHeight",
+  slope_deg: "builder.help.slope",
+  water_body_width_m: "builder.help.waterBodyWidth",
+  peak_pressure_pa: "builder.help.peakPressure",
+  speed_m_s: "builder.help.speed",
+  heading_deg: "builder.help.heading",
+  along_track_sigma_m: "builder.help.alongTrack",
+  cross_track_sigma_m: "builder.help.crossTrack",
+  track_length_m: "builder.help.trackLength",
+  lat_deg: "builder.help.latitude",
+  lon_deg: "builder.help.longitude",
+};
+
+const SOURCE_LABELS: Record<ScenarioInput["kind"], MessageKey> = {
+  Asteroid: "builder.tab.asteroid",
+  Nuclear: "builder.tab.nuclear",
+  Earthquake: "builder.tab.earthquake",
+  Landslide: "builder.tab.landslide",
+  Meteotsunami: "builder.tab.meteotsunami",
 };
 
 const SLIDER_FIELDS = new Set([
@@ -125,8 +135,9 @@ function NumField({
   step?: number;
   bounds?: { min: number; max: number };
 }) {
+  const { t, formatNumber } = useI18n();
   const b = bounds ?? BOUNDS[field];
-  const help = PARAM_HELP[field];
+  const helpKey = PARAM_HELP[field];
   const showSlider = SLIDER_FIELDS.has(field);
   if (!b || b.min === undefined || b.max === undefined) {
     throw new Error(`Missing numeric bounds for ${field}`);
@@ -141,14 +152,14 @@ function NumField({
       min={min}
       max={max}
       step={step ?? "any"}
-      help={help}
+      help={helpKey ? t(helpKey) : undefined}
       onCommit={onChange}
       slider={showSlider ? {
         value,
         min,
         max,
         step: step ?? (max - min) / 200,
-        valueText: `${value}`,
+        valueText: formatNumber(value),
         onChange,
       } : undefined}
     />
@@ -156,6 +167,7 @@ function NumField({
 }
 
 export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTogglePick, pickActive }: Props) {
+  const { t, formatNumber, languageTag } = useI18n();
   const [tab, setTab] = useState<TabKey>("asteroid");
   const [asteroid, setAsteroid] = useState(INITIAL_ASTEROID);
   const [nuclear, setNuclear] = useState(INITIAL_NUCLEAR);
@@ -191,12 +203,15 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const autoFillFaultFromZone = () => {
     const match = nearestSubductionZone(earthquake.location.lat_deg, earthquake.location.lon_deg);
     if (!match) {
-      setSubductionNote({ text: "Enter a valid epicentre before auto-filling.", tone: "error" });
+      setSubductionNote({ text: t("builder.autoFillInvalid"), tone: "error" });
       return;
     }
     if (!match.onMappedZone) {
       setSubductionNote({
-        text: `No mapped subduction zone in range (nearest: ${match.zone.name}, ~${Math.round(match.distanceKm)} km). Enter fault geometry manually.`,
+        text: t("builder.autoFillNoZone", {
+          zone: match.zone.name,
+          distance: formatNumber(Math.round(match.distanceKm)),
+        }),
         tone: "error",
       });
       return;
@@ -204,7 +219,15 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     const g = faultGeometryFromZone(match.zone);
     setEarthquake((s) => ({ ...s, ...g }));
     setSubductionNote({
-      text: `Filled from ${match.zone.name} (~${Math.round(match.distanceKm)} km): strike ${g.strike_deg}°, dip ${g.dip_deg}°, rake ${g.rake_deg}°, hypocentre ${(g.depth_m / 1000).toFixed(0)} km. Representative Slab2 zone geometry (${match.zone.reference_event}); length/width auto-size from magnitude.`,
+      text: t("builder.autoFillSuccess", {
+        zone: match.zone.name,
+        distance: formatNumber(Math.round(match.distanceKm)),
+        strike: formatNumber(g.strike_deg),
+        dip: formatNumber(g.dip_deg),
+        rake: formatNumber(g.rake_deg),
+        depth: formatNumber(g.depth_m / 1000, { maximumFractionDigits: 0 }),
+        reference: match.zone.reference_event,
+      }),
       tone: "success",
     });
   };
@@ -285,28 +308,35 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     const data = currentScenarioData();
     const payload = createScenarioPayload(data);
     if (!payload.ok) {
-      showStatus(`Save blocked: ${payload.reason}`, "error");
+      showStatus(t("builder.saveBlocked", { reason: payload.reason }), "error");
       return;
     }
-    const name = `${data.kind} — ${new Date().toLocaleString()}`;
+    const name = t("builder.savedName", {
+      kind: t(SOURCE_LABELS[data.kind]),
+      date: new Date().toLocaleString(languageTag),
+    });
     settings.saveScenario(name, payload.payload).then(() => {
       loadSavedScenarios();
-      showStatus("Saved scenario.", "success");
+      showStatus(t("builder.saved"), "success");
     }).catch((err) => {
-      showStatus(`Save failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+      showStatus(t("builder.saveFailed", { error: err instanceof Error ? err.message : String(err) }), "error");
     });
   }
 
   function loadScenario(s: SavedScenario) {
     const parsed = parseScenarioPayload(s.data);
     if (!parsed.ok) {
-      showStatus(`Saved scenario rejected: ${parsed.reason}`, "error");
+      showStatus(t("builder.savedRejected", { reason: parsed.reason }), "error");
       return;
     }
     applyScenario(parsed.scenario);
     setShowSaved(false);
-    const migration = parsed.migrations.map((entry) => entry.description).join(", ");
-    showStatus(migration ? `Loaded scenario (${migration}).` : "Loaded scenario.", "success");
+    showStatus(
+      parsed.migrations.length > 0
+        ? t("builder.loadedMigration", { count: formatNumber(parsed.migrations.length) })
+        : t("builder.loaded"),
+      "success",
+    );
   }
 
   function deleteScenario(id: string) {
@@ -330,27 +360,27 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       if (undoRequested) return;
       undoRequested = true;
       setSavedScenarios(insertIfMissing);
-      showStatus(`Restoring ${scenario.name}...`);
+      showStatus(t("builder.restoring", { name: scenario.name }));
       void settings.restoreScenario(scenario, restorePoint).then(async () => {
         setSavedScenarios(await settings.getSavedScenarios());
         if (scenarioActionVersion.current === version) {
-          showStatus(`Restored ${scenario.name}.`, "success");
+          showStatus(t("builder.restored", { name: scenario.name }), "success");
         }
       }).catch(async (error) => {
         setSavedScenarios(await settings.getSavedScenarios());
         if (scenarioActionVersion.current === version) {
-          showStatus(`Undo failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+          showStatus(t("builder.undoFailed", { error: error instanceof Error ? error.message : String(error) }), "error");
         }
       });
     };
 
     setSavedScenarios((list) => list.filter((entry) => entry.id !== id));
-    showStatus(`Deleted ${scenario.name}.`, "success", { label: "Undo", run: undo });
+    showStatus(t("builder.deleted", { name: scenario.name }), "success", { label: t("builder.undo"), run: undo });
     void settings.deleteScenario(id).catch(async (error) => {
       if (undoRequested) return;
       setSavedScenarios(await settings.getSavedScenarios());
       if (scenarioActionVersion.current === version) {
-        showStatus(`Delete failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+        showStatus(t("builder.deleteFailed", { error: error instanceof Error ? error.message : String(error) }), "error");
       }
     });
   }
@@ -366,61 +396,65 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   function copyScenario() {
     const payload = createScenarioPayload(currentScenarioData());
     if (!payload.ok) {
-      showStatus(`Copy blocked: ${payload.reason}`, "error");
+      showStatus(t("builder.copyBlocked", { reason: payload.reason }), "error");
       return;
     }
     const writeText = navigator.clipboard?.writeText;
     if (!writeText) {
-      showStatus("Copy failed: clipboard is unavailable.", "error");
+      showStatus(t("builder.copyUnavailable"), "error");
       return;
     }
     writeText.call(navigator.clipboard, JSON.stringify(payload.payload)).then(
-      () => showStatus("Copied scenario.", "success"),
-      () => showStatus("Copy failed.", "error"),
+      () => showStatus(t("builder.copied"), "success"),
+      () => showStatus(t("builder.copyFailed"), "error"),
     );
   }
 
   function pasteScenario() {
     const readText = navigator.clipboard?.readText;
     if (!readText) {
-      showStatus("Paste failed: clipboard is unavailable.", "error");
+      showStatus(t("builder.pasteUnavailable"), "error");
       return;
     }
     readText.call(navigator.clipboard).then((text) => {
       try {
         const parsed = parseScenarioPayload(JSON.parse(text));
         if (!parsed.ok) {
-          showStatus(`Paste rejected: ${parsed.reason}`, "error");
+          showStatus(t("builder.pasteRejected", { reason: parsed.reason }), "error");
           return;
         }
         applyScenario(parsed.scenario);
-        const migration = parsed.migrations.map((entry) => entry.description).join(", ");
-        showStatus(migration ? `Pasted scenario (${migration}).` : "Pasted scenario.", "success");
+        showStatus(
+          parsed.migrations.length > 0
+            ? t("builder.pastedMigration", { count: formatNumber(parsed.migrations.length) })
+            : t("builder.pasted"),
+          "success",
+        );
       } catch {
-        showStatus("Paste rejected: clipboard does not contain valid JSON.", "error");
+        showStatus(t("builder.pasteInvalid"), "error");
       }
-    }).catch(() => showStatus("Paste failed.", "error"));
+    }).catch(() => showStatus(t("builder.pasteFailed"), "error"));
   }
 
   return (
-    <div className="section">
-      <div className="section__title">Custom scenario</div>
-      <div className="scenario-tabs" role="tablist" aria-label="Scenario source type">
-        {TABS.map((t) => (
+    <div className="section scenario-builder">
+      <div className="section__title">{t("builder.title")}</div>
+      <div className="scenario-tabs" role="tablist" aria-label={t("builder.sourceType")}>
+        {TABS.map((tabOption) => (
           <button
-            id={`scenario-tab-${t.key}`}
-            key={t.key}
+            id={`scenario-tab-${tabOption.key}`}
+            key={tabOption.key}
             className="scenario-tab"
             role="tab"
             type="button"
-            aria-selected={tab === t.key}
+            aria-selected={tab === tabOption.key}
             aria-controls="scenario-panel"
-            tabIndex={tab === t.key ? 0 : -1}
-            data-active={tab === t.key ? "true" : "false"}
-            data-tab={t.key}
-            onClick={() => setTab(t.key)}
+            tabIndex={tab === tabOption.key ? 0 : -1}
+            data-active={tab === tabOption.key ? "true" : "false"}
+            data-tab={tabOption.key}
+            onClick={() => setTab(tabOption.key)}
             onKeyDown={(event) => {
-              const currentIndex = TABS.findIndex((item) => item.key === t.key);
+              const currentIndex = TABS.findIndex((item) => item.key === tabOption.key);
               let nextIndex: number | null = null;
               if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % TABS.length;
               if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + TABS.length) % TABS.length;
@@ -435,16 +469,16 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                 ?.focus();
             }}
           >
-            {t.label}
+            {t(tabOption.labelKey)}
           </button>
         ))}
       </div>
       <div id="scenario-panel" role="tabpanel" aria-labelledby={`scenario-tab-${tab}`}>
       <p className="scenario-summary">
         {tab === "earthquake" ? (
-          <>Fault-source parameters for <GlossaryTip term="okada">Okada</GlossaryTip>-style seafloor displacement.</>
+          <>{t("builder.description.earthquakePrefix")} <GlossaryTip term="okada">Okada</GlossaryTip>{t("builder.description.earthquakeSuffix")}</>
         ) : (
-          TAB_DESCRIPTIONS[tab]
+          t(TAB_DESCRIPTIONS[tab])
         )}
       </p>
 
@@ -457,22 +491,22 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       >
         {tab === "asteroid" && (
           <>
-            <NumField field="diameter_m" label="Diameter (m)" value={asteroid.diameter_m}
+            <NumField field="diameter_m" label={t("builder.field.diameter")} value={asteroid.diameter_m}
               onChange={(v) => setAsteroid({ ...asteroid, diameter_m: v })} />
-            <NumField field="density_kg_m3" label="Density (kg/m³)" value={asteroid.density_kg_m3}
+            <NumField field="density_kg_m3" label={t("builder.field.density")} value={asteroid.density_kg_m3}
               onChange={(v) => setAsteroid({ ...asteroid, density_kg_m3: v })} />
-            <NumField field="velocity_m_s" label="Velocity (m/s)" value={asteroid.velocity_m_s}
+            <NumField field="velocity_m_s" label={t("builder.field.velocity")} value={asteroid.velocity_m_s}
               onChange={(v) => setAsteroid({ ...asteroid, velocity_m_s: v })} />
-            <NumField field="angle_deg" label="Angle (°)" value={asteroid.angle_deg}
+            <NumField field="angle_deg" label={t("builder.field.angle")} value={asteroid.angle_deg}
               onChange={(v) => setAsteroid({ ...asteroid, angle_deg: v })} />
           </>
         )}
         {tab === "nuclear" && (
           <>
-            <NumField field="yield_kt" label="Yield (kt TNT)" value={nuclear.yield_kt}
+            <NumField field="yield_kt" label={t("builder.field.yield")} value={nuclear.yield_kt}
               onChange={(v) => setNuclear({ ...nuclear, yield_kt: v })} />
             <label>
-              <span>Burst geometry</span>
+              <span>{t("builder.burstGeometry")}</span>
               <select
                 value={nuclear.burst_mode}
                 onChange={(e) =>
@@ -480,11 +514,11 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                 }
               >
                 {burstModes.map((value) => (
-                  <option key={value} value={value}>{value === "Shallow" ? "Shallow underwater" : value === "DeepOptimal" ? "Deep (optimal)" : value === "Abyssal" ? "Abyssal (overburdened)" : "Surface"}</option>
+                  <option key={value} value={value}>{t(value === "Shallow" ? "builder.burst.shallow" : value === "DeepOptimal" ? "builder.burst.deep" : value === "Abyssal" ? "builder.burst.abyssal" : "builder.burst.surface")}</option>
                 ))}
               </select>
             </label>
-            <NumField field="burst_depth_m" label="Burst depth (m)" value={nuclear.burst_depth_m}
+            <NumField field="burst_depth_m" label={t("builder.field.burstDepth")} value={nuclear.burst_depth_m}
               onChange={(v) => setNuclear({ ...nuclear, burst_depth_m: v })} />
           </>
         )}
@@ -492,30 +526,30 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
           <>
             {importProvenance && (
               <div className="scenario-form__import-provenance" role="status">
-                <strong>Historical source import</strong>
+                <strong>{t("builder.historicalImport")}</strong>
                 <p>{importProvenance}</p>
               </div>
             )}
-            <NumField field="mw" label="Magnitude (M_w)" value={earthquake.mw} step={0.1}
+            <NumField field="mw" label={t("builder.field.magnitude")} value={earthquake.mw} step={0.1}
               onChange={(v) => setEarthquake({ ...earthquake, mw: v })} />
-            <NumField field="depth_m" label="Hypocentre depth (m)" value={earthquake.depth_m}
+            <NumField field="depth_m" label={t("builder.field.hypocentreDepth")} value={earthquake.depth_m}
               onChange={(v) => setEarthquake({ ...earthquake, depth_m: v })} />
-            <NumField field="strike_deg" label="Strike (°)" value={earthquake.strike_deg}
+            <NumField field="strike_deg" label={t("builder.field.strike")} value={earthquake.strike_deg}
               onChange={(v) => setEarthquake({ ...earthquake, strike_deg: v })} />
-            <NumField field="dip_deg" label="Dip (°)" value={earthquake.dip_deg}
+            <NumField field="dip_deg" label={t("builder.field.dip")} value={earthquake.dip_deg}
               onChange={(v) => setEarthquake({ ...earthquake, dip_deg: v })} />
-            <NumField field="rake_deg" label="Rake (°)" value={earthquake.rake_deg}
+            <NumField field="rake_deg" label={t("builder.field.rake")} value={earthquake.rake_deg}
               onChange={(v) => setEarthquake({ ...earthquake, rake_deg: v })} />
-            <NumField field="slip_m" label="Slip (m)" value={earthquake.slip_m}
+            <NumField field="slip_m" label={t("builder.field.slip")} value={earthquake.slip_m}
               onChange={(v) => setEarthquake({ ...earthquake, slip_m: v })} />
-            <NumField field="fault_length_m" label="Fault length (m, 0 = auto)" value={earthquake.fault_length_m ?? 0}
+            <NumField field="fault_length_m" label={t("builder.field.faultLength")} value={earthquake.fault_length_m ?? 0}
               onChange={(v) => setEarthquake({ ...earthquake, fault_length_m: v })} />
-            <NumField field="fault_width_m" label="Fault width (m, 0 = auto)" value={earthquake.fault_width_m ?? 0}
+            <NumField field="fault_width_m" label={t("builder.field.faultWidth")} value={earthquake.fault_width_m ?? 0}
               onChange={(v) => setEarthquake({ ...earthquake, fault_width_m: v })} />
             <div className="scenario-form__autofault">
-              <button type="button" onClick={autoFillFaultFromZone} title="Fill strike/dip/rake and hypocentre depth from the nearest mapped subduction zone">
+              <button type="button" onClick={autoFillFaultFromZone} title={t("builder.autoFillTitle")}>
                 <UiIcon name="mapPin" size={14} />
-                Auto-fill fault from subduction zone
+                {t("builder.autoFill")}
               </button>
               {subductionNote && (
                 <p
@@ -533,7 +567,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
         {tab === "landslide" && (
           <>
             <label>
-              <span>Type</span>
+              <span>{t("builder.type")}</span>
               <select
                 value={landslide.kind}
                 onChange={(e) =>
@@ -541,54 +575,55 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                 }
               >
                 {landslideKinds.map((value) => (
-                  <option key={value} value={value}>{value === "Subaerial" ? "Subaerial (rock-fall into water)" : "Submarine (slope failure)"}</option>
+                  <option key={value} value={value}>{t(value === "Subaerial" ? "builder.landslide.subaerial" : "builder.landslide.submarine")}</option>
                 ))}
               </select>
             </label>
-            <NumField field="volume_m3" label="Volume (m³)" value={landslide.volume_m3}
+            <NumField field="volume_m3" label={t("builder.field.volume")} value={landslide.volume_m3}
               onChange={(v) => setLandslide({ ...landslide, volume_m3: v })} />
-            <NumField field="density_kg_m3" label="Density (kg/m³)" value={landslide.density_kg_m3}
+            <NumField field="density_kg_m3" label={t("builder.field.density")} value={landslide.density_kg_m3}
               onChange={(v) => setLandslide({ ...landslide, density_kg_m3: v })} />
-            <NumField field="drop_height_m" label="Drop height (m)" value={landslide.drop_height_m}
+            <NumField field="drop_height_m" label={t("builder.field.dropHeight")} value={landslide.drop_height_m}
               onChange={(v) => setLandslide({ ...landslide, drop_height_m: v })} />
-            <NumField field="slope_deg" label="Slope (°)" value={landslide.slope_deg}
+            <NumField field="slope_deg" label={t("builder.field.slope")} value={landslide.slope_deg}
               onChange={(v) => setLandslide({ ...landslide, slope_deg: v })} />
-            <NumField field="water_body_width_m" label="Receiving body width (m)" value={landslide.water_body_width_m}
+            <NumField field="water_body_width_m" label={t("builder.field.waterBodyWidth")} value={landslide.water_body_width_m}
               onChange={(v) => setLandslide({ ...landslide, water_body_width_m: v })} />
           </>
         )}
         {tab === "meteotsunami" && (
           <>
             <div className="scenario-form__import-provenance" role="note">
-              <strong>Time-dependent source</strong>
-              <p>The SWE solver starts from a flat surface and applies the atmospheric pressure gradient at every step. Wind stress and later basin seiche are not included.</p>
+              <strong>{t("builder.timeDependent")}</strong>
+              <p>{t("builder.timeDependentBody")}</p>
             </div>
-            <NumField field="peak_pressure_pa" label="Peak pressure anomaly (Pa)" value={meteotsunami.peak_pressure_pa}
+            <NumField field="peak_pressure_pa" label={t("builder.field.peakPressure")} value={meteotsunami.peak_pressure_pa}
               onChange={(v) => setMeteotsunami({ ...meteotsunami, peak_pressure_pa: v })} />
-            <NumField field="speed_m_s" label="Disturbance speed (m/s)" value={meteotsunami.speed_m_s} step={0.1}
+            <NumField field="speed_m_s" label={t("builder.field.speed")} value={meteotsunami.speed_m_s} step={0.1}
               onChange={(v) => setMeteotsunami({ ...meteotsunami, speed_m_s: v })} />
-            <NumField field="heading_deg" label="Track heading (°)" value={meteotsunami.heading_deg} step={1}
+            <NumField field="heading_deg" label={t("builder.field.heading")} value={meteotsunami.heading_deg} step={1}
               onChange={(v) => setMeteotsunami({ ...meteotsunami, heading_deg: v })} />
-            <NumField field="along_track_sigma_m" label="Along-track width, 1σ (m)" value={meteotsunami.along_track_sigma_m}
+            <NumField field="along_track_sigma_m" label={t("builder.field.alongTrack")} value={meteotsunami.along_track_sigma_m}
               onChange={(v) => setMeteotsunami({ ...meteotsunami, along_track_sigma_m: v })} />
-            <NumField field="cross_track_sigma_m" label="Cross-track width, 1σ (m)" value={meteotsunami.cross_track_sigma_m}
+            <NumField field="cross_track_sigma_m" label={t("builder.field.crossTrack")} value={meteotsunami.cross_track_sigma_m}
               onChange={(v) => setMeteotsunami({ ...meteotsunami, cross_track_sigma_m: v })} />
-            <NumField field="track_length_m" label="Active track length (m)" value={meteotsunami.track_length_m}
+            <NumField field="track_length_m" label={t("builder.field.trackLength")} value={meteotsunami.track_length_m}
               onChange={(v) => setMeteotsunami({ ...meteotsunami, track_length_m: v })} />
+            <ProudmanResonanceIndicator speed={meteotsunami.speed_m_s} depth={meteotsunami.water_depth_m} />
           </>
         )}
 
-        <NumField field="lat_deg" label="Latitude (°)"
+        <NumField field="lat_deg" label={t("builder.field.latitude")}
           value={currentLat({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
           onChange={(v) =>
             applyLocation(v, "lat", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
           } />
-        <NumField field="lon_deg" label="Longitude (°)"
+        <NumField field="lon_deg" label={t("builder.field.longitude")}
           value={currentLon({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
           onChange={(v) =>
             applyLocation(v, "lon", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
           } />
-        <NumField field="water_depth_m" label="Water depth (m)"
+        <NumField field="water_depth_m" label={t("builder.field.waterDepth")}
           bounds={sourceBound(tab === "asteroid" ? "Asteroid" : tab === "nuclear" ? "Nuclear" : tab === "earthquake" ? "Earthquake" : tab === "landslide" ? "Landslide" : "Meteotsunami", "water_depth_m")}
           value={currentDepth({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
           onChange={(v) =>
@@ -604,28 +639,28 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             type="button"
           >
             <UiIcon name="mapPin" size={14} />
-            {pickActive ? "Picking location" : "Pick on globe"}
+            {pickActive ? t("builder.picking") : t("builder.pickOnGlobe")}
           </button>
           <button className="primary" type="submit">
-            Simulate
+            {t("builder.simulate")}
           </button>
         </div>
         <div className="scenario-actions__row">
-          <button onClick={saveCurrentScenario} type="button" title="Save current scenario for later">
+          <button onClick={saveCurrentScenario} type="button" title={t("builder.saveTitle")}>
             <UiIcon name="save" size={14} />
-            Save
+            {t("builder.save")}
           </button>
-          <button onClick={() => setShowSaved((v) => !v)} type="button" title="Load a saved scenario">
+          <button onClick={() => setShowSaved((v) => !v)} type="button" title={t("builder.loadTitle")}>
             <UiIcon name="folder" size={14} />
-            Load{savedScenarios.length > 0 ? ` (${savedScenarios.length})` : ""}
+            {t("builder.load")}{savedScenarios.length > 0 ? ` (${formatNumber(savedScenarios.length)})` : ""}
           </button>
-          <button onClick={copyScenario} type="button" title="Copy scenario parameters to clipboard">
+          <button onClick={copyScenario} type="button" title={t("builder.copyTitle")}>
             <UiIcon name="copy" size={14} />
-            Copy
+            {t("builder.copy")}
           </button>
-          <button onClick={pasteScenario} type="button" title="Paste scenario parameters from clipboard">
+          <button onClick={pasteScenario} type="button" title={t("builder.pasteTitle")}>
             <UiIcon name="clipboard" size={14} />
-            Paste
+            {t("builder.paste")}
           </button>
           {clipMsg && (
             <span
@@ -650,13 +685,13 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
         {showSaved && savedScenariosResult.status === "loading" && !savedScenariosResult.previous && (
           <div className="empty-state empty-state--compact scenario-saved__empty" role="status">
             <span className="empty-state__icon" aria-hidden />
-            <div><strong>Loading saved scenarios…</strong><p>Reading the local scenario library.</p></div>
+             <div><strong>{t("builder.loadingSaved")}</strong><p>{t("builder.readingLibrary")}</p></div>
           </div>
         )}
         {showSaved && (savedScenariosResult.status === "error" || savedScenariosResult.status === "stale") && (
           <div className="panel-error" role="alert">
-            <span>{savedScenariosResult.status === "stale" ? "Saved-scenario list is stale: " : "Couldn't load saved scenarios: "}{savedScenariosResult.error}</span>
-            <button type="button" onClick={loadSavedScenarios}>Retry saved scenarios</button>
+            <span>{t(savedScenariosResult.status === "stale" ? "builder.savedListStale" : "builder.savedLoadFailed", { error: savedScenariosResult.error })}</span>
+            <button type="button" onClick={loadSavedScenarios}>{t("builder.retrySaved")}</button>
           </div>
         )}
         {showSaved && savedScenarios.length > 0 && (
@@ -674,7 +709,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
                   className="scenario-saved__del"
                   onClick={() => deleteScenario(s.id)}
                   type="button"
-                  aria-label={`Delete ${s.name}`}
+                  aria-label={t("builder.delete", { name: s.name })}
                 >
                   <UiIcon name="trash" size={13} />
                 </button>
@@ -686,8 +721,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
           <div className="empty-state empty-state--compact scenario-saved__empty">
             <span className="empty-state__icon" aria-hidden />
             <div>
-              <strong>No saved scenarios yet.</strong>
-              <p>Save the current parameters to reuse them later.</p>
+              <strong>{t("builder.noSaved")}</strong>
+              <p>{t("builder.noSavedBody")}</p>
             </div>
           </div>
         )}
@@ -714,6 +749,30 @@ type SetBundle = Bundle & {
   setLandslide: (s: LandslideInput) => void;
   setMeteotsunami: (s: MeteotsunamiInput) => void;
 };
+
+const GRAVITY_MS2 = 9.81;
+
+function ProudmanResonanceIndicator({ speed, depth }: { speed: number; depth: number }) {
+  const { t, formatNumber } = useI18n();
+  if (!Number.isFinite(speed) || !Number.isFinite(depth) || depth <= 0 || speed <= 0) return null;
+  const shallowWaveSpeed = Math.sqrt(GRAVITY_MS2 * depth);
+  const ratio = speed / shallowWaveSpeed;
+  const tone = Math.abs(ratio - 1) < 0.15 ? "success" : ratio < 0.7 ? "muted" : "warning";
+  const label = ratio < 0.85
+    ? t("builder.resonance.sub")
+    : ratio <= 1.15
+      ? t("builder.resonance.resonant")
+      : t("builder.resonance.super");
+  return (
+    <div className="scenario-form__resonance" role="status" aria-live="polite" aria-atomic="true">
+      <span className="resonance__label">{t("builder.resonance.heading")}</span>
+      <span className="resonance__value" data-tone={tone}>
+        U/√(gh) = {formatNumber(ratio, { maximumFractionDigits: 2 })} — {label}
+      </span>
+      <span className="resonance__hint">{t("builder.resonance.hint", { waveSpeed: formatNumber(shallowWaveSpeed, { maximumFractionDigits: 1 }) })}</span>
+    </div>
+  );
+}
 
 function currentLat(b: Bundle): number {
   return b.tab === "asteroid" ? b.asteroid.location.lat_deg
