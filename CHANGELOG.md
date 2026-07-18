@@ -2,6 +2,22 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2026-07-18
+
+### Added
+
+- Asteroid airburst overpressure footprint: when an asteroid airbursts,
+  results now show explicit "Airburst — did not reach the ground" framing,
+  airburst altitude, energy deposited in atmosphere, and blast ring labels
+  annotated "(from elevated burst)".
+- Window-glass injury layer at cited 200/500 Pa breakage thresholds (Popova
+  et al. 2013 Chelyabinsk survey). For airbursts this is the dominant injury
+  mechanism; both radii render as distinct rings.
+- Nuclear-effects validation harness: 5 Glasstone & Dolan 1977 validation
+  tests covering overpressure (1 kt, 20 kt, 1 Mt), thermal fluence, and
+  initial radiation. Gated behind the `validation` cargo feature.
+- Fixed missing `sample_preset_wavefront` command in app manifest/permissions.
+
 ## [0.11.0] — 2026-07-18
 
 ### Added
