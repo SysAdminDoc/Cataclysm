@@ -14,6 +14,7 @@ import { Tour } from "./components/Tour";
 import { GuidedLesson } from "./components/GuidedLesson";
 import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
+import { PerformancePanel } from "./components/PerformancePanel";
 import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
@@ -447,6 +448,7 @@ export default function App() {
   const [lessonCompletions, setLessonCompletions] = useState<Record<string, string>>({});
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [showPerfPanel, setShowPerfPanel] = useState(false);
   const [libraryPreview, setLibraryPreview] = useState<LibraryPreview | null>(null);
   const [libraryPreviewPending, setLibraryPreviewPending] = useState(false);
   const [libraryPreferences, setLibraryPreferences] = useState<ScenarioLibraryPreferences>(loadScenarioLibraryPreferences);
@@ -2008,6 +2010,7 @@ export default function App() {
           <span>{t("app.footerNote")}</span>
           <button type="button" onClick={() => setShowCitations(true)}>{t("app.bibliography")}</button>
           <button type="button" onClick={() => setShowLog(true)}>{t("app.diagnostics")}</button>
+          <button type="button" onClick={() => setShowPerfPanel((v) => !v)}>{t("app.performance")}</button>
         </div>
       </aside>
 
@@ -2496,6 +2499,7 @@ export default function App() {
       )}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       <LogViewer open={showLog} onClose={() => setShowLog(false)} />
+      <PerformancePanel visible={showPerfPanel} />
       <LaunchExperience />
       <FirstRunDisclaimer />
       <Tour
@@ -2535,14 +2539,14 @@ export default function App() {
           {modelStatus}
         </div>
         <div className="statusbar__item">
-          Renderer <strong>CesiumJS</strong>
+          {t("app.renderer")} <strong>CesiumJS</strong>
         </div>
         <div className="statusbar__item statusbar__item--wide">
-          WGS84 Earth · visual terrain · analytical ocean-depth model
+          {t("app.earthContract")}
         </div>
         <div className="statusbar__item statusbar__item--warning">
           <UiIcon name="alert" size={14} />
-          Educational only
+          {t("app.educationalOnly")}
         </div>
       </div>
     </div>

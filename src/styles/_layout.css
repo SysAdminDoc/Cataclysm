@@ -694,3 +694,42 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.perf-panel {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 900;
+  width: 240px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--crust);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text);
+  pointer-events: auto;
+}
+.perf-panel__header {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--subtext);
+}
+.perf-panel__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  margin: 0;
+}
+.perf-panel__grid dt { color: var(--subtext); }
+.perf-panel__grid dd { margin: 0; font-variant-numeric: tabular-nums; }
+.perf-panel__grid dd[data-tone="warning"] { color: var(--peach); }
+.perf-panel__adapter {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
