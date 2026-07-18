@@ -242,12 +242,12 @@ export function Settings({ onClose }: Props) {
   return (
     <div className="modal-overlay" onClick={handleBackdropClick}>
       <div className="modal modal--settings" data-loading={loading ? "true" : "false"} ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <header className="modal__header">
+        <div className="modal__header">
           <h2 id="settings-title">{t("settings.title")}</h2>
           <button className="modal__close" onClick={onClose} aria-label={t("settings.close")} type="button">
             <UiIcon name="close" size={16} />
           </button>
-        </header>
+        </div>
         <div className="modal__body settings__modal-body">
           {loading && <div className="settings__loading" role="status">{t("settings.loading")}</div>}
           {classroomLocked && (

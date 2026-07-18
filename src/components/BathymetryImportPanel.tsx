@@ -9,41 +9,58 @@ import {
   type ImportedBathymetryAsset,
 } from "../lib/tauri";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function selectedFileName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? "Selected raster";
+function selectedFileName(path: string, fallback: string): string {
+  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? fallback;
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
-  return `${bytes} B`;
+type NumberFormatter = ReturnType<typeof useI18n>["formatNumber"];
+type BusyState = "loading" | "preview" | "import" | "remove" | "restore";
+
+const BUSY_KEYS: Record<BusyState, MessageKey> = {
+  import: "bathy.busy.import",
+  loading: "bathy.busy.loading",
+  preview: "bathy.busy.preview",
+  remove: "bathy.busy.remove",
+  restore: "bathy.busy.restore",
+};
+
+function formatBytes(bytes: number, formatNumber: NumberFormatter): string {
+  if (bytes >= 1024 * 1024) return `${formatNumber(bytes / (1024 * 1024), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MiB`;
+  if (bytes >= 1024) return `${formatNumber(bytes / 1024, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} KiB`;
+  return `${formatNumber(bytes)} B`;
 }
 
 function Preview({ report }: { report: BathymetryPreflight }) {
+  const { t, formatNumber } = useI18n();
+  const semantics = report.sample_semantics === "depth_positive_down"
+    ? t("bathy.semantics.depth")
+    : t("bathy.semantics.elevation");
   return (
-    <div className="settings__source-card bathymetry-import__preview" aria-label="Bathymetry preflight report">
+    <div className="settings__source-card bathymetry-import__preview" aria-label={t("bathy.preflight")}>
       <div className="settings__source-heading">
         <strong>{report.file_name}</strong>
         <span>{report.format === "geo_tiff" ? "GeoTIFF" : "NetCDF-CF"}</span>
       </div>
       <dl className="settings__source-grid">
-        <div><dt>Grid</dt><dd>{report.width.toLocaleString()} × {report.height.toLocaleString()} · {formatBytes(report.file_size_bytes)}</dd></div>
-        <div><dt>Resolution</dt><dd>{report.resolution_deg[0].toPrecision(6)}° × {report.resolution_deg[1].toPrecision(6)}°</dd></div>
-        <div><dt>Crop</dt><dd>Full raster · {report.bounds_wgs84.join("°, ")}°</dd></div>
-        <div><dt>Resampling</dt><dd>None at import; source grid preserved</dd></div>
+        <div><dt>{t("bathy.grid")}</dt><dd>{formatNumber(report.width)} × {formatNumber(report.height)} · {formatBytes(report.file_size_bytes, formatNumber)}</dd></div>
+        <div><dt>{t("bathy.resolution")}</dt><dd>{formatNumber(report.resolution_deg[0], { maximumSignificantDigits: 6 })}° × {formatNumber(report.resolution_deg[1], { maximumSignificantDigits: 6 })}°</dd></div>
+        <div><dt>{t("bathy.crop")}</dt><dd>{t("bathy.fullRaster")} · {report.bounds_wgs84.map((value) => `${formatNumber(value, { maximumFractionDigits: 6 })}°`).join(", ")}</dd></div>
+        <div><dt>{t("bathy.resampling")}</dt><dd>{t("bathy.noResampling")}</dd></div>
         <div><dt>CRS</dt><dd>{report.horizontal_crs} · {report.vertical_datum}</dd></div>
-        <div><dt>Vertical values</dt><dd>{report.sample_semantics.replaceAll("_", " ")} · {report.units}</dd></div>
-        <div><dt>Depth range</dt><dd>{report.min_depth_m.toLocaleString()}–{report.max_depth_m.toLocaleString()} m</dd></div>
-        <div><dt>NoData</dt><dd>{report.nodata_cell_count.toLocaleString()} cells{report.nodata === null ? " · no sentinel" : ` · ${report.nodata}`}</dd></div>
-        <div><dt>Wet / dry</dt><dd>{report.wet_cell_count.toLocaleString()} / {report.dry_cell_count.toLocaleString()} cells</dd></div>
+        <div><dt>{t("bathy.verticalValues")}</dt><dd>{semantics} · {report.units}</dd></div>
+        <div><dt>{t("bathy.depthRange")}</dt><dd>{formatNumber(report.min_depth_m)}–{formatNumber(report.max_depth_m)} m</dd></div>
+        <div><dt>{t("bathy.noData")}</dt><dd>{formatNumber(report.nodata_cell_count)} {t("bathy.cells")}{report.nodata === null ? ` · ${t("bathy.noSentinel")}` : ` · ${formatNumber(report.nodata)}`}</dd></div>
+        <div><dt>{t("bathy.wetDry")}</dt><dd>{formatNumber(report.wet_cell_count)} / {formatNumber(report.dry_cell_count)} {t("bathy.cells")}</dd></div>
         <div><dt>SHA-256</dt><dd><code>{report.sha256}</code></dd></div>
-        <div><dt>Source</dt><dd>{report.source_label}</dd></div>
-        <div><dt>Rights</dt><dd>{report.rights_statement}</dd></div>
+        <div><dt>{t("bathy.source")}</dt><dd>{report.source_label}</dd></div>
+        <div><dt>{t("bathy.rights")}</dt><dd>{report.rights_statement}</dd></div>
       </dl>
       {report.warnings.length > 0 && (
         <div className="settings__status" data-tone="warning" role="status">
@@ -55,6 +72,7 @@ function Preview({ report }: { report: BathymetryPreflight }) {
 }
 
 export function BathymetryImportPanel() {
+  const { t, formatNumber } = useI18n();
   const desktop = isTauri();
   const [path, setPath] = useState("");
   const [variable, setVariable] = useState("");
@@ -64,7 +82,7 @@ export function BathymetryImportPanel() {
   const [preview, setPreview] = useState<BathymetryPreflight | null>(null);
   const [assets, setAssets] = useState<ImportedBathymetryAsset[]>([]);
   const [removedAssetId, setRemovedAssetId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"loading" | "preview" | "import" | "remove" | "restore" | null>(desktop ? "loading" : null);
+  const [busy, setBusy] = useState<BusyState | null>(desktop ? "loading" : null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,10 +100,10 @@ export function BathymetryImportPanel() {
     let cancelled = false;
     api.listImportedBathymetry()
       .then((items) => { if (!cancelled) setAssets(items); })
-      .catch((cause) => { if (!cancelled) setError(`Cached bathymetry could not be listed: ${errorMessage(cause)}`); })
+      .catch((cause) => { if (!cancelled) setError(t("bathy.error.list", { error: errorMessage(cause) })); })
       .finally(() => { if (!cancelled) setBusy(null); });
     return () => { cancelled = true; };
-  }, [desktop]);
+  }, [desktop, t]);
 
   function invalidatePreview() {
     setPreview(null);
@@ -98,9 +116,9 @@ export function BathymetryImportPanel() {
       const selected = await open({
         multiple: false,
         directory: false,
-        title: "Select scientific bathymetry raster",
+        title: t("bathy.pickerTitle"),
         filters: [
-          { name: "Scientific bathymetry", extensions: ["tif", "tiff", "nc", "cdf", "nc4"] },
+          { name: t("bathy.pickerFilter"), extensions: ["tif", "tiff", "nc", "cdf", "nc4"] },
         ],
       });
       if (typeof selected === "string") {
@@ -108,7 +126,7 @@ export function BathymetryImportPanel() {
         invalidatePreview();
       }
     } catch (cause) {
-      setError(`The bathymetry picker could not be opened: ${errorMessage(cause)}`);
+      setError(t("bathy.error.picker", { error: errorMessage(cause) }));
     }
   }
 
@@ -121,7 +139,7 @@ export function BathymetryImportPanel() {
       setPreview(await api.preflightBathymetryImport(request));
     } catch (cause) {
       setPreview(null);
-      setError(`Preflight failed: ${errorMessage(cause)}`);
+      setError(t("bathy.error.preflight", { error: errorMessage(cause) }));
     } finally {
       setBusy(null);
     }
@@ -136,10 +154,10 @@ export function BathymetryImportPanel() {
       setAssets((current) => [asset, ...current.filter((item) => item.asset_id !== asset.asset_id)]);
       setPreview(asset.report);
       setRemovedAssetId(null);
-      setMessage(`${asset.report.file_name} is cached for offline use.`);
+      setMessage(t("bathy.cached", { file: asset.report.file_name }));
       window.dispatchEvent(new CustomEvent("cataclysm:bathymetry-cache-changed"));
     } catch (cause) {
-      setError(`Import failed: ${errorMessage(cause)}`);
+      setError(t("bathy.error.import", { error: errorMessage(cause) }));
     } finally {
       setBusy(null);
     }
@@ -153,10 +171,10 @@ export function BathymetryImportPanel() {
       await api.removeImportedBathymetry(assetId);
       setAssets((current) => current.filter((item) => item.asset_id !== assetId));
       setRemovedAssetId(assetId);
-      setMessage("Bathymetry moved to the local recovery area.");
+      setMessage(t("bathy.removed"));
       window.dispatchEvent(new CustomEvent("cataclysm:bathymetry-cache-changed"));
     } catch (cause) {
-      setError(`Remove failed: ${errorMessage(cause)}`);
+      setError(t("bathy.error.remove", { error: errorMessage(cause) }));
     } finally {
       setBusy(null);
     }
@@ -170,10 +188,10 @@ export function BathymetryImportPanel() {
       const asset = await api.restoreImportedBathymetry(removedAssetId);
       setAssets((current) => [asset, ...current]);
       setRemovedAssetId(null);
-      setMessage(`${asset.report.file_name} was restored.`);
+      setMessage(t("bathy.restored", { file: asset.report.file_name }));
       window.dispatchEvent(new CustomEvent("cataclysm:bathymetry-cache-changed"));
     } catch (cause) {
-      setError(`Restore failed: ${errorMessage(cause)}`);
+      setError(t("bathy.error.restore", { error: errorMessage(cause) }));
     } finally {
       setBusy(null);
     }
@@ -182,44 +200,44 @@ export function BathymetryImportPanel() {
   if (!desktop) {
     return (
       <section className="settings__section">
-        <h3 className="settings__h3">Local scientific bathymetry</h3>
-        <p className="modal__intro">Import is available in the desktop app. Browser preview keeps using the bundled coarse bathymetry.</p>
+        <h3 className="settings__h3">{t("bathy.heading")}</h3>
+        <p className="modal__intro">{t("bathy.browserOnly")}</p>
       </section>
     );
   }
 
   return (
     <section className="settings__section bathymetry-import">
-      <h3 className="settings__h3">Local scientific bathymetry</h3>
-      <p className="modal__intro">Preview a documented WGS 84 GeoTIFF or NetCDF-CF raster before copying it into the bounded offline cache. Unknown coordinate, datum, axis, or unit metadata is rejected.</p>
+      <h3 className="settings__h3">{t("bathy.heading")}</h3>
+      <p className="modal__intro">{t("bathy.intro")}</p>
       <div className="settings__button-row">
         <button className="scenario-tab" type="button" onClick={() => void chooseFile()} disabled={busy !== null}>
-          <UiIcon name="folder" size={14} /> Choose raster
+          <UiIcon name="folder" size={14} /> {t("bathy.choose")}
         </button>
-        {path && <span className="bathymetry-import__filename">{selectedFileName(path)}</span>}
+        {path && <span className="bathymetry-import__filename">{selectedFileName(path, t("bathy.selectedRaster"))}</span>}
       </div>
       <div className="bathymetry-import__form">
-        <label className="settings__field"><span>NetCDF variable (optional)</span><input value={variable} onChange={(event) => { setVariable(event.target.value); invalidatePreview(); }} placeholder="Auto-detect one depth variable" /></label>
-        <label className="settings__field"><span>Vertical convention</span><select value={sampleSemantics} onChange={(event) => { setSampleSemantics(event.target.value as BathymetrySampleSemantics); invalidatePreview(); }}><option value="depth_positive_down">Depth, positive down</option><option value="elevation_positive_up">Elevation, positive up</option></select></label>
-        <label className="settings__field"><span>Source / dataset name</span><input value={sourceLabel} onChange={(event) => { setSourceLabel(event.target.value); invalidatePreview(); }} maxLength={160} placeholder="Required provenance label" /></label>
-        <label className="settings__field"><span>Rights / permitted use</span><input value={rightsStatement} onChange={(event) => { setRightsStatement(event.target.value); invalidatePreview(); }} maxLength={320} placeholder="Required license or rights statement" /></label>
+        <label className="settings__field"><span>{t("bathy.variable")}</span><input value={variable} onChange={(event) => { setVariable(event.target.value); invalidatePreview(); }} placeholder={t("bathy.variablePlaceholder")} /></label>
+        <label className="settings__field"><span>{t("bathy.verticalConvention")}</span><select value={sampleSemantics} onChange={(event) => { setSampleSemantics(event.target.value as BathymetrySampleSemantics); invalidatePreview(); }}><option value="depth_positive_down">{t("bathy.depthPositive")}</option><option value="elevation_positive_up">{t("bathy.elevationPositive")}</option></select></label>
+        <label className="settings__field"><span>{t("bathy.sourceName")}</span><input value={sourceLabel} onChange={(event) => { setSourceLabel(event.target.value); invalidatePreview(); }} maxLength={160} placeholder={t("bathy.sourcePlaceholder")} /></label>
+        <label className="settings__field"><span>{t("bathy.rightsUse")}</span><input value={rightsStatement} onChange={(event) => { setRightsStatement(event.target.value); invalidatePreview(); }} maxLength={320} placeholder={t("bathy.rightsPlaceholder")} /></label>
       </div>
       <div className="settings__button-row">
-        <button className="scenario-tab" type="button" onClick={() => void runPreflight()} disabled={!ready || busy !== null}>Preview and validate</button>
-        <button className="scenario-tab" type="button" onClick={() => void commitImport()} disabled={!preview || busy !== null}>Import verified raster</button>
-        {busy && <span className="settings__status" data-tone="muted" role="status">{busy === "loading" ? "Loading cache…" : `${busy[0].toUpperCase()}${busy.slice(1)} in progress…`}</span>}
+        <button className="scenario-tab" type="button" onClick={() => void runPreflight()} disabled={!ready || busy !== null}>{t("bathy.preview")}</button>
+        <button className="scenario-tab" type="button" onClick={() => void commitImport()} disabled={!preview || busy !== null}>{t("bathy.import")}</button>
+        {busy && <span className="settings__status" data-tone="muted" role="status">{t(BUSY_KEYS[busy])}</span>}
       </div>
       {preview && <Preview report={preview} />}
       {error && <div className="panel-error" role="alert">{error}</div>}
       {message && <div className="settings__status" data-tone="success" role="status">{message}</div>}
-      {removedAssetId && <button className="scenario-tab" type="button" onClick={() => void restoreAsset()} disabled={busy !== null}>Undo remove</button>}
+      {removedAssetId && <button className="scenario-tab" type="button" onClick={() => void restoreAsset()} disabled={busy !== null}>{t("bathy.undo")}</button>}
       {assets.length > 0 && (
-        <div className="bathymetry-import__assets" aria-label="Cached bathymetry rasters">
-          <strong>Offline cache</strong>
+        <div className="bathymetry-import__assets" aria-label={t("bathy.cacheAria")}>
+          <strong>{t("bathy.cache")}</strong>
           {assets.map((asset) => (
             <div className="bathymetry-import__asset" key={asset.asset_id}>
-              <span><strong>{asset.report.file_name}</strong><small>{asset.report.width.toLocaleString()} × {asset.report.height.toLocaleString()} · {formatBytes(asset.report.file_size_bytes)} · {asset.report.source_label}</small></span>
-              <button className="scenario-tab" data-tone="danger" type="button" onClick={() => void removeAsset(asset.asset_id)} disabled={busy !== null}>Remove</button>
+              <span><strong>{asset.report.file_name}</strong><small>{formatNumber(asset.report.width)} × {formatNumber(asset.report.height)} · {formatBytes(asset.report.file_size_bytes, formatNumber)} · {asset.report.source_label}</small></span>
+              <button className="scenario-tab" data-tone="danger" type="button" onClick={() => void removeAsset(asset.asset_id)} disabled={busy !== null}>{t("bathy.remove")}</button>
             </div>
           ))}
         </div>

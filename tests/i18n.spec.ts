@@ -35,6 +35,15 @@ test("language switch persists across settings, simulation results, layers, and 
     clip: settingsBounds!,
     style: ".settings__footer-message { visibility: hidden !important; }",
   })).toMatchSnapshot("localized-settings-ja.png");
+  await page.getByRole("button", { name: "データと初期案内" }).click();
+  await expect(page.getByRole("heading", { name: "ローカル科学用海底地形" })).toBeVisible();
+  await expect(page.getByText(/読み込みはデスクトップアプリで利用できます/)).toBeVisible();
+  const settingsDataAccessibility = await new AxeBuilder({ page }).include(".modal--settings").analyze();
+  expect(settingsDataAccessibility.violations).toEqual([]);
+  expect(await page.screenshot({
+    clip: settingsBounds!,
+    style: ".settings__footer-message { visibility: hidden !important; }",
+  })).toMatchSnapshot("localized-settings-data-ja.png");
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 
   await expect(page.locator(".app__tagline")).toHaveText("惑星災害シミュレーター");

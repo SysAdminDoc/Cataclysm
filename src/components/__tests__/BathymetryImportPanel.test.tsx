@@ -25,6 +25,7 @@ vi.mock("../../lib/tauri", () => ({
 }));
 
 import { BathymetryImportPanel } from "../BathymetryImportPanel";
+import { I18nProvider } from "../../lib/i18n";
 
 const report = {
   format: "geo_tiff" as const,
@@ -62,6 +63,7 @@ const asset = {
 
 describe("BathymetryImportPanel", () => {
   beforeEach(() => {
+    localStorage.clear();
     mocks.desktop = true;
     vi.clearAllMocks();
     mocks.list.mockResolvedValue([]);
@@ -120,5 +122,16 @@ describe("BathymetryImportPanel", () => {
     render(<BathymetryImportPanel />);
     expect(screen.getByText(/Import is available in the desktop app/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Choose raster" })).not.toBeInTheDocument();
+  });
+
+  it("localizes desktop import metadata and actions in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><BathymetryImportPanel /></I18nProvider>);
+    expect(screen.getByRole("heading", { name: "ローカル科学用海底地形" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "ラスターを選択" })).toBeEnabled();
+    expect(screen.getByLabelText("NetCDF変数（任意）")).toHaveAttribute("placeholder", "深度変数を1つ自動検出");
+    expect(screen.getByLabelText("鉛直方向の規約")).toHaveValue("depth_positive_down");
+    expect(screen.getByRole("button", { name: "確認して検証" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "検証済みラスターを読み込む" })).toBeDisabled();
   });
 });

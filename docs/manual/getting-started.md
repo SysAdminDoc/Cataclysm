@@ -35,7 +35,7 @@ trust/evidence controls, direct nuclear/asteroid setup and visual profiles, and
 the launch, first-run, tour, crash-recovery, fatal-error surfaces, and scientific
 glossary, advanced bibliography, and analytical CSV table controls are
 translated now, along with diagnostics, crash evidence, and support-bundle
-controls.
+controls, plus the scientific bathymetry import and offline-cache workflow.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 
