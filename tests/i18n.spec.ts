@@ -51,7 +51,10 @@ test("language switch persists across settings, simulation results, layers, and 
   const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
   await expect(tohoku).toBeVisible();
   await tohoku.click();
+  await expect(page.locator(".source-model")).toContainText("発生源モデル");
   await page.getByRole("button", { name: "実行して見る" }).click();
+  await page.getByRole("tab", { name: "設定", exact: true }).click();
+  await expect(page.locator(".source-model")).toContainText("Okada断層変位モデル");
   await page.getByRole("tab", { name: "結果", exact: true }).click();
   await expect(page.getByRole("tab", { name: "影響" })).toBeVisible();
   await expect(page.getByText("何が起きたか", { exact: true })).toBeVisible();

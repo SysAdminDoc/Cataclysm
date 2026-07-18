@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The Setup source-model summary now follows the active language for empty and
+  ready states, event/source types, model names, metadata labels, confidence,
+  edit actions, and locale-aware measurements across earthquake, impact,
+  nuclear, meteotsunami, and landslide sources.
+
 - Results, coastal validation, Visualization Layers, humanitarian-facility
   controls, and the shared trust/evidence disclosure now use the complete
   English, Spanish, Japanese, and Bahasa Indonesia catalogs. Measurements,

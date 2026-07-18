@@ -2,6 +2,7 @@ import type { InitialDisplacement, Preset } from "../types/scenario";
 import { buildSourceEvidence } from "../lib/trust-evidence";
 import { TrustDisclosure } from "./TrustDisclosure";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   preset: Preset | null;
@@ -13,98 +14,102 @@ function formatCoord(value: number, positive: string, negative: string): string 
   return `${Math.abs(value).toFixed(2)}° ${value >= 0 ? positive : negative}`;
 }
 
-function formatSource(preset: Preset | null): { type: string; magnitude: string; model: string } {
-  if (!preset) return { type: "Custom source", magnitude: "Scenario-defined", model: "Cataclysm analytical model" };
+type Translate = ReturnType<typeof useI18n>["t"];
+type FormatNumber = ReturnType<typeof useI18n>["formatNumber"];
+
+function formatSource(preset: Preset | null, t: Translate, formatNumber: FormatNumber): { type: string; magnitude: string; model: string } {
+  if (!preset) return { type: t("source.custom"), magnitude: t("source.scenarioDefined"), model: t("source.cataclysmModel") };
   const { source } = preset;
   if (source.kind === "Earthquake") {
-    return { type: "Earthquake", magnitude: `Mᵥ ${source.source.mw.toFixed(1)}`, model: "Okada dislocation model" };
+    return { type: t("source.earthquake"), magnitude: `Mᵥ ${formatNumber(source.source.mw, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`, model: t("source.okadaModel") };
   }
   if (source.kind === "Asteroid") {
     return {
-      type: "Asteroid impact",
-      magnitude: `${source.source.diameter_m.toLocaleString()} m · ${(source.source.velocity_m_s / 1000).toFixed(1)} km/s`,
-      model: "Ward–Asphaug impact source",
+      type: t("source.asteroidImpact"),
+      magnitude: `${formatNumber(source.source.diameter_m)} m · ${formatNumber(source.source.velocity_m_s / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km/s`,
+      model: t("source.wardAsphaugModel"),
     };
   }
   if (source.kind === "Nuclear") {
     return {
-      type: "Underwater detonation",
-      magnitude: `${source.source.yield_kt.toLocaleString()} kt TNT`,
-      model: "Glasstone–Dolan source model",
+      type: t("source.underwaterDetonation"),
+      magnitude: `${formatNumber(source.source.yield_kt)} kt TNT`,
+      model: t("source.glasstoneModel"),
     };
   }
   if (source.kind === "Meteotsunami") {
     return {
-      type: "Meteotsunami",
-      magnitude: `${source.source.peak_pressure_pa.toLocaleString()} Pa · ${source.source.speed_m_s.toFixed(1)} m/s`,
-      model: "Moving pressure-gradient source",
+      type: t("source.meteotsunami"),
+      magnitude: `${formatNumber(source.source.peak_pressure_pa)} Pa · ${formatNumber(source.source.speed_m_s, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m/s`,
+      model: t("source.pressureGradientModel"),
     };
   }
   return {
-    type: source.source.kind === "Subaerial" ? "Subaerial landslide" : "Submarine landslide",
-    magnitude: `${(source.source.volume_m3 / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 })} million m³`,
-    model: source.source.kind === "Subaerial" ? "Fritz–Hager model" : "Watts model",
+    type: source.source.kind === "Subaerial" ? t("source.subaerialLandslide") : t("source.submarineLandslide"),
+    magnitude: t("source.volumeMillion", { value: formatNumber(source.source.volume_m3 / 1e6, { maximumFractionDigits: 1 }) }),
+    model: source.source.kind === "Subaerial" ? t("source.fritzHagerModel") : t("source.wattsModel"),
   };
 }
 
 export function SourceModelSummary({ preset, initial, onEdit }: Props) {
+  const { t, formatNumber } = useI18n();
   if (!initial) {
     return (
-      <section className="source-model" data-ready="false" aria-label="Source model">
+      <section className="source-model" data-ready="false" aria-label={t("source.model")}>
         <div className="source-model__header">
-          <span>Source model</span>
-          <span className="section__badge" data-tone="muted">Not configured</span>
+          <span>{t("source.model")}</span>
+          <span className="section__badge" data-tone="muted">{t("source.notConfigured")}</span>
         </div>
         <div className="empty-state empty-state--compact">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>No active source</strong>
-            <p>Choose a reference event or define a source below.</p>
+            <strong>{t("source.noActive")}</strong>
+            <p>{t("source.noActiveBody")}</p>
           </div>
         </div>
       </section>
     );
   }
 
-  const source = formatSource(preset);
+  const source = formatSource(preset, t, formatNumber);
   const depth = initial.center.depth_m ?? 0;
-  const confidence = preset?.is_speculative ? "Scenario" : "Reference";
+  const confidence = preset?.is_speculative ? t("source.scenarioConfidence") : t("source.referenceConfidence");
   const evidence = buildSourceEvidence(preset, initial, preset?.source.kind ?? null);
 
   return (
-    <section className="source-model" data-ready="true" aria-label="Source model summary">
+    <section className="source-model" data-ready="true" aria-label={t("source.summary")}>
       <div className="source-model__header">
-        <span>Source model</span>
+        <span>{t("source.model")}</span>
         <span className="section__badge" data-tone="success">
-          <UiIcon name="check" size={12} /> Model ready
+          <UiIcon name="check" size={12} /> {t("source.modelReady")}
         </span>
       </div>
       <dl className="source-model__rows">
-        <div><dt>Scenario</dt><dd>{preset?.name ?? initial.label}</dd></div>
-        <div><dt>Event type</dt><dd>{source.type}</dd></div>
-        {preset?.date && <div><dt>Date</dt><dd>{preset.date}</dd></div>}
+        <div><dt>{t("source.scenario")}</dt><dd>{preset?.name ?? initial.label}</dd></div>
+        <div><dt>{t("source.eventType")}</dt><dd>{source.type}</dd></div>
+        {preset?.date && <div><dt>{t("source.date")}</dt><dd>{preset.date}</dd></div>}
         <div>
-          <dt>Location</dt>
+          <dt>{t("source.location")}</dt>
           <dd>{formatCoord(initial.center.lat_deg, "N", "S")}, {formatCoord(initial.center.lon_deg, "E", "W")}</dd>
         </div>
-        <div><dt>Depth</dt><dd>{depth >= 1000 ? `${(depth / 1000).toFixed(1)} km` : `${depth.toFixed(0)} m`}</dd></div>
-        <div><dt>Magnitude</dt><dd>{source.magnitude}</dd></div>
-        <div><dt>Source model</dt><dd>{source.model}</dd></div>
+        <div><dt>{t("source.depth")}</dt><dd>{depth >= 1000 ? `${formatNumber(depth / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km` : `${formatNumber(depth, { maximumFractionDigits: 0 })} m`}</dd></div>
+        <div><dt>{t("source.magnitude")}</dt><dd>{source.magnitude}</dd></div>
+        <div><dt>{t("source.model")}</dt><dd>{source.model}</dd></div>
       </dl>
       {onEdit && (
         <button className="source-model__edit" type="button" onClick={onEdit}>
-          <UiIcon name="mapPin" size={14} /> Edit source parameters
+          <UiIcon name="mapPin" size={14} /> {t("source.editParameters")}
         </button>
       )}
       <div className="source-model__confidence">
         <div>
-          <span>Model confidence</span>
+          <span>{t("source.modelConfidence")}</span>
           <strong>{confidence}</strong>
         </div>
         <div className="source-model__confidence-track" data-speculative={preset?.is_speculative ? "true" : "false"} aria-hidden>
           <span /><span /><span /><span /><span />
         </div>
-        <small>{preset?.is_speculative ? "What-if assumptions are preserved in exports." : "Peer-reviewed parameters with documented model limits."}</small>
+        <small>{preset?.is_speculative ? t("source.whatIfNote") : t("source.referenceNote")}</small>
       </div>
       <div className="source-model__trust">
         <TrustDisclosure evidence={evidence} compact />

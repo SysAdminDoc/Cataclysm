@@ -27,9 +27,10 @@ Open **Settings → Earth & appearance** to choose English, Spanish, Japanese,
 or Bahasa Indonesia. The choice is stored only in the local settings profile
 and is included when that profile is exported. Guided-lesson controls, all
 seven lesson narratives and worksheets, the complete Settings dialog, global
-command/workspace shell, scenario library and playback controls, Results and
-coastal validation, Visualization Layers and humanitarian context, shared
-trust/evidence controls, and the scientific glossary are translated now.
+command/workspace shell, scenario library, source-model summary and playback
+controls, Results and coastal validation, Visualization Layers and humanitarian
+context, shared trust/evidence controls, and the scientific glossary are
+translated now.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 

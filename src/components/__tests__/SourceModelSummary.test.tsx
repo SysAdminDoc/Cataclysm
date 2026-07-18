@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InitialDisplacement, Preset } from "../../types/scenario";
 import { SourceModelSummary } from "../SourceModelSummary";
+import { I18nProvider } from "../../lib/i18n";
 
 const initial: InitialDisplacement = {
   center: { lat_deg: 38.3, lon_deg: 142.37, depth_m: 1_500 },
@@ -34,6 +35,8 @@ const preset: Preset = {
 };
 
 describe("SourceModelSummary", () => {
+  beforeEach(() => localStorage.clear());
+
   it("shows a clear empty source state", () => {
     render(<SourceModelSummary preset={null} initial={null} onEdit={vi.fn()} />);
     expect(screen.getByText("No active source")).toBeInTheDocument();
@@ -46,5 +49,20 @@ describe("SourceModelSummary", () => {
     expect(screen.getByText("Okada dislocation model")).toBeInTheDocument();
     expect(screen.getByText("Why trust this?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit source parameters" })).toBeEnabled();
+  });
+
+  it("localizes source type, model metadata, confidence, and actions", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(
+      <I18nProvider>
+        <SourceModelSummary preset={preset} initial={initial} onEdit={vi.fn()} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getAllByText("発生源モデル")).toHaveLength(2);
+    expect(screen.getByText("地震")).toBeInTheDocument();
+    expect(screen.getByText("Okada断層変位モデル")).toBeInTheDocument();
+    expect(screen.getAllByText("参照データ")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "発生源パラメータを編集" })).toBeEnabled();
   });
 });
