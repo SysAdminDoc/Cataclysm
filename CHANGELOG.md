@@ -2,9 +2,40 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] — 2026-07-18
+
+### Added
+
+- Metric/imperial units system with persisted toggle in Settings; all displayed
+  distances, depths, and speeds switch without touching solver values; energy
+  readouts gain comparison anchors (Hiroshima/Tsar Bomba) for large values.
+- Proudman-resonance diagnostic in the meteotsunami scenario builder: live
+  U/√(gh) ratio indicator, color-coded by resonance state.
+- OS notification on solver run completion when the window is unfocused
+  (tauri-plugin-notification, local-only).
+- Runtime performance diagnostics panel: toggleable overlay showing tier, FPS,
+  P95 frame time, GPU state, adapter info, and quality decisions.
+- CycloneDX SBOM generation script for npm + Cargo (`npm run generate:sbom`).
+- npm supply-chain hardening: `npm audit signatures` and lockfile-integrity gate
+  in the local release verification pipeline.
+
+### Changed
+
+- Wavefront-only IPC (`sample_preset_wavefront`) eliminates full preset refetch
+  during timeline playback and scrubbing.
+
 ## [Unreleased]
 
 ### Added
+
+- The complete Custom scenario editor now follows the selected locale across
+  all five source types, scientific field labels and cited help, burst and
+  landslide choices, fault auto-fill feedback, saved-scenario recovery,
+  clipboard actions, and empty/error states. Shared numeric inputs also
+  localize validation, range guidance, help labels, and exact/coarse accessible
+  names while exposing a compact visible quick-adjust label. Japanese unit,
+  headless visual, and scoped WCAG regressions cover the
+  translated builder without interacting with the desktop.
 
 - The complete SWE propagation workspace now follows the selected locale:
   solver/run/retry/recovery states, bathymetry and resolution controls,
