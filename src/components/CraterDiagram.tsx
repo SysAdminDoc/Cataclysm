@@ -1,7 +1,9 @@
 import { useId } from "react";
 import type { AsteroidCraterVisual } from "../hazards";
+import { useI18n } from "../lib/i18n";
 
 export function CraterDiagram({ crater }: { crater: AsteroidCraterVisual }) {
+  const { t, formatNumber } = useI18n();
   const titleId = useId();
   const descriptionId = useId();
   const markerLeftId = useId().replaceAll(":", "");
@@ -42,8 +44,9 @@ export function CraterDiagram({ crater }: { crater: AsteroidCraterVisual }) {
         `L ${centerX + halfWidth} ${groundY}`,
       ].join(" ");
   const formatDistance = (meters: number) => meters >= 1_000
-    ? `${(meters / 1_000).toFixed(1)} km`
-    : `${meters.toFixed(0)} m`;
+    ? `${formatNumber(meters / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`
+    : `${formatNumber(meters, { maximumFractionDigits: 0 })} m`;
+  const shapeKey = crater.isComplex ? "crater.shape.complex" as const : "crater.shape.simple" as const;
 
   return (
     <figure className="hazard-diagram">
@@ -53,9 +56,9 @@ export function CraterDiagram({ crater }: { crater: AsteroidCraterVisual }) {
         role="img"
         aria-labelledby={`${titleId} ${descriptionId}`}
       >
-        <title id={titleId}>Modeled crater cross-section</title>
+        <title id={titleId}>{t("crater.title")}</title>
         <desc id={descriptionId}>
-          {crater.isComplex ? "Complex crater with a central peak" : "Simple bowl-shaped crater"}, annotated with final diameter and depth.
+          {t("crater.description", { shape: t(shapeKey) })}
         </desc>
         <defs>
           <marker id={markerLeftId} markerWidth="7" markerHeight="6" refX="0" refY="3" orient="auto">
@@ -77,14 +80,14 @@ export function CraterDiagram({ crater }: { crater: AsteroidCraterVisual }) {
           markerEnd={`url(#${markerRightId})`}
         />
         <text className="hazard-diagram__dimension-label" x={centerX} y={rimTopY - 14} textAnchor="middle">
-          {formatDistance(crater.finalDiameter)} diameter
+          {t("crater.diameter", { distance: formatDistance(crater.finalDiameter) })}
         </text>
         <line className="hazard-diagram__depth" x1={width - pad + 18} y1={groundY} x2={width - pad + 18} y2={bottomY} />
         <text className="hazard-diagram__depth-label" x={width - 8} y={(groundY + bottomY) / 2 + 4} textAnchor="end">
-          {formatDistance(crater.craterDepth)} deep
+          {t("crater.depth", { distance: formatDistance(crater.craterDepth) })}
         </text>
       </svg>
-      <figcaption>{crater.isComplex ? "Complex crater · central peak" : "Simple crater · bowl profile"}</figcaption>
+      <figcaption>{crater.isComplex ? t("crater.caption.complex") : t("crater.caption.simple")}</figcaption>
     </figure>
   );
 }

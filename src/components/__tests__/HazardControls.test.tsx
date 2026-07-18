@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HazardControls } from "../HazardControls";
 import type { AsteroidInput, AsteroidVisualReport, HazardResult, NuclearInput, NuclearShelterReport } from "../../hazards";
+import { I18nProvider } from "../../lib/i18n";
 
 const nuclear: NuclearInput = { yieldKt: 100, burstType: "airburst", populationDensity: 5000 };
 const asteroid: AsteroidInput = { diameterM: 100, densityKgM3: 3000, velocityKmS: 20, angleDeg: 45, targetType: "sedimentary_rock", waterDepthM: 4000 };
@@ -124,6 +125,8 @@ const shelterReport: NuclearShelterReport = {
 function noop() {}
 
 describe("HazardControls", () => {
+  beforeEach(() => localStorage.clear());
+
   it("prompts to pick a location when no result is present", () => {
     render(
       <HazardControls
@@ -478,5 +481,35 @@ describe("HazardControls", () => {
     expect(screen.getByText("800–900")).toBeInTheDocument();
     expect(screen.getByText(/BEIR VII/i)).toHaveTextContent(/not confidence intervals/i);
     expect(screen.getByText(/BEIR VII/i)).toHaveTextContent(/50% outer-zone survivor assumption/i);
+  });
+
+  it("localizes direct-hazard setup, numeric controls, and diagrams in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(
+      <I18nProvider>
+        <HazardControls
+          mode="asteroid"
+          nuclear={nuclear}
+          asteroid={asteroid}
+          onNuclearChange={noop}
+          onAsteroidChange={noop}
+          center={{ lat: 40, lon: -74 }}
+          onTogglePick={noop}
+          pickActive={false}
+          result={asteroidResult}
+          asteroidVisuals={asteroidVisuals}
+          windFromDeg={270}
+          onWindChange={noop}
+          onDetonate={noop}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("小惑星衝突")).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "直径 正確な値" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "衝突対象" })).toHaveValue("sedimentary_rock");
+    expect(screen.getByRole("heading", { name: "衝突プロファイル" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /大気圏突入軌道/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /モデル化したクレーター断面/ })).toBeInTheDocument();
   });
 });

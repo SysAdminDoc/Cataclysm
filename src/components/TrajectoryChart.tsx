@@ -1,5 +1,6 @@
 import { useId } from "react";
 import type { AsteroidTrajectoryPoint } from "../hazards";
+import { useI18n } from "../lib/i18n";
 
 export function TrajectoryChart({
   trajectory,
@@ -12,6 +13,7 @@ export function TrajectoryChart({
   breakupAltitude: number;
   airburstAltitude: number;
 }) {
+  const { t, formatNumber } = useI18n();
   const titleId = useId();
   const descriptionId = useId();
   const points = trajectory.filter((point) =>
@@ -38,8 +40,8 @@ export function TrajectoryChart({
     : undefined;
   const terminal = points[points.length - 1];
   const formatDistance = (meters: number) => meters >= 1_000
-    ? `${(meters / 1_000).toFixed(1)} km`
-    : `${meters.toFixed(0)} m`;
+    ? `${formatNumber(meters / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`
+    : `${formatNumber(meters, { maximumFractionDigits: 0 })} m`;
 
   return (
     <figure className="hazard-diagram">
@@ -49,9 +51,9 @@ export function TrajectoryChart({
         role="img"
         aria-labelledby={`${titleId} ${descriptionId}`}
       >
-        <title id={titleId}>Atmospheric entry trajectory</title>
+        <title id={titleId}>{t("trajectory.title")}</title>
         <desc id={descriptionId}>
-          Altitude and velocity along the Rust-modeled ground track, with breakup and terminal markers where applicable.
+          {t("trajectory.description")}
         </desc>
         <line className="hazard-diagram__axis" x1={pad.left} y1={pad.top} x2={pad.left} y2={pad.top + plotHeight} />
         <line className="hazard-diagram__axis" x1={pad.left} y1={pad.top + plotHeight} x2={pad.left + plotWidth} y2={pad.top + plotHeight} />
@@ -64,20 +66,20 @@ export function TrajectoryChart({
           <circle className="hazard-diagram__terminal" cx={x(terminal.groundDistance)} cy={altitudeY(airburstAltitude)} r={6} />
         ) : null}
         <text className="hazard-diagram__label" x={pad.left - 8} y={pad.top + 5} textAnchor="end">
-          {formatDistance(maxAltitude)} alt
+          {t("trajectory.maxAltitude", { distance: formatDistance(maxAltitude) })}
         </text>
         <text className="hazard-diagram__label" x={pad.left - 8} y={pad.top + plotHeight + 4} textAnchor="end">0</text>
         <text className="hazard-diagram__label" x={pad.left + plotWidth} y={pad.top + plotHeight + 24} textAnchor="end">
-          {formatDistance(maxDistance)} ground track
+          {t("trajectory.groundTrack", { distance: formatDistance(maxDistance) })}
         </text>
         <g className="hazard-diagram__legend" transform={`translate(${pad.left + 8} ${height - 10})`}>
           <line className="hazard-diagram__altitude" x1={0} y1={0} x2={28} y2={0} />
-          <text x={34} y={4}>Altitude</text>
+          <text x={34} y={4}>{t("trajectory.altitude")}</text>
           <line className="hazard-diagram__velocity" x1={112} y1={0} x2={140} y2={0} />
-          <text x={146} y={4}>Velocity (relative scale)</text>
+          <text x={146} y={4}>{t("trajectory.velocity")}</text>
         </g>
       </svg>
-      <figcaption>Rust-authoritative entry profile · {points.length} bounded samples</figcaption>
+      <figcaption>{t("trajectory.caption", { count: formatNumber(points.length) })}</figcaption>
     </figure>
   );
 }

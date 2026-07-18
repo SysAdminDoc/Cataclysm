@@ -24,15 +24,16 @@ import type { WorkspaceMode } from "../lib/settings";
 import { buildDirectResultEvidence } from "../lib/trust-evidence";
 import { NumericField } from "./NumericField";
 import { TrustDisclosure } from "./TrustDisclosure";
+import { useI18n } from "../lib/i18n";
 
 /** Place a point estimate in its one-significant-digit display bucket. This
  * removes false precision without manufacturing a statistical uncertainty. */
-function magnitudeDisplayBand(n: number): string {
+function magnitudeDisplayBand(n: number, formatNumber: (value: number) => string): string {
   if (!Number.isFinite(n) || n <= 0) return "0";
   const magnitude = Math.pow(10, Math.floor(Math.log10(n)));
   const lower = Math.floor(n / magnitude) * magnitude;
   const upper = lower + magnitude;
-  return `${lower.toLocaleString()}–${upper.toLocaleString()}`;
+  return `${formatNumber(lower)}–${formatNumber(upper)}`;
 }
 
 type NumericEntry = {
@@ -157,6 +158,7 @@ export function HazardControls({
   canAnimate?: boolean;
   workspaceMode?: WorkspaceMode;
 }) {
+  const { t, formatNumber } = useI18n();
   const nuclearYield = sourceBound("DirectNuclear", "yield_kt");
   const inferredWeaponId = WEAPON_PRESETS.find((preset) =>
     preset.yieldKt === nuclear.yieldKt && preset.burstType === nuclear.burstType,
@@ -181,11 +183,22 @@ export function HazardControls({
   const hasFallout = Boolean(nuclearEffects?.fallout);
   const showSetup = display !== "results";
   const showResults = display !== "setup";
+  const compass = t("hazard.compass").split("|");
+  const profileKey = asteroidEffects?.atmosphericEntry.reachesGround
+    ? "hazard.profile.impact" as const
+    : "hazard.profile.airburst" as const;
+  const stateMessage = !backendAvailable && center
+    ? t("hazard.state.desktop")
+    : pending && center
+      ? t("hazard.state.computing")
+      : center
+        ? t("hazard.state.ready")
+        : t("hazard.state.pick");
   return (
     <div className="section hazard">
       <div className="section__title">
-        <span>{display === "results" ? "Hazard results" : mode === "nuclear" ? "Nuclear detonation" : "Asteroid impact"}</span>
-        <span className="section__badge" data-tone={result ? "success" : "muted"}>{result ? "Ready" : "Setup"}</span>
+        <span>{display === "results" ? t("hazard.title.results") : mode === "nuclear" ? t("hazard.title.nuclear") : t("hazard.title.asteroid")}</span>
+        <span className="section__badge" data-tone={result ? "success" : "muted"}>{result ? t("hazard.status.ready") : t("hazard.status.setup")}</span>
       </div>
 
       {showSetup && <>
@@ -198,17 +211,19 @@ export function HazardControls({
           aria-pressed={pickActive}
           onClick={onTogglePick}
         >
-          {pickActive ? "Click the globe…" : center ? "Change location" : "Pick location on globe"}
+          {pickActive ? t("hazard.location.click") : center ? t("hazard.location.change") : t("hazard.location.pick")}
         </button>
         <span className="hazard__coord">
-          {center ? `${center.lat.toFixed(2)}°, ${center.lon.toFixed(2)}°` : "no location set"}
+          {center
+            ? `${formatNumber(center.lat, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°, ${formatNumber(center.lon, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°`
+            : t("hazard.location.unset")}
         </span>
       </div>
 
       {mode === "nuclear" ? (
         <>
           <label className="hazard__row">
-            <span className="hazard__row-label">Weapon preset</span>
+            <span className="hazard__row-label">{t("hazard.weaponPreset")}</span>
             <select
               className="hazard__select"
               value={selectedWeaponId}
@@ -220,7 +235,7 @@ export function HazardControls({
                 }
               }}
             >
-              <option value="">Custom…</option>
+              <option value="">{t("hazard.custom")}</option>
               {WEAPON_PRESETS.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} — {w.note}
@@ -229,7 +244,7 @@ export function HazardControls({
             </select>
           </label>
           <Slider
-            label="Yield"
+            label={t("hazard.field.yield")}
             value={Math.log10(Math.max(nuclear.yieldKt, nuclearYield.min))}
             min={Math.log10(nuclearYield.min)}
             max={Math.log10(nuclearYield.max)}
@@ -237,7 +252,11 @@ export function HazardControls({
             onChange={(v) => onNuclearChange({ ...nuclear, yieldKt: Math.pow(10, v) })}
             format={() => {
               const kt = nuclear.yieldKt;
-              return kt < 1 ? `${(kt * 1000).toFixed(0)} t` : kt < 1000 ? `${kt.toFixed(0)} kT` : `${(kt / 1000).toFixed(1)} MT`;
+              return kt < 1
+                ? `${formatNumber(kt * 1000, { maximumFractionDigits: 0 })} t`
+                : kt < 1000
+                  ? `${formatNumber(kt, { maximumFractionDigits: 0 })} kT`
+                  : `${formatNumber(kt / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MT`;
             }}
             numeric={{
               value: nuclear.yieldKt,
@@ -249,7 +268,7 @@ export function HazardControls({
             }}
           />
           {workspaceMode !== "simple" && <label className="hazard__row">
-            <span className="hazard__row-label">Burst type</span>
+            <span className="hazard__row-label">{t("hazard.field.burstType")}</span>
             <select
               className="hazard__select"
               value={nuclear.burstType}
@@ -257,22 +276,22 @@ export function HazardControls({
             >
               {nuclearBurstTypes.map((value) => (
                 <option key={value} value={value}>
-                  {value === "airburst" ? "Air burst (optimal height)" : value === "surface" ? "Surface" : value === "hemp" ? "High-altitude EMP (400 km)" : "Water"}
+                  {value === "airburst" ? t("hazard.burst.air") : value === "surface" ? t("hazard.burst.surface") : value === "hemp" ? t("hazard.burst.hemp") : t("hazard.burst.water")}
                 </option>
               ))}
             </select>
           </label>}
           {nuclear.burstType === "hemp" && (
-            <p className="hazard__hint">HEMP mode suppresses ground blast, thermal, prompt-radiation, fallout, and casualty rings. The displayed EMP radius is an educational line-of-sight footprint, not a grid vulnerability forecast.</p>
+            <p className="hazard__hint">{t("hazard.hempNotice")}</p>
           )}
           {workspaceMode === "advanced" && <Slider
-            label="Population density"
+            label={t("hazard.field.populationDensity")}
             value={nuclear.populationDensity ?? 0}
             min={populationDensity.min}
             max={populationDensity.max}
             step={100}
             onChange={(v) => onNuclearChange({ ...nuclear, populationDensity: v })}
-            format={(v) => (v === 0 ? "off" : `${v.toLocaleString()} /km²`)}
+            format={(v) => (v === 0 ? t("hazard.off") : `${formatNumber(v)} /km²`)}
             numeric={{
               value: nuclear.populationDensity ?? 0,
               min: populationDensity.min,
@@ -284,13 +303,13 @@ export function HazardControls({
           />}
           {workspaceMode === "advanced" && hasFallout && (
             <Slider
-              label="Wind from"
+              label={t("hazard.field.windFrom")}
               value={windFromDeg}
               min={windFrom.min}
               max={windFrom.max}
               step={1}
               onChange={onWindChange}
-              format={(v) => `${v.toFixed(0)}° (${["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(v / 45) % 8]})`}
+              format={(v) => `${formatNumber(v, { maximumFractionDigits: 0 })}° (${compass[Math.round(v / 45) % 8]})`}
               numeric={{
                 value: windFromDeg,
                 min: windFrom.min,
@@ -305,13 +324,15 @@ export function HazardControls({
       ) : (
         <>
           <Slider
-            label="Diameter"
+            label={t("hazard.field.diameter")}
             value={asteroid.diameterM}
             min={asteroidDiameter.min}
             max={asteroidDiameter.max}
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, diameterM: v })}
-            format={(v) => (v < 1000 ? `${v.toFixed(0)} m` : `${(v / 1000).toFixed(1)} km`)}
+            format={(v) => (v < 1000
+              ? `${formatNumber(v, { maximumFractionDigits: 0 })} m`
+              : `${formatNumber(v / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`)}
             numeric={{
               value: asteroid.diameterM,
               min: asteroidDiameter.min,
@@ -322,13 +343,13 @@ export function HazardControls({
             }}
           />
           {workspaceMode !== "simple" && <Slider
-            label="Velocity"
+            label={t("hazard.field.velocity")}
             value={asteroid.velocityKmS}
             min={asteroidVelocity.min}
             max={asteroidVelocity.max}
             step={0.5}
             onChange={(v) => onAsteroidChange({ ...asteroid, velocityKmS: v })}
-            format={(v) => `${v.toFixed(1)} km/s`}
+            format={(v) => `${formatNumber(v, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km/s`}
             numeric={{
               value: asteroid.velocityKmS,
               min: asteroidVelocity.min,
@@ -339,13 +360,13 @@ export function HazardControls({
             }}
           />}
           {workspaceMode !== "simple" && <Slider
-            label="Impact angle"
+            label={t("hazard.field.impactAngle")}
             value={asteroid.angleDeg}
             min={asteroidAngle.min}
             max={asteroidAngle.max}
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, angleDeg: v })}
-            format={(v) => `${v.toFixed(0)}°`}
+            format={(v) => `${formatNumber(v, { maximumFractionDigits: 0 })}°`}
             numeric={{
               value: asteroid.angleDeg,
               min: asteroidAngle.min,
@@ -356,13 +377,13 @@ export function HazardControls({
             }}
           />}
           {workspaceMode === "advanced" && <Slider
-            label="Density"
+            label={t("hazard.field.density")}
             value={asteroid.densityKgM3}
             min={asteroidDensity.min}
             max={asteroidDensity.max}
             step={50}
             onChange={(v) => onAsteroidChange({ ...asteroid, densityKgM3: v })}
-            format={(v) => `${v.toLocaleString()} kg/m³`}
+            format={(v) => `${formatNumber(v)} kg/m³`}
             numeric={{
               value: asteroid.densityKgM3,
               min: asteroidDensity.min,
@@ -373,14 +394,14 @@ export function HazardControls({
             }}
           />}
           <label className="hazard__row">
-            <span className="hazard__row-label">Target</span>
+            <span className="hazard__row-label">{t("hazard.field.target")}</span>
             <select
               className="hazard__select"
               value={asteroid.targetType}
               onChange={(e) => onAsteroidChange({ ...asteroid, targetType: e.target.value as TargetType })}
             >
               {asteroidTargetTypes.map((value) => (
-                <option key={value} value={value}>{value === "sedimentary_rock" ? "Sedimentary rock" : value === "crystalline_rock" ? "Crystalline rock" : "Water (ocean)"}</option>
+                <option key={value} value={value}>{value === "sedimentary_rock" ? t("hazard.target.sedimentary") : value === "crystalline_rock" ? t("hazard.target.crystalline") : t("hazard.target.water")}</option>
               ))}
             </select>
           </label>
@@ -395,14 +416,14 @@ export function HazardControls({
           {onToggleFireballs ? (
             <div className="fireball-feed">
               <button type="button" aria-pressed={showFireballs} onClick={onToggleFireballs}>
-                {showFireballs ? "Hide CNEOS fireballs" : "Show CNEOS fireballs"}
+                {showFireballs ? t("hazard.fireballs.hide") : t("hazard.fireballs.show")}
               </button>
               <span role="status">
                 {fireballsLoading
-                  ? "Loading located events…"
+                  ? t("hazard.fireballs.loading")
                   : showFireballs
-                    ? `${fireballCount} located event${fireballCount === 1 ? "" : "s"} on globe`
-                    : "Off"}
+                    ? fireballCount === 1 ? t("hazard.fireballs.one") : t("hazard.fireballs.many", { count: formatNumber(fireballCount) })
+                    : t("hazard.off")}
               </span>
               {showFireballs && fireballNotice ? <p>{fireballNotice}</p> : null}
             </div>
@@ -413,23 +434,15 @@ export function HazardControls({
 
       {showSetup && !showResults && !result && (
         <p className="hazard__hint" role={error ? "alert" : "status"}>
-          {error
-            ? error
-            : !backendAvailable && center
-              ? "Direct hazard physics requires the desktop app; browser preview cannot calculate effects."
-              : pending && center
-                ? "Computing authoritative effects…"
-                : center
-                  ? "Ready to calculate effects."
-                  : "Pick a location on the globe to model effects."}
+          {error ?? stateMessage}
         </p>
       )}
 
       {showSetup && result && (
         <button type="button" className="hazard__detonate" onClick={onDetonate} disabled={!canAnimate}>
           {canAnimate
-            ? mode === "asteroid" ? "Impact animation" : "Detonation animation"
-            : "Animation unavailable"}
+            ? mode === "asteroid" ? t("hazard.animation.impact") : t("hazard.animation.detonation")
+            : t("hazard.animation.unavailable")}
         </button>
       )}
 
@@ -445,9 +458,9 @@ export function HazardControls({
             ))}
           </div>
           {mode === "asteroid" && asteroidEffects && asteroidVisuals ? (
-            <section className="hazard__diagrams" aria-label={asteroidEffects.atmosphericEntry.reachesGround ? "Impact profile" : "Airburst profile"}>
-              <h3>{asteroidEffects.atmosphericEntry.reachesGround ? "Impact profile" : "Airburst profile"}</h3>
-              <p>Bounded visualization samples retained by {asteroidVisuals.model}; the browser only draws the returned values.</p>
+            <section className="hazard__diagrams" aria-label={t(profileKey)}>
+              <h3>{t(profileKey)}</h3>
+              <p>{t("hazard.profile.description", { model: asteroidVisuals.model })}</p>
               <TrajectoryChart
                 trajectory={asteroidVisuals.trajectory}
                 reachesGround={asteroidEffects.atmosphericEntry.reachesGround}
@@ -459,55 +472,49 @@ export function HazardControls({
           ) : null}
           {result.casualties && (
             <div className="hazard__casualties">
-              <strong>{magnitudeDisplayBand(result.casualties.deaths)}</strong> fatalities ·{" "}
-              <strong>{magnitudeDisplayBand(result.casualties.injuries)}</strong> injuries
+              <strong>{magnitudeDisplayBand(result.casualties.deaths, formatNumber)}</strong> {t("hazard.fatalities")} ·{" "}
+              <strong>{magnitudeDisplayBand(result.casualties.injuries, formatNumber)}</strong> {t("hazard.injuries")}
               <span className="hazard__casualties-detail">
-                incl. ~<strong>{magnitudeDisplayBand(result.casualties.childDeaths)}</strong> child
-                deaths · ~<strong>{magnitudeDisplayBand(result.casualties.childInjuries)}</strong>{" "}
-                child injuries
+                {t("hazard.includingApprox")}<strong>{magnitudeDisplayBand(result.casualties.childDeaths, formatNumber)}</strong> {t("hazard.childDeaths")} · ~<strong>{magnitudeDisplayBand(result.casualties.childInjuries, formatNumber)}</strong>{" "}
+                {t("hazard.childInjuries")}
               </span>
               <span className="hazard__casualties-note">
-                Order-of-magnitude display bands around one model estimate—not statistical
-                confidence intervals. Assumes {result.casualties.populationDensity.toLocaleString()} people/km²
-                uniformly distributed, with fixed indoor/outdoor occupancy and shielding factors, and
-                a ~25% under-15 share (UN WPP 2024) for the child slice (educational only).
+                {t("hazard.casualtyNote", { density: formatNumber(result.casualties.populationDensity) })}
               </span>
             </div>
           )}
           {nuclearEffects?.latentCancer && (
             <div className="hazard__casualties">
-              <strong>{magnitudeDisplayBand(nuclearEffects.latentCancer.cancers30yr)}</strong> latent
-              cancer deaths over 30 yr ·{" "}
-              <strong>{magnitudeDisplayBand(nuclearEffects.latentCancer.cancers10yr)}</strong> within 10 yr
+              <strong>{magnitudeDisplayBand(nuclearEffects.latentCancer.cancers30yr, formatNumber)}</strong> {t("hazard.latent30")} ·{" "}
+              <strong>{magnitudeDisplayBand(nuclearEffects.latentCancer.cancers10yr, formatNumber)}</strong> {t("hazard.within10")}
               <span className="hazard__casualties-note">
-                Order-of-magnitude display bands, not confidence intervals. BEIR VII
-                linear-no-threshold (~5.5%/Sv), fixed dose zones, and a 50% outer-zone
-                survivor assumption; {magnitudeDisplayBand(nuclearEffects.latentCancer.exposed)} exposed
-                and {" "}{magnitudeDisplayBand(nuclearEffects.latentCancer.geneticEffects)} hereditary effects.
+                {t("hazard.latentNote", {
+                  exposed: magnitudeDisplayBand(nuclearEffects.latentCancer.exposed, formatNumber),
+                  genetic: magnitudeDisplayBand(nuclearEffects.latentCancer.geneticEffects, formatNumber),
+                })}
               </span>
             </div>
           )}
           {mode === "nuclear" && shelterReport?.zones.length ? (
             <details className="hazard__shelter">
-              <summary>Shelter screening by effect zone</summary>
+              <summary>{t("hazard.shelter.title")}</summary>
               <p>
-                Educational comparison scores from the Rust-authoritative {shelterReport.model}.
-                These are not personal survival odds or protective-action guidance.
+                {t("hazard.shelter.description", { model: shelterReport.model })}
               </p>
-              <div className="hazard__shelter-table" role="region" aria-label="Shelter screening table" tabIndex={0}>
+              <div className="hazard__shelter-table" role="region" aria-label={t("hazard.shelter.region")} tabIndex={0}>
                 <table>
-                  <caption>Relative survival screening score by modeled effect radius</caption>
+                  <caption>{t("hazard.shelter.caption")}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Shelter</th>
+                      <th scope="col">{t("hazard.shelter.column")}</th>
                       {shelterReport.zones.map((zone) => (
                         <th
                           scope="col"
                           key={zone.label}
-                          aria-label={`${zone.label} ${zone.distanceKm.toFixed(1)} km`}
+                          aria-label={t("hazard.shelter.zone", { label: zone.label, distance: formatNumber(zone.distanceKm, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}
                         >
                           {zone.label}
-                          <small>{zone.distanceKm.toFixed(1)} km</small>
+                          <small>{formatNumber(zone.distanceKm, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km</small>
                         </th>
                       ))}
                     </tr>
@@ -522,7 +529,7 @@ export function HazardControls({
                             <td
                               key={zone.label}
                               data-blast-ok={assessment.blastOk ? "true" : "false"}
-                              title={`${zone.overpressurePsi.toFixed(1)} psi · ${zone.thermalCalCm2.toFixed(1)} cal/cm²`}
+                              title={`${formatNumber(zone.overpressurePsi, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} psi · ${formatNumber(zone.thermalCalCm2, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} cal/cm²`}
                             >
                               {assessment.survivalPct}%
                             </td>
@@ -544,19 +551,21 @@ export function HazardControls({
                 <i data-ring-color={ring.color} aria-hidden />
                 <span>{ring.label}</span>
                 <span className="hazard__ring-radius">
-                  {ring.radiusM < 1000 ? `${ring.radiusM.toFixed(0)} m` : `${(ring.radiusM / 1000).toFixed(1)} km`}
+                  {ring.radiusM < 1000
+                    ? `${formatNumber(ring.radiusM, { maximumFractionDigits: 0 })} m`
+                    : `${formatNumber(ring.radiusM / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`}
                 </span>
               </li>
             ))}
           </ul>
 
           <button type="button" className="hazard__detonate" onClick={onDetonate} disabled={!canAnimate}>
-            {mode === "asteroid" ? "☄ Impact — asteroid from space" : "▶ Detonate — animate shockwave"}
+            {mode === "asteroid" ? t("hazard.action.impact") : t("hazard.action.detonate")}
           </button>
 
           {timeline.length > 0 && (
             <div className="hazard__timeline">
-              <div className="hazard__timeline-title">Detonation timeline</div>
+              <div className="hazard__timeline-title">{t("hazard.timeline")}</div>
               <ol className="hazard__timeline-list">
                 {timeline.map((ev, i) => (
                   <li key={`${ev.time}-${i}`} data-cat={ev.category}>
@@ -570,15 +579,7 @@ export function HazardControls({
         </div>
       ) : (
         <p className="hazard__hint" role={error ? "alert" : "status"}>
-          {error
-            ? error
-            : !backendAvailable && center
-            ? "Direct hazard physics requires the desktop app; browser preview cannot calculate effects."
-            : pending && center
-              ? "Computing authoritative effects…"
-              : center
-                ? "Ready to calculate effects."
-                : "Pick a location on the globe to model effects."}
+          {error ?? stateMessage}
         </p>
       ))}
     </div>

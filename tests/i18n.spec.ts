@@ -49,6 +49,19 @@ test("language switch persists across settings, simulation results, layers, and 
   expect(headerBounds).not.toBeNull();
   expect(await page.screenshot({ clip: headerBounds! })).toMatchSnapshot("localized-header-ja.png");
 
+  await hazardModes.getByRole("button", { name: "衝突" }).click();
+  const directHazard = page.locator(".hazard");
+  await expect(directHazard.getByText("小惑星衝突", { exact: true })).toBeVisible();
+  await expect(directHazard.getByRole("spinbutton", { name: "直径 正確な値" })).toBeVisible();
+  await expect(directHazard.getByRole("combobox", { name: "衝突対象" })).toBeVisible();
+  await expect(directHazard.getByRole("button", { name: "地球上で場所を選択" })).toBeVisible();
+  const hazardAccessibility = await new AxeBuilder({ page }).include(".hazard").analyze();
+  expect(hazardAccessibility.violations).toEqual([]);
+  const hazardInspectorBounds = await page.locator(".app__panel--right").boundingBox();
+  expect(hazardInspectorBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: hazardInspectorBounds! })).toMatchSnapshot("localized-hazard-ja.png");
+  await hazardModes.getByRole("button", { name: "津波" }).click();
+
   await page.getByRole("button", { name: "独自に作成" }).click();
   const customBuilder = page.locator(".scenario-builder");
   await expect(customBuilder.getByText("カスタムシナリオ", { exact: true })).toBeVisible();
