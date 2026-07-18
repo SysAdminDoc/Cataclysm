@@ -11,16 +11,24 @@ async function loadModule() {
 }
 
 export async function notifyRunComplete(title: string, body: string): Promise<void> {
-  if (document.hasFocus()) return;
-  const mod = await loadModule();
-  if (!mod) return;
-  const { isPermissionGranted, requestPermission, sendNotification } = mod;
-  let permitted = await isPermissionGranted();
-  if (!permitted) {
-    const result = await requestPermission();
-    permitted = result === "granted";
-  }
-  if (permitted) {
-    sendNotification({ title, body });
+  if (typeof document === "undefined" || document.hasFocus()) return;
+
+  // Completion notifications are a best-effort convenience. A missing plugin
+  // bridge, denied permission, or platform notification failure must never
+  // surface as an unhandled rejection after an otherwise successful run.
+  try {
+    const mod = await loadModule();
+    if (!mod) return;
+    const { isPermissionGranted, requestPermission, sendNotification } = mod;
+    let permitted = await isPermissionGranted();
+    if (!permitted) {
+      const result = await requestPermission();
+      permitted = result === "granted";
+    }
+    if (permitted) {
+      sendNotification({ title, body });
+    }
+  } catch {
+    // Keep solver completion independent from optional OS notification state.
   }
 }
