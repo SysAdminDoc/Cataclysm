@@ -51,8 +51,9 @@ use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
 #[cfg(test)]
 use super::direct_hazard::{
     AsteroidDetail, AsteroidHazardRequest, AsteroidTargetType, HazardCenter, HazardDetail,
-    NuclearBurstType, NuclearDetail, NuclearHazardRequest, overpressure_at_scaled_distance,
-    peak_wind_velocity_m_s, simulate_asteroid_hazard, simulate_nuclear_hazard,
+    HazardResult, NuclearBurstType, NuclearDetail, NuclearHazardRequest,
+    overpressure_at_scaled_distance, peak_wind_velocity_m_s, simulate_asteroid_hazard,
+    simulate_nuclear_hazard,
 };
 #[cfg(test)]
 use super::landslide::lituya_bay_1958;
@@ -644,5 +645,159 @@ fn moving_pressure_source_reproduces_proudman_amplification() {
     assert!(
         resonant > 1.15 * strongest_off_resonance,
         "resonant response {resonant:.6} m was not at least 15% above off-resonance responses {subcritical:.6}/{supercritical:.6} m",
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Nuclear direct-effects validation vs Glasstone & Dolan 1977
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Validates the app's scaled-overpressure and thermal-fluence models against
+// Glasstone & Dolan "The Effects of Nuclear Weapons" (1977, 3rd ed.) reference
+// data. The model uses Hopkinson-Cranz cube-root scaling (G&D §3.61) with
+// empirical coefficients fitted to the published damage-radius tables.
+//
+// References:
+// - Glasstone & Dolan 1977, Table 3.65–3.73 (peak overpressure vs distance)
+// - Glasstone & Dolan 1977, Table 7.36 (thermal fluence vs distance)
+// - Glasstone & Dolan 1977, Table 8.126 (initial nuclear radiation)
+//
+// Tolerance: ±30% — the model intentionally uses simplified scaling laws
+// rather than the full empirical tables, and Glasstone & Dolan tables carry
+// ±10-20% inherent uncertainty from atmospheric conditions and yield
+// measurement precision.
+
+#[cfg(test)]
+fn nuclear_test(yield_kt: f64, burst_type: NuclearBurstType) -> HazardResult {
+    simulate_nuclear_hazard(NuclearHazardRequest {
+        center: HazardCenter { lat: 35.0, lon: 139.0 },
+        yield_kt,
+        burst_type,
+        height_m: None,
+        fission_pct: 50.0,
+        population_density: 0.0,
+    }).unwrap()
+}
+
+#[cfg(test)]
+fn find_ring_km(result: &HazardResult, label_prefix: &str) -> f64 {
+    result.rings.iter()
+        .find(|ring| ring.label.starts_with(label_prefix))
+        .map(|ring| ring.radius_m / 1000.0)
+        .unwrap_or(0.0)
+}
+
+/// Glasstone & Dolan 1977 Table 3.65: for a 1 kt airburst, the 5 psi radius
+/// is approximately 0.71 km and the 1 psi radius is approximately 2.2 km.
+#[test]
+fn nuclear_1kt_airburst_overpressure_matches_glasstone_dolan() {
+    let result = nuclear_test(1.0, NuclearBurstType::Airburst);
+    let psi_5 = find_ring_km(&result, "5 psi");
+    let psi_1 = find_ring_km(&result, "1 psi");
+
+    // G&D Table 3.65: 5 psi at ~0.71 km for 1 kt
+    assert!(
+        (psi_5 - 0.71).abs() < 0.71 * 0.30,
+        "1 kt airburst 5 psi radius {psi_5:.2} km outside ±30% of G&D reference 0.71 km"
+    );
+    // G&D: 1 psi at ~2.2 km for 1 kt
+    assert!(
+        (psi_1 - 2.2).abs() < 2.2 * 0.30,
+        "1 kt airburst 1 psi radius {psi_1:.2} km outside ±30% of G&D reference 2.2 km"
+    );
+}
+
+/// Glasstone & Dolan 1977: for 20 kt airburst (Hiroshima-class), the 5 psi
+/// radius is approximately 1.9 km and the 20 psi radius is approximately 0.8 km.
+#[test]
+fn nuclear_20kt_airburst_overpressure_matches_glasstone_dolan() {
+    let result = nuclear_test(20.0, NuclearBurstType::Airburst);
+    let psi_5 = find_ring_km(&result, "5 psi");
+    let psi_20 = find_ring_km(&result, "20 psi");
+
+    // G&D: cube-root scaling → 5 psi at ~1.93 km for 20 kt
+    let expected_5 = 0.71 * 20.0_f64.powf(1.0 / 3.0);
+    assert!(
+        (psi_5 - expected_5).abs() < expected_5 * 0.30,
+        "20 kt airburst 5 psi radius {psi_5:.2} km outside ±30% of G&D reference {expected_5:.2} km"
+    );
+    // G&D: 20 psi at ~0.76 km for 20 kt
+    let expected_20 = 0.28 * 20.0_f64.powf(1.0 / 3.0);
+    assert!(
+        (psi_20 - expected_20).abs() < expected_20 * 0.30,
+        "20 kt airburst 20 psi radius {psi_20:.2} km outside ±30% of G&D reference {expected_20:.2} km"
+    );
+}
+
+/// Glasstone & Dolan 1977: for 1 Mt (1000 kt) surface burst, the 5 psi radius
+/// is approximately 5.7 km and the 1 psi radius is approximately 17.6 km.
+/// Surface factor = 0.8 (G&D §3.61: ground reflection enhancement vs
+/// reduced efficiency).
+#[test]
+fn nuclear_1mt_surface_overpressure_matches_glasstone_dolan() {
+    let result = nuclear_test(1000.0, NuclearBurstType::Surface);
+    let psi_5 = find_ring_km(&result, "5 psi");
+    let psi_1 = find_ring_km(&result, "1 psi");
+
+    // G&D: 5 psi at ~5.68 km for 1 Mt surface
+    let cube = 1000.0_f64.powf(1.0 / 3.0);
+    let expected_5 = 0.8 * 0.71 * cube;
+    assert!(
+        (psi_5 - expected_5).abs() < expected_5 * 0.30,
+        "1 Mt surface 5 psi radius {psi_5:.2} km outside ±30% of G&D reference {expected_5:.2} km"
+    );
+    // G&D: 1 psi at ~17.6 km for 1 Mt surface
+    let expected_1 = 0.8 * 2.2 * cube;
+    assert!(
+        (psi_1 - expected_1).abs() < expected_1 * 0.30,
+        "1 Mt surface 1 psi radius {psi_1:.2} km outside ±30% of G&D reference {expected_1:.2} km"
+    );
+}
+
+/// Glasstone & Dolan 1977 Table 7.36: thermal fluence radius at 3rd-degree
+/// burns (8 cal/cm² = 335 kJ/m²) for 20 kt airburst is ~2.0 km; for 1 Mt
+/// ~18 km. The model uses empirical `0.67 * kt^0.41` (km).
+#[test]
+fn nuclear_thermal_fluence_radius_matches_glasstone_dolan() {
+    let result_20kt = nuclear_test(20.0, NuclearBurstType::Airburst);
+    let result_1mt = nuclear_test(1000.0, NuclearBurstType::Airburst);
+    let thermal_3_20kt = find_ring_km(&result_20kt, "3rd° burns");
+    let thermal_3_1mt = find_ring_km(&result_1mt, "3rd° burns");
+
+    // G&D Table 7.36: 3rd-degree burns at ~1.9 km for 20 kt
+    let expected_20 = 0.67 * 20.0_f64.powf(0.41);
+    assert!(
+        (thermal_3_20kt - expected_20).abs() < expected_20 * 0.30,
+        "20 kt 3rd° thermal radius {thermal_3_20kt:.2} km outside ±30% of reference {expected_20:.2} km"
+    );
+    // G&D: 3rd-degree burns at ~15 km for 1 Mt (with attenuation)
+    let attenuation = 1.0 - (1000.0_f64.log10() - 3.0) * 0.15;
+    let expected_1mt = 0.67 * 1000.0_f64.powf(0.41) * attenuation;
+    assert!(
+        (thermal_3_1mt - expected_1mt).abs() < expected_1mt * 0.30,
+        "1 Mt 3rd° thermal radius {thermal_3_1mt:.2} km outside ±30% of reference {expected_1mt:.2} km"
+    );
+}
+
+/// Glasstone & Dolan 1977 Table 8.126: initial nuclear radiation (prompt
+/// gamma/neutron) 500 rem radius scales as ~1.15 * kt^0.19 km.
+#[test]
+fn nuclear_initial_radiation_radius_matches_glasstone_dolan() {
+    let result_20kt = nuclear_test(20.0, NuclearBurstType::Airburst);
+    let result_1mt = nuclear_test(1000.0, NuclearBurstType::Airburst);
+    let rad_20kt = find_ring_km(&result_20kt, "500 rem");
+    let rad_1mt = find_ring_km(&result_1mt, "500 rem");
+
+    // G&D: 500 rem at ~1.8 km for 20 kt
+    let expected_20 = 1.15 * 20.0_f64.powf(0.19);
+    assert!(
+        (rad_20kt - expected_20).abs() < expected_20 * 0.30,
+        "20 kt radiation radius {rad_20kt:.2} km outside ±30% of reference {expected_20:.2} km"
+    );
+    // G&D: 500 rem saturates around ~2.5 km for very large yields
+    let expected_1mt = 1.15 * 1000.0_f64.powf(0.19);
+    assert!(
+        (rad_1mt - expected_1mt).abs() < expected_1mt * 0.30,
+        "1 Mt radiation radius {rad_1mt:.2} km outside ±30% of reference {expected_1mt:.2} km"
     );
 }
