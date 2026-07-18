@@ -69,6 +69,24 @@ test("language switch persists across settings, simulation results, layers, and 
   const hazardInspectorBounds = await page.locator(".app__panel--right").boundingBox();
   expect(hazardInspectorBounds).not.toBeNull();
   expect(await page.screenshot({ clip: hazardInspectorBounds! })).toMatchSnapshot("localized-hazard-ja.png");
+
+  await hazardModes.getByRole("button", { name: "核" }).click();
+  const mirv = page.locator(".mirv");
+  await expect(mirv.getByText("MIRVパターンプレビュー")).toBeVisible();
+  await mirv.getByRole("combobox", { name: "搭載量プリセット" }).selectOption("trident-ii-w76");
+  await expect(mirv.getByText("効果原点を選択してパターンを配置してください。")).toBeVisible();
+  await mirv.scrollIntoViewIfNeeded();
+  expect(await mirv.screenshot()).toMatchSnapshot("localized-mirv-ja.png");
+  const mirvAccessibility = await new AxeBuilder({ page }).include(".mirv").analyze();
+  expect(mirvAccessibility.violations).toEqual([]);
+
+  const ww3 = page.locator(".ww3");
+  await ww3.scrollIntoViewIfNeeded();
+  await expect(ww3.getByText("世界規模交換ラボ")).toBeVisible();
+  await expect(ww3.getByText("世界熱核戦争", { exact: true }).last()).toBeVisible();
+  expect(await ww3.screenshot()).toMatchSnapshot("localized-ww3-ja.png");
+  const ww3Accessibility = await new AxeBuilder({ page }).include(".ww3").analyze();
+  expect(ww3Accessibility.violations).toEqual([]);
   await hazardModes.getByRole("button", { name: "津波" }).click();
 
   await page.getByRole("button", { name: "時系列", exact: true }).click();
@@ -133,6 +151,7 @@ test("language switch persists across settings, simulation results, layers, and 
   await page.getByRole("group", { name: "表示の詳細度" }).getByRole("button", { name: "詳細", exact: true }).click();
   await expect(page.locator(".swe:visible")).toContainText("波動伝播");
   await expect(page.locator('[aria-label="1度あたりの格子セル数"]:visible')).toBeAttached();
+  await expect(page.locator('.journey-progress li[data-state="active"]')).toContainText("理解");
   const inspector = page.locator(".app__panel--right");
   await inspector.evaluate((panel) => { panel.scrollTop = 0; });
   let inspectorBounds = await inspector.boundingBox();

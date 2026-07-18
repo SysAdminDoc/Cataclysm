@@ -43,6 +43,8 @@ The chronological event rail and curated side-by-side comparison stories also
 translate source categories, scientific questions, metric deltas and controls.
 The NOAA/NCEI historical-event browser translates its search, source-quality,
 import-safety and recovery guidance while keeping database records canonical.
+Nuclear-workspace MIRV previews and the seven-scenario global exchange lab use
+localized controls, scenario framing, model caveats, metrics and HUD semantics.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 

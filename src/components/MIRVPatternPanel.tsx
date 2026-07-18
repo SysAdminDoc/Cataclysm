@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildMirvPreview, MIRV_PRESETS, type MirvPreview } from "../lib/mirv";
+import { useI18n } from "../lib/i18n";
 
 export function MIRVPatternPanel({
   center,
@@ -12,6 +13,7 @@ export function MIRVPatternPanel({
   onPreviewChange: (preview: MirvPreview | null) => void;
   onApplyYield: (yieldKt: number) => void;
 }) {
+  const { t, formatNumber } = useI18n();
   const [presetId, setPresetId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const preset = useMemo(() => MIRV_PRESETS.find((candidate) => candidate.id === presetId) ?? null, [presetId]);
@@ -27,48 +29,55 @@ export function MIRVPatternPanel({
       setError(null);
     } catch (cause) {
       onPreviewChange(null);
-      setError(cause instanceof Error ? cause.message : String(cause));
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setError(message.includes("center must be")
+        ? t("mirv.error.center")
+        : message.includes("requires 1–20")
+          ? t("mirv.error.warheads")
+          : message.includes("spread must be")
+            ? t("mirv.error.spread")
+            : message);
     }
     return () => onPreviewChange(null);
-  }, [center, onPreviewChange, preset]);
+  }, [center, onPreviewChange, preset, t]);
 
   return (
     <section className="section mirv" aria-labelledby="mirv-title">
       <div className="section__title">
-        <span id="mirv-title">MIRV pattern preview</span>
-        <span className="section__badge" data-tone={preview ? "warning" : "muted"}>{preview ? "Preview" : "Off"}</span>
+        <span id="mirv-title">{t("mirv.title")}</span>
+        <span className="section__badge" data-tone={preview ? "warning" : "muted"}>{preview ? t("mirv.preview") : t("mirv.off")}</span>
       </div>
       <p className="mirv__intro">
-        Preview the preserved NukeMap dispersal geometry around the current effects origin. Markers are illustrative aim points; no detonation or casualty result is created.
+        {t("mirv.intro")}
       </p>
       <label className="mirv__field">
-        <span>Payload preset</span>
+        <span>{t("mirv.payload")}</span>
         <select value={presetId} onChange={(event) => setPresetId(event.target.value)}>
-          <option value="">MIRV preview off</option>
+          <option value="">{t("mirv.previewOff")}</option>
           {MIRV_PRESETS.map((candidate) => (
             <option key={candidate.id} value={candidate.id}>
-              {candidate.name} — {candidate.warheads} × {candidate.yieldKt.toLocaleString()} kT
+              {candidate.name} — {formatNumber(candidate.warheads)} × {formatNumber(candidate.yieldKt)} kT
             </option>
           ))}
         </select>
       </label>
-      {!center && preset && <p className="mirv__notice" role="status">Choose an effects origin to place the pattern.</p>}
+      {!center && preset && <p className="mirv__notice" role="status">{t("mirv.chooseOrigin")}</p>}
       {error && <p className="mirv__notice" role="alert">{error}</p>}
       {preview && (
         <div className="mirv__preview">
           <div className="mirv__summary">
-            <div><span>Pattern</span><strong>{preview.preset.pattern}</strong></div>
-            <div><span>Warheads</span><strong>{preview.points.length}</strong></div>
-            <div><span>Spread</span><strong>{preview.preset.spreadKm} km</strong></div>
-            <div><span>Per warhead</span><strong>{preview.preset.yieldKt.toLocaleString()} kT</strong></div>
+            <div><span>{t("mirv.pattern")}</span><strong>{t(`mirv.pattern.${preview.preset.pattern}` as Parameters<typeof t>[0])}</strong></div>
+            <div><span>{t("mirv.warheads")}</span><strong>{formatNumber(preview.points.length)}</strong></div>
+            <div><span>{t("mirv.spread")}</span><strong>{formatNumber(preview.preset.spreadKm)} km</strong></div>
+            <div><span>{t("mirv.perWarhead")}</span><strong>{formatNumber(preview.preset.yieldKt)} kT</strong></div>
           </div>
-          <button type="button" onClick={() => onApplyYield(preview.preset.yieldKt)}>Use this per-warhead yield</button>
+          <button type="button" onClick={() => onApplyYield(preview.preset.yieldKt)}>{t("mirv.useYield")}</button>
           <details>
-            <summary>Accessible aim-point list</summary>
+            <summary>{t("mirv.aimPointList")}</summary>
             <ol>
               {preview.points.map((point) => (
                 <li key={point.id}>
-                  Warhead {point.index}: {point.lat.toFixed(4)}°, {point.lon.toFixed(4)}° at +{point.delayMs} ms
+                  {t("mirv.aimPoint", { index: formatNumber(point.index), lat: formatNumber(point.lat, { minimumFractionDigits: 4, maximumFractionDigits: 4 }), lon: formatNumber(point.lon, { minimumFractionDigits: 4, maximumFractionDigits: 4 }), delay: formatNumber(point.delayMs) })}
                 </li>
               ))}
             </ol>
