@@ -24,6 +24,7 @@
     "validate:source-input-contract": "node scripts/validate-source-input-contract.mjs",
     "deps-check": "node scripts/deps-check.mjs",
     "generate:notices": "node scripts/generate-third-party-notices.mjs",
+    "generate:sbom": "node scripts/generate-sbom.mjs",
     "generate:nukemap-data": "node scripts/import-nukemap-data.mjs",
     "verify:notices": "node scripts/generate-third-party-notices.mjs --check",
     "verify:nukemap-data": "node scripts/import-nukemap-data.mjs --check",
