@@ -6,6 +6,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Results, coastal validation, Visualization Layers, humanitarian-facility
+  controls, and the shared trust/evidence disclosure now use the complete
+  English, Spanish, Japanese, and Bahasa Indonesia catalogs. Measurements,
+  times, counts, confidence states, provenance labels, OSM privacy/limitation
+  copy, empty/error/retry states, and accessible names follow the active locale.
+  Headless Japanese Results and Layers captures plus scoped WCAG checks protect
+  the dense inspector hierarchy; the Settings capture now masks its live status
+  timestamp so the visual regression is deterministic.
+
 - Settings is now fully catalog-driven across all four locales, including its
   navigation, Earth styles and provenance labels, token disclosure, themes and
   colormaps, renderer budgets, GPU states, onboarding controls, portable data

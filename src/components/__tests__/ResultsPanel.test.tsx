@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { ResultsPanel } from "../ResultsPanel";
 import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../../lib/data";
 import { demoRunupAtPoints } from "../../lib/demo";
+import { I18nProvider } from "../../lib/i18n";
 
 vi.mock("../../lib/browser-physics", () => ({
   browserRunup: vi.fn(async ({ points }: { points: unknown[] }) => points.map((_, index) => ({
@@ -38,6 +39,8 @@ const EARTHQUAKE_INITIAL: InitialDisplacement = {
 };
 
 describe("ResultsPanel", () => {
+  beforeEach(() => localStorage.clear());
+
   it("shows empty state when no initial data", () => {
     render(<ResultsPanel initial={null} timeS={900} onTimeChange={() => {}} />);
     expect(screen.getByText("Choose a source to unlock readouts")).toBeInTheDocument();
@@ -140,6 +143,22 @@ describe("ResultsPanel", () => {
     expect(science).toHaveFocus();
     expect(science).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Science");
+  });
+
+  it("localizes the outcome and science views with locale-aware values", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const user = userEvent.setup();
+    render(
+      <I18nProvider>
+        <ResultsPanel initial={EARTHQUAKE_INITIAL} timeS={900} onTimeChange={() => {}} sourceKind="Earthquake" />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("何が起きたか")).toBeInTheDocument();
+    expect(screen.getByText(/マグニチュード9\.10の海底地震/)).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "科学情報" }));
+    expect(screen.getByText("発生領域半径")).toBeInTheDocument();
+    expect(screen.getByText("エネルギー")).toBeInTheDocument();
   });
 
   it("focuses a narrated coastal outcome at its arrival time", async () => {

@@ -4,13 +4,13 @@ import type { RunupAtPointResult } from "../lib/tauri";
 import { exportFailureLabel, exportRunupCsv, type ExportResult } from "../lib/export";
 import {
   buildCoastalOutcomeStory,
-  formatOutcomeTime,
   type CoastalOutcomePlace,
 } from "../lib/result-story";
 import { GlossaryTip } from "./GlossaryTip";
 import { type AsyncResult } from "../lib/async-result";
 import { buildOutcomeEvidence } from "../lib/trust-evidence";
 import { TrustDisclosure } from "./TrustDisclosure";
+import { useI18n } from "../lib/i18n";
 
 /** The modelled tsunami source families. `null` covers presets/custom
  * scenarios whose discrete kind is not known to the caller. */
@@ -33,93 +33,108 @@ type Props = {
 };
 
 type ResultView = "outcome" | "science" | "validation";
-const RESULT_VIEWS: { id: ResultView; label: string }[] = [
-  { id: "outcome", label: "Outcome" },
-  { id: "science", label: "Science" },
-  { id: "validation", label: "Validation" },
-];
+const RESULT_VIEWS = [
+  { id: "outcome", labelKey: "results.outcome" },
+  { id: "science", labelKey: "results.science" },
+  { id: "validation", labelKey: "results.validation" },
+] as const;
+type Translate = ReturnType<typeof useI18n>["t"];
+type FormatNumber = ReturnType<typeof useI18n>["formatNumber"];
 
-function cavityLabel(kind: SourceKind): { term: string; text: string } {
+function cavityLabel(kind: SourceKind, t: Translate): { term: string; text: string } {
   switch (kind) {
     case "Earthquake":
     case "Landslide":
-      return { term: "cavity_radius", text: "Source region radius" };
+      return { term: "cavity_radius", text: t("results.sourceRegionRadius") };
     case "Meteotsunami":
-      return { term: "cavity_radius", text: "Pressure footprint radius" };
+      return { term: "cavity_radius", text: t("results.pressureFootprintRadius") };
     default:
-      return { term: "cavity_radius", text: "Cavity radius" };
+      return { term: "cavity_radius", text: t("results.cavityRadius") };
   }
 }
 
 function describeOutcome(
   initial: InitialDisplacement,
   kind: SourceKind,
+  t: Translate,
+  formatNumber: FormatNumber,
 ): { headline: string; detail: string } {
-  const energy = formatEnergy(initial.source_energy_j);
-  const energyText = energy.value === "—" ? "an uncertain amount of energy" : `${energy.value} ${energy.unit}`;
-  const amp = formatLength(initial.peak_amplitude_m);
-  const ampText = amp.value === "—" ? "an uncertain height" : `${amp.value} ${amp.unit}`;
+  const energy = formatEnergy(initial.source_energy_j, formatNumber);
+  const energyText = energy.value === "—" ? t("results.uncertainEnergy") : `${energy.value} ${energy.unit}`;
+  const amp = formatLength(initial.peak_amplitude_m, formatNumber);
+  const ampText = amp.value === "—" ? t("results.uncertainHeight") : `${amp.value} ${amp.unit}`;
   const mw = formatMagnitude(initial.seismic_mw_equivalent);
   switch (kind) {
     case "Earthquake":
       return {
-        headline: `Magnitude ${mw} seafloor earthquake`,
-        detail: `Peak seafloor uplift of ${ampText} displaces the water column, radiating a tsunami. Released about ${energyText}.`,
+        headline: t("results.earthquakeHeadline", { magnitude: mw }),
+        detail: t("results.earthquakeDetail", { amplitude: ampText, energy: energyText }),
       };
     case "Asteroid":
       return {
-        headline: `Asteroid impact releasing ${energyText}`,
-        detail: `The impact excavates a water cavity whose ${ampText} rim collapse launches the wave.`,
+        headline: t("results.asteroidHeadline", { energy: energyText }),
+        detail: t("results.asteroidDetail", { amplitude: ampText }),
       };
     case "Nuclear":
       return {
-        headline: `Underwater detonation releasing ${energyText}`,
-        detail: `The explosion cavity collapse raises a ${ampText} initial water mound (tsunami-equivalent M ${mw}).`,
+        headline: t("results.nuclearHeadline", { energy: energyText }),
+        detail: t("results.nuclearDetail", { amplitude: ampText, magnitude: mw }),
       };
     case "Landslide":
       return {
-        headline: "Landslide-generated wave",
-        detail: `The moving mass pushes up a ${ampText} initial wave, releasing about ${energyText} (tsunami-equivalent M ${mw}).`,
+        headline: t("results.landslideHeadline"),
+        detail: t("results.landslideDetail", { amplitude: ampText, energy: energyText, magnitude: mw }),
       };
     case "Meteotsunami":
       return {
-        headline: "Atmospheric-pressure-driven wave",
-        detail: `A translating pressure anomaly forces the water column continuously. The ${ampText} value is its inverted-barometer source scale; resonance and bathymetry determine the simulated wave.`,
+        headline: t("results.meteotsunamiHeadline"),
+        detail: t("results.meteotsunamiDetail", { amplitude: ampText }),
       };
     default:
       return {
-        headline: initial.label || "Modelled tsunami source",
-        detail: `Initial disturbance of ${ampText}, releasing about ${energyText}.`,
+        headline: initial.label || t("results.modelledSource"),
+        detail: t("results.defaultDetail", { amplitude: ampText, energy: energyText }),
       };
   }
 }
 
-function formatEnergy(j: number): { value: string; unit: string } {
+function formatEnergy(j: number, formatNumber: FormatNumber): { value: string; unit: string } {
   if (!Number.isFinite(j)) return { value: "—", unit: "" };
   const mt = j / 4.184e15;
   if (mt >= 1) {
     const value =
       mt >= 10_000
-        ? Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(mt)
-        : mt.toLocaleString(undefined, { maximumFractionDigits: 1 });
+        ? formatNumber(mt, { notation: "compact", maximumFractionDigits: 1 })
+        : formatNumber(mt, { maximumFractionDigits: 1 });
     return { value, unit: "Mt TNT" };
   }
   const kt = j / 4.184e12;
-  if (kt >= 1) return { value: kt.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "kt TNT" };
+  if (kt >= 1) return { value: formatNumber(kt, { maximumFractionDigits: 1 }), unit: "kt TNT" };
   const tons = j / 4.184e9;
-  if (tons >= 1) return { value: tons.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "t TNT" };
+  if (tons >= 1) return { value: formatNumber(tons, { maximumFractionDigits: 1 }), unit: "t TNT" };
   // Sub-tonne energies: compact notation stays consistent with the rest of the
   // ladder (e.g. "3.1B J") rather than raw exponential ("3.14e+9 J").
   return {
-    value: Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(j),
+    value: formatNumber(j, { notation: "compact", maximumFractionDigits: 2 }),
     unit: "J",
   };
 }
 
-function formatLength(m: number): { value: string; unit: string } {
+function formatLength(m: number, formatNumber: FormatNumber): { value: string; unit: string } {
   if (!Number.isFinite(m)) return { value: "—", unit: "" };
-  if (m >= 1000) return { value: (m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "km" };
-  return { value: m.toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: "m" };
+  if (m >= 1000) return { value: formatNumber(m / 1000, { maximumFractionDigits: 1 }), unit: "km" };
+  return { value: formatNumber(m, { maximumFractionDigits: 1 }), unit: "m" };
+}
+
+function formatResultTime(seconds: number, t: Translate, formatNumber: FormatNumber): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return t("results.timeUnavailable");
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return t("results.timeMinutes", { minutes: formatNumber(minutes) });
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining === 0
+    ? t("results.timeHours", { hours: formatNumber(hours) })
+    : t("results.timeHoursMinutes", { hours: formatNumber(hours), minutes: formatNumber(remaining) });
 }
 
 function formatMagnitude(mw: number): string {
@@ -164,6 +179,7 @@ export function ResultsPanel({
   validationContent,
   onFocusOutcome,
 }: Props) {
+  const { t, formatNumber } = useI18n();
   const [view, setView] = useState<ResultView>("outcome");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [csvExportFailure, setCsvExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
@@ -183,34 +199,31 @@ export function ResultsPanel({
     return (
       <div className="section">
         <div className="section__title">
-          <span>Source metrics</span>
-          <span className="section__badge" data-tone="muted">Waiting</span>
+          <span>{t("results.sourceMetrics")}</span>
+          <span className="section__badge" data-tone="muted">{t("results.waiting")}</span>
         </div>
         <div className="empty-state">
           <span className="empty-state__icon" aria-hidden />
           <div>
-            <strong>Choose a source to unlock readouts</strong>
-            <p>
-              Presets and custom scenarios populate energy, source geometry,
-              peak wave amplitude, and equivalent moment magnitude.
-            </p>
+            <strong>{t("results.chooseSource")}</strong>
+            <p>{t("results.chooseSourceBody")}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const energy = formatEnergy(initial.source_energy_j);
-  const cavity = formatLength(initial.cavity_radius_m);
-  const amp = formatLength(initial.peak_amplitude_m);
-  const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m) : null;
-  const depth = formatLength(initial.center.depth_m ?? 0);
+  const energy = formatEnergy(initial.source_energy_j, formatNumber);
+  const cavity = formatLength(initial.cavity_radius_m, formatNumber);
+  const amp = formatLength(initial.peak_amplitude_m, formatNumber);
+  const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m, formatNumber) : null;
+  const depth = formatLength(initial.center.depth_m ?? 0, formatNumber);
   const totalT = 6 * 3600;
   const safeTimeS = Number.isFinite(timeS) ? Math.max(0, timeS) : 0;
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
-  const outcome = describeOutcome(initial, sourceKind);
+  const outcome = describeOutcome(initial, sourceKind, t, formatNumber);
   const evidence = buildOutcomeEvidence(preset, initial, sourceKind);
-  const cavity_label = cavityLabel(sourceKind);
+  const cavity_label = cavityLabel(sourceKind, t);
   const story = buildCoastalOutcomeStory(runupResults, safeTimeS);
   const coastalState: AsyncResult<RunupAtPointResult[]> = runupResult
     ?? (runupResults.length > 0 ? { status: "ready", value: runupResults } : { status: "idle" });
@@ -219,6 +232,23 @@ export function ResultsPanel({
     .sort((left, right) => right.runup_m - left.runup_m)
     .slice(0, 5);
   const panelId = `${tabsId}-${view}`;
+  const confidenceLevel = story.confidence === "low"
+    ? t("results.confidenceLow")
+    : story.confidence === "medium"
+      ? t("results.confidenceMedium")
+      : t("results.confidenceHigh");
+  const confidenceLabel = story.confidence === "unavailable"
+    ? t("results.sourceReady")
+    : t("results.confidence", { level: confidenceLevel });
+  const storyLimitation = story.sampledCount === 0
+    ? t("results.limitNoScreening")
+    : story.affectedCount === 0
+      ? t("results.limitNoAffected")
+      : story.confidence === "high"
+        ? t("results.limitHigh")
+        : story.confidence === "medium"
+          ? t("results.limitMedium")
+          : t("results.limitLow");
 
   const focusOutcome = (place: CoastalOutcomePlace) => {
     setSelectedPlaceId(place.id);
@@ -230,15 +260,15 @@ export function ResultsPanel({
     <>
       <div className="section results__workspace">
         <div className="section__title">
-          <span>Results</span>
+          <span>{t("results.title")}</span>
           <span
             className="section__badge"
             data-tone={story.confidence === "low" ? "muted" : "success"}
           >
-            {story.confidence === "unavailable" ? "Source ready" : `${story.confidence} confidence`}
+            {confidenceLabel}
           </span>
         </div>
-        <div className="results__tabs" role="tablist" aria-label="Result detail">
+        <div className="results__tabs" role="tablist" aria-label={t("results.detail")}>
           {RESULT_VIEWS.map((resultView) => {
             const active = resultView.id === view;
             return (
@@ -254,7 +284,7 @@ export function ResultsPanel({
                 onClick={() => setView(resultView.id)}
                 onKeyDown={(event) => handleTabKeys(event, view, setView)}
               >
-                {resultView.label}
+                {t(resultView.labelKey)}
               </button>
             );
           })}
@@ -270,41 +300,41 @@ export function ResultsPanel({
         {view === "outcome" && (
           <div className="section">
             <div className="section__title">
-              <span>What happened?</span>
-              <span className="section__badge" data-tone="success">Ready</span>
+              <span>{t("results.whatHappened")}</span>
+              <span className="section__badge" data-tone="success">{t("results.ready")}</span>
             </div>
             <article className="results__outcome">
               <strong className="results__outcome-headline">{outcome.headline}</strong>
               <p className="results__outcome-detail">{outcome.detail}</p>
               {initial.recurrence_note && (
                 <p className="results__outcome-recurrence">
-                  <strong>How often:</strong> {initial.recurrence_note}
+                  <strong>{t("results.howOften")}</strong> {initial.recurrence_note}
                 </p>
               )}
               <span className="results__outcome-note">
-                Modelled first-order tsunami source—educational estimate, not a forecast.
+                {t("results.educationalNote")}
               </span>
             </article>
             <TrustDisclosure evidence={evidence} />
 
-            <div className="results__key-metrics" aria-label="Outcome summary">
+            <div className="results__key-metrics" aria-label={t("results.outcomeSummary")}>
               {story.maximum && story.maximum.runup_m >= 0.1 ? (
                 <button
                   type="button"
                   className="results__metric-card"
                   data-tone="primary"
-                  aria-label={`Maximum sampled coastal effect, approximately ${story.maximum.runup_m.toFixed(1)} metres at ${story.maximum.name}. Focus place and time.`}
+                  aria-label={t("results.maximumAria", { value: formatNumber(story.maximum.runup_m, { maximumFractionDigits: 1 }), place: story.maximum.name })}
                   onClick={() => focusOutcome(story.maximum!)}
                 >
-                  <span>Max coastal height</span>
-                  <strong>~{story.maximum.runup_m.toFixed(1)} <small>m</small></strong>
-                  <em>at {story.maximum.name}</em>
+                  <span>{t("results.maxCoastalHeight")}</span>
+                  <strong>~{formatNumber(story.maximum.runup_m, { maximumFractionDigits: 1 })} <small>m</small></strong>
+                  <em>{t("results.atPlace", { place: story.maximum.name })}</em>
                 </button>
               ) : (
                 <div className="results__metric-card" data-tone="primary">
-                  <span>Peak source displacement</span>
+                  <span>{t("results.peakSourceDisplacement")}</span>
                   <strong>{amp.value} <small>{amp.unit}</small></strong>
-                  <em>No sampled coast is above 0.1 m</em>
+                  <em>{t("results.noCoastAbove")}</em>
                 </div>
               )}
               {story.firstAffected && (
@@ -312,19 +342,19 @@ export function ResultsPanel({
                   type="button"
                   className="results__metric-card"
                   data-tone="secondary"
-                  aria-label={`First affected named coast, ${story.firstAffected.name}, ${formatOutcomeTime(story.firstAffected.arrival_time_s)}. Focus place and time.`}
+                  aria-label={t("results.firstAffectedAria", { place: story.firstAffected.name, time: formatResultTime(story.firstAffected.arrival_time_s, t, formatNumber) })}
                   onClick={() => focusOutcome(story.firstAffected!)}
                 >
-                  <span>First named-coast arrival</span>
-                  <strong>{formatOutcomeTime(story.firstAffected.arrival_time_s)}</strong>
+                  <span>{t("results.firstArrival")}</span>
+                  <strong>{formatResultTime(story.firstAffected.arrival_time_s, t, formatNumber)}</strong>
                   <em>{story.firstAffected.name}</em>
                 </button>
               )}
               {!story.firstAffected && (
                 <div className="results__metric-card" data-tone="secondary">
-                  <span>First named-coast arrival</span>
-                  <strong>Not available</strong>
-                  <em>Run coastal screening to estimate arrival</em>
+                  <span>{t("results.firstArrival")}</span>
+                  <strong>{t("results.notAvailable")}</strong>
+                  <em>{t("results.runScreeningArrival")}</em>
                 </div>
               )}
             </div>
@@ -332,10 +362,10 @@ export function ResultsPanel({
             <section className="results__places" aria-labelledby={`${panelId}-places-title`}>
               <div className="results__places-header">
                 <div>
-                  <span id={`${panelId}-places-title`}>Named places</span>
-                  <small>Peak screened coastal height</small>
+                  <span id={`${panelId}-places-title`}>{t("results.namedPlaces")}</span>
+                  <small>{t("results.screenedHeight")}</small>
                 </div>
-                <span>{coastalResults.length} shown</span>
+                <span>{t("results.shown", { count: formatNumber(coastalResults.length) })}</span>
               </div>
               {coastalResults.length > 0 ? (
                 <div className="results__places-list">
@@ -348,17 +378,17 @@ export function ResultsPanel({
                         className="results__place"
                         data-selected={selected}
                         aria-pressed={selected}
-                        aria-label={`${place.name}, approximately ${place.runup_m.toFixed(1)} metres, ${formatOutcomeTime(place.arrival_time_s)}. Focus place and time.`}
+                        aria-label={t("results.placeAria", { place: place.name, value: formatNumber(place.runup_m, { maximumFractionDigits: 1 }), time: formatResultTime(place.arrival_time_s, t, formatNumber) })}
                         onClick={() => focusOutcome(place)}
                       >
                         <span className="results__place-marker" aria-hidden />
                         <span className="results__place-name">
                           <strong>{place.name}</strong>
-                          <small>{formatOutcomeTime(place.arrival_time_s)}</small>
+                          <small>{formatResultTime(place.arrival_time_s, t, formatNumber)}</small>
                         </span>
                         <span className="results__place-value">
-                          <strong>~{place.runup_m.toFixed(1)} m</strong>
-                          <small>{selected ? "Focused" : "Focus on globe"}</small>
+                          <strong>~{formatNumber(place.runup_m, { maximumFractionDigits: 1 })} m</strong>
+                          <small>{selected ? t("results.focused") : t("results.focusOnGlobe")}</small>
                         </span>
                       </button>
                     );
@@ -366,7 +396,7 @@ export function ResultsPanel({
                 </div>
               ) : (
                 <p className="results__places-empty">
-                  Run coastal screening to add named places, arrival times, and peak heights.
+                  {t("results.runScreeningPlaces")}
                 </p>
               )}
             </section>
@@ -374,12 +404,17 @@ export function ResultsPanel({
             <aside className="results__confidence" data-confidence={story.confidence}>
               <span className="results__confidence-icon" aria-hidden>!</span>
               <div>
-                <strong>{story.confidence === "unavailable" ? "Screening limits" : `${story.confidence} confidence`}</strong>
-                <p>{story.limitation}</p>
+                <strong>{story.confidence === "unavailable" ? t("results.screeningLimits") : confidenceLabel}</strong>
+                <p>{storyLimitation}</p>
                 <small>
                   {story.sampledCount > 0
-                    ? `${story.affectedCount} of ${story.sampledCount} named coasts above 0.1 m · ${story.arrivedCount} reached by current time${story.reachM === null ? "" : ` · farthest sampled reach ${(story.reachM / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km`}`
-                    : "Reach describes named screening points, not a continuous inundation footprint."}
+                    ? t(story.reachM === null ? "results.screeningCounts" : "results.screeningCountsReach", {
+                        affected: formatNumber(story.affectedCount),
+                        sampled: formatNumber(story.sampledCount),
+                        arrived: formatNumber(story.arrivedCount),
+                        reach: story.reachM === null ? "" : formatNumber(story.reachM / 1000, { maximumFractionDigits: 0 }),
+                      })
+                    : t("results.reachNote")}
                 </small>
               </div>
             </aside>
@@ -393,13 +428,13 @@ export function ResultsPanel({
                   step={60}
                   value={safeTimeS}
                   onChange={(event) => onTimeChange(Number(event.target.value))}
-                  aria-label="Scenario timeline scrubber"
-                  aria-valuetext={`${Math.round(safeTimeS / 60)} minutes after source event`}
+                  aria-label={t("results.timelineScrubber")}
+                  aria-valuetext={t("results.minutesAfterEvent", { minutes: formatNumber(Math.round(safeTimeS / 60)) })}
                 />
                 <progress className="timeline__bar" max={1} value={progress} aria-hidden />
                 <div className="timeline__readout">
-                  <span>{(safeTimeS / 60).toFixed(0)} min after source</span>
-                  <span>{(safeTimeS / 3600).toFixed(2)} h</span>
+                  <span>{t("results.minutesAfterSource", { minutes: formatNumber(safeTimeS / 60, { maximumFractionDigits: 0 }) })}</span>
+                  <span>{t("results.hoursShort", { hours: formatNumber(safeTimeS / 3600, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</span>
                 </div>
               </div>
             )}
@@ -410,20 +445,20 @@ export function ResultsPanel({
           <>
             <div className="section">
               <div className="section__title">
-                <span>Source science</span>
-                <span className="section__badge">Rust-authoritative</span>
+                <span>{t("results.sourceScience")}</span>
+                <span className="section__badge">{t("results.rustAuthoritative")}</span>
               </div>
-              <div className="source-summary" aria-label="Source center">
+              <div className="source-summary" aria-label={t("results.sourceCenter")}>
                 <span>{formatCoord(initial.center.lat_deg, initial.center.lon_deg)}</span>
-                <span>{depth.value} {depth.unit} depth</span>
+                <span>{t("results.depthValue", { value: depth.value, unit: depth.unit })}</span>
               </div>
               <div className="results">
                 <div className="results__cell" data-tone="primary">
-                  <div className="results__label">Energy</div>
+                  <div className="results__label">{t("results.energy")}</div>
                   <div className="results__value">{energy.value} <span className="results__unit">{energy.unit}</span></div>
                 </div>
                 <div className="results__cell" data-tone="secondary">
-                  <div className="results__label"><GlossaryTip term="mw">Tsunami-equivalent M_w</GlossaryTip></div>
+                  <div className="results__label"><GlossaryTip term="mw">{t("results.equivalentMagnitude")}</GlossaryTip></div>
                   <div className="results__value">{formatMagnitude(initial.seismic_mw_equivalent)}</div>
                 </div>
                 <div className="results__cell">
@@ -431,12 +466,12 @@ export function ResultsPanel({
                   <div className="results__value">{cavity.value} <span className="results__unit">{cavity.unit}</span></div>
                 </div>
                 <div className="results__cell">
-                  <div className="results__label">Peak source displacement</div>
+                  <div className="results__label">{t("results.peakSourceDisplacement")}</div>
                   <div className="results__value">{amp.value} <span className="results__unit">{amp.unit}</span></div>
                 </div>
                 {wl && (
                   <div className="results__cell results__cell--wide">
-                    <div className="results__label">Dominant wavelength</div>
+                    <div className="results__label">{t("results.dominantWavelength")}</div>
                     <div className="results__value">{wl.value} <span className="results__unit">{wl.unit}</span></div>
                   </div>
                 )}
@@ -450,58 +485,58 @@ export function ResultsPanel({
           <>
             <div className="section">
               <div className="section__title">
-                <span>Coastal screening validation</span>
+                <span>{t("results.coastalValidation")}</span>
                 <span
                   className="section__badge"
                   data-tone={coastalState.status === "error" || coastalState.status === "stale" ? "danger" : "muted"}
                 >
                   {coastalState.status === "loading"
-                    ? coastalState.previous ? "Refreshing" : "Loading"
-                    : coastalState.status === "error" ? "Error"
-                      : coastalState.status === "stale" ? "Stale"
-                        : coastalResults.length > 0 ? `${story.confidence} confidence`
-                          : coastalState.status === "empty" || coastalState.status === "ready" ? "Complete" : "Waiting"}
+                    ? coastalState.previous ? t("results.refreshing") : t("results.loading")
+                    : coastalState.status === "error" ? t("results.error")
+                      : coastalState.status === "stale" ? t("results.stale")
+                        : coastalResults.length > 0 ? confidenceLabel
+                          : coastalState.status === "empty" || coastalState.status === "ready" ? t("results.complete") : t("results.waiting")}
                 </span>
               </div>
               {(coastalState.status === "error" || coastalState.status === "stale") && (
                 <div className="panel-error" role="alert">
                   <span>
-                    {coastalState.status === "stale" ? "Showing the last valid coastal screening: " : "Coastal screening failed: "}
+                    {coastalState.status === "stale" ? t("results.showingLastScreening") : t("results.screeningFailed")}
                     {coastalState.error}
                   </span>
-                  {onRetryRunup && <button type="button" onClick={onRetryRunup}>Retry coastal screening</button>}
+                  {onRetryRunup && <button type="button" onClick={onRetryRunup}>{t("results.retryScreening")}</button>}
                 </div>
               )}
               {coastalState.status === "loading" && !coastalState.previous && (
                 <div className="empty-state empty-state--compact" role="status">
                   <span className="empty-state__icon" aria-hidden />
-                  <div><strong>Computing coastal screening…</strong><p>Named-place arrivals and provenance are being calculated.</p></div>
+                  <div><strong>{t("results.computingScreening")}</strong><p>{t("results.computingScreeningBody")}</p></div>
                 </div>
               )}
               {coastalResults.length > 0 ? (
                 <>
                   <p className="results__outcome-note">
-                    Illustrative values use nominal or legacy inputs. Expand a point to audit the exact records.
+                    {t("results.illustrativeValues")}
                   </p>
                   <button className="results__export" type="button" onClick={handleCsvExport}>
-                    Export coastal CSV with provenance
+                    {t("results.exportCsv")}
                   </button>
                   {csvExportFailure && (
                     <div className="panel-error" role="alert">
                       <span>{exportFailureLabel(csvExportFailure.code)}: {csvExportFailure.message}</span>
-                      {csvExportFailure.retryable && <button type="button" onClick={handleCsvExport}>Retry</button>}
+                      {csvExportFailure.retryable && <button type="button" onClick={handleCsvExport}>{t("results.retry")}</button>}
                     </div>
                   )}
                   {coastalResults.map((result) => (
                     <details className="results__provenance" key={result.id}>
-                      <summary>{result.name} · ~{result.runup_m.toFixed(1)} m runup · {formatOutcomeTime(result.arrival_time_s)}</summary>
+                      <summary>{t("results.provenanceSummary", { place: result.name, value: formatNumber(result.runup_m, { maximumFractionDigits: 1 }), time: formatResultTime(result.arrival_time_s, t, formatNumber) })}</summary>
                       <dl>
-                        <dt>Slope</dt><dd>{result.beach_slope_deg}° ± {result.slope_provenance.uncertainty_value ?? "unknown"} {result.slope_provenance.uncertainty_unit}</dd>
-                        <dt>Slope record</dt><dd>{result.slope_provenance.sample_id} / {result.slope_provenance.record_id}</dd>
-                        <dt>Depth</dt><dd>{result.offshore_depth_m} m ± {result.depth_provenance.uncertainty_value ?? "unknown"} {result.depth_provenance.uncertainty_unit}</dd>
-                        <dt>Depth record</dt><dd>{result.depth_provenance.sample_id} / {result.depth_provenance.record_id}</dd>
-                        <dt>Source and method</dt><dd>{result.slope_provenance.source}; {result.slope_provenance.method}</dd>
-                        <dt>Datum / resolution / date</dt><dd>{result.slope_provenance.datum}; {result.slope_provenance.resolution}; {result.slope_provenance.observed_or_published}</dd>
+                        <dt>{t("results.slope")}</dt><dd>{result.beach_slope_deg}° ± {result.slope_provenance.uncertainty_value ?? t("results.unknown")} {result.slope_provenance.uncertainty_unit}</dd>
+                        <dt>{t("results.slopeRecord")}</dt><dd>{result.slope_provenance.sample_id} / {result.slope_provenance.record_id}</dd>
+                        <dt>{t("results.depth")}</dt><dd>{result.offshore_depth_m} m ± {result.depth_provenance.uncertainty_value ?? t("results.unknown")} {result.depth_provenance.uncertainty_unit}</dd>
+                        <dt>{t("results.depthRecord")}</dt><dd>{result.depth_provenance.sample_id} / {result.depth_provenance.record_id}</dd>
+                        <dt>{t("results.sourceMethod")}</dt><dd>{result.slope_provenance.source}; {result.slope_provenance.method}</dd>
+                        <dt>{t("results.datumResolutionDate")}</dt><dd>{result.slope_provenance.datum}; {result.slope_provenance.resolution}; {result.slope_provenance.observed_or_published}</dd>
                       </dl>
                     </details>
                   ))}
@@ -510,8 +545,8 @@ export function ResultsPanel({
                 <div className="empty-state empty-state--compact">
                   <span className="empty-state__icon" aria-hidden />
                   <div>
-                    <strong>{coastalState.status === "idle" ? "No coastal validation result yet" : "No coastal point exceeded the display threshold"}</strong>
-                    <p>{coastalState.status === "idle" ? "Run coastal screening to compare named places, arrival times, and input provenance." : "The screening completed successfully; no named point reached 0.1 m modeled runup at this time."}</p>
+                    <strong>{coastalState.status === "idle" ? t("results.noValidation") : t("results.noPointExceeded")}</strong>
+                    <p>{coastalState.status === "idle" ? t("results.noValidationBody") : t("results.noPointExceededBody")}</p>
                   </div>
                 </div>
               ) : null}

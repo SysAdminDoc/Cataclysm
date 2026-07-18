@@ -121,9 +121,11 @@ Existing tools each do one piece:
   Settings (including map provenance, renderer/GPU states, onboarding, and
   portable data actions), the command bar, hazard/workspace navigation,
   viewport instruments, scenario library, quick start, persistent playback,
-  all seven lessons and worksheets, and the full glossary follow the selected
-  language. English remains the canonical fallback while remaining advanced
-  surfaces are progressively extracted into the completeness-checked catalog.
+  Results and coastal validation, Visualization Layers and humanitarian
+  context, trust/evidence controls, all seven lessons and worksheets, and the
+  full glossary follow the selected language. English remains the canonical
+  fallback while remaining advanced surfaces are progressively extracted into
+  the completeness-checked catalog.
 - **NOAA historical event import** — installed builds search the NCEI HazEL
   Global Historical Tsunami Database by year/location and transfer only a
   supported earthquake record's magnitude and epicentre into the builder.

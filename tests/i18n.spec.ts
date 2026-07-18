@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
 });
 
-test("language switch persists and translates the complete guided lesson surface", async ({ page }) => {
+test("language switch persists across settings, simulation results, layers, and lessons", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const language = page.getByRole("combobox", { name: "Interface language" });
@@ -30,7 +30,10 @@ test("language switch persists and translates the complete guided lesson surface
   await expect(page.getByRole("option", { name: "Esri World Imagery（衛星、トークン不要）" })).toBeAttached();
   const settingsBounds = await page.locator(".modal--settings").boundingBox();
   expect(settingsBounds).not.toBeNull();
-  expect(await page.screenshot({ clip: settingsBounds! })).toMatchSnapshot("localized-settings-ja.png");
+  expect(await page.screenshot({
+    clip: settingsBounds!,
+    style: ".settings__footer-message { visibility: hidden !important; }",
+  })).toMatchSnapshot("localized-settings-ja.png");
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 
   await expect(page.locator(".app__tagline")).toHaveText("惑星災害シミュレーター");
@@ -44,6 +47,32 @@ test("language switch persists and translates the complete guided lesson surface
   const headerBounds = await page.locator(".app__header").boundingBox();
   expect(headerBounds).not.toBeNull();
   expect(await page.screenshot({ clip: headerBounds! })).toMatchSnapshot("localized-header-ja.png");
+
+  const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
+  await expect(tohoku).toBeVisible();
+  await tohoku.click();
+  await page.getByRole("button", { name: "実行して見る" }).click();
+  await page.getByRole("tab", { name: "結果", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "影響" })).toBeVisible();
+  await expect(page.getByText("何が起きたか", { exact: true })).toBeVisible();
+  await expect(page.getByText("沿岸スクリーニング検証", { exact: true })).not.toBeVisible();
+  const inspector = page.locator(".app__panel--right");
+  let inspectorBounds = await inspector.boundingBox();
+  expect(inspectorBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: inspectorBounds! })).toMatchSnapshot("localized-results-ja.png");
+  const resultsAccessibility = await new AxeBuilder({ page }).include(".app__panel--right").analyze();
+  expect(resultsAccessibility.violations).toEqual([]);
+
+  await page.getByRole("tab", { name: "レイヤー", exact: true }).click();
+  await expect(page.getByText("可視化レイヤー", { exact: true })).toBeVisible();
+  await expect(page.getByText("解析的波面", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "OpenStreetMapの人道支援施設を表示" })).toBeVisible();
+  inspectorBounds = await inspector.boundingBox();
+  expect(inspectorBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: inspectorBounds! })).toMatchSnapshot("localized-layers-ja.png");
+  const layersAccessibility = await new AxeBuilder({ page }).include(".app__panel--right").analyze();
+  expect(layersAccessibility.violations).toEqual([]);
+
   await page.getByRole("button", { name: /ガイド付き学習/ }).click();
   await expect(page.locator(".lesson-launcher__item")).toHaveCount(7);
   await expect(page.locator(".lesson-launcher__item").first()).toContainText("チクシュルーブ");

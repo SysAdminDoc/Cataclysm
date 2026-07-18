@@ -1,9 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LayerInspector } from "../LayerInspector";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("LayerInspector trust evidence", () => {
+  beforeEach(() => localStorage.clear());
+
   it("provides a contextual evidence disclosure for every analytical layer", async () => {
     const user = userEvent.setup();
     render(
@@ -102,5 +105,32 @@ describe("LayerInspector trust evidence", () => {
     expect(screen.getByRole("link", { name: "© OpenStreetMap contributors" })).toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Show humanitarian facilities from OpenStreetMap" }));
     expect(onEnabledChange).toHaveBeenCalledWith(false);
+  });
+
+  it("localizes analytical layers and humanitarian privacy states", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(
+      <I18nProvider>
+        <LayerInspector
+          domain="tsunami"
+          hasSource
+          hasWavefront
+          hasSweField={false}
+          hasMaxField={false}
+          arrivalCount={2}
+          runupCount={1}
+          dartCount={0}
+          hasFallout={false}
+          onOpenSettings={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("可視化レイヤー")).toBeInTheDocument();
+    expect(screen.getByText("解析的波面")).toBeInTheDocument();
+    expect(screen.getByText("人道支援施設")).toBeInTheDocument();
+    expect(screen.getAllByText("信頼性の根拠").length).toBeGreaterThan(0);
+    expect(screen.getByRole("checkbox", { name: "OpenStreetMapの人道支援施設を表示" })).toBeInTheDocument();
+    expect(screen.getByText(/シナリオ名と発生源パラメータは送信しません/)).toBeInTheDocument();
   });
 });

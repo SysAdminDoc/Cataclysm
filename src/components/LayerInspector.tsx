@@ -6,6 +6,8 @@ import type { HumanitarianFacilityState } from "../hooks/useHumanitarianFaciliti
 import { OSM_ATTRIBUTION_URL, type HumanitarianFacilityCategory } from "../lib/osm-facilities";
 import { TrustDisclosure } from "./TrustDisclosure";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 type Props = {
   domain: "tsunami" | "asteroid" | "nuclear";
@@ -29,9 +31,10 @@ type Props = {
 };
 
 function LayerRow({ label, detail, active, evidence }: { label: string; detail: string; active: boolean; evidence: ReturnType<typeof buildLayerEvidence> }) {
+  const { t } = useI18n();
   const contextualEvidence = active ? evidence : {
     ...evidence,
-    confidence: "Waiting for prerequisite output",
+    confidence: t("layers.waitingPrerequisite"),
     tone: "limited" as const,
   };
   return (
@@ -42,17 +45,17 @@ function LayerRow({ label, detail, active, evidence }: { label: string; detail: 
           <strong>{label}</strong>
           <small>{detail}</small>
         </span>
-        <span className="layer-inspector__status">{active ? "Active" : "Waiting"}</span>
+        <span className="layer-inspector__status">{active ? t("layers.active") : t("layers.waiting")}</span>
       </div>
-      <TrustDisclosure evidence={contextualEvidence} compact compactStatus={active ? undefined : "Evidence"} />
+      <TrustDisclosure evidence={contextualEvidence} compact compactStatus={active ? undefined : t("layers.evidence")} />
     </li>
   );
 }
 
-const FACILITY_CATEGORY_LABELS: Record<HumanitarianFacilityCategory, string> = {
-  school: "Education",
-  health: "Healthcare",
-  emergency: "Response",
+const FACILITY_CATEGORY_LABEL_KEYS: Record<HumanitarianFacilityCategory, MessageKey> = {
+  school: "layers.education",
+  health: "layers.healthcare",
+  emergency: "layers.response",
 };
 
 function HumanitarianFacilityLayer({
@@ -68,35 +71,49 @@ function HumanitarianFacilityLayer({
   onEnabledChange: (enabled: boolean) => void;
   onRefresh: () => void;
 }) {
+  const { t, formatNumber } = useI18n();
   const facilities = state?.facilities ?? [];
   const counts = facilities.reduce<Record<HumanitarianFacilityCategory, number>>(
     (current, facility) => ({ ...current, [facility.category]: current[facility.category] + 1 }),
     { school: 0, health: 0, emergency: 0 },
   );
   const status = !enabled
-    ? "Off"
+    ? t("layers.off")
     : state?.status === "loading"
-      ? "Loading"
+      ? t("layers.loading")
       : state?.status === "offline"
-        ? facilities.length > 0 ? "Offline cache" : "Offline"
+        ? facilities.length > 0 ? t("layers.offlineCache") : t("layers.offline")
         : state?.status === "error"
-          ? facilities.length > 0 ? "Cached" : "Unavailable"
+          ? facilities.length > 0 ? t("layers.cached") : t("layers.unavailable")
           : facilities.length > 0
-            ? `${facilities.length} mapped`
-            : "No matches";
+            ? t("layers.mapped", { count: formatNumber(facilities.length) })
+            : t("layers.noMatches");
+  const stateMessage = !state
+    ? ""
+    : state.status === "idle"
+      ? t("layers.noRequest")
+      : state.status === "loading"
+        ? t("layers.queryingOsm")
+        : state.status === "ready"
+          ? state.cached ? t("layers.loadedCache") : t("layers.mappedFacilities", { count: formatNumber(facilities.length) })
+          : state.status === "empty"
+            ? state.plan.discs.length === 0 ? t("layers.advanceTimeline") : t("layers.noMappedFacilities")
+            : state.status === "offline"
+              ? facilities.length > 0 ? t("layers.offlineOlderCache") : t("layers.offlineNoCache")
+              : state.cached ? `${state.message} ${t("layers.showingCache")}` : state.message;
   const visibleFacilities = facilities.slice(0, 18);
   return (
     <li className="layer-inspector__row layer-inspector__row--facilities" data-active={enabled ? "true" : "false"}>
       <div className="layer-inspector__summary">
         <span className="layer-inspector__state" aria-hidden>{enabled ? <UiIcon name="check" size={12} /> : null}</span>
         <span className="layer-inspector__label">
-          <strong>Humanitarian facilities</strong>
-          <small>Schools, healthcare, and response sites inside runup screening extents</small>
+          <strong>{t("layers.humanitarian")}</strong>
+          <small>{t("layers.humanitarianDetail")}</small>
         </span>
         <label className="layer-inspector__switch">
           <input
             type="checkbox"
-            aria-label="Show humanitarian facilities from OpenStreetMap"
+            aria-label={t("layers.showHumanitarian")}
             checked={enabled}
             onChange={(event) => onEnabledChange(event.target.checked)}
           />
@@ -105,23 +122,23 @@ function HumanitarianFacilityLayer({
       </div>
       <div className="layer-inspector__facility-body" data-visible={enabled ? "true" : "false"}>
         <p className="layer-inspector__network-note">
-          Opting in sends the active modeled coastal extent boxes to the public Overpass service. Scenario names and source parameters are not sent.
+          {t("layers.networkNote")}
         </p>
         {enabled && state && (
           <>
             <div className="layer-inspector__facility-status" role="status" aria-live="polite">
-              <span>{state.message}</span>
+              <span>{stateMessage}</span>
               {state.status !== "loading" && (
-                <button type="button" onClick={onRefresh}>Reload</button>
+                <button type="button" onClick={onRefresh}>{t("layers.reload")}</button>
               )}
             </div>
             {facilities.length > 0 && (
               <>
                 <dl className="layer-inspector__facility-counts">
-                  {(Object.keys(FACILITY_CATEGORY_LABELS) as HumanitarianFacilityCategory[]).map((category) => (
+                  {(Object.keys(FACILITY_CATEGORY_LABEL_KEYS) as HumanitarianFacilityCategory[]).map((category) => (
                     <div key={category}>
-                      <dt>{FACILITY_CATEGORY_LABELS[category]}</dt>
-                      <dd>{counts[category]}</dd>
+                      <dt>{t(FACILITY_CATEGORY_LABEL_KEYS[category])}</dt>
+                      <dd>{formatNumber(counts[category])}</dd>
                     </div>
                   ))}
                 </dl>
@@ -129,27 +146,30 @@ function HumanitarianFacilityLayer({
                   {visibleFacilities.map((facility) => (
                     <li key={facility.id} data-category={facility.category}>
                       <a href={facility.osmUrl} target="_blank" rel="noreferrer">{facility.name}</a>
-                      <span>{FACILITY_CATEGORY_LABELS[facility.category]} · {facility.kind.replaceAll("_", " ")}</span>
+                      <span>{t(FACILITY_CATEGORY_LABEL_KEYS[facility.category])} · {facility.kind.replaceAll("_", " ")}</span>
                     </li>
                   ))}
                 </ol>
                 {facilities.length > visibleFacilities.length && (
                   <p className="layer-inspector__facility-more">
-                    {facilities.length - visibleFacilities.length} more mapped on the globe.
+                    {t("layers.moreMapped", { count: formatNumber(facilities.length - visibleFacilities.length) })}
                   </p>
                 )}
               </>
             )}
             {(state.plan.truncatedDiscCount > 0 || state.plan.clampedDiscCount > 0) && (
               <p className="layer-inspector__facility-budget">
-                Public-query guardrails: {state.plan.discs.length} of {state.plan.totalEligibleDiscs} active extents queried
-                {state.plan.clampedDiscCount > 0 ? `; ${state.plan.clampedDiscCount} capped at 25 km` : ""}.
+                {t(state.plan.clampedDiscCount > 0 ? "layers.queryGuardrailsCapped" : "layers.queryGuardrails", {
+                  active: formatNumber(state.plan.discs.length),
+                  total: formatNumber(state.plan.totalEligibleDiscs),
+                  capped: formatNumber(state.plan.clampedDiscCount),
+                })}
               </p>
             )}
           </>
         )}
         <p className="layer-inspector__limitations">
-          Community mapping varies. This screening does not establish damage, operability, access, evacuation status, or emergency needs.
+          {t("layers.limitations")}
         </p>
         <a className="layer-inspector__osm-credit" href={OSM_ATTRIBUTION_URL} target="_blank" rel="noreferrer">
           © OpenStreetMap contributors
@@ -180,6 +200,7 @@ export function LayerInspector({
   onRefreshHumanitarian = () => undefined,
   onOpenSettings,
 }: Props) {
+  const { t, formatNumber } = useI18n();
   const tsunamiDomain = domain === "tsunami";
   const evidence = (layer: EvidenceLayerId) => buildLayerEvidence(
     layer,
@@ -192,19 +213,19 @@ export function LayerInspector({
   return (
     <div className="section layer-inspector">
       <div className="section__title">
-        <span>Visualization layers</span>
-        <span className="section__badge" data-tone={hasSource ? "success" : "muted"}>{hasSource ? "Source ready" : "No source"}</span>
+        <span>{t("layers.title")}</span>
+        <span className="section__badge" data-tone={hasSource ? "success" : "muted"}>{hasSource ? t("layers.sourceReady") : t("layers.noSource")}</span>
       </div>
       <p className="layer-inspector__intro">
-        Layers activate from simulation output. Quantitative overlays remain synchronized with the active source and scenario time.
+        {t("layers.intro")}
       </p>
       <ul className="layer-inspector__list">
-        <LayerRow label={tsunamiDomain ? "Source geometry" : "Effects origin"} detail={tsunamiDomain ? "Initial displacement and source marker" : "Direct hazard target and effect center"} active={hasSource} evidence={evidence("source")} />
-        {tsunamiDomain && <LayerRow label="Analytical wavefront" detail="Arrival and attenuation geometry" active={hasWavefront} evidence={evidence("analytical-wavefront")} />}
-        {tsunamiDomain && <LayerRow label="SWE water field" detail="Time-varying shallow-water solution" active={hasSweField} evidence={evidence("swe-field")} />}
-        {tsunamiDomain && <LayerRow label="Maximum field" detail="Peak, time-of-maximum, and energy products" active={hasMaxField} evidence={evidence("maximum-field")} />}
-        {tsunamiDomain && <LayerRow label="Arrival isochrones" detail={arrivalCount > 0 ? `${arrivalCount} contour levels` : "Generated after propagation"} active={arrivalCount > 0} evidence={evidence("arrival-isochrones")} />}
-        {tsunamiDomain && <LayerRow label="Coastal runup" detail={runupCount > 0 ? `${runupCount} evaluated coastal points` : "Computed from the active source"} active={runupCount > 0} evidence={evidence("coastal-runup")} />}
+        <LayerRow label={tsunamiDomain ? t("layers.sourceGeometry") : t("layers.effectsOrigin")} detail={tsunamiDomain ? t("layers.sourceGeometryDetail") : t("layers.effectsOriginDetail")} active={hasSource} evidence={evidence("source")} />
+        {tsunamiDomain && <LayerRow label={t("layers.wavefront")} detail={t("layers.wavefrontDetail")} active={hasWavefront} evidence={evidence("analytical-wavefront")} />}
+        {tsunamiDomain && <LayerRow label={t("layers.sweField")} detail={t("layers.sweFieldDetail")} active={hasSweField} evidence={evidence("swe-field")} />}
+        {tsunamiDomain && <LayerRow label={t("layers.maximumField")} detail={t("layers.maximumFieldDetail")} active={hasMaxField} evidence={evidence("maximum-field")} />}
+        {tsunamiDomain && <LayerRow label={t("layers.arrivalIsochrones")} detail={arrivalCount > 0 ? t("layers.contourLevels", { count: formatNumber(arrivalCount) }) : t("layers.afterPropagation")} active={arrivalCount > 0} evidence={evidence("arrival-isochrones")} />}
+        {tsunamiDomain && <LayerRow label={t("layers.coastalRunup")} detail={runupCount > 0 ? t("layers.coastalPoints", { count: formatNumber(runupCount) }) : t("layers.fromActiveSource")} active={runupCount > 0} evidence={evidence("coastal-runup")} />}
         {tsunamiDomain && (
           <HumanitarianFacilityLayer
             enabled={humanitarianEnabled}
@@ -214,12 +235,12 @@ export function LayerInspector({
             onRefresh={onRefreshHumanitarian}
           />
         )}
-        {tsunamiDomain && <LayerRow label="DART observations" detail={dartCount > 0 ? `${dartCount} historical buoy records` : "Available for instrumented events"} active={dartCount > 0} evidence={evidence("dart-observations")} />}
-        {!tsunamiDomain && <LayerRow label="Hazard effect rings" detail="Domain-specific physical thresholds" active={hasSource} evidence={evidence("hazard-rings")} />}
-        {domain === "nuclear" && <LayerRow label="Fallout plume" detail="Wind-driven deposition geometry" active={hasFallout} evidence={evidence("fallout-plume")} />}
+        {tsunamiDomain && <LayerRow label={t("layers.dart")} detail={dartCount > 0 ? t("layers.buoyRecords", { count: formatNumber(dartCount) }) : t("layers.instrumentedEvents")} active={dartCount > 0} evidence={evidence("dart-observations")} />}
+        {!tsunamiDomain && <LayerRow label={t("layers.hazardRings")} detail={t("layers.hazardRingsDetail")} active={hasSource} evidence={evidence("hazard-rings")} />}
+        {domain === "nuclear" && <LayerRow label={t("layers.fallout")} detail={t("layers.falloutDetail")} active={hasFallout} evidence={evidence("fallout-plume")} />}
       </ul>
       <button type="button" className="layer-inspector__configure" onClick={onOpenSettings}>
-        Configure globe imagery
+        {t("layers.configureImagery")}
       </button>
     </div>
   );

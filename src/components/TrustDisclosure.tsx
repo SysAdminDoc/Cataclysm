@@ -3,10 +3,32 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { validateCitationUrl } from "../lib/external-links";
 import { isTauri } from "../lib/tauri";
 import type { TrustEvidence } from "../lib/trust-evidence";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 function currentOnlineState(): boolean {
   return typeof navigator === "undefined" || navigator.onLine;
 }
+
+const CONFIDENCE_KEYS: Record<string, MessageKey> = {
+  "Exploratory what-if": "trust.exploratoryWhatIf",
+  "Historical/reference scenario": "trust.referenceScenario",
+  "User-defined inputs": "trust.userInputs",
+  "Exploratory estimate": "trust.exploratoryEstimate",
+  "Reference inputs; modelled outcome": "trust.referenceModelled",
+  "User-input estimate": "trust.userEstimate",
+  "Deterministic model output": "trust.deterministicOutput",
+  "Scenario geometry": "trust.scenarioGeometry",
+  "Reference geometry": "trust.referenceGeometry",
+  "First-order analytical estimate": "trust.analyticalEstimate",
+  "Numerically checked output": "trust.checkedOutput",
+  "Per-point provenance; screening estimate": "trust.provenanceEstimate",
+  "Community-mapped context; completeness varies": "trust.communityContext",
+  "Observed reference series": "trust.observedSeries",
+  "Waiting for a versioned result": "trust.waitingResult",
+  "Deterministic screening geometry": "trust.screeningGeometry",
+  "Waiting for prerequisite output": "trust.waitingPrerequisite",
+};
 
 export function TrustDisclosure({
   evidence,
@@ -17,20 +39,24 @@ export function TrustDisclosure({
   compact?: boolean;
   compactStatus?: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [online, setOnline] = useState(currentOnlineState);
   const [linkAlert, setLinkAlert] = useState<string | null>(null);
+  const localizedConfidence = CONFIDENCE_KEYS[evidence.confidence]
+    ? t(CONFIDENCE_KEYS[evidence.confidence])
+    : evidence.confidence;
   const summaryStatus = compactStatus ?? (compact
     ? evidence.confidence.startsWith("Waiting")
-      ? "Waiting"
+      ? t("trust.waiting")
       : evidence.tone === "speculative"
-        ? "What-if"
+        ? t("trust.whatIf")
         : evidence.tone === "reference"
-          ? "Reference"
+          ? t("trust.reference")
           : evidence.tone === "validated"
-            ? "Validated"
-            : "Modelled"
-    : evidence.confidence);
+            ? t("trust.validated")
+            : t("trust.modelled")
+    : localizedConfidence);
 
   useEffect(() => {
     const update = () => setOnline(currentOnlineState());
@@ -44,18 +70,18 @@ export function TrustDisclosure({
 
   function openCitation(url: string) {
     if (!online) {
-      setLinkAlert("Offline — the citation remains listed, but its external page cannot be opened.");
+      setLinkAlert(t("trust.offlineCitation"));
       return;
     }
     const validation = validateCitationUrl(url);
     if (!validation.ok) {
-      setLinkAlert(`Blocked citation link. ${validation.reason}`);
+      setLinkAlert(t("trust.blockedCitation", { reason: validation.reason }));
       return;
     }
     setLinkAlert(null);
     if (isTauri()) {
       openExternal(validation.url).catch(() => {
-        setLinkAlert("Citation link could not be opened by the desktop shell policy.");
+        setLinkAlert(t("trust.openFailed"));
       });
     } else {
       window.open(validation.url, "_blank", "noopener,noreferrer");
@@ -64,28 +90,28 @@ export function TrustDisclosure({
 
   return (
     <details className="trust-disclosure" data-compact={compact ? "true" : "false"} data-tone={evidence.tone} data-evidence-id={evidence.id} onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary aria-label={`Why trust this? ${evidence.title}`}>
-        <span>Why trust this?</span>
+      <summary aria-label={t("trust.summaryAria", { title: evidence.title })}>
+        <span>{t("trust.summary")}</span>
         <small>{summaryStatus}</small>
       </summary>
       {open && <div className="trust-disclosure__body">
         <dl className="trust-disclosure__meta">
-          <div><dt>Source</dt><dd>{evidence.sourceTitle}</dd></div>
-          <div><dt>Model</dt><dd>{evidence.model}</dd></div>
-          <div><dt>Version</dt><dd>{evidence.version}</dd></div>
-          <div><dt>Status</dt><dd>{evidence.confidence}</dd></div>
-          <div><dt>Evidence ID</dt><dd><code>{evidence.id}</code></dd></div>
+          <div><dt>{t("trust.source")}</dt><dd>{evidence.sourceTitle}</dd></div>
+          <div><dt>{t("trust.model")}</dt><dd>{evidence.model}</dd></div>
+          <div><dt>{t("trust.version")}</dt><dd>{evidence.version}</dd></div>
+          <div><dt>{t("trust.status")}</dt><dd>{localizedConfidence}</dd></div>
+          <div><dt>{t("trust.evidenceId")}</dt><dd><code>{evidence.id}</code></dd></div>
         </dl>
-        <section aria-label="Key assumptions">
-          <strong>Key assumptions</strong>
+        <section aria-label={t("trust.assumptions")}>
+          <strong>{t("trust.assumptions")}</strong>
           <ul>{evidence.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
         </section>
-        <section aria-label="Limitations">
-          <strong>Limitations</strong>
+        <section aria-label={t("trust.limitations")}>
+          <strong>{t("trust.limitations")}</strong>
           <ul>{evidence.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
         </section>
-        <section aria-label="Citations">
-          <strong>Exact citations</strong>
+        <section aria-label={t("trust.citations")}>
+          <strong>{t("trust.exactCitations")}</strong>
           <ul className="trust-disclosure__citations">
             {evidence.citations.map((citation) => {
               const validation = citation.url ? validateCitationUrl(citation.url) : null;
@@ -96,7 +122,7 @@ export function TrustDisclosure({
                       {citation.label}
                     </a>
                   ) : citation.url ? (
-                    <button type="button" onClick={() => setLinkAlert(`Blocked citation link. ${validation && !validation.ok ? validation.reason : "Citation URL is invalid."}`)}>
+                    <button type="button" onClick={() => setLinkAlert(t("trust.blockedCitation", { reason: validation && !validation.ok ? validation.reason : t("trust.invalidCitation") }))}>
                       {citation.label}
                     </button>
                   ) : (
@@ -106,10 +132,10 @@ export function TrustDisclosure({
                     {citation.url
                       ? validation?.ok
                         ? validation.legacyHttp
-                          ? "Legacy HTTP"
-                          : online ? "External" : "Offline"
-                        : "Blocked"
-                      : "Bibliography"}
+                          ? t("trust.legacyHttp")
+                          : online ? t("trust.external") : t("trust.offline")
+                        : t("trust.blocked")
+                      : t("trust.bibliography")}
                   </small>
                 </li>
               );
