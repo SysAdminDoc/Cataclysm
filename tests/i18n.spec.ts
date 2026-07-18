@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("language switch persists across settings, simulation results, layers, and lessons", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const language = page.getByRole("combobox", { name: "Interface language" });
@@ -71,6 +71,25 @@ test("language switch persists across settings, simulation results, layers, and 
   expect(await page.screenshot({ clip: hazardInspectorBounds! })).toMatchSnapshot("localized-hazard-ja.png");
   await hazardModes.getByRole("button", { name: "津波" }).click();
 
+  await page.getByRole("button", { name: "時系列", exact: true }).click();
+  const historicalTimeline = page.getByRole("group", { name: "歴史イベントのタイムライン" });
+  await expect(historicalTimeline).toBeVisible();
+  expect(await historicalTimeline.screenshot()).toMatchSnapshot("localized-timeline-ja.png");
+  const timelineAccessibility = await new AxeBuilder({ page }).include(".timeline").analyze();
+  expect(timelineAccessibility.violations).toEqual([]);
+
+  await page.getByRole("button", { name: "比較", exact: true }).click();
+  const comparisonStories = page.getByRole("region", { name: "比較ストーリー" });
+  await expect(comparisonStories).toBeVisible();
+  await expect(comparisonStories.getByRole("button", { name: /2つの海洋巨大地震/ })).toBeVisible();
+  const comparisonReadout = comparisonStories.locator(".comparison-story__readout");
+  await comparisonReadout.scrollIntoViewIfNeeded();
+  expect(await comparisonReadout.screenshot()).toMatchSnapshot("localized-comparison-ja.png");
+  const comparisonAccessibility = await new AxeBuilder({ page }).include(".app__compare-picker").analyze();
+  expect(comparisonAccessibility.violations).toEqual([]);
+  await page.getByRole("button", { name: "比較", exact: true }).click();
+  await page.getByRole("button", { name: "カード", exact: true }).click();
+
   await page.getByRole("button", { name: "独自に作成" }).click();
   const customBuilder = page.locator(".scenario-builder");
   await expect(customBuilder.getByText("カスタムシナリオ", { exact: true })).toBeVisible();
@@ -98,14 +117,15 @@ test("language switch persists across settings, simulation results, layers, and 
   const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
   await expect(tohoku).toBeVisible();
   await tohoku.click();
-  await expect(page.locator(".source-model")).toContainText("発生源モデル");
+  await expect(page.locator(".source-model:visible")).toContainText("発生源モデル");
   await page.getByRole("button", { name: "実行して見る" }).click();
   await page.getByRole("tab", { name: "設定", exact: true }).click();
-  await expect(page.locator(".source-model")).toContainText("Okada断層変位モデル");
+  await expect(page.locator(".source-model:visible")).toContainText("Okada断層変位モデル");
   await page.getByRole("group", { name: "表示の詳細度" }).getByRole("button", { name: "詳細", exact: true }).click();
-  await expect(page.locator(".swe")).toContainText("波動伝播");
-  await expect(page.getByLabel("1度あたりの格子セル数")).toBeAttached();
+  await expect(page.locator(".swe:visible")).toContainText("波動伝播");
+  await expect(page.locator('[aria-label="1度あたりの格子セル数"]:visible')).toBeAttached();
   const inspector = page.locator(".app__panel--right");
+  await inspector.evaluate((panel) => { panel.scrollTop = 0; });
   let inspectorBounds = await inspector.boundingBox();
   expect(inspectorBounds).not.toBeNull();
   expect(await page.screenshot({ clip: inspectorBounds! })).toMatchSnapshot("localized-setup-ja.png");

@@ -652,63 +652,47 @@
 /* --- Timeline view --- */
 
 .timeline {
-  padding: 4px 0;
+  padding: 2px 0 0 12px;
 }
 
 .timeline__track {
   position: relative;
-  height: 80px;
-  margin: 0 24px;
+  display: grid;
+  gap: 1px;
+  margin: 0;
 }
 
 .timeline__line {
   position: absolute;
-  top: 28px;
-  left: 0;
-  right: 0;
-  height: 2px;
+  top: 18px;
+  bottom: 18px;
+  left: 5px;
+  width: 1px;
   background: var(--surface1);
-  border-radius: 1px;
 }
 
 .timeline__marker {
-  position: absolute;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 8px 4px 0;
   background: none;
   border: none;
-  padding: 0;
+  border-radius: var(--r-sm);
   cursor: pointer;
   z-index: 1;
-  top: 14px;
-  min-height: 42px;
+  text-align: left;
   color: var(--accent);
 }
 
-.timeline__marker[data-position="0"] { left: 0%; }
-.timeline__marker[data-position="5"] { left: 5%; }
-.timeline__marker[data-position="10"] { left: 10%; }
-.timeline__marker[data-position="15"] { left: 15%; }
-.timeline__marker[data-position="20"] { left: 20%; }
-.timeline__marker[data-position="25"] { left: 25%; }
-.timeline__marker[data-position="30"] { left: 30%; }
-.timeline__marker[data-position="35"] { left: 35%; }
-.timeline__marker[data-position="40"] { left: 40%; }
-.timeline__marker[data-position="45"] { left: 45%; }
-.timeline__marker[data-position="50"] { left: 50%; }
-.timeline__marker[data-position="55"] { left: 55%; }
-.timeline__marker[data-position="60"] { left: 60%; }
-.timeline__marker[data-position="65"] { left: 65%; }
-.timeline__marker[data-position="70"] { left: 70%; }
-.timeline__marker[data-position="75"] { left: 75%; }
-.timeline__marker[data-position="80"] { left: 80%; }
-.timeline__marker[data-position="85"] { left: 85%; }
-.timeline__marker[data-position="90"] { left: 90%; }
-.timeline__marker[data-position="95"] { left: 95%; }
-.timeline__marker[data-position="100"] { left: 100%; }
+.timeline__marker:hover,
+.timeline__marker:focus-visible {
+  background: color-mix(in srgb, var(--surface0) 70%, transparent);
+}
 
 .timeline__marker[data-source="Asteroid"] { color: var(--red); }
 .timeline__marker[data-source="Earthquake"] { color: var(--teal); }
@@ -717,17 +701,18 @@
 .timeline__marker[data-source="Meteotsunami"] { color: var(--sapphire); }
 
 .timeline__marker:hover .timeline__dot {
-  transform: scale(1.4);
+  transform: scale(1.2);
 }
 
 .timeline__marker[data-active="true"] .timeline__dot {
-  transform: scale(1.6);
-  box-shadow: 0 0 0 3px currentcolor;
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2px var(--base), 0 0 0 3px currentcolor;
 }
 
 .timeline__dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
+  margin-left: 1px;
   border-radius: var(--r-sm);
   border: 2px solid var(--base);
   flex-shrink: 0;
@@ -738,29 +723,28 @@
 .timeline__label {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  min-width: 0;
   font-size: var(--type-caption);
   line-height: 1.3;
   color: var(--subtext);
-  white-space: nowrap;
-  max-width: 72px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .timeline__label strong {
-  font-size: var(--type-caption);
+  width: 100%;
+  font-size: var(--type-body);
   color: var(--text);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  white-space: nowrap;
 }
 
 .timeline__label > span {
-  max-width: 100%;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline__marker[data-active="true"] .timeline__label strong {
@@ -770,7 +754,7 @@
 .timeline__axis {
   display: flex;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 5px 8px 0 22px;
   font-size: var(--type-caption);
   color: var(--overlay0);
   text-transform: uppercase;
@@ -936,7 +920,7 @@
 
 .comparison-story__readout dl > div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(92px, 0.85fr) minmax(0, 1.15fr);
   gap: 2px 8px;
   padding-top: 5px;
   border-top: 1px solid var(--divider);

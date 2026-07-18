@@ -39,6 +39,8 @@ controls, plus the scientific bathymetry import and offline-cache workflow.
 Wave-attenuation charts, DART observation/model comparisons, explainable point
 probes and coastal-arrival announcements use the same locale, including their
 accessible chart summaries, recovery states and exported data labels.
+The chronological event rail and curated side-by-side comparison stories also
+translate source categories, scientific questions, metric deltas and controls.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 

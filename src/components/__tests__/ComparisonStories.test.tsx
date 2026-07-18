@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ComparisonStories } from "../ComparisonStories";
 import type { InitialDisplacement, Preset } from "../../types/scenario";
+import { I18nProvider } from "../../lib/i18n";
 
 const PRESETS = [
   ["tohoku_2011", "Tōhoku 2011"],
@@ -23,6 +24,8 @@ const initial = (peak: number): InitialDisplacement => ({
 });
 
 describe("ComparisonStories", () => {
+  beforeEach(() => localStorage.clear());
+
   it("starts curated pairs and exposes objective source deltas", async () => {
     const onSelectStory = vi.fn();
     render(
@@ -68,5 +71,28 @@ describe("ComparisonStories", () => {
     expect(onSelectCustomB).toHaveBeenCalledWith("chicxulub");
     await userEvent.click(screen.getByRole("button", { name: "Retry Slot B" }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("localizes curated stories, metrics, and advanced controls in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(
+      <I18nProvider>
+        <ComparisonStories
+          presets={PRESETS}
+          activePresetAId="tohoku_2011"
+          activePresetBId="indian_ocean_2004"
+          initialA={initial(20)}
+          initialB={initial(5)}
+          busy={false}
+          onSelectStory={() => {}}
+          onSelectCustomB={() => {}}
+        />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole("region", { name: "比較ストーリー" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2つの海洋巨大地震/ })).toBeInTheDocument();
+    expect(screen.getByText("震源最大振幅")).toBeInTheDocument();
+    expect(screen.getAllByText("スロットAが 4.0倍大きい")).toHaveLength(2);
+    expect(screen.getByLabelText("比較対象")).toBeInTheDocument();
   });
 });

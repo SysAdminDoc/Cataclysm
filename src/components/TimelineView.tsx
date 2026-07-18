@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Preset } from "../types/scenario";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   presets: Preset[];
@@ -25,24 +26,38 @@ function parseDateToYearsAgo(date: string): number | null {
   return null;
 }
 
-function formatAge(yearsAgo: number): string {
-  if (yearsAgo >= 1_000_000) return `${(yearsAgo / 1_000_000).toFixed(yearsAgo >= 10_000_000 ? 0 : 1)} Ma`;
-  if (yearsAgo >= 1_000) return `${(yearsAgo / 1_000).toFixed(1)}k yr`;
-  if (yearsAgo <= 0) return "now";
-  return `${yearsAgo} yr ago`;
+function formatAge(
+  yearsAgo: number,
+  formatNumber: ReturnType<typeof useI18n>["formatNumber"],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  if (yearsAgo >= 1_000_000) return t("timeline.millionYears", { value: formatNumber(yearsAgo / 1_000_000, { minimumFractionDigits: yearsAgo >= 10_000_000 ? 0 : 1, maximumFractionDigits: yearsAgo >= 10_000_000 ? 0 : 1 }) });
+  if (yearsAgo >= 1_000) return t("timeline.thousandYears", { value: formatNumber(yearsAgo / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
+  if (yearsAgo <= 0) return t("timeline.now");
+  return t("timeline.yearsAgo", { value: formatNumber(yearsAgo) });
 }
 
 export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
+  const { t, formatNumber } = useI18n();
+  const sourceLabel = (kind: Preset["source"]["kind"]) => kind === "Earthquake"
+    ? t("source.earthquake")
+    : kind === "Asteroid"
+      ? t("source.asteroidImpact")
+      : kind === "Nuclear"
+        ? t("source.underwaterDetonation")
+        : kind === "Meteotsunami"
+          ? t("source.meteotsunami")
+          : t("source.submarineLandslide");
   const entries = useMemo<TimelineEntry[]>(() => {
     const parsed: TimelineEntry[] = [];
     for (const p of presets) {
       const ya = parseDateToYearsAgo(p.date);
       if (ya === null) continue;
-      parsed.push({ preset: p, yearsAgo: ya, label: formatAge(ya) });
+      parsed.push({ preset: p, yearsAgo: ya, label: formatAge(ya, formatNumber, t) });
     }
     parsed.sort((a, b) => b.yearsAgo - a.yearsAgo);
     return parsed;
-  }, [presets]);
+  }, [formatNumber, presets, t]);
 
   if (entries.length === 0) return null;
 
@@ -55,7 +70,7 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
   const degenerate = span < 1e-9;
 
   return (
-    <div className="timeline" role="group" aria-label="Historical event timeline">
+    <div className="timeline" role="group" aria-label={t("timeline.label")}>
       <div className="timeline__track">
         <div className="timeline__line" />
         {entries.map((e, idx) => {
@@ -67,6 +82,7 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
           const position = Math.round(pct / 5) * 5;
           const isActive = activeId === e.preset.id;
           const isBusy = busyId === e.preset.id;
+          const localizedSource = sourceLabel(e.preset.source.kind);
           return (
             <button
               key={e.preset.id}
@@ -76,8 +92,8 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
               data-source={e.preset.source.kind}
               onClick={() => onSelect(e.preset.id)}
               disabled={isBusy}
-              aria-label={`${e.preset.name}, ${e.preset.source.kind} source, ${e.preset.date}`}
-              title={`${e.preset.name} — ${e.preset.source.kind} source — ${e.preset.date}`}
+              aria-label={t("timeline.eventAria", { name: e.preset.name, source: localizedSource, date: e.preset.date })}
+              title={t("timeline.eventTitle", { name: e.preset.name, source: localizedSource, date: e.preset.date })}
               type="button"
             >
               <span
@@ -86,15 +102,15 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
               />
               <span className="timeline__label">
                 <strong>{e.preset.name.split(/\s+/).slice(0, 2).join(" ")}</strong>
-                <span>{e.preset.source.kind} · {isBusy ? "..." : e.label}</span>
+                <span>{localizedSource} · {isBusy ? "…" : e.label}</span>
               </span>
             </button>
           );
         })}
       </div>
       <div className="timeline__axis">
-        <span>Ancient</span>
-        <span>Recent</span>
+        <span>{t("timeline.ancient")}</span>
+        <span>{t("timeline.recent")}</span>
       </div>
     </div>
   );

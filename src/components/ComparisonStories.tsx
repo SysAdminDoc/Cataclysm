@@ -6,6 +6,7 @@ import {
   type ComparisonStory,
 } from "../lib/comparison-stories";
 import type { InitialDisplacement, Preset } from "../types/scenario";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   presets: Preset[];
@@ -34,23 +35,45 @@ export function ComparisonStories({
   stale = false,
   onRetry,
 }: Props) {
+  const { t, formatNumber } = useI18n();
   const presetIds = useMemo(() => new Set(presets.map((preset) => preset.id)), [presets]);
   const activeStory = comparisonStoryForPair(activePresetAId, activePresetBId);
   const metrics = buildComparisonMetrics(initialA, initialB);
+  const storyCopy = (story: ComparisonStory) => ({
+    title: t(`comparison.story.${story.id}.title` as Parameters<typeof t>[0]),
+    promise: t(`comparison.story.${story.id}.promise` as Parameters<typeof t>[0]),
+    question: t(`comparison.story.${story.id}.question` as Parameters<typeof t>[0]),
+  });
+  const localizeDifference = (difference: string) => {
+    if (difference === "not ratio-comparable") return t("comparison.notComparable");
+    if (difference === "within 5%") return t("comparison.withinFive");
+    const match = difference.match(/^(.+)× larger in Slot ([AB])$/);
+    return match
+      ? t("comparison.larger", { value: match[1], slot: match[2] })
+      : difference;
+  };
+  const metricLabel = (label: string) => label === "Peak source amplitude"
+    ? t("comparison.peakAmplitude")
+    : label === "Source energy"
+      ? t("comparison.sourceEnergy")
+      : label === "Source radius"
+        ? t("comparison.sourceRadius")
+        : label;
 
   return (
-    <section className="app__compare-picker" aria-label="Comparison stories">
+    <section className="app__compare-picker" aria-label={t("comparison.title")}>
       <header className="comparison-stories__header">
         <div>
-          <span>Comparison stories</span>
-          <strong>Start with a meaningful pair</strong>
+          <span>{t("comparison.title")}</span>
+          <strong>{t("comparison.startPair")}</strong>
         </div>
-        <p>Both panes use the same model time and map scale.</p>
+        <p>{t("comparison.sharedView")}</p>
       </header>
 
       <div className="comparison-stories__list">
         {COMPARISON_STORIES.map((story) => {
           const available = presetIds.has(story.leftPresetId) && presetIds.has(story.rightPresetId);
+          const copy = storyCopy(story);
           return (
             <button
               type="button"
@@ -60,8 +83,8 @@ export function ComparisonStories({
               disabled={!available || busy}
               onClick={() => onSelectStory(story)}
             >
-              <strong>{story.title}</strong>
-              <span>{story.promise}</span>
+              <strong>{copy.title}</strong>
+              <span>{copy.promise}</span>
             </button>
           );
         })}
@@ -69,45 +92,45 @@ export function ComparisonStories({
 
       {activeStory && (
         <div className="comparison-story__readout" role="status" aria-live="polite">
-          <strong>{activeStory.question}</strong>
+          <strong>{storyCopy(activeStory).question}</strong>
           {metrics.length > 0 ? (
             <dl>
               {metrics.map((metric) => (
                 <div key={metric.label}>
-                  <dt>{metric.label}</dt>
-                  <dd>A {metric.slotA} · B {metric.slotB}</dd>
-                  <dd>{metric.difference}</dd>
+                  <dt>{metricLabel(metric.label)}</dt>
+                  <dd>{t("comparison.slotValues", { a: metric.slotA, b: metric.slotB })}</dd>
+                  <dd>{localizeDifference(metric.difference)}</dd>
                 </div>
               ))}
             </dl>
           ) : (
-            <p>{busy ? "Loading both source models…" : "Choose the story to load both source models."}</p>
+            <p>{busy ? t("comparison.loadingBoth") : t("comparison.chooseStory")}</p>
           )}
-          <p>Linked at T+{Math.round(activeStory.focusTimeS / 60)} min · equal camera range</p>
+          <p>{t("comparison.linked", { minutes: formatNumber(Math.round(activeStory.focusTimeS / 60)) })}</p>
         </div>
       )}
 
       <div className="comparison-stories__advanced">
-        <span>Advanced</span>
-        <label htmlFor="compare-source-b">Compare against</label>
+        <span>{t("comparison.advanced")}</span>
+        <label htmlFor="compare-source-b">{t("comparison.compareAgainst")}</label>
         <select
           id="compare-source-b"
           value={activePresetBId ?? ""}
           onChange={(event) => onSelectCustomB(event.target.value || null)}
           disabled={busy}
         >
-          <option value="">Select Slot B source…</option>
+          <option value="">{t("comparison.selectSlotB")}</option>
           {presets.map((preset) => (
             <option key={preset.id} value={preset.id}>{preset.name} · {preset.date}</option>
           ))}
         </select>
       </div>
-      <small>{busy ? "Loading comparison source…" : activeStory?.promise ?? "Custom Slot B keeps Slot A unchanged."}</small>
+      <small>{busy ? t("comparison.loadingSource") : activeStory ? storyCopy(activeStory).promise : t("comparison.customKeepsA")}</small>
 
       {error && (
         <div className="panel-error" role="alert">
-          <span>{stale ? "Slot B is showing its last valid source: " : "Slot B source failed: "}{error}</span>
-          {onRetry && <button type="button" onClick={onRetry}>Retry Slot B</button>}
+          <span>{stale ? t("comparison.staleSource", { error }) : t("comparison.failedSource", { error })}</span>
+          {onRetry && <button type="button" onClick={onRetry}>{t("comparison.retrySlotB")}</button>}
         </div>
       )}
     </section>

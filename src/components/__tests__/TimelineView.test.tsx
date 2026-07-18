@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { TimelineView } from "../TimelineView";
 import type { Preset } from "../../types/scenario";
+import { I18nProvider } from "../../lib/i18n";
 
 function makePreset(overrides: Partial<Preset> & { id: string; date: string }): Preset {
   return {
@@ -23,6 +24,8 @@ const PRESETS: Preset[] = [
 ];
 
 describe("TimelineView", () => {
+  beforeEach(() => localStorage.clear());
+
   it("renders markers for presets with parseable dates", () => {
     render(<TimelineView presets={PRESETS} activeId={null} onSelect={() => {}} />);
     expect(screen.getByTitle(/Chicxulub/)).toBeInTheDocument();
@@ -76,5 +79,16 @@ describe("TimelineView", () => {
     const tohoku = screen.getByRole("button", { name: /Tōhoku 2011, Earthquake source/ });
     expect(tohoku).toHaveTextContent("Earthquake");
     expect(tohoku.querySelector(".timeline__dot")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("localizes timeline semantics, source kinds, ages, and axis labels in Japanese", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    render(<I18nProvider><TimelineView presets={PRESETS} activeId={null} onSelect={() => {}} /></I18nProvider>);
+    expect(screen.getByRole("group", { name: "歴史イベントのタイムライン" })).toBeInTheDocument();
+    const tohoku = screen.getByRole("button", { name: /Tōhoku 2011、地震震源/ });
+    expect(tohoku).toHaveTextContent("地震");
+    expect(screen.getByText("古代")).toBeInTheDocument();
+    expect(screen.getByText("最近")).toBeInTheDocument();
+    expect(screen.getByTitle(/Storegga Slide/)).toHaveTextContent("8.2千年前");
   });
 });
