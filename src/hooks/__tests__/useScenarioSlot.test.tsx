@@ -13,6 +13,7 @@ vi.mock("../../lib/tauri", () => ({
     earthquakeInitialConditions: vi.fn(),
     landslideInitialConditions: vi.fn(),
     runPreset: vi.fn(),
+    samplePresetWavefront: vi.fn().mockResolvedValue({ time_s: 0, ranges_m: [], amplitudes_m: [] }),
   },
 }));
 
@@ -93,7 +94,7 @@ describe("useScenarioSlot", () => {
     expect(result.current.initial?.label).toBe("Preset result");
   });
 
-  it("preserves the scientific source while timeline-only preset results refresh", async () => {
+  it("preserves the scientific source while timeline-only wavefront refreshes", async () => {
     vi.mocked(api.runPreset).mockResolvedValue(makePresetResponse("tohoku", "Preset result"));
     const { result, rerender } = renderHook(({ timeS }) => useScenarioSlot(timeS), {
       initialProps: { timeS: 0 },
@@ -104,34 +105,26 @@ describe("useScenarioSlot", () => {
     const originalInitial = result.current.initial;
 
     rerender({ timeS: 900 });
-    await waitFor(() => expect(api.runPreset).toHaveBeenLastCalledWith(
-      expect.objectContaining({ preset_id: "tohoku", time_s: 900 }),
-    ));
-    await waitFor(() => expect(result.current.busyPresetId).toBeNull());
+    await waitFor(() => expect(api.samplePresetWavefront).toHaveBeenCalledWith("tohoku", 900, 48));
 
     expect(result.current.initial).toBe(originalInitial);
   });
 
-  it("retains a stale preset result after refresh failure and retries locally", async () => {
-    vi.mocked(api.runPreset)
-      .mockResolvedValueOnce(makePresetResponse("tohoku", "Preset result"))
-      .mockRejectedValueOnce(new Error("backend unavailable"))
-      .mockResolvedValueOnce(makePresetResponse("tohoku", "Preset result"));
+  it("retains initial displacement when wavefront-only refresh fails silently", async () => {
+    vi.mocked(api.runPreset).mockResolvedValue(makePresetResponse("tohoku", "Preset result"));
+    vi.mocked(api.samplePresetWavefront).mockRejectedValue(new Error("backend unavailable"));
     const { result, rerender } = renderHook(({ timeS }) => useScenarioSlot(timeS), {
       initialProps: { timeS: 0 },
     });
 
     act(() => result.current.setActivePresetId("tohoku"));
-    await waitFor(() => expect(result.current.sourceResult.status).toBe("ready"));
+    await waitFor(() => expect(result.current.initial).not.toBeNull());
     const originalInitial = result.current.initial;
 
     rerender({ timeS: 900 });
-    await waitFor(() => expect(result.current.sourceResult.status).toBe("stale"));
-    expect(result.current.initial).toBe(originalInitial);
-    expect(result.current.error).toContain("backend unavailable");
+    await waitFor(() => expect(api.samplePresetWavefront).toHaveBeenCalledWith("tohoku", 900, 48));
+    await vi.waitFor(() => {});
 
-    act(() => result.current.retrySource());
-    await waitFor(() => expect(api.runPreset).toHaveBeenCalledTimes(3));
-    await waitFor(() => expect(result.current.sourceResult.status).toBe("ready"));
+    expect(result.current.initial).toBe(originalInitial);
   });
 });

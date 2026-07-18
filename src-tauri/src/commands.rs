@@ -258,6 +258,37 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
     })
 }
 
+#[tauri::command]
+pub fn sample_preset_wavefront(
+    preset_id: String,
+    time_s: f64,
+    n_samples: usize,
+) -> Result<PropagationSnapshot, String> {
+    if preset_id.is_empty() || preset_id.len() > 128 {
+        return Err("preset_id must be 1..128 characters".into());
+    }
+    if !time_s.is_finite() || time_s < 0.0 || time_s > SWE_MAX_T_END_S {
+        return Err(format!("time_s must be finite and in [0, {}]", SWE_MAX_T_END_S));
+    }
+    let preset = find_preset(&preset_id)
+        .ok_or_else(|| format!("unknown preset id: {}", preset_id))?;
+    if matches!(&preset.source, PresetSource::Meteotsunami(_)) {
+        return Ok(PropagationSnapshot { time_s, ranges_m: Vec::new(), amplitudes_m: Vec::new() });
+    }
+    let initial = preset.source.initial_displacement();
+    let alpha = preset.source.far_field_decay_alpha();
+    let mean_depth_m = initial.center.depth_m.max(50.0);
+    let n = n_samples.clamp(2, WAVEFRONT_MAX_SAMPLES);
+    Ok(sample_wavefront(
+        initial.peak_amplitude_m,
+        initial.cavity_radius_m,
+        alpha,
+        mean_depth_m,
+        time_s,
+        n,
+    ))
+}
+
 #[cfg(test)]
 #[path = "commands/tests.rs"]
 mod tests;

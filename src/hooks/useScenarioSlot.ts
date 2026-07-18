@@ -133,24 +133,33 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       }, 80);
       return;
     }
-    api
-      .runPreset({ preset_id: activePresetId, time_s: timeS, mean_depth_m: 0, n_samples: 48 })
-      .then((resp) => {
-        // Drop stale responses + don't touch unmounted state.
-        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
-        setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
-        setSourceResult({ status: "ready", value: resp.initial });
-        setWavefront(resp.wavefront);
-      })
-      .catch((err) => {
-        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
-        console.error("runPreset failed", err);
-        setSourceResult((current) => rejectAsyncResult(current, `Couldn't load this preset: ${String(err)}`));
-      })
-      .finally(() => {
-        if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
-        setBusyPresetId(null);
-      });
+    if (sourceChanged) {
+      api
+        .runPreset({ preset_id: activePresetId, time_s: timeS, mean_depth_m: 0, n_samples: 48 })
+        .then((resp) => {
+          if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+          setInitial((current) => (sameInitial(current, resp.initial) ? current : resp.initial));
+          setSourceResult({ status: "ready", value: resp.initial });
+          setWavefront(resp.wavefront);
+        })
+        .catch((err) => {
+          if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+          console.error("runPreset failed", err);
+          setSourceResult((current) => rejectAsyncResult(current, `Couldn't load this preset: ${String(err)}`));
+        })
+        .finally(() => {
+          if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+          setBusyPresetId(null);
+        });
+    } else {
+      api
+        .samplePresetWavefront(activePresetId, timeS, 48)
+        .then((wf) => {
+          if (!mountedRef.current || reqId !== runPresetReqIdRef.current) return;
+          setWavefront(wf);
+        })
+        .catch(() => {});
+    }
   }, [activePresetId, timeS, inTauri, sourceRetryNonce]);
 
   const simulate = useCallback(

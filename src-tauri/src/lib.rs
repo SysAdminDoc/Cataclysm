@@ -85,6 +85,7 @@ pub fn run() {
             runup_at_points,
             list_presets,
             run_preset,
+            sample_preset_wavefront,
             simulate_grid,
             simulate_grid_streaming,
             inspect_at_point,

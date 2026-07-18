@@ -12,6 +12,7 @@ import type {
   MeteotsunamiInput,
   NuclearBurstInput,
   Preset,
+  PropagationSnapshot,
   RunPresetResponse,
   SimulateGridResponse,
 } from "../types/scenario";
@@ -359,6 +360,11 @@ export const api = {
     n_samples: number;
   }) {
     return invoke<RunPresetResponse>("run_preset", { req });
+  },
+  samplePresetWavefront(presetId: string, timeS: number, nSamples: number) {
+    return invoke<PropagationSnapshot>("sample_preset_wavefront", {
+      preset_id: presetId, time_s: timeS, n_samples: nSamples,
+    });
   },
   dartBuoyRmse(req: {
     buoy_lat: number;
