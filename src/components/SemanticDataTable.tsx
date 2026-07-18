@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { downloadBlob, safeFilenamePart, type ExportResult } from "../lib/export";
+import { useI18n } from "../lib/i18n";
 
 export type SemanticDataColumn = {
   key: string;
@@ -49,6 +50,7 @@ function semanticRowsToCsv(columns: SemanticDataColumn[], rows: SemanticDataRow[
  * live region: timeline-driven updates remain inspectable without announcing
  * every animation frame. */
 export function SemanticDataTable({ id, title, summary, columns, rows, filename }: Props) {
+  const { t, formatNumber } = useI18n();
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [exportFailure, setExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
   const csv = semanticRowsToCsv(columns, rows);
@@ -80,26 +82,29 @@ export function SemanticDataTable({ id, title, summary, columns, rows, filename 
         {summary}
       </p>
       <details className="chart-data__details">
-        <summary>View {title} data ({rows.length} {rows.length === 1 ? "row" : "rows"})</summary>
+        <summary>{t(rows.length === 1 ? "dataTable.view.one" : "dataTable.view.many", {
+          title,
+          count: formatNumber(rows.length),
+        })}</summary>
         <div className="chart-data__actions">
-          <button type="button" aria-label={`Copy ${title} CSV`} onClick={() => void copyCsv()}>Copy CSV</button>
-          <button type="button" aria-label={`Export ${title} CSV`} onClick={exportCsv}>Export CSV</button>
+          <button type="button" aria-label={t("dataTable.copyAria", { title })} onClick={() => void copyCsv()}>{t("dataTable.copy")}</button>
+          <button type="button" aria-label={t("dataTable.exportAria", { title })} onClick={exportCsv}>{t("dataTable.export")}</button>
           {copyStatus !== "idle" && (
             <span role={copyStatus === "error" ? "alert" : "status"}>
-              {copyStatus === "copied" ? "CSV copied." : "Copy unavailable."}
+              {copyStatus === "copied" ? t("dataTable.copied") : t("dataTable.copyUnavailable")}
             </span>
           )}
         </div>
         {exportFailure && (
           <div className="panel-error" role="alert">
-            <span>CSV export failed: {exportFailure.message}</span>
-            {exportFailure.retryable && <button type="button" aria-label={`Retry ${title} CSV export`} onClick={exportCsv}>Retry</button>}
+            <span>{t("dataTable.exportFailed", { error: exportFailure.message })}</span>
+            {exportFailure.retryable && <button type="button" aria-label={t("dataTable.retryAria", { title })} onClick={exportCsv}>{t("dataTable.retry")}</button>}
           </div>
         )}
         <div
           className="chart-data__scroll"
           role="region"
-          aria-label={`${title} data table`}
+          aria-label={t("dataTable.region", { title })}
           tabIndex={0}
           aria-live="off"
         >

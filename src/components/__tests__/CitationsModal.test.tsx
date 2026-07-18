@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Preset } from "../../types/scenario";
 import { CitationsModal } from "../CitationsModal";
+import { I18nProvider } from "../../lib/i18n";
 
 const tauriMocks = vi.hoisted(() => ({
   thirdPartyNotices: vi.fn(),
@@ -37,6 +38,7 @@ function citationPreset(overrides: Partial<Preset>): Preset {
 
 describe("CitationsModal", () => {
   beforeEach(() => {
+    localStorage.clear();
     tauriMocks.thirdPartyNotices.mockReset();
     tauriMocks.thirdPartyNotices.mockResolvedValue(
       "CATACLYSM THIRD-PARTY NOTICES\n\nProduction components: 36 npm; 279 Rust",
@@ -82,5 +84,28 @@ describe("CitationsModal", () => {
       /Production components: 36 npm; 279 Rust/,
     );
     expect(tauriMocks.thirdPartyNotices).toHaveBeenCalledOnce();
+  });
+
+  it("localizes reference controls and blocked-link diagnostics in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const user = userEvent.setup();
+    render(
+      <I18nProvider>
+        <CitationsModal
+          onClose={() => {}}
+          presets={[citationPreset({
+            is_speculative: true,
+            reference: "Unreviewed Publisher Landing Page",
+            reference_url: "https://www.science.org/",
+          })]}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: "詳細な参考文献と来歴" })).toBeInTheDocument();
+    expect(screen.getByText("推測的")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Unreviewed Publisher Landing Page/i }));
+    expect(screen.getByRole("alert")).toHaveTextContent("許可リスト");
+    expect(screen.getByRole("button", { name: "サードパーティ通知を表示" })).toBeInTheDocument();
   });
 });

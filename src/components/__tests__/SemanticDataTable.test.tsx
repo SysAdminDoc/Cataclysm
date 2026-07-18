@@ -1,9 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SemanticDataTable } from "../SemanticDataTable";
+import { I18nProvider } from "../../lib/i18n";
 
 describe("SemanticDataTable", () => {
+  beforeEach(() => localStorage.clear());
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -38,5 +41,26 @@ describe("SemanticDataTable", () => {
 
     await user.click(screen.getByRole("button", { name: "Export test chart CSV" }));
     expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob));
+  });
+
+  it("localizes table disclosure and CSV actions in Japanese", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const user = userEvent.setup();
+    render(
+      <I18nProvider>
+        <SemanticDataTable
+          id="chart-ja"
+          title="波高"
+          summary="沿岸波高の要約。"
+          columns={[{ key: "series", label: "系列" }]}
+          rows={[{ series: "観測" }, { series: "モデル" }]}
+          filename="wave-height.csv"
+        />
+      </I18nProvider>,
+    );
+    await user.click(screen.getByText("波高のデータを表示（2行）"));
+    expect(screen.getByRole("button", { name: "波高のCSVをコピー" })).toHaveTextContent("CSVをコピー");
+    expect(screen.getByRole("button", { name: "波高のCSVを書き出す" })).toHaveTextContent("CSVを書き出す");
+    expect(screen.getByRole("region", { name: "波高のデータ表" })).toBeInTheDocument();
   });
 });

@@ -33,7 +33,8 @@ scenario editor (including scientific help and numeric validation), Results and
 coastal validation, Visualization Layers and humanitarian context, shared
 trust/evidence controls, direct nuclear/asteroid setup and visual profiles, and
 the launch, first-run, tour, crash-recovery, fatal-error surfaces, and scientific
-glossary are translated now.
+glossary, advanced bibliography, and analytical CSV table controls are
+translated now.
 Advanced interface text that has not yet moved to the catalog falls back to
 canonical English.
 

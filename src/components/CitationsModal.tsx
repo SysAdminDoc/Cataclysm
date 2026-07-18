@@ -6,27 +6,42 @@ import { validateCitationUrl, type ExternalUrlValidation } from "../lib/external
 import { api, isTauri } from "../lib/tauri";
 import type { Preset } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
+import { useI18n } from "../lib/i18n";
 
 type Props = {
   presets: Preset[];
   onClose: () => void;
 };
 
-function validationMessage(validation: ExternalUrlValidation) {
-  return validation.ok ? undefined : `Blocked citation link. ${validation.reason}`;
+type Translate = ReturnType<typeof useI18n>["t"];
+
+function validationMessage(validation: ExternalUrlValidation, t: Translate) {
+  if (validation.ok) return undefined;
+  const { reason } = validation;
+  let localizedReason = reason;
+  if (reason === "Citation has no URL.") localizedReason = t("citation.noUrl");
+  else if (reason === "Citation URL is not valid.") localizedReason = t("citation.invalidUrl");
+  else if (reason.startsWith("HTTPS citation URL is not in the allowlist: ")) {
+    localizedReason = t("citation.httpsNotAllowed", { host: reason.split(": ").at(-1) ?? "" });
+  } else if (reason.startsWith("HTTP citation URL is not an explicit legacy exception: ")) {
+    localizedReason = t("citation.httpNotAllowed", { host: reason.split(": ").at(-1) ?? "" });
+  } else if (reason.startsWith("Unsupported citation URL scheme: ")) {
+    localizedReason = t("citation.unsupportedScheme", { scheme: reason.split(": ").at(-1) ?? "" });
+  }
+  return t("citation.blockedReason", { reason: localizedReason });
 }
 
-function openUrl(url: string, onBlocked: (message: string) => void) {
+function openUrl(url: string, onBlocked: (message: string) => void, t: Translate) {
   const validation = validateCitationUrl(url);
   if (!validation.ok) {
-    onBlocked(validationMessage(validation) ?? "Blocked citation link.");
+    onBlocked(validationMessage(validation, t) ?? t("citation.blocked"));
     return;
   }
 
   if (isTauri()) {
     openExternal(validation.url).catch((err) => {
       console.error("shell open failed", err);
-      onBlocked("Citation link could not be opened by the desktop shell policy.");
+      onBlocked(t("citation.openFailed"));
     });
   } else {
     window.open(validation.url, "_blank", "noopener,noreferrer");
@@ -34,6 +49,7 @@ function openUrl(url: string, onBlocked: (message: string) => void) {
 }
 
 export function CitationsModal({ presets, onClose }: Props) {
+  const { t, formatNumber } = useI18n();
   useEscapeKey(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
@@ -51,7 +67,7 @@ export function CitationsModal({ presets, onClose }: Props) {
       setNotices(await api.thirdPartyNotices());
     } catch (error) {
       console.error("third-party notices could not be loaded", error);
-      setNoticesError("The bundled third-party notices could not be read. Reinstall Cataclysm and try again.");
+      setNoticesError(t("citation.noticesError"));
     } finally {
       setNoticesLoading(false);
     }
@@ -60,34 +76,31 @@ export function CitationsModal({ presets, onClose }: Props) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="citations-title">
-        <header className="modal__header">
+        <div className="modal__header">
           <h2 id="citations-title">
-            {notices ? "Third-party dependency notices" : "Advanced references & provenance"}
+            {notices ? t("citation.noticesTitle") : t("citation.title")}
           </h2>
-          <button onClick={onClose} aria-label="Close" className="modal__close" type="button">
+          <button onClick={onClose} aria-label={t("citation.close")} className="modal__close" type="button">
             <UiIcon name="close" size={16} />
           </button>
-        </header>
+        </div>
         <div className="modal__body">
           {notices ? (
             <>
               <div className="citations__notice-actions">
                 <button className="secondary" type="button" onClick={() => setNotices(null)}>
-                  Back to references
+                  {t("citation.back")}
                 </button>
-                <span>Bundled with this installed Cataclysm package</span>
+                <span>{t("citation.bundled")}</span>
               </div>
               <pre className="citations__notices" tabIndex={0}>{notices}</pre>
             </>
           ) : (
           <>
-          <p className="modal__intro">
-            This advanced bibliography keeps every preset citation visible. References open externally
-            so the model assumptions can be checked against the source material.
-          </p>
-          <div className="citations__summary" aria-label="Citation summary">
-            <span><strong>{presets.length}</strong> preset references</span>
-            <span><strong>{speculativeCount}</strong> speculative cases flagged</span>
+          <p className="modal__intro">{t("citation.intro")}</p>
+          <div className="citations__summary" aria-label={t("citation.summary")}>
+            <span><strong>{formatNumber(presets.length)}</strong> {t("citation.presetCount")}</span>
+            <span><strong>{formatNumber(speculativeCount)}</strong> {t("citation.speculativeCount")}</span>
           </div>
           {linkAlert && (
             <div className="citations__alert" role="alert">
@@ -100,7 +113,7 @@ export function CitationsModal({ presets, onClose }: Props) {
               return (
                 <li key={p.id} className="citations__row">
                   <div className="citations__name">
-                    {p.is_speculative && <span className="citations__tag">Speculative</span>}
+                    {p.is_speculative && <span className="citations__tag">{t("citation.speculative")}</span>}
                     <span>{p.name}</span>
                     <span className="citations__date">{p.date}</span>
                   </div>
@@ -112,21 +125,21 @@ export function CitationsModal({ presets, onClose }: Props) {
                         rel="noopener noreferrer"
                         onClick={(e) => {
                           e.preventDefault();
-                          openUrl(validation.url, setLinkAlert);
+                          openUrl(validation.url, setLinkAlert, t);
                         }}
                       >
                         <span>{p.reference}</span>
-                        {validation.legacyHttp && <span className="citations__legacy">Legacy HTTP</span>}
-                        <span className="citations__open">Open</span>
+                        {validation.legacyHttp && <span className="citations__legacy">{t("citation.legacy")}</span>}
+                        <span className="citations__open">{t("citation.open")}</span>
                       </a>
                     ) : p.reference_url ? (
                       <button
                         className="citations__blocked"
                         type="button"
-                        onClick={() => setLinkAlert(validationMessage(validation) ?? "Blocked citation link.")}
+                        onClick={() => setLinkAlert(validationMessage(validation, t) ?? t("citation.blocked"))}
                       >
                         <span>{p.reference}</span>
-                        <span className="citations__open" data-tone="blocked">Blocked</span>
+                        <span className="citations__open" data-tone="blocked">{t("citation.blocked")}</span>
                       </button>
                     ) : (
                       p.reference
@@ -141,16 +154,13 @@ export function CitationsModal({ presets, onClose }: Props) {
           </ul>
           <hr className="modal__sep" />
           <p className="modal__footnote">
-            Full BibTeX in <code>docs/science/REFERENCES.bib</code>. Source-code
-            formulas live under <code>src-tauri/src/physics/</code> with
-            per-module citation blocks.
+            {t("citation.bibtex")} <code>docs/science/REFERENCES.bib</code>. {t("citation.formulas")}{" "}
+            <code>src-tauri/src/physics/</code> {t("citation.moduleBlocks")}
           </p>
           <div className="citations__notice-entry">
             <div>
-              <strong>Third-party dependency notices</strong>
-              <span>
-                Exact production dependency versions, SPDX identifiers, source links, and required license texts.
-              </span>
+              <strong>{t("citation.noticesTitle")}</strong>
+              <span>{t("citation.noticesDescription")}</span>
             </div>
             <button
               className="secondary"
@@ -158,11 +168,11 @@ export function CitationsModal({ presets, onClose }: Props) {
               disabled={!isTauri() || noticesLoading}
               onClick={() => void showThirdPartyNotices()}
             >
-              {noticesLoading ? "Loading notices…" : "View third-party notices"}
+              {noticesLoading ? t("citation.noticesLoading") : t("citation.noticesView")}
             </button>
           </div>
           {!isTauri() && (
-            <p className="citations__notice-help">Notices are available in installed desktop packages.</p>
+            <p className="citations__notice-help">{t("citation.noticesHelp")}</p>
           )}
           {noticesError && <div className="citations__alert" role="alert">{noticesError}</div>}
           </>

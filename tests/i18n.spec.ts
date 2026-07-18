@@ -158,6 +158,18 @@ test("language switch persists across settings, simulation results, layers, and 
   const tourBounds = await page.locator(".tour-card").boundingBox();
   expect(tourBounds).not.toBeNull();
   expect(await page.screenshot({ clip: tourBounds! })).toMatchSnapshot("localized-tour-ja.png");
+
+  await tour.getByRole("button", { name: "ツアーを閉じる" }).click();
+  await page.getByRole("button", { name: "詳細文献" }).click();
+  const citations = page.getByRole("dialog", { name: "詳細な参考文献と来歴" });
+  await expect(citations).toBeVisible();
+  await expect(citations.getByLabel("引用情報の概要")).toBeVisible();
+  await expect(citations.getByRole("button", { name: "サードパーティ通知を表示" })).toBeDisabled();
+  const citationsAccessibility = await new AxeBuilder({ page }).include(".modal").analyze();
+  expect(citationsAccessibility.violations).toEqual([]);
+  const citationBounds = await page.locator(".modal").boundingBox();
+  expect(citationBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: citationBounds! })).toMatchSnapshot("localized-citations-ja.png");
 });
 
 test("first-run launch and safety guidance honor the stored language", async ({ page }) => {
