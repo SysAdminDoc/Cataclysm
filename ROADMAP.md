@@ -53,13 +53,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ### P1
 
-- [ ] P1 - UX-06: Turn guided lessons into interactive globe stories
-  Why: Guided training is hidden in an accordion and opens a static four-step modal that blocks the globe instead of directing the user through it.
-  Evidence: live Tohoku guided-lesson audit; `PresetSelector.tsx`, `GuidedLesson.tsx`, `src/lib/guided-lessons.ts`; Google Earth Voyager and ArcGIS guided tours use sequenced places, camera changes, and media (https://earth.google.com/intl/versions/ and https://storymaps.arcgis.com/stories/2ed07d655eb64835b2244ef95da667fd); NASA Eyes uses interactive scrollytelling and ride-alongs (https://science.nasa.gov/eyes/).
-  Touches: guided-story schema, `GuidedLesson.tsx`, camera/timeline commands, contextual callouts, focus management, worksheet/export path, visual and keyboard tests.
-  Acceptance: each lesson can load a scenario, focus/highlight a real control or map feature, move the camera, seek/play a key moment, and present a short explanation beside rather than over the action; users can Explore freely or Follow story; Back/Next/Skip are always available; progress persists; reduced motion and screen-reader narration receive equivalent content.
-  Complexity: L
-
 - [ ] P1 - UX-07: Add visual scenario packs, favorites, recents, and Surprise Me
   Why: current cards are dense text rows and do not communicate spectacle, scale, duration, or why an event is worth opening; discovery ends after scanning 11 names.
   Evidence: live scenario-library audit; `PresetSelector.tsx` and `_presets.css`; Universe Sandbox emphasizes historical simulations and shareable simulation discovery (https://universesandbox.com/presskit/); Google Earth offers Voyager plus a roll-the-dice discovery action (https://earth.google.com/intl/versions/).

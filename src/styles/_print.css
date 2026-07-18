@@ -157,7 +157,7 @@
 
 /* Print with data-print-worksheet set: show ONLY the worksheet. */
 @media print {
-  body[data-print-worksheet] .app,
+  body[data-print-worksheet] .app > :not(.lesson-overlay),
   body[data-print-worksheet] .lesson-card,
   body[data-print-worksheet] .modal-overlay,
   body[data-print-worksheet] .toast {

@@ -1,22 +1,30 @@
 
 .lesson-overlay {
   position: fixed;
-  inset: 0;
+  top: 130px;
+  right: 400px;
+  bottom: 126px;
+  width: 366px;
   z-index: 890;
   pointer-events: none;
+}
+
+.app[data-story-open="true"] .app__globe-stack {
+  margin-right: 366px;
+  border-right: 1px solid var(--divider);
 }
 
 .lesson-card {
   pointer-events: auto;
   position: absolute;
-  bottom: 48px;
-  right: 32px;
-  max-width: 460px;
-  background: color-mix(in srgb, var(--mantle) 94%, var(--surface0));
-  border: 1px solid color-mix(in srgb, var(--green) 50%, var(--panel-border));
-  border-radius: var(--r-lg);
-  padding: 18px 20px;
-  box-shadow: var(--shadow-lg);
+  inset: 0;
+  overflow-y: auto;
+  background: var(--inspector-bg);
+  border: 0;
+  border-left: 1px solid var(--divider);
+  border-radius: 0;
+  padding: 16px 18px;
+  box-shadow: none;
 }
 
 .lesson-card__topline {
@@ -31,10 +39,10 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--on-success);
-  background: var(--green);
-  border-radius: var(--r-sm);
-  padding: 2px 6px;
+  color: var(--accent-text);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
   font-weight: 700;
 }
 
@@ -53,17 +61,41 @@
 }
 
 .lesson-card__progress span {
-  width: 14px;
-  height: 4px;
-  border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--surface1) 76%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface2) 34%, transparent);
+  width: 18px;
+  height: 3px;
+  border-radius: 0;
+  background: var(--surface1);
+  border: 0;
 }
 
 .lesson-card__progress span[data-complete="true"],
 .lesson-card__progress span[data-active="true"] {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent-active);
+}
+
+.lesson-card__mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 12px 0 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.lesson-card__mode button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--subtext);
+  box-shadow: inset 0 -2px 0 transparent;
+}
+
+.lesson-card__mode button[data-active="true"] {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent-active);
 }
 
 .lesson-card__lesson {
@@ -84,13 +116,97 @@
   font-size: var(--type-body);
   color: var(--subtext);
   line-height: 1.55;
+  margin: 0 0 12px;
+}
+
+.lesson-card__cue {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin: 0 0 14px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--divider);
+  color: var(--subtext);
+  background: transparent;
+}
+
+.lesson-card__cue[data-active="true"] {
+  border-left-color: var(--accent-active);
+}
+
+.lesson-card__cue span {
+  font-size: var(--type-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lesson-card__cue strong {
+  color: var(--text);
+  font-size: var(--type-caption);
 }
 
 .lesson-card__actions {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.lesson-card__actions button {
+  min-height: 34px;
+}
+
+[data-story-highlight="true"] {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--accent-active);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-active) 14%, transparent);
+}
+
+@media (max-width: 1360px) and (min-width: 981px) {
+  .lesson-overlay {
+    right: 352px;
+    width: 340px;
+  }
+
+  .app[data-story-open="true"] .app__globe-stack {
+    margin-right: 340px;
+  }
+
+  .lesson-card {
+    padding-inline: 15px;
+  }
+
+  .lesson-card__print {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .lesson-overlay {
+    top: auto;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    height: min(56vh, 460px);
+  }
+
+  .app[data-story-open="true"] .app__globe-stack {
+    margin-right: 0;
+    border-right: 0;
+  }
+
+  .lesson-card {
+    border: 1px solid var(--divider);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-story-highlight="true"] {
+    box-shadow: none;
+  }
 }
 
 .lesson-card__spacer {

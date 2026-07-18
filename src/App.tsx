@@ -12,7 +12,11 @@ import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { LaunchExperience } from "./components/LaunchExperience";
 import { Tour } from "./components/Tour";
 import { GuidedLesson } from "./components/GuidedLesson";
-import type { GuidedLesson as GuidedLessonDef } from "./lib/guided-lessons";
+import type {
+  GuidedLesson as GuidedLessonDef,
+  GuidedStoryCue,
+  GuidedStoryTarget,
+} from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
 import { PerformancePanel } from "./components/PerformancePanel";
 import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
@@ -447,6 +451,7 @@ export default function App() {
   const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
+  const [activeStoryTarget, setActiveStoryTarget] = useState<GuidedStoryTarget | null>(null);
   const [lessonCompletions, setLessonCompletions] = useState<Record<string, string>>({});
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [showLog, setShowLog] = useState(false);
@@ -466,6 +471,7 @@ export default function App() {
   const toastTimer = useRef<number | undefined>(undefined);
   const lastCameraUpdateAt = useRef(0);
   const outcomeFocusRequestId = useRef(0);
+  const guidedStoryRuns = useRef(new Set<string>());
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -559,6 +565,63 @@ export default function App() {
 
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
+  const setSlotBActivePresetId = slotB.setActivePresetId;
+
+  const handleGuidedStoryCue = useCallback((
+    cue: GuidedStoryCue | null,
+    lessonId: string,
+    stepIndex: number,
+  ) => {
+    setActiveStoryTarget(cue?.target ?? null);
+    if (!cue) return;
+
+    if (cue.panel) setInspectorTab(cue.panel);
+    if (cue.timeS !== undefined) setTimeS(cue.timeS);
+    if (cue.playback) setTimelinePlaying(cue.playback === "play");
+    if (cue.runSolver && !guidedStoryRuns.current.has(lessonId)) {
+      guidedStoryRuns.current.add(lessonId);
+      setSweRunAndWatchNonce((nonce) => nonce + 1);
+    }
+    if (cue.comparisonPresetId) {
+      setSlotBActivePresetId(cue.comparisonPresetId);
+      setCompareMode(true);
+    }
+    if (cue.camera) {
+      outcomeFocusRequestId.current += 1;
+      setOutcomeFocus({
+        request_id: `lesson-${lessonId}-${stepIndex}-${outcomeFocusRequestId.current}`,
+        place: {
+          label: cue.camera.label,
+          lat_deg: cue.camera.lat,
+          lon_deg: cue.camera.lon,
+          range_m: cue.camera.rangeM,
+        },
+        simulation_time_s: cue.timeS ?? 0,
+        heading_deg: cue.camera.headingDeg,
+        pitch_deg: cue.camera.pitchDeg,
+      });
+    }
+  }, [setSlotBActivePresetId]);
+
+  useEffect(() => {
+    const selectors: Record<GuidedStoryTarget, string> = {
+      setup: "#inspector-tab-setup",
+      solver: ".section.swe",
+      globe: ".app__globe-pane:first-child",
+      timeline: ".simulation-transport",
+      results: "#inspector-tab-results",
+      layers: "#inspector-tab-layers",
+      comparison: ".app__globe-stack[data-split='true']",
+    };
+    if (!activeStoryTarget) return;
+    const target = document.querySelector<HTMLElement>(selectors[activeStoryTarget]);
+    if (!target) return;
+    target.setAttribute("data-story-highlight", "true");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+    return () => target.removeAttribute("data-story-highlight");
+  }, [activeStoryTarget, compareMode, inspectorTab, slotA.initial]);
+
   const humanitarianFacilities = useHumanitarianFacilities(
     humanitarianFacilitiesEnabled && hazardMode === "tsunami",
     slotA.runupResults,
@@ -1379,6 +1442,22 @@ export default function App() {
     updateLibraryPreferences((current) => recordRecentScenario(current, scenarioId));
   }
 
+  function startGuidedLesson(lesson: GuidedLessonDef) {
+    const scenarioId = `preset:${lesson.presetId}`;
+    if (slotA.activePresetId !== lesson.presetId) guidedStoryRuns.current.delete(lesson.id);
+    selectHazardMode("tsunami");
+    setLibraryPreview({ kind: "preset", presetId: lesson.presetId });
+    setLibraryPreviewPending(false);
+    setCustomEditorOpen(false);
+    setPendingRunPresetId(null);
+    setRunJourney(null);
+    setTimeS(0);
+    slotA.setActivePresetId(lesson.presetId);
+    setInspectorTab("setup");
+    setActiveLesson(lesson);
+    updateLibraryPreferences((current) => recordRecentScenario(current, scenarioId));
+  }
+
   function runLibraryPreview() {
     if (!libraryPreview) return;
     setLibraryPreviewPending(false);
@@ -1489,6 +1568,7 @@ export default function App() {
       data-compare={compareMode ? "true" : "false"}
       data-domain={hazardMode}
       data-workspace-mode={workspaceMode}
+      data-story-open={activeLesson ? "true" : "false"}
       data-reference-capture={referenceCaptureMode ? "true" : "false"}
       data-reference-direct-frame-ready={referenceCaptureMode && directRenderFrame ? referenceCaptureSceneId : undefined}
     >
@@ -2022,10 +2102,7 @@ export default function App() {
             favoriteIds={libraryPreferences.favoriteIds}
             onToggleFavorite={(id) => updateLibraryPreferences((current) => toggleFavoriteScenario(current, id))}
             busyId={slotA.busyPresetId}
-            onStartLesson={(lesson) => {
-              runPresetFromLibrary(lesson.presetId);
-              setActiveLesson(lesson);
-            }}
+            onStartLesson={startGuidedLesson}
             completedLessons={lessonCompletions}
           />
         {inHazardMode && (
@@ -2553,6 +2630,7 @@ export default function App() {
           lesson={activeLesson}
           onClose={() => setActiveLesson(null)}
           onComplete={markLessonComplete}
+          onCue={handleGuidedStoryCue}
         />
       )}
       <SimulationTransport

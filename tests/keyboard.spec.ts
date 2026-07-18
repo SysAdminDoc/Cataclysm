@@ -86,6 +86,49 @@ test.describe("Keyboard-only golden path", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("guided story remains keyboard-operable while the globe and controls stay available", async ({ page }) => {
+    await page.goto("/");
+    const launcher = page.getByRole("button", { name: /Guided training/i });
+    await launcher.focus();
+    await page.keyboard.press("Enter");
+    const lessonItem = page.locator(".lesson-launcher__item").first();
+    await lessonItem.focus();
+    await page.keyboard.press("Enter");
+
+    const lesson = page.locator(".lesson-card");
+    await expect(lesson).toBeVisible();
+    await expect(lesson.getByRole("button", { name: "Follow story" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("tab", { name: "Setup" })).toHaveAttribute("data-story-highlight", "true");
+
+    const next = lesson.getByRole("button", { name: "Next" });
+    await next.focus();
+    await page.keyboard.press("Enter");
+    await expect(lesson.getByRole("heading", { name: "Propagation: what to watch" })).toBeVisible();
+    await expect(page.locator(".section.swe")).toHaveAttribute("data-story-highlight", "true", { timeout: 15_000 });
+
+    const explore = lesson.getByRole("button", { name: "Explore freely" });
+    await explore.focus();
+    await page.keyboard.press("Enter");
+    await expect(explore).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-story-highlight='true']")).toHaveCount(0);
+
+    await page.locator("#main-globe").focus();
+    await expect(page.locator("#main-globe")).toBeFocused();
+    await expect(lesson).toBeVisible();
+
+    const skip = lesson.getByRole("button", { name: "Skip" });
+    await skip.focus();
+    await page.keyboard.press("Enter");
+    await expect(lesson).toHaveCount(0);
+
+    await lessonItem.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".lesson-card").getByRole("heading", { name: "Propagation: what to watch" })).toBeVisible();
+    await expect(page.locator(".lesson-card").getByRole("button", { name: "Explore freely" })).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".lesson-card")).toHaveCount(0);
+  });
+
   test("export popover restores focus after Escape and action selection", async ({ page }) => {
     await page.goto("/");
     const trigger = page.getByRole("button", { name: "Export", exact: true });

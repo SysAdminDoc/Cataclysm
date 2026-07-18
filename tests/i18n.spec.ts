@@ -237,7 +237,7 @@ test("language switch persists across settings, simulation results, layers, and 
   expect(bounds).not.toBeNull();
   expect(await page.screenshot({ clip: bounds! })).toMatchSnapshot("localized-guided-lesson-ja.png");
 
-  await lesson.getByRole("button", { name: "閉じる" }).click();
+  await lesson.getByRole("button", { name: "スキップ" }).click();
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("tsunamisim:tour-requested")));
   const tour = page.getByRole("dialog", { name: "Cataclysmへようこそ" });
   await expect(tour).toBeVisible();

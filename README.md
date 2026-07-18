@@ -115,7 +115,9 @@ Existing tools each do one piece:
   Rust versions, SPDX identifiers, source links, and license texts bundled with
   the current desktop package; lockfile drift is rejected during verification.
 - **Scenario library filters** — recorded and what-if cases stay searchable,
-  while guided training remains available without crowding the primary flow.
+  while seven guided globe stories can load a cited source, move the camera,
+  direct real simulator controls, and seek key moments without blocking free
+  exploration. Story progress stays local and resumes where the learner left.
 - **Four-language foundation** — Settings persists English, Spanish, Japanese,
   or Bahasa Indonesia locally and includes the preference in portable profiles.
   Settings (including map provenance, renderer/GPU states, onboarding, and
@@ -221,7 +223,8 @@ Existing tools each do one piece:
   Starfish Prime uses a dedicated high-altitude EMP screening path with no
   implied ground blast, thermal, fallout, or casualty rings.
 - **Teacher mode** — lockable classroom settings profiles (via settings
-  export/import) and a printable worksheet for each of the 7 guided lessons.
+  export/import), Follow/Explore story modes with equivalent screen-reader
+  narration, and a printable worksheet for each of the 7 guided lessons.
 - **Side-by-side comparison mode** — two scenarios on synchronised globes.
 - **Catppuccin Mocha** dark theme default + **Latte** light theme toggle.
 

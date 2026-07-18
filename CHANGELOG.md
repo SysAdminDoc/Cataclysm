@@ -44,6 +44,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Guided training is now a real interactive globe-story system rather than a
+  static modal. All seven lessons load their cited scenario and can direct the
+  existing camera, Setup/Solver/Results controls, timeline, or comparison view
+  from a non-modal viewport dock. Follow and free-Explore modes, persisted
+  step/mode progress, printable worksheets, reduced-motion camera behavior,
+  localized screen-reader narration, and dark/light/Japanese keyboard and
+  visual regressions ship together.
+
 - Completed the four-language interface across the analytical globe and its
   hidden text equivalent, provider/fallback lifecycle, coordinate and point
   inspection flows, renderer recovery/performance diagnostics, export command

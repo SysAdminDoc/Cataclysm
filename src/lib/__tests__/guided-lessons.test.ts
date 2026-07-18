@@ -14,10 +14,31 @@ describe("guided lesson catalogs", () => {
         expect(lesson.title).not.toBe(canonical.title);
         expect(lesson.summary.trim()).not.toBe("");
         expect(lesson.steps).toHaveLength(canonical.steps.length);
+        expect(lesson.story).toBe(canonical.story);
+        expect(lesson.story.cues).toHaveLength(canonical.steps.length);
         expect(lesson.worksheet).toHaveLength(canonical.worksheet.length);
         expect(lesson.steps.every((step) => step.title.trim() && step.body.trim())).toBe(true);
         expect(lesson.worksheet.every((question) => question.trim())).toBe(true);
       });
+    }
+  });
+
+  it("gives every lesson executable, bounded story cues", () => {
+    for (const lesson of GUIDED_LESSONS) {
+      expect(lesson.story.cues).toHaveLength(lesson.steps.length);
+      expect(lesson.story.cues[0]).toMatchObject({ target: "setup", panel: "setup" });
+      expect(lesson.story.cues.some((cue) => cue.camera)).toBe(true);
+      expect(lesson.story.cues.some((cue) => cue.timeS !== undefined)).toBe(true);
+      expect(lesson.story.cues.some((cue) => cue.playback === "play")).toBe(true);
+      expect(lesson.story.cues.every((cue) => !cue.camera || (
+        Number.isFinite(cue.camera.lat)
+        && cue.camera.lat >= -90
+        && cue.camera.lat <= 90
+        && Number.isFinite(cue.camera.lon)
+        && cue.camera.lon >= -180
+        && cue.camera.lon <= 180
+        && cue.camera.rangeM >= 20_000
+      ))).toBe(true);
     }
   });
 

@@ -1,7 +1,42 @@
+import lessonsEs from "../data/i18n/guided-lessons.es.json";
+import lessonsJa from "../data/i18n/guided-lessons.ja.json";
+import lessonsId from "../data/i18n/guided-lessons.id.json";
+import { warnMissingTranslation, type Locale } from "./i18n-core";
+
 export type LessonStep = {
   title: string;
   body: string;
 };
+
+export type GuidedStoryTarget =
+  | "setup"
+  | "solver"
+  | "globe"
+  | "timeline"
+  | "results"
+  | "layers"
+  | "comparison";
+
+export type GuidedStoryCue = Readonly<{
+  target: GuidedStoryTarget;
+  panel?: "setup" | "results" | "layers";
+  camera?: Readonly<{
+    label: string;
+    lat: number;
+    lon: number;
+    rangeM: number;
+    headingDeg: number;
+    pitchDeg: number;
+  }>;
+  timeS?: number;
+  playback?: "play" | "pause";
+  runSolver?: boolean;
+  comparisonPresetId?: string;
+}>;
+
+export type GuidedStory = Readonly<{
+  cues: readonly GuidedStoryCue[];
+}>;
 
 export type GuidedLesson = {
   id: string;
@@ -9,10 +44,82 @@ export type GuidedLesson = {
   presetId: string;
   summary: string;
   steps: LessonStep[];
+  story: GuidedStory;
   /** Printable worksheet prompts (classroom handout). Rendered by the
    *  lesson dialog's "Print worksheet" action via the print stylesheet. */
   worksheet: string[];
 };
+
+type StoryLocation = Readonly<{
+  label: string;
+  lat: number;
+  lon: number;
+  rangeM: number;
+  headingDeg?: number;
+  pitchDeg?: number;
+  focusTimeS?: number;
+  comparisonPresetId?: string;
+}>;
+
+/**
+ * Builds a deterministic globe story from reviewed preset coordinates. Story
+ * cues only orchestrate existing UI and renderer controls; they never compute
+ * hazard values or introduce a second physics path in the browser.
+ */
+function buildStory(stepCount: number, location: StoryLocation): GuidedStory {
+  const camera = (rangeScale: number): NonNullable<GuidedStoryCue["camera"]> => ({
+    label: location.label,
+    lat: location.lat,
+    lon: location.lon,
+    rangeM: Math.max(20_000, location.rangeM * rangeScale),
+    headingDeg: location.headingDeg ?? 0,
+    pitchDeg: location.pitchDeg ?? -50,
+  });
+  const focusTimeS = location.focusTimeS ?? 1_800;
+  const cues: GuidedStoryCue[] = [
+    {
+      target: "setup",
+      panel: "setup",
+      camera: camera(1),
+      timeS: 0,
+      playback: "pause",
+    },
+    location.comparisonPresetId
+      ? {
+          target: "comparison",
+          panel: "results",
+          camera: camera(1.6),
+          timeS: focusTimeS,
+          playback: "play",
+          comparisonPresetId: location.comparisonPresetId,
+        }
+      : {
+          target: "solver",
+          panel: "setup",
+          camera: camera(1.45),
+          timeS: 0,
+          playback: "pause",
+          runSolver: true,
+        },
+    {
+      target: stepCount > 3 ? "globe" : "results",
+      panel: "results",
+      camera: camera(0.72),
+      timeS: focusTimeS,
+      playback: "play",
+      runSolver: !location.comparisonPresetId,
+    },
+    {
+      target: "results",
+      panel: "results",
+      camera: camera(0.58),
+      timeS: focusTimeS + 900,
+      playback: "pause",
+      runSolver: !location.comparisonPresetId,
+    },
+  ];
+  return { cues: cues.slice(0, stepCount) };
+}
 
 export const GUIDED_LESSONS: GuidedLesson[] = [
   {
@@ -21,6 +128,14 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "chicxulub",
     summary:
       "Explore the largest asteroid impact in the geological record and understand how impact energy translates to ocean-scale wave generation.",
+    story: buildStory(4, {
+      label: "Chicxulub impact basin",
+      lat: 21.4,
+      lon: -89.5,
+      rangeM: 5_000_000,
+      pitchDeg: -55,
+      focusTimeS: 3_600,
+    }),
     steps: [
       {
         title: "Source: why this matters",
@@ -56,6 +171,15 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "tohoku_2011",
     summary:
       "Study how seafloor displacement from a M9.1 earthquake generates a tsunami, and compare model output against real DART buoy observations.",
+    story: buildStory(4, {
+      label: "Tōhoku source and Sanriku coast",
+      lat: 38.297,
+      lon: 142.372,
+      rangeM: 4_800_000,
+      headingDeg: 345,
+      pitchDeg: -72,
+      focusTimeS: 2_700,
+    }),
     steps: [
       {
         title: "Source: Okada fault model",
@@ -91,6 +215,15 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "lituya_bay_1958",
     summary:
       "Understand how a landslide in a confined fjord produced the highest recorded wave runup in history — 524 metres.",
+    story: buildStory(3, {
+      label: "Gilbert Inlet, Lituya Bay",
+      lat: 58.64,
+      lon: -137.55,
+      rangeM: 50_000,
+      headingDeg: 60,
+      pitchDeg: -30,
+      focusTimeS: 240,
+    }),
     steps: [
       {
         title: "Source: landslide mechanics",
@@ -121,6 +254,15 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "poseidon_realistic",
     summary:
       "Compare a 100 Mt underwater nuclear detonation at realistic physics efficiency against Russian state media claims, and understand why the “500 m wave” claim violates energy conservation.",
+    story: buildStory(3, {
+      label: "Poseidon comparison area",
+      lat: 50,
+      lon: -10,
+      rangeM: 1_000_000,
+      pitchDeg: -40,
+      focusTimeS: 900,
+      comparisonPresetId: "poseidon_propaganda",
+    }),
     steps: [
       {
         title: "Source: what the physics says",
@@ -151,6 +293,14 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "hunga_tonga_2022",
     summary:
       "Explore the novel phenomenon where an atmospheric pressure wave, not just the ocean surface, drove global tsunami signals thousands of kilometres from the eruption.",
+    story: buildStory(3, {
+      label: "Hunga Tonga caldera",
+      lat: -20.55,
+      lon: -175.39,
+      rangeM: 2_500_000,
+      pitchDeg: -50,
+      focusTimeS: 1_800,
+    }),
     steps: [
       {
         title: "Source: volcanic caldera collapse",
@@ -181,6 +331,15 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "sanriku_2026",
     summary:
       "A modest tsunami off the same coast Tōhoku devastated in 2011 — and this time the story is about a warning system doing its job.",
+    story: buildStory(3, {
+      label: "Sanriku source and Miyako coast",
+      lat: 39.971,
+      lon: 143.0592,
+      rangeM: 1_500_000,
+      headingDeg: 280,
+      pitchDeg: -45,
+      focusTimeS: 1_020,
+    }),
     steps: [
       {
         title: "A familiar coastline",
@@ -211,6 +370,14 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     presetId: "yr4_2032_whatif",
     summary:
       "When impact odds briefly hit ~3% in February 2025, posts claimed 88 m waves. The physics says an object this size probably never touches the water.",
+    story: buildStory(3, {
+      label: "2024 YR4 hypothetical ocean point",
+      lat: 5,
+      lon: -95,
+      rangeM: 4_000_000,
+      pitchDeg: -55,
+      focusTimeS: 1_800,
+    }),
     steps: [
       {
         title: "What the models actually say",
@@ -272,7 +439,3 @@ export function getGuidedLessons(locale: Locale = "en"): GuidedLesson[] {
     return { ...canonical, ...translation };
   });
 }
-import lessonsEs from "../data/i18n/guided-lessons.es.json";
-import lessonsJa from "../data/i18n/guided-lessons.ja.json";
-import lessonsId from "../data/i18n/guided-lessons.id.json";
-import { warnMissingTranslation, type Locale } from "./i18n-core";

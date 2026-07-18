@@ -207,10 +207,10 @@ for (const theme of THEMES) {
       await page.goto("/");
       await page.getByRole("button", { name: /Guided training/i }).click();
       await page.locator(".lesson-launcher__item").first().click();
-      const lesson = page.locator(".lesson-overlay[role='dialog']");
+      const lesson = page.locator(".lesson-overlay");
       await expect(lesson).toBeVisible();
       await captureState(page, theme, "lesson");
-      await lesson.getByRole("button", { name: "Close lesson" }).click();
+      await lesson.getByRole("button", { name: "Skip" }).click();
       await page.evaluate(() => window.dispatchEvent(new CustomEvent("tsunamisim:tour-requested")));
       await expect(page.getByRole("dialog", { name: /Welcome to Cataclysm/i })).toBeVisible();
       await captureState(page, theme, "tour");
