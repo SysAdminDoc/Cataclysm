@@ -15,6 +15,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("language switch persists across settings, simulation results, layers, and lessons", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const language = page.getByRole("combobox", { name: "Interface language" });
@@ -55,18 +56,36 @@ test("language switch persists across settings, simulation results, layers, and 
   await page.getByRole("button", { name: "実行して見る" }).click();
   await page.getByRole("tab", { name: "設定", exact: true }).click();
   await expect(page.locator(".source-model")).toContainText("Okada断層変位モデル");
+  await page.getByRole("group", { name: "表示の詳細度" }).getByRole("button", { name: "詳細", exact: true }).click();
+  await expect(page.locator(".swe")).toContainText("波動伝播");
+  await expect(page.getByLabel("1度あたりの格子セル数")).toBeAttached();
+  const inspector = page.locator(".app__panel--right");
+  let inspectorBounds = await inspector.boundingBox();
+  expect(inspectorBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: inspectorBounds! })).toMatchSnapshot("localized-setup-ja.png");
+  const setupAccessibility = await new AxeBuilder({ page }).include(".app__panel--right").analyze();
+  expect(setupAccessibility.violations).toEqual([]);
+  await inspector.evaluate((panel) => { panel.scrollTop = 0; });
+  inspectorBounds = await inspector.boundingBox();
+  expect(inspectorBounds).not.toBeNull();
+  expect(await page.screenshot({
+    clip: inspectorBounds!,
+    style: ".inspector__header, .journey-progress, .source-model, .swe__readout { display: none !important; }",
+  })).toMatchSnapshot("localized-swe-ja.png");
+
   await page.getByRole("tab", { name: "結果", exact: true }).click();
+  await inspector.evaluate((element) => { element.scrollTop = 0; });
   await expect(page.getByRole("tab", { name: "影響" })).toBeVisible();
   await expect(page.getByText("何が起きたか", { exact: true })).toBeVisible();
   await expect(page.getByText("沿岸スクリーニング検証", { exact: true })).not.toBeVisible();
-  const inspector = page.locator(".app__panel--right");
-  let inspectorBounds = await inspector.boundingBox();
+  inspectorBounds = await inspector.boundingBox();
   expect(inspectorBounds).not.toBeNull();
   expect(await page.screenshot({ clip: inspectorBounds! })).toMatchSnapshot("localized-results-ja.png");
   const resultsAccessibility = await new AxeBuilder({ page }).include(".app__panel--right").analyze();
   expect(resultsAccessibility.violations).toEqual([]);
 
   await page.getByRole("tab", { name: "レイヤー", exact: true }).click();
+  await inspector.evaluate((element) => { element.scrollTop = 0; });
   await expect(page.getByText("可視化レイヤー", { exact: true })).toBeVisible();
   await expect(page.getByText("解析的波面", { exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "OpenStreetMapの人道支援施設を表示" })).toBeVisible();

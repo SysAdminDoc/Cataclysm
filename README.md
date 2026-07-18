@@ -121,9 +121,10 @@ Existing tools each do one piece:
   Settings (including map provenance, renderer/GPU states, onboarding, and
   portable data actions), the command bar, hazard/workspace navigation,
   viewport instruments, scenario library, quick start, source-model summary,
-  persistent playback, Results and coastal validation, Visualization Layers
-  and humanitarian context, trust/evidence controls, all seven lessons and
-  worksheets, and the full glossary follow the selected language. English
+  SWE solver/recovery/gauge controls, persistent playback, Results and coastal
+  validation, Visualization Layers and humanitarian context, trust/evidence
+  controls, all seven lessons and worksheets, and the full glossary follow the
+  selected language. English
   remains the canonical fallback while advanced surfaces are progressively
   extracted into the completeness-checked catalog.
 - **NOAA historical event import** — installed builds search the NCEI HazEL

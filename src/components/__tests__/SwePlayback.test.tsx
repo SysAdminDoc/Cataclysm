@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SwePlayback } from "../SwePlayback";
 import type { GridSnapshot, InitialDisplacement } from "../../types/scenario";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../../lib/geodesy";
+import { I18nProvider } from "../../lib/i18n";
 
 const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
@@ -103,6 +104,26 @@ describe("SwePlayback", () => {
       "title",
       "Higher resolution is more accurate but slower. Default is 8.",
     );
+  });
+
+  it("localizes advanced solver, recovery, bathymetry, and gauge controls", async () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const user = userEvent.setup();
+    render(
+      <I18nProvider>
+        <SwePlayback initial={INITIAL} workspaceMode="advanced" />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("波動伝播")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "シミュレーションを実行" })).toBeEnabled();
+    expect(screen.getByText("空間変化する海洋水深を使用")).toBeInTheDocument();
+    expect(screen.getByLabelText("1度あたりの格子セル数")).toHaveAttribute(
+      "title",
+      "解像度を上げると精度が向上しますが、計算は遅くなります。既定値は8です。",
+    );
+    await user.type(screen.getByLabelText("観測点の緯度"), "91");
+    expect(screen.getByText("緯度は-90から90の範囲で入力してください。")).toHaveAttribute("role", "alert");
   });
 
   it("threads the selected recovery checkpoint cadence into streaming", async () => {

@@ -9,6 +9,8 @@ import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
 import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
+import { useI18n } from "../lib/i18n";
+import type { MessageKey } from "../lib/i18n-core";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -41,11 +43,11 @@ type Props = {
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
 
-const OVERLAY_OPTIONS: Array<{ id: OverlayChoice; label: string; title: string }> = [
-  { id: "wave", label: "Wave", title: "Scrubbed η field for the current frame" },
-  { id: "peak", label: "Peak", title: "Maximum |η| reached per cell over the whole run (fgmax-style)" },
-  { id: "t_of_max", label: "T max", title: "Time at which each cell reached its maximum (viridis, 0 → end)" },
-  { id: "energy", label: "Energy", title: "Time-integrated η² — qualitative directivity, not a calibrated PTWC energy product" },
+const OVERLAY_OPTIONS: Array<{ id: OverlayChoice; labelKey: MessageKey; titleKey: MessageKey }> = [
+  { id: "wave", labelKey: "swe.wave", titleKey: "swe.waveTitle" },
+  { id: "peak", labelKey: "swe.peak", titleKey: "swe.peakTitle" },
+  { id: "t_of_max", labelKey: "swe.tMax", titleKey: "swe.tMaxTitle" },
+  { id: "energy", labelKey: "swe.energy", titleKey: "swe.energyTitle" },
 ];
 
 /** Wrap a max-field PNG as a snapshot-shaped object so the existing globe
@@ -97,6 +99,7 @@ const SPEED_OPTIONS = [
   { label: "2×", ms: 80 },
   { label: "4×", ms: 40 },
 ] as const;
+const BROWSER_PREVIEW_FIELD_WARNING = "Browser preview SWE fields remain illustrative; source and screening physics use Rust/WASM.";
 
 function initialIdentity(initial: InitialDisplacement | null): string | null {
   if (!initial) return null;
@@ -138,15 +141,31 @@ function gaugeCoordinateError(
   label: string,
   min: number,
   max: number,
+  t: ReturnType<typeof useI18n>["t"],
 ): string | null {
   if (draft.trim() === "") return null;
   const value = Number(draft);
-  if (!Number.isFinite(value)) return `${label} must be a number.`;
-  if (value < min || value > max) return `${label} must be between ${min} and ${max}.`;
+  if (!Number.isFinite(value)) return t("swe.coordinateNumber", { label });
+  if (value < min || value > max) return t("swe.coordinateRange", { label, min, max });
   return null;
 }
 
+function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t"]): string {
+  if (warning === BROWSER_PREVIEW_FIELD_WARNING) {
+    return t("swe.warningBrowserFields");
+  }
+  if (warning === "energy-conservation drift is not evaluated for prescribed external pressure forcing") {
+    return t("swe.warningExternalPressure");
+  }
+  const mass = warning.match(/^sponge-adjusted mass drift is (.+)$/);
+  if (mass) return t("swe.warningMassDrift", { value: mass[1] });
+  const energy = warning.match(/^sponge-adjusted energy increased by (.+)$/);
+  if (energy) return t("swe.warningEnergyDrift", { value: energy[1] });
+  return warning;
+}
+
 export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
+  const { t, formatNumber } = useI18n();
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -176,8 +195,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   const [gaugeLonInput, setGaugeLonInput] = useState("");
   const [gaugeNameInput, setGaugeNameInput] = useState("");
   const gaugeEntryId = useId();
-  const gaugeLatError = gaugeCoordinateError(gaugeLatInput, "Latitude", -90, 90);
-  const gaugeLonError = gaugeCoordinateError(gaugeLonInput, "Longitude", -180, 180);
+  const gaugeLatError = gaugeCoordinateError(gaugeLatInput, t("swe.latitude"), -90, 90, t);
+  const gaugeLonError = gaugeCoordinateError(gaugeLonInput, t("swe.longitude"), -180, 180, t);
   const gaugeCoordinatesValid = gaugeLatInput.trim() !== ""
     && gaugeLonInput.trim() !== ""
     && gaugeLatError === null
@@ -353,7 +372,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
     const lon = Number(gaugeLonInput);
     if (!gaugeCoordinatesValid) return;
     gaugeCounter.current += 1;
-    const name = gaugeNameInput.trim() || `Gauge ${gaugeCounter.current}`;
+    const name = gaugeNameInput.trim() || t("swe.gaugeNumber", { count: gaugeCounter.current });
     setGauges((prev) => [
       ...prev,
       { id: `gauge-${gaugeCounter.current}`, name, lat_deg: lat, lon_deg: lon },
@@ -361,7 +380,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
     setGaugeLatInput("");
     setGaugeLonInput("");
     setGaugeNameInput("");
-  }, [gaugeCoordinatesValid, gaugeLatInput, gaugeLonInput, gaugeNameInput]);
+  }, [gaugeCoordinatesValid, gaugeLatInput, gaugeLonInput, gaugeNameInput, t]);
 
   const removeGauge = useCallback((id: string) => {
     setGauges((prev) => prev.filter((g) => g.id !== id));
@@ -377,25 +396,25 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
     ) return;
     lastPendingRef.current = pendingGauge;
     gaugeCounter.current += 1;
-    const name = `Inspect ${gaugeCounter.current}`;
+    const name = t("swe.inspectNumber", { count: gaugeCounter.current });
     setGauges((prev) => [
       ...prev,
       { id: `gauge-${gaugeCounter.current}`, name, lat_deg: pendingGauge.lat, lon_deg: pendingGauge.lon },
     ]);
-  }, [pendingGauge]);
+  }, [pendingGauge, t]);
 
   const handleGaugeCsvExport = useCallback(() => {
     if (gaugeSeries.length === 0) return;
-    const mode = isTauri() ? "Backend SWE solver" : "Browser preview (approximate)";
+    const mode = isTauri() ? t("swe.backendSolver") : t("swe.browserApproximate");
     const selectedAsset = bathymetryAssets.find((asset) => asset.asset_id === bathymetryAssetId);
     const bathy = !useBathy
-      ? "Uniform depth"
+      ? t("swe.uniformDepth")
       : selectedAsset
-        ? `Local raster: ${selectedAsset.report.file_name} (${selectedAsset.report.sha256})`
-        : "Coarse basin/shelf";
+        ? t("swe.localRasterExport", { file: selectedAsset.report.file_name, sha256: selectedAsset.report.sha256 })
+        : t("swe.coarseBasinShelf");
     const result = exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality);
     setGaugeExportFailure(result.ok ? null : result);
-  }, [bathymetryAssetId, bathymetryAssets, diag?.quality, gaugeSeries, useBathy]);
+  }, [bathymetryAssetId, bathymetryAssets, diag?.quality, gaugeSeries, useBathy, t]);
 
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
@@ -559,7 +578,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         setSnapshots(resp.snapshots);
         setDiag({ dt_s: resp.dt_s, nx: resp.nx, ny: resp.ny, used_gpu: resp.used_gpu ?? false, quality: resp.run_quality });
         onRunQuality?.(resp.run_quality);
-        onScientificExport?.(null, "CF-NetCDF export is available in the desktop app.");
+        onScientificExport?.(null, t("swe.netcdfDesktop"));
         setActiveIdx(0);
         setStatus("ready");
         onSnapshotsReady?.(resp.snapshots);
@@ -593,7 +612,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints]);
+  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -605,30 +624,35 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
 
   const solverBadge =
     status === "running"
-      ? "Running"
+      ? t("swe.running")
       : status === "ready"
         ? diag?.used_gpu
-          ? "GPU ready"
-          : "CPU ready"
-        : status === "stale" ? "Stale" : "Ready";
-  const fidelityLabel = cellsPerDeg <= 4 ? "Preview" : cellsPerDeg >= 10 ? "High" : "Standard";
+          ? t("swe.gpuReady")
+          : t("swe.cpuReady")
+        : status === "stale" ? t("swe.stale") : t("swe.ready");
+  const fidelityLabel = cellsPerDeg <= 4 ? t("swe.preview") : cellsPerDeg >= 10 ? t("swe.high") : t("swe.standard");
+  const displaySlotLabel = slotLabel === "Slot A" ? t("app.slotA") : slotLabel === "Slot B" ? t("app.slotB") : slotLabel;
+  const qualityStatus = diag?.quality.status === "pass"
+    ? t("swe.qualityPass")
+    : diag?.quality.status === "warning"
+      ? t("swe.qualityWarning")
+      : t("swe.qualityFail");
 
   return (
-    <div className="section" aria-label={slotLabel ? `${slotLabel} wave propagation` : undefined}>
+    <div className="section swe" aria-label={displaySlotLabel ? t("swe.slotPropagation", { slot: displaySlotLabel }) : undefined}>
       <div className="section__title">
-        <span>{slotLabel && <>{slotLabel} · </>}Wave propagation <small>Shallow-water model</small> <GlossaryTip term="swe">SWE</GlossaryTip></span>
+        <span>{displaySlotLabel && <>{displaySlotLabel} · </>}{t("swe.propagation")} <small>{t("swe.shallowWaterModel")}</small> <GlossaryTip term="swe">SWE</GlossaryTip></span>
         <span className="section__badge" data-tone={status === "error" || status === "stale" ? "danger" : status === "running" ? "active" : undefined}>
           {solverBadge}
         </span>
       </div>
       {workspaceMode === "advanced" && <p className="swe__hint">
-        Compute one hour of regional ocean propagation. Desktop builds use the
-        full solver; browser preview uses deterministic demonstration frames.
+        {t("swe.intro")}
       </p>}
-      {workspaceMode === "advanced" && <div className="swe__meta-grid" aria-label="Solver setup">
-        <span><strong>{N_SNAPSHOTS}</strong> frames</span>
-        <span><strong>60</strong> min window</span>
-        <span><strong>{isTauri() ? "Backend" : "Preview"}</strong> mode</span>
+      {workspaceMode === "advanced" && <div className="swe__meta-grid" aria-label={t("swe.solverSetup")}>
+        <span><strong>{formatNumber(N_SNAPSHOTS)}</strong> {t("swe.framesLabel")}</span>
+        <span><strong>{formatNumber(60)}</strong> {t("swe.minuteWindowLabel")}</span>
+        <span><strong>{isTauri() ? t("swe.backend") : t("swe.preview")}</strong> {t("swe.modeLabel")}</span>
       </div>}
       {(workspaceMode !== "simple" || status === "running" || status === "error" || status === "stale") && <div className="swe__row swe__row--primary">
         <button
@@ -638,72 +662,76 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           type="button"
         >
           {status !== "running" && <UiIcon name={status === "ready" ? "refresh" : "play"} size={14} />}
-          {status === "running" ? "Computing..." : status === "ready" ? "Re-run simulation" : status === "error" || status === "stale" ? "Retry simulation" : "Run simulation"}
+          {status === "running" ? t("swe.computing") : status === "ready" ? t("swe.rerun") : status === "error" || status === "stale" ? t("swe.retrySimulation") : t("swe.runSimulation")}
         </button>
         {status === "running" && (
           <button
             onClick={cancel}
-            title="Cancel the in-flight simulation and return to idle."
+            title={t("swe.cancelTitle")}
             type="button"
           >
             <UiIcon name="close" size={14} />
-            Cancel
+            {t("swe.cancel")}
           </button>
         )}
       </div>}
       {isTauri() && status !== "running" && checkpoints[0] && (
         <div className="swe__confidence" role="note">
-          <strong>Interrupted solver state available</strong>
+          <strong>{t("swe.interruptedAvailable")}</strong>
           <span>
-            {(checkpoints[0].time_s / 60).toFixed(1)} of {(checkpoints[0].t_end_s / 60).toFixed(1)} min · step {checkpoints[0].step_index.toLocaleString()}
+            {t("swe.checkpointProgress", {
+              current: formatNumber(checkpoints[0].time_s / 60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+              total: formatNumber(checkpoints[0].t_end_s / 60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+              step: formatNumber(checkpoints[0].step_index),
+            })}
           </span>
           <button type="button" onClick={() => void run(false, checkpoints[0].run_id)}>
-            Resume if compatible
+            {t("swe.resumeCompatible")}
           </button>
           <button
             type="button"
             onClick={() => void api.removeSolverCheckpoint(checkpoints[0].run_id).then(refreshCheckpoints)}
           >
-            Remove
+            {t("swe.remove")}
           </button>
         </div>
       )}
-      {workspaceMode !== "simple" && <div className="swe__options" role="group" aria-label="Solver options">
+      {workspaceMode !== "simple" && <div className="swe__options" role="group" aria-label={t("swe.solverOptions")}>
         <label className="swe__check">
           <input
             type="checkbox"
             checked={useBathy}
             onChange={(e) => setUseBathy(e.target.checked)}
           />
-          <span>Use spatially varying ocean depths</span>
+          <span>{t("swe.useBathymetry")}</span>
         </label>
         {useBathy && isTauri() && (
           <label className="swe__check swe__bathymetry-source">
-            <span>Bathymetry source</span>
-            <select value={bathymetryAssetId} onChange={(event) => setBathymetryAssetId(event.target.value)} aria-label="Bathymetry source">
-              <option value="">Bundled coarse basin / shelf model</option>
+            <span>{t("swe.bathymetrySource")}</span>
+            <select value={bathymetryAssetId} onChange={(event) => setBathymetryAssetId(event.target.value)} aria-label={t("swe.bathymetrySource")}>
+              <option value="">{t("swe.bundledBathymetry")}</option>
               {bathymetryAssets.map((asset) => <option key={asset.asset_id} value={asset.asset_id}>{asset.report.file_name} · {asset.report.source_label}</option>)}
             </select>
           </label>
         )}
         {workspaceMode === "advanced" && bathymetryAssetId === "" && <div className="swe__confidence" role="note">
-          Low confidence: current solver depths are basin means with a shelf taper, not GEBCO_2026/TID-backed terrain.
+          {t("swe.lowConfidenceBathy")}
         </div>}
         {workspaceMode === "advanced" && bathymetryAssetId !== "" && <div className="swe__confidence" role="note">
-          Local raster: bilinear solver-grid resampling; the raster must cover every solver cell and NoData intersections fail closed.
+          {t("swe.localRasterNote")}
         </div>}
-        {bathymetryListError && <div className="panel-error" role="alert">Cached bathymetry unavailable: {bathymetryListError}</div>}
+        {bathymetryListError && <div className="panel-error" role="alert">{t("swe.bathymetryUnavailable")} {bathymetryListError}</div>}
         <label className="swe__check">
           <input
             type="checkbox"
             checked={includeLambWave}
             onChange={(e) => setIncludeLambWave(e.target.checked)}
           />
-          <span>Include atmospheric pressure wave</span>
+          <span>{t("swe.includePressureWave")}</span>
         </label>
         {workspaceMode === "advanced" && <label className="swe__check swe__resolution">
           <span>
-            Resolution <strong>{cellsPerDeg} cells/°</strong>
+            {t("swe.resolution")} <strong>{t("swe.cellsPerDegree", { count: formatNumber(cellsPerDeg) })}</strong>
             <em>{fidelityLabel}</em>
           </span>
           <input
@@ -713,29 +741,29 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
             step={1}
             value={cellsPerDeg}
             onChange={(e) => setCellsPerDeg(Number(e.target.value))}
-            aria-label="Grid resolution in cells per degree"
-            title="Higher resolution is more accurate but slower. Default is 8."
+            aria-label={t("swe.gridResolution")}
+            title={t("swe.gridResolutionTitle")}
           />
         </label>}
         {workspaceMode === "advanced" && isTauri() && <label className="swe__check swe__bathymetry-source">
-          <span>Recovery checkpoint cadence</span>
+          <span>{t("swe.checkpointCadence")}</span>
           <select
             value={checkpointIntervalS}
             onChange={(event) => setCheckpointIntervalS(Number(event.target.value))}
-            aria-label="Recovery checkpoint cadence"
+            aria-label={t("swe.checkpointCadence")}
           >
-            <option value={30}>Every 30 seconds</option>
-            <option value={60}>Every minute</option>
-            <option value={300}>Every 5 minutes</option>
+            <option value={30}>{t("swe.every30Seconds")}</option>
+            <option value={60}>{t("swe.everyMinute")}</option>
+            <option value={300}>{t("swe.every5Minutes")}</option>
           </select>
         </label>}
       </div>}
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">
-          <span>Streaming frame {streamProgress} / {N_SNAPSHOTS}</span>
+          <span>{t("swe.streamingFrame", { current: formatNumber(streamProgress), total: formatNumber(N_SNAPSHOTS) })}</span>
           <progress
             className="swe__progress"
-            aria-label="SWE solver progress"
+            aria-label={t("swe.solverProgress")}
             max={N_SNAPSHOTS}
             value={streamProgress}
           />
@@ -743,8 +771,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       )}
       {(status === "error" || status === "stale") && (
         <div className="swe__error" role="alert">
-          <strong>{status === "stale" ? "Simulation refresh failed — showing the last valid run" : "Simulation failed"}</strong>
-          <span>{errMsg ?? "The solver returned an error before producing frames."}</span>
+          <strong>{status === "stale" ? t("swe.refreshFailed") : t("swe.simulationFailed")}</strong>
+          <span>{errMsg ?? t("swe.solverError")}</span>
         </div>
       )}
       {snapshots && snapshots.length > 1 && (
@@ -760,18 +788,18 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                 setIsPlaying((p) => !p);
               }}
               disabled={status === "running" || snapshots.length < 2}
-              title="Play / pause the snapshot sequence"
+              title={t("swe.playPauseTitle")}
               type="button"
             >
               {isPlaying ? (
                 <>
                   <UiIcon name="pause" size={14} />
-                  Pause
+                  {t("swe.pause")}
                 </>
               ) : (
                 <>
                   <UiIcon name="play" size={14} />
-                  Play
+                  {t("swe.play")}
                 </>
               )}
             </button>}
@@ -779,8 +807,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
               className="swe__speed"
               value={speedIdx}
               onChange={(e) => setSpeedIdx(Number(e.target.value))}
-              aria-label="Playback speed"
-              title="Playback speed"
+              aria-label={t("swe.playbackSpeed")}
+              title={t("swe.playbackSpeed")}
             >
               {SPEED_OPTIONS.map((opt, i) => (
                 <option key={opt.label} value={i}>{opt.label}</option>
@@ -799,32 +827,37 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                   setActiveIdx(next);
                   onPlaybackTimeChange?.(snapshots[next].time_s);
                 }}
-                aria-label="Simulation timeline scrubber"
+                aria-label={t("swe.timelineScrubber")}
               />
             )}
           </div>
           {workspaceMode !== "simple" && <div className="swe__readout">
-            <span>Frame {activeIdx + 1}/{snapshots.length}</span>
-            <span>{(snapshots[activeIdx].time_s / 60).toFixed(1)} min</span>
-            <span>|<GlossaryTip term="eta">η</GlossaryTip>|max {snapshots[activeIdx].eta_abs_max_m.toFixed(2)} m</span>
+            <span>{t("swe.frameReadout", { current: formatNumber(activeIdx + 1), total: formatNumber(snapshots.length) })}</span>
+            <span>{t("swe.minutesShort", { value: formatNumber(snapshots[activeIdx].time_s / 60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}</span>
+            <span>|<GlossaryTip term="eta">η</GlossaryTip>|max {formatNumber(snapshots[activeIdx].eta_abs_max_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m</span>
           </div>}
           {workspaceMode === "advanced" && diag && (
             <div className="swe__readout swe__readout--muted">
-              <span>Δt = {diag.dt_s.toFixed(2)} s</span>
-              <span>grid {diag.nx}×{diag.ny}</span>
-              <span>{(diag.nx * diag.ny).toLocaleString()} cells</span>
+              <span>Δt = {formatNumber(diag.dt_s, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s</span>
+              <span>{t("swe.grid", { nx: formatNumber(diag.nx), ny: formatNumber(diag.ny) })}</span>
+              <span>{t("swe.cells", { count: formatNumber(diag.nx * diag.ny) })}</span>
               <span>{diag.used_gpu ? "GPU (wgpu)" : "CPU (rayon)"}</span>
               <span>
-                quality {diag.quality.status} · CFL {diag.quality.cfl_number.toFixed(3)} · mass {diag.quality.mass_drift_pct.toFixed(2)}% · energy {diag.quality.energy_drift_pct.toFixed(2)}%
+                {t("swe.qualityReadout", {
+                  status: qualityStatus,
+                  cfl: formatNumber(diag.quality.cfl_number, { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
+                  mass: formatNumber(diag.quality.mass_drift_pct, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                  energy: formatNumber(diag.quality.energy_drift_pct, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                })}
               </span>
             </div>
           )}
-          {diag?.quality.warnings.map((warning) => (
-            <p className="swe__hint" role="status" key={warning}>{warning}</p>
+          {diag?.quality.warnings.filter((warning) => isTauri() || warning !== BROWSER_PREVIEW_FIELD_WARNING).map((warning) => (
+            <p className="swe__hint" role="status" key={warning}>{localizeSolverWarning(warning, t)}</p>
           ))}
           {workspaceMode !== "simple" && maxField && (
-            <div className="swe__overlay-row" role="group" aria-label="Result overlay">
-              <span className="swe__overlay-label">Overlay</span>
+            <div className="swe__overlay-row" role="group" aria-label={t("swe.resultOverlay")}>
+              <span className="swe__overlay-label">{t("swe.overlay")}</span>
               {OVERLAY_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
@@ -832,13 +865,13 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                   className="swe__overlay-btn"
                   data-active={overlay === opt.id || undefined}
                   aria-pressed={overlay === opt.id}
-                  title={opt.title}
+                  title={t(opt.titleKey)}
                   onClick={() => {
                     setIsPlaying(false);
                     setOverlay(opt.id);
                   }}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
               <button
@@ -846,19 +879,19 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                 className="swe__overlay-btn swe__overlay-btn--toggle"
                 data-active={showArrivals || undefined}
                 aria-pressed={showArrivals}
-                title="Draw labelled first-arrival time contours on the globe"
+                title={t("swe.arrivalsTitle")}
                 onClick={() => setShowArrivals((v) => !v)}
                 disabled={maxField.isochrones.length === 0}
               >
-                Arrivals
+                {t("swe.arrivals")}
               </button>
               {overlay !== "wave" && (
                 <span className="swe__overlay-hint">
                   {overlay === "peak"
-                    ? `peak |η| ${maxField.peak_abs_max_m.toFixed(2)} m`
+                    ? t("swe.peakHint", { value: formatNumber(maxField.peak_abs_max_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })
                     : overlay === "t_of_max"
-                      ? "purple early → yellow late"
-                      : "qualitative ∫η²dt directivity"}
+                      ? t("swe.tMaxHint")
+                      : t("swe.energyHint")}
                 </span>
               )}
             </div>
@@ -866,29 +899,29 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         </>
       )}
       {workspaceMode === "advanced" && !isTauri() && (
-        <div className="swe__notice">Browser preview uses demo SWE frames, not backend physics.</div>
+        <div className="swe__notice">{t("swe.browserNotice")}</div>
       )}
 
       {workspaceMode === "advanced" && <div className="swe__gauges">
         <div className="section__title">
-          <span>Gauges</span>
-          <span className="section__badge">{gauges.length}</span>
+          <span>{t("swe.gauges")}</span>
+          <span className="section__badge">{formatNumber(gauges.length)}</span>
         </div>
         <div className="swe__gauge-add">
           <input
             type="text"
-            placeholder="Name"
+            placeholder={t("swe.name")}
             value={gaugeNameInput}
             onChange={(e) => setGaugeNameInput(e.target.value)}
-            aria-label="Gauge name"
+            aria-label={t("swe.gaugeName")}
             className="swe__gauge-input swe__gauge-input--name"
           />
           <input
             type="number"
-            placeholder="Lat"
+            placeholder={t("swe.lat")}
             value={gaugeLatInput}
             onChange={(e) => setGaugeLatInput(e.target.value)}
-            aria-label="Gauge latitude"
+            aria-label={t("swe.gaugeLatitude")}
             aria-invalid={gaugeLatError !== null}
             aria-errormessage={gaugeLatError ? `${gaugeEntryId}-latitude-error` : undefined}
             aria-describedby={gaugeLatError ? `${gaugeEntryId}-latitude-error` : undefined}
@@ -899,10 +932,10 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           />
           <input
             type="number"
-            placeholder="Lon"
+            placeholder={t("swe.lon")}
             value={gaugeLonInput}
             onChange={(e) => setGaugeLonInput(e.target.value)}
-            aria-label="Gauge longitude"
+            aria-label={t("swe.gaugeLongitude")}
             aria-invalid={gaugeLonError !== null}
             aria-errormessage={gaugeLonError ? `${gaugeEntryId}-longitude-error` : undefined}
             aria-describedby={gaugeLonError ? `${gaugeEntryId}-longitude-error` : undefined}
@@ -915,9 +948,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
             type="button"
             onClick={addGauge}
             disabled={!gaugeCoordinatesValid}
-            title="Add gauge at the specified coordinates"
+            title={t("swe.addGaugeTitle")}
           >
-            Add
+            {t("swe.add")}
           </button>
           {(gaugeLatError || gaugeLonError) && (
             <div className="swe__gauge-errors">
@@ -941,8 +974,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                       type="button"
                       onClick={() => removeGauge(g.id)}
                       className="swe__gauge-remove"
-                      aria-label={`Remove gauge ${g.name}`}
-                      title="Remove this gauge"
+                      aria-label={t("swe.removeGaugeAria", { name: g.name })}
+                      title={t("swe.removeGaugeTitle")}
                     >
                       <UiIcon name="close" size={12} />
                     </button>
@@ -952,7 +985,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                       name={g.name}
                       samples={series.samples}
                       activeTimeS={snapshots?.[activeIdx]?.time_s ?? playbackTimeS ?? series.samples.at(-1)?.time_s ?? 0}
-                      provenance={isTauri() ? "Rust SWE solver gauge_samples" : "Browser preview demo gauge sampler"}
+                       provenance={isTauri() ? t("swe.gaugeProvenanceRust") : t("swe.gaugeProvenanceBrowser")}
                     />
                   )}
                 </div>
@@ -966,15 +999,15 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
               type="button"
               onClick={handleGaugeCsvExport}
               className="swe__gauge-export"
-              title="Export all gauge time series as CSV"
+              title={t("swe.exportGaugesTitle")}
             >
               <UiIcon name="download" size={14} />
-              Export gauges CSV
+              {t("swe.exportGauges")}
             </button>
             {gaugeExportFailure && (
               <div className="panel-error" role="alert">
                 <span>{exportFailureLabel(gaugeExportFailure.code)}: {gaugeExportFailure.message}</span>
-                {gaugeExportFailure.retryable && <button type="button" onClick={handleGaugeCsvExport}>Retry</button>}
+                {gaugeExportFailure.retryable && <button type="button" onClick={handleGaugeCsvExport}>{t("swe.retry")}</button>}
               </div>
             )}
           </>
@@ -995,6 +1028,7 @@ export function GaugeSparkline({
   activeTimeS: number;
   provenance: string;
 }) {
+  const { t, formatNumber } = useI18n();
   const semanticId = useId();
   if (samples.length < 2) return null;
   const maxEta = Math.max(...samples.map((s) => Math.abs(s.eta_m)), 0.01);
@@ -1019,32 +1053,43 @@ export function GaugeSparkline({
   const semanticRows: SemanticDataRow[] = [
     ...samples.map((sample, index) => {
       const markers = [
-        index === peakIndex ? "Maximum" : null,
-        index === troughIndex ? "Minimum" : null,
-        index === activeIndex ? "Nearest active timeline selection" : null,
-      ].filter(Boolean).join("; ") || "Sample";
+        index === peakIndex ? t("swe.maximum") : null,
+        index === troughIndex ? t("swe.minimum") : null,
+        index === activeIndex ? t("swe.nearestSelection") : null,
+      ].filter(Boolean).join("; ") || t("swe.sample");
       return {
-        series: `${name} surface elevation`,
-        selection: `T+${sample.time_s.toFixed(0)} s`,
+        series: t("swe.surfaceElevation", { name }),
+        selection: t("swe.timeSeconds", { value: formatNumber(sample.time_s, { maximumFractionDigits: 0 }) }),
         value: sample.eta_m.toPrecision(6),
-        unit: "m relative to still-water datum",
+        unit: t("swe.mRelativeDatum"),
         significance: markers,
-        confidence: "Illustrative Cataclysm SWE result",
+        confidence: t("swe.illustrativeResult"),
         provenance,
       };
     }),
     {
-      series: "Still-water datum",
-      selection: "Reference threshold",
+      series: t("swe.stillWaterDatum"),
+      selection: t("swe.referenceThreshold"),
       value: 0,
-      unit: "m surface elevation",
-      significance: "Zero crossing / reference datum",
-      confidence: "Model datum, not an alert threshold",
+      unit: t("swe.mSurfaceElevation"),
+      significance: t("swe.zeroCrossing"),
+      confidence: t("swe.modelDatumNote"),
       provenance,
     },
   ];
   const active = samples[activeIndex];
-  const semanticSummary = `${name} has ${samples.length} ${provenance} samples from T+${samples[0].time_s.toFixed(0)} s to T+${samples.at(-1)!.time_s.toFixed(0)} s. Maximum ${peakEta.toFixed(2)} m; minimum ${troughEta.toFixed(2)} m; nearest sample to the active T+${activeTimeS.toFixed(0)} s selection is ${active.eta_m.toFixed(2)} m at T+${active.time_s.toFixed(0)} s. Values are illustrative surface elevation relative to the model still-water datum.`;
+  const semanticSummary = t("swe.gaugeSummary", {
+    name,
+    count: formatNumber(samples.length),
+    provenance,
+    start: formatNumber(samples[0].time_s, { maximumFractionDigits: 0 }),
+    end: formatNumber(samples.at(-1)!.time_s, { maximumFractionDigits: 0 }),
+    maximum: formatNumber(peakEta, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    minimum: formatNumber(troughEta, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    selection: formatNumber(activeTimeS, { maximumFractionDigits: 0 }),
+    active: formatNumber(active.eta_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    activeTime: formatNumber(active.time_s, { maximumFractionDigits: 0 }),
+  });
   return (
     <div className="swe__gauge-spark">
       <div className="swe__gauge-visual">
@@ -1052,7 +1097,7 @@ export function GaugeSparkline({
           viewBox={`0 0 ${w} ${h}`}
           className="swe__gauge-svg"
           role="img"
-          aria-label={`${name} gauge eta time series`}
+          aria-label={t("swe.gaugeAria", { name })}
           aria-describedby={`${semanticId}-summary`}
         >
           <line x1={pad} y1={h / 2} x2={w - pad} y2={h / 2} stroke="var(--surface1)" strokeWidth="1" />
@@ -1064,20 +1109,20 @@ export function GaugeSparkline({
             strokeLinejoin="round"
           />
         </svg>
-        <span className="swe__gauge-peak">peak {peakEta.toFixed(2)} m</span>
+        <span className="swe__gauge-peak">{t("swe.gaugePeak", { value: formatNumber(peakEta, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</span>
       </div>
       <SemanticDataTable
         id={semanticId}
-        title={`${name} gauge`}
+        title={t("swe.gaugeTitle", { name })}
         summary={semanticSummary}
         columns={[
-          { key: "series", label: "Series" },
-          { key: "selection", label: "Time or selection" },
-          { key: "value", label: "Value", dataType: "number" },
-          { key: "unit", label: "Unit" },
-          { key: "significance", label: "Extrema, threshold, or active state" },
-          { key: "confidence", label: "Confidence" },
-          { key: "provenance", label: "Provenance" },
+          { key: "series", label: t("swe.series") },
+          { key: "selection", label: t("swe.timeOrSelection") },
+          { key: "value", label: t("swe.value"), dataType: "number" },
+          { key: "unit", label: t("swe.unit") },
+          { key: "significance", label: t("swe.extremaState") },
+          { key: "confidence", label: t("swe.confidence") },
+          { key: "provenance", label: t("swe.provenance") },
         ]}
         rows={semanticRows}
         filename={`cataclysm-gauge-${name}.csv`}

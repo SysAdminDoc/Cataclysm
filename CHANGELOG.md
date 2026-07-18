@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The complete SWE propagation workspace now follows the selected locale:
+  solver/run/retry/recovery states, bathymetry and resolution controls,
+  progress/playback, max-field overlays, gauges, coordinate validation, CSV
+  actions, and accessible semantic chart tables all ship in four complete
+  catalogs with locale-aware numbers. A Japanese advanced-Setup headless
+  capture and scoped WCAG check cover the dense solver surface.
+
 - The Setup source-model summary now follows the active language for empty and
   ready states, event/source types, model names, metadata labels, confidence,
   edit actions, and locale-aware measurements across earthquake, impact,
