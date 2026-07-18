@@ -55,6 +55,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let state = match native_diagnostics_directory(app) {
                 Ok(directory) => match install_native_panic_hook(directory.clone()) {

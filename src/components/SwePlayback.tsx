@@ -11,6 +11,7 @@ import { GlossaryTip } from "./GlossaryTip";
 import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { notifyRunComplete } from "../lib/notify";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -560,6 +561,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         onRunQuality?.(meta.run_quality);
         setActiveIdx(0);
         setStatus("ready");
+        void notifyRunComplete("Cataclysm", t("swe.runComplete"));
         onSnapshotsReady?.(streamSnaps);
         setMaxField(meta.max_field ?? null);
         setRecoveredGaugeHistory(meta.recovered_gauge_history ?? []);

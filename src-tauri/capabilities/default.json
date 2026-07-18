@@ -18,6 +18,7 @@
     "simulation-cancellation",
     "support-diagnostics",
     "cesium-credentials",
+    "notification:default",
     {
       "identifier": "shell:allow-open",
       "allow": [
