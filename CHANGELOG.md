@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- The global command shell now switches across all four locales: brand tagline
+  and safety copy, hazard and analysis modes, library recovery states,
+  reference/settings actions, direct-workspace context, globe loading and
+  viewport instruments, workspace density modes, inspector tabs, guided run
+  progress, and source-computation recovery. A fixed Japanese header capture
+  verifies that the denser labels retain the compact premium hierarchy.
+
 - The primary scenario-library journey and persistent playback transport now
   use the four-language catalog: quick start, cards/timeline controls, search,
   filters, favorites, empty/loading states, selection/run actions, accessible

@@ -17,6 +17,7 @@ import { LogViewer } from "./components/LogViewer";
 import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
+import { useI18n } from "./lib/i18n";
 import { colormapLegend } from "./lib/colormap-legend";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay } from "./components/DartOverlay";
@@ -120,26 +121,28 @@ type JourneyStage = "prepare" | "calculate" | "watch" | "understand";
 type RunJourney = { scenarioId: string; stage: JourneyStage };
 type ActiveWw3ExchangeSession = Ww3ExchangeSession & { elapsedMs: number };
 
-const JOURNEY_STEPS: Array<{ id: JourneyStage; label: string }> = [
-  { id: "prepare", label: "Prepare" },
-  { id: "calculate", label: "Calculate" },
-  { id: "watch", label: "Watch" },
-  { id: "understand", label: "Understand" },
-];
+const JOURNEY_STEPS: JourneyStage[] = ["prepare", "calculate", "watch", "understand"];
 
 function JourneyProgress({ journey, onManual }: { journey: RunJourney; onManual: () => void }) {
-  const activeIndex = JOURNEY_STEPS.findIndex((step) => step.id === journey.stage);
+  const { t } = useI18n();
+  const labels: Record<JourneyStage, string> = {
+    prepare: t("journey.prepare"),
+    calculate: t("journey.calculate"),
+    watch: t("journey.watch"),
+    understand: t("journey.understand"),
+  };
+  const activeIndex = JOURNEY_STEPS.indexOf(journey.stage);
   return (
-    <div className="journey-progress" role="status" aria-label={`Run and Watch: ${JOURNEY_STEPS[activeIndex].label}`}>
+    <div className="journey-progress" role="status" aria-label={t("journey.status", { stage: labels[JOURNEY_STEPS[activeIndex]] })}>
       <ol>
         {JOURNEY_STEPS.map((step, index) => (
-          <li key={step.id} data-state={index < activeIndex ? "complete" : index === activeIndex ? "active" : "pending"}>
+          <li key={step} data-state={index < activeIndex ? "complete" : index === activeIndex ? "active" : "pending"}>
             <span aria-hidden>{index < activeIndex ? "✓" : index + 1}</span>
-            <strong>{step.label}</strong>
+            <strong>{labels[step]}</strong>
           </li>
         ))}
       </ol>
-      <button type="button" onClick={onManual}>Manual controls</button>
+      <button type="button" onClick={onManual}>{t("journey.manual")}</button>
     </div>
   );
 }
@@ -365,6 +368,7 @@ function ExportGroup({
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [presetsResult, setPresetsResult] = useState<AsyncResult<Preset[]>>({ status: "loading" });
   const presets = useMemo(() => asyncResultValue(presetsResult) ?? [], [presetsResult]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
@@ -1475,7 +1479,7 @@ export default function App() {
       data-reference-capture={referenceCaptureMode ? "true" : "false"}
       data-reference-direct-frame-ready={referenceCaptureMode && directRenderFrame ? referenceCaptureSceneId : undefined}
     >
-      <a className="skip-link" href="#main-globe">Skip to globe</a>
+      <a className="skip-link" href="#main-globe">{t("app.skipGlobe")}</a>
       {toast && (
         <div
           className="app-toast"
@@ -1500,7 +1504,7 @@ export default function App() {
           )}
           <button
             className="app-toast__dismiss"
-            aria-label="Dismiss notification"
+            aria-label={t("app.dismissNotification")}
             onClick={() => setToast(null)}
             type="button"
           >
@@ -1516,19 +1520,18 @@ export default function App() {
               <UiIcon name="info" size={14} />
             </span>
             <span>
-              <strong>Higher-detail online maps are available.</strong> The bundled Earth
-              works offline. Configure optional streamed terrain and imagery when needed.
+              <strong>{t("app.mapBannerTitle")}</strong> {t("app.mapBannerBody")}
             </span>
             <button
               className="token-banner__action"
               onClick={() => setShowSettings(true)}
               type="button"
             >
-              Configure maps
+              {t("app.configureMaps")}
             </button>
             <button
               className="token-banner__dismiss"
-              aria-label="Dismiss imagery token notice"
+              aria-label={t("app.dismissMapNotice")}
               type="button"
               onClick={() => {
                 setTokenBannerOpen(false);
@@ -1549,15 +1552,15 @@ export default function App() {
           </span>
           <div className="app__brand-copy">
             <h1 className="app__title">Cataclysm</h1>
-            <span className="app__tagline">Planetary hazard simulator</span>
+            <span className="app__tagline">{t("app.tagline")}</span>
           </div>
           <span className="app__version">v{APP_VERSION}</span>
         </div>
         <div className="app__warning">
-          Educational only — not for evacuation. Use NOAA NTWC/PTWC for warnings.
+          {t("app.safety")}
         </div>
-        <div className="app__header-actions" aria-label="Application actions">
-          <div className="app__command-group app__command-group--hazard" role="group" aria-label="Hazard type">
+        <div className="app__header-actions" aria-label={t("app.actions")}>
+          <div className="app__command-group app__command-group--hazard" role="group" aria-label={t("app.hazardType")}>
             {(["tsunami", "asteroid", "nuclear"] as const).map((m) => (
               <button
                 key={m}
@@ -1568,17 +1571,17 @@ export default function App() {
                 onClick={() => selectHazardMode(m)}
                 title={
                   m === "tsunami"
-                    ? "Tsunami mode — source models with the shallow-water solver"
+                    ? t("app.tsunamiModeTitle")
                     : m === "asteroid"
-                      ? "Asteroid impact mode — entry, crater, thermal and blast rings"
-                      : "Nuclear mode — blast, thermal, radiation and fallout rings"
+                      ? t("app.impactModeTitle")
+                      : t("app.nuclearModeTitle")
                 }
               >
-                {m === "tsunami" ? "Tsunami" : m === "asteroid" ? "Impact" : "Nuclear"}
+                {m === "tsunami" ? t("app.tsunami") : m === "asteroid" ? t("app.impact") : t("app.nuclear")}
               </button>
             ))}
           </div>
-          <div className="app__command-group app__command-group--modes" role="group" aria-label="Analysis modes">
+          <div className="app__command-group app__command-group--modes" role="group" aria-label={t("app.analysisModes")}>
             <ToolbarButton
               icon="inspect"
               active={inspectMode}
@@ -1590,26 +1593,26 @@ export default function App() {
                   setTimelinePlaying(false);
                 }
               }}
-              title="Toggle inspect mode — click anywhere for an explainable point probe"
+              title={t("app.inspectTitle")}
               disabled={inHazardMode ? !hazardResult?.resultId : !slotA.initial}
               disabledReason={inHazardMode
-                ? "Run this direct-hazard scenario once to enable its authoritative point probe."
+                ? t("app.inspectDirectReason")
                 : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              Inspect
+              {t("app.inspect")}
             </ToolbarButton>
             <ToolbarButton
               icon="compare"
               active={compareMode}
               variant="mode"
               onClick={toggleComparisonMode}
-              title="Open a side-by-side comparison story"
+              title={t("app.compareTitle")}
               disabled={inHazardMode}
-              disabledReason="Compare is available only between two tsunami workspaces."
+              disabledReason={t("app.compareReason")}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              Compare
+              {t("app.compare")}
             </ToolbarButton>
           </div>
           <div className="app__export-menu" ref={exportMenuRef}>
@@ -1622,7 +1625,7 @@ export default function App() {
               onClick={() => setExportMenuOpen((open) => !open)}
             >
               <ToolbarIcon name="image" />
-              <span>Export</span>
+              <span>{t("app.export")}</span>
               <UiIcon name="chevronDown" size={13} />
             </button>
             {exportMenuOpen && <div
@@ -1631,7 +1634,7 @@ export default function App() {
               tabIndex={-1}
               autoFocus
               role="group"
-              aria-label="Export current scenario"
+              aria-label={t("app.exportCurrent")}
               onClick={(event) => {
                 if ((event.target as HTMLElement).closest("button")) {
                   window.setTimeout(() => {
@@ -1919,12 +1922,12 @@ export default function App() {
             </ExportGroup>
             </div>}
           </div>
-          <div className="app__command-group app__command-group--utility" role="group" aria-label="References and preferences">
-            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title="Advanced references and provenance">
-              References
+          <div className="app__command-group app__command-group--utility" role="group" aria-label={t("app.preferences")}>
+            <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title={t("app.referencesTitle")}>
+              {t("app.references")}
             </ToolbarButton>
-            <ToolbarButton icon="settings" variant="utility" onClick={() => setShowSettings(true)} title="Settings">
-              Settings
+            <ToolbarButton icon="settings" variant="utility" onClick={() => setShowSettings(true)} title={t("app.settings")}>
+              {t("app.settings")}
             </ToolbarButton>
           </div>
         </div>
@@ -1932,28 +1935,28 @@ export default function App() {
 
       <aside
         className="app__panel"
-        aria-label={inHazardMode ? "Direct effects workspace" : "Preset scenarios"}
+        aria-label={inHazardMode ? t("app.directWorkspace") : t("app.presetScenarios")}
         inert={exportMenuOpen ? true : undefined}
       >
         {presetsResult.status === "loading" && (
           <div className="empty-state empty-state--compact" role="status" aria-live="polite">
             <span className="empty-state__icon" aria-hidden />
-            <div><strong>{presetsResult.previous ? "Refreshing source library" : "Loading source library…"}</strong><p>{presetsResult.previous ? "Current scenarios remain available." : "Preparing curated scenarios and source models."}</p></div>
+            <div><strong>{presetsResult.previous ? t("app.refreshingLibrary") : t("app.loadingLibrary")}</strong><p>{presetsResult.previous ? t("app.currentAvailable") : t("app.preparingLibrary")}</p></div>
           </div>
         )}
         {presetsResult.status === "empty" && (
           <div className="empty-state empty-state--compact" role="status">
             <span className="empty-state__icon" aria-hidden />
-            <div><strong>The installed preset catalog is empty</strong><p>Built-in what-if studies remain available.</p></div>
+            <div><strong>{t("app.emptyCatalog")}</strong><p>{t("app.whatIfAvailable")}</p></div>
           </div>
         )}
         {(presetsResult.status === "error" || presetsResult.status === "stale") && (
           <div className="panel-error" role="alert">
             <span>
-              {presetsResult.status === "stale" ? "Preset catalog is stale: " : "Couldn't load presets: "}
+              {presetsResult.status === "stale" ? t("app.catalogStale") : t("app.loadFailed")}
               {presetsResult.error}
             </span>
-            <button type="button" onClick={loadPresets}>Retry presets</button>
+            <button type="button" onClick={loadPresets}>{t("app.retryPresets")}</button>
           </div>
         )}
         {!inHazardMode && compareMode && (
@@ -1996,15 +1999,15 @@ export default function App() {
           />
         {inHazardMode && (
           <div className="app__domain-summary" role="status" aria-live="polite">
-            <span>Direct effects workspace</span>
+            <span>{t("app.directSummary")}</span>
             <strong>{activeWorkspaceLabel}</strong>
-            <p>Tsunami sources, wave fields, runup, DART stations, and comparison slots are parked while this domain is active.</p>
+            <p>{t("app.directSummaryBody")}</p>
           </div>
         )}
         <div className="footer-note">
-          <span>Peer-reviewed parameters and local diagnostics.</span>
-          <button type="button" onClick={() => setShowCitations(true)}>Advanced bibliography</button>
-          <button type="button" onClick={() => setShowLog(true)}>Diagnostics log</button>
+          <span>{t("app.footerNote")}</span>
+          <button type="button" onClick={() => setShowCitations(true)}>{t("app.bibliography")}</button>
+          <button type="button" onClick={() => setShowLog(true)}>{t("app.diagnostics")}</button>
         </div>
       </aside>
 
@@ -2012,15 +2015,15 @@ export default function App() {
         className="app__globe"
         id="main-globe"
         tabIndex={-1}
-        aria-label="Interactive globe simulation"
+        aria-label={t("app.interactiveGlobe")}
         inert={exportMenuOpen ? true : undefined}
       >
         <Suspense
           fallback={
             <div className="app__globe-empty">
               <div className="loading-orbit" aria-hidden />
-              <h2>Preparing globe</h2>
-              <p>Loading terrain, imagery, and simulation layers.</p>
+              <h2>{t("app.preparingGlobe")}</h2>
+              <p>{t("app.loadingGlobe")}</p>
             </div>
           }
         >
@@ -2073,7 +2076,7 @@ export default function App() {
                 outcomeFocus={inHazardMode ? null : outcomeFocus}
                 onOutcomeFocusTime={setTimeS}
               />
-              {compareMode && <div className="app__globe-tag">Slot A</div>}
+              {compareMode && <div className="app__globe-tag">{t("app.slotA")}</div>}
             </div>
             {compareMode && (
               <div className="app__globe-pane">
@@ -2104,28 +2107,28 @@ export default function App() {
                   accessibleSceneLabel={`Comparison slot B · ${activePresetB?.name ?? slotB.initial?.label ?? "No source selected"}`}
                   simulationTimeS={timeS}
                 />
-                <div className="app__globe-tag" data-slot="b">Slot B</div>
+                <div className="app__globe-tag" data-slot="b">{t("app.slotB")}</div>
               </div>
             )}
           </div>
         </Suspense>
         {hazardMode === "nuclear" && ww3Session && <WW3ExchangeHud session={ww3Session} />}
-        <div className="app__viewport-hud app__viewport-hud--source" aria-label={`Scenario time T plus ${Math.round(timeS / 60)} minutes`}>
+        <div className="app__viewport-hud app__viewport-hud--source" aria-label={t("app.scenarioTimeAria", { minutes: Math.round(timeS / 60) })}>
           <div className="app__viewport-time">
             <span aria-hidden="true">◷</span>
             <strong>T+{Math.round(timeS / 60)} min</strong>
           </div>
-          <small>Scenario time</small>
+          <small>{t("app.scenarioTime")}</small>
           <span className="app__viewport-source-name">{viewportSourceLabel}</span>
           {inHazardMode && hazardCenter && <strong>{hazardCenter.lat.toFixed(2)}°, {hazardCenter.lon.toFixed(2)}°</strong>}
           {!inHazardMode && slotA.initial && <strong>{slotA.initial.center.lat_deg.toFixed(2)}°, {slotA.initial.center.lon_deg.toFixed(2)}°</strong>}
         </div>
-        <button className="app__viewport-layers" type="button" onClick={() => setInspectorTab("layers")} aria-label="Open visualization layers">
-          Layers
+        <button className="app__viewport-layers" type="button" onClick={() => setInspectorTab("layers")} aria-label={t("app.openLayers")}>
+          {t("app.layers")}
           <UiIcon name="chevronDown" size={13} />
         </button>
-        <div className="app__viewport-legend" data-visible={!inHazardMode && slotA.initial ? "true" : "false"} aria-label={`Surface displacement legend (${legendColormap})`}>
-          <span className="app__viewport-instrument-label">Surface displacement</span>
+        <div className="app__viewport-legend" data-visible={!inHazardMode && slotA.initial ? "true" : "false"} aria-label={t("app.surfaceLegend", { colormap: legendColormap })}>
+          <span className="app__viewport-instrument-label">{t("app.surfaceDisplacement")}</span>
           <div
             className="app__viewport-legend-ramp"
             data-colormap={legendColormap}
@@ -2138,7 +2141,7 @@ export default function App() {
           </div>
           <small>{colormapLegend(legendColormap).caption}</small>
         </div>
-        <div className="app__viewport-telemetry" aria-label="Viewport telemetry">
+        <div className="app__viewport-telemetry" aria-label={t("app.viewportTelemetry")}>
           <svg className="app__viewport-north" viewBox="0 0 36 36" aria-hidden>
             <g transform={`rotate(${-cameraTelemetry.headingDeg} 18 18)`}>
               <text x="18" y="9">N</text>
@@ -2146,8 +2149,8 @@ export default function App() {
             </g>
           </svg>
           <div>
-            <span className="app__viewport-instrument-label">Camera</span>
-            <strong>{cameraTelemetry.altitudeM >= 1_000_000 ? `${(cameraTelemetry.altitudeM / 1_000_000).toFixed(1)} Mm` : `${(cameraTelemetry.altitudeM / 1000).toFixed(0)} km`} altitude</strong>
+            <span className="app__viewport-instrument-label">{t("app.camera")}</span>
+            <strong>{t("app.altitude", { value: cameraTelemetry.altitudeM >= 1_000_000 ? `${(cameraTelemetry.altitudeM / 1_000_000).toFixed(1)} Mm` : `${(cameraTelemetry.altitudeM / 1000).toFixed(0)} km` })}</strong>
             <small>{Math.abs(cameraTelemetry.lat).toFixed(2)}° {cameraTelemetry.lat >= 0 ? "N" : "S"} · {Math.abs(cameraTelemetry.lon).toFixed(2)}° {cameraTelemetry.lon >= 0 ? "E" : "W"}</small>
           </div>
         </div>
@@ -2155,15 +2158,15 @@ export default function App() {
 
       <aside
         className="app__panel app__panel--right"
-        aria-label="Simulation controls and results"
+        aria-label={t("app.panelLabel")}
         inert={exportMenuOpen ? true : undefined}
       >
         <div className="inspector__header">
           <div className="inspector__identity">
-            <span>Active workspace</span>
-            <strong>{inHazardMode ? (hazardMode === "nuclear" ? "Nuclear detonation" : "Asteroid impact") : activeSourceLabel}</strong>
+            <span>{t("app.activeWorkspace")}</span>
+            <strong>{inHazardMode ? (hazardMode === "nuclear" ? t("app.nuclearDetonation") : t("app.asteroidImpact")) : activeSourceLabel}</strong>
           </div>
-          {inspectorTab === "setup" && <div className="workspace-mode" role="group" aria-label="Workspace detail">
+          {inspectorTab === "setup" && <div className="workspace-mode" role="group" aria-label={t("app.workspaceDetail")}>
             {(["simple", "customize", "advanced"] as const).map((mode) => (
               <button
                 key={mode}
@@ -2172,11 +2175,11 @@ export default function App() {
                 data-active={workspaceMode === mode ? "true" : undefined}
                 onClick={() => changeWorkspaceMode(mode)}
               >
-                {mode[0].toUpperCase() + mode.slice(1)}
+                {mode === "simple" ? t("app.simple") : mode === "customize" ? t("app.customize") : t("app.advanced")}
               </button>
             ))}
           </div>}
-          <div className="inspector__tabs" role="tablist" aria-label="Simulation inspector">
+          <div className="inspector__tabs" role="tablist" aria-label={t("app.inspector")}>
             {(["setup", "results", "layers"] as const).map((tab) => (
               <button
                 id={`inspector-tab-${tab}`}
@@ -2206,7 +2209,7 @@ export default function App() {
                     ?.focus();
                 }}
               >
-                {tab[0].toUpperCase() + tab.slice(1)}
+                {tab === "setup" ? t("app.setup") : tab === "results" ? t("app.results") : t("app.layersTab")}
               </button>
             ))}
           </div>
@@ -2291,13 +2294,13 @@ export default function App() {
           {slotA.sourceResult.status === "loading" && !slotA.sourceResult.previous && (
             <div className="empty-state empty-state--compact" role="status">
               <span className="empty-state__icon" aria-hidden />
-              <div><strong>Computing source conditions…</strong><p>The selected source is being prepared before derived outputs run.</p></div>
+              <div><strong>{t("app.computingSource")}</strong><p>{t("app.computingSourceBody")}</p></div>
             </div>
           )}
           {(slotA.sourceResult.status === "error" || slotA.sourceResult.status === "stale") && (
             <div className="panel-error" role="alert">
-              <span>{slotA.sourceResult.status === "stale" ? "Showing the last valid source result: " : "Source computation failed: "}{slotA.sourceResult.error}</span>
-              <button type="button" onClick={slotA.retrySource}>Retry source computation</button>
+              <span>{slotA.sourceResult.status === "stale" ? t("app.staleSource") : t("app.sourceFailed")}{slotA.sourceResult.error}</span>
+              <button type="button" onClick={slotA.retrySource}>{t("app.retrySource")}</button>
             </div>
           )}
           <SourceModelSummary

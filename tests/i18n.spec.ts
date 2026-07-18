@@ -27,8 +27,17 @@ test("language switch persists and translates the complete guided lesson surface
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("tsunamisim.locale") ?? "null"))).toBe("ja");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
+  await expect(page.locator(".app__tagline")).toHaveText("惑星災害シミュレーター");
+  const hazardModes = page.getByRole("group", { name: "災害種別" });
+  await expect(hazardModes.getByRole("button", { name: "津波" })).toBeVisible();
+  await expect(hazardModes.getByRole("button", { name: "衝突" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "設定" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "表示レイヤーを開く" })).toBeVisible();
   await expect(page.getByText("クイックスタート", { exact: true })).toBeVisible();
   await expect(page.locator(".simulation-transport")).toContainText("シナリオ時刻");
+  const headerBounds = await page.locator(".app__header").boundingBox();
+  expect(headerBounds).not.toBeNull();
+  expect(await page.screenshot({ clip: headerBounds! })).toMatchSnapshot("localized-header-ja.png");
   await page.getByRole("button", { name: /ガイド付き学習/ }).click();
   await expect(page.locator(".lesson-launcher__item")).toHaveCount(7);
   await expect(page.locator(".lesson-launcher__item").first()).toContainText("チクシュルーブ");
