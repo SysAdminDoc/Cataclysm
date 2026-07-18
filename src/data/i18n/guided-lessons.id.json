@@ -1,0 +1,109 @@
+{
+  "chicxulub-extinction": {
+    "title": "Chicxulub: tsunami pemicu kepunahan massal",
+    "summary": "Jelajahi tumbukan asteroid terbesar dalam catatan geologi dan bagaimana energinya membangkitkan gelombang berskala samudra.",
+    "steps": [
+      { "title": "Sumber: mengapa penting", "body": "Asteroid berdiameter 14 km yang menghantam laut dangkal melepaskan sekitar 10⁸ Mt energi. Model Ward & Asphaug (2000) membentuk rongga air sementara; radius dan kedalamannya menentukan amplitudo awal. Radius rongga pada hasil adalah titik awal seluruh proses berikutnya." },
+      { "title": "Perambatan: apa yang perlu diamati", "body": "Jalankan solver SWE dan amati gelombang cincin mengembang. Amplitudo sumber tumbukan meluruh sebagai r^(−5/6), lebih cepat daripada tsunami gempa. Kedalaman mengontrol kecepatan, sekitar 200 m/s pada laut sedalam 4 km." },
+      { "title": "Keterbatasan model", "body": "Ini adalah pendekatan gelombang panjang linear dan air dangkal. Gelombang pendek Chicxulub melanggar asumsi itu di dekat sumber; model operasional memakai dispersi Boussinesq dan kisi AMR. Waktu tiba jarak jauh dan runup pesisir tetap berguna sebagai perkiraan orde pertama." },
+      { "title": "Langkah berikutnya", "body": "Ekspor KML untuk ditumpangkan di Google Earth atau CSV untuk membandingkan waktu tiba. Ubah kedalaman air atau sudut tumbukan dan perhatikan pengaruhnya pada rongga awal serta perambatan." }
+    ],
+    "worksheet": [
+      "Catat radius rongga dan amplitudo puncak. Bagaimana radius itu dibandingkan dengan diameter asteroid 14 km?",
+      "Dengan peluruhan r^(−5/6), perkirakan penurunan amplitudo antara 100 km dan 1.000 km dari sumber.",
+      "Pilih dua titik pesisir. Mana yang lebih dahulu terkena dan berapa perkiraan kecepatan muka gelombang di antaranya?",
+      "Mengapa ketiadaan dispersi Boussinesq lebih penting bagi tsunami tumbukan daripada tsunami gempa?"
+    ]
+  },
+  "tohoku-earthquake": {
+    "title": "Tōhoku 2011: tsunami megathrust modern",
+    "summary": "Pelajari bagaimana perpindahan dasar laut akibat gempa M9,1 membangkitkan tsunami dan bandingkan model dengan pengamatan buoy DART.",
+    "steps": [
+      { "title": "Sumber: model sesar Okada", "body": "Model Okada (1985) menghitung deformasi vertikal dari jurus, kemiringan, rake, dan slip. Di Tōhoku, slip sekitar 30 m pada sesar 500 × 200 km menghasilkan pengangkatan sekitar 7 m. Perpindahan inilah kondisi awal gelombang." },
+      { "title": "Pengamatan buoy DART", "body": "Buoy DART merekam peristiwa ini. Deret pengamatan tampil bersama waktu tiba model. Waktu tiba biasanya cocok, sedangkan amplitudo bergantung pada resolusi batimetri dan ketepatan model sumber." },
+      { "title": "Keterbatasan model", "body": "Model memakai dislokasi statis seketika, padahal rekahan nyata merambat ke utara selama sekitar tiga menit. Hal ini lebih memengaruhi bentuk gelombang dekat sumber daripada waktu tiba jarak jauh. Runup memakai hukum analitis Synolakis, bukan pembasahan dan pengeringan penuh." },
+      { "title": "Langkah berikutnya", "body": "Tempatkan gauge di kota-kota sekitar Pasifik dan ekspor CSV untuk dibandingkan dengan DART. Coba peristiwa Samudra Hindia 2004 untuk melihat geometri megathrust yang berbeda." }
+    ],
+    "worksheet": [
+      "Catat dimensi dan slip sesar, lalu hitung luas × slip. Mengapa hasil ini lebih baik daripada magnitudo saja sebagai petunjuk bahaya?",
+      "Untuk satu buoy DART, bandingkan waktu tiba model dan pengamatan. Berapa menit selisihnya?",
+      "Bandingkan amplitudo puncak di buoy dengan runup titik pesisir terdekat. Mengapa nilai pesisir lebih besar?",
+      "Sebutkan satu asumsi sumber Okada statis dan jelaskan pengaruhnya pada gelombang model."
+    ]
+  },
+  "lituya-bay": {
+    "title": "Teluk Lituya 1958: runup rekor di fyord",
+    "summary": "Pahami bagaimana longsor dalam fyord sempit menghasilkan runup tertinggi yang pernah tercatat, 524 meter.",
+    "steps": [
+      { "title": "Sumber: mekanika longsor", "body": "Gempa M7,8 memicu runtuhan batu 30 juta m³ ke teluk sempit. Ini adalah masalah gelombang impuls 2D: volume, tinggi jatuh, dan sudut tumbukan menentukan gelombang awal. Cataclysm memakai rumus empiris Heller–Hager." },
+      { "title": "Mengapa mencapai 524 m?", "body": "Geometri tertutup memusatkan energi di antara dinding fyord yang curam, bukan menyebarkannya ke segala arah. Hukum Synolakis pada lereng ekstrem menghasilkan ketinggian yang konsisten dengan garis kerusakan geologis." },
+      { "title": "Keterbatasan model", "body": "Model menggabungkan amplitudo analitis dengan perambatan SWE, tetapi tidak menyelesaikan pantulan, pembentukan bore, atau batimetri 3D fyord. Angka 524 m adalah pengamatan lapangan, bukan prediksi simulator." }
+    ],
+    "worksheet": [
+      "Catat volume dan tinggi jatuh. Dengan energi ≈ m·g·h, perkirakan energi potensial yang diberikan batu kepada air.",
+      "Bandingkan 524 m yang diamati dengan titik pesisir terdekat dalam model. Efek geometri apa yang menjelaskan selisihnya?",
+      "Mengapa gelombang impuls dalam fyord sempit meluruh berbeda dari tsunami cekungan samudra?",
+      "Gambarkan atau jelaskan perbedaan sumber longsor ini dengan sumber gempa berenergi sama."
+    ]
+  },
+  "poseidon-debunk": {
+    "title": "Poseidon Rusia: propaganda versus fisika",
+    "summary": "Bandingkan ledakan nuklir bawah air 100 Mt dengan efisiensi realistis terhadap klaim media negara tentang gelombang 500 m.",
+    "steps": [
+      { "title": "Sumber: apa kata fisika", "body": "Studi Defense Nuclear Agency 1996 mengukur efisiensi pembentukan gelombang ledakan bawah air sekitar 5%. Dari 100 Mt (4,184 × 10¹⁷ J), sekitar 2 × 10¹⁶ J menjadi energi gelombang. Pada 100 km hasilnya beberapa meter: penting bagi pelabuhan, tetapi bukan dinding air penghancur kota." },
+      { "title": "Coba perbandingannya", "body": "Gunakan mode Bandingkan untuk menampilkan preset realistis dan propaganda. Versi propaganda menyalurkan seluruh daya tanpa batas 5%. Perbedaan radius rongga dan amplitudo menunjukkan pelanggaran terhadap pembagian energi yang terukur dalam uji nuklir bawah air." },
+      { "title": "Keterbatasan model", "body": "Model memakai rumus Glasstone–Dolan dan Le Méhauté yang divalidasi dengan data uji nuklir. Ketidakpastian besar adalah apakah perangkat 100 Mt dapat dibuat seukuran torpedo; model ini membahas fisika, bukan rekayasanya." }
+    ],
+    "worksheet": [
+      "Bandingkan kedua preset dan catat amplitudo pada 100 km. Berapa rasio klaim propaganda terhadap kasus realistis?",
+      "Hanya sekitar 5% energi membentuk gelombang. Ke mana perginya energi yang lain?",
+      "Menurut grafik atenuasi, pada jarak berapa skenario 100 Mt turun di bawah amplitudo 1 m?",
+      "Jelaskan dalam dua kalimat mengapa kekekalan energi menolak klaim 'dinding air 500 m'."
+    ]
+  },
+  "hunga-tonga": {
+    "title": "Hunga Tonga 2022: kopling gelombang Lamb atmosfer",
+    "summary": "Jelajahi bagaimana gelombang tekanan atmosfer, bukan hanya permukaan laut, memicu sinyal tsunami global.",
+    "steps": [
+      { "title": "Sumber: runtuhan kaldera vulkanik", "body": "Erupsi VEI 5–6 dan runtuhan bawah laut menghasilkan tsunami lokal 15 m. Sinyal global terutama berasal dari gelombang Lamb atmosfer berkecepatan sekitar 310 m/s yang memindahkan energi ke permukaan laut di seluruh dunia." },
+      { "title": "Sakelar gelombang Lamb", "body": "Aktifkan dan nonaktifkan 'Gelombang Lamb atmosfer' pada panel SWE. Saat aktif, muka gelombang sekunder muncul lebih cepat daripada gelombang laut. Ini adalah pendekatan orde pertama terhadap kopling atmosfer." },
+      { "title": "Keterbatasan model", "body": "Kopling atmosfer–laut penuh masih menjadi bidang penelitian. Implementasi ini menyuntikkan pulsa tambahan pada kecepatan Lamb sebagai pendekatan pendidikan, bukan simulasi atmosfer lengkap. Sumber vulkanik juga memakai proksi ledakan, bukan model kaldera khusus." }
+    ],
+    "worksheet": [
+      "Jalankan solver dengan gelombang Lamb nonaktif lalu aktif. Jelaskan perbedaan medan gelombangnya.",
+      "Gelombang Lamb bergerak sekitar 310 m/s. Pada kedalaman 4.000 m, mana yang lebih cepat dibanding √(gh), dan berapa selisihnya?",
+      "Mengapa gauge pasang surut jauh mencatat gelombang lebih awal daripada prediksi model laut murni?",
+      "Apa yang perlu dikopel oleh model tingkat penelitian tetapi tidak ada dalam pendekatan ini?"
+    ]
+  },
+  "sanriku-warning-worked": {
+    "title": "Sanriku 2026: sistem peringatan bekerja",
+    "summary": "Tsunami sederhana di lepas pantai yang hancur pada 2011 memperlihatkan bagaimana rantai peringatan menjalankan tugasnya.",
+    "steps": [
+      { "title": "Garis pantai yang dikenal", "body": "Gempa Mw 7,4 pada 2026-04-20 merobek antarmuka Palung Jepang di lepas Sanriku, zona yang sama dengan Tōhoku, tetapi energinya sekitar 1/300. Jalankan keduanya dan bandingkan tinggi gelombang pada titik pesisir yang sama." },
+      { "title": "Tujuh belas menit", "body": "Sistem NOAA mendeteksi tsunami pada gauge pesisir 17 menit setelah rekahan dan telah membuat prakiraan perambatan dari model yang dihitung sebelumnya. DART laut dalam, gauge pesisir, dan solusi seismik cepat membentuk rantai pengamatan." },
+      { "title": "Mengapa magnitudo saja menyesatkan", "body": "Magnitudo bersifat logaritmik, tetapi perpindahan dasar laut bergantung pada luas sesar × slip. Peristiwa ini sekitar 4,7 m pada 70 × 65 km, sedangkan Tōhoku sekitar 30 m pada 500 × 200 km. Karena itu peringatan menyebut tinggi gelombang, bukan hanya magnitudo." }
+    ],
+    "worksheet": [
+      "Catat magnitudo, luas sesar, dan slip Sanriku serta Tōhoku. Hitung luas × slip: berapa kali lebih besar Tōhoku?",
+      "Selain gauge pasang surut, sebutkan dua sistem pengamatan dan kontribusi masing-masing.",
+      "Berapa amplitudo puncak model di titik pesisir terdekat, dan informasi apa lagi yang diperlukan untuk keputusan evakuasi?",
+      "Mengapa pusat peringatan mengumumkan perkiraan tinggi gelombang, bukan magnitudo gempa saja?"
+    ]
+  },
+  "yr4-myth-busting": {
+    "title": "2024 YR4: membedah mitos tsunami viral",
+    "summary": "Saat peluang tumbukan sempat mencapai sekitar 3%, beredar klaim gelombang 88 m; fisika menunjukkan benda sekecil ini mungkin tidak menyentuh laut.",
+    "steps": [
+      { "title": "Apa yang sebenarnya ditunjukkan model", "body": "NASA menilai skenario 2032 yang kini telah dikesampingkan tidak mungkin menyebabkan tsunami besar. Benda batu sekitar 60 m kehilangan sebagian besar energinya di atmosfer seperti Tunguska, sehingga tidak membangkitkan gelombang berskala samudra." },
+      { "title": "Bahkan batas atas tetap sederhana", "body": "Preset ini memaksakan batas atas yang mustahil: benda utuh 60 m mencapai air pada 17,3 km/s. Rongganya kecil dan peluruhan r^(−5/6) segera menurunkan amplitudo. Klaim 88 m mencampuradukkan tinggi dekat rongga dengan gelombang pesisir." },
+      { "title": "Cara membaca berita asteroid", "body": "Peluang tumbukan wajar berubah saat orbit diperbaiki; YR4 naik mendekati 3% lalu turun ke nol. Periksa kelas ukurannya lebih dahulu. Risiko tsunami regional mulai pada benda beberapa ratus meter, sedangkan bahaya global berada pada kelas kilometer." }
+    ],
+    "worksheet": [
+      "Catat diameter, kecepatan, dan radius rongga tumbukan. Bagaimana perbandingannya dengan Chicxulub?",
+      "Jika benda ini meledak di udara, ke mana energinya pergi dan mengapa pembentukan tsunami berkurang?",
+      "Bahkan pada batas atas yang mencapai air, berapa amplitudo model pada 100 km?",
+      "Tulis jawaban dua kalimat untuk unggahan yang mengklaim asteroid ini akan menyebabkan 'gelombang 88 m'."
+    ]
+  }
+}

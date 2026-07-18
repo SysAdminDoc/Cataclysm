@@ -38,7 +38,7 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
   const isLast = stepIdx === lesson.steps.length - 1;
 
   return (
-    <div className="lesson-overlay" role="dialog" aria-modal="true" aria-labelledby="lesson-title">
+    <div className="lesson-overlay" role="dialog" aria-modal="true" aria-labelledby="lesson-name lesson-title">
       <div className="lesson-worksheet" aria-hidden>
         <h1>{lesson.title}</h1>
         <p className="lesson-worksheet__meta">
@@ -73,6 +73,7 @@ export function GuidedLesson({ lesson, onClose, onComplete }: Props) {
             ))}
           </div>
         </div>
+        <h2 id="lesson-name" className="lesson-card__lesson">{lesson.title}</h2>
         <h3 id="lesson-title" className="lesson-card__title">{step.title}</h3>
         <p className="lesson-card__body">{step.body}</p>
         <div className="lesson-card__actions">

@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import { UiIcon } from "./UiIcon";
 import { TimelineView } from "./TimelineView";
-import { GUIDED_LESSONS, type GuidedLesson } from "../lib/guided-lessons";
+import { getGuidedLessons, type GuidedLesson } from "../lib/guided-lessons";
 import type { DirectScenarioTemplate } from "../lib/scenario-library";
 import { buildDirectScenarioEvidence, buildSourceEvidence } from "../lib/trust-evidence";
 import type { Preset } from "../types/scenario";
@@ -136,12 +136,13 @@ export function PresetSelector({
   favoriteIds = [],
   onToggleFavorite,
 }: Props) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const instanceId = useId();
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [lessonsOpen, setLessonsOpen] = useState(false);
+  const guidedLessons = useMemo(() => getGuidedLessons(locale), [locale]);
   const sorted = useMemo(() => [...presets].sort((a, b) => sortKey(a) - sortKey(b)), [presets]);
   const totalCount = sorted.length + directScenarios.length;
   const activeLibraryId = activeDirectId ?? (activeId ? presetLibraryId(activeId) : null);
@@ -527,12 +528,12 @@ export function PresetSelector({
           <button className="lesson-launcher__toggle" type="button" aria-expanded={lessonsOpen} onClick={() => setLessonsOpen((open) => !open)}>
             <span>
               <strong>{t("guided.training")}</strong>
-              <small>{t("guided.walkthroughs", { count: GUIDED_LESSONS.length })}</small>
+              <small>{t("guided.walkthroughs", { count: guidedLessons.length })}</small>
             </span>
             <UiIcon name={lessonsOpen ? "chevronDown" : "chevronRight"} size={14} />
           </button>
           {lessonsOpen && <div className="lesson-launcher__list">
-            {GUIDED_LESSONS.map((lesson) => (
+            {guidedLessons.map((lesson) => (
               <button
                 key={lesson.id}
                 className="lesson-launcher__item"

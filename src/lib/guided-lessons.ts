@@ -225,7 +225,7 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
       {
         title: "How to read asteroid headlines",
         body:
-          "Impact probability estimates легitimately fluctuate as orbits are refined — YR4's rose to ~3% before falling to zero, exactly as the process is designed to work. The lesson: check the object's size class first. Regional tsunami risk starts with impactors several hundred metres across; kilometre-class bodies are the global-hazard regime (see the Eltanin and Chicxulub presets).",
+          "Impact probability estimates legitimately fluctuate as orbits are refined — YR4's rose to ~3% before falling to zero, exactly as the process is designed to work. The lesson: check the object's size class first. Regional tsunami risk starts with impactors several hundred metres across; kilometre-class bodies are the global-hazard regime (see the Eltanin and Chicxulub presets).",
       },
     ],
     worksheet: [
@@ -236,3 +236,43 @@ export const GUIDED_LESSONS: GuidedLesson[] = [
     ],
   },
 ];
+
+type GuidedLessonTranslation = Pick<GuidedLesson, "title" | "summary" | "steps" | "worksheet">;
+type TranslatedLocale = Exclude<Locale, "en">;
+
+const TRANSLATED_LESSONS: Record<TranslatedLocale, Record<string, GuidedLessonTranslation>> = {
+  es: lessonsEs,
+  ja: lessonsJa,
+  id: lessonsId,
+};
+
+function hasCompleteLessonTranslation(
+  canonical: GuidedLesson,
+  translation: GuidedLessonTranslation | undefined,
+): translation is GuidedLessonTranslation {
+  return Boolean(
+    translation
+    && translation.title.trim()
+    && translation.summary.trim()
+    && translation.steps.length === canonical.steps.length
+    && translation.steps.every((step) => step.title.trim() && step.body.trim())
+    && translation.worksheet.length === canonical.worksheet.length
+    && translation.worksheet.every((question) => question.trim()),
+  );
+}
+
+export function getGuidedLessons(locale: Locale = "en"): GuidedLesson[] {
+  if (locale === "en") return GUIDED_LESSONS;
+  return GUIDED_LESSONS.map((canonical) => {
+    const translation = TRANSLATED_LESSONS[locale][canonical.id];
+    if (!hasCompleteLessonTranslation(canonical, translation)) {
+      warnMissingTranslation(locale, `guidedLessons.${canonical.id}`);
+      return canonical;
+    }
+    return { ...canonical, ...translation };
+  });
+}
+import lessonsEs from "../data/i18n/guided-lessons.es.json";
+import lessonsJa from "../data/i18n/guided-lessons.ja.json";
+import lessonsId from "../data/i18n/guided-lessons.id.json";
+import { warnMissingTranslation, type Locale } from "./i18n-core";

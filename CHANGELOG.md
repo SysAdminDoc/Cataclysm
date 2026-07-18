@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- All seven guided lessons now include complete Spanish, Japanese, and Bahasa
+  Indonesia titles, summaries, step narratives, and printable worksheet
+  questions while retaining the canonical English scientific constants and
+  citations. Lesson cards show their story title above the current step, use a
+  horizontal progress strip, and keep translated actions compact at desktop
+  density; a Japanese headless visual and WCAG regression locks the result.
+
 - Began the four-language interface foundation with a persisted English,
   Spanish, Japanese, or Bahasa Indonesia preference, live document-language
   updates, locale-aware number formatting, canonical-English fallback with a

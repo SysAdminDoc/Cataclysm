@@ -1,0 +1,109 @@
+{
+  "chicxulub-extinction": {
+    "title": "Chicxulub: el tsunami de una extinción masiva",
+    "summary": "Explora el mayor impacto de asteroide del registro geológico y cómo su energía se convirtió en olas a escala oceánica.",
+    "steps": [
+      { "title": "Fuente: por qué importa", "body": "Un asteroide de 14 km que impactó en aguas poco profundas liberó cerca de 10⁸ Mt de energía. El modelo de Ward y Asphaug (2000) representa una cavidad transitoria cuyo radio y profundidad determinan la amplitud inicial; ese radio es el punto de partida de todo lo que sigue." },
+      { "title": "Propagación: qué observar", "body": "Ejecuta el solver SWE y observa la expansión de la onda circular. En fuentes de impacto, la amplitud decae como r^(−5/6), más rápido que en tsunamis sísmicos; la profundidad controla la velocidad, cerca de 200 m/s en un océano de 4 km." },
+      { "title": "Limitaciones del modelo", "body": "Esta es una aproximación lineal de onda larga y aguas someras. Las longitudes de onda de Chicxulub incumplen esa hipótesis cerca de la fuente; modelos operativos usan dispersión de Boussinesq y mallas AMR. Los tiempos lejanos y el ascenso costero siguen siendo estimaciones útiles de primer orden." },
+      { "title": "Siguientes pasos", "body": "Exporta KML para verlo en Google Earth o CSV para comparar llegadas. Cambia la profundidad del agua o el ángulo de impacto y observa cómo varían la cavidad inicial y la propagación." }
+    ],
+    "worksheet": [
+      "Anota el radio de la cavidad y la amplitud máxima. ¿Cómo se compara el radio con los 14 km de diámetro del asteroide?",
+      "Con el decaimiento r^(−5/6), estima cuánto disminuye la amplitud entre 100 km y 1.000 km.",
+      "Elige dos puntos costeros. ¿Cuál recibe antes la ola y a qué velocidad aproximada viaja el frente entre ambos?",
+      "¿Por qué la ausencia de dispersión de Boussinesq importa más en un tsunami de impacto que en uno sísmico?"
+    ]
+  },
+  "tohoku-earthquake": {
+    "title": "Tōhoku 2011: tsunami moderno de megafalla",
+    "summary": "Estudia cómo un terremoto M9,1 desplazó el fondo marino y compara el modelo con observaciones reales de boyas DART.",
+    "steps": [
+      { "title": "Fuente: modelo de falla de Okada", "body": "Okada (1985) calcula la deformación vertical a partir de rumbo, buzamiento, rake y deslizamiento. En Tōhoku, unos 30 m de deslizamiento sobre una falla de 500 × 200 km producen cerca de 7 m de levantamiento: esa deformación inicia la ola." },
+      { "title": "Observaciones de boyas DART", "body": "Las boyas DART registraron el evento. Sus series aparecen junto a las llegadas previstas: el tiempo suele concordar bien, mientras la amplitud depende de la resolución batimétrica y de la fidelidad de la fuente." },
+      { "title": "Limitaciones del modelo", "body": "La dislocación es estática e instantánea, aunque la ruptura real avanzó hacia el norte durante unos tres minutos. Esto modifica la forma de onda cercana más que las llegadas lejanas. El ascenso usa la ley analítica de Synolakis, no inundación completa con mojado y secado." },
+      { "title": "Siguientes pasos", "body": "Coloca medidores en ciudades del Pacífico y exporta el CSV para compararlo con DART. Prueba el evento del océano Índico de 2004 para contrastar otra geometría de megafalla." }
+    ],
+    "worksheet": [
+      "Anota dimensiones y deslizamiento de la falla y calcula área × deslizamiento. ¿Por qué indica mejor el peligro que la magnitud por sí sola?",
+      "Para una boya DART, compara la llegada calculada y la observada. ¿Cuántos minutos las separan?",
+      "Compara la amplitud en la boya con el ascenso del punto costero más cercano. ¿Por qué es mayor el valor costero?",
+      "Nombra una hipótesis de la fuente estática de Okada y explica cómo podría cambiar la ola modelada."
+    ]
+  },
+  "lituya-bay": {
+    "title": "Bahía de Lituya 1958: ascenso récord en un fiordo",
+    "summary": "Comprende cómo un deslizamiento confinado produjo el mayor ascenso de ola registrado: 524 metros.",
+    "steps": [
+      { "title": "Fuente: mecánica del deslizamiento", "body": "Un terremoto M7,8 desencadenó un desprendimiento de 30 millones de m³ en una ensenada estrecha. El problema es una onda de impulso 2D: volumen, altura de caída y ángulo determinan la ola inicial, aquí mediante la fórmula empírica de Heller–Hager." },
+      { "title": "¿Por qué 524 m?", "body": "La geometría confinada concentra la energía entre paredes empinadas, en vez de dispersarla en todas direcciones. La ley de Synolakis aplicada a esta pendiente extrema reproduce alturas coherentes con la línea geológica de arrasamiento." },
+      { "title": "Limitaciones del modelo", "body": "El modelo combina una amplitud analítica con propagación SWE. No resuelve reflejos, formación de bore ni batimetría 3D del fiordo. Los 524 m son una observación de campo, no una predicción del simulador." }
+    ],
+    "worksheet": [
+      "Anota el volumen y la altura de caída. Con energía ≈ m·g·h, estima la energía potencial entregada al agua.",
+      "Compara los 524 m observados con el punto costero más cercano del modelo. ¿Qué efecto geométrico explica la diferencia?",
+      "¿Por qué las ondas de impulso en un fiordo confinado decaen de forma distinta a los tsunamis de cuenca oceánica?",
+      "Describe la diferencia entre esta fuente de deslizamiento y una fuente sísmica de igual energía."
+    ]
+  },
+  "poseidon-debunk": {
+    "title": "Poseidon ruso: propaganda frente a física",
+    "summary": "Compara una detonación submarina de 100 Mt con eficiencia física realista frente a las afirmaciones mediáticas de una «ola de 500 m».",
+    "steps": [
+      { "title": "Fuente: lo que dice la física", "body": "El estudio de la Defense Nuclear Agency de 1996 midió una eficiencia de generación de olas cercana al 5 %. De 100 Mt (4,184 × 10¹⁷ J), unos 2 × 10¹⁶ J pasan a la ola. A 100 km eso produce pocos metros: relevante para un puerto, no una pared de agua que destruya una ciudad." },
+      { "title": "Prueba la comparación", "body": "Usa Comparar para enfrentar los presets realista y propagandístico. El segundo aplica todo el rendimiento sin el límite del 5 %. La diferencia de cavidad y amplitud muestra cómo esa versión contradice la partición de energía observada en pruebas submarinas." },
+      { "title": "Limitaciones del modelo", "body": "El modelo usa fórmulas de Glasstone–Dolan y Le Méhauté validadas contra ensayos nucleares. La gran incertidumbre es si un dispositivo de 100 Mt cabe en un torpedo; aquí se modela la física, no la ingeniería." }
+    ],
+    "worksheet": [
+      "Compara ambos presets y anota la amplitud a 100 km. ¿Qué relación hay entre la afirmación propagandística y el caso realista?",
+      "Solo cerca del 5 % de la energía forma olas. ¿A dónde va el resto?",
+      "Según el gráfico de atenuación, ¿a qué distancia cae por debajo de 1 m incluso el caso de 100 Mt?",
+      "Explica en dos frases por qué la conservación de la energía descarta una «pared de agua de 500 m»."
+    ]
+  },
+  "hunga-tonga": {
+    "title": "Hunga Tonga 2022: acoplamiento de onda de Lamb",
+    "summary": "Explora cómo una onda de presión atmosférica, además del océano, impulsó señales de tsunami en todo el mundo.",
+    "steps": [
+      { "title": "Fuente: colapso de caldera volcánica", "body": "La erupción VEI 5–6 generó un tsunami local de 15 m por colapso submarino. La señal global provino sobre todo de una onda de Lamb atmosférica a unos 310 m/s que transfirió energía a la superficie oceánica." },
+      { "title": "Control de onda de Lamb", "body": "Activa y desactiva «Onda de Lamb atmosférica» en el panel SWE. Al activarla aparece un frente secundario, más rápido que la onda oceánica. Es una aproximación de primer orden al acoplamiento atmosférico." },
+      { "title": "Limitaciones del modelo", "body": "El acoplamiento completo atmósfera–océano sigue siendo un área de investigación. Aquí se inyecta un pulso adicional a la velocidad de Lamb: es una aproximación didáctica, no una simulación atmosférica completa; la fuente volcánica también usa un proxy de explosión." }
+    ],
+    "worksheet": [
+      "Ejecuta el solver con la onda de Lamb desactivada y activada. Describe la diferencia del campo de olas.",
+      "La onda de Lamb viaja a unos 310 m/s. Para 4.000 m de profundidad, ¿cuánto más rápida es que √(gh)?",
+      "¿Por qué algunos mareógrafos registraron olas antes de lo previsto por un modelo puramente oceánico?",
+      "¿Qué tendría que acoplar un modelo de investigación que esta aproximación no representa?"
+    ]
+  },
+  "sanriku-warning-worked": {
+    "title": "Sanriku 2026: la alerta funcionó",
+    "summary": "Un tsunami modesto frente a la costa devastada en 2011 muestra cómo una cadena de alerta puede cumplir su función.",
+    "steps": [
+      { "title": "Una costa conocida", "body": "El terremoto Mw 7,4 del 2026-04-20 rompió la interfaz de la fosa de Japón frente a Sanriku, la misma zona de Tōhoku, pero con cerca de 1/300 de su energía. Ejecuta ambos casos y compara alturas en los mismos puntos." },
+      { "title": "Diecisiete minutos", "body": "El sistema de NOAA detectó el tsunami en un mareógrafo 17 minutos después de la ruptura y ya generaba pronósticos con modelos precalculados. Sensores DART, mareógrafos y soluciones sísmicas rápidas forman la cadena de observación." },
+      { "title": "Por qué la magnitud engaña", "body": "La magnitud es logarítmica, pero el desplazamiento del fondo depende de área de falla × deslizamiento. Aquí son unos 4,7 m sobre 70 × 65 km, frente a 30 m sobre 500 × 200 km en Tōhoku; por eso las alertas comunican alturas esperadas, no solo magnitudes." }
+    ],
+    "worksheet": [
+      "Anota magnitud, área y deslizamiento de Sanriku y Tōhoku. Calcula área × deslizamiento: ¿cuántas veces mayor fue Tōhoku?",
+      "Además del mareógrafo, nombra dos sistemas de observación y qué aporta cada uno.",
+      "¿Qué amplitud máxima calcula el modelo en el punto costero más cercano y qué información adicional requeriría una orden de evacuación?",
+      "¿Por qué los centros de alerta publican alturas esperadas y no solo magnitudes?"
+    ]
+  },
+  "yr4-myth-busting": {
+    "title": "2024 YR4: anatomía de un mito viral sobre tsunamis",
+    "summary": "Cuando la probabilidad de impacto llegó brevemente al 3 %, circularon olas de 88 m; la física indica que un objeto así probablemente no alcanzaría el agua.",
+    "steps": [
+      { "title": "Lo que dicen los modelos", "body": "NASA concluyó que el escenario de 2032, ya descartado, difícilmente causaría un tsunami importante. Un cuerpo rocoso de unos 60 m deposita la mayor parte de su energía en la atmósfera, como Tunguska, y no genera una ola oceánica de gran escala." },
+      { "title": "Incluso el límite superior es modesto", "body": "Este preset fuerza el mejor caso imposible: un cuerpo intacto de 60 m que llega al agua a 17,3 km/s. La cavidad es pequeña y el decaimiento r^(−5/6) reduce rápidamente la amplitud. Las afirmaciones de 88 m confundían la altura junto a la cavidad con una ola costera." },
+      { "title": "Cómo leer titulares de asteroides", "body": "Las probabilidades cambian legítimamente al refinar la órbita: YR4 subió cerca del 3 % y después cayó a cero. Comprueba primero el tamaño; el riesgo regional de tsunami empieza con objetos de varios cientos de metros y el peligro global con cuerpos kilométricos." }
+    ],
+    "worksheet": [
+      "Anota diámetro, velocidad y radio de cavidad. ¿Cómo se compara con Chicxulub?",
+      "Si un objeto así explota en el aire, ¿a dónde va su energía y por qué se reduce la generación de tsunami?",
+      "Incluso en este límite que alcanza el agua, ¿qué amplitud calcula el modelo a 100 km?",
+      "Escribe una respuesta de dos frases a una publicación que afirme que causaría «olas de 88 m»."
+    ]
+  }
+}

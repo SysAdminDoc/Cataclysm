@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GuidedLesson } from "../GuidedLesson";
-import type { GuidedLesson as LessonDef } from "../../lib/guided-lessons";
+import { getGuidedLessons, type GuidedLesson as LessonDef } from "../../lib/guided-lessons";
+import { I18nProvider } from "../../lib/i18n";
 
 const LESSON: LessonDef = {
   id: "lesson-a",
@@ -17,6 +18,8 @@ const LESSON: LessonDef = {
 };
 
 describe("GuidedLesson", () => {
+  beforeEach(() => localStorage.clear());
+
   it("marks completion only when the final step is done", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
@@ -41,5 +44,20 @@ describe("GuidedLesson", () => {
     await user.keyboard("{Escape}");
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("renders translated lesson content and controls", () => {
+    localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
+    const lesson = getGuidedLessons("ja")[0];
+    render(
+      <I18nProvider>
+        <GuidedLesson lesson={lesson} onClose={() => {}} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: "チクシュルーブ：大量絶滅を引き起こした津波" })).toBeInTheDocument();
+    expect(screen.getByText("発生源：なぜ重要か")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "次へ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "印刷" })).toBeInTheDocument();
   });
 });

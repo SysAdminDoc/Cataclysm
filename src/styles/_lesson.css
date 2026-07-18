@@ -47,12 +47,13 @@
 }
 
 .lesson-card__progress {
-  display: inline-grid;
-  grid-template-columns: repeat(auto-fill, 14px);
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
 }
 
 .lesson-card__progress span {
+  width: 14px;
   height: 4px;
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--surface1) 76%, transparent);
@@ -63,6 +64,14 @@
 .lesson-card__progress span[data-active="true"] {
   background: var(--green);
   border-color: var(--green);
+}
+
+.lesson-card__lesson {
+  margin: 10px 0 4px;
+  color: var(--accent-text);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .lesson-card__title {

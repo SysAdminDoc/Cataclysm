@@ -118,9 +118,10 @@ Existing tools each do one piece:
   while guided training remains available without crowding the primary flow.
 - **Four-language foundation** — Settings persists English, Spanish, Japanese,
   or Bahasa Indonesia locally and includes the preference in portable profiles.
-  Guided-lesson controls and the full scientific glossary already follow the
-  selected language; English remains the canonical fallback while the rest of
-  the interface is progressively extracted into the same checked catalog.
+  Guided-lesson controls, all seven lesson narratives and printable worksheets,
+  and the full scientific glossary follow the selected language. English
+  remains the canonical fallback while the rest of the interface is
+  progressively extracted into the same checked catalog.
 - **NOAA historical event import** — installed builds search the NCEI HazEL
   Global Historical Tsunami Database by year/location and transfer only a
   supported earthquake record's magnitude and epicentre into the builder.

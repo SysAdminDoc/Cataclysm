@@ -25,9 +25,10 @@ Without a token, the app uses the local Natural Earth globe by default. OpenStre
 
 Open **Settings → Earth & appearance** to choose English, Spanish, Japanese,
 or Bahasa Indonesia. The choice is stored only in the local settings profile
-and is included when that profile is exported. Guided-lesson controls and the
-scientific glossary are translated now; interface text that has not yet moved
-to the catalog falls back to canonical English.
+and is included when that profile is exported. Guided-lesson controls, all
+seven lesson narratives and worksheets, and the scientific glossary are
+translated now; interface text that has not yet moved to the catalog falls
+back to canonical English.
 
 ## Your first simulation
 
