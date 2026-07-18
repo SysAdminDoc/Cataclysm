@@ -472,6 +472,31 @@ function dompurifyFloorGate() {
   }
 }
 
+function npmLockfileIntegrityGate() {
+  console.log("\n==> npm lockfile integrity gate");
+  const lockPath = path.join(repoRoot, "package-lock.json");
+  if (!existsSync(lockPath)) {
+    console.error("Lockfile integrity gate failed: package-lock.json not found.");
+    process.exit(1);
+  }
+  const result = spawnSync(
+    process.platform === "win32" ? "cmd.exe" : "npm",
+    process.platform === "win32"
+      ? ["/d", "/c", "npm ls --all --json"]
+      : ["ls", "--all", "--json"],
+    { cwd: repoRoot, env: process.env, stdio: ["pipe", "pipe", "pipe"] },
+  );
+  if (result.status !== 0) {
+    const stderr = result.stderr?.toString() ?? "";
+    if (stderr.includes("missing:") || stderr.includes("invalid:")) {
+      console.error("Lockfile integrity gate failed: node_modules has drifted from package-lock.json.");
+      console.error("Run `npm ci` to restore lockfile-exact dependencies.");
+      console.error(stderr.slice(0, 500));
+      process.exit(1);
+    }
+  }
+}
+
 console.log("\n==> DOMPurify floor gate");
 dompurifyFloorGate();
 
@@ -514,6 +539,8 @@ if (strictRustPolicy) {
   runNpm("HR-00 deterministic 1440p/4K capture matrix", ["run", "verify:references"]);
 }
 runNpm("npm audit", ["audit", "--audit-level=moderate"]);
+runNpm("npm audit signatures", ["audit", "signatures"]);
+npmLockfileIntegrityGate();
 console.log("\n==> Browser preview ownership gate");
 await assertPortAvailable(4187);
 runNpm("Playwright browser preview suite", ["run", "test:e2e"]);
