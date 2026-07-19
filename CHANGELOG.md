@@ -2,7 +2,7 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.13.0] — 2026-07-19
 
 ### Added
 
@@ -71,8 +71,6 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 - Wavefront-only IPC (`sample_preset_wavefront`) eliminates full preset refetch
   during timeline playback and scrubbing.
-
-## [Unreleased]
 
 ### Added
 

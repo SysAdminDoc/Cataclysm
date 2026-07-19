@@ -1,6 +1,6 @@
 [package]
 name = "cataclysm"
-version = "0.12.0"
+version = "0.13.0"
 description = "Cataclysm — scientifically grounded 3D-globe multi-hazard disaster simulator (asteroid, nuclear, earthquake, landslide, tsunami)"
 authors = ["SysAdminDoc"]
 license = "MIT"

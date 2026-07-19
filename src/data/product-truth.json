@@ -7,7 +7,7 @@
     "legacyNames": ["TsunamiSimulator", "Tsunami Simulator"]
   },
   "release": {
-    "version": "0.12.0",
+    "version": "0.13.0",
     "supportedSeries": "0.12.x",
     "repositoryUrl": "https://github.com/SysAdminDoc/Cataclysm",
     "releasesUrl": "https://github.com/SysAdminDoc/Cataclysm/releases",
