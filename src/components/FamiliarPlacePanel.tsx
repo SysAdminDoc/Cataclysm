@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import type { NukemapLocationResult } from "../types/nukemap-data";
 import type { PointProbeReport } from "../render/cesium/inspection";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues, formatLength, formatPopulationDensity, formatReadoutValue, quantityText } from "../lib/units";
 
 type Props = {
   place: NukemapLocationResult;
@@ -24,18 +26,20 @@ export function FamiliarPlacePanel({
   onClear,
 }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const isDirect = mode !== "tsunami";
   const arrival = useMemo(() => report?.metrics.find((metric) => (
     metric.arrivalTimeS != null || /arrival/i.test(metric.label)
   )) ?? null, [report]);
   const distance = report
     ? t(isDirect ? "place.distanceFromEvent" : "place.distanceFromSource", {
-        value: formatNumber(report.rangeM / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        value: quantityText(formatLength(report.rangeM, formatNumber, unitSystem)),
       })
     : t("place.waitingValue");
   const densityDistance = place.density.distanceKm == null
     ? null
-    : formatNumber(place.density.distanceKm, { maximumFractionDigits: 1 });
+    : quantityText(formatLength(place.density.distanceKm * 1000, formatNumber, unitSystem));
+  const densityValue = quantityText(formatPopulationDensity(place.density.peoplePerKm2, formatNumber, unitSystem));
 
   return (
     <section className="familiar-place" aria-labelledby="familiar-place-heading">
@@ -58,24 +62,24 @@ export function FamiliarPlacePanel({
         </div>
         <div>
           <span>{t("place.effectTiming")}</span>
-          <strong>{pending ? t("place.calculating") : arrival?.value ?? t("place.noTiming")}</strong>
+          <strong>{pending ? t("place.calculating") : arrival ? formatReadoutValue(arrival.value, formatNumber, unitSystem) : t("place.noTiming")}</strong>
         </div>
       </div>
 
       <p className="familiar-place__status" role="status">
         {pending
           ? t("place.calculatingFor", { name: place.name })
-          : report?.status ?? t("place.waitingForSource")}
+          : report ? formatEmbeddedLengthValues(report.status, formatNumber, unitSystem) : t("place.waitingForSource")}
       </p>
       <p className="familiar-place__context">
         <strong>{t("place.localContext")}</strong>{" "}
         {place.density.nearestCity && densityDistance
           ? t("place.densityFrom", {
-              density: formatNumber(place.density.peoplePerKm2),
+              density: densityValue,
               city: place.density.nearestCity,
               distance: densityDistance,
             })
-          : t("place.densityOnly", { density: formatNumber(place.density.peoplePerKm2) })}
+          : t("place.densityOnly", { density: densityValue })}
       </p>
       <p className="familiar-place__origin">
         {isDirect
@@ -92,8 +96,8 @@ export function FamiliarPlacePanel({
             <div><dt>{t("probe.confidence")}</dt><dd>{report.confidence}</dd></div>
           </dl>
           <p><strong>{t("probe.basis")}:</strong> {report.citations.join("; ") || t("probe.noCitation")}</p>
-          <p><strong>{t("probe.assumptions")}:</strong> {report.assumptions.join("; ")}</p>
-          <p><strong>{t("probe.unknowns")}:</strong> {report.unknowns.join("; ")}</p>
+          <p><strong>{t("probe.assumptions")}:</strong> {report.assumptions.map((value) => formatEmbeddedLengthValues(value, formatNumber, unitSystem)).join("; ")}</p>
+          <p><strong>{t("probe.unknowns")}:</strong> {report.unknowns.map((value) => formatEmbeddedLengthValues(value, formatNumber, unitSystem)).join("; ")}</p>
         </details>
       )}
       <small className="familiar-place__privacy">{t("place.privacy")}</small>

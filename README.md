@@ -101,6 +101,11 @@ Existing tools each do one piece:
 
 ### UX
 
+- **One persisted measurement system** — Settings switches the complete
+  interface between metric and imperial presentation while Rust solver inputs
+  remain canonical SI. Results, controls, charts, globe probes, accessibility
+  summaries, and human-readable exports follow the active choice; exported
+  provenance records which display system was used.
 - **Desktop-first professional simulator workspace** — persistent scenario
   library, dominant globe viewport, Setup / Results / Layers inspector, and a
   full-width simulation transport with playback speed and solver state.

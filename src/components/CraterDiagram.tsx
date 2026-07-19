@@ -1,9 +1,12 @@
 import { useId } from "react";
 import type { AsteroidCraterVisual } from "../hazards";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, quantityText } from "../lib/units";
 
 export function CraterDiagram({ crater }: { crater: AsteroidCraterVisual }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const titleId = useId();
   const descriptionId = useId();
   const markerLeftId = useId().replaceAll(":", "");
@@ -43,9 +46,7 @@ export function CraterDiagram({ crater }: { crater: AsteroidCraterVisual }) {
         `L ${centerX + halfWidth} ${rimTopY}`,
         `L ${centerX + halfWidth} ${groundY}`,
       ].join(" ");
-  const formatDistance = (meters: number) => meters >= 1_000
-    ? `${formatNumber(meters / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`
-    : `${formatNumber(meters, { maximumFractionDigits: 0 })} m`;
+  const formatDistance = (meters: number) => quantityText(formatLength(meters, formatNumber, unitSystem));
   const shapeKey = crater.isComplex ? "crater.shape.complex" as const : "crater.shape.simple" as const;
 
   return (

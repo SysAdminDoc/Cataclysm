@@ -25,6 +25,8 @@ import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
 import { useI18n } from "./lib/i18n";
+import { useUnits } from "./hooks/useUnits";
+import { formatLength, formatMassDensity, formatSpeed, quantityText } from "./lib/units";
 import type { MessageKey } from "./lib/i18n-core";
 import { colormapLegend } from "./lib/colormap-legend";
 import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
@@ -388,6 +390,7 @@ function ExportGroup({
 
 export default function App() {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [presetsResult, setPresetsResult] = useState<AsyncResult<Preset[]>>({ status: "loading" });
   const presets = useMemo(() => asyncResultValue(presetsResult) ?? [], [presetsResult]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
@@ -951,8 +954,8 @@ export default function App() {
   const activePresetB = presetById(presets, slotB.activePresetId);
   const activeComparisonStory = comparisonStoryForPair(slotA.activePresetId, slotB.activePresetId);
   const activeComparisonMetrics = useMemo(
-    () => buildComparisonMetrics(slotA.initial, slotB.initial),
-    [slotA.initial, slotB.initial],
+    () => buildComparisonMetrics(slotA.initial, slotB.initial, unitSystem),
+    [slotA.initial, slotB.initial, unitSystem],
   );
   const layerEvidencePresetA = activePresetA ?? (
     libraryPreview?.kind === "preset" ? presetById(presets, libraryPreview.presetId) : null
@@ -1250,9 +1253,9 @@ export default function App() {
     title: t("pd.hypotheticalTitle", { name: hypotheticalApproach.object.fullname }),
     description: t("pd.hypotheticalNotice"),
     assumptions: [
-      t("pd.assumption.size", { value: formatNumber(hypotheticalApproach.diameterM, { maximumFractionDigits: 0 }) }),
-      t("pd.assumption.density", { value: formatNumber(hypotheticalApproach.densityKgM3) }),
-      t("pd.assumption.speed", { value: formatNumber(hypotheticalApproach.velocityMps / 1_000, { maximumFractionDigits: 1 }) }),
+      t("pd.assumption.size", { value: quantityText(formatLength(hypotheticalApproach.diameterM, formatNumber, unitSystem)) }),
+      t("pd.assumption.density", { value: quantityText(formatMassDensity(hypotheticalApproach.densityKgM3, formatNumber, unitSystem)) }),
+      t("pd.assumption.speed", { value: quantityText(formatSpeed(hypotheticalApproach.velocityMps, formatNumber, unitSystem)) }),
     ],
   } : undefined;
   const viewportSourceLabel = libraryPreviewPending && libraryPreviewLabel && !slotA.initial && !hazardCenter
@@ -1347,6 +1350,7 @@ export default function App() {
     ? { result: hazardResult, polygons: hazardPolygons }
     : null;
   const exportMetaA = (): ScreenshotMeta => inHazardMode ? ({
+    unitSystem,
     preset: null,
     initial: null,
     timeS: directRenderFrame?.simulation_time_s ?? timeS,
@@ -1370,6 +1374,7 @@ export default function App() {
     evidenceIds: exportEvidenceIdsA(),
     layerState: layerExportRecords(layerState, hazardMode),
   }) : ({
+    unitSystem,
     preset: activePresetA,
     initial: slotA.initial,
     timeS,
@@ -1384,6 +1389,7 @@ export default function App() {
   });
 
   const exportMetaB = (): ScreenshotMeta => ({
+    unitSystem,
     preset: activePresetB,
     initial: slotB.initial,
     timeS,
@@ -1422,8 +1428,8 @@ export default function App() {
           lat: formatNumber(slotA.initial.center.lat_deg, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           lon: formatNumber(slotA.initial.center.lon_deg, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         }),
-        t("story.anchor.sourcePeak", { value: formatNumber(Math.abs(slotA.initial.peak_amplitude_m), { maximumFractionDigits: 2 }) }),
-        t("story.anchor.fieldPeak", { value: formatNumber(peakFieldM, { maximumFractionDigits: 2 }) }),
+        t("story.anchor.sourcePeak", { value: quantityText(formatLength(Math.abs(slotA.initial.peak_amplitude_m), formatNumber, unitSystem)) }),
+        t("story.anchor.fieldPeak", { value: quantityText(formatLength(peakFieldM, formatNumber, unitSystem)) }),
         t("story.anchor.duration", { value: formatNumber((sweSnapshots.at(-1)?.time_s ?? 0) / 60, { maximumFractionDigits: 0 }) }),
       ],
       baseScenarioUrl: `${window.location.origin}${window.location.pathname}${params}`,
@@ -2498,7 +2504,13 @@ export default function App() {
           </svg>
           <div>
             <span className="app__viewport-instrument-label">{t("app.camera")}</span>
-            <strong>{t("app.altitude", { value: cameraTelemetry.altitudeM >= 1_000_000 ? `${formatNumber(cameraTelemetry.altitudeM / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mm` : `${formatNumber(cameraTelemetry.altitudeM / 1000, { maximumFractionDigits: 0 })} km` })}</strong>
+            <strong>{t("app.altitude", {
+              value: unitSystem === "metric"
+                ? cameraTelemetry.altitudeM >= 1_000_000
+                  ? `${formatNumber(cameraTelemetry.altitudeM / 1_000_000, { maximumFractionDigits: 1 })} Mm`
+                  : `${formatNumber(cameraTelemetry.altitudeM / 1_000, { maximumFractionDigits: 0 })} km`
+                : quantityText(formatLength(cameraTelemetry.altitudeM, formatNumber, unitSystem)),
+            })}</strong>
             <small>{t("app.cameraCoordinates", {
               lat: formatNumber(Math.abs(cameraTelemetry.lat), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
               latDirection: t(cameraTelemetry.lat >= 0 ? "app.direction.northShort" : "app.direction.southShort"),

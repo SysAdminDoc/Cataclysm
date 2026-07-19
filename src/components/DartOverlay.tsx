@@ -12,6 +12,8 @@ import {
   type AsyncResult,
 } from "../lib/async-result";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatDepth, formatEmbeddedLengthValues, formatLength, quantityText } from "../lib/units";
 
 type Props = {
   presetId: string | null;
@@ -108,6 +110,7 @@ function Sparkline({
   eventOriginUtc: string;
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const semanticId = useId();
   const w = 280;
   const h = 60;
@@ -140,16 +143,18 @@ function Sparkline({
   const obsArrX = obsArr != null ? ((obsArr - tMin) / (tMax - tMin || 1)) * w : null;
   const modArrX = modArr != null ? ((modArr - tMin) / (tMax - tMin || 1)) * w : null;
   const durationMin = Math.round((tMax - tMin) / 60);
+  const length = (meters: number) => formatLength(meters, formatNumber, unitSystem);
+  const lengthText = (meters: number) => quantityText(length(meters));
   const ariaParts = [
     t("dart.waterLevel", { name: buoy.name }),
-    t("dart.observedPeakDuration", { peak: formatNumber(observedPeak, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), duration: formatNumber(durationMin) }),
+    t("dart.observedPeakDuration", { peak: lengthText(observedPeak), duration: formatNumber(durationMin) }),
   ];
-  if (modelSeries.length > 0) ariaParts.push(t("dart.modelPeak", { value: formatNumber(modelPeak, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }));
-  if (observedCursor != null) ariaParts.push(t("dart.observedAtCursor", { value: formatNumber(observedCursor, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }));
-  if (modelCursor != null) ariaParts.push(t("dart.modelAtCursor", { value: formatNumber(modelCursor, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }));
+  if (modelSeries.length > 0) ariaParts.push(t("dart.modelPeak", { value: lengthText(modelPeak) }));
+  if (observedCursor != null) ariaParts.push(t("dart.observedAtCursor", { value: lengthText(observedCursor) }));
+  if (modelCursor != null) ariaParts.push(t("dart.modelAtCursor", { value: lengthText(modelCursor) }));
   if (result) {
     ariaParts.push(arrivalSummary(result, t, formatNumber));
-    ariaParts.push(t("dart.arrivalThresholdMethod", { value: formatNumber(result.arrival_threshold_m * 100, { maximumFractionDigits: 0 }), method: result.arrival_method }));
+    ariaParts.push(t("dart.arrivalThresholdMethod", { value: lengthText(result.arrival_threshold_m), method: result.arrival_method }));
   }
   const observationPeakIndex = obs.reduce(
     (peakIndex, [, value], index) => Math.abs(value) > Math.abs(obs[peakIndex][1]) ? index : peakIndex,
@@ -163,8 +168,8 @@ function Sparkline({
     ...obs.map(([sampleTime, value], index) => ({
       series: t("dart.observedSeries"),
       selection: t("dart.time", { value: formatNumber(sampleTime, { maximumFractionDigits: 0 }) }),
-      value: value.toPrecision(6),
-      unit: t("dart.unitElevation"),
+      value: length(value).value,
+      unit: length(value).unit,
       significance: index === observationPeakIndex ? t("dart.observedPeakMagnitude") : t("dart.observationSample"),
       confidence: t("dart.observationConfidence"),
       provenance: t("dart.observationProvenance", { origin: eventOriginUtc }),
@@ -172,8 +177,8 @@ function Sparkline({
     ...modelSeries.map(([sampleTime, value], index) => ({
       series: t("dart.modelSeries"),
       selection: t("dart.time", { value: formatNumber(sampleTime, { maximumFractionDigits: 0 }) }),
-      value: value.toPrecision(6),
-      unit: t("dart.unitElevation"),
+      value: length(value).value,
+      unit: length(value).unit,
       significance: index === modelPeakIndex ? t("dart.modelPeakMagnitude") : t("dart.modelSample"),
       confidence: t("dart.modelConfidence"),
       provenance: t("dart.modelProvenance"),
@@ -181,8 +186,8 @@ function Sparkline({
     ...(observedCursor == null ? [] : [{
       series: t("dart.observedSelection"),
       selection: t("dart.time", { value: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
-      value: observedCursor.toPrecision(6),
-      unit: t("dart.unitElevation"),
+      value: length(observedCursor).value,
+      unit: length(observedCursor).unit,
       significance: t("dart.currentInterpolated"),
       confidence: t("dart.observationConfidence"),
       provenance: t("dart.observedSelectionProvenance"),
@@ -190,8 +195,8 @@ function Sparkline({
     ...(modelCursor == null ? [] : [{
       series: t("dart.modelSelection"),
       selection: t("dart.time", { value: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
-      value: modelCursor.toPrecision(6),
-      unit: t("dart.unitElevation"),
+      value: length(modelCursor).value,
+      unit: length(modelCursor).unit,
       significance: t("dart.currentInterpolated"),
       confidence: t("dart.modelConfidence"),
       provenance: t("dart.modelSelectionProvenance"),
@@ -199,10 +204,10 @@ function Sparkline({
     ...(result ? [{
       series: t("dart.detectionThreshold"),
       selection: result.arrival_method,
-      value: result.arrival_threshold_m.toPrecision(6),
-      unit: t("dart.unitAbsoluteElevation"),
+      value: length(result.arrival_threshold_m).value,
+      unit: length(result.arrival_threshold_m).unit,
       significance: t("dart.detectionThreshold"),
-      confidence: t("dart.noiseMethod", { method: result.noise_method }),
+      confidence: t("dart.noiseMethod", { method: formatEmbeddedLengthValues(result.noise_method, formatNumber, unitSystem) }),
       provenance: t("dart.rmseProvenance"),
     }] : []),
   ];
@@ -246,11 +251,11 @@ function Sparkline({
           </>
         )}
         <text x={4} y={12} fontSize="12" fill="var(--subtext)">
-          {t("dart.observedPeak", { value: formatNumber(observedPeak, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}{modelSeries.length > 0 ? ` · ${t("dart.modelPeak", { value: formatNumber(modelPeak, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}` : ` · ${t("dart.samples", { count: obs.length })}`}
+          {t("dart.observedPeak", { value: lengthText(observedPeak) })}{modelSeries.length > 0 ? ` · ${t("dart.modelPeak", { value: lengthText(modelPeak) })}` : ` · ${t("dart.samples", { count: obs.length })}`}
         </text>
         <text x={4} y={h + 11} fontSize="12" fill="var(--subtext)">
-          {t("dart.cursorObserved", { value: observedCursor == null ? "—" : `${formatNumber(observedCursor, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m` })}
-          {modelSeries.length > 0 ? ` · ${t("dart.cursorModel", { value: modelCursor == null ? "—" : `${formatNumber(modelCursor, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m` })}` : ""}
+          {t("dart.cursorObserved", { value: observedCursor == null ? "—" : lengthText(observedCursor) })}
+          {modelSeries.length > 0 ? ` · ${t("dart.cursorModel", { value: modelCursor == null ? "—" : lengthText(modelCursor) })}` : ""}
         </text>
       </svg>
       <SemanticDataTable
@@ -275,6 +280,7 @@ function Sparkline({
 
 export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [expanded, setExpanded] = useState(true);
   const [fitResult, setFitResult] = useState<AsyncResult<Record<string, BuoyFit>>>({ status: "idle" });
   const fits = asyncResultValue(fitResult) ?? {};
@@ -415,21 +421,21 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
               <div key={b.id} className="dart__buoy">
                 <div className="dart__name">{b.name}</div>
                 <div className="dart__meta">
-                  {formatNumber(b.lat, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°, {formatNumber(b.lon, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}° · {t("dart.depth", { value: formatNumber(b.depth_m) })}
+                  {formatNumber(b.lat, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}°, {formatNumber(b.lon, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}° · {t("dart.depth", { value: quantityText(formatDepth(b.depth_m, formatNumber, unitSystem)) })}
                 </div>
                 <Sparkline buoy={b} timeS={timeS} modelSeries={modelSeries} result={fitResult} eventOriginUtc={event.event_origin_utc} />
                 {fit?.kind === "ok" && (
                   <div className="dart__rmse" role="note">
                     <span className="dart__rmse-value">
-                      {t("dart.rmse", { value: formatNumber(fit.result.rmse_m ?? 0, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+                      {t("dart.rmse", { value: quantityText(formatLength(fit.result.rmse_m ?? 0, formatNumber, unitSystem)) })}
                     </span>
                     <span>
                       {t("dart.overlap", { start: formatElapsed(fit.result.overlap_start_s ?? 0, formatNumber, t), end: formatElapsed(fit.result.overlap_end_s ?? 0, formatNumber, t), count: fit.result.n_samples })}
                     </span>
-                    <span>{t("dart.peakComparison", { observed: formatNumber(fit.result.observed_peak_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), model: formatNumber(fit.result.model_peak_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</span>
+                    <span>{t("dart.peakComparison", { observed: quantityText(formatLength(fit.result.observed_peak_m, formatNumber, unitSystem)), model: quantityText(formatLength(fit.result.model_peak_m, formatNumber, unitSystem)) })}</span>
                     <span>{t("dart.arrival", { value: arrivalSummary(fit.result, t, formatNumber) })}</span>
                     <span>
-                      {t("dart.methodThresholdNoise", { method: fit.result.arrival_method, threshold: formatNumber(fit.result.arrival_threshold_m * 100, { maximumFractionDigits: 0 }), noise: fit.result.noise_method })}
+                      {t("dart.methodThresholdNoise", { method: fit.result.arrival_method, threshold: quantityText(formatLength(fit.result.arrival_threshold_m, formatNumber, unitSystem)), noise: formatEmbeddedLengthValues(fit.result.noise_method, formatNumber, unitSystem) })}
                     </span>
                   </div>
                 )}
@@ -438,7 +444,7 @@ export function DartOverlay({ presetId, timeS, sweSnapshots }: Props) {
                     <span>{t("dart.noOverlap")}</span>
                     <span>{t("dart.arrival", { value: arrivalSummary(fit.result, t, formatNumber) })}</span>
                     <span>
-                      {t("dart.methodThresholdNoise", { method: fit.result.arrival_method, threshold: formatNumber(fit.result.arrival_threshold_m * 100, { maximumFractionDigits: 0 }), noise: fit.result.noise_method })}
+                      {t("dart.methodThresholdNoise", { method: fit.result.arrival_method, threshold: quantityText(formatLength(fit.result.arrival_threshold_m, formatNumber, unitSystem)), noise: formatEmbeddedLengthValues(fit.result.noise_method, formatNumber, unitSystem) })}
                     </span>
                   </div>
                 )}

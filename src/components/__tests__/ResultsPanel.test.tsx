@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { ResultsPanel } from "../ResultsPanel";
@@ -80,6 +80,14 @@ describe("ResultsPanel", () => {
       "aria-valuetext",
       "30 minutes after source event",
     );
+  });
+
+  it("switches rendered source quantities to persisted imperial units", async () => {
+    localStorage.setItem("tsunamisim.units", JSON.stringify("imperial"));
+    render(<ResultsPanel initial={MOCK_INITIAL} timeS={900} onTimeChange={() => {}} sourceKind="Asteroid" />);
+
+    await waitFor(() => expect(screen.getByText(/0\.9 mi rim collapse/i)).toBeInTheDocument());
+    expect(screen.queryByText(/1\.5 km rim collapse/i)).not.toBeInTheDocument();
   });
 
   it("visibly discloses low-confidence coastal input records", async () => {

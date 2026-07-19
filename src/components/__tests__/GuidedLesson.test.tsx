@@ -92,4 +92,18 @@ describe("GuidedLesson", () => {
     expect(screen.getByRole("button", { name: "次へ" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "印刷" })).toBeInTheDocument();
   });
+
+  it("converts quantities in lesson and worksheet copy in imperial mode", async () => {
+    localStorage.setItem("tsunamisim.units", JSON.stringify("imperial"));
+    const quantifiedLesson: LessonDef = {
+      ...LESSON,
+      summary: "Propagation at 200 m/s through 4 km water.",
+      steps: [{ ...LESSON.steps[0], body: "Inspect the wave after 100 km." }, LESSON.steps[1]],
+      worksheet: ["Compare 30 M m³ with the source."],
+    };
+    render(<GuidedLesson lesson={quantifiedLesson} onClose={() => {}} />);
+    expect(await screen.findByText("Inspect the wave after 62.1 mi.")).toBeInTheDocument();
+    expect(screen.getByText("Propagation at 447.4 mph through 2.5 mi water.")).toBeInTheDocument();
+    expect(screen.getByText("Compare 0.01 mi³ with the source.")).toBeInTheDocument();
+  });
 });

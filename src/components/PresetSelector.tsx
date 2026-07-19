@@ -22,6 +22,8 @@ import { LocationSearch } from "./LocationSearch";
 import type { NukemapLocationResult } from "../types/nukemap-data";
 import { PlanetaryDefensePanel } from "./PlanetaryDefensePanel";
 import type { HypotheticalImpactDraft } from "../types/jpl";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues } from "../lib/units";
 
 type Props = {
   presets: Preset[];
@@ -115,6 +117,7 @@ function ScenarioCard({
   previewLabel,
   favoriteLabel,
   removeFavoriteLabel,
+  formatQuantityText,
 }: {
   id: string;
   name: string;
@@ -133,6 +136,7 @@ function ScenarioCard({
   previewLabel: string;
   favoriteLabel: string;
   removeFavoriteLabel: string;
+  formatQuantityText: (value: string) => string;
 }) {
   return (
     <div className="preset-card-shell" data-active={selected ? "true" : "false"} data-speculative={speculative ? "true" : "false"}>
@@ -164,11 +168,11 @@ function ScenarioCard({
           </span>
           <span className="preset-card__facts">
             <span>{presentation.hazard}</span>
-            <span>{presentation.scale}</span>
+            <span>{formatQuantityText(presentation.scale)}</span>
             <span>{presentation.runtime}</span>
           </span>
           <span className="preset-card__confidence">{date} · {presentation.confidence}</span>
-          <span className="preset-card__promise">{presentation.promise}</span>
+          <span className="preset-card__promise">{formatQuantityText(presentation.promise)}</span>
           {speculative && <span className="preset-card__warning">{whatIfLabel}</span>}
         </span>
       </button>
@@ -206,7 +210,9 @@ export function PresetSelector({
   onSelectFamiliarPlace,
   onTryHypotheticalImpact,
 }: Props) {
-  const { locale, t } = useI18n();
+  const { locale, t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
+  const displayQuantities = (value: string) => formatEmbeddedLengthValues(value, formatNumber, unitSystem);
   const instanceId = useId();
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
@@ -461,7 +467,7 @@ export function PresetSelector({
             <strong>{surpriseResult.kind === "preset" ? surpriseResult.preset.name : surpriseResult.scenario.name}</strong>
             <span>{t("scenario.surpriseReason", {
               pack: selectedPack ? packName(selectedPack) : t("scenario.allPacks"),
-              promise: surpriseResult.presentation.promise,
+              promise: displayQuantities(surpriseResult.presentation.promise),
             })}</span>
           </div>
         )}
@@ -476,8 +482,8 @@ export function PresetSelector({
             </span>
             <span className="preset-active-action__copy">
               <strong>{selectedDirect?.name ?? selectedPreset?.name ?? t("scenario.referenceEvent")}</strong>
-              <span>{selectedDirect?.detail ?? (selectedPreset ? `${presentationForPreset(selectedPreset).scale} · ${selectedPreset.date}` : t("scenario.readyConfigure"))}</span>
-              <small>{selectedDirect?.blurb ?? selectedPreset?.blurb ?? t("scenario.reviewSetup")}</small>
+              <span>{displayQuantities(selectedDirect?.detail ?? (selectedPreset ? `${presentationForPreset(selectedPreset).scale} · ${selectedPreset.date}` : t("scenario.readyConfigure")))}</span>
+              <small>{displayQuantities(selectedDirect?.blurb ?? selectedPreset?.blurb ?? t("scenario.reviewSetup"))}</small>
             </span>
           </div>
           {selectedPreset && <TrustDisclosure evidence={buildSourceEvidence(selectedPreset)} compact />}
@@ -594,6 +600,7 @@ export function PresetSelector({
                         previewLabel={t("scenario.globalPreview")}
                         favoriteLabel={t("scenario.favoriteNamed", { name: p.name })}
                         removeFavoriteLabel={t("scenario.removeFavoriteNamed", { name: p.name })}
+                        formatQuantityText={displayQuantities}
                       />
                     );
                   })}
@@ -616,6 +623,7 @@ export function PresetSelector({
                       previewLabel={t("scenario.globalPreview")}
                       favoriteLabel={t("scenario.favoriteNamed", { name: scenario.name })}
                       removeFavoriteLabel={t("scenario.removeFavoriteNamed", { name: scenario.name })}
+                      formatQuantityText={displayQuantities}
                     />
                   ))}
                 </div>
@@ -645,7 +653,7 @@ export function PresetSelector({
                   onSelect(lesson.presetId);
                   onStartLesson(lesson);
                 }}
-                title={lesson.summary}
+                title={displayQuantities(lesson.summary)}
               >
                 <span className="lesson-launcher__name">{lesson.title}</span>
                 {completedLessons[lesson.id] && (

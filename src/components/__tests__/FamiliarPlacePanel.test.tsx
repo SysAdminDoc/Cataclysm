@@ -52,7 +52,7 @@ describe("FamiliarPlacePanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Near New York, NY" })).toBeInTheDocument();
-    expect(screen.getByText("4,125.0 km from source")).toBeInTheDocument();
+    expect(screen.getByText("4,125 km from source")).toBeInTheDocument();
     expect(screen.getByText("T+7h20")).toBeInTheDocument();
     expect(screen.getByText(/remains at its factual source coordinates/i)).toBeInTheDocument();
     expect(screen.getByText(/queries never leave this device/i)).toBeInTheDocument();

@@ -13,10 +13,13 @@ import { TrustDisclosure } from "./TrustDisclosure";
 import { useI18n } from "../lib/i18n";
 import {
   formatLength,
+  formatDepth,
   formatEnergy,
   formatMagnitude,
   formatResultTime,
   formatCoord,
+  formatEmbeddedLengthValues,
+  quantityText,
   type UnitSystem,
 } from "../lib/units";
 import { useUnits } from "../hooks/useUnits";
@@ -102,7 +105,7 @@ function describeOutcome(
       };
     default:
       return {
-        headline: initial.label || t("results.modelledSource"),
+        headline: initial.label ? formatEmbeddedLengthValues(initial.label, formatNumber, system) : t("results.modelledSource"),
         detail: t("results.defaultDetail", { amplitude: ampText, energy: energyText }),
       };
   }
@@ -154,7 +157,7 @@ export function ResultsPanel({
   }, [initial]);
 
   const handleCsvExport = () => {
-    const result = exportRunupCsv(runupResults);
+    const result = exportRunupCsv(runupResults, unitSystem);
     setCsvExportFailure(result.ok ? null : result);
   };
 
@@ -180,7 +183,7 @@ export function ResultsPanel({
   const cavity = formatLength(initial.cavity_radius_m, formatNumber, unitSystem);
   const amp = formatLength(initial.peak_amplitude_m, formatNumber, unitSystem);
   const wl = initial.dominant_wavelength_m ? formatLength(initial.dominant_wavelength_m, formatNumber, unitSystem) : null;
-  const depth = formatLength(initial.center.depth_m ?? 0, formatNumber, unitSystem);
+  const depth = formatDepth(initial.center.depth_m ?? 0, formatNumber, unitSystem);
   const totalT = 6 * 3600;
   const safeTimeS = Number.isFinite(timeS) ? Math.max(0, timeS) : 0;
   const progress = Math.max(0, Math.min(1, safeTimeS / totalT));
@@ -203,15 +206,25 @@ export function ResultsPanel({
   const confidenceLabel = story.confidence === "unavailable"
     ? t("results.sourceReady")
     : t("results.confidence", { level: confidenceLevel });
+  const screeningThreshold = quantityText(formatLength(0.1, formatNumber, unitSystem));
   const storyLimitation = story.sampledCount === 0
     ? t("results.limitNoScreening")
     : story.affectedCount === 0
-      ? t("results.limitNoAffected")
+      ? t("results.limitNoAffected", { threshold: screeningThreshold })
       : story.confidence === "high"
         ? t("results.limitHigh")
         : story.confidence === "medium"
           ? t("results.limitMedium")
           : t("results.limitLow");
+  const measurementUncertainty = (value: number | null, unit: string) => {
+    if (value == null || !Number.isFinite(value)) return t("results.unknown");
+    if (unit === "m") return quantityText(formatLength(value, formatNumber, unitSystem));
+    if (unit === "km") return quantityText(formatLength(value * 1000, formatNumber, unitSystem));
+    return `${formatNumber(value)} ${unit}`.trim();
+  };
+  const storyMaximum = story.maximum
+    ? quantityText(formatLength(story.maximum.runup_m, formatNumber, unitSystem))
+    : "—";
 
   const focusOutcome = (place: CoastalOutcomePlace) => {
     setSelectedPlaceId(place.id);
@@ -286,18 +299,18 @@ export function ResultsPanel({
                   type="button"
                   className="results__metric-card"
                   data-tone="primary"
-                  aria-label={t("results.maximumAria", { value: formatNumber(story.maximum.runup_m, { maximumFractionDigits: 1 }), place: story.maximum.name })}
+                  aria-label={t("results.maximumAria", { height: storyMaximum, place: story.maximum.name })}
                   onClick={() => focusOutcome(story.maximum!)}
                 >
                   <span>{t("results.maxCoastalHeight")}</span>
-                  <strong>~{formatNumber(story.maximum.runup_m, { maximumFractionDigits: 1 })} <small>m</small></strong>
+                  <strong>~{formatLength(story.maximum.runup_m, formatNumber, unitSystem).value} <small>{formatLength(story.maximum.runup_m, formatNumber, unitSystem).unit}</small></strong>
                   <em>{t("results.atPlace", { place: story.maximum.name })}</em>
                 </button>
               ) : (
                 <div className="results__metric-card" data-tone="primary">
                   <span>{t("results.peakSourceDisplacement")}</span>
                   <strong>{amp.value} <small>{amp.unit}</small></strong>
-                  <em>{t("results.noCoastAbove")}</em>
+                  <em>{t("results.noCoastAbove", { threshold: screeningThreshold })}</em>
                 </div>
               )}
               {story.firstAffected && (
@@ -334,6 +347,7 @@ export function ResultsPanel({
                 <div className="results__places-list">
                   {coastalResults.map((place) => {
                     const selected = selectedPlaceId === place.id;
+                    const placeRunup = quantityText(formatLength(place.runup_m, formatNumber, unitSystem));
                     return (
                       <button
                         key={place.id}
@@ -341,7 +355,7 @@ export function ResultsPanel({
                         className="results__place"
                         data-selected={selected}
                         aria-pressed={selected}
-                        aria-label={t("results.placeAria", { place: place.name, value: formatNumber(place.runup_m, { maximumFractionDigits: 1 }), time: formatResultTime(place.arrival_time_s, t, formatNumber) })}
+                        aria-label={t("results.placeAria", { place: place.name, height: placeRunup, time: formatResultTime(place.arrival_time_s, t, formatNumber) })}
                         onClick={() => focusOutcome(place)}
                       >
                         <span className="results__place-marker" aria-hidden />
@@ -350,7 +364,7 @@ export function ResultsPanel({
                           <small>{formatResultTime(place.arrival_time_s, t, formatNumber)}</small>
                         </span>
                         <span className="results__place-value">
-                          <strong>~{formatNumber(place.runup_m, { maximumFractionDigits: 1 })} m</strong>
+                          <strong>~{placeRunup}</strong>
                           <small>{selected ? t("results.focused") : t("results.focusOnGlobe")}</small>
                         </span>
                       </button>
@@ -375,7 +389,8 @@ export function ResultsPanel({
                         affected: formatNumber(story.affectedCount),
                         sampled: formatNumber(story.sampledCount),
                         arrived: formatNumber(story.arrivedCount),
-                        reach: story.reachM === null ? "" : formatNumber(story.reachM / 1000, { maximumFractionDigits: 0 }),
+                        threshold: screeningThreshold,
+                        reach: story.reachM === null ? "" : quantityText(formatLength(story.reachM, formatNumber, unitSystem)),
                       })
                     : t("results.reachNote")}
                 </small>
@@ -492,11 +507,11 @@ export function ResultsPanel({
                   )}
                   {coastalResults.map((result) => (
                     <details className="results__provenance" key={result.id}>
-                      <summary>{t("results.provenanceSummary", { place: result.name, value: formatNumber(result.runup_m, { maximumFractionDigits: 1 }), time: formatResultTime(result.arrival_time_s, t, formatNumber) })}</summary>
+                      <summary>{t("results.provenanceSummary", { place: result.name, height: quantityText(formatLength(result.runup_m, formatNumber, unitSystem)), time: formatResultTime(result.arrival_time_s, t, formatNumber) })}</summary>
                       <dl>
                         <dt>{t("results.slope")}</dt><dd>{result.beach_slope_deg}° ± {result.slope_provenance.uncertainty_value ?? t("results.unknown")} {result.slope_provenance.uncertainty_unit}</dd>
                         <dt>{t("results.slopeRecord")}</dt><dd>{result.slope_provenance.sample_id} / {result.slope_provenance.record_id}</dd>
-                        <dt>{t("results.depth")}</dt><dd>{result.offshore_depth_m} m ± {result.depth_provenance.uncertainty_value ?? t("results.unknown")} {result.depth_provenance.uncertainty_unit}</dd>
+                        <dt>{t("results.depth")}</dt><dd>{quantityText(formatDepth(result.offshore_depth_m, formatNumber, unitSystem))} · ± {measurementUncertainty(result.depth_provenance.uncertainty_value, result.depth_provenance.uncertainty_unit)} source uncertainty</dd>
                         <dt>{t("results.depthRecord")}</dt><dd>{result.depth_provenance.sample_id} / {result.depth_provenance.record_id}</dd>
                         <dt>{t("results.sourceMethod")}</dt><dd>{result.slope_provenance.source}; {result.slope_provenance.method}</dd>
                         <dt>{t("results.datumResolutionDate")}</dt><dd>{result.slope_provenance.datum}; {result.slope_provenance.resolution}; {result.slope_provenance.observed_or_published}</dd>
@@ -509,7 +524,7 @@ export function ResultsPanel({
                   <span className="empty-state__icon" aria-hidden />
                   <div>
                     <strong>{coastalState.status === "idle" ? t("results.noValidation") : t("results.noPointExceeded")}</strong>
-                    <p>{coastalState.status === "idle" ? t("results.noValidationBody") : t("results.noPointExceededBody")}</p>
+                    <p>{coastalState.status === "idle" ? t("results.noValidationBody") : t("results.noPointExceededBody", { threshold: screeningThreshold })}</p>
                   </div>
                 </div>
               ) : null}

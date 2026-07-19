@@ -7,6 +7,7 @@ import {
 } from "../lib/comparison-stories";
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
 
 type Props = {
   presets: Preset[];
@@ -36,9 +37,10 @@ export function ComparisonStories({
   onRetry,
 }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const presetIds = useMemo(() => new Set(presets.map((preset) => preset.id)), [presets]);
   const activeStory = comparisonStoryForPair(activePresetAId, activePresetBId);
-  const metrics = buildComparisonMetrics(initialA, initialB);
+  const metrics = buildComparisonMetrics(initialA, initialB, unitSystem);
   const storyCopy = (story: ComparisonStory) => ({
     title: t(`comparison.story.${story.id}.title` as Parameters<typeof t>[0]),
     promise: t(`comparison.story.${story.id}.promise` as Parameters<typeof t>[0]),

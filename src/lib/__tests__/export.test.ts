@@ -73,6 +73,7 @@ describe("direct-hazard GIS exports", () => {
     },
   };
   const meta: ScreenshotMeta = {
+    unitSystem: "imperial",
     timeS: 30,
     fileId: "nuclear-test",
     scenarioName: "Nuclear <test>",
@@ -93,7 +94,7 @@ describe("direct-hazard GIS exports", () => {
   it("builds provenance-bearing GeoJSON effect and fallout polygons", () => {
     const geojson = buildDirectHazardGeoJson(meta, direct);
     expect(geojson.features).toHaveLength(4);
-    expect(geojson.properties).toMatchObject({ authority: "rust", model_version: "nuclear-direct-test" });
+    expect(geojson.properties).toMatchObject({ authority: "rust", model_version: "nuclear-direct-test", display_unit_system: "imperial" });
     expect(geojson.features[1].geometry.type).toBe("Polygon");
     expect(geojson.features[1].geometry.coordinates[0]).toHaveLength(73);
     expect(geojson.features[3].properties.kind).toBe("hazard_polygon");
@@ -113,6 +114,8 @@ describe("direct-hazard GIS exports", () => {
     expect(kml).toContain("<name>Effect thresholds</name>");
     expect(kml).toContain("<name>Hazard polygons</name>");
     expect(kml).toContain("<value>5000</value>");
+    expect(kml).toContain("<value>imperial</value>");
+    expect(kml).toContain("Radius: 0.3 mi");
   });
 });
 
@@ -353,6 +356,7 @@ const SAMPLE_POINT: RunupPoint = {
 };
 
 const PROVENANCE_META: ScreenshotMeta = {
+  unitSystem: "imperial",
   generatedAt: "2026-06-28T00:00:00.000Z",
   initial: {
     center: { lat_deg: 21.4, lon_deg: -89.5, depth_m: 1500 },
@@ -479,6 +483,7 @@ describe("suggestedFilename", () => {
     expect(fc.properties.bathymetry_source).toContain("GEBCO_2026/TID raster sampling is not bundled");
     expect(fc.properties.model_notice).toContain("Educational model only");
     expect(fc.properties.layer_state).toEqual(PROVENANCE_META.layerState);
+    expect(fc.properties.display_unit_system).toBe("imperial");
   });
 });
 
@@ -511,6 +516,7 @@ describe("exportCzml", () => {
     expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
     expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
     expect(czml[1].properties?.layerState).toEqual(PROVENANCE_META.layerState);
+    expect(czml[1].properties?.displayUnitSystem).toBe("imperial");
   });
 
   it("emits a spec-correct time-tagged image material with transparency", async () => {
@@ -703,6 +709,15 @@ describe("exportRunupCsv", () => {
     expect(csv).toContain("miyako_jp:slope,slope:legacy-curated-v1");
     expect(csv).toContain("miyako_jp:depth,depth:nominal-isobath-v1");
   });
+
+  it("records the active display unit system without changing canonical SI columns", async () => {
+    const getBlob = mockDownload();
+    expect(exportRunupCsv([SAMPLE_POINT], "imperial").ok).toBe(true);
+    const csv = await getBlob()!.text();
+    expect(csv).toContain("runup_m");
+    expect(csv).toContain(",5.2,");
+    expect(csv.trim()).toMatch(/,imperial$/);
+  });
 });
 
 describe("exportGaugeCsv", () => {
@@ -745,13 +760,14 @@ describe("exportGaugeCsv", () => {
 
     const csv = await getBlob()!.text();
     const lines = csv.trim().split("\n");
-    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct");
+    expect(lines[0]).toBe("gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct,display_unit_system");
     expect(lines).toHaveLength(4);
     expect(lines[1]).toContain("Tokyo Bay");
     expect(lines[1]).toContain("35.65");
     expect(lines[1]).toContain("139.77");
     expect(lines[2]).toContain("1.2340");
     expect(lines[2]).toContain("EPSG:4326,idealized_mean_sea_level,positive_up");
+    expect(lines[2]).toMatch(/,metric$/);
   });
 
   it("returns false for empty series", () => {

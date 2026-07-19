@@ -13,6 +13,8 @@ import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
 import { notifyRunComplete } from "../lib/notify";
 import PRODUCT_TRUTH from "../data/product-truth.json";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, quantityText } from "../lib/units";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -168,6 +170,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
 
 export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
   const [snapshots, setSnapshots] = useState<GridSnapshot[] | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -414,9 +417,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       : selectedAsset
         ? t("swe.localRasterExport", { file: selectedAsset.report.file_name, sha256: selectedAsset.report.sha256 })
         : t("swe.coarseBasinShelf");
-    const result = exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality);
+    const result = exportGaugeCsv(gaugeSeries, mode, bathy, diag?.quality, unitSystem);
     setGaugeExportFailure(result.ok ? null : result);
-  }, [bathymetryAssetId, bathymetryAssets, diag?.quality, gaugeSeries, useBathy, t]);
+  }, [bathymetryAssetId, bathymetryAssets, diag?.quality, gaugeSeries, unitSystem, useBathy, t]);
 
   const cancel = useCallback(() => {
     reqIdRef.current += 1;
@@ -837,7 +840,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           {workspaceMode !== "simple" && <div className="swe__readout">
             <span>{t("swe.frameReadout", { current: formatNumber(activeIdx + 1), total: formatNumber(snapshots.length) })}</span>
             <span>{t("swe.minutesShort", { value: formatNumber(snapshots[activeIdx].time_s / 60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}</span>
-            <span>|<GlossaryTip term="eta">η</GlossaryTip>|max {formatNumber(snapshots[activeIdx].eta_abs_max_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m</span>
+            <span>|<GlossaryTip term="eta">η</GlossaryTip>|max {quantityText(formatLength(snapshots[activeIdx].eta_abs_max_m, formatNumber, unitSystem))}</span>
           </div>}
           {workspaceMode === "advanced" && diag && (
             <div className="swe__readout swe__readout--muted">
@@ -891,7 +894,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
               {overlay !== "wave" && (
                 <span className="swe__overlay-hint">
                   {overlay === "peak"
-                    ? t("swe.peakHint", { value: formatNumber(maxField.peak_abs_max_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })
+                    ? t("swe.peakHint", { value: quantityText(formatLength(maxField.peak_abs_max_m, formatNumber, unitSystem)) })
                     : overlay === "t_of_max"
                       ? t("swe.tMaxHint")
                       : t("swe.energyHint")}
@@ -1032,6 +1035,7 @@ export function GaugeSparkline({
   provenance: string;
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const semanticId = useId();
   if (samples.length < 2) return null;
   const maxEta = Math.max(...samples.map((s) => Math.abs(s.eta_m)), 0.01);
@@ -1063,8 +1067,8 @@ export function GaugeSparkline({
       return {
         series: t("swe.surfaceElevation", { name }),
         selection: t("swe.timeSeconds", { value: formatNumber(sample.time_s, { maximumFractionDigits: 0 }) }),
-        value: sample.eta_m.toPrecision(6),
-        unit: t("swe.mRelativeDatum"),
+        value: formatLength(sample.eta_m, formatNumber, unitSystem).value,
+        unit: formatLength(sample.eta_m, formatNumber, unitSystem).unit,
         significance: markers,
         confidence: t("swe.illustrativeResult"),
         provenance,
@@ -1074,7 +1078,7 @@ export function GaugeSparkline({
       series: t("swe.stillWaterDatum"),
       selection: t("swe.referenceThreshold"),
       value: 0,
-      unit: t("swe.mSurfaceElevation"),
+      unit: formatLength(0, formatNumber, unitSystem).unit,
       significance: t("swe.zeroCrossing"),
       confidence: t("swe.modelDatumNote"),
       provenance,
@@ -1087,10 +1091,10 @@ export function GaugeSparkline({
     provenance,
     start: formatNumber(samples[0].time_s, { maximumFractionDigits: 0 }),
     end: formatNumber(samples.at(-1)!.time_s, { maximumFractionDigits: 0 }),
-    maximum: formatNumber(peakEta, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    minimum: formatNumber(troughEta, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    maximum: quantityText(formatLength(peakEta, formatNumber, unitSystem)),
+    minimum: quantityText(formatLength(troughEta, formatNumber, unitSystem)),
     selection: formatNumber(activeTimeS, { maximumFractionDigits: 0 }),
-    active: formatNumber(active.eta_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    active: quantityText(formatLength(active.eta_m, formatNumber, unitSystem)),
     activeTime: formatNumber(active.time_s, { maximumFractionDigits: 0 }),
   });
   return (
@@ -1112,7 +1116,7 @@ export function GaugeSparkline({
             strokeLinejoin="round"
           />
         </svg>
-        <span className="swe__gauge-peak">{t("swe.gaugePeak", { value: formatNumber(peakEta, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</span>
+        <span className="swe__gauge-peak">{t("swe.gaugePeak", { value: quantityText(formatLength(peakEta, formatNumber, unitSystem)) })}</span>
       </div>
       <SemanticDataTable
         id={semanticId}

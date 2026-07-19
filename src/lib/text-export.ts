@@ -8,6 +8,12 @@ import {
 } from "./export";
 import { buildCoastalOutcomeStory, formatOutcomeTime } from "./result-story";
 import type { RunupAtPointResult } from "./tauri";
+import {
+  formatDepth,
+  formatEnergy as formatDisplayEnergy,
+  formatLength,
+  quantityText,
+} from "./units";
 
 export type TextExportData = ModelProvenanceInput & {
   preset?: Preset | null;
@@ -19,6 +25,11 @@ export type TextExportData = ModelProvenanceInput & {
 
 export function generateTextExport(data: TextExportData): string {
   const lines: string[] = [];
+  const unitSystem = data.unitSystem ?? "metric";
+  const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
+    new Intl.NumberFormat("en-US", options).format(value);
+  const length = (meters: number) => quantityText(formatLength(meters, formatNumber, unitSystem));
+  const depth = (meters: number) => quantityText(formatDepth(meters, formatNumber, unitSystem));
   lines.push("Cataclysm — Scenario Results Export");
   lines.push("==========================================");
   lines.push("");
@@ -47,18 +58,18 @@ export function generateTextExport(data: TextExportData): string {
     const story = buildCoastalOutcomeStory(data.runupResults ?? [], data.timeS);
     lines.push("Outcome Summary");
     lines.push("---------------");
-    lines.push(`Maximum source displacement: ${i.peak_amplitude_m.toFixed(2)} m`);
+    lines.push(`Maximum source displacement: ${length(i.peak_amplitude_m)}`);
     if (story.maximum && story.maximum.runup_m >= 0.1) {
-      lines.push(`Maximum affected named coast: ~${story.maximum.runup_m.toFixed(1)} m at ${story.maximum.name} (${formatOutcomeTime(story.maximum.arrival_time_s)})`);
+      lines.push(`Maximum affected named coast: ~${length(story.maximum.runup_m)} at ${story.maximum.name} (${formatOutcomeTime(story.maximum.arrival_time_s)})`);
     }
     if (story.firstAffected) {
       lines.push(`First affected named coast: ${story.firstAffected.name} at ${formatOutcomeTime(story.firstAffected.arrival_time_s)}`);
     }
     if (story.nearest) {
-      lines.push(`Nearest affected named coast: ${story.nearest.name} at ${(story.nearest.range_m / 1000).toFixed(0)} km from source`);
+      lines.push(`Nearest affected named coast: ${story.nearest.name} at ${length(story.nearest.range_m)} from source`);
     }
     if (story.reachM !== null) {
-      lines.push(`Farthest affected named coast in screening set: ${(story.reachM / 1000).toFixed(0)} km`);
+      lines.push(`Farthest affected named coast in screening set: ${length(story.reachM)}`);
     }
     lines.push(`Coastal confidence: ${story.confidence}. ${story.limitation}`);
     lines.push("Reach describes named screening points, not a continuous inundation footprint.");
@@ -71,17 +82,18 @@ export function generateTextExport(data: TextExportData): string {
     const ew = i.center.lon_deg >= 0 ? "E" : "W";
     lines.push(`Location: ${Math.abs(i.center.lat_deg).toFixed(4)}° ${ns}, ${Math.abs(i.center.lon_deg).toFixed(4)}° ${ew}`);
     if (i.center.depth_m !== undefined) {
-      lines.push(`Water depth: ${i.center.depth_m.toFixed(0)} m`);
+      lines.push(`Water depth: ${depth(i.center.depth_m)}`);
     }
-    lines.push(`Peak amplitude: ${i.peak_amplitude_m.toFixed(2)} m`);
+    lines.push(`Peak amplitude: ${length(i.peak_amplitude_m)}`);
     const radiusLabel = data.sourceKind === "Earthquake" || data.sourceKind === "Landslide"
       ? "Source region radius"
       : "Cavity radius";
-    lines.push(`${radiusLabel}: ${i.cavity_radius_m.toFixed(0)} m`);
-    lines.push(`Source energy: ${formatEnergy(i.source_energy_j)}`);
+    lines.push(`${radiusLabel}: ${length(i.cavity_radius_m)}`);
+    const energy = formatDisplayEnergy(i.source_energy_j, formatNumber, unitSystem);
+    lines.push(`Source energy: ${quantityText(energy)}${energy.anchor ? ` (${energy.anchor})` : ""}`);
     lines.push(`Seismic equivalent: Mw ${i.seismic_mw_equivalent.toFixed(1)}`);
     if (i.dominant_wavelength_m) {
-      lines.push(`Dominant wavelength: ${(i.dominant_wavelength_m / 1000).toFixed(1)} km`);
+      lines.push(`Dominant wavelength: ${length(i.dominant_wavelength_m)}`);
     }
     lines.push("");
   }
@@ -93,7 +105,7 @@ export function generateTextExport(data: TextExportData): string {
     lines.push("Coastal Runup Results");
     lines.push("---------------------");
     lines.push(
-      padRow(["Location", "Lat", "Lon", "Runup (m)", "Offshore (m)", "Arrival", "Status"]),
+      padRow(["Location", "Lat", "Lon", "Runup", "Offshore", "Arrival", "Status"]),
     );
     lines.push("-".repeat(100));
 
@@ -110,8 +122,8 @@ export function generateTextExport(data: TextExportData): string {
           r.name,
           r.lat.toFixed(2),
           r.lon.toFixed(2),
-          r.has_arrived ? r.runup_m.toFixed(2) : "—",
-          Number.isFinite(r.offshore_amplitude_m) ? r.offshore_amplitude_m.toFixed(3) : "—",
+          r.has_arrived ? length(r.runup_m) : "—",
+          Number.isFinite(r.offshore_amplitude_m) ? length(r.offshore_amplitude_m) : "—",
           arrival,
           r.has_arrived ? "Arrived" : "In transit",
         ]),
@@ -124,7 +136,7 @@ export function generateTextExport(data: TextExportData): string {
       lines.push(`${r.name} [${r.quantitative_label}; ${r.quantitative_confidence} confidence]`);
       lines.push(`  Slope ${r.beach_slope_deg} deg: ${r.slope_provenance.sample_id} / ${r.slope_provenance.record_id}`);
       lines.push(`    ${r.slope_provenance.source}; ${r.slope_provenance.method}; ${r.slope_provenance.datum}; ${r.slope_provenance.resolution}; ${r.slope_provenance.observed_or_published}; uncertainty ${r.slope_provenance.uncertainty_value ?? "unknown"} ${r.slope_provenance.uncertainty_unit}`);
-      lines.push(`  Depth ${r.offshore_depth_m} m: ${r.depth_provenance.sample_id} / ${r.depth_provenance.record_id}`);
+      lines.push(`  Depth ${depth(r.offshore_depth_m)}: ${r.depth_provenance.sample_id} / ${r.depth_provenance.record_id}`);
       lines.push(`    ${r.depth_provenance.source}; ${r.depth_provenance.method}; ${r.depth_provenance.datum}; ${r.depth_provenance.resolution}; ${r.depth_provenance.observed_or_published}; uncertainty ${r.depth_provenance.uncertainty_value ?? "unknown"} ${r.depth_provenance.uncertainty_unit}`);
     }
     lines.push("");
@@ -135,14 +147,6 @@ export function generateTextExport(data: TextExportData): string {
   lines.push("Generated by Cataclysm (github.com/SysAdminDoc/Cataclysm)");
 
   return lines.join("\n");
-}
-
-function formatEnergy(j: number): string {
-  if (!Number.isFinite(j)) return "—";
-  const mt = j / 4.184e15;
-  if (mt >= 1) return `${mt.toFixed(1)} Mt TNT (${j.toExponential(2)} J)`;
-  if (mt >= 1e-3) return `${(mt * 1000).toFixed(1)} kt TNT (${j.toExponential(2)} J)`;
-  return `${j.toExponential(2)} J`;
 }
 
 function padRow(cols: string[]): string {

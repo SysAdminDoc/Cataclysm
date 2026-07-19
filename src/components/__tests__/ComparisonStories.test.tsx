@@ -73,6 +73,23 @@ describe("ComparisonStories", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it("converts comparison length metrics in imperial mode", async () => {
+    localStorage.setItem("tsunamisim.units", JSON.stringify("imperial"));
+    render(
+      <ComparisonStories
+        presets={PRESETS}
+        activePresetAId="tohoku_2011"
+        activePresetBId="indian_ocean_2004"
+        initialA={initial(20)}
+        initialB={initial(5)}
+        busy={false}
+        onSelectStory={() => {}}
+        onSelectCustomB={() => {}}
+      />,
+    );
+    expect(await screen.findByText("A 65.6 ft · B 16.4 ft")).toBeInTheDocument();
+  });
+
   it("localizes curated stories, metrics, and advanced controls in Japanese", () => {
     localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
     render(

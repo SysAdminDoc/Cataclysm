@@ -1,4 +1,5 @@
 import type { InitialDisplacement } from "../types/scenario";
+import { formatLength, quantityText, type UnitSystem } from "./units";
 
 export type ComparisonStory = Readonly<{
   id: string;
@@ -67,8 +68,12 @@ function compact(value: number, maximumFractionDigits = 1): string {
   }).format(value);
 }
 
-function meters(value: number): string {
+function meters(value: number, unitSystem: UnitSystem): string {
   const absolute = Math.abs(value);
+  if (unitSystem === "imperial") {
+    return quantityText(formatLength(absolute, (quantity, options) =>
+      new Intl.NumberFormat("en-US", options).format(quantity), unitSystem));
+  }
   if (absolute >= 1_000) return `${compact(absolute / 1_000)} km`;
   if (absolute >= 10) return `${absolute.toFixed(0)} m`;
   return `${absolute.toFixed(1)} m`;
@@ -106,13 +111,14 @@ export type ComparisonMetric = Readonly<{
 export function buildComparisonMetrics(
   left: InitialDisplacement | null,
   right: InitialDisplacement | null,
+  unitSystem: UnitSystem = "metric",
 ): ComparisonMetric[] {
   if (!left || !right) return [];
   const metrics: ComparisonMetric[] = [
     {
       label: "Peak source amplitude",
-      slotA: meters(left.peak_amplitude_m),
-      slotB: meters(right.peak_amplitude_m),
+      slotA: meters(left.peak_amplitude_m, unitSystem),
+      slotB: meters(right.peak_amplitude_m, unitSystem),
       difference: ratio(left.peak_amplitude_m, right.peak_amplitude_m),
     },
     {
@@ -125,8 +131,8 @@ export function buildComparisonMetrics(
   if (left.cavity_radius_m > 0 || right.cavity_radius_m > 0) {
     metrics.push({
       label: "Source radius",
-      slotA: meters(left.cavity_radius_m),
-      slotB: meters(right.cavity_radius_m),
+      slotA: meters(left.cavity_radius_m, unitSystem),
+      slotB: meters(right.cavity_radius_m, unitSystem),
       difference: ratio(left.cavity_radius_m, right.cavity_radius_m),
     });
   }

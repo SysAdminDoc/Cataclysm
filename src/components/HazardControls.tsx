@@ -25,6 +25,22 @@ import { buildDirectResultEvidence } from "../lib/trust-evidence";
 import { NumericField } from "./NumericField";
 import { TrustDisclosure } from "./TrustDisclosure";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import {
+  formatEmbeddedLengthValues,
+  formatLength,
+  formatMassDensity,
+  formatPopulationDensity,
+  formatReadoutValue,
+  formatSpeed,
+  quantityText,
+} from "../lib/units";
+
+const FEET_PER_METER = 3.28084;
+const MILES_PER_METER = 0.000621371;
+const MPH_PER_KM_S = 2236.94;
+const LB_FT3_PER_KG_M3 = 0.06242796;
+const PEOPLE_SQMI_PER_PEOPLE_SQKM = 2.589988;
 
 /** Place a point estimate in its one-significant-digit display bucket. This
  * removes false precision without manufacturing a statistical uncertainty. */
@@ -161,6 +177,7 @@ export function HazardControls({
   scenarioContext?: { title: string; description: string; assumptions: readonly string[] };
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const nuclearYield = sourceBound("DirectNuclear", "yield_kt");
   const inferredWeaponId = WEAPON_PRESETS.find((preset) =>
     preset.yieldKt === nuclear.yieldKt && preset.burstType === nuclear.burstType,
@@ -177,6 +194,18 @@ export function HazardControls({
   const asteroidVelocity = sourceBound("DirectAsteroid", "velocity_km_s");
   const asteroidAngle = sourceBound("DirectAsteroid", "angle_deg");
   const asteroidDensity = sourceBound("DirectAsteroid", "density_kg_m3");
+  const populationFactor = unitSystem === "imperial" ? PEOPLE_SQMI_PER_PEOPLE_SQKM : 1;
+  const populationUnit = unitSystem === "imperial" ? "people/mi²" : "people/km²";
+  const diameterFactor = unitSystem === "imperial"
+    ? asteroid.diameterM * MILES_PER_METER >= 0.1 ? MILES_PER_METER : FEET_PER_METER
+    : 1;
+  const diameterUnit = unitSystem === "imperial"
+    ? diameterFactor === MILES_PER_METER ? "mi" : "ft"
+    : "m";
+  const velocityFactor = unitSystem === "imperial" ? MPH_PER_KM_S : 1;
+  const velocityUnit = unitSystem === "imperial" ? "mph" : "km/s";
+  const densityFactor = unitSystem === "imperial" ? LB_FT3_PER_KG_M3 : 1;
+  const densityUnit = unitSystem === "imperial" ? "lb/ft³" : "kg/m³";
   const nuclearBurstTypes = sourceEnumValues("DirectNuclear", "burst_type", true);
   const asteroidTargetTypes = sourceEnumValues("DirectAsteroid", "target_type", true);
   const asteroidEffects = mode === "asteroid" ? (result?.detail as AsteroidDetail | undefined) : undefined;
@@ -206,10 +235,10 @@ export function HazardControls({
       {scenarioContext && (
         <aside className="hazard__scenario-context" aria-label={scenarioContext.title}>
           <strong>{scenarioContext.title}</strong>
-          <p>{scenarioContext.description}</p>
+          <p>{formatEmbeddedLengthValues(scenarioContext.description, formatNumber, unitSystem)}</p>
           <details>
             <summary>{t("pd.assumptions")}</summary>
-            <ul>{scenarioContext.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+            <ul>{scenarioContext.assumptions.map((assumption) => <li key={assumption}>{formatEmbeddedLengthValues(assumption, formatNumber, unitSystem)}</li>)}</ul>
           </details>
         </aside>
       )}
@@ -251,7 +280,7 @@ export function HazardControls({
               <option value="">{t("hazard.custom")}</option>
               {WEAPON_PRESETS.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} — {w.note}
+                  {w.name} — {formatEmbeddedLengthValues(w.note, formatNumber, unitSystem)}
                 </option>
               ))}
             </select>
@@ -289,7 +318,13 @@ export function HazardControls({
             >
               {nuclearBurstTypes.map((value) => (
                 <option key={value} value={value}>
-                  {value === "airburst" ? t("hazard.burst.air") : value === "surface" ? t("hazard.burst.surface") : value === "hemp" ? t("hazard.burst.hemp") : t("hazard.burst.water")}
+                  {value === "airburst"
+                    ? t("hazard.burst.air")
+                    : value === "surface"
+                      ? t("hazard.burst.surface")
+                      : value === "hemp"
+                        ? t("hazard.burst.hemp", { altitude: quantityText(formatLength(400_000, formatNumber, unitSystem)) })
+                        : t("hazard.burst.water")}
                 </option>
               ))}
             </select>
@@ -304,14 +339,14 @@ export function HazardControls({
             max={populationDensity.max}
             step={100}
             onChange={(v) => onNuclearChange({ ...nuclear, populationDensity: v })}
-            format={(v) => (v === 0 ? t("hazard.off") : `${formatNumber(v)} /km²`)}
+            format={(v) => (v === 0 ? t("hazard.off") : quantityText(formatPopulationDensity(v, formatNumber, unitSystem)))}
             numeric={{
-              value: nuclear.populationDensity ?? 0,
-              min: populationDensity.min,
-              max: populationDensity.max,
+              value: (nuclear.populationDensity ?? 0) * populationFactor,
+              min: populationDensity.min * populationFactor,
+              max: populationDensity.max * populationFactor,
               step: 1,
-              unit: "/km²",
-              onCommit: (v) => onNuclearChange({ ...nuclear, populationDensity: v }),
+              unit: populationUnit,
+              onCommit: (v) => onNuclearChange({ ...nuclear, populationDensity: v / populationFactor }),
             }}
           />}
           {workspaceMode === "advanced" && hasFallout && (
@@ -343,16 +378,14 @@ export function HazardControls({
             max={asteroidDiameter.max}
             step={1}
             onChange={(v) => onAsteroidChange({ ...asteroid, diameterM: v })}
-            format={(v) => (v < 1000
-              ? `${formatNumber(v, { maximumFractionDigits: 0 })} m`
-              : `${formatNumber(v / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`)}
+            format={(v) => quantityText(formatLength(v, formatNumber, unitSystem))}
             numeric={{
-              value: asteroid.diameterM,
-              min: asteroidDiameter.min,
-              max: asteroidDiameter.max,
-              step: 1,
-              unit: "m",
-              onCommit: (v) => onAsteroidChange({ ...asteroid, diameterM: v }),
+              value: asteroid.diameterM * diameterFactor,
+              min: asteroidDiameter.min * diameterFactor,
+              max: asteroidDiameter.max * diameterFactor,
+              step: "any",
+              unit: diameterUnit,
+              onCommit: (v) => onAsteroidChange({ ...asteroid, diameterM: v / diameterFactor }),
             }}
           />
           {workspaceMode !== "simple" && <Slider
@@ -362,14 +395,14 @@ export function HazardControls({
             max={asteroidVelocity.max}
             step={0.5}
             onChange={(v) => onAsteroidChange({ ...asteroid, velocityKmS: v })}
-            format={(v) => `${formatNumber(v, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km/s`}
+            format={(v) => quantityText(formatSpeed(v * 1000, formatNumber, unitSystem))}
             numeric={{
-              value: asteroid.velocityKmS,
-              min: asteroidVelocity.min,
-              max: asteroidVelocity.max,
+              value: asteroid.velocityKmS * velocityFactor,
+              min: asteroidVelocity.min * velocityFactor,
+              max: asteroidVelocity.max * velocityFactor,
               step: "any",
-              unit: "km/s",
-              onCommit: (v) => onAsteroidChange({ ...asteroid, velocityKmS: v }),
+              unit: velocityUnit,
+              onCommit: (v) => onAsteroidChange({ ...asteroid, velocityKmS: v / velocityFactor }),
             }}
           />}
           {workspaceMode !== "simple" && <Slider
@@ -396,14 +429,14 @@ export function HazardControls({
             max={asteroidDensity.max}
             step={50}
             onChange={(v) => onAsteroidChange({ ...asteroid, densityKgM3: v })}
-            format={(v) => `${formatNumber(v)} kg/m³`}
+            format={(v) => quantityText(formatMassDensity(v, formatNumber, unitSystem))}
             numeric={{
-              value: asteroid.densityKgM3,
-              min: asteroidDensity.min,
-              max: asteroidDensity.max,
-              step: 1,
-              unit: "kg/m³",
-              onCommit: (v) => onAsteroidChange({ ...asteroid, densityKgM3: v }),
+              value: asteroid.densityKgM3 * densityFactor,
+              min: asteroidDensity.min * densityFactor,
+              max: asteroidDensity.max * densityFactor,
+              step: "any",
+              unit: densityUnit,
+              onCommit: (v) => onAsteroidChange({ ...asteroid, densityKgM3: v / densityFactor }),
             }}
           />}
           <label className="hazard__row">
@@ -464,9 +497,9 @@ export function HazardControls({
           <TrustDisclosure evidence={buildDirectResultEvidence(result)} />
           <div className="hazard__readout">
             {result.readout.map((r) => (
-              <div className="hazard__stat" key={r.label} title={r.hint}>
+              <div className="hazard__stat" key={r.label} title={r.hint ? formatEmbeddedLengthValues(r.hint, formatNumber, unitSystem) : undefined}>
                 <span className="hazard__stat-label">{r.label}</span>
-                <span className="hazard__stat-value">{r.value}</span>
+                <span className="hazard__stat-value">{formatReadoutValue(r.value, formatNumber, unitSystem)}</span>
               </div>
             ))}
           </div>
@@ -492,7 +525,7 @@ export function HazardControls({
                 {t("hazard.childInjuries")}
               </span>
               <span className="hazard__casualties-note">
-                {t("hazard.casualtyNote", { density: formatNumber(result.casualties.populationDensity) })}
+                {t("hazard.casualtyNote", { density: quantityText(formatPopulationDensity(result.casualties.populationDensity, formatNumber, unitSystem)) })}
               </span>
             </div>
           )}
@@ -524,10 +557,10 @@ export function HazardControls({
                         <th
                           scope="col"
                           key={zone.label}
-                          aria-label={t("hazard.shelter.zone", { label: zone.label, distance: formatNumber(zone.distanceKm, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}
+                          aria-label={t("hazard.shelter.zone", { label: zone.label, distance: quantityText(formatLength(zone.distanceKm * 1000, formatNumber, unitSystem)) })}
                         >
                           {zone.label}
-                          <small>{formatNumber(zone.distanceKm, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km</small>
+                          <small>{quantityText(formatLength(zone.distanceKm * 1000, formatNumber, unitSystem))}</small>
                         </th>
                       ))}
                     </tr>
@@ -554,7 +587,7 @@ export function HazardControls({
                 </table>
               </div>
               <ul className="hazard__shelter-limits">
-                {shelterReport.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
+                {shelterReport.limitations.map((limitation) => <li key={limitation}>{formatEmbeddedLengthValues(limitation, formatNumber, unitSystem)}</li>)}
               </ul>
             </details>
           ) : null}
@@ -564,9 +597,7 @@ export function HazardControls({
                 <i data-ring-color={ring.color} aria-hidden />
                 <span>{ring.label}</span>
                 <span className="hazard__ring-radius">
-                  {ring.radiusM < 1000
-                    ? `${formatNumber(ring.radiusM, { maximumFractionDigits: 0 })} m`
-                    : `${formatNumber(ring.radiusM / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`}
+                  {quantityText(formatLength(ring.radiusM, formatNumber, unitSystem))}
                 </span>
               </li>
             ))}
@@ -583,7 +614,7 @@ export function HazardControls({
                 {timeline.map((ev, i) => (
                   <li key={`${ev.time}-${i}`} data-cat={ev.category}>
                     <span className="hazard__timeline-time">{ev.time}</span>
-                    <span className="hazard__timeline-desc">{ev.description}</span>
+                    <span className="hazard__timeline-desc">{formatEmbeddedLengthValues(ev.description, formatNumber, unitSystem)}</span>
                   </li>
                 ))}
               </ol>

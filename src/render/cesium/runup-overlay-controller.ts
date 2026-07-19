@@ -13,6 +13,8 @@ export interface RunupOverlayInput {
   quantitative_label: "illustrative" | "screening_estimate" | "quantitative";
   slope_record_id: string;
   depth_record_id: string;
+  display_runup?: string;
+  display_offshore?: string;
 }
 
 export interface RunupPrimitivePresentation {
@@ -172,14 +174,14 @@ function labelPresentation(input: RunupOverlayInput, heightM: number): RunupLabe
       ? `T+${arrivalMin.toFixed(0)}m`
       : `T+${Math.floor(arrivalMin / 60)}h${String(Math.round(arrivalMin % 60)).padStart(2, "0")}`;
   const offshore = Number.isFinite(input.offshore_amplitude_m)
-    ? input.offshore_amplitude_m.toFixed(2)
+    ? input.display_offshore ?? `${input.offshore_amplitude_m.toFixed(2)} m`
     : "-";
   return {
     id: input.id,
     lat: input.lat,
     lon: input.lon,
     heightM,
-    text: `${input.name}\n${arrivalLabel}  -  ${input.runup_m.toFixed(1)} m runup\n${offshore} m offshore\n${input.quantitative_label.replace("_", " ")} · ${input.quantitative_confidence} confidence\n${input.slope_record_id} · ${input.depth_record_id}`,
+    text: `${input.name}\n${arrivalLabel}  -  ${input.display_runup ?? `${input.runup_m.toFixed(1)} m`} runup\n${offshore} offshore\n${input.quantitative_label.replace("_", " ")} · ${input.quantitative_confidence} confidence\n${input.slope_record_id} · ${input.depth_record_id}`,
   };
 }
 

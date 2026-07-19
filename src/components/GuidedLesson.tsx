@@ -7,6 +7,8 @@ import type {
   GuidedStoryTarget,
 } from "../lib/guided-lessons";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues } from "../lib/units";
 
 type StoryMode = "follow" | "explore";
 
@@ -45,7 +47,9 @@ function persistProgress(lessonId: string, progress: StoredProgress): void {
 }
 
 export function GuidedLesson({ lesson, onClose, onComplete, onCue }: Props) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
+  const displayQuantities = (value: string) => formatEmbeddedLengthValues(value, formatNumber, unitSystem);
   const initialProgress = useMemo(() => loadProgress(lesson), [lesson]);
   const [stepIdx, setStepIdx] = useState(initialProgress.stepIdx);
   const [mode, setMode] = useState<StoryMode>(initialProgress.mode);
@@ -100,11 +104,11 @@ export function GuidedLesson({ lesson, onClose, onComplete, onCue }: Props) {
       <div className="lesson-worksheet" aria-hidden>
         <h1>{lesson.title}</h1>
         <p className="lesson-worksheet__meta">{t("guided.worksheetMeta")}</p>
-        <p>{lesson.summary}</p>
+        <p>{displayQuantities(lesson.summary)}</p>
         <ol>
           {lesson.worksheet.map((q) => (
             <li key={q}>
-              <p>{q}</p>
+              <p>{displayQuantities(q)}</p>
               <div className="lesson-worksheet__lines" />
             </li>
           ))}
@@ -151,7 +155,7 @@ export function GuidedLesson({ lesson, onClose, onComplete, onCue }: Props) {
 
         <h2 id="lesson-name" className="lesson-card__lesson">{lesson.title}</h2>
         <h3 id="lesson-title" className="lesson-card__title">{step.title}</h3>
-        <p className="lesson-card__body">{step.body}</p>
+        <p className="lesson-card__body">{displayQuantities(step.body)}</p>
 
         <div className="lesson-card__cue" data-active={mode === "follow" ? "true" : "false"}>
           <span>{t("guided.focusLabel")}</span>

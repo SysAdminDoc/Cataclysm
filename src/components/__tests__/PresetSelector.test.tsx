@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { PresetSelector } from "../PresetSelector";
 import type { Preset } from "../../types/scenario";
 import { DIRECT_SCENARIOS } from "../../lib/scenario-library";
@@ -69,6 +69,8 @@ const PRESETS: Preset[] = [
 ];
 
 describe("PresetSelector", () => {
+  beforeEach(() => localStorage.clear());
+
   it("renders all presets", () => {
     render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
     expect(screen.getByText("Chicxulub Impact")).toBeInTheDocument();
@@ -89,6 +91,13 @@ describe("PresetSelector", () => {
     expect(screen.getByText("14 km body")).toBeInTheDocument();
     expect(screen.getByText("M_w 9.1")).toBeInTheDocument();
     expect(screen.getByText("100 Mt yield")).toBeInTheDocument();
+  });
+
+  it("converts scenario-card scale metadata in imperial mode", async () => {
+    localStorage.setItem("tsunamisim.units", JSON.stringify("imperial"));
+    render(<PresetSelector presets={PRESETS} activeId={null} onSelect={() => {}} />);
+    expect(await screen.findByText("8.7 mi body")).toBeInTheDocument();
+    expect(screen.queryByText("14 km body")).not.toBeInTheDocument();
   });
 
   it("calls onSelect when a preset is clicked", async () => {

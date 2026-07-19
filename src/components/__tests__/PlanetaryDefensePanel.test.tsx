@@ -48,7 +48,7 @@ describe("PlanetaryDefensePanel", () => {
 
     expect(await screen.findByRole("heading", { name: "Reference approaches" })).toBeInTheDocument();
     expect(screen.getByText("A close approach is not a predicted impact.")).toBeInTheDocument();
-    expect(screen.getByText("0.1 LD · 38,013 km")).toBeInTheDocument();
+    expect(screen.getByText("0.1 LD · 38,012.7 km")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Explore real approach" }));
     expect(screen.getByRole("img", { name: /Schematic close approach for 99942 Apophis/i })).toBeInTheDocument();

@@ -5,7 +5,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { primeCesiumToken } from "../lib/cesium";
 import { CESIUM_SIGNUP_URL, validateTrustedExternalUrl } from "../lib/external-links";
 import { settings, type Theme, type ColormapId, type LaunchExperiencePolicy } from "../lib/settings";
-import type { UnitSystem } from "../lib/units";
+import { formatEmbeddedLengthValues, type UnitSystem } from "../lib/units";
 import { downloadBlob, type ExportResult } from "../lib/export";
 import { applyTheme } from "../lib/theme";
 import { DEFAULT_STYLE, GLOBE_STYLES, type GlobeStyleId } from "../lib/globe-styles";
@@ -329,7 +329,7 @@ export function Settings({ onClose }: Props) {
                 <div><dt>{t("settings.terrain")}</dt><dd>{earthTerrainProvider.name} · {earthTerrain.role}</dd></div>
                 <div><dt>{t("settings.coverage")}</dt><dd>{earthImagery.spatial.bounds.join("°, ")}° · {earthImagery.spatial.horizontal_crs}</dd></div>
                 <div><dt>{t("settings.verticalDatum")}</dt><dd>{earthTerrain.spatial.vertical_datum}</dd></div>
-                <div><dt>{t("settings.resolution")}</dt><dd>{earthImagery.resolution.notes}</dd></div>
+                <div><dt>{t("settings.resolution")}</dt><dd>{formatEmbeddedLengthValues(earthImagery.resolution.notes, formatNumber, units)}</dd></div>
                 <div><dt>{t("settings.version")}</dt><dd>{earthImagery.version.provider_asset_id ?? earthImagery.version.upstream ?? earthImagery.version.package ?? t("settings.mutableService")}</dd></div>
                 <div><dt>{t("settings.qualityTiers")}</dt><dd>{earthImagery.quality_tiers.join(", ")}</dd></div>
                 <div><dt>{t("settings.attribution")}</dt><dd>{earthImagery.license.attribution_text}</dd></div>

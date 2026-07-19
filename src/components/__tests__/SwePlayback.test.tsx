@@ -380,6 +380,7 @@ describe("SwePlayback", () => {
       "Backend SWE solver",
       "Coarse basin/shelf",
       RUN_QUALITY,
+      "metric",
     );
     expect(await screen.findByRole("alert")).toHaveTextContent("download: downloads denied");
     await user.click(screen.getByRole("button", { name: "Retry" }));

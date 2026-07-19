@@ -135,7 +135,7 @@ test("language switch persists across settings, simulation results, layers, and 
   const customBuilder = page.locator(".scenario-builder");
   await expect(customBuilder.getByText("カスタムシナリオ", { exact: true })).toBeVisible();
   await expect(customBuilder.getByRole("tab", { name: "小惑星" })).toBeVisible();
-  await expect(customBuilder.getByRole("spinbutton", { name: "直径 (m) 正確な値" })).toBeVisible();
+  await expect(customBuilder.getByRole("spinbutton", { name: "直径 正確な値" })).toBeVisible();
   await customBuilder.getByRole("tab", { name: "地震" }).click();
   await expect(customBuilder.getByRole("spinbutton", { name: "マグニチュード (M_w) 正確な値" })).toBeVisible();
   await expect(customBuilder.getByRole("button", { name: "沈み込み帯から断層を自動入力" })).toBeVisible();

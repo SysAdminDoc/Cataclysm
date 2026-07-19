@@ -4,6 +4,8 @@ import { findStyle, type GlobeStyleId } from "../lib/globe-styles";
 import { LANGUAGE_TAGS, translate, type MessageKey } from "../lib/i18n-core";
 import { useI18n } from "../lib/i18n";
 import type { ImageryControllerStatus } from "../render/cesium/imagery-controller";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, quantityText, type UnitSystem } from "../lib/units";
 
 type CameraTelemetry = Readonly<{
   lat: number;
@@ -65,6 +67,7 @@ export function localizedGlobeStyleLabel(
 export function buildGlobeAccessibilitySummary(
   state: GlobeAccessibilityState,
   formatter: AccessibilityFormatter = ENGLISH_FORMATTER,
+  unitSystem: UnitSystem = "metric",
 ): string {
   const { t, formatNumber } = formatter;
   const layers = [t("globe.access.layer.base", {
@@ -89,19 +92,24 @@ export function buildGlobeAccessibilitySummary(
   }));
 
   const camera = state.camera;
+  const altitude = camera
+    ? unitSystem === "metric"
+      ? camera.altitudeM >= 1_000_000
+        ? t("globe.access.megametres", {
+            value: formatNumber(camera.altitudeM / 1_000_000, { maximumFractionDigits: 1 }),
+          })
+        : t("globe.access.kilometres", {
+            value: formatNumber(camera.altitudeM / 1_000, { maximumFractionDigits: 0 }),
+          })
+      : quantityText(formatLength(camera.altitudeM, formatNumber, unitSystem))
+    : "";
   const cameraSummary = camera
     ? t("globe.access.camera", {
         lat: formatNumber(Math.abs(camera.lat), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         latDirection: t(camera.lat >= 0 ? "globe.access.north" : "globe.access.south"),
         lon: formatNumber(Math.abs(camera.lon), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         lonDirection: t(camera.lon >= 0 ? "globe.access.east" : "globe.access.west"),
-        altitude: camera.altitudeM >= 1_000_000
-          ? t("globe.access.megametres", {
-              value: formatNumber(camera.altitudeM / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-            })
-          : t("globe.access.kilometres", {
-              value: formatNumber(camera.altitudeM / 1_000, { maximumFractionDigits: 0 }),
-            }),
+        altitude,
       })
     : t("globe.access.cameraUnavailable");
   const rendererSummary = state.rendererError
@@ -135,9 +143,10 @@ export function buildGlobeAccessibilitySummary(
 
 export function useGlobeAccessibilitySummary(state: GlobeAccessibilityState) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const summary = useMemo(
-    () => buildGlobeAccessibilitySummary(state, { t, formatNumber }),
-    [formatNumber, state, t],
+    () => buildGlobeAccessibilitySummary(state, { t, formatNumber }, unitSystem),
+    [formatNumber, state, t, unitSystem],
   );
   const [announcedSummary, setAnnouncedSummary] = useState("");
   const announcedSummaryRef = useRef("");

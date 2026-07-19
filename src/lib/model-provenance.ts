@@ -6,6 +6,7 @@ import {
   type HeightFieldMetadata,
 } from "./geodesy";
 import type { LayerExportRecord } from "./layer-controller";
+import type { UnitSystem } from "./units";
 
 export const APP_VERSION = PRODUCT_TRUTH.release.version;
 
@@ -49,6 +50,7 @@ export type ModelProvenanceInput = {
   citationUrl?: string | null;
   limitation?: string;
   layerState?: LayerExportRecord[];
+  unitSystem?: UnitSystem;
 };
 
 export type ModelProvenance = {
@@ -71,6 +73,7 @@ export type ModelProvenance = {
   runQuality: RunQualityRecord | null;
   evidenceIds: string[];
   layerState: LayerExportRecord[];
+  unitSystem: UnitSystem;
 };
 
 export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenance {
@@ -99,6 +102,7 @@ export function buildModelProvenance(input: ModelProvenanceInput): ModelProvenan
       : null,
     runQuality: input.runQuality ? { ...input.runQuality, warnings: [...input.runQuality.warnings] } : null,
     evidenceIds: [...new Set(input.evidenceIds ?? [])].sort(),
+    unitSystem: input.unitSystem ?? "metric",
     layerState: [...(input.layerState ?? [])]
       .map((layer) => ({ ...layer }))
       .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)),
@@ -113,6 +117,7 @@ export function provenanceSummary(input: ModelProvenanceInput): string {
     `Generated: ${p.generatedAt}`,
     `Scenario: ${p.scenarioName}`,
     `Scenario type: ${p.scenarioType}`,
+    `Display unit system: ${p.unitSystem}`,
     `Solver mode: ${p.solverMode}`,
     `Bathymetry source: ${p.bathymetrySource}`,
     `Bathymetry asset: ${p.bathymetryAssetId}`,

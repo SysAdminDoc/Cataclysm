@@ -3,6 +3,8 @@ import { searchNukemapLocations } from "../lib/nukemap-data";
 import type { NukemapLocationResult } from "../types/nukemap-data";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { useUnits } from "../hooks/useUnits";
+import { formatPopulationDensity, quantityText } from "../lib/units";
 
 type SearchNotice = { key: MessageKey; values?: Record<string, string | number> };
 
@@ -16,6 +18,7 @@ export function LocationSearch({
   purpose?: LocationSearchPurpose;
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const inputId = useId();
   const resultsId = useId();
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -67,13 +70,13 @@ export function LocationSearch({
           key: "location.selectedFrom",
           values: {
             name: result.name,
-            density: formatNumber(result.density.peoplePerKm2),
+            density: quantityText(formatPopulationDensity(result.density.peoplePerKm2, formatNumber, unitSystem)),
             city: result.density.nearestCity,
           },
         }
       : {
           key: "location.selected",
-          values: { name: result.name, density: formatNumber(result.density.peoplePerKm2) },
+          values: { name: result.name, density: quantityText(formatPopulationDensity(result.density.peoplePerKm2, formatNumber, unitSystem)) },
         });
   };
 
@@ -158,7 +161,7 @@ export function LocationSearch({
               <small>{t("location.resultMeta", {
                 lat: formatNumber(result.lat, { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
                 lon: formatNumber(result.lon, { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
-                density: formatNumber(result.density.peoplePerKm2),
+                density: quantityText(formatPopulationDensity(result.density.peoplePerKm2, formatNumber, unitSystem)),
               })}</small>
             </button>
           ))}

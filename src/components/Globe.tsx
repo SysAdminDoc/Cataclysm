@@ -96,6 +96,8 @@ import { OSM_ATTRIBUTION_URL, type HumanitarianFacility } from "../lib/osm-facil
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
 import { defaultLayerState, type LayerState } from "../lib/layer-controller";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues, formatLength, formatReadoutValue, quantityText, type UnitSystem } from "../lib/units";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -265,6 +267,7 @@ function formatLocalizedPointProbeReport(
   report: PointProbeReport,
   t: Translate,
   formatNumber: FormatNumber,
+  unitSystem: UnitSystem,
 ): string {
   const fixed = (value: number, digits: number) => Number.isFinite(value)
     ? formatNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })
@@ -272,18 +275,18 @@ function formatLocalizedPointProbeReport(
   return [
     `${fixed(report.lat, 2)}°, ${fixed(report.lon, 2)}°`,
     t("globe.probe.rangeStatus", {
-      range: fixed(report.rangeM / 1_000, 1),
+      range: quantityText(formatLength(report.rangeM, formatNumber, unitSystem)),
       status: localizedProbeText(report.status, t),
     }),
     ...report.metrics.map((metric) =>
-      `${localizedMetricLabel(metric.label, t)}: ${localizedProbeText(metric.value, t)}`),
+      `${localizedMetricLabel(metric.label, t)}: ${formatReadoutValue(localizedProbeText(metric.value, t), formatNumber, unitSystem)}`),
     t("globe.probe.model", {
       model: localizedProbeText(report.governingModel, t),
       confidence: localizedProbeText(report.confidence, t),
     }),
     t("globe.probe.basis", { value: report.citations[0] ?? t("globe.probe.noCitation") }),
     t("globe.probe.assumption", {
-      value: localizedProbeText(report.assumptions[1] ?? report.assumptions[0] ?? t("globe.probe.notSupplied"), t),
+      value: formatEmbeddedLengthValues(localizedProbeText(report.assumptions[1] ?? report.assumptions[0] ?? t("globe.probe.notSupplied"), t), formatNumber, unitSystem),
     }),
     t("globe.probe.unknown", {
       value: localizedProbeText(report.unknowns[0] ?? t("globe.probe.notSupplied"), t),
@@ -420,6 +423,7 @@ export function Globe({
   layerState,
 }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const sceneLabel = accessibleSceneLabel ?? t("globe.unconfiguredScene");
   const sceneSummaryId = useId();
   const layers = layerState ?? defaultLayerState(domain);
@@ -904,7 +908,7 @@ export function Globe({
           interactionControllerRef.current !== interactionController ||
           inspectionPresenterRef.current !== inspectionPresenter
         ) return;
-        const text = formatLocalizedPointProbeReport(result, t, formatNumber);
+        const text = formatLocalizedPointProbeReport(result, t, formatNumber, unitSystem);
         onInspectionReport?.(result);
         inspectionPresenter.present({
           lat,
@@ -922,7 +926,7 @@ export function Globe({
         }));
         console.warn("[globe] inspect_at_point failed", error);
       });
-  }, [directHazardResultId, formatNumber, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport, t]);
+  }, [directHazardResultId, formatNumber, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport, t, unitSystem]);
 
   useEffect(() => {
     // A familiar-place probe must rerun when its governing source/result
@@ -1023,6 +1027,8 @@ export function Globe({
         hazardRings: hazardRingLayer.order,
         fallout: falloutLayer.order,
       },
+      unitSystem,
+      formatNumber,
     },
   );
 

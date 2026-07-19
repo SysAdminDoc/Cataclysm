@@ -11,6 +11,8 @@ import {
   type AsyncResult,
 } from "../lib/async-result";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatDepth, formatLength, quantityText } from "../lib/units";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -34,14 +36,9 @@ type Sample = { range_km: number; amplitude_m: number };
 const CURVE_SAMPLES = 80;
 const CURVE_MAX_RANGE_M = 10_000_000;
 
-function formatAxis(v: number, formatNumber: ReturnType<typeof useI18n>["formatNumber"]): string {
-  if (v >= 1000) return `${formatNumber(v / 1000, { maximumFractionDigits: 0 })}k`;
-  if (v >= 1) return formatNumber(v, { minimumFractionDigits: v < 10 ? 1 : 0, maximumFractionDigits: v < 10 ? 1 : 0 });
-  return formatNumber(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 export function AttenuationChart({ initial, isImpact, timeS, runupResults, movingPressure = false }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [curveResult, setCurveResult] = useState<AsyncResult<Sample[]>>({ status: "idle" });
   const curve = asyncResultValue(curveResult);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -212,12 +209,16 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
   const modelProvenance = isTauri()
     ? t("attenuation.provenanceDesktop")
     : t("attenuation.provenanceBrowser");
+  const amplitude = (meters: number) => formatLength(meters, formatNumber, unitSystem);
+  const distance = (kilometers: number) => formatLength(kilometers * 1000, formatNumber, unitSystem);
+  const amplitudeText = (meters: number) => quantityText(amplitude(meters));
+  const distanceText = (kilometers: number) => quantityText(distance(kilometers));
   const semanticRows: SemanticDataRow[] = [
     ...curve.map((sample, index) => ({
       series: t("attenuation.modeledDecay"),
-      selection: t("attenuation.distance", { value: formatNumber(sample.range_km, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }),
-      value: sample.amplitude_m.toPrecision(6),
-      unit: t("attenuation.unitAmplitude"),
+      selection: t("attenuation.distance", { value: distanceText(sample.range_km) }),
+      value: amplitude(sample.amplitude_m).value,
+      unit: amplitude(sample.amplitude_m).unit,
       significance: index === 0 ? t("attenuation.maximum") : index === curve.length - 1 ? t("attenuation.minimum") : index === nearestWavefrontIndex ? t("attenuation.nearestWavefront") : t("attenuation.sample"),
       confidence: t("attenuation.analyticalConfidence"),
       provenance: modelProvenance,
@@ -225,35 +226,35 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
     ...(wavefrontRange == null ? [] : [{
       series: t("attenuation.activeWavefront"),
       selection: t("attenuation.time", { value: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
-      value: wavefrontRange.toFixed(3),
-      unit: t("attenuation.unitDistance"),
+      value: distance(wavefrontRange).value,
+      unit: distance(wavefrontRange).unit,
       significance: t("attenuation.currentTimeline"),
       confidence: t("attenuation.kinematicConfidence"),
-      provenance: t("attenuation.wavefrontFormula", { depth: formatNumber(depth, { maximumFractionDigits: 0 }) }),
+      provenance: t("attenuation.wavefrontFormula", { depth: quantityText(formatDepth(depth, formatNumber, unitSystem)) }),
     }]),
     {
       series: t("attenuation.coastalThreshold"),
       selection: t("attenuation.arrivedOnly"),
       value: 0,
-      unit: t("attenuation.unitOffshore"),
+      unit: amplitude(0).unit,
       significance: t("attenuation.strictThreshold"),
       confidence: t("attenuation.displayFilter"),
       provenance: t("attenuation.runupProvenance"),
     },
     ...arrivedPoints.map((point) => ({
       series: t("attenuation.coastalSample", { name: point.name }),
-      selection: t("attenuation.distance", { value: formatNumber(point.range_km, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }),
-      value: point.amplitude_m.toPrecision(6),
-      unit: t("attenuation.unitOffshore"),
+      selection: t("attenuation.distance", { value: distanceText(point.range_km) }),
+      value: amplitude(point.amplitude_m).value,
+      unit: amplitude(point.amplitude_m).unit,
       significance: point === highestArrived ? t("attenuation.highestArrived") : t("attenuation.arrivedSample"),
       confidence: t("attenuation.coastalConfidence", { label: point.quantitative_label, confidence: point.quantitative_confidence }),
       provenance: `${point.slope_provenance.source}; ${point.depth_provenance.source}`,
     })),
   ];
   const semanticSummary = [
-    t("attenuation.summaryDecay", { maxAmp: formatNumber(maxAmp, { maximumSignificantDigits: 4 }), minRange: formatNumber(minRange, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), endAmp: formatNumber(curve[curve.length - 1].amplitude_m, { maximumSignificantDigits: 4 }), maxRange: formatNumber(maxRange, { maximumFractionDigits: 0 }) }),
-    wavefrontRange == null ? t("attenuation.summaryNoWavefront") : t("attenuation.summaryWavefront", { range: formatNumber(wavefrontRange, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), time: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
-    highestArrived ? t("attenuation.summaryArrived", { count: arrivedPoints.length, name: highestArrived.name, amplitude: formatNumber(highestArrived.amplitude_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }) : t("attenuation.summaryNoArrived"),
+    t("attenuation.summaryDecay", { maxAmp: amplitudeText(maxAmp), minRange: distanceText(minRange), endAmp: amplitudeText(curve[curve.length - 1].amplitude_m), maxRange: distanceText(maxRange) }),
+    wavefrontRange == null ? t("attenuation.summaryNoWavefront") : t("attenuation.summaryWavefront", { range: distanceText(wavefrontRange), time: formatNumber(timeS, { maximumFractionDigits: 0 }) }),
+    highestArrived ? t("attenuation.summaryArrived", { count: arrivedPoints.length, name: highestArrived.name, amplitude: amplitudeText(highestArrived.amplitude_m) }) : t("attenuation.summaryNoArrived"),
   ].join(" ");
 
   return (
@@ -278,7 +279,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
               <g key={`y-${logV}`}>
                 <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="var(--surface1)" strokeWidth={0.5} />
                 <text x={PAD_L - 6} y={y + 4} textAnchor="end" fill="var(--overlay0)" fontSize={12}>
-                  {formatAxis(10 ** logV, formatNumber)} m
+                  {amplitudeText(10 ** logV)}
                 </text>
               </g>
             );
@@ -287,7 +288,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
             const x = toX(10 ** logV);
             return (
               <text key={`x-${logV}`} x={x} y={H - 6} textAnchor="middle" fill="var(--overlay0)" fontSize={12}>
-                {formatAxis(10 ** logV, formatNumber)} km
+                {distanceText(10 ** logV)}
               </text>
             );
           })}
@@ -312,7 +313,7 @@ export function AttenuationChart({ initial, isImpact, timeS, runupResults, movin
               fill="var(--teal)"
               opacity={0.8}
             >
-              <title>{t("attenuation.pointTitle", { name: p.name, amplitude: formatNumber(p.amplitude_m, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), range: formatNumber(p.range_km, { maximumFractionDigits: 0 }) })}</title>
+              <title>{t("attenuation.pointTitle", { name: p.name, amplitude: amplitudeText(p.amplitude_m), range: distanceText(p.range_km) })}</title>
             </circle>
           ))}
         </svg>

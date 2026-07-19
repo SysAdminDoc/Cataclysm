@@ -10,6 +10,7 @@ import {
   provenanceSummary,
   type ModelProvenanceInput,
 } from "./model-provenance";
+import { formatEmbeddedLengthValues, formatEnergy, formatLength, formatReadoutValue, quantityText, type UnitSystem } from "./units";
 import { isTauri } from "./tauri";
 import {
   assertEarthOperationAllowed,
@@ -246,7 +247,7 @@ function stampProvenanceStrip(
   const pad = 16;
   const maxWidth = Math.max(120, canvas.width - pad * 2);
   const citation = p.citationUrl ? p.citationUrl : p.citationReference;
-  const line1 = `Cataclysm v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode}`;
+  const line1 = `Cataclysm v${p.appVersion} | ${p.generatedAt} | ${p.scenarioType} | ${p.solverMode} | Units ${p.unitSystem}`;
   const line2 = `${p.bathymetrySource} | ${citation} | ${p.limitation}`;
   const layerSummary = p.layerState.map((layer) => `${layer.id}:${layer.visible ? "on" : "off"}@${layer.opacityPct}%`).join(",") || "defaults";
   const line3 = `Layers ${layerSummary} | Evidence ${p.evidenceIds.join(", ") || "none"} | Earth assets ${p.assetRegistryVersion}: ${p.visualAssetIds.join(", ")} | ${attributions.join(" · ")}`;
@@ -346,6 +347,8 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
   const initialAmp = meta.initial?.peak_amplitude_m;
   const energyJ = meta.initial?.source_energy_j;
   const mwEq = meta.initial?.seismic_mw_equivalent;
+  const exportFormatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
+    new Intl.NumberFormat("en-US", options).format(value);
 
   ctx.fillStyle = "#cdd6f4";
   ctx.font = "bold 28px Inter, system-ui, sans-serif";
@@ -359,15 +362,14 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
   // Parameter strip on the right side of the header.
   const params: string[] = [];
   if (initialAmp !== undefined && Number.isFinite(initialAmp)) {
-    params.push(`A₀ ${initialAmp.toFixed(1)} m`);
+    params.push(`A₀ ${quantityText(formatLength(initialAmp, exportFormatNumber, provenance.unitSystem))}`);
   }
   if (mwEq !== undefined && Number.isFinite(mwEq)) {
     params.push(`M_w ≈ ${mwEq.toFixed(1)}`);
   }
   if (energyJ !== undefined && Number.isFinite(energyJ)) {
-    const mt = energyJ / 4.184e15;
-    if (mt >= 1) params.push(`E ≈ ${mt.toFixed(1)} Mt TNT`);
-    else if (mt >= 1e-3) params.push(`E ≈ ${(mt * 1000).toFixed(1)} kt TNT`);
+    const energy = formatEnergy(energyJ, exportFormatNumber, provenance.unitSystem);
+    params.push(`E ≈ ${quantityText(energy)}${energy.anchor ? ` (${energy.anchor})` : ""}`);
   }
   ctx.fillStyle = "#89b4fa";
   ctx.font = "bold 16px Inter, system-ui, sans-serif";
@@ -393,7 +395,7 @@ export function exportGlobeShareCard(meta: ScreenshotMeta): ExportResult {
   ctx.font = "12px Inter, system-ui, sans-serif";
   ctx.textBaseline = "top";
   ctx.fillText(
-    `Cataclysm v${provenance.appVersion} | Layers ${provenance.layerState.filter((layer) => layer.visible).map((layer) => layer.id).join(", ") || "defaults"} | ${provenance.generatedAt} | ${provenance.solverMode}`,
+    `Cataclysm v${provenance.appVersion} | Units ${provenance.unitSystem} | Layers ${provenance.layerState.filter((layer) => layer.visible).map((layer) => layer.id).join(", ") || "defaults"} | ${provenance.generatedAt} | ${provenance.solverMode}`,
     24,
     H - FOOTER_H + 10,
   );
@@ -495,11 +497,11 @@ export function exportComparisonPng(opts: ComparisonExportMeta): ExportResult {
   ctx.textAlign = "left";
   ctx.fillStyle = "#cdd6f4";
   ctx.fillText(
-    `A: ${provA.scenarioName} | ${provA.scenarioType}`,
+    `A: ${provA.scenarioName} | ${provA.scenarioType} | Units ${provA.unitSystem}`,
     12, H - FOOTER_H + 8,
   );
   ctx.fillText(
-    `B: ${provB.scenarioName} | ${provB.scenarioType}`,
+    `B: ${provB.scenarioName} | ${provB.scenarioType} | Units ${provB.unitSystem}`,
     12, H - FOOTER_H + 26,
   );
   ctx.textAlign = "right";
@@ -624,7 +626,11 @@ export async function exportGlobeVideo(
     if (blob.size === 0) {
       return exportFailure("codec", "The video encoder produced an empty recording.", true);
     }
-    const download = downloadBlob(blob, suggestedFilename(meta, mime.ext));
+    const displayUnitSystem = meta.unitSystem ?? "metric";
+    const download = downloadBlob(
+      blob,
+      suggestedFilename(meta, mime.ext).replace(`.${mime.ext}`, `-${displayUnitSystem}.${mime.ext}`),
+    );
     if (!download.ok) return download;
     return { ok: true, ext: mime.ext, size: blob.size };
   } catch (error) {
@@ -689,12 +695,26 @@ function directHazardProperties(meta: ScreenshotMeta, data: DirectHazardExportDa
     evidence_ids: provenance.evidenceIds,
     layer_state: provenance.layerState,
     generated_at: provenance.generatedAt,
+    display_unit_system: provenance.unitSystem,
     model_version: data.result.modelVersion,
     scenario: provenance.scenarioName,
     scenario_type: provenance.scenarioType,
     solver_mode: provenance.solverMode,
     limitation: provenance.limitation,
   };
+}
+
+const EXPORT_NUMBER_FORMATTER = (value: number, options?: Intl.NumberFormatOptions) =>
+  new Intl.NumberFormat("en-US", options).format(value);
+
+function directHazardDisplayReadout(data: DirectHazardExportData, unitSystem: UnitSystem) {
+  return data.result.readout.map((item) => ({
+    ...item,
+    value: formatReadoutValue(item.value, EXPORT_NUMBER_FORMATTER, unitSystem),
+    hint: item.hint
+      ? formatEmbeddedLengthValues(item.hint, EXPORT_NUMBER_FORMATTER, unitSystem)
+      : item.hint,
+  }));
 }
 
 export function buildDirectHazardGeoJson(meta: ScreenshotMeta, data: DirectHazardExportData) {
@@ -707,7 +727,7 @@ export function buildDirectHazardGeoJson(meta: ScreenshotMeta, data: DirectHazar
         ...common,
         kind: "effects_origin",
         casualties: data.result.casualties ?? null,
-        readout: data.result.readout,
+        readout: directHazardDisplayReadout(data, meta.unitSystem ?? "metric"),
       },
       geometry: { type: "Point" as const, coordinates: [round5(center.lon), round5(center.lat)] },
     },
@@ -768,7 +788,7 @@ export function buildDirectHazardCzml(meta: ScreenshotMeta, data: DirectHazardEx
       id: "effects-origin",
       name: `${provenance.scenarioName} — Effects origin`,
       description: `${data.result.modelVersion}; ${provenance.limitation}`,
-      properties: { ...common, casualties: data.result.casualties ?? null, readout: data.result.readout },
+      properties: { ...common, casualties: data.result.casualties ?? null, readout: directHazardDisplayReadout(data, provenance.unitSystem) },
       position: { cartographicDegrees: [center.lon, center.lat, 0] },
       point: {
         pixelSize: 10,
@@ -780,7 +800,9 @@ export function buildDirectHazardCzml(meta: ScreenshotMeta, data: DirectHazardEx
     ...data.result.rings.map((ring, index) => ({
       id: `effect-ring-${index + 1}`,
       name: ring.label,
-      description: ring.description ?? `${ring.category} threshold at ${ring.radiusM} m`,
+      description: ring.description
+        ? formatEmbeddedLengthValues(ring.description, EXPORT_NUMBER_FORMATTER, provenance.unitSystem)
+        : `${ring.category} threshold at ${quantityText(formatLength(ring.radiusM, EXPORT_NUMBER_FORMATTER, provenance.unitSystem))}`,
       properties: { ...common, category: ring.category, radius_m: ring.radiusM, color: ring.color },
       position: { cartographicDegrees: [center.lon, center.lat, 0] },
       ellipse: {
@@ -811,6 +833,7 @@ export function buildDirectHazardCzml(meta: ScreenshotMeta, data: DirectHazardEx
 export function buildDirectHazardKml(meta: ScreenshotMeta, data: DirectHazardExportData): string {
   const provenance = buildModelProvenance(meta);
   const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
+  const length = (meters: number) => quantityText(formatLength(meters, EXPORT_NUMBER_FORMATTER, provenance.unitSystem));
   const center = data.result.center;
   const ringPlacemarks = data.result.rings.map((ring) => {
     const coordinates = circlePolygon(center.lat, center.lon, ring.radiusM, 72)
@@ -819,7 +842,7 @@ export function buildDirectHazardKml(meta: ScreenshotMeta, data: DirectHazardExp
     return `
     <Placemark>
       <name>${escapeXml(ring.label)}</name>
-      <description>${escapeXml(`${ring.description ?? ring.category}\nRadius: ${ring.radiusM} m\nModel: ${data.result.modelVersion}`)}</description>
+      <description>${escapeXml(`${ring.description ? formatEmbeddedLengthValues(ring.description, EXPORT_NUMBER_FORMATTER, provenance.unitSystem) : ring.category}\nRadius: ${length(ring.radiusM)}\nModel: ${data.result.modelVersion}`)}</description>
       <ExtendedData><Data name="category"><value>${escapeXml(ring.category)}</value></Data><Data name="radius_m"><value>${ring.radiusM}</value></Data></ExtendedData>
       <Style><LineStyle><color>${kmlColor(ring.color, "dd")}</color><width>2</width></LineStyle><PolyStyle><color>${kmlColor(ring.color)}</color></PolyStyle></Style>
       <Polygon><outerBoundaryIs><LinearRing><coordinates>${coordinates}</coordinates></LinearRing></outerBoundaryIs></Polygon>
@@ -840,6 +863,7 @@ export function buildDirectHazardKml(meta: ScreenshotMeta, data: DirectHazardExp
 <Document>
   <name>Cataclysm — ${escapeXml(provenance.scenarioName)}</name>
   <description>${escapeXml(provenanceText)}</description>
+  <ExtendedData><Data name="display_unit_system"><value>${provenance.unitSystem}</value></Data></ExtendedData>
   <Placemark>
     <name>${escapeXml(provenance.scenarioName)} — Effects origin</name>
     <description>${escapeXml(`${data.result.modelVersion}; ${provenance.limitation}`)}</description>
@@ -912,6 +936,7 @@ export function exportCzml(
     evidenceIds: provenance.evidenceIds,
     layerState: provenance.layerState,
     generatedAt: provenance.generatedAt,
+    displayUnitSystem: provenance.unitSystem,
     scenarioType: provenance.scenarioType,
     solverMode: provenance.solverMode,
     solverAssetIds: provenance.solverAssetIds,
@@ -1093,6 +1118,7 @@ export function exportGeoJson(
       evidence_ids: provenance.evidenceIds,
       layer_state: provenance.layerState,
       generated_at: provenance.generatedAt,
+      display_unit_system: provenance.unitSystem,
       geometry_notice: "First-order circular inundation discs from runup and beach-slope estimates.",
       model_notice: provenance.limitation,
       scenario: provenance.scenarioName,
@@ -1133,6 +1159,7 @@ export function exportKml(
   try {
   const provenance = buildModelProvenance(meta);
   const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
+  const length = (meters: number) => quantityText(formatLength(meters, EXPORT_NUMBER_FORMATTER, provenance.unitSystem));
   const name = provenance.scenarioName;
   const center = meta.initial?.center;
   const cavityR = meta.initial?.cavity_radius_m ?? 0;
@@ -1154,7 +1181,7 @@ export function exportKml(
       const coords = ring.map(([lon, lat]) => `${lon},${lat},0`).join(" ");
       sourcePlacemarks.push(`
     <Placemark>
-      <name>Source cavity (r=${Math.round(cavityR / 1000)} km)</name>
+      <name>Source cavity (r=${escapeXml(length(cavityR))})</name>
       <Style><LineStyle><color>ff4444ff</color><width>2</width></LineStyle>
       <PolyStyle><color>334444ff</color></PolyStyle></Style>
       <Polygon><outerBoundaryIs><LinearRing>
@@ -1169,7 +1196,7 @@ export function exportKml(
     runupPlacemarks.push(`
     <Placemark>
       <name>${escapeXml(p.name)}</name>
-      <description>${escapeXml(`Runup: ~${p.runup_m.toFixed(1)} m\nArrival: T+${Math.round(p.arrival_time_s / 60)} min\nInundation: ${Math.round(p.inundation_extent_m)} m\n${p.quantitative_label}; ${p.quantitative_confidence} confidence\nSlope: ${p.beach_slope_deg} deg (${p.slope_provenance.sample_id}; ${p.slope_provenance.record_id})\nDepth: ${p.offshore_depth_m} m (${p.depth_provenance.sample_id}; ${p.depth_provenance.record_id})`)}</description>
+      <description>${escapeXml(`Runup: ~${length(p.runup_m)}\nArrival: T+${Math.round(p.arrival_time_s / 60)} min\nInundation: ${length(p.inundation_extent_m)}\n${p.quantitative_label}; ${p.quantitative_confidence} confidence\nSlope: ${p.beach_slope_deg} deg (${p.slope_provenance.sample_id}; ${p.slope_provenance.record_id})\nDepth: ${length(p.offshore_depth_m)} (${p.depth_provenance.sample_id}; ${p.depth_provenance.record_id})`)}</description>
       <ExtendedData>
         <Data name="slope_record_id"><value>${escapeXml(p.slope_provenance.record_id)}</value></Data>
         <Data name="depth_record_id"><value>${escapeXml(p.depth_provenance.record_id)}</value></Data>
@@ -1190,6 +1217,7 @@ export function exportKml(
 <Document>
   <name>Cataclysm — ${escapeXml(name)}</name>
   <description>${escapeXml(provenanceText)}</description>
+  <ExtendedData><Data name="display_unit_system"><value>${provenance.unitSystem}</value></Data></ExtendedData>
   <Folder>
     <name>Source</name>${sourcePlacemarks.join("")}
   </Folder>
@@ -1226,7 +1254,7 @@ function normaliseLon(lon: number): number {
   return wrapped === -180 && lon > 0 ? 180 : wrapped;
 }
 
-export function exportRunupCsv(points: RunupPoint[]): ExportResult {
+export function exportRunupCsv(points: RunupPoint[], unitSystem: UnitSystem = "metric"): ExportResult {
   if (points.length === 0) return exportFailure("data", "No coastal runup points are available for CSV export.", true);
   try {
   const text = (value: string | null) => encodeSpreadsheetSafeCsvText(value ?? "");
@@ -1240,6 +1268,7 @@ export function exportRunupCsv(points: RunupPoint[]): ExportResult {
     "depth_sample_id", "depth_record_id", "depth_source", "depth_source_url", "depth_method",
     "depth_datum", "depth_resolution", "depth_observed_or_published", "depth_confidence",
     "depth_uncertainty_value", "depth_uncertainty_unit", "depth_uncertainty_basis", "depth_placeholder",
+    "display_unit_system",
   ];
   const rows = [header.join(",")];
   for (const point of points) {
@@ -1256,7 +1285,7 @@ export function exportRunupCsv(points: RunupPoint[]): ExportResult {
       slope.placeholder, text(depth.sample_id), text(depth.record_id), text(depth.source),
       text(depth.source_url), text(depth.method), text(depth.datum), text(depth.resolution),
       text(depth.observed_or_published), text(depth.confidence), depth.uncertainty_value ?? "",
-      text(depth.uncertainty_unit), text(depth.uncertainty_basis), depth.placeholder,
+      text(depth.uncertainty_unit), text(depth.uncertainty_basis), depth.placeholder, text(unitSystem),
     ].join(","));
   }
   const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
@@ -1271,13 +1300,14 @@ export function exportGaugeCsv(
   solverMode: string,
   bathymetrySource: string,
   runQuality?: import("../types/scenario").RunQualityRecord | null,
+  unitSystem: UnitSystem = "metric",
 ): ExportResult {
   if (series.length === 0) return exportFailure("data", "No gauge samples are available for CSV export.", true);
   const quality = preflightRunQuality({ runQuality });
   if (!quality.ok) return exportFailure("preflight", quality.reason, false);
 
   try {
-  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct";
+  const header = "gauge_name,lat_deg,lon_deg,time_s,eta_m,solver_mode,bathymetry_source,horizontal_crs,vertical_datum,vertical_axis,run_quality,cfl_number,mass_drift_pct,energy_drift_pct,display_unit_system";
   const rows: string[] = [header];
   for (const ts of series) {
     const name = encodeSpreadsheetSafeCsvText(ts.gauge.name);
@@ -1288,7 +1318,7 @@ export function exportGaugeCsv(
     for (const s of ts.samples) {
       rows.push(
         `${name},${lat},${lon},${s.time_s.toFixed(1)},${s.eta_m.toFixed(4)},${mode},${bathy},` +
-          `EPSG:4326,idealized_mean_sea_level,positive_up,${runQuality?.status ?? "unavailable"},${runQuality?.cfl_number ?? ""},${runQuality?.mass_drift_pct ?? ""},${runQuality?.energy_drift_pct ?? ""}`,
+          `EPSG:4326,idealized_mean_sea_level,positive_up,${runQuality?.status ?? "unavailable"},${runQuality?.cfl_number ?? ""},${runQuality?.mass_drift_pct ?? ""},${runQuality?.energy_drift_pct ?? ""},${unitSystem}`,
       );
     }
   }

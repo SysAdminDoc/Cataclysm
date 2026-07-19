@@ -3,6 +3,8 @@ import { buildSourceEvidence } from "../lib/trust-evidence";
 import { TrustDisclosure } from "./TrustDisclosure";
 import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatDepth, formatEmbeddedLengthValues, formatLength, formatSpeed, formatVolume, quantityText, type UnitSystem } from "../lib/units";
 
 type Props = {
   preset: Preset | null;
@@ -17,7 +19,7 @@ function formatCoord(value: number, positive: string, negative: string): string 
 type Translate = ReturnType<typeof useI18n>["t"];
 type FormatNumber = ReturnType<typeof useI18n>["formatNumber"];
 
-function formatSource(preset: Preset | null, t: Translate, formatNumber: FormatNumber): { type: string; magnitude: string; model: string } {
+function formatSource(preset: Preset | null, t: Translate, formatNumber: FormatNumber, unitSystem: UnitSystem): { type: string; magnitude: string; model: string } {
   if (!preset) return { type: t("source.custom"), magnitude: t("source.scenarioDefined"), model: t("source.cataclysmModel") };
   const { source } = preset;
   if (source.kind === "Earthquake") {
@@ -26,7 +28,7 @@ function formatSource(preset: Preset | null, t: Translate, formatNumber: FormatN
   if (source.kind === "Asteroid") {
     return {
       type: t("source.asteroidImpact"),
-      magnitude: `${formatNumber(source.source.diameter_m)} m · ${formatNumber(source.source.velocity_m_s / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km/s`,
+      magnitude: `${quantityText(formatLength(source.source.diameter_m, formatNumber, unitSystem))} · ${quantityText(formatSpeed(source.source.velocity_m_s, formatNumber, unitSystem))}`,
       model: t("source.wardAsphaugModel"),
     };
   }
@@ -40,19 +42,20 @@ function formatSource(preset: Preset | null, t: Translate, formatNumber: FormatN
   if (source.kind === "Meteotsunami") {
     return {
       type: t("source.meteotsunami"),
-      magnitude: `${formatNumber(source.source.peak_pressure_pa)} Pa · ${formatNumber(source.source.speed_m_s, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m/s`,
+      magnitude: `${formatNumber(source.source.peak_pressure_pa)} Pa · ${quantityText(formatSpeed(source.source.speed_m_s, formatNumber, unitSystem))}`,
       model: t("source.pressureGradientModel"),
     };
   }
   return {
     type: source.source.kind === "Subaerial" ? t("source.subaerialLandslide") : t("source.submarineLandslide"),
-    magnitude: t("source.volumeMillion", { value: formatNumber(source.source.volume_m3 / 1e6, { maximumFractionDigits: 1 }) }),
+    magnitude: t("source.volumeMillion", { value: quantityText(formatVolume(source.source.volume_m3, formatNumber, unitSystem)) }),
     model: source.source.kind === "Subaerial" ? t("source.fritzHagerModel") : t("source.wattsModel"),
   };
 }
 
 export function SourceModelSummary({ preset, initial, onEdit }: Props) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   if (!initial) {
     return (
       <section className="source-model" data-ready="false" aria-label={t("source.model")}>
@@ -71,7 +74,7 @@ export function SourceModelSummary({ preset, initial, onEdit }: Props) {
     );
   }
 
-  const source = formatSource(preset, t, formatNumber);
+  const source = formatSource(preset, t, formatNumber, unitSystem);
   const depth = initial.center.depth_m ?? 0;
   const confidence = preset?.is_speculative ? t("source.scenarioConfidence") : t("source.referenceConfidence");
   const evidence = buildSourceEvidence(preset, initial, preset?.source.kind ?? null);
@@ -85,14 +88,14 @@ export function SourceModelSummary({ preset, initial, onEdit }: Props) {
         </span>
       </div>
       <dl className="source-model__rows">
-        <div><dt>{t("source.scenario")}</dt><dd>{preset?.name ?? initial.label}</dd></div>
+        <div><dt>{t("source.scenario")}</dt><dd>{preset?.name ?? formatEmbeddedLengthValues(initial.label, formatNumber, unitSystem)}</dd></div>
         <div><dt>{t("source.eventType")}</dt><dd>{source.type}</dd></div>
         {preset?.date && <div><dt>{t("source.date")}</dt><dd>{preset.date}</dd></div>}
         <div>
           <dt>{t("source.location")}</dt>
           <dd>{formatCoord(initial.center.lat_deg, "N", "S")}, {formatCoord(initial.center.lon_deg, "E", "W")}</dd>
         </div>
-        <div><dt>{t("source.depth")}</dt><dd>{depth >= 1000 ? `${formatNumber(depth / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km` : `${formatNumber(depth, { maximumFractionDigits: 0 })} m`}</dd></div>
+        <div><dt>{t("source.depth")}</dt><dd>{quantityText(formatDepth(depth, formatNumber, unitSystem))}</dd></div>
         <div><dt>{t("source.magnitude")}</dt><dd>{source.magnitude}</dd></div>
         <div><dt>{t("source.model")}</dt><dd>{source.model}</dd></div>
       </dl>

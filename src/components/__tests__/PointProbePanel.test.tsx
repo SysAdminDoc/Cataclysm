@@ -62,6 +62,13 @@ describe("PointProbePanel", () => {
     expect(screen.getByText("地点プローブ")).toBeInTheDocument();
     expect(screen.getByText("説明可能")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "プローブCSVをエクスポート" })).toBeInTheDocument();
-    expect(screen.getByText(/震源から 30\.0 km/)).toBeInTheDocument();
+    expect(screen.getByText(/震源から 30 km/)).toBeInTheDocument();
+  });
+
+  it("converts probe assumptions and range in imperial mode", async () => {
+    localStorage.setItem("tsunamisim.units", JSON.stringify("imperial"));
+    render(<PointProbePanel primary={{ ...REPORT, assumptions: ["Nominal 50 m depth"] }} />);
+    expect(await screen.findByText(/18\.6 mi from source/)).toBeInTheDocument();
+    expect(screen.getByText(/Nominal 164 ft depth/)).toBeInTheDocument();
   });
 });

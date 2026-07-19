@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HazardControls } from "../HazardControls";
@@ -179,9 +179,36 @@ describe("HazardControls", () => {
     await user.click(screen.getByText("Shelter screening by effect zone"));
     const table = screen.getByRole("region", { name: "Shelter screening table" });
     expect(table).toHaveAttribute("tabindex", "0");
-    expect(screen.getByRole("columnheader", { name: /5 psi zone 3\.0 km/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /5 psi zone 3 km/ })).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "Deep underground" })).toBeInTheDocument();
     expect(screen.getByText(/not personal survival odds/i)).toBeInTheDocument();
+  });
+
+  it("converts direct-hazard readouts, rings, density, and shelter ranges to imperial", async () => {
+    localStorage.setItem("tsunamisim.units", JSON.stringify("imperial"));
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={nuclearResult}
+        shelterReport={shelterReport}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getAllByText("0.2 mi").length).toBeGreaterThanOrEqual(2));
+    expect(screen.getByText(/12,950 people\/mi²/)).toBeInTheDocument();
+    expect(screen.queryByText("300 m")).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /5 psi zone 1\.9 mi/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /High-altitude EMP \(248\.5 mi\)/ })).toBeInTheDocument();
   });
 
   it("renders accessible Rust-authoritative asteroid trajectory and crater diagrams", () => {
@@ -206,7 +233,7 @@ describe("HazardControls", () => {
     expect(screen.getByRole("heading", { name: "Impact profile" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Atmospheric entry trajectory/ })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Modeled crater cross-section/ })).toBeInTheDocument();
-    expect(screen.getByText(/3\.0 km diameter/)).toBeInTheDocument();
+    expect(screen.getByText(/3 km diameter/)).toBeInTheDocument();
     expect(screen.getByText(/browser only draws the returned values/i)).toBeInTheDocument();
   });
 

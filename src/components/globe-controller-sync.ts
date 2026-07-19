@@ -14,6 +14,7 @@ import type { StaticHazardController } from "../render/cesium/static-hazards";
 import type { TsunamiAnalyticalController } from "../render/cesium/tsunami-analytical";
 import type { TsunamiSourceController } from "../render/cesium/tsunami-source";
 import type { ViewerLifecycle } from "../render/cesium/viewer-lifecycle";
+import { formatLength, quantityText, type UnitSystem } from "../lib/units";
 
 type PreviewCamera = Readonly<{
   targetLat: number;
@@ -74,6 +75,8 @@ type ControllerState = Readonly<{
     hazardRings: number;
     fallout: number;
   }>;
+  unitSystem: UnitSystem;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
 }>;
 
 export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerState) {
@@ -105,11 +108,16 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
     layerOpacity,
     showDirectSource,
     layerOrder,
+    unitSystem,
+    formatNumber,
   } = state;
 
   useEffect(() => {
     tsunamiSourceControllerRef.current?.update({
-      source: initial,
+      source: initial ? {
+        ...initial,
+        display_peak_amplitude: quantityText(formatLength(initial.peak_amplitude_m, formatNumber, unitSystem)),
+      } : null,
       reference_capture: referenceCaptureEnabled(),
       reduced_motion:
         typeof window !== "undefined"
@@ -117,7 +125,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       layer_opacity: layerOpacity?.source,
       layer_order: layerOrder?.source,
     });
-  }, [initial, layerOpacity?.source, layerOrder?.source, tsunamiSourceControllerRef, viewerEpoch]);
+  }, [formatNumber, initial, layerOpacity?.source, layerOrder?.source, tsunamiSourceControllerRef, unitSystem, viewerEpoch]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -248,6 +256,8 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         quantitative_label: result.quantitative_label,
         slope_record_id: result.slope_provenance.record_id,
         depth_record_id: result.depth_provenance.record_id,
+        display_runup: quantityText(formatLength(result.runup_m, formatNumber, unitSystem)),
+        display_offshore: quantityText(formatLength(result.offshore_amplitude_m, formatNumber, unitSystem)),
       })),
       (gauges ?? []).map((gauge) => ({
         id: gauge.id,
@@ -258,5 +268,5 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       layerOpacity?.runup,
       layerOpacity?.runup,
     );
-  }, [gauges, layerOpacity?.runup, runupOverlayControllerRef, runupResults, viewerEpoch]);
+  }, [formatNumber, gauges, layerOpacity?.runup, runupOverlayControllerRef, runupResults, unitSystem, viewerEpoch]);
 }

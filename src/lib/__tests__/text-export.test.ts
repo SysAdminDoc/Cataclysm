@@ -64,7 +64,8 @@ describe("generateTextExport", () => {
       initial: MOCK_INITIAL,
       timeS: 0,
     });
-    expect(report).toContain("1500");
+    expect(report).toContain("Maximum source displacement: 1.5 km");
+    expect(report).toContain("Display unit system: metric");
   });
 
   it("handles missing initial gracefully", () => {

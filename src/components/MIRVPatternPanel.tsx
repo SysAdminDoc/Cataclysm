@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildMirvPreview, MIRV_PRESETS, type MirvPreview } from "../lib/mirv";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, quantityText } from "../lib/units";
 
 export function MIRVPatternPanel({
   center,
@@ -14,6 +16,7 @@ export function MIRVPatternPanel({
   onApplyYield: (yieldKt: number) => void;
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [presetId, setPresetId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const preset = useMemo(() => MIRV_PRESETS.find((candidate) => candidate.id === presetId) ?? null, [presetId]);
@@ -35,11 +38,11 @@ export function MIRVPatternPanel({
         : message.includes("requires 1–20")
           ? t("mirv.error.warheads")
           : message.includes("spread must be")
-            ? t("mirv.error.spread")
+            ? t("mirv.error.spread", { maximum: quantityText(formatLength(100_000, formatNumber, unitSystem)) })
             : message);
     }
     return () => onPreviewChange(null);
-  }, [center, onPreviewChange, preset, t]);
+  }, [center, formatNumber, onPreviewChange, preset, t, unitSystem]);
 
   return (
     <section className="section mirv" aria-labelledby="mirv-title">
@@ -68,7 +71,7 @@ export function MIRVPatternPanel({
           <div className="mirv__summary">
             <div><span>{t("mirv.pattern")}</span><strong>{t(`mirv.pattern.${preview.preset.pattern}` as Parameters<typeof t>[0])}</strong></div>
             <div><span>{t("mirv.warheads")}</span><strong>{formatNumber(preview.points.length)}</strong></div>
-            <div><span>{t("mirv.spread")}</span><strong>{formatNumber(preview.preset.spreadKm)} km</strong></div>
+            <div><span>{t("mirv.spread")}</span><strong>{quantityText(formatLength(preview.preset.spreadKm * 1000, formatNumber, unitSystem))}</strong></div>
             <div><span>{t("mirv.perWarhead")}</span><strong>{formatNumber(preview.preset.yieldKt)} kT</strong></div>
           </div>
           <button type="button" onClick={() => onApplyYield(preview.preset.yieldKt)}>{t("mirv.useYield")}</button>

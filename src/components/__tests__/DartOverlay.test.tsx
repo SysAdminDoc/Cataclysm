@@ -96,13 +96,13 @@ describe("DartOverlay RMSE", () => {
     ]);
     expect(firstCall.observations.length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText(/observed peak 1\.30 m · model peak 0\.98 m/, {
+      screen.getAllByText(/observed peak 1\.3 m · model peak 0\.98 m/, {
         selector: ".dart__rmse span",
       }).length,
     ).toBe(3);
     expect(screen.getAllByText(/overlap 0 min–60 min · 12 paired samples/)).toHaveLength(3);
     expect(screen.getAllByText(/observed 10 min · model 15 min · residual \+5 min/, { selector: ".dart__rmse span" })).toHaveLength(3);
-    expect(screen.getAllByText(/threshold 3 cm; noise: fixed 0\.03 m NOAA/, { selector: ".dart__rmse span" })).toHaveLength(3);
+    expect(screen.getAllByText(/threshold 3 cm; noise: fixed 3 cm NOAA/, { selector: ".dart__rmse span" })).toHaveLength(3);
     expect(screen.getByText("SWE model")).toBeInTheDocument();
     expect(screen.getByText("Arrival markers")).toBeInTheDocument();
     for (const chart of screen.getAllByRole("img", { name: /DART water level/ })) {
@@ -111,7 +111,7 @@ describe("DartOverlay RMSE", () => {
     }
     expect(
       screen.getAllByRole("img", {
-        name: /observed 0\.00 m at the timeline cursor; model 0\.10 m at the timeline cursor/,
+        name: /observed 0 m at the timeline cursor; model 0\.1 m at the timeline cursor/,
       }),
     ).toHaveLength(3);
   });

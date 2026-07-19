@@ -4,6 +4,8 @@ import { hypotheticalImpactFromApproach, loadCloseApproaches } from "../lib/jpl"
 import { useI18n } from "../lib/i18n";
 import type { HypotheticalImpactDraft, NeoApproachFeed, NeoCloseApproach } from "../types/jpl";
 import { UiIcon } from "./UiIcon";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, formatSpeed, quantityText } from "../lib/units";
 
 const AU_KM = 149_597_870.7;
 const LUNAR_DISTANCE_KM = 384_400;
@@ -53,6 +55,7 @@ function ApproachDiagram({ approach }: { approach: NeoCloseApproach }) {
 
 export function PlanetaryDefensePanel({ onTryHypotheticalImpact }: Props) {
   const { t, formatNumber, languageTag } = useI18n();
+  const unitSystem = useUnits();
   const [feed, setFeed] = useState<NeoApproachFeed | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -87,20 +90,20 @@ export function PlanetaryDefensePanel({ onTryHypotheticalImpact }: Props) {
   const size = (approach: NeoCloseApproach) => {
     if (approach.diameterMaxM <= 0) return t("pd.sizeUnknown");
     return t("pd.sizeRange", {
-      min: formatNumber(approach.diameterMinM, { maximumFractionDigits: 0 }),
-      max: formatNumber(approach.diameterMaxM, { maximumFractionDigits: 0 }),
+      min: quantityText(formatLength(approach.diameterMinM, formatNumber, unitSystem)),
+      max: quantityText(formatLength(approach.diameterMaxM, formatNumber, unitSystem)),
     });
   };
   const distance = (approach: NeoCloseApproach) => {
     const km = approach.nominalDistanceAu * AU_KM;
     return t("pd.distanceValue", {
       lunar: formatNumber(km / LUNAR_DISTANCE_KM, { maximumFractionDigits: 2 }),
-      km: formatNumber(km, { maximumFractionDigits: 0 }),
+      distance: quantityText(formatLength(km * 1000, formatNumber, unitSystem)),
     });
   };
   const distanceRange = (approach: NeoCloseApproach) => t("pd.distanceRange", {
-    min: formatNumber(approach.minimumDistanceAu * AU_KM, { maximumFractionDigits: 0 }),
-    max: formatNumber(approach.maximumDistanceAu * AU_KM, { maximumFractionDigits: 0 }),
+    min: quantityText(formatLength(approach.minimumDistanceAu * AU_KM * 1000, formatNumber, unitSystem)),
+    max: quantityText(formatLength(approach.maximumDistanceAu * AU_KM * 1000, formatNumber, unitSystem)),
   });
   const renderApproaches = (approaches: NeoCloseApproach[]) => (
     <div className="planetary-defense__list">
@@ -113,7 +116,7 @@ export function PlanetaryDefensePanel({ onTryHypotheticalImpact }: Props) {
           <dl>
             <div><dt>{t("pd.size")}</dt><dd>{size(approach)}</dd></div>
             <div><dt>{t("pd.missDistance")}</dt><dd>{distance(approach)}</dd></div>
-            <div><dt>{t("pd.velocity")}</dt><dd>{t("pd.velocityValue", { value: formatNumber(approach.relativeVelocityKmS, { maximumFractionDigits: 1 }) })}</dd></div>
+            <div><dt>{t("pd.velocity")}</dt><dd>{t("pd.velocityValue", { value: quantityText(formatSpeed(approach.relativeVelocityKmS * 1000, formatNumber, unitSystem)) })}</dd></div>
             <div><dt>{t("pd.uncertainty")}</dt><dd>{approach.timeUncertainty || t("pd.notSupplied")}</dd></div>
           </dl>
           <p>{t("pd.closeNotImpact")}</p>

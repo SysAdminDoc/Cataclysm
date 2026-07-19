@@ -11,6 +11,8 @@ import {
 import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { useUnits } from "../hooks/useUnits";
+import { formatDepth, formatEmbeddedLengthValues, quantityText } from "../lib/units";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -39,6 +41,7 @@ function formatBytes(bytes: number, formatNumber: NumberFormatter): string {
 
 function Preview({ report }: { report: BathymetryPreflight }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const semantics = report.sample_semantics === "depth_positive_down"
     ? t("bathy.semantics.depth")
     : t("bathy.semantics.elevation");
@@ -55,7 +58,7 @@ function Preview({ report }: { report: BathymetryPreflight }) {
         <div><dt>{t("bathy.resampling")}</dt><dd>{t("bathy.noResampling")}</dd></div>
         <div><dt>CRS</dt><dd>{report.horizontal_crs} · {report.vertical_datum}</dd></div>
         <div><dt>{t("bathy.verticalValues")}</dt><dd>{semantics} · {report.units}</dd></div>
-        <div><dt>{t("bathy.depthRange")}</dt><dd>{formatNumber(report.min_depth_m)}–{formatNumber(report.max_depth_m)} m</dd></div>
+        <div><dt>{t("bathy.depthRange")}</dt><dd>{quantityText(formatDepth(report.min_depth_m, formatNumber, unitSystem))}–{quantityText(formatDepth(report.max_depth_m, formatNumber, unitSystem))}</dd></div>
         <div><dt>{t("bathy.noData")}</dt><dd>{formatNumber(report.nodata_cell_count)} {t("bathy.cells")}{report.nodata === null ? ` · ${t("bathy.noSentinel")}` : ` · ${formatNumber(report.nodata)}`}</dd></div>
         <div><dt>{t("bathy.wetDry")}</dt><dd>{formatNumber(report.wet_cell_count)} / {formatNumber(report.dry_cell_count)} {t("bathy.cells")}</dd></div>
         <div><dt>SHA-256</dt><dd><code>{report.sha256}</code></dd></div>
@@ -64,7 +67,7 @@ function Preview({ report }: { report: BathymetryPreflight }) {
       </dl>
       {report.warnings.length > 0 && (
         <div className="settings__status" data-tone="warning" role="status">
-          {report.warnings.join(" ")}
+          {report.warnings.map((warning) => formatEmbeddedLengthValues(warning, formatNumber, unitSystem)).join(" ")}
         </div>
       )}
     </div>

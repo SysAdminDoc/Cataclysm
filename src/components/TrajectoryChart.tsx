@@ -1,6 +1,8 @@
 import { useId } from "react";
 import type { AsteroidTrajectoryPoint } from "../hazards";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, quantityText } from "../lib/units";
 
 export function TrajectoryChart({
   trajectory,
@@ -14,6 +16,7 @@ export function TrajectoryChart({
   airburstAltitude: number;
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const titleId = useId();
   const descriptionId = useId();
   const points = trajectory.filter((point) =>
@@ -39,9 +42,7 @@ export function TrajectoryChart({
     ? points.find((point) => point.altitude <= breakupAltitude)
     : undefined;
   const terminal = points[points.length - 1];
-  const formatDistance = (meters: number) => meters >= 1_000
-    ? `${formatNumber(meters / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`
-    : `${formatNumber(meters, { maximumFractionDigits: 0 })} m`;
+  const formatDistance = (meters: number) => quantityText(formatLength(meters, formatNumber, unitSystem));
 
   return (
     <figure className="hazard-diagram">

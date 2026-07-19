@@ -12,6 +12,7 @@ export type TsunamiSourceInput = Readonly<{
   center: Readonly<{ lat_deg: number; lon_deg: number }>;
   cavity_radius_m: number;
   peak_amplitude_m: number;
+  display_peak_amplitude?: string;
   label: string;
   camera_view?: Readonly<{
     heading_deg: number;
@@ -334,7 +335,7 @@ export class TsunamiSourceController<Handle = unknown> {
         height_m: 0,
       }),
       label: Object.freeze({
-        text: `${source.label}\nA₀ = ${source.peak_amplitude_m.toFixed(1)} m`,
+        text: `${source.label}\nA₀ = ${source.display_peak_amplitude ?? `${source.peak_amplitude_m.toFixed(1)} m`}`,
         font: "12px Inter, sans-serif",
         fill: theme("--text", "#cdd6f4", layerOpacity),
         outline: theme("--crust", "#11111b", layerOpacity),

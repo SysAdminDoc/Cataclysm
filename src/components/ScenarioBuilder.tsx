@@ -33,6 +33,15 @@ import { GlossaryTip } from "./GlossaryTip";
 import { NumericField } from "./NumericField";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { useUnits } from "../hooks/useUnits";
+import { formatLength, formatSpeed, quantityText } from "../lib/units";
+
+const FEET_PER_METER = 3.28084;
+const MILES_PER_METER = 0.000621371;
+const MPH_PER_MS = 2.23694;
+const LB_FT3_PER_KG_M3 = 0.06242796;
+const CUBIC_FT_PER_CUBIC_M = 35.3147;
+const CUBIC_MI_PER_CUBIC_M = 2.39913e-10;
 
 type Props = {
   onSimulate: (input: ScenarioInput) => void;
@@ -136,6 +145,7 @@ function NumField({
   bounds?: { min: number; max: number };
 }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const b = bounds ?? BOUNDS[field];
   const helpKey = PARAM_HELP[field];
   const showSlider = SLIDER_FIELDS.has(field);
@@ -144,22 +154,50 @@ function NumField({
   }
   const min = b.min;
   const max = b.max;
+  let factor = 1;
+  let unit: string | undefined;
+  if (field.endsWith("_m")) {
+    if (unitSystem === "imperial") {
+      factor = Math.abs(value * MILES_PER_METER) >= 0.1 ? MILES_PER_METER : FEET_PER_METER;
+      unit = factor === MILES_PER_METER ? "mi" : "ft";
+    } else unit = "m";
+  } else if (field.endsWith("_m_s")) {
+    factor = unitSystem === "imperial" ? MPH_PER_MS : 1;
+    unit = unitSystem === "imperial" ? "mph" : "m/s";
+  } else if (field.endsWith("_kg_m3")) {
+    factor = unitSystem === "imperial" ? LB_FT3_PER_KG_M3 : 1;
+    unit = unitSystem === "imperial" ? "lb/ft³" : "kg/m³";
+  } else if (field.endsWith("_m3")) {
+    if (unitSystem === "imperial") {
+      factor = Math.abs(value * CUBIC_MI_PER_CUBIC_M) >= 0.001
+        ? CUBIC_MI_PER_CUBIC_M
+        : CUBIC_FT_PER_CUBIC_M;
+      unit = factor === CUBIC_MI_PER_CUBIC_M ? "mi³" : "ft³";
+    } else unit = "m³";
+  }
+  const displayLabel = label.replace(/\s*\((?:kg\/m³|m\/s|m³|m)(?:,\s*([^)]*))?\)/gu, (_match, note: string | undefined) => note ? ` (${note})` : "");
+  const displayValue = value * factor;
   return (
     <NumericField
       layout="scenario"
-      label={label}
-      value={value}
-      min={min}
-      max={max}
-      step={step ?? "any"}
-      help={helpKey ? t(helpKey) : undefined}
-      onCommit={onChange}
+      label={displayLabel}
+      value={displayValue}
+      min={min * factor}
+      max={max * factor}
+      step={step === undefined ? "any" : step * factor}
+      unit={unit}
+      help={helpKey
+        ? unitSystem === "imperial" && unit
+          ? t("builder.imperialInputHelp", { unit })
+          : t(helpKey)
+        : undefined}
+      onCommit={(next) => onChange(next / factor)}
       slider={showSlider ? {
         value,
         min,
         max,
         step: step ?? (max - min) / 200,
-        valueText: formatNumber(value),
+        valueText: `${formatNumber(displayValue)}${unit ? ` ${unit}` : ""}`,
         onChange,
       } : undefined}
     />
@@ -168,6 +206,7 @@ function NumField({
 
 export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTogglePick, pickActive }: Props) {
   const { t, formatNumber, languageTag } = useI18n();
+  const unitSystem = useUnits();
   const [tab, setTab] = useState<TabKey>("asteroid");
   const [asteroid, setAsteroid] = useState(INITIAL_ASTEROID);
   const [nuclear, setNuclear] = useState(INITIAL_NUCLEAR);
@@ -210,7 +249,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       setSubductionNote({
         text: t("builder.autoFillNoZone", {
           zone: match.zone.name,
-          distance: formatNumber(Math.round(match.distanceKm)),
+          distance: quantityText(formatLength(match.distanceKm * 1000, formatNumber, unitSystem)),
         }),
         tone: "error",
       });
@@ -221,11 +260,11 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     setSubductionNote({
       text: t("builder.autoFillSuccess", {
         zone: match.zone.name,
-        distance: formatNumber(Math.round(match.distanceKm)),
+        distance: quantityText(formatLength(match.distanceKm * 1000, formatNumber, unitSystem)),
         strike: formatNumber(g.strike_deg),
         dip: formatNumber(g.dip_deg),
         rake: formatNumber(g.rake_deg),
-        depth: formatNumber(g.depth_m / 1000, { maximumFractionDigits: 0 }),
+        depth: quantityText(formatLength(g.depth_m, formatNumber, unitSystem)),
         reference: match.zone.reference_event,
       }),
       tone: "success",
@@ -754,6 +793,7 @@ const GRAVITY_MS2 = 9.81;
 
 function ProudmanResonanceIndicator({ speed, depth }: { speed: number; depth: number }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   if (!Number.isFinite(speed) || !Number.isFinite(depth) || depth <= 0 || speed <= 0) return null;
   const shallowWaveSpeed = Math.sqrt(GRAVITY_MS2 * depth);
   const ratio = speed / shallowWaveSpeed;
@@ -769,7 +809,7 @@ function ProudmanResonanceIndicator({ speed, depth }: { speed: number; depth: nu
       <span className="resonance__value" data-tone={tone}>
         U/√(gh) = {formatNumber(ratio, { maximumFractionDigits: 2 })} — {label}
       </span>
-      <span className="resonance__hint">{t("builder.resonance.hint", { waveSpeed: formatNumber(shallowWaveSpeed, { maximumFractionDigits: 1 }) })}</span>
+      <span className="resonance__hint">{t("builder.resonance.hint", { waveSpeed: quantityText(formatSpeed(shallowWaveSpeed, formatNumber, unitSystem)) })}</span>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { isTauri } from "../lib/tauri";
 import type { TrustEvidence } from "../lib/trust-evidence";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues } from "../lib/units";
 
 function currentOnlineState(): boolean {
   return typeof navigator === "undefined" || navigator.onLine;
@@ -39,7 +41,9 @@ export function TrustDisclosure({
   compact?: boolean;
   compactStatus?: string;
 }) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
+  const displayQuantities = (value: string) => formatEmbeddedLengthValues(value, formatNumber, unitSystem);
   const [open, setOpen] = useState(false);
   const [online, setOnline] = useState(currentOnlineState);
   const [linkAlert, setLinkAlert] = useState<string | null>(null);
@@ -90,13 +94,13 @@ export function TrustDisclosure({
 
   return (
     <details className="trust-disclosure" data-compact={compact ? "true" : "false"} data-tone={evidence.tone} data-evidence-id={evidence.id} onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary aria-label={t("trust.summaryAria", { title: evidence.title })}>
+      <summary aria-label={t("trust.summaryAria", { title: displayQuantities(evidence.title) })}>
         <span>{t("trust.summary")}</span>
         <small>{summaryStatus}</small>
       </summary>
       {open && <div className="trust-disclosure__body">
         <dl className="trust-disclosure__meta">
-          <div><dt>{t("trust.source")}</dt><dd>{evidence.sourceTitle}</dd></div>
+          <div><dt>{t("trust.source")}</dt><dd>{displayQuantities(evidence.sourceTitle)}</dd></div>
           <div><dt>{t("trust.model")}</dt><dd>{evidence.model}</dd></div>
           <div><dt>{t("trust.version")}</dt><dd>{evidence.version}</dd></div>
           <div><dt>{t("trust.status")}</dt><dd>{localizedConfidence}</dd></div>
@@ -104,11 +108,11 @@ export function TrustDisclosure({
         </dl>
         <section aria-label={t("trust.assumptions")}>
           <strong>{t("trust.assumptions")}</strong>
-          <ul>{evidence.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+          <ul>{evidence.assumptions.map((assumption) => <li key={assumption}>{displayQuantities(assumption)}</li>)}</ul>
         </section>
         <section aria-label={t("trust.limitations")}>
           <strong>{t("trust.limitations")}</strong>
-          <ul>{evidence.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+          <ul>{evidence.limitations.map((limitation) => <li key={limitation}>{displayQuantities(limitation)}</li>)}</ul>
         </section>
         <section aria-label={t("trust.citations")}>
           <strong>{t("trust.exactCitations")}</strong>

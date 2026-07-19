@@ -3,6 +3,8 @@ import { searchNeo } from "../lib/jpl";
 import type { NeoLookupResult } from "../types/jpl";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues, formatLength, formatMassDensity, formatSpeed, quantityText } from "../lib/units";
 
 const LOOKUP_ERROR_KEYS: Record<string, MessageKey> = {
   "Enter at least two characters.": "neo.error.min",
@@ -21,6 +23,7 @@ function formatProbability(probability: number, formatNumber: (value: number, op
 
 export function NeoSearch({ onSelect }: { onSelect: (result: NeoLookupResult) => void }) {
   const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<NeoLookupResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,11 +73,9 @@ export function NeoSearch({ onSelect }: { onSelect: (result: NeoLookupResult) =>
           <strong>{result.fullname}</strong>
           <span>
             {t("neo.metrics", {
-              diameter: result.diameterM >= 1_000
-                ? `${formatNumber(result.diameterM / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`
-                : `${formatNumber(result.diameterM, { maximumFractionDigits: 0 })} m`,
-              velocity: formatNumber(result.velocityMps / 1_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-              density: formatNumber(result.densityKgM3),
+              diameter: quantityText(formatLength(result.diameterM, formatNumber, unitSystem)),
+              velocity: quantityText(formatSpeed(result.velocityMps, formatNumber, unitSystem)),
+              density: quantityText(formatMassDensity(result.densityKgM3, formatNumber, unitSystem)),
             })}
           </span>
           {result.risk ? (
@@ -91,7 +92,7 @@ export function NeoSearch({ onSelect }: { onSelect: (result: NeoLookupResult) =>
           <span className="neo-search__source">{t("neo.apply", {
             source: result.source === "Built-in fallback" ? t("neo.sourceFallback") : result.source,
           })}</span>
-          <span className="sr-only">. {result.assumptions.join(" ")}</span>
+          <span className="sr-only">. {result.assumptions.map((value) => formatEmbeddedLengthValues(value, formatNumber, unitSystem)).join(" ")}</span>
         </button>
       ) : null}
     </form>

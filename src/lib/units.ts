@@ -18,6 +18,16 @@ export interface FormattedQuantity {
 
 const FEET_PER_METER = 3.28084;
 const MILES_PER_METER = 0.000621371;
+const SQ_MILES_PER_SQ_METER = 1 / 2.589_988_110_336e6;
+const SQ_KM_PER_SQ_MILE = 2.589_988_110_336;
+const LB_PER_KG = 2.204_622_621_85;
+const CUBIC_FEET_PER_CUBIC_METER = 35.314_666_721_5;
+const CUBIC_MILES_PER_CUBIC_METER = 2.399_127_585_79e-10;
+
+/** Joins a display value and unit without leaking presentation rules to callers. */
+export function quantityText(quantity: FormattedQuantity): string {
+  return quantity.unit ? `${quantity.value} ${quantity.unit}` : quantity.value;
+}
 
 export function formatLength(
   m: number,
@@ -27,14 +37,26 @@ export function formatLength(
   if (!Number.isFinite(m)) return { value: "—", unit: "" };
   if (system === "imperial") {
     const miles = m * MILES_PER_METER;
-    if (miles >= 0.1) {
+    if (Math.abs(miles) >= 0.1) {
       return { value: formatNumber(miles, { maximumFractionDigits: 1 }), unit: "mi" };
     }
     const feet = m * FEET_PER_METER;
-    return { value: formatNumber(feet, { maximumFractionDigits: 0 }), unit: "ft" };
+    const absFeet = Math.abs(feet);
+    return {
+      value: formatNumber(feet, {
+        maximumFractionDigits: absFeet < 10 ? 2 : absFeet < 100 ? 1 : 0,
+      }),
+      unit: "ft",
+    };
   }
-  if (m >= 1000) return { value: formatNumber(m / 1000, { maximumFractionDigits: 1 }), unit: "km" };
-  return { value: formatNumber(m, { maximumFractionDigits: 1 }), unit: "m" };
+  if (Math.abs(m) >= 1000) return { value: formatNumber(m / 1000, { maximumFractionDigits: 1 }), unit: "km" };
+  if (Math.abs(m) > 0 && Math.abs(m) < 0.1) {
+    return { value: formatNumber(m * 100, { maximumFractionDigits: 2 }), unit: "cm" };
+  }
+  return {
+    value: formatNumber(m, { maximumFractionDigits: Math.abs(m) < 10 ? 2 : 1 }),
+    unit: "m",
+  };
 }
 
 // --- Speed ---
@@ -121,12 +143,7 @@ export function formatDepth(
   system: UnitSystem,
 ): FormattedQuantity {
   if (!Number.isFinite(m)) return { value: "—", unit: "" };
-  if (system === "imperial") {
-    const feet = m * FEET_PER_METER;
-    return { value: formatNumber(feet, { maximumFractionDigits: 0 }), unit: "ft" };
-  }
-  if (Math.abs(m) >= 1000) return { value: formatNumber(m / 1000, { maximumFractionDigits: 1 }), unit: "km" };
-  return { value: formatNumber(m, { maximumFractionDigits: 1 }), unit: "m" };
+  return formatLength(m, formatNumber, system);
 }
 
 // --- Area ---
@@ -138,13 +155,124 @@ export function formatArea(
 ): FormattedQuantity {
   if (!Number.isFinite(sqm)) return { value: "—", unit: "" };
   if (system === "imperial") {
-    const sqmi = sqm / 2.59e6;
+    const sqmi = sqm * SQ_MILES_PER_SQ_METER;
     if (sqmi >= 0.1) return { value: formatNumber(sqmi, { maximumFractionDigits: 1 }), unit: "mi²" };
     const sqft = sqm * 10.7639;
     return { value: formatNumber(sqft, { notation: "compact", maximumFractionDigits: 0 }), unit: "ft²" };
   }
   if (sqm >= 1e6) return { value: formatNumber(sqm / 1e6, { maximumFractionDigits: 1 }), unit: "km²" };
   return { value: formatNumber(sqm, { maximumFractionDigits: 0 }), unit: "m²" };
+}
+
+// --- Density ---
+
+export function formatPopulationDensity(
+  peoplePerSqKm: number,
+  formatNumber: FormatNumber,
+  system: UnitSystem,
+): FormattedQuantity {
+  if (!Number.isFinite(peoplePerSqKm)) return { value: "—", unit: "" };
+  const value = system === "imperial" ? peoplePerSqKm * SQ_KM_PER_SQ_MILE : peoplePerSqKm;
+  return {
+    value: formatNumber(value, { maximumFractionDigits: 0 }),
+    unit: system === "imperial" ? "people/mi²" : "people/km²",
+  };
+}
+
+export function formatMassDensity(
+  kgPerM3: number,
+  formatNumber: FormatNumber,
+  system: UnitSystem,
+): FormattedQuantity {
+  if (!Number.isFinite(kgPerM3)) return { value: "—", unit: "" };
+  if (system === "imperial") {
+    return {
+      value: formatNumber((kgPerM3 * LB_PER_KG) / CUBIC_FEET_PER_CUBIC_METER, {
+        maximumFractionDigits: 4,
+      }),
+      unit: "lb/ft³",
+    };
+  }
+  return { value: formatNumber(kgPerM3, { maximumFractionDigits: 1 }), unit: "kg/m³" };
+}
+
+// --- Volume ---
+
+export function formatVolume(
+  cubicMeters: number,
+  formatNumber: FormatNumber,
+  system: UnitSystem,
+): FormattedQuantity {
+  if (!Number.isFinite(cubicMeters)) return { value: "—", unit: "" };
+  if (system === "imperial") {
+    const cubicMiles = cubicMeters * CUBIC_MILES_PER_CUBIC_METER;
+    if (Math.abs(cubicMiles) >= 0.001) {
+      return {
+        value: formatNumber(cubicMiles, { maximumFractionDigits: 2 }),
+        unit: "mi³",
+      };
+    }
+    return {
+      value: formatNumber(cubicMeters * CUBIC_FEET_PER_CUBIC_METER, { maximumFractionDigits: 1 }),
+      unit: "ft³",
+    };
+  }
+  if (Math.abs(cubicMeters) >= 1e9) {
+    return { value: formatNumber(cubicMeters / 1e9, { maximumFractionDigits: 2 }), unit: "km³" };
+  }
+  return { value: formatNumber(cubicMeters, { maximumFractionDigits: 1 }), unit: "m³" };
+}
+
+/**
+ * Converts a backend-authored scalar readout such as `29.01 km` or `237 m`.
+ * Non-length scientific labels (Mt, kt, magnitude, recurrence text) pass through.
+ */
+export function formatReadoutValue(
+  readout: string,
+  formatNumber: FormatNumber,
+  system: UnitSystem,
+): string {
+  return formatEmbeddedLengthValues(readout, formatNumber, system);
+}
+
+/** Converts embedded SI lengths while preserving the surrounding model text. */
+export function formatEmbeddedLengthValues(
+  text: string,
+  formatNumber: FormatNumber,
+  system: UnitSystem,
+): string {
+  const numberPattern = "[+-]?(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?|[.,]\\d+)";
+  const parseNumber = (rawValue: string) => Number(
+    /^[+-]?\d{1,3}(?:,\d{3})+/.test(rawValue)
+      ? rawValue.replace(/,/g, "")
+      : rawValue.replace(",", "."),
+  );
+  const volumePattern = new RegExp(`(${numberPattern})\\s*(M\\s*m³|million\\s+m³|Mm³|km³|m³)(?!\\w)`, "gu");
+  const speedPattern = new RegExp(`(${numberPattern})\\s*(km/s|m/s)\\b`, "gu");
+  const lengthPattern = new RegExp(`(${numberPattern})(-|\\s*)(km|m)\\b`, "gu");
+
+  return text
+    .replace(volumePattern, (match, rawValue: string, rawUnit: string) => {
+      const numeric = parseNumber(rawValue);
+      if (!Number.isFinite(numeric)) return match;
+      const cubicMeters = rawUnit === "km³"
+        ? numeric * 1e9
+        : rawUnit === "m³"
+          ? numeric
+          : numeric * 1e6;
+      return quantityText(formatVolume(cubicMeters, formatNumber, system));
+    })
+    .replace(speedPattern, (match, rawValue: string, rawUnit: string) => {
+      const numeric = parseNumber(rawValue);
+      if (!Number.isFinite(numeric)) return match;
+      return quantityText(formatSpeed(rawUnit === "km/s" ? numeric * 1000 : numeric, formatNumber, system));
+    })
+    .replace(lengthPattern, (match, rawValue: string, separator: string, rawUnit: string) => {
+      const numeric = parseNumber(rawValue);
+      if (!Number.isFinite(numeric)) return match;
+      const formatted = formatLength(rawUnit === "km" ? numeric * 1000 : numeric, formatNumber, system);
+      return separator === "-" ? `${formatted.value}-${formatted.unit}` : quantityText(formatted);
+    });
 }
 
 // --- Length comparison anchors for large distances ---

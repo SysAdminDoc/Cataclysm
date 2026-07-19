@@ -597,7 +597,7 @@ test.describe("Cataclysm browser preview", () => {
   test("keeps numeric help collapsed until its disclosure button is used", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /Create my own/i }).click();
-    const helpButton = page.getByRole("button", { name: "About Diameter (m)" });
+    const helpButton = page.getByRole("button", { name: "About Diameter" });
     const helpId = await helpButton.getAttribute("aria-controls");
     expect(helpId).toBeTruthy();
     const help = page.locator(`#${helpId}`);

@@ -289,7 +289,7 @@ describe("ScenarioBuilder scenario persistence", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Diameter.*must be a number/);
     expect(diameter).toHaveValue(null);
     expect(diameter).toHaveAttribute("aria-invalid", "true");
-    expect(diameter).toHaveAccessibleName("Diameter (m) exact value");
+    expect(diameter).toHaveAccessibleName("Diameter exact value");
   });
 
   it("gives every numeric field a distinct exact control and quick-adjust slider relationship", async () => {
@@ -305,13 +305,17 @@ describe("ScenarioBuilder scenario persistence", () => {
     for (const [tab, fields] of Object.entries(fieldsByTab)) {
       await user.click(screen.getByRole("tab", { name: tab }));
       for (const label of fields) {
-        const exact = screen.getByRole("spinbutton", { name: `${label} exact value` });
+        const accessibleLabel = label.replace(
+          /\s*\((?:kg\/m³|m\/s|m³|m)(?:,\s*([^)]*))?\)/gu,
+          (_match, note: string | undefined) => note ? ` (${note})` : "",
+        );
+        const exact = screen.getByRole("spinbutton", { name: `${accessibleLabel} exact value` });
         const describedBy = exact.getAttribute("aria-describedby")?.split(" ") ?? [];
         expect(describedBy.length).toBeGreaterThan(0);
         describedBy.forEach((id) => expect(document.getElementById(id)).not.toBeNull());
-        const group = screen.getByRole("group", { name: label });
+        const group = screen.getByRole("group", { name: accessibleLabel });
         expect(group.querySelector("label")?.querySelector("input, button, select")).toBeNull();
-        const help = screen.getByRole("button", { name: `About ${label}` });
+        const help = screen.getByRole("button", { name: `About ${accessibleLabel}` });
         const helpId = help.getAttribute("aria-controls");
         expect(helpId).toBeTruthy();
       }
@@ -424,8 +428,8 @@ describe("ScenarioBuilder scenario persistence", () => {
 
     expect(screen.getByText("カスタムシナリオ")).toBeInTheDocument();
     expect(screen.getByRole("tablist", { name: "シナリオの発生源タイプ" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: "直径 (m) 正確な値" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "直径 (m)について" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "直径 正確な値" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "直径について" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "地球上で選択" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "保存" })).toHaveAttribute(
       "title",

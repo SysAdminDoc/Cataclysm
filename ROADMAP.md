@@ -59,13 +59,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 
 ### P1
 
-- [ ] P1 — Add a units system: metric/imperial plus intuitive comparison anchors
-  Why: readouts are SI-only, the single most repeated complaint about impact/blast simulators, and comparison anchors ("Hiroshimas", "Tsar Bombas", city diameters) are what make scale legible to non-experts.
-  Evidence: SI-only readouts across `ResultsPanel.tsx`/hazard readouts; HN Asteroid Launcher feedback (https://news.ycombinator.com/item?id=33870612); Outrider comparison framing (https://outrider.org/nuclear-weapons/interactive/bomb-blast).
-  Touches: units setting + formatter, `ResultsPanel.tsx`, hazard readouts, runup/DART/attenuation labels, exports, settings persistence, tests.
-  Acceptance: a persisted units toggle switches every displayed quantity between metric and imperial without touching solver values; energies/yields optionally show comparison anchors; exports record the unit system; no raw SI value leaks when imperial is selected.
-  Complexity: S
-
 ### P2
 
 - [ ] P2 — Offer multiple selectable casualty models with visible disagreement

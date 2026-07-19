@@ -1,5 +1,7 @@
 import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
+import { useUnits } from "../hooks/useUnits";
+import { formatEmbeddedLengthValues } from "../lib/units";
 
 const DEFAULT_TOTAL_TIME_S = 6 * 3600;
 
@@ -42,7 +44,9 @@ export function SimulationTransport({
   durationS = DEFAULT_TOTAL_TIME_S,
   onOpenDetails,
 }: Props) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
+  const unitSystem = useUnits();
+  const displayedSourceLabel = formatEmbeddedLengthValues(sourceLabel, formatNumber, unitSystem);
   const safeDurationS = Number.isFinite(durationS) && durationS > 0 ? durationS : DEFAULT_TOTAL_TIME_S;
   const safeTimeS = Math.max(0, Math.min(safeDurationS, Number.isFinite(timeS) ? timeS : 0));
   if (domain !== "tsunami") {
@@ -59,7 +63,7 @@ export function SimulationTransport({
         </div>
         <div className="simulation-transport__effect-model">
           <span>{t("transport.activeModel")}</span>
-          <strong>{sourceLabel}</strong>
+          <strong>{displayedSourceLabel}</strong>
         </div>
         <button type="button" className="simulation-transport__details" onClick={onOpenDetails}>{t("transport.openSetup")}</button>
       </section>
@@ -101,7 +105,7 @@ export function SimulationTransport({
       </div>
       <div className="simulation-transport__track">
         <div className="simulation-transport__meta">
-          <span>{sourceLabel}</span>
+          <span>{displayedSourceLabel}</span>
           <span>{t("transport.minutes", { current: Math.round(safeTimeS / 60), total: Math.round(safeDurationS / 60) })}</span>
         </div>
         <input
