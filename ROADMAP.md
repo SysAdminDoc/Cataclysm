@@ -257,13 +257,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Acceptance: a 500+-cell hazard overlay renders through one buffer collection with no visual regression and measurably better frame time than the per-entity path; the API is feature-detected with an entity fallback while it remains experimental.
   Complexity: M
 
-- [ ] P2 — Use Cesium async/quadtree picking so inspect stays responsive during playback
-  Why: globe pick/inspect is synchronous and competes with heavy solver playback; Cesium (Dec 2025, ≤ pin) added async scene picking and quadtree-accelerated terrain picking that keep interaction non-blocking during animation.
-  Evidence: Cesium Dec 2025 release https://cesium.com/blog/2025/12/01/cesium-releases-in-december-2025/; pick/inspect handling in `src/components/Globe.tsx`.
-  Touches: `Globe.tsx` pick/inspect path, async picking wiring, interaction tests.
-  Acceptance: clicking to inspect during 60-frame playback returns a result without stalling the animation; picking accuracy over terrain is unchanged; the sync path remains as fallback where async is unavailable.
-  Complexity: S
-
 - [ ] P2 — Add event sonification as an engagement and non-visual accessibility channel
   Why: the app is heavily visual with no audio; a WebAudio track (seismic rumble/P-S arrival, blast overpressure arrival, wave rumble) synchronised to the timeline is both an engagement feature no competitor offers and a genuine STEM-equity/accessibility win for blind and low-vision users, drawing on established seismic-sonification pedagogy.
   Evidence: IRIS/Columbia earthquake sonification pedagogy https://www.earth.columbia.edu/videos/view/part-2-of-2-a-deep-dive-into-earthquake-sonification-with-python-grades-10-12; timeline/transport in `src/components/SwePlayback.tsx` and the transport bar.

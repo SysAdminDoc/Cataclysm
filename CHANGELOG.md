@@ -6,6 +6,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Globe inspect mode uses `globe.pick` with ray casting when the async API is
+  available, preventing frame stalls during heavy solver playback. The sync
+  `pickEllipsoid` path remains for pick mode and as a fallback.
 - Deterministic frame-accurate video encoder via WebCodecs: when the runtime
   supports VideoEncoder (WebView2 / Chromium), a new `exportDeterministicVideo`
   function encodes globe frames one-by-one into an H.264/MP4 via `mp4-muxer`.

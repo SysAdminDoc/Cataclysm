@@ -36,15 +36,27 @@ export class CesiumInteractionOwnershipHost implements InteractionOwnershipHost<
     const handler = new Cesium.ScreenSpaceEventHandler(this.#viewer.canvas);
     handler.setInputAction((event: { position: Cesium.Cartesian2 }) => {
       if (this.#viewer.isDestroyed()) return;
-      const cartesian = this.#viewer.scene.camera.pickEllipsoid(
-        event.position,
-        this.#viewer.scene.globe.ellipsoid,
-      );
-      if (!cartesian) return;
-      const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-      const lat = Cesium.Math.toDegrees(cartographic.latitude);
-      const lon = Cesium.Math.toDegrees(cartographic.longitude);
-      if (Number.isFinite(lat) && Number.isFinite(lon)) mode.onPosition(lat, lon);
+      const resolve = (cartesian: Cesium.Cartesian3 | undefined) => {
+        if (!cartesian) return;
+        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+        const lat = Cesium.Math.toDegrees(cartographic.latitude);
+        const lon = Cesium.Math.toDegrees(cartographic.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) mode.onPosition(lat, lon);
+      };
+      if (mode.kind === "inspect" && "pickAsync" in this.#viewer.scene) {
+        const ray = this.#viewer.scene.camera.getPickRay(event.position);
+        if (ray) {
+          const result = this.#viewer.scene.globe.pick(ray, this.#viewer.scene);
+          resolve(result ?? undefined);
+        }
+      } else {
+        resolve(
+          this.#viewer.scene.camera.pickEllipsoid(
+            event.position,
+            this.#viewer.scene.globe.ellipsoid,
+          ) ?? undefined,
+        );
+      }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     this.#activeHandler = handler;
     return handler;
