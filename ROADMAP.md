@@ -243,13 +243,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P2
 
-- [ ] P2 — Preserve Cesium and panel state across hazard-module switches with React `<Activity>`
-  Why: hazard domains are isolated workspaces that park/rebuild state when switching Tsunami/Impact/Nuclear, forcing expensive Cesium re-initialisation and losing panel state; React 19.2's `<Activity mode="hidden">` keeps a subtree mounted (state preserved, effects unmounted) for exactly this "hidden but instant to restore" case, and `useEffectEvent` reads latest sim params without re-subscribing Cesium listeners.
-  Evidence: React 19.2 https://react.dev/blog/2025/10/01/react-19-2 (already on `react ^19.2`); hazard-mode isolation rule in `CLAUDE.md`; mode switch/teardown in `src/App.tsx`.
-  Touches: `src/App.tsx` hazard-mode composition, Globe/panel subtrees wrapped in `<Activity>`, event-listener effects migrated to `useEffectEvent`, visual/interaction tests.
-  Acceptance: switching hazard modules and back restores the prior globe camera, layers, and panel state without a full Cesium re-mount or visible reflash; the parked module runs no effects while hidden; isolation guarantees (null tsunami props, separate nonces) are preserved.
-  Complexity: S
-
 - [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
   Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
   Evidence: Cesium June/April 2026 releases https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/ and https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (all ≤ pinned 1.143); overlay rendering in `src/render/cesium/**`, `src/components/Globe.tsx`.

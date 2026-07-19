@@ -493,3 +493,7 @@ shipped/validated ONNX model, and measured error bounds before it can be trusted
   Where: `src/styles/_globals.css` (Latte block), `src/styles/_layout.css` (`.status-dot`, `input::placeholder`).
   **Blocker:** Requires a live browser with a human checking color contrast on-screen. Cannot be automated headlessly.
   Complexity: S
+
+- [ ] P2 — Preserve Cesium and panel state across hazard-module switches with React Activity
+  **Blocker:** The Globe component is already persistent across hazard mode switches — Cesium does not re-initialize. Panel inputs (nuclearInput, asteroidInput) live in App.tsx hooks, not local to conditional components. The stated motivation (avoiding expensive Cesium re-init) does not apply to the current architecture. Return if future refactoring introduces mode-conditional Globe subtrees.
+  Complexity: S
