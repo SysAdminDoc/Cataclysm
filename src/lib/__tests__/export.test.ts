@@ -50,6 +50,16 @@ describe("direct-hazard GIS exports", () => {
     ],
     readout: [{ label: "Yield", value: "100 kT" }],
     casualties: { deaths: 1_000, injuries: 2_000, childDeaths: 250, childInjuries: 500, populationDensity: 5_000 },
+    casualtyModels: [{
+      id: "combined_effects",
+      label: "Combined effects",
+      version: "combined-test",
+      summary: "Combined screening.",
+      assumptions: ["Uniform population."],
+      citations: [{ label: "Test source", url: "https://example.com/source" }],
+      estimate: { deaths: 1_000, injuries: 2_000, childDeaths: 250, childInjuries: 500, populationDensity: 5_000 },
+    }],
+    casualtySpread: { deathsMin: 800, deathsMax: 1_000, injuriesMin: 1_500, injuriesMax: 2_000 },
     detail: {
       yieldKt: 100,
       isSurface: true,
@@ -98,12 +108,19 @@ describe("direct-hazard GIS exports", () => {
     expect(geojson.features[1].geometry.type).toBe("Polygon");
     expect(geojson.features[1].geometry.coordinates[0]).toHaveLength(73);
     expect(geojson.features[3].properties.kind).toBe("hazard_polygon");
+    expect(geojson.features[0].properties).toMatchObject({
+      casualty_models: [{ id: "combined_effects", version: "combined-test" }],
+      casualty_spread: { deathsMin: 800, deathsMax: 1_000 },
+    });
   });
 
   it("builds static CZML ellipses and supplied hazard polygons", () => {
     const czml = buildDirectHazardCzml(meta, direct);
     expect(czml).toHaveLength(5);
     expect(czml[0]).toMatchObject({ id: "document", version: "1.0" });
+    expect(czml[1]).toMatchObject({
+      properties: { casualty_models: [{ id: "combined_effects" }], casualty_spread: { injuriesMax: 2_000 } },
+    });
     expect(czml[2]).toMatchObject({ id: "effect-ring-1", ellipse: { semiMajorAxis: 500, semiMinorAxis: 500 } });
     expect(czml[4]).toMatchObject({ id: "hazard-polygon-1" });
   });
@@ -116,6 +133,8 @@ describe("direct-hazard GIS exports", () => {
     expect(kml).toContain("<value>5000</value>");
     expect(kml).toContain("<value>imperial</value>");
     expect(kml).toContain("Radius: 0.3 mi");
+    expect(kml).toContain('<Data name="casualty_models">');
+    expect(kml).toContain("combined-test");
   });
 });
 

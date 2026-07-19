@@ -727,6 +727,8 @@ export function buildDirectHazardGeoJson(meta: ScreenshotMeta, data: DirectHazar
         ...common,
         kind: "effects_origin",
         casualties: data.result.casualties ?? null,
+        casualty_models: data.result.casualtyModels ?? [],
+        casualty_spread: data.result.casualtySpread ?? null,
         readout: directHazardDisplayReadout(data, meta.unitSystem ?? "metric"),
       },
       geometry: { type: "Point" as const, coordinates: [round5(center.lon), round5(center.lat)] },
@@ -788,7 +790,13 @@ export function buildDirectHazardCzml(meta: ScreenshotMeta, data: DirectHazardEx
       id: "effects-origin",
       name: `${provenance.scenarioName} — Effects origin`,
       description: `${data.result.modelVersion}; ${provenance.limitation}`,
-      properties: { ...common, casualties: data.result.casualties ?? null, readout: directHazardDisplayReadout(data, provenance.unitSystem) },
+      properties: {
+        ...common,
+        casualties: data.result.casualties ?? null,
+        casualty_models: data.result.casualtyModels ?? [],
+        casualty_spread: data.result.casualtySpread ?? null,
+        readout: directHazardDisplayReadout(data, provenance.unitSystem),
+      },
       position: { cartographicDegrees: [center.lon, center.lat, 0] },
       point: {
         pixelSize: 10,
@@ -835,6 +843,8 @@ export function buildDirectHazardKml(meta: ScreenshotMeta, data: DirectHazardExp
   const provenanceText = provenanceSummary({ ...meta, generatedAt: provenance.generatedAt });
   const length = (meters: number) => quantityText(formatLength(meters, EXPORT_NUMBER_FORMATTER, provenance.unitSystem));
   const center = data.result.center;
+  const casualtyModels = escapeXml(JSON.stringify(data.result.casualtyModels ?? []));
+  const casualtySpread = escapeXml(JSON.stringify(data.result.casualtySpread ?? null));
   const ringPlacemarks = data.result.rings.map((ring) => {
     const coordinates = circlePolygon(center.lat, center.lon, ring.radiusM, 72)
       .map(([lon, lat]) => `${lon},${lat},0`)
@@ -867,6 +877,7 @@ export function buildDirectHazardKml(meta: ScreenshotMeta, data: DirectHazardExp
   <Placemark>
     <name>${escapeXml(provenance.scenarioName)} — Effects origin</name>
     <description>${escapeXml(`${data.result.modelVersion}; ${provenance.limitation}`)}</description>
+    <ExtendedData><Data name="casualty_models"><value>${casualtyModels}</value></Data><Data name="casualty_spread"><value>${casualtySpread}</value></Data></ExtendedData>
     <Point><coordinates>${center.lon},${center.lat},0</coordinates></Point>
   </Placemark>
   <Folder><name>Effect thresholds</name>${ringPlacemarks.join("")}</Folder>

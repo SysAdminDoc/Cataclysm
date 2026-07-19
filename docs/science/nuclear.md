@@ -29,6 +29,24 @@ Linear long-wave geometric spreading `η(r) = η_0 · √(R_c / r)` —
 nuclear initial cavity is ~10–100 m wide, long-wavelength regime,
 so `r^(-1/2)` dominates (vs. the `r^(-5/6)` of asteroid impacts).
 
+## Direct-effects casualty screens
+
+Direct nuclear results return two Rust-authoritative immediate-casualty
+screens over the same idealized, uniform population field:
+
+- **Combined effects** combines independent blast, thermal-burn, and prompt-
+  radiation screening probabilities in sorted effect annuli.
+- **Blast-pressure proxy** applies DCPA/OTA-style mortality and injury
+  fractions to overpressure bands and excludes thermal and prompt-radiation
+  contributions.
+
+The UI can switch between the returned estimates without recomputing physics
+and shows their min/max disagreement. Both retain fixed indoor/outdoor
+occupancy and urban-shielding assumptions and exclude fallout, fire spread,
+evacuation, medical response, terrain, and building-specific vulnerability.
+They are order-of-magnitude educational comparisons, not statistical
+confidence intervals or protective guidance.
+
 ## Validation
 
 - **Operation Crossroads Baker (1946, 21 kt at 27 m)**: model
@@ -46,11 +64,13 @@ so `r^(-1/2)` dominates (vs. the `r^(-5/6)` of asteroid impacts).
   magnitude extrapolation beyond DNA-TR-96-77's tested band
   (≤ 50 kt). The 100 Mt "propaganda" variant is explicitly framed
   as speculative and carries a `controversy_note`.
-- No fallout / blast-wave / thermal-radiation modelling — the
-  simulator is hydrodynamic only.
+- The underwater-source equations in this document remain hydrodynamic. Direct
+  fallout, blast, thermal, radiation, and casualty products are separate
+  screening models and do not feed back into the tsunami solver.
 
 ## References
 
-Glasstone & Dolan 1977; Le Méhauté & Wang 1996; Defense Nuclear
-Agency DNA-TR-96-77 1996; Hambling 2022 (Forbes). See
+Glasstone & Dolan 1977; DCPA 1973 / OTA 1979 casualty proxy (as documented by
+NUKEMAP); Le Méhauté & Wang 1996; Defense Nuclear Agency DNA-TR-96-77 1996;
+Hambling 2022 (Forbes). See
 [`REFERENCES.bib`](REFERENCES.bib).

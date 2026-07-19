@@ -111,6 +111,8 @@
       }
     ],
     "casualties": null,
+    "casualtyModels": [],
+    "casualtySpread": null,
     "detail": {
       "kineticEnergyJ": 2139195967689284.0,
       "megatons": 0.5112801070003069,
@@ -257,6 +259,8 @@
       }
     ],
     "casualties": null,
+    "casualtyModels": [],
+    "casualtySpread": null,
     "detail": {
       "kineticEnergyJ": 1.1309733552923257e+19,
       "megatons": 2703.0911933372986,
@@ -412,6 +416,8 @@
       }
     ],
     "casualties": null,
+    "casualtyModels": [],
+    "casualtySpread": null,
     "detail": {
       "kineticEnergyJ": 3.926990816987241e+19,
       "megatons": 9385.73331019895,
@@ -451,6 +457,8 @@
   "nuclear-airburst": {
     "authority": "rust",
     "casualties": null,
+    "casualtyModels": [],
+    "casualtySpread": null,
     "center": {
       "lat": 35.68,
       "lon": 139.76
@@ -623,6 +631,8 @@
   "nuclear-surface-burst": {
     "authority": "rust",
     "casualties": null,
+    "casualtyModels": [],
+    "casualtySpread": null,
     "center": {
       "lat": 40.71,
       "lon": -74.01

@@ -199,6 +199,69 @@
   color: var(--warning-text);
 }
 
+.hazard__casualty-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(148px, auto);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.hazard__casualty-picker label {
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  font-weight: 650;
+}
+
+.hazard__casualty-picker select {
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--r-sm);
+  background: var(--surface1);
+  color: var(--text);
+  font: inherit;
+}
+
+.hazard__casualty-summary,
+.hazard__casualty-disagreement {
+  display: block;
+  margin: 0 0 5px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.hazard__casualty-disagreement {
+  margin-top: 5px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hazard__casualty-method {
+  margin-top: 5px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.hazard__casualty-method summary {
+  color: var(--link);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.hazard__casualty-method p {
+  margin: 5px 0;
+}
+
+.hazard__casualty-method ul {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+}
+
+.hazard__casualty-method a {
+  color: var(--link);
+}
+
 .hazard__casualties-detail {
   display: block;
   margin-top: 3px;

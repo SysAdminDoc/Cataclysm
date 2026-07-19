@@ -17,6 +17,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   tests covering overpressure (1 kt, 20 kt, 1 Mt), thermal fluence, and
   initial radiation. Gated behind the `validation` cargo feature.
 - Fixed missing `sample_preset_wavefront` command in app manifest/permissions.
+- Added selectable Rust-authoritative immediate-casualty models for direct
+  nuclear results: a DCPA/OTA-style blast-pressure proxy and the existing
+  combined-effects screen, with visible disagreement ranges, assumptions,
+  source links, and GIS export metadata.
 
 ## [0.11.0] — 2026-07-18
 

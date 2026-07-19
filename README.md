@@ -106,6 +106,11 @@ Existing tools each do one piece:
   remain canonical SI. Results, controls, charts, globe probes, accessibility
   summaries, and human-readable exports follow the active choice; exported
   provenance records which display system was used.
+- **Visible casualty-model disagreement** — direct nuclear results can switch
+  between a DCPA/OTA-style blast-pressure proxy and a combined
+  blast/thermal/prompt-radiation screen. Rust returns both estimates, their
+  min/max spread, assumptions, and source links; the UI never treats the range
+  as statistical confidence or protective guidance.
 - **Desktop-first professional simulator workspace** — persistent scenario
   library, dominant globe viewport, Setup / Results / Layers inspector, and a
   full-width simulation transport with playback speed and solver state.

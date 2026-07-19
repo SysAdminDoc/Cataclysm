@@ -59,6 +59,41 @@ pub struct CasualtyEstimate {
     pub population_density: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CasualtyModelKind {
+    CombinedEffects,
+    BlastProxy,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CasualtyCitation {
+    pub label: &'static str,
+    pub url: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CasualtyModelEstimate {
+    pub id: CasualtyModelKind,
+    pub label: &'static str,
+    pub version: &'static str,
+    pub summary: &'static str,
+    pub assumptions: Vec<&'static str>,
+    pub citations: Vec<CasualtyCitation>,
+    pub estimate: CasualtyEstimate,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CasualtySpread {
+    pub deaths_min: u64,
+    pub deaths_max: u64,
+    pub injuries_min: u64,
+    pub injuries_max: u64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HazardResult {
@@ -69,6 +104,8 @@ pub struct HazardResult {
     pub rings: Vec<EffectRing>,
     pub readout: Vec<ReadoutItem>,
     pub casualties: Option<CasualtyEstimate>,
+    pub casualty_models: Vec<CasualtyModelEstimate>,
+    pub casualty_spread: Option<CasualtySpread>,
     pub detail: HazardDetail,
     pub authority: &'static str,
     pub model_version: &'static str,
@@ -921,6 +958,8 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
         rings,
         readout: readout_items,
         casualties: None,
+        casualty_models: Vec::new(),
+        casualty_spread: None,
         detail: HazardDetail::Asteroid(detail),
         authority: "rust",
         model_version: "asteroid-direct-1.0.0",
@@ -1511,7 +1550,11 @@ pub fn nuclear_shelter_report(result_id: String, detail: &NuclearDetail) -> Nucl
     }
 }
 
-fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimate {
+fn nuclear_casualties(
+    effects: &NuclearEffects,
+    density: f64,
+    model: CasualtyModelKind,
+) -> CasualtyEstimate {
     let shield = if density > 5_000.0 {
         0.65
     } else if density > 1_000.0 {
@@ -1524,26 +1567,39 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
     // Effect radii come from independent blast/thermal/radiation scalings and
     // are NOT guaranteed to be monotone (e.g. thermal_1 can exceed psi_1 for
     // large airbursts). Sort by radius ascending so the running-annulus
-    // accumulation never drops a real ring or double-counts an overlap.
-    let mut zones = [
-        (effects.fireball, 1.0, 1.0, 1.0, 0.0, 0.0),
-        (effects.psi_200, 0.98, 0.9, 0.8, 0.02, 0.05),
-        (effects.psi_20, 0.85, 0.6, 0.3, 0.12, 0.15),
-        (effects.psi_5, 0.4, 0.3, 0.05, 0.45, 0.2),
-        (
-            effects.thermal_3.max(effects.psi_3),
-            0.15,
-            0.25,
-            0.02,
-            0.35,
-            0.3,
-        ),
-        (effects.psi_1, 0.02, 0.05, 0.0, 0.2, 0.15),
-        // 0.25 psi light-damage annulus: no lethality, a small glass-cut injury
-        // fraction.
-        (effects.psi_0_25, 0.0, 0.0, 0.0, 0.03, 0.0),
-        (effects.thermal_1, 0.0, 0.01, 0.0, 0.05, 0.1),
-    ];
+    // accumulation never drops a real ring or double-counts an overlap. The
+    // blast proxy deliberately uses only overpressure boundaries; thermal
+    // radii must never enlarge a blast-only casualty annulus.
+    let mut zones = match model {
+        CasualtyModelKind::CombinedEffects => vec![
+            (effects.fireball, 1.0, 1.0, 1.0, 0.0, 0.0),
+            (effects.psi_200, 0.98, 0.9, 0.8, 0.02, 0.05),
+            (effects.psi_20, 0.85, 0.6, 0.3, 0.12, 0.15),
+            (effects.psi_5, 0.4, 0.3, 0.05, 0.45, 0.2),
+            (
+                effects.thermal_3.max(effects.psi_3),
+                0.15,
+                0.25,
+                0.02,
+                0.35,
+                0.3,
+            ),
+            (effects.psi_1, 0.02, 0.05, 0.0, 0.2, 0.15),
+            (effects.psi_0_25, 0.0, 0.0, 0.0, 0.03, 0.0),
+            (effects.thermal_1, 0.0, 0.01, 0.0, 0.05, 0.1),
+        ],
+        CasualtyModelKind::BlastProxy => vec![
+            (effects.fireball, 1.0, 0.0, 0.0, 0.0, 0.0),
+            (effects.psi_200, 0.98, 0.0, 0.0, 0.02, 0.0),
+            (effects.psi_20, 0.85, 0.0, 0.0, 0.12, 0.0),
+            (effects.psi_5, 0.4, 0.0, 0.0, 0.45, 0.0),
+            (effects.psi_3, 0.15, 0.0, 0.0, 0.35, 0.0),
+            (effects.psi_1, 0.02, 0.0, 0.0, 0.2, 0.0),
+            // 0.25 psi light-damage annulus: no lethality, a small glass-cut
+            // injury fraction.
+            (effects.psi_0_25, 0.0, 0.0, 0.0, 0.03, 0.0),
+        ],
+    };
     zones.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     let mut deaths = 0.0;
     let mut injuries = 0.0;
@@ -1574,6 +1630,109 @@ fn nuclear_casualties(effects: &NuclearEffects, density: f64) -> CasualtyEstimat
         child_injuries: (injuries * GLOBAL_UNDER15_FRACTION).round() as u64,
         population_density: density,
     }
+}
+
+fn casualty_model_estimate(
+    effects: &NuclearEffects,
+    density: f64,
+    model: CasualtyModelKind,
+) -> CasualtyModelEstimate {
+    let estimate = nuclear_casualties(effects, density, model);
+    match model {
+        CasualtyModelKind::CombinedEffects => CasualtyModelEstimate {
+            id: model,
+            label: "Combined effects",
+            version: "cataclysm-combined-effects-1.0",
+            summary: "Combines blast, thermal-burn, and prompt-radiation screening probabilities within each effect annulus.",
+            assumptions: vec![
+                "Treats blast, thermal, and prompt-radiation probabilities as independent when combining them.",
+                "Uses uniform population density with fixed 20% outdoor / 80% indoor occupancy and fixed urban shielding.",
+                "Excludes fallout, fire spread, evacuation, medical response, terrain, and building-specific vulnerability.",
+            ],
+            citations: vec![
+                CasualtyCitation {
+                    label: "Glasstone & Dolan 1977 — effect and biological-effects scaling",
+                    url: "https://www.osti.gov/biblio/6852629",
+                },
+                CasualtyCitation {
+                    label: "CDC — nuclear detonations cause blast, thermal, and radiation injuries",
+                    url: "https://www.cdc.gov/radiation-emergencies/hcp/nuclear-detonations/evaluation-and-management.html",
+                },
+            ],
+            estimate,
+        },
+        CasualtyModelKind::BlastProxy => CasualtyModelEstimate {
+            id: model,
+            label: "Blast-pressure proxy",
+            version: "dcpa-ota-blast-proxy-1.0",
+            summary: "Uses blast-overpressure bands as a proxy for immediate deaths and injuries, excluding thermal and prompt-radiation contributions.",
+            assumptions: vec![
+                "Maps the existing overpressure bands to screening mortality and injury fractions derived from the DCPA/OTA proxy approach documented by NUKEMAP.",
+                "Uses uniform population density and the same fixed urban shielding as the combined-effects model.",
+                "Excludes thermal burns, prompt radiation, fallout, fire spread, evacuation, medical response, terrain, and building-specific vulnerability.",
+            ],
+            citations: vec![
+                CasualtyCitation {
+                    label: "NUKEMAP methods note — DCPA 1973 / OTA 1979 blast casualty proxy",
+                    url: "https://db.nuclearsecrecy.com/nukemap/faq/",
+                },
+                CasualtyCitation {
+                    label: "Glasstone & Dolan 1977 — overpressure effect scaling",
+                    url: "https://www.osti.gov/biblio/6852629",
+                },
+            ],
+            estimate,
+        },
+    }
+}
+
+fn casualty_products(
+    effects: &NuclearEffects,
+    density: f64,
+) -> (CasualtyEstimate, Vec<CasualtyModelEstimate>, CasualtySpread) {
+    let models = [
+        CasualtyModelKind::CombinedEffects,
+        CasualtyModelKind::BlastProxy,
+    ]
+    .into_iter()
+    .map(|model| casualty_model_estimate(effects, density, model))
+    .collect::<Vec<_>>();
+    let deaths_min = models
+        .iter()
+        .map(|model| model.estimate.deaths)
+        .min()
+        .unwrap_or(0);
+    let deaths_max = models
+        .iter()
+        .map(|model| model.estimate.deaths)
+        .max()
+        .unwrap_or(0);
+    let injuries_min = models
+        .iter()
+        .map(|model| model.estimate.injuries)
+        .min()
+        .unwrap_or(0);
+    let injuries_max = models
+        .iter()
+        .map(|model| model.estimate.injuries)
+        .max()
+        .unwrap_or(0);
+    let default_estimate = models
+        .iter()
+        .find(|model| model.id == CasualtyModelKind::CombinedEffects)
+        .expect("combined-effects casualty model")
+        .estimate
+        .clone();
+    (
+        default_estimate,
+        models,
+        CasualtySpread {
+            deaths_min,
+            deaths_max,
+            injuries_min,
+            injuries_max,
+        },
+    )
 }
 
 /// Delayed cancer fatalities among survivors, ported from the NukeMap
@@ -1798,14 +1957,23 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         latent_cancer: (request.population_density > 0.0 && !effects.is_hemp)
             .then(|| latent_cancer(&effects, request.population_density)),
     };
+    let casualty_products = (request.population_density > 0.0 && !effects.is_hemp)
+        .then(|| casualty_products(&effects, request.population_density));
+    let (casualties, casualty_models, casualty_spread) = match casualty_products {
+        Some((default_estimate, models, spread)) => {
+            (Some(default_estimate), models, Some(spread))
+        }
+        None => (None, Vec::new(), None),
+    };
     Ok(HazardResult {
         result_id: String::new(),
         kind: "nuclear".to_string(),
         center: request.center,
         rings,
         readout: readout_items,
-        casualties: (request.population_density > 0.0 && !effects.is_hemp)
-            .then(|| nuclear_casualties(&effects, request.population_density)),
+        casualties,
+        casualty_models,
+        casualty_spread,
         detail: HazardDetail::Nuclear(detail),
         authority: "rust",
         model_version: "nuclear-direct-1.0.0",
@@ -1913,10 +2081,18 @@ mod tests {
     #[test]
     fn casualty_rings_count_out_of_order_zones() {
         let density = 1_000.0;
-        let with = nuclear_casualties(&inverted_effects(), density);
+        let with = nuclear_casualties(
+            &inverted_effects(),
+            density,
+            CasualtyModelKind::CombinedEffects,
+        );
         let mut without = inverted_effects();
         without.thermal_1 = 0.0;
-        let without = nuclear_casualties(&without, density);
+        let without = nuclear_casualties(
+            &without,
+            density,
+            CasualtyModelKind::CombinedEffects,
+        );
         assert!(with.injuries >= without.injuries);
         assert!(
             with.injuries > without.injuries,
@@ -1925,6 +2101,85 @@ mod tests {
             without.injuries
         );
         assert!(with.deaths < density as u64 * 1_000); // sane, finite
+    }
+
+    #[test]
+    fn casualty_models_disagree_and_publish_a_bounded_spread() {
+        let result = simulate_nuclear_hazard(NuclearHazardRequest {
+            center: center(),
+            yield_kt: 100.0,
+            burst_type: NuclearBurstType::Surface,
+            height_m: None,
+            fission_pct: 50.0,
+            population_density: 5_000.0,
+        })
+        .unwrap();
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["casualtyModels"][0]["id"], "combined_effects");
+        assert_eq!(json["casualtyModels"][1]["id"], "blast_proxy");
+        assert!(json["casualtySpread"]["deathsMin"].is_number());
+        assert_eq!(result.casualty_models.len(), 2);
+        let combined = result
+            .casualty_models
+            .iter()
+            .find(|model| model.id == CasualtyModelKind::CombinedEffects)
+            .expect("combined-effects model");
+        let blast = result
+            .casualty_models
+            .iter()
+            .find(|model| model.id == CasualtyModelKind::BlastProxy)
+            .expect("blast-proxy model");
+        assert_ne!(combined.estimate.deaths, blast.estimate.deaths);
+        assert_ne!(combined.estimate.injuries, blast.estimate.injuries);
+        assert!(
+            combined
+                .citations
+                .iter()
+                .all(|citation| citation.url.starts_with("https://"))
+        );
+        assert!(
+            blast
+                .citations
+                .iter()
+                .all(|citation| citation.url.starts_with("https://"))
+        );
+        assert!(!combined.assumptions.is_empty());
+        assert!(!blast.assumptions.is_empty());
+        let spread = result.casualty_spread.expect("casualty disagreement spread");
+        assert_eq!(
+            spread.deaths_min,
+            combined.estimate.deaths.min(blast.estimate.deaths)
+        );
+        assert_eq!(
+            spread.deaths_max,
+            combined.estimate.deaths.max(blast.estimate.deaths)
+        );
+        assert_eq!(
+            spread.injuries_min,
+            combined.estimate.injuries.min(blast.estimate.injuries)
+        );
+        assert_eq!(
+            spread.injuries_max,
+            combined.estimate.injuries.max(blast.estimate.injuries)
+        );
+        assert_eq!(
+            result.casualties.expect("default estimate").deaths,
+            combined.estimate.deaths
+        );
+    }
+
+    #[test]
+    fn blast_proxy_is_invariant_to_thermal_and_radiation_radii() {
+        let density = 5_000.0;
+        let base = inverted_effects();
+        let expected = nuclear_casualties(&base, density, CasualtyModelKind::BlastProxy);
+        let mut altered = base;
+        altered.thermal_3 = 500.0;
+        altered.thermal_1 = 1_000.0;
+        altered.radiation = 2_000.0;
+        let actual = nuclear_casualties(&altered, density, CasualtyModelKind::BlastProxy);
+        assert_eq!(actual.deaths, expected.deaths);
+        assert_eq!(actual.injuries, expected.injuries);
     }
 
     /// Regression: latent-cancer rings must partition the whole exposed disc

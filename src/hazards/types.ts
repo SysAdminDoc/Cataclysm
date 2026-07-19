@@ -54,6 +54,30 @@ export interface CasualtyEstimate {
   populationDensity: number;
 }
 
+export type CasualtyModelKind = "combined_effects" | "blast_proxy";
+
+export interface CasualtyCitation {
+  label: string;
+  url: string;
+}
+
+export interface CasualtyModelEstimate {
+  id: CasualtyModelKind;
+  label: string;
+  version: string;
+  summary: string;
+  assumptions: string[];
+  citations: CasualtyCitation[];
+  estimate: CasualtyEstimate;
+}
+
+export interface CasualtySpread {
+  deathsMin: number;
+  deathsMax: number;
+  injuriesMin: number;
+  injuriesMax: number;
+}
+
 export interface FalloutZone {
   length: number;
   width: number;
@@ -179,6 +203,9 @@ export interface HazardResult {
   rings: EffectRing[];
   readout: ReadoutItem[];
   casualties?: CasualtyEstimate | null;
+  /** Optional because older frozen capture fixtures predate model comparison. */
+  casualtyModels?: CasualtyModelEstimate[];
+  casualtySpread?: CasualtySpread | null;
   detail: AsteroidDetail | NuclearDetail;
   authority: "rust";
   modelVersion: string;

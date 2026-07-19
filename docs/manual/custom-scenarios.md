@@ -102,6 +102,14 @@ Direct asteroid and nuclear views use deliberately narrower interactive ranges t
 | Population density (people/km²) | 0 – 20,000 | Set to 0 to suppress casualty estimates |
 | Wind from (°) | 0 – 359 | Fallout presentation direction |
 
+When population density is above zero, Results offers two immediate-casualty
+screens: **Combined effects** (blast, thermal burns, and prompt radiation) and
+**Blast-pressure proxy** (DCPA/OTA-style overpressure bands). Switching the
+model does not rerun the detonation. The panel shows the min/max disagreement
+across both models and keeps their assumptions and source links adjacent to the
+control. These are educational order-of-magnitude screens, not forecasts,
+confidence intervals, personal survival odds, or protective guidance.
+
 ## Location
 
 Set the source location by:

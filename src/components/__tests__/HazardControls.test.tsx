@@ -15,6 +15,27 @@ const nuclearResult: HazardResult = {
   rings: [{ label: "Fireball", radiusM: 300, color: "#f5e0dc", category: "fireball" }],
   readout: [{ label: "Fireball radius", value: "300 m" }],
   casualties: { deaths: 120, injuries: 240, childDeaths: 30, childInjuries: 60, populationDensity: 5000 },
+  casualtyModels: [
+    {
+      id: "combined_effects",
+      label: "Combined effects",
+      version: "cataclysm-combined-effects-1.0",
+      summary: "Combined screening.",
+      assumptions: ["Uniform population."],
+      citations: [{ label: "Glasstone & Dolan 1977", url: "https://www.osti.gov/biblio/6852629" }],
+      estimate: { deaths: 120, injuries: 240, childDeaths: 30, childInjuries: 60, populationDensity: 5000 },
+    },
+    {
+      id: "blast_proxy",
+      label: "Blast-pressure proxy",
+      version: "dcpa-ota-blast-proxy-1.0",
+      summary: "Blast-only screening.",
+      assumptions: ["Overpressure proxy."],
+      citations: [{ label: "NUKEMAP methods note", url: "https://db.nuclearsecrecy.com/nukemap/faq/" }],
+      estimate: { deaths: 80, injuries: 180, childDeaths: 20, childInjuries: 45, populationDensity: 5000 },
+    },
+  ],
+  casualtySpread: { deathsMin: 80, deathsMax: 120, injuriesMin: 180, injuriesMax: 240 },
   detail: {
     yieldKt: 100,
     isSurface: false,
@@ -170,7 +191,7 @@ describe("HazardControls", () => {
     // Backend fixture values are presented without client-side recomputation.
     expect(screen.getByText("Fireball radius")).toBeInTheDocument();
     // casualties block renders fatalities
-    expect(screen.getByText(/fatalities/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/fatalities/i).length).toBeGreaterThanOrEqual(1);
     // latent cancer readout renders the BEIR VII estimate
     expect(screen.getByText(/latent\s*cancer deaths over 30 yr/i)).toBeInTheDocument();
     expect(screen.getByText(/BEIR VII/i)).toBeInTheDocument();
@@ -182,6 +203,40 @@ describe("HazardControls", () => {
     expect(screen.getByRole("columnheader", { name: /5 psi zone 3 km/ })).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "Deep underground" })).toBeInTheDocument();
     expect(screen.getByText(/not personal survival odds/i)).toBeInTheDocument();
+  });
+
+  it("switches backend casualty models, shows their disagreement, and exposes sources", async () => {
+    const user = userEvent.setup();
+    render(
+      <HazardControls
+        mode="nuclear"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={nuclearResult}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+      />,
+    );
+
+    const picker = screen.getByRole("combobox", { name: "Immediate casualty model" });
+    expect(picker).toHaveValue("combined_effects");
+    expect(screen.getByText(/Model disagreement/)).toHaveTextContent(/fatalities 80–90 ↔ 100–200/);
+    expect(screen.getByText(/Includes blast, thermal burns, and prompt radiation/)).toBeInTheDocument();
+
+    await user.selectOptions(picker, "blast_proxy");
+    expect(screen.getByText(/Uses blast overpressure alone/)).toBeInTheDocument();
+    expect(screen.getByText("80–90")).toBeInTheDocument();
+    await user.click(screen.getByText("Assumptions & sources"));
+    expect(screen.getByRole("link", { name: "NUKEMAP methods note" })).toHaveAttribute(
+      "href",
+      "https://db.nuclearsecrecy.com/nukemap/faq/",
+    );
   });
 
   it("converts direct-hazard readouts, rings, density, and shelter ranges to imperial", async () => {
@@ -473,7 +528,12 @@ describe("HazardControls", () => {
         center={{ lat: 40, lon: -74 }}
         onTogglePick={noop}
         pickActive={false}
-        result={{ ...nuclearResult, casualties: { deaths: 112019, injuries: 264055, childDeaths: 28005, childInjuries: 66014, populationDensity: 5000 } }}
+        result={{
+          ...nuclearResult,
+          casualties: { deaths: 112019, injuries: 264055, childDeaths: 28005, childInjuries: 66014, populationDensity: 5000 },
+          casualtyModels: undefined,
+          casualtySpread: undefined,
+        }}
         windFromDeg={270}
         onWindChange={noop}
         onDetonate={noop}

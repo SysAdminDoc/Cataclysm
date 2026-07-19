@@ -1,7 +1,7 @@
 // Direct-hazard controls are presentation-only. Rust supplies every result,
 // including the detonation timeline and fallout dimensions.
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { sourceBound, sourceEnumValues } from "../lib/scenario-schema";
 import {
   WEAPON_PRESETS,
@@ -9,6 +9,7 @@ import {
   type AsteroidInput,
   type AsteroidVisualReport,
   type BurstType,
+  type CasualtyModelKind,
   type HazardResult,
   type NuclearDetail,
   type NuclearInput,
@@ -50,6 +51,16 @@ function magnitudeDisplayBand(n: number, formatNumber: (value: number) => string
   const lower = Math.floor(n / magnitude) * magnitude;
   const upper = lower + magnitude;
   return `${formatNumber(lower)}–${formatNumber(upper)}`;
+}
+
+function modelDisplaySpread(
+  min: number,
+  max: number,
+  formatNumber: (value: number) => string,
+): string {
+  const lower = magnitudeDisplayBand(min, formatNumber);
+  const upper = magnitudeDisplayBand(max, formatNumber);
+  return lower === upper ? lower : `${lower} ↔ ${upper}`;
 }
 
 type NumericEntry = {
@@ -178,11 +189,13 @@ export function HazardControls({
 }) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
+  const casualtyModelSelectId = useId();
   const nuclearYield = sourceBound("DirectNuclear", "yield_kt");
   const inferredWeaponId = WEAPON_PRESETS.find((preset) =>
     preset.yieldKt === nuclear.yieldKt && preset.burstType === nuclear.burstType,
   )?.id ?? "";
   const [preferredWeaponId, setPreferredWeaponId] = useState(inferredWeaponId);
+  const [selectedCasualtyModel, setSelectedCasualtyModel] = useState<CasualtyModelKind>("combined_effects");
   const preferredWeapon = WEAPON_PRESETS.find((preset) => preset.id === preferredWeaponId);
   const selectedWeaponId = preferredWeapon?.yieldKt === nuclear.yieldKt
     && preferredWeapon.burstType === nuclear.burstType
@@ -210,6 +223,10 @@ export function HazardControls({
   const asteroidTargetTypes = sourceEnumValues("DirectAsteroid", "target_type", true);
   const asteroidEffects = mode === "asteroid" ? (result?.detail as AsteroidDetail | undefined) : undefined;
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
+  const casualtyModels = result?.casualtyModels ?? [];
+  const activeCasualtyModel = casualtyModels.find((model) => model.id === selectedCasualtyModel)
+    ?? casualtyModels[0];
+  const activeCasualties = activeCasualtyModel?.estimate ?? result?.casualties;
   const timeline = nuclearEffects?.timeline ?? [];
   const hasFallout = Boolean(nuclearEffects?.fallout);
   const showSetup = display !== "results";
@@ -516,18 +533,70 @@ export function HazardControls({
               {asteroidVisuals.crater ? <CraterDiagram crater={asteroidVisuals.crater} /> : null}
             </section>
           ) : null}
-          {result.casualties && (
-            <div className="hazard__casualties">
-              <strong>{magnitudeDisplayBand(result.casualties.deaths, formatNumber)}</strong> {t("hazard.fatalities")} ·{" "}
-              <strong>{magnitudeDisplayBand(result.casualties.injuries, formatNumber)}</strong> {t("hazard.injuries")}
+          {activeCasualties && (
+            <section className="hazard__casualties" aria-label={t("hazard.casualty.model")}>
+              {casualtyModels.length > 1 ? (
+                <div className="hazard__casualty-picker">
+                  <label htmlFor={casualtyModelSelectId}>
+                    {t("hazard.casualty.model")}
+                  </label>
+                  <select
+                    id={casualtyModelSelectId}
+                    value={activeCasualtyModel?.id ?? "combined_effects"}
+                    onChange={(event) => setSelectedCasualtyModel(event.target.value as CasualtyModelKind)}
+                  >
+                    {casualtyModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.id === "blast_proxy"
+                          ? t("hazard.casualty.model.blast")
+                          : t("hazard.casualty.model.combined")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+              {activeCasualtyModel ? (
+                <p className="hazard__casualty-summary">
+                  {activeCasualtyModel.id === "blast_proxy"
+                    ? t("hazard.casualty.summary.blast")
+                    : t("hazard.casualty.summary.combined")}
+                </p>
+              ) : null}
+              <strong>{magnitudeDisplayBand(activeCasualties.deaths, formatNumber)}</strong> {t("hazard.fatalities")} ·{" "}
+              <strong>{magnitudeDisplayBand(activeCasualties.injuries, formatNumber)}</strong> {t("hazard.injuries")}
               <span className="hazard__casualties-detail">
-                {t("hazard.includingApprox")}<strong>{magnitudeDisplayBand(result.casualties.childDeaths, formatNumber)}</strong> {t("hazard.childDeaths")} · ~<strong>{magnitudeDisplayBand(result.casualties.childInjuries, formatNumber)}</strong>{" "}
+                {t("hazard.includingApprox")}<strong>{magnitudeDisplayBand(activeCasualties.childDeaths, formatNumber)}</strong> {t("hazard.childDeaths")} · ~<strong>{magnitudeDisplayBand(activeCasualties.childInjuries, formatNumber)}</strong>{" "}
                 {t("hazard.childInjuries")}
               </span>
+              {result.casualtySpread && casualtyModels.length > 1 ? (
+                <span className="hazard__casualty-disagreement">
+                  {t("hazard.casualty.disagreement", {
+                    deaths: modelDisplaySpread(result.casualtySpread.deathsMin, result.casualtySpread.deathsMax, formatNumber),
+                    injuries: modelDisplaySpread(result.casualtySpread.injuriesMin, result.casualtySpread.injuriesMax, formatNumber),
+                  })}
+                </span>
+              ) : null}
+              {activeCasualtyModel ? (
+                <details className="hazard__casualty-method">
+                  <summary>{t("hazard.casualty.method")}</summary>
+                  <p>
+                    {activeCasualtyModel.id === "blast_proxy"
+                      ? t("hazard.casualty.assumptions.blast")
+                      : t("hazard.casualty.assumptions.combined")}
+                  </p>
+                  <ul>
+                    {activeCasualtyModel.citations.map((citation) => (
+                      <li key={citation.url}>
+                        <a href={citation.url} target="_blank" rel="noreferrer">{citation.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
               <span className="hazard__casualties-note">
-                {t("hazard.casualtyNote", { density: quantityText(formatPopulationDensity(result.casualties.populationDensity, formatNumber, unitSystem)) })}
+                {t("hazard.casualtyNote", { density: quantityText(formatPopulationDensity(activeCasualties.populationDensity, formatNumber, unitSystem)) })}
               </span>
-            </div>
+            </section>
           )}
           {nuclearEffects?.latentCancer && (
             <div className="hazard__casualties">
