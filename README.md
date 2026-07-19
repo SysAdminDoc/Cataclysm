@@ -366,6 +366,9 @@ npm run doctor             # local toolchain preflight with actionable fixes
 npm run dev                # browser preview with Rust/WASM source physics
 npm run build:physics      # rebuild + verify the checked-in browser WASM asset
 npm run tauri dev          # full desktop app with Rust/Tauri IPC
+npm run typecheck          # app + strict tests/config TS + support-script syntax
+npm run lint               # source, tests, scripts, and root configs
+npm run test:e2e           # build or prove fresh dist, then run Playwright
 npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
 npm run verify:rust-advisories # reject new, expired, stale, or path-drifted RustSec warnings

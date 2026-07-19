@@ -22,12 +22,17 @@ export default defineConfig({
     headless: true,
     locale: "en-US",
     timezoneId: "UTC",
-    reducedMotion: "reduce",
+    contextOptions: {
+      reducedMotion: "reduce",
+    },
     serviceWorkers: "block",
     deviceScaleFactor: 1,
   },
   webServer: {
-    command: "npx vite preview --host 127.0.0.1 --port 4187 --strictPort",
+    // This server refuses to preview a stale or unproven dist directory. The
+    // npm test:e2e wrapper builds only when the deterministic source digest no
+    // longer matches the recorded production artifact.
+    command: "node scripts/serve-e2e-preview.mjs",
     port: 4187,
     reuseExistingServer: false,
     timeout: 30_000,

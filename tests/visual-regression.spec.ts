@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const AXE_EXCLUDE = [".cesium-widget", ".cesium-viewer-toolbar"];
@@ -12,7 +12,7 @@ function axeScan(page: import("@playwright/test").Page) {
     .analyze();
 }
 
-async function seedAcknowledged(page: { addInitScript: (script: () => void) => Promise<void> }) {
+async function seedAcknowledged(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
     localStorage.setItem("tsunamisim._settings_schema_version", "5");
@@ -24,7 +24,7 @@ async function seedAcknowledged(page: { addInitScript: (script: () => void) => P
   });
 }
 
-async function seedAcknowledgedLatte(page: { addInitScript: (script: () => void) => Promise<void> }) {
+async function seedAcknowledgedLatte(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
     localStorage.setItem("tsunamisim._settings_schema_version", "5");
@@ -181,7 +181,7 @@ test.describe("Visual regression — desktop", () => {
       maxDiffPixelRatio: 0.01,
       timeout: 15_000,
     });
-    await trustCanvasHider.evaluate((element) => element.remove());
+    await trustCanvasHider.evaluate((element) => (element as HTMLElement).remove());
     await trust.locator("summary").click();
 
     await page.getByRole("tab", { name: "Science" }).click();

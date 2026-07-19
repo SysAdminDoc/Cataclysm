@@ -1,11 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 // Keyboard-only walkthrough of the golden path: pick a preset, run the
 // solver, scrub the timeline, export. No pointer events — every action is
 // focus + Enter/Space/Arrow. Complements the axe scans in smoke.spec.ts,
 // which check static WCAG semantics but not keyboard operability.
 
-async function seedAcknowledgedPreview(page: { addInitScript: (script: () => void) => Promise<void> }) {
+async function seedAcknowledgedPreview(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
     localStorage.setItem("tsunamisim._settings_schema_version", "5");

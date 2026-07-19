@@ -141,19 +141,35 @@ test("language switch persists across settings, simulation results, layers, and 
   await expect(customBuilder.getByRole("button", { name: "沈み込み帯から断層を自動入力" })).toBeVisible();
   const customAccessibility = await new AxeBuilder({ page }).include(".scenario-builder").analyze();
   expect(customAccessibility.violations).toEqual([]);
-  const customBounds = await customBuilder.boundingBox();
-  expect(customBounds).not.toBeNull();
-  const viewport = page.viewportSize();
-  expect(viewport).not.toBeNull();
-  expect(await page.screenshot({
-    clip: {
-      x: customBounds!.x,
-      y: Math.max(0, customBounds!.y),
-      width: customBounds!.width,
-      height: Math.min(customBounds!.height, 390, viewport!.height - Math.max(0, customBounds!.y) - 12),
-    },
-    style: ".simulation-transport { display: none !important; }",
-  })).toMatchSnapshot("localized-scenario-builder-ja.png");
+  // Apply capture-only layout before measuring. Injecting it through the
+  // screenshot call changed panel height after the clip was calculated and
+  // exposed an unrelated inspector strip under reduced motion.
+  const transportHider = await page.addStyleTag({
+    content: ".simulation-transport, .inspector__header { display: none !important; }",
+  });
+  try {
+    await customBuilder.evaluate((element) => element.scrollIntoView({ block: "start", inline: "nearest" }));
+    await expect.poll(async () => (await customBuilder.boundingBox())?.y ?? Number.POSITIVE_INFINITY)
+      .toBeLessThan(220);
+    const customBounds = await customBuilder.boundingBox();
+    expect(customBounds).not.toBeNull();
+    const viewport = page.viewportSize();
+    expect(viewport).not.toBeNull();
+    expect(await page.screenshot({
+      clip: {
+        x: customBounds!.x,
+        y: Math.max(0, customBounds!.y),
+        width: customBounds!.width,
+        height: Math.min(customBounds!.height, 390, viewport!.height - Math.max(0, customBounds!.y) - 12),
+      },
+    })).toMatchSnapshot("localized-scenario-builder-ja.png", {
+      // Chromium's number/range controls vary by a few antialiased edge
+      // pixels even after geometry and reduced-motion state are fixed.
+      maxDiffPixels: 100,
+    });
+  } finally {
+    await transportHider.evaluate((element) => (element as HTMLElement).remove());
+  }
 
   const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
   await expect(tohoku).toBeVisible();

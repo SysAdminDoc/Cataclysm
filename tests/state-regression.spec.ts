@@ -55,7 +55,7 @@ async function captureState(page: Page, theme: Theme, state: string) {
       timeout: 15_000,
     });
   } finally {
-    await canvasHider.evaluate((element) => element.remove());
+    await canvasHider.evaluate((element) => (element as HTMLElement).remove());
   }
 }
 

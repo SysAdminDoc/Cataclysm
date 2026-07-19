@@ -58,19 +58,27 @@ name, release version, runtime floor, playback cadence, Earth-provider default,
 or release policy, update that manifest and run `npm run verify:product-truth`;
 the full gate rejects stale docs, onboarding copy, metadata, or ledger rows.
 
-That command covers the frontend typecheck, lint, unit tests, production build,
-npm audit, Playwright browser-preview checks, Rust check/test/clippy, and Rust
+That command covers application and support-code typechecking, JavaScript
+syntax checks, repository-wide lint, unit tests, production build, npm audit,
+Playwright browser-preview checks, Rust check/test/clippy, and Rust
 advisory/license tools when `cargo-audit` or `cargo-deny` are installed. During
 active debugging, the individual gates are:
 
 ```bash
-npx tsc --noEmit                              # TypeScript typecheck
+npm run typecheck                             # App + tests/config TS + support JS syntax
+npm run lint                                  # Source, tests, scripts, and root configs
+npm run test:e2e                              # Build or prove a fresh dist, then Playwright
 npx vite build                                # Production build
 npm audit --audit-level=moderate              # npm supply-chain check
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --release --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
+
+`npm run test:e2e` records a deterministic digest of the production inputs in
+`dist/build-provenance.json`. It reuses `dist` only when that digest and all
+required PWA outputs match; Playwright's preview server independently rejects a
+missing or stale record so invoking Playwright directly cannot test old output.
 
 GitHub Actions are intentionally not used for this repo. Builds, tests, release
 bundles, and advisory checks are local maintainer responsibilities.

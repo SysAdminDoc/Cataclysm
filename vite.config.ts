@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
@@ -12,7 +12,7 @@ const htmlEntry = path.resolve(__dirname, "index.html").replace(/\\/g, "/");
 // Tauri runs the frontend at a fixed port; mobile dev gets a hostname env var.
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig(async ({ command, mode }) => {
+export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
   // Guard against shipping a personal Cesium ion token: Vite statically inlines
   // every VITE_-prefixed var into the client bundle, so a token left in .env
   // during `tauri build` would be baked into the installer handed to end users
@@ -35,8 +35,8 @@ export default defineConfig(async ({ command, mode }) => {
   }
   return {
     plugins: [
-      react(),
-      viteStaticCopy({
+      ...react(),
+      ...viteStaticCopy({
         targets: [
           {
             src: "src-tauri/icons/128x128.png",

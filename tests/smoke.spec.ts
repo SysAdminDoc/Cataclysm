@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 
-async function seedAcknowledgedPreview(page: { addInitScript: (script: () => void) => Promise<void> }) {
+async function seedAcknowledgedPreview(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
     localStorage.setItem("tsunamisim._settings_schema_version", "5");

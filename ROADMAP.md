@@ -49,15 +49,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ## Research-Driven Additions
 
-### P2
-
-- [ ] P2 — Extend static checks to tests, scripts, configs, and fresh E2E output
-  Why: Playwright tests, config files, and verification scripts escape normal type/lint coverage, and standalone E2E can preview a stale `dist` directory.
-  Evidence: `tsconfig.json`, `eslint.config.js`, package lint scripts, `playwright.config.ts`, `tests/**`, `scripts/**`.
-  Touches: dedicated support-code tsconfig/JS checking, ESLint targets, E2E prebuild contract, verification tests.
-  Acceptance: tests/config/scripts are type- or check-validated and linted; E2E always builds or proves a matching fresh artifact before preview; an intentionally stale `dist` fixture is rejected; the full local release gate remains deterministic.
-  Complexity: M
-
 ## Research-Driven Additions (2026-07-12)
 
 New items only. The existing undated and dated Research-Driven Additions sections

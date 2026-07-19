@@ -44,6 +44,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Extended the local static gate beyond application source: Playwright tests
+  and TypeScript configs now compile under a dedicated strict project, every
+  support script receives Node syntax checking, and ESLint covers source,
+  tests, scripts, and root configs. Standalone E2E runs record and prove a
+  deterministic production-input digest, rebuild stale output automatically,
+  and refuse direct preview of an unproven `dist` directory.
+
 - Added `src/data/product-truth.json` and a fail-closed verification contract
   for the current product name, version, repository and release URLs, runtime
   floors, playback frame count, default/offline Earth providers, unsigned

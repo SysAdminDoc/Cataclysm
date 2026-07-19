@@ -7,7 +7,7 @@ Scope: production npm dependencies and Windows x86_64 GPU Rust runtime dependenc
 Development-only and build-only packages are excluded.
 Application version: 0.12.0
 Generators: cargo-about 0.9.1; generate-license-file 4.2.1
-package-lock.json SHA-256: 99b5516f0b5cf48a935b7bffa7293f27e5c5685a2150475a2f1943121f995410
+package-lock.json SHA-256: 4e0d9d10d746d2bb1c6b230c6f64473901e4ba5511a5f3d40bcf850dfb36b562
 src-tauri/Cargo.lock SHA-256: f71214f6696fad0e85a487f68bad504d452b3f155f1129f399bdf76b4ced645b
 Production components: 39 npm; 397 Rust
 
