@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Quick ETA preview: a new `quick_eta_preview` IPC command runs a coarse
+  linear-mode SWE solve at half the requested resolution and returns per-cell
+  first-arrival times without a full nonlinear run. Delivers a sub-second
+  "where does the wave arrive first?" preview for the scenario builder.
 - Globe inspect mode uses `globe.pick` with ray casting when the async API is
   available, preventing frame stalls during heavy solver playback. The sync
   `pickEllipsoid` path remains for pick mode and as a fallback.

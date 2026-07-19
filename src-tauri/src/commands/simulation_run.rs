@@ -206,3 +206,64 @@ pub struct GridGaugeHistoryFrame {
     pub time_s: f64,
     pub gauge_samples: Vec<GridGaugeSample>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct QuickEtaPreviewResult {
+    pub bbox: [f64; 4],
+    pub nx: u32,
+    pub ny: u32,
+    pub arrival_s: Vec<f64>,
+    pub elapsed_wall_ms: u64,
+}
+
+#[tauri::command]
+pub async fn quick_eta_preview(
+    req: SimulateGridRequest,
+) -> Result<QuickEtaPreviewResult, String> {
+    validate_simulate_grid(&req)?;
+    let plan = SimulationGridPlan::from_request(&req)?;
+    let coarse_cell_deg = plan.cell_deg * 2.0;
+    let coarse_nx = ((plan.east - plan.west) / coarse_cell_deg).ceil() as usize;
+    let coarse_ny = ((plan.north - plan.south) / coarse_cell_deg).ceil() as usize;
+    if coarse_nx * coarse_ny > 500_000 {
+        return Err("Quick ETA grid too large for preview".to_string());
+    }
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let start = std::time::Instant::now();
+        let mut grid = SwGrid::new(
+            plan.west, plan.south, plan.east, plan.north,
+            coarse_cell_deg, coarse_cell_deg,
+        );
+        grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
+        inject_source_initial_field(&mut grid, &req)?;
+
+        let dt = grid.recommended_dt_s(0.4);
+        let stepper = TimeStepper::new(dt)
+            .with_mode(crate::physics::solver::SolverMode::Linear);
+        let n_steps = ((req.t_end_s / dt).ceil() as usize).min(50_000);
+        let threshold = MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
+        let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, threshold);
+        acc.observe(&grid);
+        stepper.step(&mut grid, n_steps.min(1000));
+        acc.observe(&grid);
+        for batch in 1..((n_steps / 1000) + 1) {
+            let remaining = n_steps.saturating_sub(batch * 1000);
+            if remaining == 0 { break; }
+            stepper.step(&mut grid, remaining.min(1000));
+            acc.observe(&grid);
+        }
+
+        let [_, _, arrival, _] = acc.scientific_fields();
+        let elapsed = start.elapsed().as_millis() as u64;
+        Ok(QuickEtaPreviewResult {
+            bbox: [plan.west, plan.south, plan.east, plan.north],
+            nx: grid.nx as u32,
+            ny: grid.ny as u32,
+            arrival_s: arrival.to_vec(),
+            elapsed_wall_ms: elapsed,
+        })
+    })
+    .await
+    .map_err(|e| format!("Quick ETA task panicked: {e}"))?
+}

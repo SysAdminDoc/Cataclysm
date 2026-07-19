@@ -442,6 +442,21 @@ export const api = {
     // discarded, leaving the registered cancel token unreachable.
     return invoke<SimulateGridResponse>("simulate_grid", { runId, req });
   },
+  quickEtaPreview(req: {
+    source: GeoPoint;
+    initial_amplitude_m: number;
+    source_sigma_m: number;
+    source_geometry?: InitialSourceGeometry | null;
+    mean_depth_m: number;
+    box_half_size_deg: number;
+    cells_per_deg: number;
+    t_end_s: number;
+    n_snapshots: number;
+    colormap?: string;
+    gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
+  }) {
+    return invoke<{ bbox: [number, number, number, number]; nx: number; ny: number; arrival_s: number[]; elapsed_wall_ms: number }>("quick_eta_preview", { req });
+  },
   /** F4-01 — Lightweight GPU-availability probe. Returns one of:
    *  "available", "no-adapter", or "feature-off". See the Rust
    *  `gpu_probe` command for full semantics. */

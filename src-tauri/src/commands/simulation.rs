@@ -14,5 +14,5 @@ pub(crate) use model::*;
 pub(crate) use stream::*;
 
 pub use model::{SimulateGridRequest, SimulateGridResponse, SimulationRunLifecycle};
-pub use run::{GridGaugeHistoryFrame, SimulateGridStreamMeta, simulate_grid};
+pub use run::{GridGaugeHistoryFrame, SimulateGridStreamMeta, simulate_grid, quick_eta_preview};
 pub use stream::simulate_grid_streaming;

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-quick-eta-preview"
+description = "Enables the quick_eta_preview command without any pre-configured scope."
+commands.allow = ["quick_eta_preview"]
+
+[[permission]]
+identifier = "deny-quick-eta-preview"
+description = "Denies the quick_eta_preview command without any pre-configured scope."
+commands.deny = ["quick_eta_preview"]

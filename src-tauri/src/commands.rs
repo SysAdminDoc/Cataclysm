@@ -46,7 +46,7 @@ mod waves;
 pub use direct::*;
 pub use observations::*;
 pub use scientific_export::*;
-pub use simulation::{GridGaugeHistoryFrame, SimulateGridRequest, SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle, simulate_grid, simulate_grid_streaming};
+pub use simulation::{GridGaugeHistoryFrame, SimulateGridRequest, SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle, simulate_grid, simulate_grid_streaming, quick_eta_preview};
 pub use system::*;
 use simulation::*;
 pub use waves::*;

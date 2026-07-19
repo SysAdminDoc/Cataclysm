@@ -303,13 +303,6 @@ below are the net-new, non-duplicate opportunities from this scan.
 
 ### P2
 
-- [ ] P2 — First-arrival ETA quick-preview reusing the existing linear SWE mode
-  Why: full nonlinear runs are slow, but `SolverMode::Linear` already exists and is unused as a product surface; an instant coarse first-arrival/ETA map before (or instead of) the expensive nonlinear pass is the responsiveness pattern that makes easyWave and Celeris feel alive, at near-zero new physics.
-  Evidence: Verified — `SolverMode::Linear` is exercised only in `solver/gpu.rs` parity tests; no `arrival-time`/`eta_map` product exists; isochrones in `solver/max_field.rs` require a full run. easyWave early-warning model https://git.gfz-potsdam.de/id2/geoperil/easyWave; Celeris interactivity https://plynett.github.io/.
-  Touches: a new fast-preview IPC command (linear-mode coarse grid → per-cell first-arrival time), `src/components/SwePlayback.tsx`/`Globe.tsx` (an "arrival-time preview" layer + "Quick ETA" action that runs before/without the full solve), `docs/manual/`.
-  Acceptance: a Quick ETA action returns a coarse first-arrival map for a preset in a small fraction of the full-run time, rendered as a labelled non-authoritative preview layer clearly distinguished from validated max-field isochrones; the full nonlinear run remains the reproducible/exported product; a Rust test confirms the linear preview's arrival times are monotonic and bracket the nonlinear isochrones for a known case.
-  Complexity: M
-
 - [ ] P2 — HazEL observed-runup validation overlay (extends the historical event browser)
   Why: the planned NCEI HazEL browser loads event parameters into the scenario builder; the same API also serves 26,000+ *observed* runup points — overlaying them against simulated runup turns HazEL from a convenience loader into a per-event validation surface, the single strongest scientific-legitimacy move for the tsunami mode.
   Evidence: Verified extension of the existing "NCEI HazEL historical tsunami event browser" item — that item's acceptance stops at loading magnitude/epicentre. NCEI runup records https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search.
