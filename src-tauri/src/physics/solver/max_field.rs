@@ -49,6 +49,22 @@ pub struct MaxFieldProduct {
     pub field_tiles: Vec<MaxFieldTile>,
     /// First-arrival isochrones at regular intervals.
     pub isochrones: Vec<Isochrone>,
+    /// Maximum flow depth (H = h + η) per cell (m).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub max_depth_m: Vec<f64>,
+    /// Maximum current speed per cell (m/s).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub max_speed_ms: Vec<f64>,
+    /// Maximum momentum flux H·U² per cell (m³/s²).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub max_momentum_flux_m3s2: Vec<f64>,
+    /// Minimum total depth (drawdown) per cell (m). +∞ sentinel means the
+    /// cell was never observed wet.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub min_depth_m: Vec<f64>,
+    /// Time of maximum speed per cell (s).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub t_of_max_speed_s: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -72,6 +88,16 @@ pub struct MaxFieldAccumulator {
     t_of_max_s: Vec<f64>,
     arrival_s: Vec<f64>,
     energy_m2s: Vec<f64>,
+    /// Maximum total water depth H = h + η (m).
+    max_depth_m: Vec<f64>,
+    /// Maximum current speed |U| = √(u² + v²) (m/s).
+    max_speed_ms: Vec<f64>,
+    /// Maximum momentum flux ρ·H·U² (kg/m/s²). Stored as H·U² (density-free).
+    max_momentum_flux_m3s2: Vec<f64>,
+    /// Minimum water depth (drawdown indicator, m). Initialized to +∞.
+    min_depth_m: Vec<f64>,
+    /// Time of maximum speed (s).
+    t_of_max_speed_s: Vec<f64>,
     last_t_s: f64,
     arrival_threshold_m: f64,
     observed: bool,
@@ -81,7 +107,22 @@ impl MaxFieldAccumulator {
     /// Borrow quantitative max-field arrays for scientific interchange before
     /// the accumulator is consumed by the PNG visualization product.
     pub(crate) fn scientific_fields(&self) -> [&[f64]; 4] {
-        self.checkpoint_fields()
+        [
+            &self.peak_m,
+            &self.t_of_max_s,
+            &self.arrival_s,
+            &self.energy_m2s,
+        ]
+    }
+
+    pub(crate) fn extended_scientific_fields(&self) -> [&[f64]; 5] {
+        [
+            &self.max_depth_m,
+            &self.max_speed_ms,
+            &self.max_momentum_flux_m3s2,
+            &self.min_depth_m,
+            &self.t_of_max_speed_s,
+        ]
     }
 
     pub(super) fn checkpoint_fields(&self) -> [&[f64]; 4] {
@@ -103,12 +144,18 @@ impl MaxFieldAccumulator {
         arrival_threshold_m: f64,
         observed: bool,
     ) -> Self {
+        let n = fields[0].len();
         let [peak_m, t_of_max_s, arrival_s, energy_m2s] = fields;
         Self {
             peak_m,
             t_of_max_s,
             arrival_s,
             energy_m2s,
+            max_depth_m: vec![0.0; n],
+            max_speed_ms: vec![0.0; n],
+            max_momentum_flux_m3s2: vec![0.0; n],
+            min_depth_m: vec![f64::INFINITY; n],
+            t_of_max_speed_s: vec![0.0; n],
             last_t_s,
             arrival_threshold_m,
             observed,
@@ -125,6 +172,11 @@ impl MaxFieldAccumulator {
             t_of_max_s: vec![0.0; n_cells],
             arrival_s: vec![f64::INFINITY; n_cells],
             energy_m2s: vec![0.0; n_cells],
+            max_depth_m: vec![0.0; n_cells],
+            max_speed_ms: vec![0.0; n_cells],
+            max_momentum_flux_m3s2: vec![0.0; n_cells],
+            min_depth_m: vec![f64::INFINITY; n_cells],
+            t_of_max_speed_s: vec![0.0; n_cells],
             last_t_s: 0.0,
             arrival_threshold_m: arrival_threshold_m.max(1e-6),
             observed: false,
@@ -140,14 +192,15 @@ impl MaxFieldAccumulator {
     pub fn observe(&mut self, grid: &SwGrid) {
         let n = grid.nx * grid.ny;
         if n != self.peak_m.len() {
-            return; // Grid shape changed — never expected; refuse quietly.
+            return;
         }
         let dt = if self.observed {
             (grid.t_s - self.last_t_s).max(0.0)
         } else {
             0.0
         };
-        for (k, &eta) in grid.eta_m.iter().enumerate() {
+        for k in 0..n {
+            let eta = grid.eta_m[k];
             if !eta.is_finite() {
                 continue;
             }
@@ -159,8 +212,27 @@ impl MaxFieldAccumulator {
             if a >= self.arrival_threshold_m && self.arrival_s[k].is_infinite() {
                 self.arrival_s[k] = grid.t_s;
             }
-            // Rectangle-rule ∫ η² dt at solver-step cadence.
             self.energy_m2s[k] += eta * eta * dt;
+
+            let h = grid.h_m[k];
+            let total_depth = (h + eta).max(0.0);
+            if total_depth > self.max_depth_m[k] {
+                self.max_depth_m[k] = total_depth;
+            }
+            if total_depth < self.min_depth_m[k] {
+                self.min_depth_m[k] = total_depth;
+            }
+            let u = grid.u_ms[k];
+            let v = grid.v_ms[k];
+            let speed = (u * u + v * v).sqrt();
+            if speed > self.max_speed_ms[k] {
+                self.max_speed_ms[k] = speed;
+                self.t_of_max_speed_s[k] = grid.t_s;
+            }
+            let mf = total_depth * speed * speed;
+            if mf > self.max_momentum_flux_m3s2[k] {
+                self.max_momentum_flux_m3s2[k] = mf;
+            }
         }
         self.last_t_s = grid.t_s;
         self.observed = true;
@@ -282,6 +354,11 @@ impl MaxFieldAccumulator {
             energy_png_b64: energy_png,
             field_tiles,
             isochrones,
+            max_depth_m: self.max_depth_m,
+            max_speed_ms: self.max_speed_ms,
+            max_momentum_flux_m3s2: self.max_momentum_flux_m3s2,
+            min_depth_m: self.min_depth_m,
+            t_of_max_speed_s: self.t_of_max_speed_s,
         }
     }
 }
@@ -543,6 +620,41 @@ mod tests {
         grid.t_s = 10.0;
         acc.observe(&grid); // dt = 10, η² = 4 → +40
         assert!((acc.energy_m2s[0] - 40.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn extended_fields_track_depth_speed_momentum_drawdown() {
+        let mut grid = grid_with(2, 2);
+        grid.h_m[0] = 100.0; // 100 m bathymetric depth
+        grid.eta_m[0] = 3.0; // total depth = 103
+        grid.u_ms[0] = 4.0;
+        grid.v_ms[0] = 3.0; // speed = 5
+        grid.t_s = 0.0;
+        let mut acc = MaxFieldAccumulator::new(4, 0.01);
+        acc.observe(&grid);
+        // max_depth = 103
+        assert!((acc.max_depth_m[0] - 103.0).abs() < 1e-9);
+        // max_speed = 5
+        assert!((acc.max_speed_ms[0] - 5.0).abs() < 1e-9);
+        // momentum flux = H * U² = 103 * 25 = 2575
+        assert!((acc.max_momentum_flux_m3s2[0] - 2575.0).abs() < 1e-9);
+        // min depth = 103
+        assert!((acc.min_depth_m[0] - 103.0).abs() < 1e-9);
+
+        // Second observation with drawdown
+        grid.eta_m[0] = -50.0; // total depth = 50
+        grid.u_ms[0] = 1.0;
+        grid.v_ms[0] = 0.0;
+        grid.t_s = 10.0;
+        acc.observe(&grid);
+        // max_depth still 103 (peak from before)
+        assert!((acc.max_depth_m[0] - 103.0).abs() < 1e-9);
+        // min_depth updated to 50
+        assert!((acc.min_depth_m[0] - 50.0).abs() < 1e-9);
+        // max_speed still 5 (from before)
+        assert!((acc.max_speed_ms[0] - 5.0).abs() < 1e-9);
+        // t_of_max_speed is the first observation time
+        assert!((acc.t_of_max_speed_s[0] - 0.0).abs() < 1e-9);
     }
 
     #[test]

@@ -97,13 +97,6 @@ remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P1
 
-- [ ] P1 — Add flow-depth, speed, momentum, momentum-flux, and drawdown maximum fields
-  Why: peak surface displacement alone omits the inundation intensity products used by mature tsunami workflows and is insufficient for point-level consequence interpretation.
-  Evidence: Verified — `src-tauri/src/physics/solver/max_field.rs`; GeoClaw fgmax https://www.clawpack.org/fgmax.html; SWEpy https://github.com/joaquinmeza90/SWEpy.
-  Touches: max-field accumulator and existing GPU-resident buffers, result types, Layers/Inspect/Results, scientific exporters.
-  Acceptance: every accepted step updates maximum total flow depth, speed, momentum, momentum flux, minimum water depth/drawdown, and applicable time-of-maximum; fields carry units, bathymetry/source provenance, and confidence; machine-readable plus visual exports preserve them; CPU/GPU products agree within declared tolerance without per-step readback.
-  Complexity: M
-
 ### P2
 
 - [ ] P2 — Export optional ParaView-ready VTK XML time series
