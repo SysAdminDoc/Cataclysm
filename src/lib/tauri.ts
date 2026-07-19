@@ -435,6 +435,7 @@ export const api = {
     meteotsunami_forcing?: MeteotsunamiInput | null;
     colormap?: ColormapId;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
+    boundary_mode?: "sponge" | "radiation" | "zero_flux";
   }, runId: string = createSimulationRunId()) {
     // Thread a caller-supplied runId so this non-streaming path is cancellable
     // via cancelSimulation(runId); previously the id was generated inline and
@@ -527,6 +528,7 @@ export const api = {
       meteotsunami_forcing?: MeteotsunamiInput | null;
       colormap?: ColormapId;
       gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
+      boundary_mode?: "sponge" | "radiation" | "zero_flux";
     },
     onSnapshot: (snap: import("../types/scenario").GridSnapshot) => void,
     onRenderPacket?: (packet: DecodedRenderPacket, replay: RenderReplayAdapter) => void,

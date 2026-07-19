@@ -28,6 +28,7 @@ fn source_grid_request(source_geometry: Option<InitialSourceGeometry>) -> Simula
         meteotsunami_forcing: None,
         colormap: "diverging".into(),
         gauge_points: vec![],
+        boundary_mode: None,
     }
 }
 

@@ -67,7 +67,7 @@ pub fn adapter_summary() -> Option<String> {
     Some(format!("{} ({:?})", info.name, info.backend))
 }
 
-/// 48-byte Params struct matching the WGSL `struct Params` layout in
+/// 64-byte Params struct matching the WGSL `struct Params` layout in
 /// [`SWE_FINITE_VOLUME_WGSL`].
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -84,6 +84,11 @@ struct GpuParams {
     ny: u32,
     sponge_width: u32,
     nonlinear: u32,
+    /// 0 = sponge/zero-flux, 1 = radiation (Flather/Sommerfeld).
+    boundary_mode: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 /// GPU-side time stepper. Owns the wgpu device/queue, the compiled
@@ -130,6 +135,24 @@ impl GpuTimeStepper {
         Self::new_with_diagnostics(grid, dt_s, manning_n, sponge_width, nonlinear, None)
     }
 
+    pub fn new_with_boundary_mode(
+        grid: &SwGrid,
+        dt_s: f64,
+        manning_n: f64,
+        boundary: super::BoundaryMode,
+        nonlinear: bool,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> Option<Self> {
+        let (sponge_width, boundary_mode) = match boundary {
+            super::BoundaryMode::Sponge { width_cells } => (width_cells as u32, 0u32),
+            super::BoundaryMode::Radiation => (0, 1),
+            super::BoundaryMode::ZeroFlux => (0, 0),
+        };
+        pollster::block_on(Self::new_async(
+            grid, dt_s, manning_n, sponge_width, boundary_mode, nonlinear, diagnostics,
+        ))
+    }
+
     pub fn new_with_diagnostics(
         grid: &SwGrid,
         dt_s: f64,
@@ -143,6 +166,7 @@ impl GpuTimeStepper {
             dt_s,
             manning_n,
             sponge_width,
+            0, // legacy: sponge mode
             nonlinear,
             diagnostics,
         ))
@@ -153,6 +177,7 @@ impl GpuTimeStepper {
         dt_s: f64,
         manning_n: f64,
         sponge_width: u32,
+        boundary_mode: u32,
         nonlinear: bool,
         diagnostics: Option<&DiagnosticSink<'_>>,
     ) -> Option<Self> {
@@ -234,6 +259,10 @@ impl GpuTimeStepper {
             ny: grid.ny as u32,
             sponge_width,
             nonlinear: if nonlinear { 1 } else { 0 },
+            boundary_mode,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
         };
 
         // Cast h, η, u, v from f64 → f32 for upload. The numerical

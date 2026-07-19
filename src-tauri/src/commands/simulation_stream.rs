@@ -64,7 +64,7 @@ pub async fn simulate_grid_streaming(
             let nx = grid.nx as u32;
             let ny = grid.ny as u32;
             let snapshot_schedule = snapshot_step_schedule(req.t_end_s, dt, req.n_snapshots);
-            let boundary = crate::physics::solver::BoundaryMode::default_sponge();
+            let boundary = super::model::parse_boundary_mode(&req);
             let quality_baseline = if req.meteotsunami_forcing.is_some() {
                 QualityBaseline::capture_with_external_forcing(&grid, boundary)
             } else {
@@ -183,6 +183,7 @@ pub async fn simulate_grid_streaming(
                 meteotsunami_forcing: req.meteotsunami_forcing.as_ref(),
                 checkpoint: Some(&checkpoint_writer),
                 snapshot_interval_offset: start_interval,
+                boundary,
             };
             let used_gpu = stream_simulation_dispatch(
                 &mut grid,
@@ -399,6 +400,7 @@ pub(crate) struct StreamSimulationContext<'a> {
         Option<&'a crate::physics::meteotsunami::MeteotsunamiSource>,
     pub(crate) checkpoint: Option<&'a RefCell<StreamCheckpointWriter>>,
     pub(crate) snapshot_interval_offset: usize,
+    pub(crate) boundary: crate::physics::solver::BoundaryMode,
 }
 
 pub(crate) fn validate_checkpoint_interval(value: Option<u64>) -> Result<Duration, String> {

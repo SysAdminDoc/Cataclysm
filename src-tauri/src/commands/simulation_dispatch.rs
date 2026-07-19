@@ -21,7 +21,7 @@ pub(crate) fn stream_simulation_cpu_from(
     first_take_remaining: Option<usize>,
     ctx: &StreamSimulationContext<'_>,
 ) -> Result<(), String> {
-    let stepper = TimeStepper::new(dt_s);
+    let stepper = TimeStepper::new(dt_s).with_boundary(ctx.boundary);
     for (interval, &scheduled_take) in snapshot_schedule.iter().enumerate().skip(start_interval) {
         if ctx.cancel.load(Ordering::Acquire) {
             break;
@@ -95,18 +95,13 @@ pub(crate) fn stream_simulation_dispatch(
     snapshot_schedule: &[usize],
     ctx: &StreamSimulationContext<'_>,
 ) -> Result<bool, String> {
-    use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
 
-    let sponge_width = match BoundaryMode::default_sponge() {
-        BoundaryMode::Sponge { width_cells } => width_cells as u32,
-        BoundaryMode::ZeroFlux => 0,
-    };
-    if let Some(gpu) = GpuTimeStepper::new_with_diagnostics(
+    if let Some(gpu) = GpuTimeStepper::new_with_boundary_mode(
         grid,
         dt_s,
         crate::physics::constants::MANNING_N_COASTAL,
-        sponge_width,
+        ctx.boundary,
         true,
         ctx.diagnostics,
     ) {
@@ -207,18 +202,13 @@ pub(crate) fn run_simulation_dispatch(
     max_field_threshold_m: f64,
     meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
 ) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
-    use crate::physics::solver::BoundaryMode;
     use crate::physics::solver::gpu::GpuTimeStepper;
 
-    let sponge_width = match BoundaryMode::default_sponge() {
-        BoundaryMode::Sponge { width_cells } => width_cells as u32,
-        BoundaryMode::ZeroFlux => 0,
-    };
-    if let Some(gpu) = GpuTimeStepper::new_with_diagnostics(
+    if let Some(gpu) = GpuTimeStepper::new_with_boundary_mode(
         grid,
         dt_s,
         crate::physics::constants::MANNING_N_COASTAL,
-        sponge_width,
+        crate::physics::solver::BoundaryMode::default_sponge(),
         true,
         diagnostics,
     ) {

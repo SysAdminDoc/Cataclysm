@@ -26,47 +26,9 @@ remain safe in-tree under `legacy/` while this section reaches parity.
 
 ---
 
-## Research-Driven Additions (2026-07-09)
-
-Grounded in `RESEARCH.md` (2026-07-09). Items marked "returns from
-Roadmap_Blocked" had "Needs MSVC linker / Rust compilation" blockers that are
-stale: the VsDevCmd wrapper works and `npm run verify` runs 67 Rust release
-tests locally.
-
-### P2 — cited presets, products, and architecture
-
-### P3 — education distribution and larger bets
-
-## Research-Driven Additions (2026-07-11 — living Earth data stack)
-
-Grounded in `RESEARCH.md` (2026-07-11). These are prerequisites and data/render
-contracts not already covered by HR-00 through HR-53; they do not replace the
-existing Earth, ocean, hazard, or Unreal milestones.
-
-### P0 — physical and legal foundations
-
-### P1 — deterministic living-planet inputs
-
-## Research-Driven Additions
-
 ## Research-Driven Additions (2026-07-12)
 
-New items only. The existing undated and dated Research-Driven Additions sections
-above are still open (verified against v0.10.0 source) and are NOT repeated here.
-This pass adds gaps not previously tracked, grounded in a fresh code audit and a
-2025-2026 competitive scan (NUKEMAP Feb-2026 public roadmap, Asteroid Launcher,
-USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
-
-### P1
-
 ### P2
-
-- [ ] P2 — Add a time-varying WSEG-10 fallout dose-rate model behind the shelter advisor
-  Why: fallout is a static footprint with no time dimension, so the dynamic dose-rate-over-hours decay and cumulative-exposure-vs-shelter-time curve — the actionable civil-defense lesson — cannot be shown; this is the physics layer the UNI-06 shelter-advisor port needs and does not itself provide.
-  Evidence: static fallout in `src/hazards/nuclear/fallout.ts` and `App.tsx` fallout rings; the UNI-06 backlog item ports only the static `shelter.js` factor + latent-cancer readout; NUKEMAP WSEG-10 dynamic dose-rate modelling (https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/). Extends UNI-06, does not replace it.
-  Touches: Rust WSEG-10 dose-rate model, per-point dose-rate/cumulative-exposure query IPC, downwind probe UI, time scrubber coupling, science note, tests.
-  Acceptance: selecting a downwind point plots dose rate over time and cumulative exposure vs shelter duration feeding the UNI-06 advisor; the model is cited (WSEG-10) with stated assumptions and uncertainty; results are labelled educational, not operational.
-  Complexity: M
 
 - [ ] P2 — Seed earthquake scenarios from live USGS feeds and compare to official products
   Why: the seafloor-earthquake source starts from blank sliders, while real-time authoritative catalogs (and ShakeMap/PAGER) let users reproduce actual events and benchmark the app's estimates against official ones — strong education and validation with no new physics.
@@ -89,22 +51,8 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Acceptance: large impacts expose cited secondary effects (ejecta blanket thickness, equivalent seismic magnitude, thermal reentry, climate-disruption narrative) staged on a long-term timeline; each effect cites a source and states uncertainty; small events omit effects that do not apply.
   Complexity: L
 
-## Audit-Driven Additions (2026-07-12)
-
-- [ ] P2 — Latte (light) theme contrast QA pass with a live checker
-  Why: several tokens need on-screen WCAG AA verification in the light theme that can't be done headless — `--divider` (#b8c3cf) may be too subtle on `--mantle` (#e6e9ef) so panel separations blur, the `.status-dot` colors want checking on light surfaces, and placeholder text at 0.78 opacity on `--subtext` is borderline.
-  Where: `src/styles/_globals.css` (Latte block), `src/styles/_layout.css` (`.status-dot`, `input::placeholder`).
-
-## Audit-Driven Additions (2026-07-14)
-
-- [ ] P2 — Add a wavefront-only IPC so timeline playback doesn't refetch the whole preset each frame
-  Why: `useScenarioSlot` re-runs `api.runPreset` on every `timeS` change to update the wavefront ring, so playback/scrubbing round-trips the full preset (initial displacement + 48 wavefront samples) once per tick. The busy-badge flicker is fixed, but the per-tick IPC flood remains; only the time-dependent wavefront actually changes.
-  Where: `src/hooks/useScenarioSlot.ts` (effect at ~L81-130), `src-tauri/src/commands.rs` (`run_preset`) — add a lightweight `sample_preset_wavefront(preset_id, time_s, n_samples)` command and call it from a separate time-only effect.
-
 
 ## Research-Driven Additions
-
-### P0
 
 ### P1
 
@@ -147,8 +95,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
 
 ## Research-Driven Additions
 
-### P0
-
 ### P1
 
 - [ ] P1 — Add flow-depth, speed, momentum, momentum-flux, and drawdown maximum fields
@@ -156,13 +102,6 @@ USGS/JPL feeds, Celeris-WebGPU, GHS-POP, Cesium 1.135, SLSA).
   Evidence: Verified — `src-tauri/src/physics/solver/max_field.rs`; GeoClaw fgmax https://www.clawpack.org/fgmax.html; SWEpy https://github.com/joaquinmeza90/SWEpy.
   Touches: max-field accumulator and existing GPU-resident buffers, result types, Layers/Inspect/Results, scientific exporters.
   Acceptance: every accepted step updates maximum total flow depth, speed, momentum, momentum flux, minimum water depth/drawdown, and applicable time-of-maximum; fields carry units, bathymetry/source provenance, and confidence; machine-readable plus visual exports preserve them; CPU/GPU products agree within declared tolerance without per-step readback.
-  Complexity: M
-
-- [ ] P1 — Add a validated radiation/open-boundary mode
-  Why: the solver documents mild long-run sponge reflection, and unmeasured reflected energy can contaminate basin-scale arrival and maximum fields.
-  Evidence: Verified — `src-tauri/src/physics/solver/mod.rs`; OpenFOAM wave damping https://openfoam.org/release/6/; JAGURS boundary/nesting history https://github.com/jagurs-admin/jagurs/releases.
-  Touches: CPU/GPU boundary kernels, solver settings/contracts, run-quality reflection metric, provenance, validation fixtures.
-  Acceptance: a selectable radiation/transmissive mode has CPU/GPU parity; planar and radial outgoing-wave fixtures measure reflected-energy ratio below a declared threshold after boundary crossing; sponge remains selectable for compatibility; mode and measured reflection estimate appear in diagnostics and exports.
   Complexity: M
 
 ### P2
@@ -309,20 +248,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P1
 
-- [ ] P1 — Surface the asteroid airburst overpressure footprint and airburst-vs-crater outcome
-  Why: `direct_hazard.rs` already integrates atmospheric entry (`airburst_altitude`, `airburst_energy`, fragmentation energy deposition), but the result presents impact/crater framing; the single most-reinforced misconception in impact sims is that every object craters, when most (Chelyabinsk ~500 kt at ~30 km, Tunguska) airburst with zero crater. A live competitor (Universe Sandbox) is building exactly this for 2026.
-  Evidence: `src-tauri/src/physics/direct_hazard.rs:106-107,265-372` (airburst already computed); Universe Sandbox 2026 roadmap https://universesandbox.com/blog/2026/03/universe-sandbox-roadmap-2026/; Chelyabinsk airburst https://www.sciencedirect.com/science/article/pii/S0094576517315229.
-  Touches: asteroid result readouts, ground-overpressure ring rendering from an elevated burst (not a surface crater), Results copy, `ResultsPanel.tsx`, direct-hazard fixtures.
-  Acceptance: an airbursting asteroid shows an overpressure/thermal footprint centered under the burst altitude with no crater ring and a plain-language "airburst — did not reach the ground" statement; a ground-impacting case still shows the crater; the airburst altitude and deposited energy are displayed and cited; fixtures cover a Chelyabinsk-class airburst and a Chicxulub-class ground impact.
-  Complexity: M
-
-- [ ] P1 — Add an overpressure window-glass injury layer (injuries vs. deaths)
-  Why: shattered glass is the dominant injury mechanism in both nuclear blasts and asteroid airbursts (Chelyabinsk: ~1,600 injured, zero deaths), yet results conflate a single casualty number; documented breakage thresholds (~200 Pa light / ~500 Pa heavy) turn overpressure into a legible, teachable "injuries far outnumber deaths" distinction no consumer sim models explicitly. Complements, not duplicates, the tracked casualty-model-plurality item.
-  Evidence: bolide window-damage study https://onlinelibrary.wiley.com/doi/10.1111/maps.13085; overpressure rings already computed for nuclear/asteroid in `src-tauri/src/physics/direct_hazard.rs`.
-  Touches: Rust glass-breakage threshold model keyed to existing overpressure field, a distinct injury overlay/ring, Results injuries-vs-deaths readout, citations, tests.
-  Acceptance: nuclear and airburst results show a cited window-breakage radius (light/heavy thresholds) and an injuries estimate presented separately from deaths with stated assumptions and uncertainty; the layer is labelled educational, not operational; a fixture verifies the threshold radii against the cited curve.
-  Complexity: M
-
 - [ ] P1 — Add a deterministic frame-accurate video encoder (WebCodecs) alongside MediaRecorder
   Why: `exportGlobeVideo` records the live canvas via `MediaRecorder`, which is real-time and drops frames under load, so it cannot produce the reproducible output the deterministic-replay contract (HR-53 / the tracked highlight-story item) promises; `VideoEncoder` (WebCodecs, available in the Chromium WebView2 runtime) encodes frame-by-frame from rendered timesteps for byte-reproducible, frame-exact MP4.
   Evidence: `src/lib/export.ts:418-449` (`pickVideoMime`/`exportGlobeVideo` MediaRecorder path); WebCodecs guidance https://developer.chrome.com/docs/web-platform/best-practices/webcodecs; existing deterministic capture bridge in `scripts/capture-reference-scenes.mjs`.
@@ -367,13 +292,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Acceptance: qualifying nuclear/impact events show a cited fire-ignition radius and a lofted-smoke indicator feeding the long-term climate narrative; each effect cites a source and states uncertainty; small events omit inapplicable effects.
   Complexity: M
 
-- [ ] P2 — Harden the npm supply chain in the local release gate
-  Why: `verify.mjs` runs `npm audit` but not signature/provenance verification, and the Sept-2025 chalk/debug/ansi-styles compromise hit transitive deps of the Vite/React/Cesium toolchains; adding `npm audit signatures` and lockfile-pin enforcement closes a real ingestion path consistent with the build-locally posture.
-  Evidence: `scripts/verify.mjs:454` (`npm audit` only); chalk/debug npm compromise https://semgrep.dev/blog/2025/chalk-debug-and-color-on-npm-compromised-in-new-supply-chain-attack/.
-  Touches: `scripts/verify.mjs` (add `npm audit signatures`/provenance check), lockfile-integrity assertion, release docs.
-  Acceptance: the gate fails on unsigned/unverifiable provenance for direct+transitive packages where attestations exist and on lockfile drift; the check runs locally with no CI dependency; a documented allowlist covers packages lacking attestations.
-  Complexity: S
-
 - [ ] P2 — Upgrade wgpu 29→30 and add HDR fireball/thermal surface output
   Why: wgpu 30 (2026-07-01) adds surface color-space/HDR output and `SHADER_I16`; HDR tone-mapping renders the extreme luminance of a nuclear fireball or thermal field faithfully on capable Windows displays, and i16 packing cuts solver-buffer bandwidth — but v30 carries breaking API changes against the pinned wgpu-hal 29.0.4, so the upgrade must be deliberate.
   Evidence: wgpu CHANGELOG https://github.com/gfx-rs/wgpu/blob/trunk/CHANGELOG.md; pinned 29.0.4 note in `CLAUDE.md`; GPU path in `src-tauri/src/physics/solver/gpu.rs` and the Cesium HDR presentation.
@@ -403,8 +321,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Touches: user-placed barrier objects that raise local bathymetry / add reflective cells, re-run + before/after comparison, mitigation UI, education copy tying to the standard.
   Acceptance: a user can place a simple barrier on the coast, re-run, and compare inundation with and without it; the barrier is represented as a documented bathymetry/reflectivity modification with stated simplifications; results are labelled educational.
   Complexity: L
-
-## Research-Driven Additions
 
 ## Research-Driven Additions (2026-07-16)
 

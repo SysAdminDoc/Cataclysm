@@ -20,6 +20,7 @@ fn simulate_grid_rejects_bad_lamb_wave_override() {
         meteotsunami_forcing: None,
         colormap: "diverging".to_string(),
         gauge_points: vec![],
+        boundary_mode: None,
     });
     assert!(res.is_err());
 }
@@ -97,6 +98,7 @@ fn simulate_grid_rejects_unknown_colormap() {
         meteotsunami_forcing: None,
         colormap: "rainbow".to_string(),
         gauge_points: vec![],
+        boundary_mode: None,
     });
     assert!(res.is_err());
 }
@@ -121,6 +123,7 @@ fn simulate_grid_accepts_viridis_colormap() {
         meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
+        boundary_mode: None,
     });
     assert!(res.is_ok());
 }
@@ -147,6 +150,7 @@ fn simulate_grid_rejects_sub_floor_analytical_depth() {
         meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
+        boundary_mode: None,
     });
     assert!(res.is_err(), "sub-floor analytical depth must be rejected");
     // The same sub-floor depth is fine when real bathymetry drives the basin.
@@ -168,6 +172,7 @@ fn simulate_grid_rejects_sub_floor_analytical_depth() {
         meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
+        boundary_mode: None,
     });
     assert!(ok.is_ok());
 }
@@ -196,6 +201,7 @@ fn simulate_grid_tiles_antimeridian_crossing_box() {
         meteotsunami_forcing: None,
         colormap: "viridis".to_string(),
         gauge_points: vec![],
+        boundary_mode: None,
     };
     validate_simulate_grid(&request).expect("antimeridian box must be supported");
     let plan = SimulationGridPlan::from_request(&request).unwrap();
@@ -261,6 +267,7 @@ fn simulate_grid_rejects_bad_gauge_coordinates() {
             lat_deg: 91.0,
             lon_deg: 0.0,
         }],
+        boundary_mode: None,
     });
     assert!(res.is_err());
 }

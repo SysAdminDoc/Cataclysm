@@ -44,7 +44,7 @@ pub struct RunQualityRecord {
 impl QualityBaseline {
     pub fn capture(grid: &SwGrid, boundary: BoundaryMode) -> Self {
         let sponge_width_cells = match boundary {
-            BoundaryMode::ZeroFlux => 0,
+            BoundaryMode::ZeroFlux | BoundaryMode::Radiation => 0,
             BoundaryMode::Sponge { width_cells } => width_cells,
         };
         let metrics = Metrics::from_grid(grid, sponge_width_cells);

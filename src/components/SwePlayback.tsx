@@ -189,6 +189,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   // 8 cells/deg (up from 6) gives a finer wavefront and better coastline
   // capture; still well within the solver's cell/step budget for a 1-hour run.
   const [cellsPerDeg, setCellsPerDeg] = useState(8);
+  const [boundaryMode, setBoundaryMode] = useState<"sponge" | "radiation">("sponge");
   const [streamProgress, setStreamProgress] = useState(0);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean; quality: RunQualityRecord } | null>(null);
   const [maxField, setMaxField] = useState<MaxFieldProduct | null>(null);
@@ -508,6 +509,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         include_lamb_wave: includeLambWave,
         meteotsunami_forcing: initial.meteotsunami_forcing ?? null,
         colormap,
+        boundary_mode: boundaryMode,
         gauge_points: [
           ...gauges.map((g) => ({
             id: g.id,
@@ -618,7 +620,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
+  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, boundaryMode, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -750,6 +752,17 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
             aria-label={t("swe.gridResolution")}
             title={t("swe.gridResolutionTitle")}
           />
+        </label>}
+        {workspaceMode === "advanced" && <label className="swe__check swe__boundary-mode">
+          <span>{t("swe.boundaryMode")}</span>
+          <select
+            value={boundaryMode}
+            onChange={(e) => setBoundaryMode(e.target.value as "sponge" | "radiation")}
+            aria-label={t("swe.boundaryMode")}
+          >
+            <option value="sponge">{t("swe.boundarySponge")}</option>
+            <option value="radiation">{t("swe.boundaryRadiation")}</option>
+          </select>
         </label>}
         {workspaceMode === "advanced" && isTauri() && <label className="swe__check swe__bathymetry-source">
           <span>{t("swe.checkpointCadence")}</span>

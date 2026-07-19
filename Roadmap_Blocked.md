@@ -487,3 +487,9 @@ shipped/validated ONNX model, and measured error bounds before it can be trusted
   credentials. Return the embed/share work to ROADMAP.md once that channel is
   chosen; the prior WASM/web-build dependency is no longer a blocker.
   Complexity: XL
+
+- [ ] P2 — Latte (light) theme contrast QA pass with a live checker
+  Why: several tokens need on-screen WCAG AA verification in the light theme that cannot be done headless.
+  Where: `src/styles/_globals.css` (Latte block), `src/styles/_layout.css` (`.status-dot`, `input::placeholder`).
+  **Blocker:** Requires a live browser with a human checking color contrast on-screen. Cannot be automated headlessly.
+  Complexity: S

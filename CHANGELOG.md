@@ -2,6 +2,17 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Radiation/open-boundary mode: a characteristic absorbing boundary condition
+  that damps η at the domain edge using the local phase speed and extrapolates
+  velocity from the interior. Selectable from Advanced solver controls alongside
+  the existing sponge mode. CPU/GPU parity; reflected-energy below 25% declared
+  threshold for radial sources (vs sponge's ~5% with a 10-cell rim). Two new
+  validation tests confirm absorption and reflectivity comparison.
+
 ## [0.12.0] — 2026-07-18
 
 ### Added

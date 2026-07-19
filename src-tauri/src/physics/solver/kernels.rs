@@ -25,6 +25,10 @@ struct Params {
   ny: u32,
   sponge_width: u32,
   nonlinear: u32,
+  boundary_mode: u32,
+  _pad0: u32,
+  _pad1: u32,
+  _pad2: u32,
 };
 
 struct FaceFlux {
@@ -139,11 +143,27 @@ fn cs_finite_volume(@builtin(global_invocation_id) gid: vec3<u32>) {
   let sf = sponge_factor(i, j);
 
   if (i == 0 || i == i32(params.nx) - 1 || j == 0 || j == i32(params.ny) - 1) {
-    let next_eta = eta_in[k] * sf;
-    let next_depth = max(h[k] + next_eta, 0.0);
-    eta_out[k] = next_depth - h[k];
-    u_out[k] = 0.0;
-    v_out[k] = 0.0;
+    if (params.boundary_mode == 1u) {
+      // Characteristic absorbing BC.
+      let int_i = clamp(i, 1, i32(params.nx) - 2);
+      let int_j = clamp(j, 1, i32(params.ny) - 2);
+      let int_k = idx(int_i, int_j);
+      let depth = max(h[k] + eta_in[k], params.wet_depth_epsilon_m);
+      let c = sqrt(params.g * depth);
+      let dx = row_dx_m(j);
+      let dy = max(params.earth_radius_m * abs(params.dlat_rad), 1.17549435e-38);
+      let dn = select(dy, dx, i == 0 || i == i32(params.nx) - 1);
+      let alpha = min(c * params.dt_s / dn, 1.0);
+      eta_out[k] = eta_in[k] * (1.0 - alpha);
+      u_out[k] = u_in[int_k];
+      v_out[k] = v_in[int_k];
+    } else {
+      let next_eta = eta_in[k] * sf;
+      let next_depth = max(h[k] + next_eta, 0.0);
+      eta_out[k] = next_depth - h[k];
+      u_out[k] = 0.0;
+      v_out[k] = 0.0;
+    }
     return;
   }
 

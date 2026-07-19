@@ -55,6 +55,9 @@ pub struct SimulateGridRequest {
     pub colormap: String,
     #[serde(default)]
     pub gauge_points: Vec<GridGaugePoint>,
+    /// Boundary mode: "sponge" (default), "radiation", or "zero_flux".
+    #[serde(default)]
+    pub boundary_mode: Option<String>,
 }
 
 pub(crate) fn local_offset_m(center_lat: f64, center_lon: f64, lat: f64, lon: f64) -> (f64, f64) {
@@ -266,6 +269,14 @@ impl SimulationMemoryEstimate {
             cells: plan.cells,
             estimated_bytes: (plan.cells as u64).saturating_mul(bytes_per_cell),
         }
+    }
+}
+
+pub(crate) fn parse_boundary_mode(req: &SimulateGridRequest) -> crate::physics::solver::BoundaryMode {
+    match req.boundary_mode.as_deref() {
+        Some("radiation") => crate::physics::solver::BoundaryMode::Radiation,
+        Some("zero_flux") => crate::physics::solver::BoundaryMode::ZeroFlux,
+        _ => crate::physics::solver::BoundaryMode::default_sponge(),
     }
 }
 
