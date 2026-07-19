@@ -44,6 +44,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added `src/data/product-truth.json` and a fail-closed verification contract
+  for the current product name, version, repository and release URLs, runtime
+  floors, playback frame count, default/offline Earth providers, unsigned
+  artifact policy, onboarding copy, and blocked-work ledger. Reconciled the
+  0.12.0 citation, lockfiles, notices, asset provenance, manuals, contributor
+  setup, security support matrix, browser-WASM crate, and runtime exports.
+
 - Turned Layers into a scenario-scoped simulator controller. Available layers
   now support keyboard-accessible visibility, opacity, ordering, reset, legend,
   temporal, and provenance controls; unavailable layers name their prerequisite.

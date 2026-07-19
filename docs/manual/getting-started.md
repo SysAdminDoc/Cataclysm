@@ -2,13 +2,14 @@
 
 ## Installation
 
-Download the latest installer from the [Releases page](https://github.com/SysAdminDoc/TsunamiSimulator/releases):
+Download the latest installer from the [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
 
 - **Windows**: `.msi` or `.exe` installer
 - **macOS**: Universal `.dmg` (Intel + Apple Silicon)
 - **Linux**: `.AppImage`, `.deb`, or `.rpm`
 
-The app launches immediately with the bundled **Natural Earth II** globe — no account, token, or network tiles required.
+The app launches with high-detail **Esri World Imagery** and falls back to the
+bundled **Natural Earth II** globe when offline or when the provider fails.
 
 ## Optional: Cesium ion token
 
@@ -16,10 +17,11 @@ For high-resolution satellite imagery and bathymetric terrain, you can add a fre
 
 1. Sign up at [cesium.com/ion/signup](https://cesium.com/ion/signup) (free tier is sufficient)
 2. Copy your default access token from the dashboard
-3. In TsunamiSimulator, click **Settings** in the toolbar
+3. In Cataclysm, click **Settings** in the toolbar
 4. Paste the token and click **Save**
 
-Without a token, the app uses the local Natural Earth globe by default. OpenStreetMap and Esri imagery are also available as no-token online styles.
+No token is required for the Esri default. Natural Earth II is the deterministic
+offline style, and OpenStreetMap is another no-token online option.
 
 ## Interface language
 
@@ -55,7 +57,7 @@ canonical English.
 1. **Choose a preset** from the left panel. Each card shows a historical or hypothetical tsunami event with its source paper citation.
 2. The globe flies to the event location and displays the source parameters in the **Results panel** on the right.
 3. Click **Run solver** in the **SWE Playback** section (right panel) to start the shallow-water solver.
-4. Use the **timeline scrubber** to step through 24 snapshots of the propagating wave.
+4. Use the **timeline scrubber** to step through 60 snapshots of the propagating wave.
 5. Press **Play** to animate the sequence automatically.
 
 ### Building a custom scenario

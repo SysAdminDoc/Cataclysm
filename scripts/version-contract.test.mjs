@@ -15,8 +15,13 @@ function sources(version = "1.2.3") {
     cargoLock:
       `[[package]]\nname = "cataclysm"\nversion = "${version}"\n\n` +
       `[[package]]\nname = "dependency"\nversion = "9.9.9"\n`,
+    wasmCargoToml: `[package]\nname = "cataclysm-browser-physics"\nversion = "${version}"\n`,
+    wasmCargoLock: `[[package]]\nname = "cataclysm-browser-physics"\nversion = "${version}"\n`,
     tauriConfig: JSON.stringify({ productName: "Cataclysm", version }),
-    modelProvenance: `export const APP_VERSION = "${version}";`,
+    productTruth: JSON.stringify({ release: { version } }),
+    modelProvenance:
+      'import PRODUCT_TRUTH from "../data/product-truth.json";\n' +
+      "export const APP_VERSION = PRODUCT_TRUTH.release.version;",
     readme:
       `[![Version](https://img.shields.io/badge/version-${version}-blue.svg)](./CHANGELOG.md)\n` +
       `> **Migration status (v${version}):** Current source capabilities.\n` +
@@ -47,10 +52,19 @@ test("version contract accepts matching manifests, runtime, and README markers",
 
 test("version contract reports source mismatches against package.json", () => {
   const fixture = sources();
-  fixture.modelProvenance = 'export const APP_VERSION = "1.2.4";';
+  fixture.productTruth = JSON.stringify({ release: { version: "1.2.4" } });
   assert.throws(
     () => validateVersionContract(fixture),
-    /Version contract mismatch; expected 1\.2\.3[\s\S]*model-provenance\.ts=1\.2\.4/,
+    /Version contract mismatch; expected 1\.2\.3[\s\S]*product-truth\.json=1\.2\.4/,
+  );
+});
+
+test("version contract requires runtime provenance to derive from product truth", () => {
+  const fixture = sources();
+  fixture.modelProvenance = 'export const APP_VERSION = "1.2.3";';
+  assert.throws(
+    () => validateVersionContract(fixture),
+    /model-provenance\.ts must derive APP_VERSION from src\/data\/product-truth\.json/,
   );
 });
 
@@ -83,6 +97,11 @@ test("version contract catches every app-owned release mirror", () => {
       "Cargo.lock application package",
       (fixture) => { fixture.cargoLock = fixture.cargoLock.replace('version = "1.2.3"', 'version = "1.2.4"'); },
       /Cargo\.lock cataclysm package=1\.2\.4/,
+    ],
+    [
+      "browser WASM Cargo.lock application package",
+      (fixture) => { fixture.wasmCargoLock = fixture.wasmCargoLock.replace('version = "1.2.3"', 'version = "1.2.4"'); },
+      /wasm\/Cargo\.lock browser package=1\.2\.4/,
     ],
     [
       "notices application header",

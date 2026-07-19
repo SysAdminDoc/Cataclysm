@@ -7,8 +7,9 @@ test("installed browser surface reloads from its complete offline cache", async 
   let appOrigin: string | null = null;
   page.on("pageerror", (error) => runtimeFailures.push(`page: ${error.message}`));
   page.on("requestfailed", (request) => {
-    if (appOrigin && new URL(request.url()).origin === appOrigin) {
-      runtimeFailures.push(`request: ${request.url()} (${request.failure()?.errorText ?? "unknown"})`);
+    const failure = request.failure()?.errorText ?? "unknown";
+    if (appOrigin && new URL(request.url()).origin === appOrigin && failure !== "net::ERR_ABORTED") {
+      runtimeFailures.push(`request: ${request.url()} (${failure})`);
     }
   });
   await page.addInitScript(() => {

@@ -49,17 +49,6 @@ existing Earth, ocean, hazard, or Unreal milestones.
 
 ## Research-Driven Additions
 
-### P0
-
-### P1
-
-- [ ] P1 — Establish an authoritative product-truth and planning-ledger gate
-  Why: tracked docs, onboarding, screenshots, and blocked work still contain legacy product names, versions, frame counts, runtime floors, provider defaults, release URLs, and already-shipped blockers.
-  Evidence: `CONTRIBUTING.md`, `SECURITY.md`, `docs/manual/**`, `docs/science/**`, `Tour.tsx`, screenshot assets, `Roadmap_Blocked.md`; current `scripts/verify.mjs` docs checks cover only a small subset of drift.
-  Touches: authoritative product constants/manifest, affected docs/onboarding/screenshots, `scripts/verify.mjs`, `ROADMAP.md`, `Roadmap_Blocked.md`.
-  Acceptance: legacy/current product facts are reconciled; shipped and duplicate blocked entries are removed; docs and onboarding derive or validate name/version/runtime/frame/provider facts; verification fails on stale product names, release links, version strings, provider defaults, or completed blockers.
-  Complexity: M
-
 ### P2
 
 - [ ] P2 — Extend static checks to tests, scripts, configs, and fresh E2E output

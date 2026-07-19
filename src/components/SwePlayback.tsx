@@ -12,6 +12,7 @@ import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
 import { notifyRunComplete } from "../lib/notify";
+import PRODUCT_TRUTH from "../data/product-truth.json";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -93,7 +94,7 @@ type Status = "idle" | "running" | "ready" | "stale" | "error";
  */
 // 60 snapshots over the 1-hour window give visibly smoother wave motion than
 // the old 24 (this only changes sampling cadence, not solver work).
-const N_SNAPSHOTS = 60;
+const N_SNAPSHOTS = PRODUCT_TRUTH.simulation.defaultPlaybackFrames;
 const SPEED_OPTIONS = [
   { label: "0.5×", ms: 320 },
   { label: "1×", ms: 160 },

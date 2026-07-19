@@ -3,6 +3,7 @@ import { downloadTextExport, generateTextExport } from "../text-export";
 import type { InitialDisplacement } from "../../types/scenario";
 import { getCoastalPoints } from "../data";
 import { demoRunupAtPoints } from "../demo";
+import { APP_VERSION } from "../model-provenance";
 
 vi.mock("../browser-physics", () => ({
   browserRunup: vi.fn(async ({ points }: { points: unknown[] }) => points.map((_, index) => ({
@@ -48,7 +49,7 @@ describe("generateTextExport", () => {
     expect(report).toContain("Chicxulub Impact");
     expect(report).toContain("Range 2022");
     expect(report).toContain("Provenance");
-    expect(report).toContain("Cataclysm v0.10.5");
+    expect(report).toContain(`Cataclysm v${APP_VERSION}`);
     expect(report).toContain("Generated: 2026-06-28T00:00:00.000Z");
     expect(report).toContain("Scenario type: Asteroid");
     expect(report).toContain("Solver mode: SWE snapshot playback");

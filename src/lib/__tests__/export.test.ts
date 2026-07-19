@@ -4,6 +4,7 @@ import type { GaugeTimeSeries } from "../../types/scenario";
 import type { HazardResult } from "../../hazards/types";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
 import { getCoastalPoints } from "../data";
+import { APP_VERSION } from "../model-provenance";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -466,7 +467,7 @@ describe("suggestedFilename", () => {
 
     expect(ok.ok).toBe(true);
     const fc = JSON.parse(await getBlob()!.text()) as { properties: Record<string, unknown> };
-    expect(fc.properties.app_version).toBe("0.10.5");
+    expect(fc.properties.app_version).toBe(APP_VERSION);
     expect(fc.properties.generated_at).toBe("2026-06-28T00:00:00.000Z");
     expect(fc.properties.scenario_type).toBe("Asteroid");
     expect(fc.properties.solver_mode).toBe("SWE snapshot playback");
@@ -506,7 +507,7 @@ describe("exportCzml", () => {
       properties?: Record<string, unknown>;
     }>;
     expect(czml[0].description).toContain("Scenario type: Asteroid");
-    expect(czml[1].properties?.appVersion).toBe("0.10.5");
+    expect(czml[1].properties?.appVersion).toBe(APP_VERSION);
     expect(czml[1].properties?.solverMode).toBe("SWE snapshot playback");
     expect(czml[1].properties?.citationUrl).toBe("https://doi.org/10.1029/2021AV000627");
     expect(czml[1].properties?.layerState).toEqual(PROVENANCE_META.layerState);
@@ -663,7 +664,7 @@ describe("exportKml", () => {
     exportKml(PROVENANCE_META, [SAMPLE_POINT]);
 
     const kml = await getBlob()!.text();
-    expect(kml).toContain("Cataclysm v0.10.5");
+    expect(kml).toContain(`Cataclysm v${APP_VERSION}`);
     expect(kml).toContain("Scenario type: Asteroid");
     expect(kml).toContain("Solver mode: SWE snapshot playback");
     expect(kml).toContain("https://doi.org/10.1029/2021AV000627");

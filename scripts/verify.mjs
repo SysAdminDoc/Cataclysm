@@ -75,7 +75,7 @@ function quoteCmdArg(arg) {
 }
 
 function docsTruthGate() {
-  const docs = ["README.md", "CONTRIBUTING.md", "CHANGELOG.md", "docs/release/CODESIGNING.md"];
+  const docs = ["README.md", "CONTRIBUTING.md", "CHANGELOG.md", "docs/release/UNSIGNED_RELEASES.md"];
   const packageJson = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
   const scripts = new Set(Object.keys(packageJson.scripts ?? {}));
   const failures = [];
@@ -512,12 +512,14 @@ capabilitySurfaceGate();
 console.log("\n==> Docs/script truth gate");
 docsTruthGate();
 
+runNpm("Product truth and planning-ledger gate", ["run", "verify:product-truth"]);
+
 console.log("\n==> Citation metadata gate");
 citationMetadataGate();
 
 runNpm("Version consistency and release-tag gate", ["run", "verify:version-contract"]);
 if (docsOnly) {
-  console.log("\nDocs/script and version contract gates completed.");
+  console.log("\nDocs/script, product truth, and version contract gates completed.");
   process.exit(0);
 }
 runNpm("Third-party dependency notices", ["run", "verify:notices"]);

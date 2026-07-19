@@ -267,7 +267,7 @@ pub fn sample_preset_wavefront(
     if preset_id.is_empty() || preset_id.len() > 128 {
         return Err("preset_id must be 1..128 characters".into());
     }
-    if !time_s.is_finite() || time_s < 0.0 || time_s > SWE_MAX_T_END_S {
+    if !time_s.is_finite() || !(0.0..=SWE_MAX_T_END_S).contains(&time_s) {
         return Err(format!("time_s must be finite and in [0, {}]", SWE_MAX_T_END_S));
     }
     let preset = find_preset(&preset_id)

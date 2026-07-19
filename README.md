@@ -18,7 +18,7 @@ The Cataclysm mark combines three propagating wavefronts, a fault cut, and a
 single event core. The same source artwork is used by the desktop installers,
 mobile targets, PWA, launch experience, and in-app command bar.
 
-> **Migration status (v0.11.0):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. Source-aware Outcome, Science, and Validation views connect named coastal effects to the globe and timeline while retaining auditable assumptions and provenance. Rust remains the sole authority for direct-effect and named-coast inputs.
+> **Migration status (v0.12.0):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. Source-aware Outcome, Science, Validation, and scenario-scoped Layers connect named effects to the globe and timeline while retaining auditable assumptions and provenance. Rust remains the sole authority for direct-effect and named-coast inputs.
 
 ---
 
@@ -160,6 +160,10 @@ Existing tools each do one piece:
 - **5 globe styles**: high-detail Esri World Imagery by default, bundled Natural
   Earth II as the deterministic offline fallback, OpenStreetMap, Cesium World
   Imagery, and Cesium World Bathymetry.
+- **Machine-checked product truth** — one tracked manifest governs the current
+  name, version, release/security URLs, runtime floors, 60-frame playback,
+  provider defaults, and unsigned-release policy. The local release gate rejects
+  stale docs, onboarding, metadata, or planning-ledger claims.
 - **Enforced Earth source contracts** — every integrated imagery, terrain, and
   ocean input has version, license, attribution, datum, resolution, integrity,
   quality-tier, and use-rights metadata. Settings exposes the active source
@@ -172,7 +176,7 @@ Existing tools each do one piece:
   response; ambiguous coast cells preserve the operator's material choice.
 - **Scenario builder** — tabbed Asteroid / Nuclear / Earthquake / Landslide / Meteotsunami
   forms; click-globe-to-pick location.
-- **Timeline scrubber + SWE playback** — scrub a 24-frame snapshot sequence
+- **Timeline scrubber + SWE playback** — scrub a 60-frame snapshot sequence
   through the live shallow-water solver, with classic or colorblind-safe
   overlay colormaps.
 - **Effect overlays** — wavefront ring, primitive-backed coastal runup bars and
@@ -285,27 +289,26 @@ and writes adapter plus frame-time evidence to
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.11.0 Windows installers are
-locally built from this repository and are currently unsigned until a Windows
-code-signing certificate is configured, so Windows may show an unknown-publisher
-warning. macOS and Linux remain supported source-build targets; platform
-installers for those systems should be produced locally on those platforms when
-signing/build hosts are available.
+an MSI package and an NSIS setup executable. The v0.12.0 Windows installers are
+locally built from this repository and intentionally unsigned, so Windows may
+show an unknown-publisher warning. macOS and Linux remain supported source-build
+targets; platform packages for those systems are produced locally on their
+respective build hosts.
 
 **Verify your download** — each release includes a `checksums-sha256.txt` file.
 Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\Cataclysm_0.11.0_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.12.0_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile Cataclysm_0.11.0_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.12.0_x64_en-US.msi SHA256
 ```
 
-See [`docs/release/CODESIGNING.md`](./docs/release/CODESIGNING.md) for full
+See [`docs/release/UNSIGNED_RELEASES.md`](./docs/release/UNSIGNED_RELEASES.md) for full
 verification details and the maintainer release checklist.
 
 The app starts with high-detail **Esri World Imagery** and automatically falls

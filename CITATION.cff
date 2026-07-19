@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use Cataclysm in academic or educational work, please cite it as below."
 title: "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator"
 type: software
-version: 0.10.5
-date-released: 2026-07-17
+version: 0.12.0
+date-released: 2026-07-18
 repository-code: "https://github.com/SysAdminDoc/Cataclysm"
 url: "https://github.com/SysAdminDoc/Cataclysm"
 license: MIT
@@ -20,7 +20,7 @@ authors:
 preferred-citation:
   type: software
   title: "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator"
-  version: 0.10.5
+  version: 0.12.0
   license: MIT
   repository-code: "https://github.com/SysAdminDoc/Cataclysm"
   url: "https://github.com/SysAdminDoc/Cataclysm"

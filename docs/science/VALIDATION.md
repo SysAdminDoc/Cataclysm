@@ -1,4 +1,4 @@
-# Validation harness — TsunamiSimulator
+# Validation harness — Cataclysm
 
 The Rust modules under `src-tauri/src/physics/` are the source of truth
 for every formula. This document captures **the quantitative comparison

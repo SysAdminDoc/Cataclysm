@@ -1,4 +1,4 @@
-# Contributing to TsunamiSimulator
+# Contributing to Cataclysm
 
 Thanks for your interest. The short version: this project exists to combine
 peer-reviewed tsunami physics with an interactive 3D globe in a desktop app.
@@ -24,7 +24,7 @@ Contributions should advance one or both of those goals.
 Prerequisites:
 
 - Node.js ≥ 20
-- Rust stable ≥ 1.78 (install via `rustup`)
+- Rust stable ≥ 1.91 (install via `rustup`)
 - Platform deps:
   - **Windows**: Visual Studio 2022/2026 with "Desktop development with C++" workload (provides MSVC `link.exe`)
   - **macOS**: Xcode Command Line Tools
@@ -36,8 +36,8 @@ The Tauri CLI ships as the `@tauri-apps/cli` npm dev dependency, so
 Run:
 
 ```bash
-git clone https://github.com/SysAdminDoc/TsunamiSimulator
-cd TsunamiSimulator
+git clone https://github.com/SysAdminDoc/Cataclysm
+cd Cataclysm
 npm install
 npm run tauri dev
 ```
@@ -52,6 +52,11 @@ Before opening a PR or pushing directly, run the local verification gate:
 ```bash
 npm run verify
 ```
+
+Current product facts live in `src/data/product-truth.json`. When changing the
+name, release version, runtime floor, playback cadence, Earth-provider default,
+or release policy, update that manifest and run `npm run verify:product-truth`;
+the full gate rejects stale docs, onboarding copy, metadata, or ledger rows.
 
 That command covers the frontend typecheck, lint, unit tests, production build,
 npm audit, Playwright browser-preview checks, Rust check/test/clippy, and Rust

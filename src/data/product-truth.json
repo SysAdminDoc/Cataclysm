@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "Cataclysm",
+    "packageName": "cataclysm",
+    "identifier": "com.sysadmindoc.cataclysm",
+    "legacyNames": ["TsunamiSimulator", "Tsunami Simulator"]
+  },
+  "release": {
+    "version": "0.12.0",
+    "supportedSeries": "0.12.x",
+    "repositoryUrl": "https://github.com/SysAdminDoc/Cataclysm",
+    "releasesUrl": "https://github.com/SysAdminDoc/Cataclysm/releases",
+    "securityAdvisoryUrl": "https://github.com/SysAdminDoc/Cataclysm/security/advisories/new",
+    "artifactPolicy": "unsigned-sha256"
+  },
+  "runtimeFloors": {
+    "nodeMajor": 20,
+    "rust": "1.91",
+    "tauriMajor": 2
+  },
+  "simulation": {
+    "defaultPlaybackFrames": 60,
+    "maximumPlaybackFrames": 240
+  },
+  "globe": {
+    "defaultStyleId": "esri-world-imagery",
+    "defaultStyleLabel": "Esri World Imagery",
+    "offlineStyleId": "natural-earth-2",
+    "offlineStyleLabel": "Natural Earth II"
+  }
+}

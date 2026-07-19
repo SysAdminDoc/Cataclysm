@@ -1,4 +1,5 @@
 import type { InitialDisplacement, Preset, RunQualityRecord } from "../types/scenario";
+import PRODUCT_TRUTH from "../data/product-truth.json";
 import { EARTH_ASSET_REGISTRY_VERSION, getActiveEarthSession } from "./earth-assets";
 import {
   IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
@@ -6,7 +7,7 @@ import {
 } from "./geodesy";
 import type { LayerExportRecord } from "./layer-controller";
 
-export const APP_VERSION = "0.10.5";
+export const APP_VERSION = PRODUCT_TRUTH.release.version;
 
 export const DEFAULT_BATHYMETRY_SOURCE =
   "Low-confidence coarse basin/shelf approximation; GEBCO_2026/TID raster sampling is not bundled; optional Cesium bathymetric terrain is visual context only.";

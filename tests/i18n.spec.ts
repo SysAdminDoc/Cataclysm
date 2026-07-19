@@ -15,7 +15,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("language switch persists across settings, simulation results, layers, and lessons", async ({ page }) => {
-  test.setTimeout(150_000);
+  // The full release matrix runs this exhaustive localized journey beside two
+  // screenshot-heavy workers. Keep a bounded margin above its ~2 minute solo
+  // runtime so resource contention cannot turn a healthy UI into a false fail.
+  test.setTimeout(240_000);
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const language = page.getByRole("combobox", { name: "Interface language" });

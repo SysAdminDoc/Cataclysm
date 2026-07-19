@@ -293,7 +293,7 @@ for (const theme of THEMES) {
       await page.goto("/");
       await expect(page.locator(".app__globe-mount")).toHaveAttribute("data-imagery-status", "fallback", { timeout: 15_000 });
       await expect(page.locator("[data-globe-scene-summary]").first()).toContainText(
-        "Renderer imagery is fallback",
+        "Renderer imagery is using fallback imagery",
       );
       await assertAccessiblePage(page);
     });

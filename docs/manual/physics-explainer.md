@@ -1,6 +1,6 @@
 # How the Physics Works
 
-TsunamiSimulator models three stages of a tsunami: generation (source), propagation (open ocean), and coastal interaction (runup). Each stage uses well-established formulas from peer-reviewed literature.
+Cataclysm models three stages of a tsunami: generation (source), propagation (open ocean), and coastal interaction (runup). Each stage uses well-established formulas from peer-reviewed literature.
 
 ## Stage 1: Source generation
 

@@ -5,6 +5,7 @@
  */
 
 import * as Cesium from "cesium";
+import PRODUCT_TRUTH from "../data/product-truth.json";
 import { tokenConfigured } from "./cesium";
 import {
   assertEarthAssetOperationAllowed,
@@ -26,8 +27,8 @@ export type GlobeStyleMeta = {
 // Esri World Imagery is high-resolution satellite (zoom to level 19) and needs
 // no token, so a fresh install shows a crisp Earth instead of the 2-level
 // Natural Earth raster. Natural Earth remains selectable as the offline option.
-export const DEFAULT_STYLE: GlobeStyleId = "esri-world-imagery";
-export const OFFLINE_STYLE: GlobeStyleId = "natural-earth-2";
+export const DEFAULT_STYLE = PRODUCT_TRUTH.globe.defaultStyleId as GlobeStyleId;
+export const OFFLINE_STYLE = PRODUCT_TRUTH.globe.offlineStyleId as GlobeStyleId;
 
 export type ImageryFallbackReason = "offline" | "missing-token" | null;
 

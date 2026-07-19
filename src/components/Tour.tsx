@@ -4,6 +4,7 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import PRODUCT_TRUTH from "../data/product-truth.json";
 
 /**
  * Lightweight 5-step onboarding tour. In-house implementation rather
@@ -94,7 +95,11 @@ export function Tour({ open, onClose }: Props) {
         <h3 id="tour-title" className="tour-card__title">
           {t(step.title)}
         </h3>
-        <p className="tour-card__body">{t(step.body)}</p>
+        <p className="tour-card__body">
+          {t(step.body, step.body === "tour.propagation.body"
+            ? { frames: formatNumber(PRODUCT_TRUTH.simulation.defaultPlaybackFrames) }
+            : undefined)}
+        </p>
         <div className="tour-card__actions">
           <button className="scenario-tab" onClick={onClose} type="button">
             {t("tour.close")}

@@ -12,24 +12,6 @@ Return them to ROADMAP.md once the blocker is resolved.
   *The impact crater/overpressure/wind scaling is already validated against Collins–Melosh–Marcus 2005 (its implemented basis) with a Meteor Crater anchor — see `physics::validation::impact_*` and `docs/science/VALIDATION.md`. A per-size numerical cross-check specifically against Svetsov et al. 2025 (MAPS, doi:10.1111/maps.14329) needs that paper's crater/overpressure/wind data tables.*
   **Blocker:** Requires access to the paywalled MAPS paper's supplementary numerical tables (or an open dataset reproducing them). Return to ROADMAP.md once the tables are available; then assert app outputs land within a documented tolerance of Svetsov's values and reconcile any coefficient differences with a cited note.
 
----
-
-## Phase 3 — Trust / release / supply chain
-
-- **F-V04 P0** — Code signing (Win Authenticode + macOS notarisation).
-  *Workflow scaffolded conditional on `WIN_SIGN_CERT_BASE64` / `APPLE_*` secrets being present (no-op when missing); `docs/release/CODESIGNING.md` documents the 8 secret slots.*
-  **Blocker:** Needs maintainer EV cert + Apple Developer enrollment.
-
-- **P1** — Adopt Azure Artifact Signing for Windows code signing.
-  **Blocker:** Needs maintainer-controlled paid Azure subscription, Artifact Signing account, completed identity validation, active certificate profile, signing role assignment, and account endpoint/profile metadata before local `signtool` signing can succeed. Return to ROADMAP.md once those Azure resources exist.
-
-- **P1** — Publish winget manifest for Windows Package Manager distribution.
-  **Blocker:** Acceptance depends on external `microsoft/winget-pkgs` submission, validation, and merge before `winget search TsunamiSimulator` can find the package. Return to ROADMAP.md once a release URL and maintainer publication path are ready.
-
-- **F-V07 P1** — `tauri-plugin-updater` Ed25519-signed channel.
-  *Release workflow now emits `latest.json` updater manifest conditional on `TAURI_SIGNING_PRIVATE_KEY` being present.*
-  **Blocker:** Needs maintainer to run `npx tauri signer generate`, paste private key as GH secret, paste public key into `tauri.conf.json`, and register the plugin in `src-tauri/src/lib.rs` (steps documented in `docs/release/CODESIGNING.md`).
-
 ## Phase 3 — Science-frontier
 
 - **HR-03U P1** — Mirror renderer quality budgets into Unreal scalability
@@ -40,41 +22,14 @@ Return them to ROADMAP.md once the blocker is resolved.
   degradation/recovery, GPU-reset UX, diagnostics, and the reference-hardware
   performance gate.
 
-- **F-V06 P1** — GEBCO_2026/TID-backed bathymetry via first-run download wizard.
-  **Blocker:** Needs decision on distribution channel (GitHub Release vs Cloudflare R2) and a built GEBCO_2026 regional-tile artifact.
-
 ## Phase 4
 
 - **F4-04 P1** — Real flood polygons (marching-squares on `h + η > 0`) as GeoJSON overlays.
-  **Blocker:** Depends on F-V06 GEBCO. First-order inundation discs (I-V02) shipped in v0.3.0.
-
-## Phase 5 — Boussinesq + AMR (v0.5.0)
-
-**DoD**: Chicxulub simulation matches Range et al. 2022 AGU Advances wave heights to within 25% at the named coastal sample points.
-
-- Boussinesq dispersive terms — critical for impact-tsunami short wavelengths where `ω √(h/g) > 0.3`.
-  **Blocker:** Research-grade implementation; requires significant solver architecture work.
-
-- Adaptive mesh refinement (AMR) — coarse far-field, fine coastal patches.
-  **Blocker:** Research-grade implementation; requires solver restructuring.
-
-- Validation harness comparing to published peer-reviewed simulations (extends F-V01).
-  **Blocker:** Depends on Boussinesq solver.
-
-## Phase 6 — Release
-
-- Signed Windows installer + macOS .dmg + Linux AppImage via GitHub Actions (replaces F-V04).
-  **Blocker:** Depends on F-V04 code signing activation.
-
-## Research-Driven — P1 Reliability
-
-- **P1** — GEBCO_2026/TID progressive bathymetry loader (XL).
-  **Blocker:** Same as F-V06; needs distribution channel decision + artifact.
+  **Blocker:** Depends on a datum-correct coastal terrain/bathymetry pack with a
+  redistribution path. First-order inundation discs shipped in v0.3.0; return
+  this item when the coastal hero-zone pack below supplies the required grid.
 
 ## Future / Stretch
-
-- **Population casualty overlay** (opt-in, heavy disclaimer).
-  **Blocker:** Requires population density data source decision (GPW, WorldPop), ethical review for displaying estimated casualties, and appropriate disclaimers.
 
 - **Multi-event scenarios** — Chicxulub debris re-entry secondary impacts, Tōhoku aftershock tsunamis.
   **Blocker:** Significant solver architecture work — multiple concurrent sources, superposition of wave fields, sequential event timing.

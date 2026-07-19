@@ -50,11 +50,11 @@ function parseCargoPackageVersion(text) {
   throw new Error("src-tauri/Cargo.toml does not declare [package].version.");
 }
 
-function parseCargoLockVersion(text) {
+function parseCargoLockVersion(text, label = "src-tauri/Cargo.lock", packageName = "cataclysm") {
   const matchingPackages = [];
   let current = null;
   const finishPackage = () => {
-    if (current?.name === "cataclysm") matchingPackages.push(current);
+    if (current?.name === packageName) matchingPackages.push(current);
   };
 
   for (const line of text.split(/\r?\n/)) {
@@ -71,7 +71,7 @@ function parseCargoLockVersion(text) {
 
   if (matchingPackages.length !== 1 || typeof matchingPackages[0]?.version !== "string") {
     throw new Error(
-      `src-tauri/Cargo.lock must contain exactly one versioned package named cataclysm; found ${matchingPackages.length}.`,
+      `${label} must contain exactly one versioned package named ${packageName}; found ${matchingPackages.length}.`,
     );
   }
   return matchingPackages[0].version;
@@ -126,6 +126,14 @@ function parseEarthAssetVersions(text) {
   return versions;
 }
 
+function parseProductTruthVersion(text) {
+  const parsed = parseJsonDocument("src/data/product-truth.json", text);
+  if (typeof parsed?.release?.version !== "string" || parsed.release.version.length === 0) {
+    throw new Error("src/data/product-truth.json does not declare release.version.");
+  }
+  return parsed.release.version;
+}
+
 function parseReadmeInstallerVersions(text) {
   const versions = {
     "README.md Windows installer version": requireCapture(
@@ -152,15 +160,17 @@ export function validateVersionContract(sources, options = {}) {
     ...parsePackageLockVersions(sources.packageLock),
     "src-tauri/Cargo.toml": parseCargoPackageVersion(sources.cargoToml),
     "src-tauri/Cargo.lock cataclysm package": parseCargoLockVersion(sources.cargoLock),
+    "src-tauri/wasm/Cargo.toml": parseCargoPackageVersion(sources.wasmCargoToml),
+    "src-tauri/wasm/Cargo.lock browser package": parseCargoLockVersion(
+      sources.wasmCargoLock,
+      "src-tauri/wasm/Cargo.lock",
+      "cataclysm-browser-physics",
+    ),
     "src-tauri/tauri.conf.json": parseJsonVersion(
       "src-tauri/tauri.conf.json",
       sources.tauriConfig,
     ),
-    "src/lib/model-provenance.ts": requireCapture(
-      "src/lib/model-provenance.ts APP_VERSION",
-      sources.modelProvenance,
-      new RegExp(`\\bAPP_VERSION\\s*=\\s*["'](${SEMVER_PATTERN})["']`),
-    ),
+    "src/data/product-truth.json": parseProductTruthVersion(sources.productTruth),
     "README.md version badge": requireCapture(
       "README.md version badge",
       sources.readme,
@@ -175,6 +185,11 @@ export function validateVersionContract(sources, options = {}) {
     ...parseNoticeVersions(sources.thirdPartyNotices),
     ...parseEarthAssetVersions(sources.earthAssets),
   };
+
+  if (!/from\s+["']\.\.\/data\/product-truth\.json["']/.test(sources.modelProvenance)
+    || !/APP_VERSION\s*=\s*PRODUCT_TRUTH\.release\.version/.test(sources.modelProvenance)) {
+    throw new Error("src/lib/model-provenance.ts must derive APP_VERSION from src/data/product-truth.json.");
+  }
 
   const canonical = versions["package.json"];
   if (!SEMVER_RE.test(canonical)) {
