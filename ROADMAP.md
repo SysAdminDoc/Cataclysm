@@ -241,13 +241,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P1
 
-- [ ] P1 — Add a deterministic frame-accurate video encoder (WebCodecs) alongside MediaRecorder
-  Why: `exportGlobeVideo` records the live canvas via `MediaRecorder`, which is real-time and drops frames under load, so it cannot produce the reproducible output the deterministic-replay contract (HR-53 / the tracked highlight-story item) promises; `VideoEncoder` (WebCodecs, available in the Chromium WebView2 runtime) encodes frame-by-frame from rendered timesteps for byte-reproducible, frame-exact MP4.
-  Evidence: `src/lib/export.ts:418-449` (`pickVideoMime`/`exportGlobeVideo` MediaRecorder path); WebCodecs guidance https://developer.chrome.com/docs/web-platform/best-practices/webcodecs; existing deterministic capture bridge in `scripts/capture-reference-scenes.mjs`.
-  Touches: a WebCodecs `VideoEncoder` export path (feature-detected, MediaRecorder fallback), frame-stepped render loop, File System Access streaming write, export UI labelling (real-time vs. deterministic), tests.
-  Acceptance: when `VideoEncoder` is available, a replay exports a deterministic MP4 assembled from stepped frames (identical bytes across two runs of the same scenario); MediaRecorder remains as the real-time fallback and is labelled as approximate; failure preserves the replay and offers retry.
-  Complexity: M
-
 ### P2
 
 - [ ] P2 — Preserve Cesium and panel state across hazard-module switches with React `<Activity>`

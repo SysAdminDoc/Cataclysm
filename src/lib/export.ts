@@ -657,6 +657,108 @@ export async function exportGlobeVideo(
   }
 }
 
+export type DeterministicVideoOptions = {
+  fps?: number;
+  totalFrames: number;
+  width?: number;
+  height?: number;
+  bitsPerSecond?: number;
+  onProgress?: (frame: number, total: number) => void;
+  renderFrame: (frameIndex: number) => Promise<void>;
+};
+
+export function isDeterministicVideoSupported(): boolean {
+  return typeof VideoEncoder !== "undefined" && typeof VideoFrame !== "undefined";
+}
+
+export async function exportDeterministicVideo(
+  meta: ScreenshotMeta,
+  opts: DeterministicVideoOptions,
+): Promise<ExportResult<{ ext: "mp4"; size: number }>> {
+  if (!isDeterministicVideoSupported()) {
+    return exportFailure("codec", "WebCodecs VideoEncoder is not available in this runtime.", false);
+  }
+  const qualityPreflight = preflightRunQuality(meta);
+  if (!qualityPreflight.ok) return exportFailure("preflight", qualityPreflight.reason, false);
+  const preflight = preflightMediaExport("video_capture");
+  if (!preflight) {
+    return exportFailure("preflight", "Earth asset rights or live attribution preflight blocked video export.", false);
+  }
+  const canvas = findGlobeCanvas();
+  if (!canvas) return exportFailure("canvas", "The globe canvas is not mounted yet.", true);
+  const fps = Math.min(60, Math.max(1, Math.round(opts.fps ?? 30)));
+  const totalFrames = Math.min(3600, Math.max(2, opts.totalFrames));
+  const width = opts.width ?? canvas.width;
+  const height = opts.height ?? canvas.height;
+  const bitsPerSecond = opts.bitsPerSecond ?? 6_000_000;
+
+  const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
+  const target = new ArrayBufferTarget();
+  const muxer = new Muxer({
+    target,
+    video: { codec: "avc", width, height },
+    fastStart: "in-memory",
+  });
+
+  let encodedFrames = 0;
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta ?? undefined),
+    error: (e) => { throw e; },
+  });
+
+  const codec = "avc1.42001f";
+  const supported = await VideoEncoder.isConfigSupported({
+    codec,
+    width,
+    height,
+    bitrate: bitsPerSecond,
+    framerate: fps,
+  });
+  if (!supported.supported) {
+    return exportFailure("codec", `H.264 Baseline at ${width}x${height} is not supported by this encoder.`, false);
+  }
+  encoder.configure({
+    codec,
+    width,
+    height,
+    bitrate: bitsPerSecond,
+    framerate: fps,
+  });
+
+  try {
+    for (let i = 0; i < totalFrames; i++) {
+      await opts.renderFrame(i);
+      await new Promise((r) => requestAnimationFrame(r));
+      const frame = new VideoFrame(canvas, {
+        timestamp: (i * 1_000_000) / fps,
+        duration: 1_000_000 / fps,
+      });
+      const keyFrame = i % (fps * 2) === 0;
+      encoder.encode(frame, { keyFrame });
+      frame.close();
+      encodedFrames++;
+      opts.onProgress?.(encodedFrames, totalFrames);
+    }
+    await encoder.flush();
+    muxer.finalize();
+    const blob = new Blob([target.buffer], { type: "video/mp4" });
+    if (blob.size === 0) {
+      return exportFailure("codec", "The deterministic encoder produced an empty file.", true);
+    }
+    const displayUnitSystem = meta.unitSystem ?? "metric";
+    const download = downloadBlob(
+      blob,
+      suggestedFilename(meta, "mp4").replace(".mp4", `-deterministic-${displayUnitSystem}.mp4`),
+    );
+    if (!download.ok) return download;
+    return { ok: true, ext: "mp4", size: blob.size };
+  } catch (error) {
+    return unexpectedExportFailure("codec", "Deterministic video export", error);
+  } finally {
+    try { encoder.close(); } catch { /* already closed */ }
+  }
+}
+
 export type DirectHazardExportData = Readonly<{
   result: HazardResult;
   polygons?: readonly Readonly<{ label: string; color: string; points: readonly GeoPoint[] }>[] | null;
