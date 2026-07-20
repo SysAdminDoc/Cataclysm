@@ -25,7 +25,9 @@ describe("CesiumStaticHazardHost", () => {
     });
 
     expect(entity.label?.showBackground?.getValue()).toBe(true);
-    expect(entity.label?.disableDepthTestDistance?.getValue()).toBe(Number.POSITIVE_INFINITY);
+    expect(entity.point?.heightReference?.getValue()).toBe(Cesium.HeightReference.CLAMP_TO_GROUND);
+    expect(entity.label?.heightReference?.getValue()).toBe(Cesium.HeightReference.CLAMP_TO_GROUND);
+    expect(entity.label?.disableDepthTestDistance?.getValue()).toBe(0);
   });
 
   it("uses a semantic entity and depth-independent point without GPU-rasterized text in reference captures", () => {

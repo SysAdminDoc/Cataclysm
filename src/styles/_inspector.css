@@ -215,6 +215,30 @@
   line-height: 1.5;
 }
 
+.layer-inspector__terrain {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  margin-top: 7px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+
+.layer-inspector__terrain > span {
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--overlay);
+}
+
+.layer-inspector__terrain[data-active="true"] > span {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 12%, transparent);
+}
+
 .layer-inspector__list {
   display: flex;
   flex-direction: column;

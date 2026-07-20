@@ -13,7 +13,7 @@ bundled **Natural Earth II** globe when offline or when the provider fails.
 
 ## Optional: Cesium ion token
 
-For high-resolution satellite imagery and bathymetric terrain, you can add a free Cesium ion token:
+For Cesium World Imagery with land elevation or visual bathymetric terrain, you can add a free Cesium ion token:
 
 1. Sign up at [cesium.com/ion/signup](https://cesium.com/ion/signup) (free tier is sufficient)
 2. Copy your default access token from the dashboard
@@ -22,6 +22,12 @@ For high-resolution satellite imagery and bathymetric terrain, you can add a fre
 
 No token is required for the Esri default. Natural Earth II is the deterministic
 offline style, and OpenStreetMap is another no-token online option.
+
+Selecting **Cesium World Imagery + Terrain** drapes ground-based analytical
+overlays over the visible elevation and allows mountains to occlude them.
+Selecting any ellipsoid-backed style restores the flat visual baseline. Ocean
+wavefronts and gauges remain at sea level, and neither visual terrain option
+changes the shallow-water, direct-effect, runup, or inundation calculations.
 
 ## Interface language
 

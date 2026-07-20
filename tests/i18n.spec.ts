@@ -314,7 +314,13 @@ test("first-run launch and safety guidance honor the stored language", async ({ 
   await expect(launch.getByRole("button", { name: "イントロをスキップ" })).toBeVisible();
   const launchAccessibility = await new AxeBuilder({ page }).include(".launch-experience").analyze();
   expect(launchAccessibility.violations).toEqual([]);
-  expect(await page.screenshot()).toMatchSnapshot("localized-launch-ja.png");
+  expect(await page.screenshot({
+    // The localized launch copy is the assertion surface here. Cesium's
+    // independently rendered WebGL star field can vary by a pixel between
+    // otherwise identical frames, so exclude it just as the dedicated launch
+    // visual-regression test does.
+    style: ".cesium-widget { visibility: hidden !important; }",
+  })).toMatchSnapshot("localized-launch-ja.png");
 
   await launch.getByRole("button", { name: "イントロをスキップ" }).click();
   await expect(launch).not.toBeVisible();

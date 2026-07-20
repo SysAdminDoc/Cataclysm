@@ -4,9 +4,47 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LayerInspector } from "../LayerInspector";
 import { I18nProvider } from "../../lib/i18n";
 import { defaultLayerState, updateLayerSetting } from "../../lib/layer-controller";
+import { publishEarthSession } from "../../lib/earth-assets";
 
 describe("LayerInspector trust evidence", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    publishEarthSession({
+      requestedStyle: "natural-earth-2",
+      resolvedStyle: "natural-earth-2",
+      fallbackReason: null,
+      health: "ready",
+    });
+  });
+
+  it("states whether overlays use terrain draping without implying solver coupling", () => {
+    publishEarthSession({
+      requestedStyle: "cesium-world-imagery",
+      resolvedStyle: "cesium-world-imagery",
+      fallbackReason: null,
+      health: "ready",
+      dynamicAttributions: ["Cesium World Terrain"],
+    });
+    render(
+      <LayerInspector
+        domain="nuclear"
+        hasSource
+        hasWavefront={false}
+        hasSweField={false}
+        hasMaxField={false}
+        arrivalCount={0}
+        runupCount={0}
+        dartCount={0}
+        hasFallout
+        layerState={defaultLayerState("nuclear")}
+        timeS={0}
+        onLayerStateChange={vi.fn()}
+        onOpenSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Terrain draping on/)).toHaveTextContent("Solver fields are unchanged.");
+  });
 
   it("provides a contextual evidence disclosure for every analytical layer", async () => {
     const user = userEvent.setup();

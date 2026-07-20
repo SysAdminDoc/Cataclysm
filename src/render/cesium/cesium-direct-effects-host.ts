@@ -7,6 +7,7 @@ import type {
   DirectPolylineState,
   EcefPoint,
 } from "./direct-effects";
+import { terrainEllipsePositionsFromCartesian } from "./terrain-overlay-geometry";
 
 function point(value: EcefPoint): Cesium.Cartesian3 {
   return new Cesium.Cartesian3(value[0], value[1], value[2]);
@@ -41,18 +42,28 @@ export class CesiumDirectEffectsHost implements DirectEffectsHost<Cesium.Entity>
 
   createEllipse(id: string, state: DirectEllipseState): Cesium.Entity {
     const style = ellipseStyle(id);
+    const drapeOnTerrain = !id.includes("wave_") && !id.includes("cavity");
+    const center = point(state.centerEcefM);
     return this.#viewer.entities.add({
       id: `protocol:${id}`,
-      position: point(state.centerEcefM),
+      position: center,
       ellipse: {
         semiMajorAxis: state.semiMajorM,
         semiMinorAxis: state.semiMinorM,
         material: style.color.withAlpha(style.alpha),
-        outline: true,
+        outline: !drapeOnTerrain,
         outlineColor: style.color.withAlpha(0.9),
         outlineWidth: 3,
-        height: 0,
+        height: drapeOnTerrain ? undefined : 0,
+        classificationType: drapeOnTerrain ? Cesium.ClassificationType.TERRAIN : Cesium.ClassificationType.BOTH,
       },
+      polyline: drapeOnTerrain ? {
+        positions: terrainEllipsePositionsFromCartesian(center, state.semiMajorM, state.semiMinorM),
+        width: 3,
+        material: style.color.withAlpha(0.9),
+        clampToGround: true,
+        classificationType: Cesium.ClassificationType.TERRAIN,
+      } : undefined,
     });
   }
 
@@ -61,6 +72,11 @@ export class CesiumDirectEffectsHost implements DirectEffectsHost<Cesium.Entity>
     if (!entity.ellipse) return;
     entity.ellipse.semiMajorAxis = new Cesium.ConstantProperty(state.semiMajorM);
     entity.ellipse.semiMinorAxis = new Cesium.ConstantProperty(state.semiMinorM);
+    if (entity.polyline) {
+      entity.polyline.positions = new Cesium.ConstantProperty(
+        terrainEllipsePositionsFromCartesian(point(state.centerEcefM), state.semiMajorM, state.semiMinorM),
+      );
+    }
   }
 
   createPoint(id: string, state: DirectPointState): Cesium.Entity {

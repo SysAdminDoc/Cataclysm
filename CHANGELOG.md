@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Terrain-aware analytical rendering: the token-gated Cesium World Imagery
+  style now pairs imagery with Cesium World Terrain, enables terrain depth
+  occlusion, and drapes ground-based damage rings, fallout polygons, MIRV
+  boundaries, USGS contours, coastal runup bars, and inundation discs over
+  visible elevation. The Layers inspector states when draping is active;
+  ellipsoid/offline modes retain the flat baseline, ocean wavefronts and gauges
+  remain at sea level, and terrain never feeds back into solver fields.
 - Recent USGS earthquake discovery in the installed app: the scenario library
   can browse the fixed significant-month ComCat feed, load a preferred
   finite-fault or moment-tensor product as a fully cited Okada source, and show

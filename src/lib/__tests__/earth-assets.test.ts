@@ -35,6 +35,7 @@ describe("Earth asset registry", () => {
       expect(getEarthAsset(binding.imagery_asset_id).kind).toBe("imagery");
       expect(getEarthAsset(binding.terrain_asset_id).kind).toBe("terrain");
     }
+    expect(getEarthStyleBinding("cesium-world-imagery").terrain_asset_id).toBe("cesium-ion-world-terrain-1");
   });
 
   it("exposes explicit provider restrictions instead of treating online tiles as downloadable", () => {
@@ -85,7 +86,7 @@ describe("Earth asset registry", () => {
   it("produces a token-free diagnostics inventory for every active provider and asset", () => {
     const diagnostics = getEarthDiagnosticsSnapshot();
     expect(diagnostics.providers).toHaveLength(7);
-    expect(diagnostics.assets).toHaveLength(13);
+    expect(diagnostics.assets).toHaveLength(14);
     expect(diagnostics.categoryInventory.buildings).toEqual([]);
     expect(diagnostics.categoryInventory.clouds).toEqual([]);
     expect(diagnostics.categoryInventory.vfx).toEqual([]);

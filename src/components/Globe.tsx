@@ -68,7 +68,10 @@ import {
 import { TsunamiSourceController } from "../render/cesium/tsunami-source";
 import { CesiumTsunamiSourceHost } from "../render/cesium/cesium-tsunami-source-host";
 import { RunupOverlayController } from "../render/cesium/runup-overlay-controller";
-import { createCesiumRunupOverlayHost } from "../render/cesium/cesium-runup-overlay-host";
+import {
+  createCesiumRunupOverlayHost,
+  type CesiumTerrainEntityGroup,
+} from "../render/cesium/cesium-runup-overlay-host";
 import { CesiumInspectionPresenter } from "../render/cesium/cesium-inspection-presenter";
 import {
   CesiumImageryController,
@@ -458,9 +461,9 @@ export function Globe({
   outcomeFocusTimeSinkRef.current = onOutcomeFocusTime;
   const runupOverlayControllerRef = useRef<
     RunupOverlayController<
-      Cesium.BufferPolylineCollection,
-      Cesium.BufferPolygonCollection,
-      Cesium.GeoJsonPrimitive,
+      CesiumTerrainEntityGroup,
+      CesiumTerrainEntityGroup,
+      CesiumTerrainEntityGroup,
       Cesium.Entity
     > | null
   >(null);

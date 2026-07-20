@@ -13,10 +13,12 @@ beforeAll(() => {
 function makeViewerHarness() {
   const added: unknown[] = [];
   const removed: unknown[] = [];
+  const entities = new Cesium.EntityCollection();
   const requestRender = vi.fn();
   let destroyed = false;
   const viewer = {
     isDestroyed: () => destroyed,
+    entities,
     scene: {
       primitives: {
         add: <T>(primitive: T) => {
@@ -34,6 +36,7 @@ function makeViewerHarness() {
 
   return {
     viewer,
+    entities,
     added,
     removed,
     requestRender,
@@ -81,14 +84,16 @@ describe("strategic globe overlay lifecycles", () => {
     const cleanup = installMirvOverlay(harness.viewer, preview);
 
     expect(cleanup).toBeTypeOf("function");
-    expect(harness.added).toHaveLength(2);
+    expect(harness.added).toHaveLength(1);
     expect(harness.added[0]).toBeInstanceOf(Cesium.PointPrimitiveCollection);
-    expect(harness.added[1]).toBeInstanceOf(Cesium.PolylineCollection);
     expect((harness.added[0] as Cesium.PointPrimitiveCollection).length).toBe(preview.points.length);
+    expect(harness.entities.values).toHaveLength(1);
+    expect(harness.entities.values[0].polyline?.clampToGround?.getValue()).toBe(true);
 
     cleanup?.();
 
-    expect(harness.removed).toEqual([harness.added[1], harness.added[0]]);
+    expect(harness.removed).toEqual(harness.added);
+    expect(harness.entities.values).toHaveLength(0);
     expect(harness.requestRender).toHaveBeenCalledTimes(2);
   });
 
@@ -148,10 +153,11 @@ describe("strategic globe overlay lifecycles", () => {
       },
     }, 0.5, 3);
 
-    expect(harness.added).toHaveLength(1);
-    expect(harness.added[0]).toBeInstanceOf(Cesium.PolylineCollection);
-    expect((harness.added[0] as Cesium.PolylineCollection).length).toBe(2);
+    expect(harness.added).toHaveLength(0);
+    expect(harness.entities.values).toHaveLength(2);
+    expect(harness.entities.values[0].polyline?.clampToGround?.getValue()).toBe(true);
+    expect(harness.entities.values[0].polyline?.classificationType?.getValue()).toBe(Cesium.ClassificationType.TERRAIN);
     cleanup?.();
-    expect(harness.removed).toEqual(harness.added);
+    expect(harness.entities.values).toHaveLength(0);
   });
 });

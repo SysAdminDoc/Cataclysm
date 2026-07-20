@@ -12,6 +12,12 @@ function removePrimitives(viewer: Cesium.Viewer, collections: readonly Cesium.Pr
   viewer.scene.requestRender();
 }
 
+function removeEntities(viewer: Cesium.Viewer, entities: readonly Cesium.Entity[]) {
+  if (viewer.isDestroyed()) return;
+  for (const entity of entities) viewer.entities.remove(entity);
+  viewer.scene.requestRender();
+}
+
 export function installFireballOverlay(viewer: Cesium.Viewer, fireballs: readonly FireballEvent[]) {
   if (viewer.isDestroyed() || fireballs.length === 0) return undefined;
   const points = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
@@ -84,18 +90,25 @@ export function installMirvOverlay(viewer: Cesium.Viewer, preview: MirvPreview |
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
     });
   }
-  const boundary = viewer.scene.primitives.add(new Cesium.PolylineCollection());
-  boundary.add({
+  const boundary = viewer.entities.add({
     id: `mirv-spread:${preview.id}`,
-    positions: mirvSpreadCircle(preview).map((point) => Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 500)),
-    width: 1.5,
-    material: Cesium.Material.fromType("PolylineDash", {
-      color: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.7),
-      dashLength: 14,
-    }),
+    polyline: {
+      positions: mirvSpreadCircle(preview).map((point) => Cesium.Cartesian3.fromDegrees(point.lon, point.lat)),
+      width: 1.5,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.fromCssColorString("#f38ba8").withAlpha(0.7),
+        dashLength: 14,
+      }),
+      clampToGround: true,
+      classificationType: Cesium.ClassificationType.TERRAIN,
+    },
   });
   viewer.scene.requestRender();
-  return () => removePrimitives(viewer, [boundary, points]);
+  return () => {
+    if (viewer.isDestroyed()) return;
+    viewer.entities.remove(boundary);
+    removePrimitives(viewer, [points]);
+  };
 }
 
 export function installHumanitarianFacilityOverlay(
@@ -135,20 +148,22 @@ export function installUsgsOfficialOverlay(
 ) {
   const contours = comparison?.shakemap?.contours ?? [];
   if (viewer.isDestroyed() || contours.length === 0) return undefined;
-  const lines = viewer.scene.primitives.add(new Cesium.PolylineCollection());
-  const altitudeM = 130 + Math.max(0, 12 - order) * 20;
+  const lines: Cesium.Entity[] = [];
   for (const [index, contour] of contours.entries()) {
-    lines.add({
+    lines.push(viewer.entities.add({
       id: `usgs-shakemap:${comparison?.eventId}:${index}`,
-      positions: contour.points.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat, altitudeM)),
-      width: Math.max(1.25, Math.min(3, 1 + contour.mmi * 0.18)),
-      material: Cesium.Material.fromType("Color", {
-        color: Cesium.Color.fromCssColorString(contour.color).withAlpha(0.82 * opacity),
-      }),
-    });
+      polyline: {
+        positions: contour.points.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat)),
+        width: Math.max(1.25, Math.min(3, 1 + contour.mmi * 0.18)),
+        material: Cesium.Color.fromCssColorString(contour.color).withAlpha(0.82 * opacity),
+        clampToGround: true,
+        classificationType: Cesium.ClassificationType.TERRAIN,
+        zIndex: Math.max(0, 12 - order),
+      },
+    }));
   }
   viewer.scene.requestRender();
-  return () => removePrimitives(viewer, [lines]);
+  return () => removeEntities(viewer, lines);
 }
 
 export function useStrategicGlobeOverlays({

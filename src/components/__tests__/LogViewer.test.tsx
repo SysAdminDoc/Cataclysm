@@ -123,7 +123,7 @@ describe("LogViewer", () => {
     };
     expect(bundle.earth_assets.active.imageryAssetId).toBeTruthy();
     expect(bundle.earth_assets.providers).toHaveLength(7);
-    expect(bundle.earth_assets.assets).toHaveLength(13);
+    expect(bundle.earth_assets.assets).toHaveLength(14);
     expect(JSON.stringify(bundle).toLowerCase()).not.toContain("cesium_token");
   });
 

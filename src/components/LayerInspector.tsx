@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { HazardResult } from "../hazards";
 import {
   moveLayer,
@@ -18,6 +19,7 @@ import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
 import type { UsgsOfficialComparison } from "../lib/usgs-earthquakes";
+import { getActiveEarthSession, subscribeEarthSession } from "../lib/earth-assets";
 
 type Props = {
   domain: "tsunami" | "asteroid" | "nuclear";
@@ -272,7 +274,10 @@ export function LayerInspector({
   onOpenSettings,
 }: Props) {
   const { t, formatNumber } = useI18n();
+  const [earthSession, setEarthSession] = useState(getActiveEarthSession);
+  useEffect(() => subscribeEarthSession(setEarthSession), []);
   const tsunamiDomain = domain === "tsunami";
+  const terrainDraping = earthSession.terrainAssetId !== "cesium-wgs84-ellipsoid-26.1.0";
   const evidence = (layer: EvidenceLayerId) => buildLayerEvidence(
     layer,
     preset,
@@ -356,6 +361,10 @@ export function LayerInspector({
         </button>
       </div>
       <p className="layer-inspector__intro">{t("layers.controllerIntro")}</p>
+      <p className="layer-inspector__terrain" data-active={terrainDraping ? "true" : "false"}>
+        <span aria-hidden />
+        {terrainDraping ? t("layers.terrainDraping") : t("layers.terrainFlat")}
+      </p>
       <ul className="layer-inspector__list">
         {ordered.map(({ descriptor, setting }, index) => (
           <LayerControls

@@ -30,13 +30,6 @@ remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P2
 
-- [ ] P2 — Drape analytical overlays onto real terrain so elevation is respected
-  Why: damage rings, runup bars, and inundation discs render on the smooth ellipsoid, so the most common user complaint — "mountains should block this" — is visibly untrue; Cesium 1.135 (already on the app's 1.143 line) ships `Cesium3DTilesTerrainProvider` and imagery-over-3D-Tiles draping.
-  Evidence: ellipsoid-clamped overlays in `src/render/cesium/**`; HN "factor in mountains/elevation" (https://news.ycombinator.com/item?id=33870612); Cesium Nov-2025 3D Tiles terrain + draping (https://cesium.com/blog/2025/11/03/cesium-releases-in-november-2025/). Distinct from HR-13 hyper-real terrain: this is a near-term analytical draping win, not full PBR.
-  Touches: terrain provider wiring, overlay height-clamping/classification, legend copy on elevation influence, offline/no-terrain fallback, visual baselines.
-  Acceptance: with terrain enabled, analytical overlays follow ground elevation and are visibly occluded by high terrain where appropriate; disabling terrain restores the flat baseline; solver fields are unchanged; offline runs fall back cleanly.
-  Complexity: M
-
 - [ ] P2 — Add a long-term / extinction-scale secondary-effects timeline
   Why: users explicitly want beyond-the-fireball consequences for large events (ejecta reentry heating, global firestorm, impact winter / photosynthesis shutdown, seismic shaking), and the app's Chicxulub-class presets currently stop at the immediate blast/tsunami.
   Evidence: no post-event long-term effects in results; HN extinction-scale/secondary-effects requests (https://news.ycombinator.com/item?id=33870612); Range et al. 2022 global-tsunami/energy context already cited in presets; Purdue Impact:Earth! ejecta/seismic outputs (https://www.purdue.edu/impactearth/).

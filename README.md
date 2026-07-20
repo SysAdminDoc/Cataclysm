@@ -41,7 +41,7 @@ Existing tools each do one piece:
 - **[Purdue "Impact: Earth!"](https://impact.ese.ic.ac.uk/ImpactEarth/)** — accurate formulas, single-point readout, no animation.
 - **[GeoClaw](http://depts.washington.edu/clawpack/geoclaw/)** / **[COMCOT](https://www.researchgate.net/publication/374553562)** / **[MOST](https://www.pmel.noaa.gov/news-story/first-global-tsunami-simulation-chicxulub-asteroid-impact-66-million-years-ago)** — operational accuracy, Fortran/Python, no consumer UI.
 
-`Cataclysm` combines them: **peer-reviewed source physics + a professional interactive globe workspace**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the default low-confidence coarse basin/shelf bathymetry or a strictly validated local GeoTIFF/NetCDF-CF raster, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Bathymetry improves visual terrain only; it is not the backend solver grid.
+`Cataclysm` combines them: **peer-reviewed source physics + a professional interactive globe workspace**. Pick a source (asteroid, nuke, fault, slide), drop it anywhere on Earth, and watch a shallow-water solution propagate over the default low-confidence coarse basin/shelf bathymetry or a strictly validated local GeoTIFF/NetCDF-CF raster, estimate runup at named coastal points, and produce first-order inundation discs. Optional Cesium World Terrain drapes ground-based overlays over visible elevation, while Cesium World Bathymetry supplies visual ocean-floor relief; neither is a backend solver grid.
 
 ---
 
@@ -176,7 +176,7 @@ Existing tools each do one piece:
   results.
 - **5 globe styles**: high-detail Esri World Imagery by default, bundled Natural
   Earth II as the deterministic offline fallback, OpenStreetMap, Cesium World
-  Imagery, and Cesium World Bathymetry.
+  Imagery paired with Cesium World Terrain, and Cesium World Bathymetry.
 - **Machine-checked product truth** — one tracked manifest governs the current
   name, version, release/security URLs, runtime floors, 60-frame playback,
   provider defaults, and unsigned-release policy. The local release gate rejects
@@ -196,8 +196,8 @@ Existing tools each do one piece:
 - **Timeline scrubber + SWE playback** — scrub a 60-frame snapshot sequence
   through the live shallow-water solver, with classic or colorblind-safe
   overlay colormaps.
-- **Effect overlays** — wavefront ring, primitive-backed coastal runup bars and
-  inundation discs at 60+ named coastal points, user-created gauge markers,
+- **Effect overlays** — sea-level wavefront ring, terrain-relative coastal runup
+  bars and draped inundation discs at 60+ named coastal points, user-created gauge markers,
   and DART buoy historical observations with per-buoy model-vs-observed RMSE
   for the four instrumented presets. Gauge markers are batched for rendering;
   the accessible gauge table remains the interaction and export surface.
@@ -332,7 +332,11 @@ The app starts with high-detail **Esri World Imagery** and automatically falls
 back to bundled **Natural Earth II** when offline or when the provider fails, so
 the simulator remains usable without network tiles or a token. OpenStreetMap is
 another no-token online option, and a free Cesium ion token unlocks optional
-streamed imagery and visual bathymetric terrain from Settings. Provider terms,
+streamed imagery with land elevation or visual bathymetric terrain from
+Settings. The land-elevation style terrain-drapes ground-based damage, fallout,
+runup, inundation, MIRV, and USGS comparison overlays and lets mountains occlude
+them. Ocean wavefronts and gauges stay at sea level; the active terrain is visual
+only and never changes a solver field. Provider terms,
 attribution, spatial metadata, and rights-review dates are visible beside the
 selected Earth source.
 The separate humanitarian-facilities layer is also online-only and off by
@@ -473,7 +477,7 @@ it in; otherwise leave it blank and paste at runtime in **Settings**.
 ┌─────────────────────────── Tauri 2 Window ───────────────────────────┐
 │ ┌─────────────────────────────────────────────────────────────────┐  │
 │ │  React 19 + TypeScript + Vite (frontend / WebView2)             │  │
-│ │  ─ CesiumJS 1.143+ globe with optional bathymetric terrain        │  │
+│ │  ─ CesiumJS 1.143+ globe with optional land/bathymetric terrain   │  │
 │ │  ─ Scenario builder, timeline, overlays, results panel           │  │
 │ └──────────────────────────────  ▲  ───────────────────────────────┘  │
 │                                  │ tauri::invoke (JSON over IPC)      │

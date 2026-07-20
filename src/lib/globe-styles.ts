@@ -32,6 +32,11 @@ export const OFFLINE_STYLE = PRODUCT_TRUTH.globe.offlineStyleId as GlobeStyleId;
 
 export type ImageryFallbackReason = "offline" | "missing-token" | null;
 
+export type TerrainMode = "ellipsoid" | "world-terrain" | "bathymetry";
+
+const WORLD_TERRAIN_ASSET_ID = "cesium-ion-world-terrain-1";
+const BATHYMETRY_ASSET_ID = "cesium-ion-world-bathymetry-2426648";
+
 export type ImagerySelection = {
   provider: Cesium.ImageryProvider;
   requestedStyle: GlobeStyleId;
@@ -151,13 +156,27 @@ export async function buildImagery(
   };
 }
 
-/** Build a Cesium terrain provider if the style implies one. */
+export function terrainModeForStyle(id: GlobeStyleId): TerrainMode {
+  const terrainAssetId = getEarthStyleBinding(id).terrain_asset_id;
+  if (terrainAssetId === WORLD_TERRAIN_ASSET_ID) return "world-terrain";
+  if (terrainAssetId === BATHYMETRY_ASSET_ID) return "bathymetry";
+  return "ellipsoid";
+}
+
+/** Build the registered visual terrain provider, or let the controller use its ellipsoid fallback. */
 export async function buildTerrain(id: GlobeStyleId): Promise<Cesium.TerrainProvider | undefined> {
   const binding = getEarthStyleBinding(id);
   const terrainAsset = getEarthAsset(binding.terrain_asset_id);
   assertEarthAssetOperationAllowed(terrainAsset.id, "interactive_render");
-  if (id === "cesium-bathymetry") {
-    if (!tokenConfigured()) return undefined;
+  if (!tokenConfigured()) return undefined;
+  const mode = terrainModeForStyle(id);
+  if (mode === "world-terrain") {
+    return await Cesium.createWorldTerrainAsync({
+      requestVertexNormals: true,
+      requestWaterMask: true,
+    });
+  }
+  if (mode === "bathymetry") {
     return await Cesium.createWorldBathymetryAsync({ requestVertexNormals: true });
   }
   return undefined;

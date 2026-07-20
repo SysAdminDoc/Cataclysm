@@ -5,6 +5,7 @@ import {
   DEFAULT_STYLE,
   OFFLINE_STYLE,
   resolveImageryStyle,
+  terrainModeForStyle,
 } from "../globe-styles";
 
 describe("findStyle", () => {
@@ -101,5 +102,18 @@ describe("GLOBE_STYLES", () => {
       expect(s.description).toBeTruthy();
       expect(typeof s.requires_token).toBe("boolean");
     }
+  });
+});
+
+describe("terrainModeForStyle", () => {
+  it("keeps the offline and token-free styles on the flat ellipsoid baseline", () => {
+    expect(terrainModeForStyle("natural-earth-2")).toBe("ellipsoid");
+    expect(terrainModeForStyle("osm")).toBe("ellipsoid");
+    expect(terrainModeForStyle("esri-world-imagery")).toBe("ellipsoid");
+  });
+
+  it("separates land elevation from visual bathymetry", () => {
+    expect(terrainModeForStyle("cesium-world-imagery")).toBe("world-terrain");
+    expect(terrainModeForStyle("cesium-bathymetry")).toBe("bathymetry");
   });
 });

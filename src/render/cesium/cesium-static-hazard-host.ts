@@ -4,6 +4,7 @@ import type {
   StaticHazardEntityDescriptor,
   StaticHazardEntityHost,
 } from "./static-hazard-host";
+import { terrainEllipsePositions } from "./terrain-overlay-geometry";
 
 function color(css: string, alpha = 1): Cesium.Color {
   return Cesium.Color.fromCssColorString(css).withAlpha(alpha);
@@ -26,6 +27,7 @@ function applyDescriptor(
   entity.point = undefined;
   entity.label = undefined;
   entity.polygon = undefined;
+  entity.polyline = undefined;
 
   if (descriptor.kind === "hazard_ring") {
     entity.position = new Cesium.ConstantPositionProperty(
@@ -35,10 +37,22 @@ function applyDescriptor(
       semiMajorAxis: descriptor.semi_major_axis_m,
       semiMinorAxis: descriptor.semi_minor_axis_m,
       material: color(descriptor.fill_css, descriptor.fill_alpha),
-      outline: true,
+      outline: false,
       outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
       outlineWidth: descriptor.outline_width_px,
-      height: descriptor.position.height_m,
+      classificationType: Cesium.ClassificationType.TERRAIN,
+    });
+    entity.polyline = new Cesium.PolylineGraphics({
+      positions: terrainEllipsePositions(
+        descriptor.position.lat_deg,
+        descriptor.position.lon_deg,
+        descriptor.semi_major_axis_m,
+        descriptor.semi_minor_axis_m,
+      ),
+      width: descriptor.outline_width_px,
+      material: color(descriptor.outline_css, descriptor.outline_alpha),
+      clampToGround: true,
+      classificationType: Cesium.ClassificationType.TERRAIN,
     });
     return;
   }
@@ -52,6 +66,7 @@ function applyDescriptor(
       color: color(descriptor.fill_css, descriptor.fill_alpha),
       outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
       outlineWidth: descriptor.outline_width_px,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: deterministicCapture ? Number.POSITIVE_INFINITY : 0,
     });
     // Cesium rasterizes label glyphs into a GPU atlas. Font hinting differs
@@ -70,7 +85,8 @@ function applyDescriptor(
       showBackground: true,
       backgroundColor: color("#1e1e2e", 0.85),
       backgroundPadding: new Cesium.Cartesian2(6, 4),
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: deterministicCapture ? Number.POSITIVE_INFINITY : 0,
     });
     return;
   }
@@ -81,9 +97,20 @@ function applyDescriptor(
       descriptor.points.map((point) => position(point.lat_deg, point.lon_deg, point.height_m)),
     ),
     material: color(descriptor.fill_css, descriptor.fill_alpha),
-    outline: true,
+    outline: false,
     outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
-    height: descriptor.points[0]?.height_m ?? 0,
+    classificationType: Cesium.ClassificationType.TERRAIN,
+    perPositionHeight: false,
+  });
+  entity.polyline = new Cesium.PolylineGraphics({
+    positions: [
+      ...descriptor.points.map((point) => position(point.lat_deg, point.lon_deg)),
+      ...(descriptor.points[0] ? [position(descriptor.points[0].lat_deg, descriptor.points[0].lon_deg)] : []),
+    ],
+    width: 2,
+    material: color(descriptor.outline_css, descriptor.outline_alpha),
+    clampToGround: true,
+    classificationType: Cesium.ClassificationType.TERRAIN,
   });
 }
 

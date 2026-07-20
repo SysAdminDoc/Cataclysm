@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "registry_version": "1.1.0",
+  "registry_version": "1.2.0",
   "generated_at": "2026-07-11T12:00:00.000Z",
   "providers": [
     {
@@ -247,6 +247,16 @@
       "scientific": { "confidence": "visual-only", "transformations": ["Streamed by Cesium ion."], "limitations": ["Requires user token and live entitlement; dynamic upstream composition; not solver input."] }
     },
     {
+      "id": "cesium-ion-world-terrain-1", "provider_id": "cesium-ion", "kind": "terrain", "role": "Token-gated global land elevation", "delivery": "network",
+      "source_urls": ["https://cesium.com/platform/cesium-ion/content/cesium-world-terrain/"], "runtime_locator": "ion://1", "version": { "upstream": null, "package": "@cesium/engine@26.1.0", "provider_asset_id": "1" },
+      "license": { "identifier": "LicenseRef-Cesium-World-Terrain", "name": "Cesium World Terrain asset terms", "url": "https://cesium.com/legal/terms-of-service/", "attribution_text": "Dynamic Cesium World Terrain and source credits", "notice_paths": [] },
+      "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "provider-defined; visual-only" }, "temporal": { "content_timestamp": null, "retrieved_at": null, "observed_at": null, "status": "mutable" },
+      "resolution": { "kind": "provider-level-of-detail", "value": null, "min": null, "max": null, "unit": "provider-defined", "tile_size_px": null, "notes": "Provider asset metadata and runtime credits are authoritative." },
+      "integrity": { "algorithm": "provider-asset-id", "digest": "1", "scope": "Cesium ion asset identifier", "target": null },
+      "permission_profile_id": "cesium-ion-streaming", "quality_tiers": ["High", "Cinematic"], "fallback_asset_id": "cesium-wgs84-ellipsoid-26.1.0",
+      "scientific": { "confidence": "visual-only", "transformations": ["Streamed as Cesium quantized-mesh terrain with vertex normals and water masks."], "limitations": ["Visual elevation affects overlay placement and occlusion only; it is not sampled by any hazard solver."] }
+    },
+    {
       "id": "cesium-ion-world-bathymetry-2426648", "provider_id": "cesium-ion", "kind": "terrain", "role": "Visual ocean-floor terrain", "delivery": "network",
       "source_urls": ["https://cesium.com/platform/cesium-ion/content/cesium-world-bathymetry/"], "runtime_locator": "ion://2426648", "version": { "upstream": null, "package": "@cesium/engine@26.1.0", "provider_asset_id": "2426648" },
       "license": { "identifier": "LicenseRef-Cesium-World-Bathymetry", "name": "Cesium World Bathymetry asset terms", "url": "https://cesium.com/legal/terms-of-service/", "attribution_text": "Dynamic Cesium World Bathymetry and source credits", "notice_paths": [] },
@@ -331,11 +341,11 @@
     { "id": "natural-earth-2", "label": "Natural Earth II (offline-friendly)", "description": "Bundled public-domain Natural Earth raster with no network dependency.", "requires_token": false, "imagery_asset_id": "natural-earth-ii-cesium-1.143.0", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
     { "id": "osm", "label": "OpenStreetMap (no token)", "description": "OSM Foundation standard raster service; interactive use only, with attribution and no bulk prefetch.", "requires_token": false, "imagery_asset_id": "osm-standard-raster", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
     { "id": "esri-world-imagery", "label": "Esri World Imagery (satellite, no token)", "description": "Satellite and aerial mosaic with location-specific resolution, acquisition dates, and dynamic attribution.", "requires_token": false, "imagery_asset_id": "esri-world-imagery", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
-    { "id": "cesium-world-imagery", "label": "Cesium World Imagery (token required)", "description": "Cesium ion imagery streamed under the user account's asset entitlement and live credits.", "requires_token": true, "imagery_asset_id": "cesium-ion-world-imagery-2", "terrain_asset_id": "cesium-wgs84-ellipsoid-26.1.0" },
+    { "id": "cesium-world-imagery", "label": "Cesium World Imagery + Terrain (token required)", "description": "Cesium ion imagery and land elevation streamed under the user account's asset entitlement; ground-based analytical overlays drape over visible terrain.", "requires_token": true, "imagery_asset_id": "cesium-ion-world-imagery-2", "terrain_asset_id": "cesium-ion-world-terrain-1" },
     { "id": "cesium-bathymetry", "label": "Cesium World Bathymetry (token required)", "description": "Natural Earth imagery over token-gated visual bathymetric terrain; the solver does not sample this surface.", "requires_token": true, "imagery_asset_id": "natural-earth-ii-cesium-1.143.0", "terrain_asset_id": "cesium-ion-world-bathymetry-2426648" }
   ],
   "category_inventory": {
-    "terrain": ["cesium-wgs84-ellipsoid-26.1.0", "cesium-ion-world-bathymetry-2426648", "cataclysm-surface-mask-v1", "cataclysm-geodesy-contract-v1"],
+    "terrain": ["cesium-wgs84-ellipsoid-26.1.0", "cesium-ion-world-terrain-1", "cesium-ion-world-bathymetry-2426648", "cataclysm-surface-mask-v1", "cataclysm-geodesy-contract-v1"],
     "imagery": ["natural-earth-ii-cesium-1.143.0", "osm-standard-raster", "esri-world-imagery", "cesium-ion-world-imagery-2"],
     "buildings": [],
     "ocean": ["cataclysm-coarse-bathymetry-v1", "cataclysm-uniform-depth-v1", "noaa-dart-observations-v1", "cataclysm-coastal-points-v1"],
