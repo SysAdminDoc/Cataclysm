@@ -21,6 +21,7 @@ const sourcePaths = [
   "src-tauri/wasm/Cargo.toml",
   "src-tauri/wasm/Cargo.lock",
   "src-tauri/wasm/src/lib.rs",
+  "src-tauri/wasm/src/data/mod.rs",
   "src-tauri/src/physics/mod.rs",
   "src-tauri/src/physics/constants.rs",
   "src-tauri/src/physics/asteroid.rs",
@@ -30,6 +31,9 @@ const sourcePaths = [
   "src-tauri/src/physics/okada.rs",
   "src-tauri/src/physics/screening.rs",
   "src-tauri/src/physics/shallow_water.rs",
+  "src-tauri/src/physics/direct_hazard.rs",
+  "src-tauri/src/data/source_input_contract.rs",
+  "src/data/source-input-contract.json",
 ];
 
 function sha256(bytes) {

@@ -16,7 +16,11 @@
 //! evaluated so the math is auditable without consulting the citations file.
 
 pub mod constants;
-#[cfg(not(feature = "browser-wasm"))]
+// direct_hazard is self-contained (its only external dependency is
+// data::source_input_contract), so it compiles for the browser-wasm target
+// too. That lets the browser preview run the exact Rust asteroid/nuclear
+// models instead of gating direct effects off. direct_hazard_probe (result
+// registry, shelter/visual probes) stays desktop-only.
 pub mod direct_hazard;
 #[cfg(not(feature = "browser-wasm"))]
 pub mod direct_hazard_probe;

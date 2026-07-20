@@ -9,6 +9,11 @@ use std::{cell::RefCell, mem, slice};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+// `data` must be declared before `physics`: direct_hazard resolves its input
+// validators through `crate::data::source_input_contract`.
+#[allow(dead_code)]
+mod data;
+
 #[allow(dead_code)]
 #[path = "../../src/physics/mod.rs"]
 mod physics;
@@ -16,6 +21,10 @@ mod physics;
 use physics::{
     InitialDisplacement,
     asteroid::AsteroidImpact,
+    direct_hazard::{
+        AsteroidHazardRequest, NuclearHazardRequest, simulate_asteroid_hazard,
+        simulate_nuclear_hazard,
+    },
     earthquake::EarthquakeSource,
     landslide::LandslideSource,
     meteotsunami::MeteotsunamiSource,
@@ -95,6 +104,18 @@ enum Request {
         click_lon: f64,
         beach_slope_deg: f64,
         offshore_depth_m: f64,
+    },
+    /// Full Rust-authoritative asteroid impact effects (rings, crater, thermal
+    /// and blast radii, seismic, coupled tsunami). Same model the desktop
+    /// `simulate_asteroid_hazard` command runs.
+    AsteroidHazard {
+        request: AsteroidHazardRequest,
+    },
+    /// Full Rust-authoritative nuclear detonation effects (fireball, blast and
+    /// thermal rings, fallout, casualties). Same model the desktop
+    /// `simulate_nuclear_hazard` command runs.
+    NuclearHazard {
+        request: NuclearHazardRequest,
     },
 }
 
@@ -201,6 +222,16 @@ fn execute(request: Request) -> Result<Value, String> {
                 offshore_depth_m,
             },
         )),
+        // The direct-hazard models return `Result<HazardResult, String>`, so
+        // short-circuit here instead of feeding the shared serde `.map_err`.
+        Request::AsteroidHazard { request } => {
+            let result = simulate_asteroid_hazard(request)?;
+            return serde_json::to_value(result).map_err(|error| error.to_string());
+        }
+        Request::NuclearHazard { request } => {
+            let result = simulate_nuclear_hazard(request)?;
+            return serde_json::to_value(result).map_err(|error| error.to_string());
+        }
     }
     .map_err(|error| error.to_string())
 }

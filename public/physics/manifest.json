@@ -2,7 +2,7 @@
   "schema_version": 1,
   "abi_version": 1,
   "rust_version": "1.96.0",
-  "source_sha256": "5c7d34e28bcb44a0ea00cce65a3b1a7810dbde254da28ce64a7b25b3a0aac11f",
-  "wasm_sha256": "dba3a56f81388749f066a43c776e7a45addbafc697d06cb0f4f3be81a25062d0",
-  "wasm_bytes": 232394
+  "source_sha256": "ceced3a4b1207a92c9bb38f8f4f7b606eae8ed84c5d16a23ea3d6f0d955e652c",
+  "wasm_sha256": "7bac07c88c99b706e29f836eb2aed3d6c20eb28c269a93c403ba094835d06866",
+  "wasm_bytes": 364555
 }

@@ -8,6 +8,29 @@ import type {
   NuclearBurstInput,
   PropagationSnapshot,
 } from "../types/scenario";
+import type { BurstType, HazardResult, TargetType } from "../hazards";
+
+/** Snake-case direct asteroid request, matching the Rust `AsteroidHazardRequest`. */
+export type BrowserAsteroidHazardRequest = {
+  center: { lat: number; lon: number };
+  diameter_m: number;
+  density_kg_m3: number;
+  velocity_km_s: number;
+  angle_deg: number;
+  target_type: TargetType;
+  water_depth_m: number;
+  beach_slope_rad: number;
+};
+
+/** Snake-case direct nuclear request, matching the Rust `NuclearHazardRequest`. */
+export type BrowserNuclearHazardRequest = {
+  center: { lat: number; lon: number };
+  yield_kt: number;
+  burst_type: BurstType;
+  height_m?: number;
+  fission_pct: number;
+  population_density: number;
+};
 
 type BrowserPhysicsExports = WebAssembly.Exports & {
   memory: WebAssembly.Memory;
@@ -145,4 +168,27 @@ export function browserInspect(request: {
   offshore_depth_m: number;
 }): Promise<BrowserScreeningResult> {
   return compute({ operation: "inspect", ...request });
+}
+
+/**
+ * Full Rust-authoritative asteroid impact effects, computed by the same
+ * `physics::direct_hazard::simulate_asteroid_hazard` model the desktop app
+ * runs — no JS reimplementation. Lets the browser preview render rings,
+ * crater, thermal/blast radii, and coupled tsunami instead of gating them off.
+ */
+export function browserAsteroidHazard(
+  request: BrowserAsteroidHazardRequest,
+): Promise<HazardResult> {
+  return compute({ operation: "asteroid_hazard", request });
+}
+
+/**
+ * Full Rust-authoritative nuclear detonation effects (fireball, blast/thermal
+ * rings, fallout, casualties), computed by the shared
+ * `physics::direct_hazard::simulate_nuclear_hazard` model.
+ */
+export function browserNuclearHazard(
+  request: BrowserNuclearHazardRequest,
+): Promise<HazardResult> {
+  return compute({ operation: "nuclear_hazard", request });
 }
