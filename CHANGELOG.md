@@ -2,31 +2,77 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2026-07-19
+
+### Added
+
+- Browser-preview direct hazards: the asteroid and nuclear effect models now run
+  in the web preview via the same Rust `physics::direct_hazard` code compiled to
+  WebAssembly (no JS reimplementation), so rings, crater, thermal/blast radii,
+  and coupled tsunami render without the desktop app. Staged VFX replay and
+  shelter/visual probes remain desktop-only.
+- Extended max-field products are now written to the CF-NetCDF and Zarr
+  scientific exports (max total flow depth, current speed, specific momentum
+  flux, drawdown, and time-of-maximum-speed) with correct CF units, metadata,
+  and never-wet/never-reached fill values — round-trip tested in both formats.
+- Simple-first scenario browser: a `simplified` mode hides the discovery
+  surfaces (packs, surprise, near-a-place, planetary defense, guided training)
+  behind a clean scenario list plus a manual "Create my own" entry; everything
+  returns in Customize/Advanced.
+
+### Fixed
+
+- **Command/permission contract regression (shipped in 0.13.0):** `quick_eta_preview`
+  was registered in `generate_handler!` and granted a permission but was missing
+  from `build.rs`'s `AppManifest`, so its ACL entry was incomplete and the
+  `registered_commands_match_manifest_and_permission_sets` contract test failed.
+  The command list is now consistent across `lib.rs`, `build.rs`, and the
+  permission set.
+- Quick ETA first-arrival map was quantized to the 1000-step observe cadence,
+  flattening the wavefront gradient; it now observes every step on the coarse
+  grid like the full solver. Extracted a testable `compute_quick_eta` helper and
+  changed `arrival_s` to serialize never-reached cells as JSON `null` (was a bare
+  `f64` that serde emitted as `null` while the TS type claimed `number[]`).
+- Extended max-field products were serialized as raw per-cell `f64` arrays on the
+  IPC `MaxFieldProduct` that no consumer read — up to ~160 MB of dead payload on a
+  2000² grid. They are now off the IPC payload entirely (their home is the
+  scientific exports, matching peak/arrival/energy).
+- Deterministic WebCodecs export: the encoder error callback threw on the codec
+  thread where nothing caught it, there was no encode-queue backpressure, and an
+  unsupported config leaked an encoder handle past an early return. All three are
+  fixed (errors surface at the next await, queue drains under backpressure, the
+  config is probed before allocation).
+- Run-quality mass-drift warning no longer labels radiation (open) and zero-flux
+  (closed, spongeless) boundaries as "sponge-adjusted"; radiation efflux reads as
+  expected outflow rather than a conservation defect.
+- Legend colormap-ramp border used a hardcoded 24% white that vanished on the
+  light (Latte) viewport HUD; it now uses a themed hairline.
+
+### Changed
+
+- Reverted a speculative inspect-mode `globe.pick(ray)` swap: it gated on a no-op
+  feature check and used a synchronous terrain-traversal pick no faster than the
+  analytic `pickEllipsoid` (and prone to missing near the limb). The fast
+  analytic pick is restored; genuine async-pick work is tracked in ROADMAP.
+
 ## [0.13.0] — 2026-07-19
 
 ### Added
 
 - Quick ETA preview backend: a new `quick_eta_preview` IPC command runs a
   coarse linear-mode SWE solve at half the requested resolution and returns
-  per-cell first-arrival times (null where the wave never reached) without a
-  full nonlinear run. Correctness is locked by monotonic-arrival and
-  unreached-cell tests. (UI surfacing is tracked in ROADMAP.)
+  per-cell first-arrival times without a full nonlinear run. (UI surfacing is
+  tracked in ROADMAP.)
 - Frame-accurate video encoder backend via WebCodecs: when the runtime supports
   VideoEncoder (WebView2 / Chromium), `exportDeterministicVideo` encodes globe
-  frames one at a time (with encode-queue backpressure and surfaced codec
-  errors) into an H.264/MP4 via `mp4-muxer` — decoupled from wall-clock so it
-  never drops frames under load, unlike the real-time MediaRecorder path.
-  Feature-detected with `isDeterministicVideoSupported()`. (UI surfacing is
-  tracked in ROADMAP.)
-- Extended max-field products: every accepted solver step now also accumulates
+  frames one at a time into an H.264/MP4 via `mp4-muxer` — decoupled from
+  wall-clock so it never drops frames under load, unlike the real-time
+  MediaRecorder path. Feature-detected with `isDeterministicVideoSupported()`.
+  (UI surfacing is tracked in ROADMAP.)
+- Extended max-field products: every accepted solver step also accumulates
   maximum total flow depth, maximum current speed, maximum specific momentum flux
   (H·U²), minimum water depth (drawdown), and time-of-maximum-speed alongside the
-  existing peak amplitude, time-of-max, arrival, and energy fields. All five are
-  computed per accepted step and written to the CF-NetCDF and Zarr scientific
-  exports with correct units, standard metadata, and never-wet/never-reached fill
-  values (round-trip tested). Raw per-cell arrays stay off the IPC result payload
-  (like peak/arrival/energy) to avoid multi-megabyte bloat; surfacing them in the
-  Inspect/Results panels is tracked in ROADMAP.
+  existing peak amplitude, time-of-max, arrival, and energy fields.
 - Radiation/open-boundary mode: a characteristic absorbing boundary condition
   that damps η at the domain edge using the local phase speed and extrapolates
   velocity from the interior. Selectable from Advanced solver controls alongside

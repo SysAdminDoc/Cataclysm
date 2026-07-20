@@ -4,7 +4,7 @@
 
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.13.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.14.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
 [![Stack](https://img.shields.io/badge/stack-Tauri%202%20%2B%20React%20%2B%20CesiumJS%20%2B%20Rust-orange.svg)](#architecture)
@@ -18,7 +18,7 @@ The Cataclysm mark combines three propagating wavefronts, a fault cut, and a
 single event core. The same source artwork is used by the desktop installers,
 mobile targets, PWA, launch experience, and in-app command bar.
 
-> **Migration status (v0.13.0):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. Source-aware Outcome, Science, Validation, and scenario-scoped Layers connect named effects to the globe and timeline while retaining auditable assumptions and provenance. Rust remains the sole authority for direct-effect and named-coast inputs.
+> **Migration status (v0.14.0):** tsunami, asteroid, earthquake, landslide, and nuclear models now sit behind a progressively disclosed professional workspace. Simple keeps the scenario, globe, Run & Watch journey, timeline, and outcomes dominant; Customize reveals a small understandable control set; Advanced restores exact grids, gauges, confidence, and scientific diagnostics. Source-aware Outcome, Science, Validation, and scenario-scoped Layers connect named effects to the globe and timeline while retaining auditable assumptions and provenance. Rust remains the sole authority for direct-effect and named-coast inputs.
 
 ---
 
@@ -299,7 +299,7 @@ and writes adapter plus frame-time evidence to
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.13.0 Windows installers are
+an MSI package and an NSIS setup executable. The v0.14.0 Windows installers are
 locally built from this repository and intentionally unsigned, so Windows may
 show an unknown-publisher warning. macOS and Linux remain supported source-build
 targets; platform packages for those systems are produced locally on their
@@ -310,12 +310,12 @@ Compare the SHA256 of the downloaded file to the published value:
 
 ```powershell
 # PowerShell
-(Get-FileHash .\Cataclysm_0.13.0_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.14.0_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile Cataclysm_0.13.0_x64_en-US.msi SHA256
+certutil -hashfile Cataclysm_0.14.0_x64_en-US.msi SHA256
 ```
 
 See [`docs/release/UNSIGNED_RELEASES.md`](./docs/release/UNSIGNED_RELEASES.md) for full

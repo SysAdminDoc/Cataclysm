@@ -5,11 +5,11 @@ Generated deterministically from package-lock.json and src-tauri/Cargo.lock.
 Do not edit this artifact directly; run npm run generate:notices.
 Scope: production npm dependencies and Windows x86_64 GPU Rust runtime dependencies.
 Development-only and build-only packages are excluded.
-Application version: 0.12.0
+Application version: 0.14.0
 Generators: cargo-about 0.9.1; generate-license-file 4.2.1
-package-lock.json SHA-256: 4e0d9d10d746d2bb1c6b230c6f64473901e4ba5511a5f3d40bcf850dfb36b562
-src-tauri/Cargo.lock SHA-256: f71214f6696fad0e85a487f68bad504d452b3f155f1129f399bdf76b4ced645b
-Production components: 39 npm; 397 Rust
+package-lock.json SHA-256: 70ead2d6927fbc89c4bd5f1afb2b24d3eb800932c5f6c77e1e2ca2459e973baf
+src-tauri/Cargo.lock SHA-256: 0d303ffc0b7a2d880112a2b31461a8177b88a2bda600895526006cadc64b72c2
+Production components: 42 npm; 397 Rust
 
 
 NPM PRODUCTION INVENTORY
@@ -78,10 +78,20 @@ Declared SPDX: MIT
 Source: https://github.com/tweenjs/tween.js
 Lock integrity: sha512-XKLA6syeBUaPzx4j3qwMqzzq+V4uo72BnlbOjmuljLrRqdsd3qnzvZZoxvMHZ23ndsRS4aufU6JOZYpCbU6T1A==
 
+@types/dom-webcodecs@0.1.18
+Declared SPDX: MIT
+Source: https://github.com/DefinitelyTyped/DefinitelyTyped
+Lock integrity: sha512-vAvE8C9DGWR+tkb19xyjk1TSUlJ7RUzzp4a9Anu7mwBT+fpyePWK1UxmH14tMO5zHmrnrRIMg5NutnnDztLxgg==
+
 @types/trusted-types@2.0.7
 Declared SPDX: MIT
 Source: https://github.com/DefinitelyTyped/DefinitelyTyped
 Lock integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==
+
+@types/wicg-file-system-access@2020.9.8
+Declared SPDX: MIT
+Source: https://github.com/DefinitelyTyped/DefinitelyTyped
+Lock integrity: sha512-ggMz8nOygG7d/stpH40WVaNvBwuyYLnrg5Mbyf6bmsj/8+gb6Ei4ZZ9/4PNpcPNTT8th9Q8sM8wYmWGjMWLX/A==
 
 @zip.js/zip.js@2.8.26
 Declared SPDX: BSD-3-Clause
@@ -172,6 +182,11 @@ meshoptimizer@1.2.0
 Declared SPDX: MIT
 Source: https://github.com/zeux/meshoptimizer
 Lock integrity: sha512-davRZeIJbxJrE24cwQle7ZDsxjdk/OphNOV83oX+efQinyoHY9Jcyz3MHbaoG0qySZajldGztNZ1RN/T19PZsg==
+
+mp4-muxer@5.2.2
+Declared SPDX: MIT
+Source: https://github.com/Vanilagy/mp4-muxer
+Lock integrity: sha512-dhozjTywI0h2qFzeShagt8YYw811fh1XlwiDCE2f6Aeqf6xG2CyuShoSa5E0AZDO8pPF0JOZ3wOmWBNWIGdSpQ==
 
 nosleep.js@0.12.0
 Declared SPDX: MIT
@@ -356,7 +371,7 @@ cargo-platform@0.1.9
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/rust-lang/cargo
 
-cataclysm@0.12.0
+cataclysm@0.14.0
 Declared SPDX: MIT
 Source: https://github.com/SysAdminDoc/Cataclysm
 
@@ -3655,7 +3670,7 @@ THE SOFTWARE.
 
 -------------------------------------------------------------------------------
 
-Applies to: @types/trusted-types@2.0.7
+Applies to: @types/dom-webcodecs@0.1.18, @types/trusted-types@2.0.7, @types/wicg-file-system-access@2020.9.8
 Text SHA-256: d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb
 
     MIT License
@@ -5056,6 +5071,33 @@ Text SHA-256: 7fd9ee4808b44ab0ae0dec13765ede6e66ceb97f1a9ac20907ecffa2386a3435
 MIT License
 
 Copyright (c) 2016-2026 Arseny Kapoulkine
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Applies to: mp4-muxer@5.2.2
+Text SHA-256: 0fcdb17d5bef33b2d1ccfe431f32904601d1a858bfc3ecc4b73ea1bb79254b4f
+
+MIT License
+
+Copyright (c) 2023 Vanilagy
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -13220,7 +13262,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 
 MIT License (MIT)
-Applies to: brotli-decompressor@5.0.3, cataclysm@0.12.0, dpi@0.1.2, libm@0.2.16, webview2-com-macros@0.8.1, webview2-com-sys@0.38.2, webview2-com@0.38.2
+Applies to: brotli-decompressor@5.0.3, cataclysm@0.14.0, dpi@0.1.2, libm@0.2.16, webview2-com-macros@0.8.1, webview2-com-sys@0.38.2, webview2-com@0.38.2
 Text SHA-256: 07c7993a082dd28479b2f48dd4ab9fac71bd97aeeecaa4cd89ef863fb3867c67
 
 MIT License
