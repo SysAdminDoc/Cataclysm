@@ -21,8 +21,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Extended max-field products: every accepted solver step now also accumulates
   maximum total flow depth, maximum current speed, maximum momentum flux (H·U²),
   minimum water depth (drawdown), and time-of-maximum-speed alongside the existing
-  peak amplitude, time-of-max, arrival, and energy fields. All five new fields are
-  serialized in the MaxFieldProduct and available to scientific exports.
+  peak amplitude, time-of-max, arrival, and energy fields. All five are computed
+  per accepted step (regression-tested) and serialized in the `MaxFieldProduct`
+  IPC payload. (Surfacing them in NetCDF/Zarr exports and the Inspect/Results
+  panels is tracked in ROADMAP.)
 - Radiation/open-boundary mode: a characteristic absorbing boundary condition
   that damps η at the domain edge using the local phase speed and extrapolates
   velocity from the interior. Selectable from Advanced solver controls alongside

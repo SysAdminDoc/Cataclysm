@@ -115,16 +115,6 @@ impl MaxFieldAccumulator {
         ]
     }
 
-    pub(crate) fn extended_scientific_fields(&self) -> [&[f64]; 5] {
-        [
-            &self.max_depth_m,
-            &self.max_speed_ms,
-            &self.max_momentum_flux_m3s2,
-            &self.min_depth_m,
-            &self.t_of_max_speed_s,
-        ]
-    }
-
     pub(super) fn checkpoint_fields(&self) -> [&[f64]; 4] {
         [
             &self.peak_m,

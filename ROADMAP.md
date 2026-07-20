@@ -243,6 +243,12 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P2
 
+- [ ] P2 — Surface extended max-field products in exports and Inspect/Results
+  Why: `MaxFieldAccumulator` now computes max flow depth, speed, momentum flux, drawdown (min depth), and time-of-max-speed and serializes them in the `MaxFieldProduct` IPC payload, but no consumer reads them — they are absent from the NetCDF/Zarr writers and the Inspect/Results panels.
+  Where: `src-tauri/src/commands/scientific_export.rs` (+ zarr.rs) add CF variables (units, fill values — note `min_depth_m` uses +∞ for never-wet cells), `src/components/ResultsPanel.tsx`/`PointProbePanel.tsx`, `src/lib/scientific-export.ts` types, export contract tests.
+  Acceptance: the five fields appear in NetCDF and Zarr with correct CF units/standard names and fill values; a point probe reports max flow depth/speed/momentum-flux/drawdown at a coordinate; export contract tests cover the new variables.
+  Complexity: M
+
 - [ ] P2 — Surface the deterministic WebCodecs video export in the UI
   Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it — the export menu still only offers the real-time MediaRecorder path.
   Where: `src/lib/export.ts` (helper present), export/highlight-story UI in `src/App.tsx`/`src/components/HighlightStoryDialog.tsx`, a frame-stepping `renderFrame(i)` driver over the SWE replay.
