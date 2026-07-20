@@ -14,6 +14,10 @@ pub struct QualityBaseline {
     mass_scale_m3: f64,
     energy_j: f64,
     sponge_width_cells: usize,
+    /// True when the boundary radiates outgoing waves (open boundary). Mass
+    /// leaving the domain is then expected, so the mass-drift text is framed
+    /// as efflux rather than a conservation defect.
+    open_boundary: bool,
     externally_forced: bool,
 }
 
@@ -53,6 +57,7 @@ impl QualityBaseline {
             mass_scale_m3: metrics.mass_scale_m3,
             energy_j: metrics.energy_j,
             sponge_width_cells,
+            open_boundary: matches!(boundary, BoundaryMode::Radiation),
             externally_forced: false,
         }
     }
@@ -79,9 +84,14 @@ impl QualityBaseline {
         };
         let mut warnings = Vec::new();
         if mass_drift_pct.abs() > MASS_DRIFT_WARNING_PCT {
-            warnings.push(format!(
-                "sponge-adjusted mass drift is {mass_drift_pct:.2}%"
-            ));
+            let mass_label = if self.open_boundary {
+                "open-boundary mass efflux"
+            } else if self.sponge_width_cells > 0 {
+                "sponge-adjusted mass drift"
+            } else {
+                "mass drift"
+            };
+            warnings.push(format!("{mass_label} is {mass_drift_pct:.2}%"));
         }
         if energy_drift_pct > ENERGY_GAIN_WARNING_PCT {
             warnings.push(format!(
@@ -242,6 +252,37 @@ mod tests {
                 .failure
                 .as_deref()
                 .is_some_and(|failure| failure.contains("minimum total water depth"))
+        );
+    }
+
+    #[test]
+    fn mass_drift_warning_text_matches_boundary_kind() {
+        let grid = grid();
+        // Drain all displaced volume to force a large (~-100%) mass drift.
+        let mut drifted = grid.clone();
+        for eta in drifted.eta_m.iter_mut() {
+            *eta = 0.0;
+        }
+        let dt = grid.recommended_dt_s(0.4);
+
+        let radiation = QualityBaseline::capture(&grid, BoundaryMode::Radiation).assess(&drifted, dt);
+        assert!(
+            radiation
+                .warnings
+                .iter()
+                .any(|w| w.contains("open-boundary mass efflux")),
+            "radiation efflux should not be mislabeled: {:?}",
+            radiation.warnings
+        );
+
+        let zero_flux = QualityBaseline::capture(&grid, BoundaryMode::ZeroFlux).assess(&drifted, dt);
+        assert!(
+            zero_flux
+                .warnings
+                .iter()
+                .any(|w| w.contains("mass drift") && !w.contains("sponge")),
+            "a spongeless closed boundary must not claim a sponge: {:?}",
+            zero_flux.warnings
         );
     }
 

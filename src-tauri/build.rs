@@ -17,6 +17,7 @@ fn main() {
         "sample_preset_wavefront",
         "simulate_grid",
         "simulate_grid_streaming",
+        "quick_eta_preview",
         "inspect_at_point",
         "lamb_wave_sample",
         "dart_buoy_rmse",

@@ -105,7 +105,9 @@
 .app__viewport-legend-ramp {
   height: 10px;
   margin: 9px 0 5px;
-  border: 1px solid color-mix(in srgb, #ffffff 24%, transparent);
+  /* Themed hairline: light edge on the dark HUD, dark edge on the light HUD.
+     A hardcoded white border vanished on the Latte viewport panel. */
+  border: 1px solid color-mix(in srgb, var(--text) 24%, transparent);
 }
 
 .app__viewport-legend-ramp[data-colormap="diverging"] {
