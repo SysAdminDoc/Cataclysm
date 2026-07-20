@@ -43,6 +43,13 @@ type Props = {
   onToggleFavorite?: (id: string) => void;
   onSelectFamiliarPlace?: (place: NukemapLocationResult) => void;
   onTryHypotheticalImpact?: (draft: HypotheticalImpactDraft) => void;
+  /**
+   * Simple-first default: hide the discovery surfaces (scenario packs, surprise,
+   * "near a place", planetary-defense, guided training) so new users see just a
+   * clean scenario list plus a manual "Create my own" entry. Nothing is deleted —
+   * switch to Customize/Advanced to bring these back.
+   */
+  simplified?: boolean;
 };
 
 type ViewMode = "cards" | "timeline";
@@ -209,6 +216,7 @@ export function PresetSelector({
   onToggleFavorite,
   onSelectFamiliarPlace,
   onTryHypotheticalImpact,
+  simplified = false,
 }: Props) {
   const { locale, t, formatNumber } = useI18n();
   const unitSystem = useUnits();
@@ -376,6 +384,15 @@ export function PresetSelector({
         </div>
       </div>
 
+      {simplified && onCreateScenario && (
+        <div className="scenario-discovery scenario-discovery--simple">
+          <button type="button" className="scenario-discovery__manual" onClick={onCreateScenario}>
+            <UiIcon name="reset" size={13} />
+            {t("scenario.createOwn")}
+          </button>
+        </div>
+      )}
+      {!simplified && (
       <section className="scenario-discovery" aria-labelledby={`${instanceId}-scenario-packs-title`}>
         <div className="scenario-discovery__header">
           <span>
@@ -472,6 +489,7 @@ export function PresetSelector({
           </div>
         )}
       </section>
+      )}
 
       {activeLibraryId && onRunActive && (
         <section className="preset-active-action" aria-label={t("scenario.selected")}>
@@ -633,7 +651,7 @@ export function PresetSelector({
         </>
       )}
 
-      {onStartLesson && (
+      {!simplified && onStartLesson && (
         <div className="lesson-launcher" data-open={lessonsOpen ? "true" : "false"}>
           <button className="lesson-launcher__toggle" type="button" aria-expanded={lessonsOpen} onClick={() => setLessonsOpen((open) => !open)}>
             <span>

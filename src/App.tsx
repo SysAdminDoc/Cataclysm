@@ -34,6 +34,7 @@ import { DartOverlay } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { AttenuationChart } from "./components/AttenuationChart";
 import { api, isTauri } from "./lib/tauri";
+import { browserAsteroidHazard, browserNuclearHazard } from "./lib/browser-physics";
 import { dartPinsForPreset } from "./lib/dart";
 import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
@@ -500,6 +501,10 @@ export default function App() {
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
   const inTauri = useMemo(isTauri, []);
+  // Direct asteroid/nuclear effects run on the Tauri backend (desktop) and, in
+  // the browser preview, on the same Rust models compiled to WebAssembly. Both
+  // paths compute real effects, so the direct-hazard backend is always present.
+  const directHazardBackendAvailable = true;
   const debouncedNuclearInput = useDebouncedValue(nuclearInput, 180);
   const debouncedAsteroidInput = useDebouncedValue(asteroidInput, 180);
   const referenceCaptureMode = useMemo(
@@ -1069,44 +1074,6 @@ export default function App() {
       return;
     }
     let cancelled = false;
-    if (!inTauri) {
-      const fixture = referenceCaptureMode && referenceCaptureSceneId
-        ? (directHazardCaptureFixtures as Record<string, HazardResult>)[referenceCaptureSceneId]
-        : undefined;
-      setHazardResult(fixture?.kind === hazardMode ? structuredClone(fixture) : null);
-      setAsteroidVisualReport(null);
-      setNuclearShelterReport(null);
-      setDirectRenderReplay(null);
-      const recordingUrl = referenceCaptureSceneId
-        ? DIRECT_RENDER_FIXTURE_URLS[referenceCaptureSceneId]
-        : undefined;
-      if (recordingUrl) {
-        void fetch(recordingUrl)
-          .then((response) => {
-            if (!response.ok) throw new Error(`render fixture returned ${response.status}`);
-            return response.arrayBuffer();
-          })
-          .then(ingestRenderRecording)
-          .then((replay) => {
-            if (!cancelled && requestId === hazardRequestId.current) setDirectRenderReplay(replay);
-          })
-          .catch((error) => {
-            if (!cancelled) console.error("direct render fixture failed", error);
-          });
-      }
-      setHazardPending(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setHazardResult(null);
-    setAsteroidVisualReport(null);
-    setNuclearShelterReport(null);
-    setHazardError(null);
-    setDirectRenderReplay(null);
-    setDirectRenderFrame(null);
-    setHazardPending(true);
     const center = { lat: hazardCenter.lat, lon: hazardCenter.lon };
     const nuclearRequest = {
           center,
@@ -1126,6 +1093,83 @@ export default function App() {
           water_depth_m: debouncedAsteroidInput.waterDepthM ?? 0,
           beach_slope_rad: debouncedAsteroidInput.beachSlopeRad ?? sourceNumericDefault("DirectAsteroid", "beach_slope_rad"),
         };
+    if (!inTauri) {
+      // Reference-capture mode replays frozen fixtures for deterministic
+      // screenshots and must not run the live model.
+      if (referenceCaptureMode && referenceCaptureSceneId) {
+        const fixture = (directHazardCaptureFixtures as Record<string, HazardResult>)[referenceCaptureSceneId];
+        setHazardResult(fixture?.kind === hazardMode ? structuredClone(fixture) : null);
+        setAsteroidVisualReport(null);
+        setNuclearShelterReport(null);
+        setDirectRenderReplay(null);
+        setDirectRenderFrame(null);
+        setHazardError(null);
+        const recordingUrl = DIRECT_RENDER_FIXTURE_URLS[referenceCaptureSceneId];
+        if (recordingUrl) {
+          void fetch(recordingUrl)
+            .then((response) => {
+              if (!response.ok) throw new Error(`render fixture returned ${response.status}`);
+              return response.arrayBuffer();
+            })
+            .then(ingestRenderRecording)
+            .then((replay) => {
+              if (!cancelled && requestId === hazardRequestId.current) setDirectRenderReplay(replay);
+            })
+            .catch((error) => {
+              if (!cancelled) console.error("direct render fixture failed", error);
+            });
+        }
+        setHazardPending(false);
+        return () => {
+          cancelled = true;
+        };
+      }
+      // Browser preview: run the exact Rust asteroid/nuclear model compiled to
+      // WebAssembly (src-tauri/wasm). Effects render without the desktop app;
+      // only the staged VFX replay and follow-up shelter/visual probes remain
+      // desktop-only, so the globe shows the static rings and readout here.
+      setHazardResult(null);
+      setAsteroidVisualReport(null);
+      setNuclearShelterReport(null);
+      setDirectRenderReplay(null);
+      setDirectRenderFrame(null);
+      setHazardError(null);
+      setHazardPending(true);
+      const browserPromise = hazardMode === "nuclear"
+        ? browserNuclearHazard(nuclearRequest)
+        : browserAsteroidHazard(asteroidRequest);
+      void browserPromise
+        .then((result) => {
+          if (cancelled || requestId !== hazardRequestId.current) return;
+          if (result.authority !== "rust" || result.kind !== hazardMode) {
+            throw new Error("browser physics returned an invalid direct-hazard contract");
+          }
+          setHazardResult(result);
+          setHazardError(null);
+        })
+        .catch((error) => {
+          if (cancelled || requestId !== hazardRequestId.current) return;
+          console.error("browser direct hazard simulation failed", error);
+          setHazardResult(null);
+          const message = t("app.directSimulationFailed", { error: String(error) });
+          setHazardError(message);
+          showToast(message, "error");
+        })
+        .finally(() => {
+          if (!cancelled && requestId === hazardRequestId.current) setHazardPending(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setHazardResult(null);
+    setAsteroidVisualReport(null);
+    setNuclearShelterReport(null);
+    setHazardError(null);
+    setDirectRenderReplay(null);
+    setDirectRenderFrame(null);
+    setHazardPending(true);
     const request = hazardMode === "nuclear"
       ? Promise.allSettled([
           api.simulateNuclearHazard(nuclearRequest),
@@ -2345,6 +2389,7 @@ export default function App() {
             busyId={slotA.busyPresetId}
             onStartLesson={startGuidedLesson}
             completedLessons={lessonCompletions}
+            simplified={workspaceMode === "simple"}
           />
         {inHazardMode && (
           <div className="app__domain-summary" role="status" aria-live="polite">
@@ -2617,7 +2662,7 @@ export default function App() {
               detonateActiveHazard();
               setInspectorTab("results");
             }}
-            backendAvailable={inTauri}
+            backendAvailable={directHazardBackendAvailable}
             display="setup"
             pending={hazardPending}
             error={hazardError}

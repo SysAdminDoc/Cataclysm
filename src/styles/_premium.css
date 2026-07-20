@@ -43,6 +43,32 @@ html[data-theme="mocha"] {
   min-width: 0;
 }
 
+/* Simple-first default: just a manual-entry affordance above the scenario list. */
+.scenario-discovery--simple {
+  gap: 0;
+}
+
+.scenario-discovery__manual {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.scenario-discovery__manual:hover:not(:disabled) {
+  border-color: var(--accent-active);
+  background: color-mix(in srgb, var(--accent-active) 8%, transparent);
+}
+
 .scenario-discovery__header {
   display: flex;
   align-items: end;
