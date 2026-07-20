@@ -64,6 +64,8 @@ test-results/
 playwright-report/
 artifacts/visual-reference/
 artifacts/performance/
+artifacts/*.json
+artifacts/*.png
 
 # --- Logs ---
 *.log
