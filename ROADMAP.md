@@ -241,6 +241,12 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P1
 
+- [ ] P1 — Wire in or remove the orphaned early-fallout dose model
+  Why: `src-tauri/src/physics/fallout.rs` (466 lines, WSEG-10 / Glasstone-Dolan dose model, with companion `docs/science/fallout-dose.md`) has no `mod fallout;` declaration anywhere, so it is never compiled, tested, or referenced. As orphaned source it silently rots (compile/lint never see it) and misleads readers into thinking it is live.
+  Where: `src-tauri/src/physics/mod.rs` (declare `mod fallout;`), a `fallout_dose_probe` IPC command + frontend surface, or delete the file+doc if the model is not being pursued. Maintainer decision: wire vs. remove.
+  Acceptance: either the module compiles and is reachable through a tested command/consumer, or the orphaned file and its doc are removed; no uncompiled source remains in `src/physics/`.
+  Complexity: M
+
 ### P2
 
 - [ ] P2 — Surface extended max-field products in the Inspect/Results panels
