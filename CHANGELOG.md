@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- A Rust-authored asteroid aftermath contract and synchronized long-term
+  timeline: crater-forming impacts expose cited equivalent-seismic and ejecta
+  screening, while Chicxulub-class impacts add explicitly qualitative reentry,
+  atmospheric-loading, impact-winter, productivity, and recovery phases from
+  seconds through years. Each phase carries confidence, uncertainty, and source
+  links; airbursts and smaller impacts omit inapplicable global effects, and
+  GeoJSON/CZML exports preserve the same evidence object.
 - Terrain-aware analytical rendering: the token-gated Cesium World Imagery
   style now pairs imagery with Cesium World Terrain, enables terrain depth
   occlusion, and drapes ground-based damage rings, fallout polygons, MIRV

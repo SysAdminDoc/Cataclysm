@@ -158,6 +158,8 @@ export function HazardControls({
   canAnimate = true,
   workspaceMode = "advanced",
   scenarioContext,
+  timelineTimeS = 0,
+  onTimelineTimeChange,
 }: {
   mode: HazardMode;
   nuclear: NuclearInput;
@@ -186,6 +188,8 @@ export function HazardControls({
   canAnimate?: boolean;
   workspaceMode?: WorkspaceMode;
   scenarioContext?: { title: string; description: string; assumptions: readonly string[] };
+  timelineTimeS?: number;
+  onTimelineTimeChange?: (timeS: number) => void;
 }) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
@@ -222,6 +226,12 @@ export function HazardControls({
   const nuclearBurstTypes = sourceEnumValues("DirectNuclear", "burst_type", true);
   const asteroidTargetTypes = sourceEnumValues("DirectAsteroid", "target_type", true);
   const asteroidEffects = mode === "asteroid" ? (result?.detail as AsteroidDetail | undefined) : undefined;
+  const aftermath = asteroidEffects?.secondaryEffects;
+  const activeAftermathIndex = aftermath?.events.reduce(
+    (active, event, index) => event.onsetSeconds <= timelineTimeS ? index : active,
+    0,
+  ) ?? 0;
+  const activeAftermathEvent = aftermath?.events[activeAftermathIndex];
   const nuclearEffects = mode === "nuclear" ? (result?.detail as NuclearDetail | undefined) : undefined;
   const casualtyModels = result?.casualtyModels ?? [];
   const activeCasualtyModel = casualtyModels.find((model) => model.id === selectedCasualtyModel)
@@ -531,6 +541,54 @@ export function HazardControls({
                 airburstAltitude={asteroidEffects.atmosphericEntry.airburstAltitude}
               />
               {asteroidVisuals.crater ? <CraterDiagram crater={asteroidVisuals.crater} /> : null}
+            </section>
+          ) : null}
+          {mode === "asteroid" && aftermath && activeAftermathEvent ? (
+            <section className="hazard__aftermath" aria-labelledby="hazard-aftermath-title">
+              <header>
+                <div>
+                  <span id="hazard-aftermath-title">{t("hazard.aftermath.title")}</span>
+                  <strong>{aftermath.classification}</strong>
+                </div>
+                <small>{t("hazard.aftermath.screening")}</small>
+              </header>
+              <p className="hazard__aftermath-summary">{aftermath.summary}</p>
+              <ol className="hazard__aftermath-steps">
+                {aftermath.events.map((event, index) => (
+                  <li key={event.id} data-active={index === activeAftermathIndex ? "true" : "false"} data-past={index < activeAftermathIndex ? "true" : "false"}>
+                    <button
+                      type="button"
+                      aria-pressed={index === activeAftermathIndex}
+                      aria-label={t("hazard.aftermath.select", { time: event.timeLabel, title: event.title })}
+                      onClick={() => onTimelineTimeChange?.(event.onsetSeconds)}
+                    >
+                      <span>{event.timeLabel}</span>
+                      <strong>{event.title}</strong>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <article className="hazard__aftermath-detail" data-category={activeAftermathEvent.category}>
+                <div className="hazard__aftermath-metric">
+                  <span>{activeAftermathEvent.metricLabel}</span>
+                  <strong>{formatReadoutValue(activeAftermathEvent.metricValue, formatNumber, unitSystem)}</strong>
+                </div>
+                <p>{formatEmbeddedLengthValues(activeAftermathEvent.summary, formatNumber, unitSystem)}</p>
+                <dl>
+                  <div>
+                    <dt>{t("hazard.aftermath.confidence")}</dt>
+                    <dd>{activeAftermathEvent.confidence === "quantitative_screening" ? t("hazard.aftermath.quantitative") : t("hazard.aftermath.qualitative")}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("hazard.aftermath.uncertainty")}</dt>
+                    <dd>{formatEmbeddedLengthValues(activeAftermathEvent.uncertainty, formatNumber, unitSystem)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("hazard.aftermath.sources")}</dt>
+                    <dd>{activeAftermathEvent.citations.map((citation) => citation.label).join(" · ")}</dd>
+                  </div>
+                </dl>
+              </article>
             </section>
           ) : null}
           {activeCasualties && (

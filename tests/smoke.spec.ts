@@ -326,6 +326,34 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("button", { name: /Continue recent/i })).toBeEnabled();
   });
 
+  test("extinction-scale asteroid results expose a cited seconds-to-years aftermath timeline", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /Asteroid Scale Ladder/i }).click();
+    await page.locator(".preset-card").filter({ hasText: "Tokyo asteroid impact" }).click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.locator(".app")).toHaveAttribute("data-domain", "asteroid");
+
+    await page.getByRole("tab", { name: "Setup" }).click();
+    const diameter = page.getByRole("spinbutton", { name: "Diameter exact value" });
+    await diameter.fill("12000");
+    await diameter.press("Enter");
+    await page.getByRole("tab", { name: "Results" }).click();
+
+    await expect(page.getByText("Long-term impact timeline")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Extinction-scale screening")).toBeVisible();
+    const scrubber = page.getByRole("slider", { name: "Long-term impact timeline scrubber" });
+    await expect(scrubber).toHaveAttribute("max", "5");
+    await scrubber.fill("4");
+    await expect(page.getByText("Impact winter and productivity loss")).toBeVisible();
+    await expect(page.getByText("Primary-productivity collapse risk")).toBeVisible();
+    await expect(page.getByText(/not an extinction probability/i)).toBeVisible();
+    await expect(page.getByText(/Senel et al\. 2023/)).toBeVisible();
+
+    await page.getByRole("button", { name: /Select years after impact: Long climate recovery tail/i }).click();
+    await expect(scrubber).toHaveValue("5");
+    await expect(page.getByText("Months to more than a decade")).toBeVisible();
+  });
+
   test("rejects unknown preset links without loading an unrelated fallback", async ({ page }) => {
     await page.goto("/?preset=missing-scenario");
 

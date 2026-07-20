@@ -1,4 +1,4 @@
-import type { HazardResult } from "../hazards";
+import type { AsteroidDetail, HazardResult } from "../hazards";
 import type { DirectScenarioTemplate } from "./scenario-library";
 import type { InitialDisplacement, Preset } from "../types/scenario";
 import { APP_VERSION, DEFAULT_BATHYMETRY_SOURCE, EDUCATIONAL_LIMITATION } from "./model-provenance";
@@ -184,19 +184,31 @@ export function buildOutcomeEvidence(
 
 export function buildDirectResultEvidence(result: HazardResult): TrustEvidence {
   const asteroid = result.kind === "asteroid";
-  const citations = asteroid
+  const baseCitations: TrustCitation[] = asteroid
     ? [
-        { label: "Collins, Melosh & Marcus 2005, Earth Impact Effects Program" },
+        {
+          label: "Collins, Melosh & Marcus 2005, Earth Impact Effects Program",
+          url: "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x",
+        },
         { label: "Schmidt & Holsapple 1982, gravity-scaling crater estimates" },
       ]
     : [
         { label: "Glasstone & Dolan 1977, The Effects of Nuclear Weapons" },
         { label: "BEIR VII risk model; UN World Population Prospects 2024" },
       ];
+  const aftermath = asteroid ? (result.detail as AsteroidDetail).secondaryEffects : undefined;
+  const citations = [...baseCitations];
+  const seen = new Set(citations.map((citation) => `${citation.label}:${citation.url ?? ""}`));
+  for (const citation of aftermath?.events.flatMap((event) => event.citations) ?? []) {
+    const key = `${citation.label}:${citation.url}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    citations.push(citation);
+  }
   return {
     id: `result:direct:${result.kind}:${result.modelVersion}`,
     title: asteroid ? "Asteroid direct effects" : "Nuclear direct effects",
-    sourceTitle: citations.map((citation) => citation.label).join("; "),
+    sourceTitle: baseCitations.map((citation) => citation.label).join("; "),
     model: "Rust-authoritative direct-hazard engine",
     version: result.modelVersion,
     confidence: "Deterministic model output",
@@ -206,6 +218,7 @@ export function buildDirectResultEvidence(result: HazardResult): TrustEvidence {
       : ["Yield, burst mode, population density, and shielding factors are exact scenario inputs.", "Casualty bands assume a uniform population distribution."],
     limitations: [
       "Displayed casualty ranges are order-of-magnitude bands, not statistical confidence intervals.",
+      ...(aftermath ? ["Long-term climate entries are cited qualitative scenarios, not energy-only forecasts or extinction probabilities."] : []),
       EDUCATIONAL_LIMITATION,
     ],
     citations,

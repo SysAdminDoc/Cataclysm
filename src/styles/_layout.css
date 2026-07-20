@@ -539,6 +539,37 @@ html[data-reference-capture-active="true"] .app[data-reference-capture="true"] .
   grid-template-columns: 48px minmax(260px, 1fr) minmax(220px, 420px) 100px;
 }
 
+.simulation-transport--aftermath {
+  grid-template-columns: auto 116px minmax(280px, 1fr) 78px 148px 106px;
+  gap: 14px;
+  padding-block: 8px;
+}
+
+.simulation-transport--aftermath .simulation-transport__clock strong {
+  font-size: 17px;
+  text-transform: capitalize;
+}
+
+.simulation-transport--aftermath .simulation-transport__play,
+.simulation-transport--aftermath .simulation-transport__reset {
+  width: 42px;
+  min-height: 42px;
+}
+
+.simulation-transport--aftermath .simulation-transport__track input[type="range"] {
+  display: block;
+  height: 16px;
+  margin: 1px 0 0;
+}
+
+.simulation-transport__ticks--events span {
+  overflow: hidden;
+  max-width: 92px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .simulation-transport__effect-icon {
   display: grid;
   place-items: center;

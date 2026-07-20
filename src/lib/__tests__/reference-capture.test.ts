@@ -21,7 +21,11 @@ describe("HR-00 reference contract", () => {
     for (const scene of directScenes) {
       const fixture = fixtures[scene.workflow.fixtureId as keyof typeof fixtures];
       expect(fixture.authority).toBe("rust");
-      expect(fixture.modelVersion).toMatch(/-direct-1\.0\.0$/);
+      expect(fixture.modelVersion).toBe(
+        scene.workflow.kind === "direct-asteroid"
+          ? "asteroid-direct-1.1.0"
+          : "nuclear-direct-1.0.0",
+      );
       expect(fixture.center).toEqual(scene.workflow.request?.center);
     }
   });

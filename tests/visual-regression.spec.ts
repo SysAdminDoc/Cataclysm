@@ -227,6 +227,36 @@ test.describe("Visual regression — desktop", () => {
     expect(violations).toEqual([]);
   });
 
+  test("extinction-scale asteroid aftermath", async ({ page }) => {
+    await seedAcknowledged(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: /Asteroid Scale Ladder/i }).click();
+    await page.locator(".preset-card").filter({ hasText: "Tokyo asteroid impact" }).click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await page.getByRole("tab", { name: "Setup" }).click();
+    const diameter = page.getByRole("spinbutton", { name: "Diameter exact value" });
+    await diameter.fill("12000");
+    await diameter.press("Enter");
+    await page.getByRole("tab", { name: "Results" }).click();
+    await expect(page.getByText("Long-term impact timeline")).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("slider", { name: "Long-term impact timeline scrubber" }).fill("4");
+    await expect(page.getByText("Primary-productivity collapse risk")).toBeVisible();
+    await page.locator(".app__panel--right").evaluate((panel) => {
+      const aftermath = panel.querySelector<HTMLElement>(".hazard__aftermath");
+      if (aftermath) panel.scrollTop = Math.max(0, aftermath.offsetTop - 126);
+    });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await hideCesiumWidget(page);
+
+    await expect(page).toHaveScreenshot("desktop-asteroid-aftermath.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
   test("isolated nuclear workspace", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");

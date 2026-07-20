@@ -105,6 +105,7 @@ import {
 } from "./lib/layer-controller";
 import { SourceModelSummary } from "./components/SourceModelSummary";
 import {
+  type AsteroidDetail,
   type AsteroidInput,
   type AsteroidVisualReport,
   type GeoPoint,
@@ -668,7 +669,18 @@ export default function App() {
   }, [slotA.initial]);
   // Floor the duration so a degenerate single-frame (or t=0) run doesn't make
   // the transport report a zero-length timeline that stops playback instantly.
-  const timelineDurationS = Math.max(sweSnapshots?.at(-1)?.time_s ?? 6 * 3600, 1);
+  const asteroidAftermath = hazardMode === "asteroid" && hazardResult?.kind === "asteroid"
+    ? (hazardResult.detail as AsteroidDetail).secondaryEffects
+    : undefined;
+  const timelineDurationS = Math.max(
+    asteroidAftermath?.durationSeconds ?? sweSnapshots?.at(-1)?.time_s ?? 6 * 3600,
+    1,
+  );
+
+  useEffect(() => {
+    const first = asteroidAftermath?.events[0];
+    if (first) setTimeS(first.onsetSeconds);
+  }, [asteroidAftermath]);
 
   useEffect(() => {
     if (!pendingRunPresetId) return;
@@ -806,6 +818,24 @@ export default function App() {
 
   useEffect(() => {
     if (!timelinePlaying) return;
+    const aftermathEvents = asteroidAftermath?.events;
+    if (hazardMode === "asteroid" && aftermathEvents?.length) {
+      const timer = window.setInterval(() => {
+        setTimeS((current) => {
+          const selectedIndex = aftermathEvents.reduce(
+            (active, event, index) => event.onsetSeconds <= current ? index : active,
+            0,
+          );
+          const next = aftermathEvents[selectedIndex + 1];
+          if (!next) {
+            setTimelinePlaying(false);
+            return aftermathEvents[selectedIndex]?.onsetSeconds ?? current;
+          }
+          return next.onsetSeconds;
+        });
+      }, Math.max(250, 1_000 / timelineRate));
+      return () => window.clearInterval(timer);
+    }
     const timer = window.setInterval(() => {
       setTimeS((current) => {
         const next = current + 60 * timelineRate;
@@ -817,7 +847,7 @@ export default function App() {
       });
     }, 250);
     return () => window.clearInterval(timer);
-  }, [timelinePlaying, timelineRate, timelineDurationS]);
+  }, [asteroidAftermath, hazardMode, timelinePlaying, timelineRate, timelineDurationS]);
 
   useEffect(() => {
     settings
@@ -2698,6 +2728,8 @@ export default function App() {
             canAnimate={Boolean(directRenderReplay)}
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
             scenarioContext={hypotheticalApproachContext}
+            timelineTimeS={timeS}
+            onTimelineTimeChange={setTimeS}
           />
           {hazardMode === "nuclear" && !ww3Session && (
             <MIRVPatternPanel
@@ -2832,6 +2864,8 @@ export default function App() {
           canAnimate={Boolean(directRenderReplay)}
           workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           scenarioContext={hypotheticalApproachContext}
+          timelineTimeS={timeS}
+          onTimelineTimeChange={setTimeS}
         />}
         {inspectorTab === "results" && !inHazardMode && <ResultsPanel
           initial={slotA.initial}
@@ -3000,7 +3034,8 @@ export default function App() {
         domain={hazardMode}
         frameCount={inHazardMode ? 0 : sweSnapshots?.length ?? 0}
         durationS={timelineDurationS}
-        onOpenDetails={() => setInspectorTab("setup")}
+        effectTimeline={asteroidAftermath?.events}
+        onOpenDetails={() => setInspectorTab(asteroidAftermath ? "results" : "setup")}
       />
       <div className="app__statusbar" role="status" aria-live="polite">
         <div className="statusbar__item statusbar__item--ready" data-active={timelinePlaying || recording ? "true" : "false"}>

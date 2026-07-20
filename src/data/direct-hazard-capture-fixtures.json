@@ -143,7 +143,7 @@
       }
     },
     "authority": "rust",
-    "modelVersion": "asteroid-direct-1.0.0"
+    "modelVersion": "asteroid-direct-1.1.0"
   },
   "asteroid-land-impact": {
     "kind": "asteroid",
@@ -292,10 +292,60 @@
         "amplitudeAtDistance": 0.0,
         "runupHeight": 0.0,
         "arrivalTime": 0.0
+      },
+      "secondaryEffects": {
+        "classification": "Regional aftermath",
+        "summary": "Quantitative crater, ejecta, and seismic screening for this ground impact.",
+        "durationSeconds": 54.93993237865373,
+        "seismicMagnitude": 6.8118424385556535,
+        "ejectaReferenceDistanceM": 14805.233212726973,
+        "ejectaThicknessM": 1.985642566785633,
+        "events": [
+          {
+            "id": "seismic-shaking",
+            "onsetSeconds": 5.0,
+            "timeLabel": "seconds",
+            "title": "Equivalent seismic shaking",
+            "summary": "Impact energy coupled into the ground is expressed as an equivalent moment magnitude; local intensity still depends on range and geology.",
+            "metricLabel": "Equivalent magnitude",
+            "metricValue": "M 6.8",
+            "category": "seismic",
+            "confidence": "quantitative_screening",
+            "uncertainty": "Energy-to-magnitude scaling is order-of-magnitude and is not a prediction of fault rupture, duration, or local Mercalli intensity.",
+            "citations": [
+              {
+                "label": "Collins, Melosh & Marcus 2005 — Earth Impact Effects Program",
+                "url": "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x"
+              },
+              {
+                "label": "Hanks & Kanamori 1979 — moment magnitude scale",
+                "url": "https://doi.org/10.1029/JB084iB05p02348"
+              }
+            ]
+          },
+          {
+            "id": "ejecta-blanket",
+            "onsetSeconds": 54.93993237865373,
+            "timeLabel": "minutes",
+            "title": "Ballistic ejecta blanket",
+            "summary": "The idealized blanket at five crater radii (14.81 km) is about 2.0 m thick.",
+            "metricLabel": "Thickness at 5 crater radii",
+            "metricValue": "2.0 m",
+            "category": "ejecta",
+            "confidence": "quantitative_screening",
+            "uncertainty": "This radial power law assumes an ideal level target; topography, obliquity, water, atmosphere, and distal sorting can change local deposition by orders of magnitude.",
+            "citations": [
+              {
+                "label": "Collins, Melosh & Marcus 2005 — Earth Impact Effects Program",
+                "url": "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x"
+              }
+            ]
+          }
+        ]
       }
     },
     "authority": "rust",
-    "modelVersion": "asteroid-direct-1.0.0"
+    "modelVersion": "asteroid-direct-1.1.0"
   },
   "asteroid-ocean-impact": {
     "kind": "asteroid",
@@ -449,10 +499,40 @@
         "amplitudeAtDistance": 2000.0,
         "runupHeight": 16833.226712863518,
         "arrivalTime": 5.048187773461523
+      },
+      "secondaryEffects": {
+        "classification": "Regional aftermath",
+        "summary": "Quantitative crater, ejecta, and seismic screening for this ground impact.",
+        "durationSeconds": 5.0,
+        "seismicMagnitude": 7.214309856589426,
+        "events": [
+          {
+            "id": "seismic-shaking",
+            "onsetSeconds": 5.0,
+            "timeLabel": "seconds",
+            "title": "Equivalent seismic shaking",
+            "summary": "Impact energy coupled into the ground is expressed as an equivalent moment magnitude; local intensity still depends on range and geology.",
+            "metricLabel": "Equivalent magnitude",
+            "metricValue": "M 7.2",
+            "category": "seismic",
+            "confidence": "quantitative_screening",
+            "uncertainty": "Energy-to-magnitude scaling is order-of-magnitude and is not a prediction of fault rupture, duration, or local Mercalli intensity.",
+            "citations": [
+              {
+                "label": "Collins, Melosh & Marcus 2005 — Earth Impact Effects Program",
+                "url": "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x"
+              },
+              {
+                "label": "Hanks & Kanamori 1979 — moment magnitude scale",
+                "url": "https://doi.org/10.1029/JB084iB05p02348"
+              }
+            ]
+          }
+        ]
       }
     },
     "authority": "rust",
-    "modelVersion": "asteroid-direct-1.0.0"
+    "modelVersion": "asteroid-direct-1.1.0"
   },
   "nuclear-airburst": {
     "authority": "rust",

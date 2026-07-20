@@ -37,7 +37,7 @@
     },
     "asteroid-entry@1440p": {
       "pngSha256": "ef3c7cb12e10109799f46036c3305c7c558a9ee5abf2767ab2a6892d429128bf",
-      "sceneSha256": "045beb9a012e20644d74742bebcd6b45a9b5f8b99bf6565beff3ea9452450829",
+      "sceneSha256": "83d27327af86d7eadec032af51c53a3246bf98705b71d038bc9f675e9db84b5a",
       "width": 2560,
       "height": 1440,
       "review": {
@@ -50,7 +50,7 @@
     },
     "asteroid-land-impact@1440p": {
       "pngSha256": "d77bd988c7948d43e584bb62ef2d9768b372670174e32db1cecf203a5052501a",
-      "sceneSha256": "a9087c6a9b833fbae26a3dcab1c7bb8dbe46b2fb14bcd9a273bf32233ce6cf3a",
+      "sceneSha256": "a279bf75003e0334ad07f09437d23367cbdb465dfb2d6357ea9ee8b18b7da2e9",
       "width": 2560,
       "height": 1440,
       "review": {
@@ -63,7 +63,7 @@
     },
     "asteroid-ocean-impact@1440p": {
       "pngSha256": "6258846cd92af6bb15c4f621291a7db6815a6993cacdd24766eece750c36122f",
-      "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
+      "sceneSha256": "4425b56afccea1c9bef89b94cac6d53b06c0b5d18e056301d8d64508a8dc5c45",
       "width": 2560,
       "height": 1440,
       "review": {
@@ -177,7 +177,7 @@
     },
     "asteroid-entry@4k": {
       "pngSha256": "40ef0f216eb196d90718f5125c952765e376c97f817a8e20e8450f4d4046e35a",
-      "sceneSha256": "045beb9a012e20644d74742bebcd6b45a9b5f8b99bf6565beff3ea9452450829",
+      "sceneSha256": "83d27327af86d7eadec032af51c53a3246bf98705b71d038bc9f675e9db84b5a",
       "width": 3840,
       "height": 2160,
       "review": {
@@ -190,7 +190,7 @@
     },
     "asteroid-land-impact@4k": {
       "pngSha256": "bfcda3cc97e95892622954aa2c19d91995a6936f5a67e2a2db21784e4e0ded56",
-      "sceneSha256": "a9087c6a9b833fbae26a3dcab1c7bb8dbe46b2fb14bcd9a273bf32233ce6cf3a",
+      "sceneSha256": "a279bf75003e0334ad07f09437d23367cbdb465dfb2d6357ea9ee8b18b7da2e9",
       "width": 3840,
       "height": 2160,
       "review": {
@@ -203,7 +203,7 @@
     },
     "asteroid-ocean-impact@4k": {
       "pngSha256": "e7bdf24fd8d087254bfeb503f896280eff845544a96c3471e0da69017294d2e9",
-      "sceneSha256": "84c5b3e563820dac77944ddde023e2e7e91217641aa2927ee5d4d8d3e07bbff7",
+      "sceneSha256": "4425b56afccea1c9bef89b94cac6d53b06c0b5d18e056301d8d64508a8dc5c45",
       "width": 3840,
       "height": 2160,
       "review": {

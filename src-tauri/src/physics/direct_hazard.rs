@@ -118,7 +118,7 @@ pub enum HazardDetail {
     Nuclear(NuclearDetail),
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AsteroidTargetType {
     SedimentaryRock,
@@ -181,6 +181,45 @@ pub struct AsteroidTsunamiDetail {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SecondaryEffectCitation {
+    pub label: &'static str,
+    pub url: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecondaryEffectEvent {
+    pub id: &'static str,
+    /// Physical time after impact. The UI maps these irregular times onto an
+    /// event-stepped scrubber instead of pretending years fit a linear clock.
+    pub onset_seconds: f64,
+    pub time_label: &'static str,
+    pub title: &'static str,
+    pub summary: String,
+    pub metric_label: &'static str,
+    pub metric_value: String,
+    pub category: &'static str,
+    pub confidence: &'static str,
+    pub uncertainty: &'static str,
+    pub citations: Vec<SecondaryEffectCitation>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AsteroidSecondaryEffects {
+    pub classification: &'static str,
+    pub summary: &'static str,
+    pub duration_seconds: f64,
+    pub seismic_magnitude: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ejecta_reference_distance_m: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ejecta_thickness_m: Option<f64>,
+    pub events: Vec<SecondaryEffectEvent>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AsteroidDetail {
     pub kinetic_energy_j: f64,
     pub megatons: f64,
@@ -195,6 +234,8 @@ pub struct AsteroidDetail {
     pub thermal_radius_first_degree_m: f64,
     pub thermal_radius_third_degree_m: f64,
     pub tsunami: AsteroidTsunamiDetail,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secondary_effects: Option<AsteroidSecondaryEffects>,
 }
 
 #[derive(Clone, Copy)]
@@ -659,6 +700,20 @@ fn fmt_meters(value: f64) -> String {
     }
 }
 
+fn fmt_thickness(value_m: f64) -> String {
+    if !value_m.is_finite() {
+        "--".to_string()
+    } else if value_m < 0.01 {
+        format!("{:.1} mm", value_m * 1_000.0)
+    } else if value_m < 1.0 {
+        format!("{:.1} cm", value_m * 100.0)
+    } else if value_m < 100.0 {
+        format!("{value_m:.1} m")
+    } else {
+        fmt_meters(value_m)
+    }
+}
+
 fn fmt_energy(megatons: f64) -> String {
     if megatons >= 1e6 {
         format!("{:.1} Gt", megatons / 1e6)
@@ -711,10 +766,194 @@ fn fmt_yield_context(yield_kt: f64) -> String {
     }
 }
 
+const GLOBAL_SECONDARY_EFFECTS_SCREENING_J: f64 = 1.0e23;
+const DAY_S: f64 = 86_400.0;
+
+fn secondary_citation(label: &'static str, url: &'static str) -> SecondaryEffectCitation {
+    SecondaryEffectCitation { label, url }
+}
+
+/// Build the aftermath contract for crater-forming impacts. Quantitative
+/// values remain limited to the Collins-Melosh-Marcus seismic and ejecta
+/// screening relations. Extinction-scale climate entries are deliberately
+/// qualitative: their outcome depends strongly on target lithology, volatile
+/// inventory, impact angle, aerosol size distribution, and coupled climate.
+fn asteroid_secondary_effects(
+    request: &AsteroidHazardRequest,
+    effective_energy_j: f64,
+    crater: Option<&AsteroidCraterDetail>,
+    seismic_magnitude: f64,
+) -> Option<AsteroidSecondaryEffects> {
+    let crater = crater?;
+    let collins = || {
+        secondary_citation(
+            "Collins, Melosh & Marcus 2005 — Earth Impact Effects Program",
+            "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x",
+        )
+    };
+    let hanks_kanamori = || {
+        secondary_citation(
+            "Hanks & Kanamori 1979 — moment magnitude scale",
+            "https://doi.org/10.1029/JB084iB05p02348",
+        )
+    };
+    let morgan = || {
+        secondary_citation(
+            "Morgan et al. 2013 — revisiting K-Pg wildfires",
+            "https://doi.org/10.1002/2013JG002428",
+        )
+    };
+    let senel = || {
+        secondary_citation(
+            "Senel et al. 2023 — Chicxulub impact winter",
+            "https://www.nature.com/articles/s41561-023-01290-4",
+        )
+    };
+    let bralower = || {
+        secondary_citation(
+            "Bralower et al. 2022 — Chicxulub environmental consequences",
+            "https://www.nature.com/articles/s43017-022-00283-y",
+        )
+    };
+
+    let mut events = vec![SecondaryEffectEvent {
+        id: "seismic-shaking",
+        onset_seconds: 5.0,
+        time_label: "seconds",
+        title: "Equivalent seismic shaking",
+        summary: "Impact energy coupled into the ground is expressed as an equivalent moment magnitude; local intensity still depends on range and geology.".to_string(),
+        metric_label: "Equivalent magnitude",
+        metric_value: format!("M {seismic_magnitude:.1}"),
+        category: "seismic",
+        confidence: "quantitative_screening",
+        uncertainty: "Energy-to-magnitude scaling is order-of-magnitude and is not a prediction of fault rupture, duration, or local Mercalli intensity.",
+        citations: vec![collins(), hanks_kanamori()],
+    }];
+
+    let mut ejecta_reference_distance_m = None;
+    let mut ejecta_thickness_m = None;
+    if request.target_type != AsteroidTargetType::Water {
+        let crater_radius_m = crater.final_diameter / 2.0;
+        let reference_distance_m = crater_radius_m * 5.0;
+        // Collins et al. 2005 distal ejecta blanket approximation:
+        // t(r) = t_rim (r / R_c)^-3, with
+        // t_rim = 0.14 R_c (R_c / D_final)^0.74.
+        let rim_thickness_m =
+            0.14 * crater_radius_m * (crater_radius_m / crater.final_diameter).powf(0.74);
+        let thickness_m = rim_thickness_m * (reference_distance_m / crater_radius_m).powi(-3);
+        let ballistic_arrival_s = (2.0 * reference_distance_m / GRAVITY).sqrt();
+        ejecta_reference_distance_m = Some(reference_distance_m);
+        ejecta_thickness_m = Some(thickness_m);
+        events.push(SecondaryEffectEvent {
+            id: "ejecta-blanket",
+            onset_seconds: ballistic_arrival_s.max(30.0),
+            time_label: "minutes",
+            title: "Ballistic ejecta blanket",
+            summary: format!(
+                "The idealized blanket at five crater radii ({}) is about {} thick.",
+                fmt_meters(reference_distance_m),
+                fmt_thickness(thickness_m),
+            ),
+            metric_label: "Thickness at 5 crater radii",
+            metric_value: fmt_thickness(thickness_m),
+            category: "ejecta",
+            confidence: "quantitative_screening",
+            uncertainty: "This radial power law assumes an ideal level target; topography, obliquity, water, atmosphere, and distal sorting can change local deposition by orders of magnitude.",
+            citations: vec![collins()],
+        });
+    }
+
+    let global = effective_energy_j >= GLOBAL_SECONDARY_EFFECTS_SCREENING_J;
+    if global {
+        events.extend([
+            SecondaryEffectEvent {
+                id: "thermal-reentry",
+                onset_seconds: 30.0 * 60.0,
+                time_label: "tens of minutes",
+                title: "Thermal reentry pulse",
+                summary: "Fast distal ejecta reentering the atmosphere can produce an intense infrared pulse and ignite fires in exposed regions; uniform global ignition is not supported by newer three-dimensional studies.".to_string(),
+                metric_label: "Modeled scope",
+                metric_value: "Planetary, spatially uneven".to_string(),
+                category: "thermal",
+                confidence: "qualitative_scenario",
+                uncertainty: "Heating and ignition depend on ejecta size, trajectory, cloud cover, surface fuel, and impact angle; this timeline does not calculate a burned-area fraction.",
+                citations: vec![morgan(), bralower()],
+            },
+            SecondaryEffectEvent {
+                id: "atmospheric-loading",
+                onset_seconds: DAY_S,
+                time_label: "days",
+                title: "Dust, sulfur, and soot spread",
+                summary: "Fine silicate dust plus target-derived sulfur and soot can spread globally and reduce incoming sunlight after a Chicxulub-class impact.".to_string(),
+                metric_label: "Modeled scope",
+                metric_value: "Global atmospheric forcing".to_string(),
+                category: "climate",
+                confidence: "qualitative_scenario",
+                uncertainty: "The source model does not resolve target mineralogy or aerosol injection, so it cannot infer optical depth or temperature change from impact energy alone.",
+                citations: vec![senel(), bralower()],
+            },
+            SecondaryEffectEvent {
+                id: "photosynthesis-disruption",
+                onset_seconds: 30.0 * DAY_S,
+                time_label: "months",
+                title: "Impact winter and productivity loss",
+                summary: "Published Chicxulub climate simulations support severe cooling and enough low light to disrupt photosynthesis and primary productivity.".to_string(),
+                metric_label: "Outcome class",
+                metric_value: "Primary-productivity collapse risk".to_string(),
+                category: "ecosystem",
+                confidence: "qualitative_scenario",
+                uncertainty: "Duration and severity vary widely with dust grain size, sulfur, soot, ocean response, and climate-model assumptions; this is not an extinction probability.",
+                citations: vec![senel(), bralower()],
+            },
+            SecondaryEffectEvent {
+                id: "climate-recovery",
+                onset_seconds: 365.0 * DAY_S,
+                time_label: "years",
+                title: "Long climate recovery tail",
+                summary: "Cooling, darkness, ocean mixing, and food-web disruption can persist beyond the first year even as atmospheric burdens begin to clear.".to_string(),
+                metric_label: "Published duration range",
+                metric_value: "Months to more than a decade".to_string(),
+                category: "climate",
+                confidence: "qualitative_scenario",
+                uncertainty: "The literature does not support one universal recovery time; local ecosystems and different forcing agents recover on different timescales.",
+                citations: vec![senel(), bralower()],
+            },
+        ]);
+    }
+
+    events.sort_by(|left, right| left.onset_seconds.total_cmp(&right.onset_seconds));
+    let duration_seconds = events
+        .last()
+        .map_or(1.0, |event| event.onset_seconds.max(1.0));
+    Some(AsteroidSecondaryEffects {
+        classification: if global {
+            "Extinction-scale screening"
+        } else {
+            "Regional aftermath"
+        },
+        summary: if global {
+            "Quantitative near-field scaling plus cited Chicxulub-class climate scenarios; global outcomes are not derived from impact energy alone."
+        } else {
+            "Quantitative crater, ejecta, and seismic screening for this ground impact."
+        },
+        duration_seconds,
+        seismic_magnitude,
+        ejecta_reference_distance_m,
+        ejecta_thickness_m,
+        events,
+    })
+}
+
 pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<HazardResult, String> {
     validate_center(request.center, "DirectAsteroid")?;
-    let validate = |field, value| crate::data::source_input_contract::validate_number("DirectAsteroid", field, value);
-    crate::data::source_input_contract::validate_serialized_enum("DirectAsteroid", "target_type", request.target_type)?;
+    let validate = |field, value| {
+        crate::data::source_input_contract::validate_number("DirectAsteroid", field, value)
+    };
+    crate::data::source_input_contract::validate_serialized_enum(
+        "DirectAsteroid",
+        "target_type",
+        request.target_type,
+    )?;
     validate("diameter_m", request.diameter_m)?;
     validate("density_kg_m3", request.density_kg_m3)?;
     validate("velocity_km_s", request.velocity_km_s)?;
@@ -852,7 +1091,10 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             readout(
                 "Outcome",
                 "Ground impact".to_string(),
-                Some(format!("impact velocity {:.1} km/s", entry.impact_velocity / 1000.0)),
+                Some(format!(
+                    "impact velocity {:.1} km/s",
+                    entry.impact_velocity / 1000.0
+                )),
             ),
         ]
     } else {
@@ -898,14 +1140,21 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
         format!("M {seismic_magnitude:.1}"),
         None,
     ));
-    readout_items.push(readout("Fireball radius", fmt_meters(fireball_radius), None));
+    readout_items.push(readout(
+        "Fireball radius",
+        fmt_meters(fireball_radius),
+        None,
+    ));
     if entry.reaches_ground {
         readout_items.push(readout("20 psi radius", fmt_meters(blast_total), None));
     } else {
         readout_items.push(readout(
             "Ground overpressure (20 psi)",
             fmt_meters(blast_total),
-            Some(format!("from burst at {} altitude", fmt_meters(entry.airburst_altitude))),
+            Some(format!(
+                "from burst at {} altitude",
+                fmt_meters(entry.airburst_altitude)
+            )),
         ));
     }
     if let Some(crater) = &crater {
@@ -936,6 +1185,12 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             Some("500 Pa shattering threshold; Popova et al. 2013".to_string()),
         ));
     }
+    let secondary_effects = asteroid_secondary_effects(
+        &request,
+        effective_energy,
+        crater.as_ref(),
+        seismic_magnitude,
+    );
     let detail = AsteroidDetail {
         kinetic_energy_j: kinetic_energy,
         megatons: kinetic_energy / MT_TO_JOULES,
@@ -950,6 +1205,7 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
         thermal_radius_first_degree_m: thermal_first,
         thermal_radius_third_degree_m: thermal_third,
         tsunami,
+        secondary_effects,
     };
     Ok(HazardResult {
         result_id: String::new(),
@@ -962,7 +1218,7 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
         casualty_spread: None,
         detail: HazardDetail::Asteroid(detail),
         authority: "rust",
-        model_version: "asteroid-direct-1.0.0",
+        model_version: "asteroid-direct-1.1.0",
     })
 }
 
@@ -1783,8 +2039,14 @@ fn latent_cancer(effects: &NuclearEffects, density: f64) -> LatentCancerEstimate
 
 pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardResult, String> {
     validate_center(request.center, "DirectNuclear")?;
-    let validate = |field, value| crate::data::source_input_contract::validate_number("DirectNuclear", field, value);
-    crate::data::source_input_contract::validate_serialized_enum("DirectNuclear", "burst_type", request.burst_type)?;
+    let validate = |field, value| {
+        crate::data::source_input_contract::validate_number("DirectNuclear", field, value)
+    };
+    crate::data::source_input_contract::validate_serialized_enum(
+        "DirectNuclear",
+        "burst_type",
+        request.burst_type,
+    )?;
     validate("yield_kt", request.yield_kt)?;
     validate("fission_pct", request.fission_pct)?;
     validate("population_density", request.population_density)?;
@@ -1960,9 +2222,7 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
     let casualty_products = (request.population_density > 0.0 && !effects.is_hemp)
         .then(|| casualty_products(&effects, request.population_density));
     let (casualties, casualty_models, casualty_spread) = match casualty_products {
-        Some((default_estimate, models, spread)) => {
-            (Some(default_estimate), models, Some(spread))
-        }
+        Some((default_estimate, models, spread)) => (Some(default_estimate), models, Some(spread)),
         None => (None, Vec::new(), None),
     };
     Ok(HazardResult {
@@ -2088,11 +2348,7 @@ mod tests {
         );
         let mut without = inverted_effects();
         without.thermal_1 = 0.0;
-        let without = nuclear_casualties(
-            &without,
-            density,
-            CasualtyModelKind::CombinedEffects,
-        );
+        let without = nuclear_casualties(&without, density, CasualtyModelKind::CombinedEffects);
         assert!(with.injuries >= without.injuries);
         assert!(
             with.injuries > without.injuries,
@@ -2145,7 +2401,9 @@ mod tests {
         );
         assert!(!combined.assumptions.is_empty());
         assert!(!blast.assumptions.is_empty());
-        let spread = result.casualty_spread.expect("casualty disagreement spread");
+        let spread = result
+            .casualty_spread
+            .expect("casualty disagreement spread");
         assert_eq!(
             spread.deaths_min,
             combined.estimate.deaths.min(blast.estimate.deaths)
@@ -2361,6 +2619,7 @@ mod tests {
         };
         assert!(!detail.atmospheric_entry.reaches_ground);
         assert!(detail.crater.is_none());
+        assert!(detail.secondary_effects.is_none());
 
         let chicxulub = simulate_asteroid_hazard(AsteroidHazardRequest {
             center: center(),
@@ -2383,6 +2642,38 @@ mod tests {
                 .as_ref()
                 .is_some_and(|value| value.final_diameter > 100_000.0)
         );
+        let aftermath = detail.secondary_effects.expect("Chicxulub aftermath");
+        assert_eq!(aftermath.classification, "Extinction-scale screening");
+        assert!(
+            aftermath
+                .ejecta_thickness_m
+                .is_some_and(|value| value > 10.0)
+        );
+        assert_eq!(aftermath.events.len(), 6);
+        for expected in [
+            "seismic-shaking",
+            "ejecta-blanket",
+            "thermal-reentry",
+            "atmospheric-loading",
+            "photosynthesis-disruption",
+            "climate-recovery",
+        ] {
+            assert!(aftermath.events.iter().any(|event| event.id == expected));
+        }
+        assert!(
+            aftermath
+                .events
+                .windows(2)
+                .all(|pair| pair[0].onset_seconds <= pair[1].onset_seconds)
+        );
+        assert!(aftermath.events.iter().all(|event| {
+            !event.uncertainty.is_empty()
+                && !event.citations.is_empty()
+                && event
+                    .citations
+                    .iter()
+                    .all(|citation| citation.url.starts_with("https://"))
+        }));
 
         let default_impact = simulate_asteroid_hazard(AsteroidHazardRequest {
             center: center(),
@@ -2414,6 +2705,18 @@ mod tests {
             default_detail.radius_total_destruction_m,
             49_985.088_060_526_99,
             1e-10,
+        );
+        let default_aftermath = default_detail
+            .secondary_effects
+            .as_ref()
+            .expect("regional aftermath");
+        assert_eq!(default_aftermath.classification, "Regional aftermath");
+        assert_eq!(default_aftermath.events.len(), 2);
+        assert!(
+            default_aftermath
+                .events
+                .iter()
+                .all(|event| event.category != "climate")
         );
         assert_relative(
             default_detail

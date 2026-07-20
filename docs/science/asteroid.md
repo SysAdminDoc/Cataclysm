@@ -51,6 +51,41 @@ Boussinesq path (F4-10).
   same 20 m–3 km range; a full cross-check against its data tables is
   tracked in `Roadmap_Blocked.md`. See [`VALIDATION.md`](VALIDATION.md).
 
+## Crater-forming impact aftermath
+
+The direct-impact result carries an authoritative Rust-authored secondary-effects
+timeline when an impact reaches the ground and forms a crater. Airbursts omit the
+timeline. Regional crater-forming impacts receive two quantitative screening
+events:
+
+- **Equivalent seismic magnitude** uses the Collins–Melosh–Marcus impact-energy
+  coupling and the Hanks–Kanamori moment-magnitude scale. It is an energy-scale
+  comparison, not a prediction of fault rupture, shaking duration, or local
+  Mercalli intensity.
+- **Ballistic ejecta thickness** is reported for land targets at five final-crater
+  radii. The idealized radial blanket follows Collins et al. 2005:
+
+  ```text
+  t_rim = 0.14 R_c (R_c / D_final)^0.74
+  t(r)  = t_rim (r / R_c)^-3
+  ```
+
+  where `R_c = D_final / 2`. The displayed arrival is a simple ballistic
+  timescale. Water targets omit this land-ejecta estimate.
+
+Impacts with effective ground-coupled energy at or above `1 × 10^23 J` also
+receive a **Chicxulub-class literature screen** across tens of minutes, days,
+months, and years: spatially uneven ejecta-reentry heating, global aerosol
+loading, impact-winter/productivity disruption, and a long climate-recovery
+tail. These entries intentionally remain qualitative. Morgan et al. 2013,
+Senel et al. 2023, and Bralower et al. 2022 do not support deriving a universal
+fire fraction, temperature curve, extinction probability, or recovery date
+from impact energy alone.
+
+Every timeline event embeds its citations, confidence class, and an explicit
+uncertainty statement in the result contract. GeoJSON/CZML exports preserve the
+same `secondary_effects` object for audit and replay.
+
 ## Caveats
 
 - Dispersion ignored at short wavelengths — `r^(-5/6)` decay
@@ -60,8 +95,13 @@ Boussinesq path (F4-10).
 - Atmospheric coupling (Lamb-wave precursor) modelled separately in
   [`lamb_wave.md`](lamb_wave.md); not currently summed into the
   asteroid IC.
+- Long-term events are staged literature scenarios, not a coupled
+  atmosphere–ocean–ecosystem simulation. The `1 × 10^23 J` gate is a
+  conservative product-screening threshold rather than an extinction boundary.
 
 ## References
 
 Ward & Asphaug 2000; Range et al. 2022; Collins, Melosh & Marcus
-2005; Hills & Goda 1998. See [`REFERENCES.bib`](REFERENCES.bib).
+2005; Hanks & Kanamori 1979; Morgan et al. 2013; Senel et al. 2023;
+Bralower et al. 2022; Hills & Goda 1998. See
+[`REFERENCES.bib`](REFERENCES.bib).

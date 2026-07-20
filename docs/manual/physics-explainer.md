@@ -12,6 +12,20 @@ Most source types compute an **initial water-surface displacement** — the shap
 - **Landslides** use Fritz & Hager 2001 (subaerial) or Watts et al. 2005 (submarine) empirical scaling.
 - **Meteotsunamis** apply `-(1/rho_w) grad(p_a)` at every SWE step for a translating Gaussian pressure anomaly; Proudman amplification occurs near `U = sqrt(gh)`.
 
+### Large-impact aftermath
+
+Crater-forming asteroid results add an event-stepped aftermath timeline. Its
+seconds/minutes events provide order-of-magnitude seismic and land-ejecta
+screening from Collins–Melosh–Marcus and Hanks–Kanamori. At Chicxulub-class
+energy, the same scrubber continues through cited tens-of-minutes, days, months,
+and years literature scenarios for reentry heating, atmospheric loading, impact
+winter, productivity disruption, and climate recovery.
+
+The Results panel and bottom scrubber stay synchronized. Select a phase to read
+its confidence, limits, and sources. Climate phases are qualitative scenarios,
+not direct outputs of a coupled climate model and never an extinction
+probability. Airbursts and smaller impacts omit inapplicable phases.
+
 ## Stage 2: Propagation
 
 The solver integrates the **shallow-water equations** (SWE) — the standard depth-averaged model used by NOAA, JMA, and other tsunami warning agencies:
@@ -64,6 +78,7 @@ This is sampled at 79 named coastal points worldwide. Current beach slopes are l
 | Coastal runup | Approximate | Synolakis is analytical, not full wetting/drying |
 | Near-coast behavior | Limited | No Boussinesq dispersion for short wavelengths |
 | Atmospheric coupling | Partial | Moving pressure and Lamb-wave forcing are one-way; wind stress and coupled weather are excluded |
+| Large-impact aftermath | Screening | Seismic/ejecta values are order-of-magnitude; climate phases are cited qualitative scenarios, not forecasts |
 
 Browser builds use the same Rust source-model, analytical wavefront,
 attenuation, arrival, and Synolakis-runup functions through the versioned

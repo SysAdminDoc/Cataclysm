@@ -71,7 +71,7 @@ const nuclearFalloutResult = {
 const asteroidResult: HazardResult = {
   kind: "asteroid",
   authority: "rust",
-  modelVersion: "asteroid-direct-1.0.0",
+  modelVersion: "asteroid-direct-1.1.0",
   center: { lat: 40, lon: -74 },
   rings: [{ label: "Final crater", radiusM: 1_500, color: "#cba6f7", category: "crater" }],
   readout: [{ label: "Final crater", value: "3.0 km" }],
@@ -103,11 +103,60 @@ const asteroidResult: HazardResult = {
       runupHeight: 0,
       arrivalTime: 0,
     },
+    secondaryEffects: {
+      classification: "Extinction-scale screening",
+      summary: "Quantitative near-field scaling plus cited Chicxulub-class climate scenarios.",
+      durationSeconds: 31_536_000,
+      seismicMagnitude: 6,
+      ejectaReferenceDistanceM: 7_500,
+      ejectaThicknessM: 12,
+      events: [
+        {
+          id: "seismic-shaking",
+          onsetSeconds: 5,
+          timeLabel: "seconds",
+          title: "Equivalent seismic shaking",
+          summary: "Equivalent shaking begins near the source.",
+          metricLabel: "Equivalent magnitude",
+          metricValue: "M 6.0",
+          category: "seismic",
+          confidence: "quantitative_screening",
+          uncertainty: "Equivalent magnitude does not predict local intensity.",
+          citations: [{ label: "Collins et al. 2005", url: "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x" }],
+        },
+        {
+          id: "ejecta-blanket",
+          onsetSeconds: 120,
+          timeLabel: "minutes",
+          title: "Ballistic ejecta blanket",
+          summary: "The idealized blanket is 12 m thick at the reference distance.",
+          metricLabel: "Thickness at 5 crater radii",
+          metricValue: "12 m",
+          category: "ejecta",
+          confidence: "quantitative_screening",
+          uncertainty: "Topography and impact angle change local deposition.",
+          citations: [{ label: "Collins et al. 2005", url: "https://doi.org/10.1111/j.1945-5100.2005.tb00157.x" }],
+        },
+        {
+          id: "climate-recovery",
+          onsetSeconds: 31_536_000,
+          timeLabel: "years",
+          title: "Long climate recovery tail",
+          summary: "Food-web disruption can persist beyond the first year.",
+          metricLabel: "Published duration range",
+          metricValue: "Months to more than a decade",
+          category: "climate",
+          confidence: "qualitative_scenario",
+          uncertainty: "Published models do not support one universal recovery time.",
+          citations: [{ label: "Senel et al. 2023", url: "https://www.nature.com/articles/s41561-023-01290-4" }],
+        },
+      ],
+    },
   },
 };
 const asteroidVisuals: AsteroidVisualReport = {
   resultId: "asteroid-result",
-  model: "asteroid-direct-1.0.0",
+  model: "asteroid-direct-1.1.0",
   trajectory: [
     { altitude: 100_000, velocity: 20_000, groundDistance: 0, time: 0 },
     { altitude: 35_000, velocity: 19_500, groundDistance: 65_000, time: 5 },
@@ -290,6 +339,40 @@ describe("HazardControls", () => {
     expect(screen.getByRole("img", { name: /Modeled crater cross-section/ })).toBeInTheDocument();
     expect(screen.getByText(/3 km diameter/)).toBeInTheDocument();
     expect(screen.getByText(/browser only draws the returned values/i)).toBeInTheDocument();
+  });
+
+  it("stages cited asteroid aftermath through the shared timeline selection", async () => {
+    const onTimelineTimeChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <HazardControls
+        mode="asteroid"
+        nuclear={nuclear}
+        asteroid={asteroid}
+        onNuclearChange={noop}
+        onAsteroidChange={noop}
+        center={{ lat: 40, lon: -74 }}
+        onTogglePick={noop}
+        pickActive={false}
+        result={asteroidResult}
+        asteroidVisuals={asteroidVisuals}
+        windFromDeg={270}
+        onWindChange={noop}
+        onDetonate={noop}
+        timelineTimeS={31_536_000}
+        onTimelineTimeChange={onTimelineTimeChange}
+      />,
+    );
+
+    expect(screen.getByText("Long-term impact timeline")).toBeInTheDocument();
+    expect(screen.getByText("Extinction-scale screening")).toBeInTheDocument();
+    expect(screen.getByText("Months to more than a decade")).toBeInTheDocument();
+    expect(screen.getByText("Qualitative literature scenario")).toBeInTheDocument();
+    expect(screen.getByText(/one universal recovery time/i)).toBeInTheDocument();
+    expect(screen.getByText("Senel et al. 2023")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Select minutes after impact: Ballistic ejecta blanket/i }));
+    expect(onTimelineTimeChange).toHaveBeenCalledWith(120);
   });
 
   it("fires the pick toggle when the location button is clicked", () => {

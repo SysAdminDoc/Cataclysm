@@ -2,6 +2,7 @@ import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
 import { useUnits } from "../hooks/useUnits";
 import { formatEmbeddedLengthValues } from "../lib/units";
+import type { SecondaryEffectEvent } from "../hazards";
 
 const DEFAULT_TOTAL_TIME_S = 6 * 3600;
 
@@ -18,6 +19,7 @@ type Props = {
   domain: "tsunami" | "asteroid" | "nuclear";
   frameCount?: number;
   durationS?: number;
+  effectTimeline?: readonly SecondaryEffectEvent[];
   onOpenDetails: () => void;
 };
 
@@ -42,6 +44,7 @@ export function SimulationTransport({
   domain,
   frameCount = 0,
   durationS = DEFAULT_TOTAL_TIME_S,
+  effectTimeline = [],
   onOpenDetails,
 }: Props) {
   const { t, formatNumber } = useI18n();
@@ -49,6 +52,80 @@ export function SimulationTransport({
   const displayedSourceLabel = formatEmbeddedLengthValues(sourceLabel, formatNumber, unitSystem);
   const safeDurationS = Number.isFinite(durationS) && durationS > 0 ? durationS : DEFAULT_TOTAL_TIME_S;
   const safeTimeS = Math.max(0, Math.min(safeDurationS, Number.isFinite(timeS) ? timeS : 0));
+  if (domain === "asteroid" && effectTimeline.length > 0) {
+    const selectedIndex = effectTimeline.reduce(
+      (active, event, index) => event.onsetSeconds <= safeTimeS ? index : active,
+      0,
+    );
+    const selected = effectTimeline[selectedIndex];
+    return (
+      <section className="simulation-transport simulation-transport--aftermath" aria-label={t("transport.aftermathControls")}>
+        <div className="simulation-transport__controls">
+          <button
+            type="button"
+            className="simulation-transport__play"
+            onClick={() => {
+              if (!playing && selectedIndex >= effectTimeline.length - 1) onTimeChange(effectTimeline[0].onsetSeconds);
+              onTogglePlaying();
+            }}
+            aria-label={playing ? t("transport.pauseAftermath") : t("transport.playAftermath")}
+            title={t("transport.playAftermathTitle")}
+          >
+            <UiIcon name={playing ? "pause" : "play"} size={16} />
+          </button>
+          <button
+            type="button"
+            className="simulation-transport__reset"
+            onClick={() => onTimeChange(effectTimeline[0].onsetSeconds)}
+            disabled={selectedIndex === 0}
+            aria-label={t("transport.resetAftermath")}
+            title={t("transport.resetAftermathTitle")}
+          >
+            <UiIcon name="reset" size={15} />
+          </button>
+        </div>
+        <div className="simulation-transport__clock" aria-label={t("transport.aftermathTime", { time: selected.timeLabel })}>
+          <strong>{selected.timeLabel}</strong>
+          <span>{t("transport.afterImpact")}</span>
+        </div>
+        <div className="simulation-transport__track">
+          <div className="simulation-transport__meta">
+            <span>{displayedSourceLabel}</span>
+            <span>{t("transport.phaseCount", { current: selectedIndex + 1, total: effectTimeline.length })}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={effectTimeline.length - 1}
+            step={1}
+            value={selectedIndex}
+            onChange={(event) => onTimeChange(effectTimeline[Number(event.target.value)]?.onsetSeconds ?? 0)}
+            aria-label={t("transport.aftermathScrubber")}
+            aria-valuetext={t("transport.aftermathSelection", { time: selected.timeLabel, title: selected.title })}
+          />
+          <div className="simulation-transport__ticks simulation-transport__ticks--events" aria-hidden>
+            {effectTimeline.map((event) => <span key={event.id}>{event.timeLabel}</span>)}
+          </div>
+        </div>
+        <label className="simulation-transport__speed">
+          <span>{t("transport.speed")}</span>
+          <select value={rate} onChange={(event) => onRateChange(Number(event.target.value))}>
+            <option value={1}>1x</option>
+            <option value={4}>4x</option>
+            <option value={12}>12x</option>
+          </select>
+        </label>
+        <div className="simulation-transport__solver" data-ready="true">
+          <span className="status-dot" aria-hidden />
+          <div>
+            <span>{t("transport.aftermathModel")}</span>
+            <strong>{t("transport.rustAuthored")}</strong>
+          </div>
+        </div>
+        <button type="button" className="simulation-transport__details" onClick={onOpenDetails}>{t("transport.viewAftermath")}</button>
+      </section>
+    );
+  }
   if (domain !== "tsunami") {
     const label = domain === "asteroid" ? t("transport.impactEffects") : t("transport.nuclearEffects");
     return (

@@ -193,6 +193,36 @@ export interface AsteroidDetail {
     runupHeight: number;
     arrivalTime: number;
   };
+  secondaryEffects?: AsteroidSecondaryEffects;
+}
+
+export interface SecondaryEffectCitation {
+  label: string;
+  url: string;
+}
+
+export interface SecondaryEffectEvent {
+  id: string;
+  onsetSeconds: number;
+  timeLabel: string;
+  title: string;
+  summary: string;
+  metricLabel: string;
+  metricValue: string;
+  category: "seismic" | "ejecta" | "thermal" | "climate" | "ecosystem";
+  confidence: "quantitative_screening" | "qualitative_scenario";
+  uncertainty: string;
+  citations: SecondaryEffectCitation[];
+}
+
+export interface AsteroidSecondaryEffects {
+  classification: string;
+  summary: string;
+  durationSeconds: number;
+  seismicMagnitude: number;
+  ejectaReferenceDistanceM?: number;
+  ejectaThicknessM?: number;
+  events: SecondaryEffectEvent[];
 }
 
 export interface HazardResult {

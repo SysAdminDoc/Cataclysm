@@ -51,7 +51,7 @@ Existing tools each do one piece:
 
 | Source | Status | Reference |
 |---|---|---|
-| **Asteroid / comet impact** | ✅ formulas wired | Ward & Asphaug 2000 *Icarus* 145:64; Schmidt & Holsapple 1982 |
+| **Asteroid / comet impact** | ✅ source, direct effects, cited aftermath | Ward & Asphaug 2000; Collins et al. 2005; Senel et al. 2023 |
 | **Underwater nuclear** | ✅ formulas wired | Glasstone & Dolan 1977; Le Méhauté 1996; DNA 1996 (5% energy → wave) |
 | **Atmospheric / surface nuclear (ocean)** | ✅ formulas wired | Van Dorn et al. 1968; Adams 1972 |
 | **"Russia Poseidon" tsunami torpedo** | ✅ realistic mode | Skeptical physics — 360° dispersion, ~5% efficiency |
@@ -274,6 +274,12 @@ Existing tools each do one piece:
   source inputs, with historical context kept separate from modeled outcomes.
   Starfish Prime uses a dedicated high-altitude EMP screening path with no
   implied ground blast, thermal, fallout, or casualty rings.
+- **Cited large-impact aftermath** — crater-forming impacts add synchronized
+  Results and bottom-transport phases for equivalent seismic magnitude and
+  land-ejecta thickness. Chicxulub-class runs extend through reentry heating,
+  atmospheric loading, impact winter, productivity disruption, and climate
+  recovery; every phase exposes confidence, sources, and limits, while small
+  impacts and airbursts omit inapplicable effects.
 - **Teacher mode** — lockable classroom settings profiles (via settings
   export/import), Follow/Explore story modes with equivalent screen-reader
   narration, and a printable worksheet for each of the 7 guided lessons.
@@ -399,20 +405,20 @@ npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # req
 npm run tauri:build        # isolated installed-package gate + GPU installer manifest
 ```
 
-The browser preview loads a checked-in 215.4 KiB WebAssembly module compiled
+The browser preview loads a checked-in WebAssembly module compiled
 from the same Rust asteroid, nuclear, earthquake, landslide, attenuation,
 arrival, and Synolakis-runup code used by desktop IPC. The JavaScript-only
 boundary is the deterministic SWE frame/gauge playback; exports show the
 `BROWSER SWE PLAYBACK — APPROXIMATE` watermark only while that layer is active.
-Direct-effects blast, thermal, crater, fallout, and casualty calculations still
-require the installed desktop app.
+Direct-effect blast, thermal, crater, fallout, casualty, and asteroid-aftermath
+calculations use that same Rust authority in both browser and desktop builds;
+desktop-only visual probes remain clearly identified.
 
 `npm run build:physics` requires the `wasm32-unknown-unknown` Rust target. Normal
 web builds verify the checked-in module's ABI, source digest, SHA-256, and byte
-size so stale generated physics cannot ship silently. The production main JS
-chunk changed from 1,260.56 kB / 356.96 kB gzip to 1,257.34 kB / 356.14 kB
-gzip; the separate WASM asset adds 220,561 bytes raw (215.4 KiB), taking the
-offline cache from 14.6 MiB to 14.8 MiB.
+size so stale generated physics cannot ship silently. Release builds report the
+current module and offline-cache sizes instead of relying on stale checked-in
+bundle measurements.
 
 `tauri:build` runs the strict gate, deletes stale bundles, compiles the desktop
 binary with GPU support, performs a non-visual capability smoke, and writes

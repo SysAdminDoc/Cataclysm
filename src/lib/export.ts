@@ -17,7 +17,7 @@ import {
   type EarthOperationPreflight,
 } from "./earth-assets";
 import { resolveSweImageryTiles } from "../render/cesium/swe-field-tiles";
-import type { GeoPoint, HazardResult } from "../hazards/types";
+import type { AsteroidDetail, GeoPoint, HazardResult } from "../hazards/types";
 
 export type ExportFailureCode =
   | "preflight"
@@ -828,6 +828,12 @@ function directHazardDisplayReadout(data: DirectHazardExportData, unitSystem: Un
   }));
 }
 
+function directHazardSecondaryEffects(data: DirectHazardExportData) {
+  return data.result.kind === "asteroid"
+    ? (data.result.detail as AsteroidDetail).secondaryEffects ?? null
+    : null;
+}
+
 export function buildDirectHazardGeoJson(meta: ScreenshotMeta, data: DirectHazardExportData) {
   const common = directHazardProperties(meta, data);
   const center = data.result.center;
@@ -841,6 +847,7 @@ export function buildDirectHazardGeoJson(meta: ScreenshotMeta, data: DirectHazar
         casualty_models: data.result.casualtyModels ?? [],
         casualty_spread: data.result.casualtySpread ?? null,
         readout: directHazardDisplayReadout(data, meta.unitSystem ?? "metric"),
+        secondary_effects: directHazardSecondaryEffects(data),
       },
       geometry: { type: "Point" as const, coordinates: [round5(center.lon), round5(center.lat)] },
     },
@@ -907,6 +914,7 @@ export function buildDirectHazardCzml(meta: ScreenshotMeta, data: DirectHazardEx
         casualty_models: data.result.casualtyModels ?? [],
         casualty_spread: data.result.casualtySpread ?? null,
         readout: directHazardDisplayReadout(data, provenance.unitSystem),
+        secondary_effects: directHazardSecondaryEffects(data),
       },
       position: { cartographicDegrees: [center.lon, center.lat, 0] },
       point: {
