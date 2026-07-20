@@ -11,11 +11,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   per-cell first-arrival times (null where the wave never reached) without a
   full nonlinear run. Correctness is locked by monotonic-arrival and
   unreached-cell tests. (UI surfacing is tracked in ROADMAP.)
-- Deterministic frame-accurate video encoder via WebCodecs: when the runtime
-  supports VideoEncoder (WebView2 / Chromium), a new `exportDeterministicVideo`
-  function encodes globe frames one-by-one into an H.264/MP4 via `mp4-muxer`.
-  The MediaRecorder path remains as the real-time fallback. Feature-detected
-  with `isDeterministicVideoSupported()`.
+- Frame-accurate video encoder backend via WebCodecs: when the runtime supports
+  VideoEncoder (WebView2 / Chromium), `exportDeterministicVideo` encodes globe
+  frames one at a time (with encode-queue backpressure and surfaced codec
+  errors) into an H.264/MP4 via `mp4-muxer` — decoupled from wall-clock so it
+  never drops frames under load, unlike the real-time MediaRecorder path.
+  Feature-detected with `isDeterministicVideoSupported()`. (UI surfacing is
+  tracked in ROADMAP.)
 - Extended max-field products: every accepted solver step now also accumulates
   maximum total flow depth, maximum current speed, maximum momentum flux (H·U²),
   minimum water depth (drawdown), and time-of-maximum-speed alongside the existing

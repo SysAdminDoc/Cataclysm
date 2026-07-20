@@ -692,6 +692,21 @@ export async function exportDeterministicVideo(
   const height = opts.height ?? canvas.height;
   const bitsPerSecond = opts.bitsPerSecond ?? 6_000_000;
 
+  const codec = "avc1.42001f";
+  // Probe support BEFORE allocating any encoder so an unsupported config
+  // cannot leak an encoder handle through an early return.
+  let supported: VideoEncoderSupport;
+  try {
+    supported = await VideoEncoder.isConfigSupported({
+      codec, width, height, bitrate: bitsPerSecond, framerate: fps,
+    });
+  } catch (error) {
+    return unexpectedExportFailure("codec", "Deterministic video config probe", error);
+  }
+  if (!supported.supported) {
+    return exportFailure("codec", `H.264 Baseline at ${width}x${height} is not supported by this encoder.`, false);
+  }
+
   const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
@@ -700,35 +715,28 @@ export async function exportDeterministicVideo(
     fastStart: "in-memory",
   });
 
+  // Surface async encoder errors to the awaiting caller. Throwing inside the
+  // encoder's error callback runs on the codec thread and would never reach
+  // the try/catch below, so record it and check after each await point.
+  let encoderError: Error | null = null;
   let encodedFrames = 0;
   const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta ?? undefined),
-    error: (e) => { throw e; },
+    output: (chunk, chunkMeta) => muxer.addVideoChunk(chunk, chunkMeta ?? undefined),
+    error: (e) => { encoderError = e instanceof Error ? e : new Error(String(e)); },
   });
-
-  const codec = "avc1.42001f";
-  const supported = await VideoEncoder.isConfigSupported({
-    codec,
-    width,
-    height,
-    bitrate: bitsPerSecond,
-    framerate: fps,
-  });
-  if (!supported.supported) {
-    return exportFailure("codec", `H.264 Baseline at ${width}x${height} is not supported by this encoder.`, false);
-  }
-  encoder.configure({
-    codec,
-    width,
-    height,
-    bitrate: bitsPerSecond,
-    framerate: fps,
-  });
+  encoder.configure({ codec, width, height, bitrate: bitsPerSecond, framerate: fps });
 
   try {
     for (let i = 0; i < totalFrames; i++) {
+      if (encoderError) throw encoderError;
       await opts.renderFrame(i);
       await new Promise((r) => requestAnimationFrame(r));
+      // Backpressure: never let the encode queue grow unbounded across a long
+      // frame sequence — wait for the codec to drain before feeding more.
+      while (encoder.encodeQueueSize > 8 && !encoderError) {
+        await new Promise((r) => setTimeout(r, 4));
+      }
+      if (encoderError) throw encoderError;
       const frame = new VideoFrame(canvas, {
         timestamp: (i * 1_000_000) / fps,
         duration: 1_000_000 / fps,
@@ -740,6 +748,7 @@ export async function exportDeterministicVideo(
       opts.onProgress?.(encodedFrames, totalFrames);
     }
     await encoder.flush();
+    if (encoderError) throw encoderError;
     muxer.finalize();
     const blob = new Blob([target.buffer], { type: "video/mp4" });
     if (blob.size === 0) {

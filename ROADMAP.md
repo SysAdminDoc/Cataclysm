@@ -243,6 +243,12 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P2
 
+- [ ] P2 — Surface the deterministic WebCodecs video export in the UI
+  Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it — the export menu still only offers the real-time MediaRecorder path.
+  Where: `src/lib/export.ts` (helper present), export/highlight-story UI in `src/App.tsx`/`src/components/HighlightStoryDialog.tsx`, a frame-stepping `renderFrame(i)` driver over the SWE replay.
+  Acceptance: an export option encodes a replay frame-by-frame with a progress indicator; feature-detected with a MediaRecorder fallback labelled real-time; failure preserves the replay and offers retry.
+  Complexity: M
+
 - [ ] P2 — Surface the Quick ETA preview in the UI
   Why: the `quick_eta_preview` IPC command and typed `api.quickEtaPreview` wrapper exist and are tested, but nothing calls them yet — the coarse first-arrival map is not rendered anywhere.
   Where: `src/components/SwePlayback.tsx` (a "Quick ETA" action), a new arrival-time preview layer in `src/render/cesium/**` / `Globe.tsx`, `src/lib/tauri.ts` (wrapper already present).
