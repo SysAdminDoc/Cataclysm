@@ -18,6 +18,8 @@ permissions = [
   "allow-asteroid-result-visuals",
   "allow-jpl-api-request",
   "allow-ncei-hazel-search",
+  "allow-usgs-recent-earthquakes",
+  "allow-usgs-earthquake-detail",
   "allow-lamb-wave-sample",
   "allow-dart-buoy-rmse",
   "allow-gpu-probe",

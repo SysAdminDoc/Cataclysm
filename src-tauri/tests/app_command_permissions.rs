@@ -96,6 +96,8 @@ fn runtime_authority_denies_an_unprivileged_window() {
         "cancel_simulation",
         "diagnostics_bundle",
         "ncei_hazel_search",
+        "usgs_recent_earthquakes",
+        "usgs_earthquake_detail",
         "native_panic_record",
         "acknowledge_native_panic_record",
         "third_party_notices",

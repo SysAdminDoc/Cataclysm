@@ -15,7 +15,8 @@ function axeScan(page: import("@playwright/test").Page) {
 async function seedAcknowledged(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "5");
+    localStorage.setItem("tsunamisim._settings_schema_version", "6");
+    localStorage.setItem("tsunamisim.workspace_mode", JSON.stringify("advanced"));
     localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
@@ -27,7 +28,8 @@ async function seedAcknowledged(page: Page) {
 async function seedAcknowledgedLatte(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "5");
+    localStorage.setItem("tsunamisim._settings_schema_version", "6");
+    localStorage.setItem("tsunamisim.workspace_mode", JSON.stringify("advanced"));
     localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);

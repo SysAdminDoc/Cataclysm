@@ -5,7 +5,10 @@ import { readFile } from "node:fs/promises";
 async function seedAcknowledgedPreview(page: Page) {
   await page.addInitScript(() => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "5");
+    localStorage.setItem("tsunamisim._settings_schema_version", "6");
+    if (localStorage.getItem("tsunamisim.workspace_mode") === null) {
+      localStorage.setItem("tsunamisim.workspace_mode", JSON.stringify("advanced"));
+    }
     localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
@@ -608,6 +611,12 @@ test.describe("Cataclysm browser preview", () => {
   });
 
   test("progressively discloses simulator controls without discarding state", async ({ page }) => {
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem("cataclysm.test.simple-seeded") !== "true") {
+        localStorage.setItem("tsunamisim.workspace_mode", JSON.stringify("simple"));
+        sessionStorage.setItem("cataclysm.test.simple-seeded", "true");
+      }
+    });
     await page.goto("/");
     const detail = page.getByRole("group", { name: "Workspace detail" });
     await expect(detail.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");

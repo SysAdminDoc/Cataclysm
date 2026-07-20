@@ -1,7 +1,7 @@
 import * as Cesium from "cesium";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { installFireballOverlay, installHumanitarianFacilityOverlay, installMirvOverlay } from "../globe-strategic-overlays";
+import { installFireballOverlay, installHumanitarianFacilityOverlay, installMirvOverlay, installUsgsOfficialOverlay } from "../globe-strategic-overlays";
 import type { FireballEvent } from "../../types/jpl";
 import { buildMirvPreview, MIRV_PRESETS } from "../../lib/mirv";
 
@@ -122,6 +122,35 @@ describe("strategic globe overlay lifecycles", () => {
     expect(harness.added[0]).toBeInstanceOf(Cesium.PointPrimitiveCollection);
     expect((harness.added[0] as Cesium.PointPrimitiveCollection).length).toBe(1);
 
+    cleanup?.();
+    expect(harness.removed).toEqual(harness.added);
+  });
+
+  it("renders and removes bounded USGS ShakeMap contours", () => {
+    const harness = makeViewerHarness();
+    const cleanup = installUsgsOfficialOverlay(harness.viewer, {
+      eventId: "us7000test",
+      title: "Test",
+      eventUrl: "https://earthquake.usgs.gov/earthquakes/eventpage/us7000test",
+      fetchedAtMs: 1,
+      stale: false,
+      pager: null,
+      shakemap: {
+        maxMmi: 7,
+        mapStatus: "RELEASED",
+        reviewStatus: "reviewed",
+        processTimestamp: null,
+        bounds: [140, 36, 144, 40],
+        contours: [
+          { mmi: 5, color: "#f7d038", points: [[140, 36], [142, 38]] },
+          { mmi: 6, color: "#e5383b", points: [[141, 37], [143, 39]] },
+        ],
+      },
+    }, 0.5, 3);
+
+    expect(harness.added).toHaveLength(1);
+    expect(harness.added[0]).toBeInstanceOf(Cesium.PolylineCollection);
+    expect((harness.added[0] as Cesium.PolylineCollection).length).toBe(2);
     cleanup?.();
     expect(harness.removed).toEqual(harness.added);
   });

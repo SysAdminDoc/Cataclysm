@@ -6,12 +6,13 @@
 pub mod commands;
 pub mod data;
 pub mod jpl_api;
-pub mod ncei_hazel;
 pub mod native_diagnostics;
+pub mod ncei_hazel;
 pub mod physics;
 pub mod presets;
 pub mod render_protocol;
 pub mod support_resources;
+pub mod usgs_earthquakes;
 
 use commands::*;
 use data::bathymetry_cache::{
@@ -109,6 +110,8 @@ pub fn run() {
             asteroid_result_visuals,
             jpl_api_request,
             ncei_hazel_search,
+            usgs_recent_earthquakes,
+            usgs_earthquake_detail,
             diagnostics_bundle,
             native_panic_record,
             acknowledge_native_panic_record,

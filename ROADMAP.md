@@ -30,13 +30,6 @@ remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P2
 
-- [ ] P2 — Seed earthquake scenarios from live USGS feeds and compare to official products
-  Why: the seafloor-earthquake source starts from blank sliders, while real-time authoritative catalogs (and ShakeMap/PAGER) let users reproduce actual events and benchmark the app's estimates against official ones — strong education and validation with no new physics.
-  Evidence: manual-only quake entry in `HazardControls.tsx`/`ScenarioBuilder.tsx`; USGS GeoJSON/FDSN feeds, ShakeMap, PAGER (https://earthquake.usgs.gov/earthquakes/feed/, https://earthquake.usgs.gov/fdsnws/event/1/); desktop client can cache offline.
-  Touches: USGS feed client with offline cache + stale badge, "recent real quakes" discovery surface, Okada parameter mapping, optional PAGER/ShakeMap comparison layer, provenance/attribution.
-  Acceptance: users can browse recent real quakes, load one as a cited Okada scenario, and optionally overlay official ShakeMap/PAGER for comparison; cached data is browsable offline with a stale timestamp; no event is presented as a live warning.
-  Complexity: M
-
 - [ ] P2 — Drape analytical overlays onto real terrain so elevation is respected
   Why: damage rings, runup bars, and inundation discs render on the smooth ellipsoid, so the most common user complaint — "mountains should block this" — is visibly untrue; Cesium 1.135 (already on the app's 1.143 line) ships `Cesium3DTilesTerrainProvider` and imagery-over-3D-Tiles draping.
   Evidence: ellipsoid-clamped overlays in `src/render/cesium/**`; HN "factor in mountains/elevation" (https://news.ycombinator.com/item?id=33870612); Cesium Nov-2025 3D Tiles terrain + draping (https://cesium.com/blog/2025/11/03/cesium-releases-in-november-2025/). Distinct from HR-13 hyper-real terrain: this is a near-term analytical draping win, not full PBR.

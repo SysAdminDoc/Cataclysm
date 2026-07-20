@@ -20,9 +20,9 @@ describe("scenario layer controller state", () => {
     saveScenarioLayerState("preset:tohoku-2011", "tsunami", tohoku, localStorage, 10);
 
     const restored = loadScenarioLayerState("preset:tohoku-2011", "tsunami", localStorage);
-    expect(restored["swe-field"]).toMatchObject({ visible: false, opacity: 0.42, order: 3 });
+    expect(restored["swe-field"]).toMatchObject({ visible: false, opacity: 0.42, order: 4 });
     expect(loadScenarioLayerState("preset:lisbon-1755", "tsunami", localStorage)["swe-field"])
-      .toMatchObject({ visible: true, opacity: 0.9, order: 4 });
+      .toMatchObject({ visible: true, opacity: 0.9, order: 5 });
   });
 
   it("fails closed to defaults for malformed or out-of-range persisted input", () => {

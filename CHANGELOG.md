@@ -2,6 +2,18 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Recent USGS earthquake discovery in the installed app: the scenario library
+  can browse the fixed significant-month ComCat feed, load a preferred
+  finite-fault or moment-tensor product as a fully cited Okada source, and show
+  preferred ShakeMap MMI contours/PAGER metadata as a separate official-product
+  comparison layer. The bounded desktop bridge rejects redirects and arbitrary
+  URLs; validated feed/details are cached on-device with an explicit stale state,
+  and the UI consistently states that the catalog is not a live warning.
+
 ## [0.14.0] — 2026-07-19
 
 ### Added

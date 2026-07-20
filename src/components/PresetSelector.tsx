@@ -37,6 +37,7 @@ type Props = {
   onSelectDirect?: (scenario: DirectScenarioTemplate) => void;
   onCreateScenario?: () => void;
   onBrowseHistorical?: () => void;
+  onBrowseRecentEarthquakes?: () => void;
   onRunActive?: () => void;
   recentIds?: string[];
   favoriteIds?: string[];
@@ -210,6 +211,7 @@ export function PresetSelector({
   onSelectDirect,
   onCreateScenario,
   onBrowseHistorical,
+  onBrowseRecentEarthquakes,
   onRunActive,
   recentIds = [],
   favoriteIds = [],
@@ -378,6 +380,17 @@ export function PresetSelector({
               onClick={onBrowseHistorical}
             >
               <UiIcon name="search" size={15} />
+            </button>
+          )}
+          {onBrowseRecentEarthquakes && (
+            <button
+              className="preset-library__historical preset-library__recent"
+              type="button"
+              aria-label={t("scenario.browseRecentEarthquakes")}
+              title={t("scenario.browseRecentEarthquakesTitle")}
+              onClick={onBrowseRecentEarthquakes}
+            >
+              <UiIcon name="refresh" size={15} />
             </button>
           )}
           <span className="section__count" aria-label={t("scenario.shown", { visible: visibleCount, total: totalCount })}>{visibleCount}/{totalCount}</span>

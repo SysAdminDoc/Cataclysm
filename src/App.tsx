@@ -9,6 +9,7 @@ import { FamiliarPlacePanel } from "./components/FamiliarPlacePanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { HighlightStoryDialog, type HighlightStorySource } from "./components/HighlightStoryDialog";
 import { HistoricalTsunamiBrowser } from "./components/HistoricalTsunamiBrowser";
+import { RecentEarthquakeBrowser } from "./components/RecentEarthquakeBrowser";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
 import { LaunchExperience } from "./components/LaunchExperience";
@@ -63,6 +64,7 @@ import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { useHumanitarianFacilities } from "./hooks/useHumanitarianFacilities";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
 import type { HistoricalScenarioImport } from "./lib/ncei-hazel";
+import type { RecentEarthquakeImport, UsgsOfficialComparison } from "./lib/usgs-earthquakes";
 import { subscribeToScenarioDeepLinks } from "./lib/deep-links";
 import {
   DIRECT_SCENARIOS,
@@ -397,6 +399,8 @@ export default function App() {
   const [timeS, setTimeS] = useState<number>(15 * 60);
   const [showCitations, setShowCitations] = useState(false);
   const [showHistoricalBrowser, setShowHistoricalBrowser] = useState(false);
+  const [showRecentEarthquakes, setShowRecentEarthquakes] = useState(false);
+  const [usgsComparison, setUsgsComparison] = useState<UsgsOfficialComparison | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [highlightStorySource, setHighlightStorySource] = useState<HighlightStorySource | null>(null);
   const [highlightStoryInitialOptions, setHighlightStoryInitialOptions] = useState<HighlightStoryOptions | undefined>(undefined);
@@ -889,12 +893,14 @@ export default function App() {
     }
     if (request.type === "scenario") {
       handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
+      setUsgsComparison(null);
       slotA.simulate(request.scenario);
       return;
     }
     if (presets.length === 0) return;
     handledScenarioLinkRequestId.current = scenarioLinkRequest.id;
     if (presets.some((preset) => preset.id === request.presetId)) {
+      setUsgsComparison(null);
       setLibraryPreview({ kind: "preset", presetId: request.presetId });
       setLibraryPreviewPending(false);
       slotA.setActivePresetId(request.presetId);
@@ -1597,6 +1603,7 @@ export default function App() {
   function selectHazardMode(mode: HazardMode) {
     setRunJourney(null);
     setHazardMode(mode);
+    if (mode !== "tsunami") setUsgsComparison(null);
     if (mode !== "asteroid") setHypotheticalApproach(null);
     setLibraryPreviewPending(false);
     if (mode !== "tsunami") {
@@ -1659,6 +1666,7 @@ export default function App() {
   }
 
   function previewPreset(presetId: string) {
+    setUsgsComparison(null);
     setRunJourney(null);
     setTimelinePlaying(false);
     setCustomEditorOpen(false);
@@ -1667,6 +1675,7 @@ export default function App() {
   }
 
   function previewDirectScenario(scenario: DirectScenarioTemplate) {
+    setUsgsComparison(null);
     setRunJourney(null);
     setTimelinePlaying(false);
     setCustomEditorOpen(false);
@@ -1675,6 +1684,7 @@ export default function App() {
   }
 
   function runPresetFromLibrary(presetId: string) {
+    setUsgsComparison(null);
     const scenarioId = `preset:${presetId}`;
     const canReuseSnapshots = !referenceCaptureMode
       && slotA.activePresetId === presetId
@@ -1699,6 +1709,7 @@ export default function App() {
   }
 
   function startGuidedLesson(lesson: GuidedLessonDef) {
+    setUsgsComparison(null);
     const scenarioId = `preset:${lesson.presetId}`;
     if (slotA.activePresetId !== lesson.presetId) guidedStoryRuns.current.delete(lesson.id);
     selectHazardMode("tsunami");
@@ -1766,6 +1777,7 @@ export default function App() {
   }
 
   function createCustomScenario() {
+    setUsgsComparison(null);
     setRunJourney(null);
     changeWorkspaceMode("customize");
     setCustomEditorOpen(true);
@@ -1781,6 +1793,7 @@ export default function App() {
   }
 
   function loadHistoricalScenario(result: HistoricalScenarioImport) {
+    setUsgsComparison(null);
     setShowHistoricalBrowser(false);
     setRunJourney(null);
     changeWorkspaceMode("customize");
@@ -1790,6 +1803,20 @@ export default function App() {
     selectHazardMode("tsunami");
     setInspectorTab("setup");
     setScenarioEditRequest({ id: Date.now(), ...result });
+  }
+
+  function loadRecentEarthquake(result: RecentEarthquakeImport) {
+    setShowRecentEarthquakes(false);
+    setRunJourney(null);
+    changeWorkspaceMode("customize");
+    setCustomEditorOpen(true);
+    setLibraryPreview(null);
+    setLibraryPreviewPending(false);
+    selectHazardMode("tsunami");
+    setInspectorTab("setup");
+    slotA.setActivePresetId(null);
+    setUsgsComparison(result.officialComparison);
+    setScenarioEditRequest({ id: Date.now(), scenario: result.scenario, provenanceNote: result.provenanceNote });
   }
 
   function detonateActiveHazard() {
@@ -2380,6 +2407,7 @@ export default function App() {
             onSelectDirect={previewDirectScenario}
             onCreateScenario={createCustomScenario}
             onBrowseHistorical={() => setShowHistoricalBrowser(true)}
+            onBrowseRecentEarthquakes={() => setShowRecentEarthquakes(true)}
             onRunActive={runLibraryPreview}
             recentIds={libraryPreferences.recentIds}
             favoriteIds={libraryPreferences.favoriteIds}
@@ -2435,6 +2463,7 @@ export default function App() {
                 humanitarianFacilities={!inHazardMode && humanitarianFacilitiesEnabled
                   ? humanitarianFacilities.state.facilities
                   : []}
+                usgsComparison={!inHazardMode ? usgsComparison : null}
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
                 onPickCancel={() => setPickMode(false)}
@@ -2882,6 +2911,7 @@ export default function App() {
           sourceKind={activeScenarioKindA}
           directResult={hazardResult}
           humanitarianState={humanitarianFacilities.state}
+          usgsComparison={!inHazardMode ? usgsComparison : null}
           layerState={layerState}
           timeS={timeS}
           onLayerStateChange={updateLayerState}
@@ -2927,6 +2957,12 @@ export default function App() {
         <HistoricalTsunamiBrowser
           onClose={() => setShowHistoricalBrowser(false)}
           onLoad={loadHistoricalScenario}
+        />
+      )}
+      {showRecentEarthquakes && (
+        <RecentEarthquakeBrowser
+          onClose={() => setShowRecentEarthquakes(false)}
+          onLoad={loadRecentEarthquake}
         />
       )}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}

@@ -38,6 +38,8 @@ fn main() {
         "asteroid_result_visuals",
         "jpl_api_request",
         "ncei_hazel_search",
+        "usgs_recent_earthquakes",
+        "usgs_earthquake_detail",
         "diagnostics_bundle",
         "native_panic_record",
         "acknowledge_native_panic_record",

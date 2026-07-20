@@ -98,6 +98,7 @@ import type { MessageKey } from "../lib/i18n-core";
 import { defaultLayerState, type LayerState } from "../lib/layer-controller";
 import { useUnits } from "../hooks/useUnits";
 import { formatEmbeddedLengthValues, formatLength, formatReadoutValue, quantityText, type UnitSystem } from "../lib/units";
+import type { UsgsOfficialComparison } from "../lib/usgs-earthquakes";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -113,6 +114,8 @@ type Props = {
   dartBuoys?: DartBuoy[];
   /** Explicitly opted-in OpenStreetMap facilities inside modeled runup discs. */
   humanitarianFacilities?: readonly HumanitarianFacility[];
+  /** Optional USGS ShakeMap/PAGER comparison for a recently imported event. */
+  usgsComparison?: UsgsOfficialComparison | null;
   /** Override style; if absent, the persisted Settings style is used. */
   styleId?: GlobeStyleId;
   /**
@@ -389,6 +392,7 @@ export function Globe({
   gauges,
   dartBuoys,
   humanitarianFacilities = [],
+  usgsComparison,
   styleId,
   pickMode,
   onPick,
@@ -434,6 +438,7 @@ export function Globe({
   const runupLayer = layers["coastal-runup"];
   const dartLayer = layers["dart-observations"];
   const humanitarianLayer = layers["humanitarian-facilities"];
+  const usgsLayer = layers["usgs-official"];
   const hazardRingLayer = layers["hazard-rings"];
   const falloutLayer = layers["fallout-plume"];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1097,6 +1102,9 @@ export function Globe({
     humanitarianFacilities: humanitarianLayer.visible ? humanitarianFacilities : [],
     humanitarianOpacity: humanitarianLayer.opacity,
     humanitarianOrder: humanitarianLayer.order,
+    usgsComparison: usgsLayer.visible ? usgsComparison : null,
+    usgsOpacity: usgsLayer.opacity,
+    usgsOrder: usgsLayer.order,
   });
 
   return (
@@ -1115,6 +1123,7 @@ export function Globe({
         data-mirv-preview={mirvPreview?.id ?? "none"}
         data-mirv-warheads={mirvPreview?.points.length ?? 0}
         data-humanitarian-facilities={humanitarianLayer.visible ? humanitarianFacilities.length : 0}
+        data-usgs-shakemap-contours={usgsLayer.visible ? usgsComparison?.shakemap?.contours.length ?? 0 : 0}
       />
       {humanitarianLayer.visible && humanitarianFacilities.length > 0 && (
         <a

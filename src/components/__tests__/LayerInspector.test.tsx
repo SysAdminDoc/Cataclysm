@@ -29,7 +29,7 @@ describe("LayerInspector trust evidence", () => {
     );
 
     const disclosures = screen.getAllByText("Why trust this?");
-    expect(disclosures).toHaveLength(7);
+    expect(disclosures).toHaveLength(8);
     const sweRow = screen.getByText("SWE water field").closest("li");
     expect(sweRow).not.toBeNull();
     await user.click(within(sweRow!).getByText("Legend and provenance"));
@@ -57,8 +57,8 @@ describe("LayerInspector trust evidence", () => {
       />,
     );
 
-    expect(screen.getAllByText("Needs data")).toHaveLength(7);
-    expect(screen.getAllByRole("checkbox")).toHaveLength(7);
+    expect(screen.getAllByText("Needs data")).toHaveLength(8);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(8);
     expect(screen.getByText("Run the SWE solver to create a surface field.")).toBeInTheDocument();
   });
 
@@ -119,6 +119,47 @@ describe("LayerInspector trust evidence", () => {
     expect(onLayerStateChange).toHaveBeenCalledWith(expect.objectContaining({
       "humanitarian-facilities": expect.objectContaining({ visible: false }),
     }));
+  });
+
+  it("keeps USGS official products visibly separate from modeled output", () => {
+    render(
+      <LayerInspector
+        domain="tsunami"
+        hasSource
+        hasWavefront={false}
+        hasSweField={false}
+        hasMaxField={false}
+        arrivalCount={0}
+        runupCount={0}
+        dartCount={0}
+        hasFallout={false}
+        usgsComparison={{
+          eventId: "us7000test",
+          title: "Test event",
+          eventUrl: "https://earthquake.usgs.gov/earthquakes/eventpage/us7000test",
+          fetchedAtMs: 1,
+          stale: true,
+          pager: { alertLevel: "yellow", maxMmi: 7, reviewStatus: "reviewed" },
+          shakemap: {
+            maxMmi: 7,
+            mapStatus: "RELEASED",
+            reviewStatus: "reviewed",
+            processTimestamp: null,
+            bounds: [140, 36, 144, 40],
+            contours: [{ mmi: 6, color: "#e5383b", points: [[141, 37], [143, 39]] }],
+          },
+        }}
+        layerState={defaultLayerState("tsunami")}
+        timeS={0}
+        onLayerStateChange={vi.fn()}
+        onOpenSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("USGS official comparison")).toBeInTheDocument();
+    expect(screen.getByText("Showing the last event-detail cache from this device.")).toBeInTheDocument();
+    expect(screen.getByText("Comparison product only; not a live warning.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open the cited USGS event" })).toHaveAttribute("href", expect.stringContaining("us7000test"));
   });
 
   it("localizes analytical layers and humanitarian privacy states", () => {

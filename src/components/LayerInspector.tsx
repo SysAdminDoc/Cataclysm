@@ -17,6 +17,7 @@ import { TrustDisclosure } from "./TrustDisclosure";
 import { UiIcon } from "./UiIcon";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
+import type { UsgsOfficialComparison } from "../lib/usgs-earthquakes";
 
 type Props = {
   domain: "tsunami" | "asteroid" | "nuclear";
@@ -33,6 +34,7 @@ type Props = {
   sourceKind?: SourceKind;
   directResult?: HazardResult | null;
   humanitarianState?: HumanitarianFacilityState | null;
+  usgsComparison?: UsgsOfficialComparison | null;
   layerState: LayerState;
   timeS: number;
   onLayerStateChange: (state: LayerState) => void;
@@ -165,6 +167,26 @@ function LayerControls({
   );
 }
 
+function UsgsOfficialDetails({ comparison }: { comparison: UsgsOfficialComparison }) {
+  const { t, formatNumber } = useI18n();
+  const contourCount = comparison.shakemap?.contours.length ?? 0;
+  return (
+    <div className="layer-inspector__usgs-body">
+      <p>{comparison.stale ? t("layers.usgsCached") : t("layers.usgsCurrent")}</p>
+      <dl>
+        {comparison.shakemap && (
+          <div><dt>{t("layers.usgsShakeMap")}</dt><dd>{t("layers.usgsMmiContours", { count: formatNumber(contourCount), mmi: formatNumber(comparison.shakemap.maxMmi, { maximumFractionDigits: 1 }) })}</dd></div>
+        )}
+        {comparison.pager && (
+          <div><dt>{t("layers.usgsPager")}</dt><dd>{t("layers.usgsPagerAlert", { level: comparison.pager.alertLevel.toUpperCase() })}</dd></div>
+        )}
+      </dl>
+      <a href={comparison.eventUrl} target="_blank" rel="noreferrer">{t("layers.usgsOpenEvent")}</a>
+      <small>{t("layers.usgsNotWarning")}</small>
+    </div>
+  );
+}
+
 function HumanitarianFacilityDetails({
   visible,
   state,
@@ -242,6 +264,7 @@ export function LayerInspector({
   sourceKind = null,
   directResult = null,
   humanitarianState = null,
+  usgsComparison = null,
   layerState,
   timeS,
   onLayerStateChange,
@@ -285,6 +308,14 @@ export function LayerInspector({
     {
       id: "humanitarian-facilities", evidenceId: "humanitarian-facilities", label: t("layers.humanitarian"), detail: t("layers.humanitarianDetail"),
       available: runupCount > 0, prerequisite: t("layers.prerequisiteFacilities"), temporal: "result", legendClass: "is-facility",
+    },
+    {
+      id: "usgs-official", evidenceId: "usgs-official", label: t("layers.usgsOfficial"),
+      detail: usgsComparison?.shakemap
+        ? t("layers.usgsOfficialDetail", { count: formatNumber(usgsComparison.shakemap.contours.length) })
+        : t("layers.usgsPagerOnly"),
+      available: Boolean(usgsComparison?.shakemap || usgsComparison?.pager),
+      prerequisite: t("layers.prerequisiteUsgs"), temporal: "static", legendClass: "is-usgs",
     },
     {
       id: "dart-observations", evidenceId: "dart-observations", label: t("layers.dart"),
@@ -345,6 +376,9 @@ export function LayerInspector({
                 state={humanitarianState}
                 onRefresh={onRefreshHumanitarian}
               />
+            )}
+            {descriptor.id === "usgs-official" && descriptor.available && usgsComparison && (
+              <UsgsOfficialDetails comparison={usgsComparison} />
             )}
           </LayerControls>
         ))}

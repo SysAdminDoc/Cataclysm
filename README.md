@@ -153,6 +153,13 @@ Existing tools each do one piece:
   A visible DOI-backed provenance note identifies the remaining default fault
   inputs that require review; the WebView receives no direct NCEI network
   authority and the bundled library continues to work offline.
+- **Recent USGS earthquake import** — installed builds browse the fixed ComCat
+  significant-month feed, validate preferred finite-fault or moment-tensor
+  products, and load complete cited Okada geometry into the scenario builder.
+  Preferred ShakeMap MMI contours and PAGER metadata stay visually separate as
+  an official-product comparison layer. Feed and selected details are cached
+  on-device with a visible stale state; this research catalog is explicitly not
+  a live warning or emergency-information service.
 - **Installed-app scenario links** — `cataclysm://open?scenario=…` and
   `cataclysm://open?preset=…` open the existing desktop app or start it once,
   then pass through the same bounded, fail-closed importer as browser shares.

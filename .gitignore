@@ -80,6 +80,7 @@ pnpm-debug.log*
 !docs/**/*.md
 !Roadmap_Blocked.md
 !CONTRIBUTING.md
+!SECURITY.md
 
 # AI config
 .ai/

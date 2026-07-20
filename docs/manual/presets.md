@@ -20,6 +20,30 @@ values, and the historical-database uncertainty warning. Non-earthquake and
 incomplete records remain visible but cannot be translated into an earthquake
 source.
 
+## Browse recent USGS earthquakes
+
+Installed desktop builds also provide **Browse recent earthquakes** in the
+scenario-library toolbar. It reads the fixed USGS ComCat significant-month feed;
+the WebView cannot request arbitrary USGS URLs. Search and filters operate on a
+validated, bounded list of up to 32 earthquakes with magnitude 5 or greater.
+The last successful feed remains browsable offline and is labelled **Cached
+catalog** with the feed-generation timestamp.
+
+**Load source** fetches the selected event detail and prefers its current USGS
+finite-fault product. When only a moment tensor is available, Cataclysm uses
+nodal plane 1, Wells–Coppersmith dimensions, and an average slip reconstructed
+from scalar moment; those assumptions remain visible in the builder's import
+provenance. Event magnitude, epicentre, depth, strike, dip, rake, slip, length,
+and width seed the Earthquake form. Water depth remains Cataclysm's default and
+must be reviewed before simulation.
+
+If the event includes preferred ShakeMap or PAGER products, **USGS official
+comparison** appears in Layers. ShakeMap MMI contours render independently from
+the Cataclysm SWE field, while the inspector reports the PAGER alert summary,
+product provenance, and cache state. USGS can revise or withdraw preliminary
+products. The browser and layer are research/education tools—not a live warning
+or substitute for local emergency information.
+
 ## Historical events
 
 ### Lake Superior meteotsunami 2025

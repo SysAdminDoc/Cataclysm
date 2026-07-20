@@ -70,6 +70,19 @@ pub async fn ncei_hazel_search(
     crate::ncei_hazel::search(req).await
 }
 
+#[tauri::command]
+pub async fn usgs_recent_earthquakes()
+-> Result<crate::usgs_earthquakes::UsgsRecentEarthquakesResponse, String> {
+    crate::usgs_earthquakes::recent().await
+}
+
+#[tauri::command]
+pub async fn usgs_earthquake_detail(
+    req: crate::usgs_earthquakes::UsgsEarthquakeDetailRequest,
+) -> Result<crate::usgs_earthquakes::UsgsEarthquakeDetail, String> {
+    crate::usgs_earthquakes::detail(req).await
+}
+
 fn render_recording_response(packets: Vec<Vec<u8>>) -> Result<Response, String> {
     let total = packets.iter().try_fold(0_usize, |total, packet| {
         total

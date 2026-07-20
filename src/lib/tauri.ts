@@ -17,6 +17,7 @@ import type {
   SimulateGridResponse,
 } from "../types/scenario";
 import type { HazelEventSearchRequest, HazelEventSearchResponse } from "./ncei-hazel";
+import type { UsgsEarthquakeDetail, UsgsRecentEarthquakesResponse } from "./usgs-earthquakes";
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
 import type {
@@ -416,6 +417,12 @@ export const api = {
   },
   nceiHazelSearch(req: HazelEventSearchRequest) {
     return invoke<HazelEventSearchResponse>("ncei_hazel_search", { req });
+  },
+  usgsRecentEarthquakes() {
+    return invoke<UsgsRecentEarthquakesResponse>("usgs_recent_earthquakes");
+  },
+  usgsEarthquakeDetail(eventId: string) {
+    return invoke<UsgsEarthquakeDetail>("usgs_earthquake_detail", { req: { eventId } });
   },
   simulateGrid(req: {
     source: GeoPoint;

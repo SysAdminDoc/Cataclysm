@@ -565,9 +565,25 @@
 .layer-inspector__legend-mark.is-arrival { height: 2px; background: var(--yellow); }
 .layer-inspector__legend-mark.is-runup { background: linear-gradient(90deg, var(--green), var(--yellow), var(--red)); }
 .layer-inspector__legend-mark.is-facility { width: 8px; height: 8px; background: var(--green); }
+.layer-inspector__legend-mark.is-usgs { height: 2px; background: linear-gradient(90deg, #00b4d8, #f7d038, #e5383b); }
 .layer-inspector__legend-mark.is-dart { width: 8px; height: 8px; background: var(--maroon); }
 .layer-inspector__legend-mark.is-hazard { background: linear-gradient(90deg, var(--yellow), var(--peach), var(--red)); }
 .layer-inspector__legend-mark.is-fallout { background: linear-gradient(90deg, var(--green), var(--yellow)); }
+
+.layer-inspector__usgs-body {
+  display: grid;
+  gap: 7px;
+  margin: 7px 0 0 28px;
+  padding-left: 10px;
+  border-left: 2px solid color-mix(in srgb, var(--teal) 55%, transparent);
+}
+.layer-inspector__usgs-body p,
+.layer-inspector__usgs-body small { margin: 0; color: var(--subtext); font-size: 11px; line-height: 1.4; }
+.layer-inspector__usgs-body dl { display: grid; gap: 4px; margin: 0; }
+.layer-inspector__usgs-body dl > div { display: flex; justify-content: space-between; gap: 8px; }
+.layer-inspector__usgs-body dt { color: var(--overlay); font-size: 11px; }
+.layer-inspector__usgs-body dd { margin: 0; color: var(--text); font-size: 11px; text-align: right; }
+.layer-inspector__usgs-body a { color: var(--sapphire); font-size: 11px; font-weight: 700; }
 
 .layer-inspector__facility-body {
   margin-left: 29px;

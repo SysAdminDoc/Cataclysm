@@ -31,6 +31,7 @@ export type EvidenceLayerId =
   | "arrival-isochrones"
   | "coastal-runup"
   | "humanitarian-facilities"
+  | "usgs-official"
   | "dart-observations"
   | "hazard-rings"
   | "fallout-plume";
@@ -304,6 +305,28 @@ export function buildLayerEvidence(
         citations: [
           { label: "© OpenStreetMap contributors (ODbL)", url: "https://www.openstreetmap.org/copyright" },
           { label: "Overpass API documentation", url: "https://wiki.openstreetmap.org/wiki/Overpass_API" },
+        ],
+      };
+    case "usgs-official":
+      return {
+        ...common,
+        title: "USGS official-product comparison layer",
+        sourceTitle: "USGS ComCat preferred ShakeMap and PAGER products",
+        model: "Observed/inferred intensity contours and impact summary",
+        confidence: "Official product; may be preliminary or revised",
+        tone: "reference",
+        assumptions: [
+          "The preferred ComCat products at fetch time are shown without reinterpretation.",
+          "ShakeMap MMI contours are a comparison surface, not Cataclysm solver output.",
+        ],
+        limitations: [
+          "ShakeMap and PAGER products can change as observations and analyses are updated.",
+          "PAGER estimates are not a live warning and do not replace local emergency information.",
+          EDUCATIONAL_LIMITATION,
+        ],
+        citations: [
+          { label: "USGS ShakeMap", url: "https://earthquake.usgs.gov/data/shakemap/" },
+          { label: "USGS PAGER", url: "https://earthquake.usgs.gov/data/pager/" },
         ],
       };
     case "dart-observations":

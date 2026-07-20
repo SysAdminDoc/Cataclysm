@@ -97,6 +97,29 @@ Perform one serialized NASA/JPL SSD request outside the WebView.
   timeout; redirects denied; response capped at 1 MiB; unknown parameters fail
   before network access. The renderer CSP intentionally grants no JPL origin.
 
+### `usgs_recent_earthquakes`
+Fetch the fixed USGS ComCat significant-month GeoJSON feed through the desktop
+backend.
+- **Input:** none
+- **Output:** generated timestamp, fixed source URL, and up to 32 validated
+  magnitude-5+ earthquake summaries with product-availability flags
+- **Limits:** serialized request; redirects denied; 5-second connect and
+  15-second total timeout; 2 MiB response cap; the renderer has no direct USGS
+  network authority
+
+### `usgs_earthquake_detail`
+Fetch one validated ComCat event and its preferred official products.
+- **Input:** `{ eventId }`, restricted to 2–32 lowercase ASCII letters/digits;
+  the backend constructs the fixed USGS detail URL
+- **Output:** event metadata, optional complete Okada source mapping, optional
+  PAGER summary, and optional bounded ShakeMap MMI contours
+- **Mapping:** preferred finite-fault geometry is used when present; otherwise
+  preferred moment-tensor nodal plane 1 plus Wells–Coppersmith dimensions and
+  scalar-moment average slip are returned with explicit assumptions
+- **Limits:** only an exact USGS PDL `download/cont_mmi.json` URL may be
+  followed; redirects denied; detail/contour responses capped at 4/2 MiB;
+  geometry capped at 512 contours and 24,000 points
+
 ### `lamb_wave_sample`
 Atmospheric Lamb-wave properties at a given distance from source.
 - **Input:** `LambWaveSampleRequest` — source params + receiver lat/lon

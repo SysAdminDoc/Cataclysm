@@ -9,7 +9,8 @@ async function seedWorkspace(page: Page, theme: (typeof THEMES)[number]) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript((selectedTheme) => {
     const now = JSON.stringify(new Date().toISOString());
-    localStorage.setItem("tsunamisim._settings_schema_version", "5");
+    localStorage.setItem("tsunamisim._settings_schema_version", "6");
+    localStorage.setItem("tsunamisim.workspace_mode", JSON.stringify("advanced"));
     localStorage.setItem("tsunamisim.launch_experience_seen_at", now);
     localStorage.setItem("tsunamisim.disclaimer_acknowledged_at", now);
     localStorage.setItem("tsunamisim.tour_completed_at", now);
@@ -268,8 +269,9 @@ for (const theme of THEMES) {
         await coordinates.getByLabel("Longitude").fill("139.76");
         await coordinates.getByRole("button", { name: "Go" }).click();
         await page.getByRole("tab", { name: "Results" }).click();
-        await expect(page.getByText(/direct hazard physics requires the desktop app/i)).toBeVisible();
-        await expect(page.locator(".hazard__results")).toHaveCount(0);
+        await expect(page.locator(".hazard__results")).toBeVisible();
+        await expect(page.getByText("Hazard results", { exact: true })).toBeVisible();
+        await expect(page.getByText("Ready", { exact: true }).first()).toBeVisible();
         await assertAccessiblePage(page);
       });
     }

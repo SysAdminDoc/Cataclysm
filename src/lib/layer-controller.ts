@@ -5,6 +5,7 @@ export const LAYER_IDS = [
   "arrival-isochrones",
   "coastal-runup",
   "humanitarian-facilities",
+  "usgs-official",
   "dart-observations",
   "hazard-rings",
   "fallout-plume",
@@ -47,6 +48,7 @@ const MAX_SCENARIOS = 64;
 const DOMAIN_ORDERS: Record<LayerDomain, readonly LayerId[]> = {
   tsunami: [
     "humanitarian-facilities",
+    "usgs-official",
     "dart-observations",
     "coastal-runup",
     "arrival-isochrones",

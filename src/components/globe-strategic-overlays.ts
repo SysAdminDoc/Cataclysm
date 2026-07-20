@@ -4,6 +4,7 @@ import type { FireballEvent } from "../types/jpl";
 import { WW3_SIDE_COLORS, type Ww3ExchangePlan, type Ww3TargetType } from "../lib/ww3";
 import { mirvSpreadCircle, type MirvPreview } from "../lib/mirv";
 import type { HumanitarianFacility, HumanitarianFacilityCategory } from "../lib/osm-facilities";
+import type { UsgsOfficialComparison } from "../lib/usgs-earthquakes";
 
 function removePrimitives(viewer: Cesium.Viewer, collections: readonly Cesium.PrimitiveCollection[]) {
   if (viewer.isDestroyed()) return;
@@ -126,6 +127,30 @@ export function installHumanitarianFacilityOverlay(
   return () => removePrimitives(viewer, [points]);
 }
 
+export function installUsgsOfficialOverlay(
+  viewer: Cesium.Viewer,
+  comparison: UsgsOfficialComparison | null | undefined,
+  opacity = 1,
+  order = 0,
+) {
+  const contours = comparison?.shakemap?.contours ?? [];
+  if (viewer.isDestroyed() || contours.length === 0) return undefined;
+  const lines = viewer.scene.primitives.add(new Cesium.PolylineCollection());
+  const altitudeM = 130 + Math.max(0, 12 - order) * 20;
+  for (const [index, contour] of contours.entries()) {
+    lines.add({
+      id: `usgs-shakemap:${comparison?.eventId}:${index}`,
+      positions: contour.points.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat, altitudeM)),
+      width: Math.max(1.25, Math.min(3, 1 + contour.mmi * 0.18)),
+      material: Cesium.Material.fromType("Color", {
+        color: Cesium.Color.fromCssColorString(contour.color).withAlpha(0.82 * opacity),
+      }),
+    });
+  }
+  viewer.scene.requestRender();
+  return () => removePrimitives(viewer, [lines]);
+}
+
 export function useStrategicGlobeOverlays({
   viewerRef,
   viewerEpoch,
@@ -135,6 +160,9 @@ export function useStrategicGlobeOverlays({
   humanitarianFacilities,
   humanitarianOpacity = 1,
   humanitarianOrder = 0,
+  usgsComparison,
+  usgsOpacity = 1,
+  usgsOrder = 0,
 }: {
   viewerRef: RefObject<Cesium.Viewer | null>;
   viewerEpoch: number;
@@ -144,6 +172,9 @@ export function useStrategicGlobeOverlays({
   humanitarianFacilities?: readonly HumanitarianFacility[];
   humanitarianOpacity?: number;
   humanitarianOrder?: number;
+  usgsComparison?: UsgsOfficialComparison | null;
+  usgsOpacity?: number;
+  usgsOrder?: number;
 }) {
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -168,4 +199,10 @@ export function useStrategicGlobeOverlays({
     if (!viewer) return;
     return installHumanitarianFacilityOverlay(viewer, humanitarianFacilities ?? [], humanitarianOpacity, humanitarianOrder);
   }, [humanitarianFacilities, humanitarianOpacity, humanitarianOrder, viewerEpoch, viewerRef]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    return installUsgsOfficialOverlay(viewer, usgsComparison, usgsOpacity, usgsOrder);
+  }, [usgsComparison, usgsOpacity, usgsOrder, viewerEpoch, viewerRef]);
 }
