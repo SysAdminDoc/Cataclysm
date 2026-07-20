@@ -111,9 +111,14 @@ fn write_scientific_netcdf(
 ) -> Result<(), String> {
     let cells = validate_export_shape(grid)?;
     let [peak_m, t_of_max_s, arrival_s, energy_m2s] = max_field.scientific_fields();
-    if [peak_m, t_of_max_s, arrival_s, energy_m2s]
-        .iter()
-        .any(|field| field.len() != cells)
+    let [max_depth_m, max_speed_ms, max_momentum_flux, min_depth_m, t_of_max_speed_s] =
+        max_field.extended_scientific_fields();
+    if [
+        peak_m, t_of_max_s, arrival_s, energy_m2s, max_depth_m, max_speed_ms, max_momentum_flux,
+        min_depth_m, t_of_max_speed_s,
+    ]
+    .iter()
+    .any(|field| field.len() != cells)
     {
         return Err("scientific export rejected: max-field shape does not match the grid".into());
     }
@@ -354,6 +359,51 @@ fn write_scientific_netcdf(
         "m2 s",
         None,
     )?;
+    add_field(
+        &mut data_set,
+        "maximum_total_flow_depth",
+        grid_dims,
+        "maximum total water depth (bathymetry plus displacement)",
+        "m",
+        None,
+    )?;
+    add_field(
+        &mut data_set,
+        "maximum_current_speed",
+        grid_dims,
+        "maximum depth-averaged current speed",
+        "m s-1",
+        None,
+    )?;
+    add_field(
+        &mut data_set,
+        "maximum_specific_momentum_flux",
+        grid_dims,
+        "maximum specific momentum flux (total depth times speed squared)",
+        "m3 s-2",
+        None,
+    )?;
+    add_field(
+        &mut data_set,
+        "minimum_total_flow_depth",
+        grid_dims,
+        "minimum total water depth (maximum drawdown indicator)",
+        "m",
+        None,
+    )?;
+    data_set
+        .get_var_mut("minimum_total_flow_depth")
+        .ok_or_else(|| "NetCDF drawdown variable is unavailable".to_string())?
+        .add_attr_f32("_FillValue", vec![NC_FILL_F32])
+        .map_err(|error| format!("failed to add NetCDF drawdown fill value: {error}"))?;
+    add_field(
+        &mut data_set,
+        "time_of_maximum_current_speed",
+        grid_dims,
+        "time of maximum depth-averaged current speed",
+        "s",
+        None,
+    )?;
 
     let mut writer = FileWriter::open(path)
         .map_err(|error| format!("failed to create NetCDF export: {error:?}"))?;
@@ -387,24 +437,29 @@ fn write_scientific_netcdf(
         ("maximum_absolute_sea_surface_height", peak_m),
         ("time_of_maximum_sea_surface_height", t_of_max_s),
         ("time_integrated_squared_sea_surface_height", energy_m2s),
+        ("maximum_total_flow_depth", max_depth_m),
+        ("maximum_current_speed", max_speed_ms),
+        ("maximum_specific_momentum_flux", max_momentum_flux),
+        ("time_of_maximum_current_speed", t_of_max_speed_s),
     ] {
         writer
             .write_var_f32(name, &f32_field(values))
             .map_err(|error| format!("failed to write NetCDF variable '{name}': {error:?}"))?;
     }
-    let arrival: Vec<f32> = arrival_s
-        .iter()
-        .map(|value| {
-            if value.is_finite() {
-                *value as f32
-            } else {
-                NC_FILL_F32
-            }
-        })
-        .collect();
-    writer
-        .write_var_f32("first_arrival_time", &arrival)
-        .map_err(|error| format!("failed to write NetCDF arrival times: {error:?}"))?;
+    // Arrival time and drawdown carry non-finite sentinels for cells the wave
+    // never reached / never wet; map those to the CF fill value.
+    for (name, values) in [
+        ("first_arrival_time", arrival_s),
+        ("minimum_total_flow_depth", min_depth_m),
+    ] {
+        let filled: Vec<f32> = values
+            .iter()
+            .map(|value| if value.is_finite() { *value as f32 } else { NC_FILL_F32 })
+            .collect();
+        writer
+            .write_var_f32(name, &filled)
+            .map_err(|error| format!("failed to write NetCDF variable '{name}': {error:?}"))?;
+    }
     writer
         .close()
         .map_err(|error| format!("failed to finalize NetCDF export: {error:?}"))
@@ -804,6 +859,20 @@ mod tests {
         assert!((eta[[0, 1, 1]] + 0.5).abs() < 1.0e-6);
         let arrival: ndarray::ArrayD<f32> = file.read_variable("first_arrival_time").unwrap();
         assert_eq!(arrival[[1, 2]], NC_FILL_F32);
+        // Extended inundation-intensity products (2D lat/lon max-fields).
+        let speed: ndarray::ArrayD<f32> = file.read_variable("maximum_current_speed").unwrap();
+        assert_eq!(speed.shape(), &[2, 3]);
+        assert!((speed[[0, 0]] - 1.25f32.hypot(0.75)).abs() < 1.0e-4);
+        let flow_depth: ndarray::ArrayD<f32> =
+            file.read_variable("maximum_total_flow_depth").unwrap();
+        assert!((flow_depth[[0, 0]] - 1000.1).abs() < 1.0e-2);
+        let momentum: ndarray::ArrayD<f32> =
+            file.read_variable("maximum_specific_momentum_flux").unwrap();
+        assert!((momentum[[0, 0]] - 1000.1 * 2.125).abs() < 1.0e-1);
+        let drawdown: ndarray::ArrayD<f32> =
+            file.read_variable("minimum_total_flow_depth").unwrap();
+        // Every cell is observed at t=0, so none carry the never-wet fill value.
+        assert!(drawdown.iter().all(|value| value.is_finite()));
         let lat: ndarray::ArrayD<f64> = file.read_variable("latitude").unwrap();
         let lon: ndarray::ArrayD<f64> = file.read_variable("longitude").unwrap();
         assert_eq!(lat.as_slice().unwrap(), &[-0.5, 0.5]);
@@ -866,6 +935,11 @@ mod tests {
         );
         let values: Vec<f32> = eta.retrieve_array_subset(&eta.subset_all()).unwrap();
         assert!((values[4] + 0.5).abs() < 1.0e-6);
+        let speed = zarrs::array::Array::open(store.clone(), "/maximum_current_speed").unwrap();
+        assert_eq!(speed.shape(), &[2, 3]);
+        assert_eq!(speed.attributes()["units"], "m s-1");
+        let speed_values: Vec<f32> = speed.retrieve_array_subset(&speed.subset_all()).unwrap();
+        assert!((speed_values[0] - 1.25f32.hypot(0.75)).abs() < 1.0e-4);
         let longitude = zarrs::array::Array::open(store, "/longitude").unwrap();
         assert_eq!(longitude.shape(), &[3]);
         assert_eq!(longitude.attributes()["units"], "degrees_east");

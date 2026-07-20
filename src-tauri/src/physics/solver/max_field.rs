@@ -49,22 +49,12 @@ pub struct MaxFieldProduct {
     pub field_tiles: Vec<MaxFieldTile>,
     /// First-arrival isochrones at regular intervals.
     pub isochrones: Vec<Isochrone>,
-    /// Maximum flow depth (H = h + η) per cell (m).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub max_depth_m: Vec<f64>,
-    /// Maximum current speed per cell (m/s).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub max_speed_ms: Vec<f64>,
-    /// Maximum momentum flux H·U² per cell (m³/s²).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub max_momentum_flux_m3s2: Vec<f64>,
-    /// Minimum total depth (drawdown) per cell (m). +∞ sentinel means the
-    /// cell was never observed wet.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub min_depth_m: Vec<f64>,
-    /// Time of maximum speed per cell (s).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub t_of_max_speed_s: Vec<f64>,
+    // NOTE: the extended products (max flow depth, speed, momentum flux,
+    // drawdown, time-of-max-speed) are accumulated in `MaxFieldAccumulator`
+    // but deliberately NOT serialized here. Like peak/arrival/energy, raw
+    // per-cell arrays stay off the IPC payload (rendered as PNGs or read
+    // from the accumulator for exports) to avoid multi-MB result bloat.
+    // Surfacing them is tracked in ROADMAP.
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -112,6 +102,19 @@ impl MaxFieldAccumulator {
             &self.t_of_max_s,
             &self.arrival_s,
             &self.energy_m2s,
+        ]
+    }
+
+    /// Extended inundation-intensity products, in the order:
+    /// max flow depth (m), max speed (m/s), max momentum flux (m³/s²),
+    /// min depth / drawdown (m, +∞ where never wet), time of max speed (s).
+    pub(crate) fn extended_scientific_fields(&self) -> [&[f64]; 5] {
+        [
+            &self.max_depth_m,
+            &self.max_speed_ms,
+            &self.max_momentum_flux_m3s2,
+            &self.min_depth_m,
+            &self.t_of_max_speed_s,
         ]
     }
 
@@ -344,11 +347,6 @@ impl MaxFieldAccumulator {
             energy_png_b64: energy_png,
             field_tiles,
             isochrones,
-            max_depth_m: self.max_depth_m,
-            max_speed_ms: self.max_speed_ms,
-            max_momentum_flux_m3s2: self.max_momentum_flux_m3s2,
-            min_depth_m: self.min_depth_m,
-            t_of_max_speed_s: self.t_of_max_speed_s,
         }
     }
 }

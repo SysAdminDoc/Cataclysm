@@ -243,10 +243,10 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P2
 
-- [ ] P2 — Surface extended max-field products in exports and Inspect/Results
-  Why: `MaxFieldAccumulator` now computes max flow depth, speed, momentum flux, drawdown (min depth), and time-of-max-speed and serializes them in the `MaxFieldProduct` IPC payload, but no consumer reads them — they are absent from the NetCDF/Zarr writers and the Inspect/Results panels.
-  Where: `src-tauri/src/commands/scientific_export.rs` (+ zarr.rs) add CF variables (units, fill values — note `min_depth_m` uses +∞ for never-wet cells), `src/components/ResultsPanel.tsx`/`PointProbePanel.tsx`, `src/lib/scientific-export.ts` types, export contract tests.
-  Acceptance: the five fields appear in NetCDF and Zarr with correct CF units/standard names and fill values; a point probe reports max flow depth/speed/momentum-flux/drawdown at a coordinate; export contract tests cover the new variables.
+- [ ] P2 — Surface extended max-field products in the Inspect/Results panels
+  Why: max flow depth, speed, specific momentum flux, drawdown, and time-of-max-speed are now computed every step and written to the NetCDF/Zarr exports, but the interactive UI cannot display them — a point probe still reports only wave height/runup, not flow depth/speed/momentum flux/drawdown.
+  Where: `src/components/PointProbePanel.tsx`/`ResultsPanel.tsx`; needs an IPC path that returns the per-cell extended values at a picked coordinate without shipping the full arrays (e.g. a `max_field_probe(lat, lon)` command), plus a Layers overlay option.
+  Acceptance: a point probe reports max flow depth, speed, specific momentum flux, and drawdown at a coordinate with units; the values match the exported NetCDF/Zarr; no full-grid array is added to the result IPC payload.
   Complexity: M
 
 - [ ] P2 — Surface the deterministic WebCodecs video export in the UI

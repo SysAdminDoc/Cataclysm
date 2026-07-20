@@ -277,5 +277,5 @@ pub async fn quick_eta_preview(
 
     tauri::async_runtime::spawn_blocking(move || compute_quick_eta(&req, &plan))
         .await
-        .map_err(|e| format!("Quick ETA task panicked: {e}"))?
+        .map_err(|e| format!("quick_eta_preview worker failed: {e}"))?
 }

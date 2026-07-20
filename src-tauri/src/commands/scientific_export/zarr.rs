@@ -127,12 +127,21 @@ pub(super) fn write_scientific_zarr(
 ) -> Result<ZarrArtifactStats, String> {
     let cells = validate_export_shape(grid)?;
     let [peak_m, t_of_max_s, arrival_s, energy_m2s] = max_field.scientific_fields();
-    if [peak_m, t_of_max_s, arrival_s, energy_m2s]
-        .iter()
-        .any(|field| field.len() != cells)
+    let [max_depth_m, max_speed_ms, max_momentum_flux, min_depth_m, t_of_max_speed_s] =
+        max_field.extended_scientific_fields();
+    if [
+        peak_m, t_of_max_s, arrival_s, energy_m2s, max_depth_m, max_speed_ms, max_momentum_flux,
+        min_depth_m, t_of_max_speed_s,
+    ]
+    .iter()
+    .any(|field| field.len() != cells)
     {
         return Err("scientific export rejected: max-field shape does not match the grid".into());
     }
+    let drawdown: Vec<f32> = min_depth_m
+        .iter()
+        .map(|value| if value.is_finite() { *value as f32 } else { f32::NAN })
+        .collect();
 
     let canonical_request = serde_json::to_vec(req)
         .map_err(|error| format!("failed to serialize Zarr provenance: {error}"))?;
@@ -365,6 +374,46 @@ pub(super) fn write_scientific_zarr(
             f32_field(energy_m2s),
             "time integral of squared sea-surface displacement",
             "m2 s",
+            None,
+            vec![],
+        ),
+        (
+            "maximum_total_flow_depth",
+            f32_field(max_depth_m),
+            "maximum total water depth (bathymetry plus displacement)",
+            "m",
+            None,
+            vec![("cell_methods", json!("time: maximum"))],
+        ),
+        (
+            "maximum_current_speed",
+            f32_field(max_speed_ms),
+            "maximum depth-averaged current speed",
+            "m s-1",
+            None,
+            vec![("cell_methods", json!("time: maximum"))],
+        ),
+        (
+            "maximum_specific_momentum_flux",
+            f32_field(max_momentum_flux),
+            "maximum specific momentum flux (total depth times speed squared)",
+            "m3 s-2",
+            None,
+            vec![("cell_methods", json!("time: maximum"))],
+        ),
+        (
+            "minimum_total_flow_depth",
+            drawdown,
+            "minimum total water depth (maximum drawdown indicator)",
+            "m",
+            None,
+            vec![("comment", json!("NaN indicates a cell that was never wet."))],
+        ),
+        (
+            "time_of_maximum_current_speed",
+            f32_field(t_of_max_speed_s),
+            "time of maximum depth-averaged current speed",
+            "s",
             None,
             vec![],
         ),
