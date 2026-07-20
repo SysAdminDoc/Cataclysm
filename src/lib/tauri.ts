@@ -455,7 +455,8 @@ export const api = {
     colormap?: string;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
   }) {
-    return invoke<{ bbox: [number, number, number, number]; nx: number; ny: number; arrival_s: number[]; elapsed_wall_ms: number }>("quick_eta_preview", { req });
+    // arrival_s carries null for cells the wave never reached within the run.
+    return invoke<{ bbox: [number, number, number, number]; nx: number; ny: number; arrival_s: Array<number | null>; elapsed_wall_ms: number }>("quick_eta_preview", { req });
   },
   /** F4-01 — Lightweight GPU-availability probe. Returns one of:
    *  "available", "no-adapter", or "feature-off". See the Rust

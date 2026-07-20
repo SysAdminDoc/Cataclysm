@@ -361,3 +361,83 @@ fn earthquake_validation_enforces_angular_bounds() {
         .is_err()
     );
 }
+
+#[test]
+fn quick_eta_arrival_grows_with_distance_from_source() {
+    // A centred Gaussian on uniform depth radiates outward, so first-arrival
+    // time must increase monotonically with distance from the source cell.
+    let mut request = source_grid_request(None);
+    request.source = good_loc();
+    request.initial_amplitude_m = 1.0;
+    request.source_sigma_m = 40_000.0;
+    request.mean_depth_m = 4_000.0;
+    request.box_half_size_deg = 6.0;
+    request.cells_per_deg = 6.0;
+    request.t_end_s = 60.0 * 60.0;
+    let plan = SimulationGridPlan::from_request(&request).expect("plan");
+    let result = compute_quick_eta(&request, &plan).expect("quick eta");
+
+    assert_eq!(result.arrival_s.len(), (result.nx * result.ny) as usize);
+    let nx = result.nx as usize;
+    let ny = result.ny as usize;
+    let (ci, cj) = (nx / 2, ny / 2);
+
+    // Gather (distance-from-source, arrival) for every propagated cell (t > 0)
+    // and confirm a strong positive correlation: the wave arrives later the
+    // farther a cell is from the source. This is robust to the coarse grid's
+    // exact size and sponge rim, unlike fixed ring radii.
+    let mut samples: Vec<(f64, f64)> = Vec::new();
+    for j in 0..ny {
+        for i in 0..nx {
+            if let Some(t) = result.arrival_s[j * nx + i] {
+                if t <= 0.0 {
+                    continue;
+                }
+                let d = (((i as f64) - ci as f64).powi(2)
+                    + ((j as f64) - cj as f64).powi(2))
+                .sqrt();
+                samples.push((d, t));
+            }
+        }
+    }
+    assert!(
+        samples.len() > 50,
+        "the coarse solve must propagate to many cells (got {})",
+        samples.len()
+    );
+    let n = samples.len() as f64;
+    let mean_d = samples.iter().map(|s| s.0).sum::<f64>() / n;
+    let mean_t = samples.iter().map(|s| s.1).sum::<f64>() / n;
+    let cov = samples.iter().map(|s| (s.0 - mean_d) * (s.1 - mean_t)).sum::<f64>();
+    let var_d = samples.iter().map(|s| (s.0 - mean_d).powi(2)).sum::<f64>();
+    let var_t = samples.iter().map(|s| (s.1 - mean_t).powi(2)).sum::<f64>();
+    let corr = cov / (var_d.sqrt() * var_t.sqrt());
+    assert!(
+        corr > 0.7,
+        "arrival time must grow with distance from the source (corr = {corr:.3})"
+    );
+}
+
+#[test]
+fn quick_eta_marks_unreached_cells_as_none() {
+    // A very short run leaves outer cells unreached; those must serialize as
+    // `None` (JSON null), never a bogus 0 s or an infinity.
+    let mut request = source_grid_request(None);
+    request.source = good_loc();
+    request.initial_amplitude_m = 1.0;
+    request.source_sigma_m = 20_000.0;
+    request.mean_depth_m = 4_000.0;
+    request.box_half_size_deg = 4.0;
+    request.cells_per_deg = 4.0;
+    request.t_end_s = 30.0;
+    let plan = SimulationGridPlan::from_request(&request).expect("plan");
+    let result = compute_quick_eta(&request, &plan).expect("quick eta");
+    assert!(
+        result.arrival_s.iter().any(|a| a.is_none()),
+        "a 30 s run must leave far cells unreached"
+    );
+    assert!(
+        result.arrival_s.iter().flatten().all(|&t| t.is_finite() && t >= 0.0),
+        "reached cells must carry a finite, non-negative arrival time"
+    );
+}

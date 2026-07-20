@@ -212,8 +212,54 @@ pub struct QuickEtaPreviewResult {
     pub bbox: [f64; 4],
     pub nx: u32,
     pub ny: u32,
-    pub arrival_s: Vec<f64>,
+    /// Per-cell first-arrival time in seconds. `None` for cells the wave never
+    /// reached within the run (serialized as JSON `null`), which keeps the
+    /// "never arrived" state distinct from a genuine 0 s arrival at the source.
+    pub arrival_s: Vec<Option<f64>>,
     pub elapsed_wall_ms: u64,
+}
+
+/// Coarse linear-mode first-arrival solve. Synchronous and side-effect-free so
+/// it is unit-testable; the Tauri command wraps it on a blocking worker.
+pub(crate) fn compute_quick_eta(
+    req: &SimulateGridRequest,
+    plan: &SimulationGridPlan,
+) -> Result<QuickEtaPreviewResult, String> {
+    let start = std::time::Instant::now();
+    let coarse_cell_deg = plan.cell_deg * 2.0;
+    let mut grid = SwGrid::new(
+        plan.west, plan.south, plan.east, plan.north,
+        coarse_cell_deg, coarse_cell_deg,
+    );
+    grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
+    inject_source_initial_field(&mut grid, req)?;
+
+    let dt = grid.recommended_dt_s(0.4);
+    let stepper =
+        TimeStepper::new(dt).with_mode(crate::physics::solver::SolverMode::Linear);
+    let n_steps = ((req.t_end_s / dt).ceil() as usize).min(50_000);
+    let threshold = MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
+    let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, threshold);
+    // Observe every step so first-arrival times carry the wavefront gradient;
+    // arrival resolution equals the observe cadence, and on this coarse
+    // (half-resolution, linear) grid a per-step observe is cheap.
+    acc.observe(&grid);
+    for _ in 0..n_steps {
+        stepper.step(&mut grid, 1);
+        acc.observe(&grid);
+    }
+
+    let [_, _, arrival, _] = acc.scientific_fields();
+    Ok(QuickEtaPreviewResult {
+        bbox: [plan.west, plan.south, plan.east, plan.north],
+        nx: grid.nx as u32,
+        ny: grid.ny as u32,
+        arrival_s: arrival
+            .iter()
+            .map(|&t| if t.is_finite() { Some(t) } else { None })
+            .collect(),
+        elapsed_wall_ms: start.elapsed().as_millis() as u64,
+    })
 }
 
 #[tauri::command]
@@ -225,45 +271,11 @@ pub async fn quick_eta_preview(
     let coarse_cell_deg = plan.cell_deg * 2.0;
     let coarse_nx = ((plan.east - plan.west) / coarse_cell_deg).ceil() as usize;
     let coarse_ny = ((plan.north - plan.south) / coarse_cell_deg).ceil() as usize;
-    if coarse_nx * coarse_ny > 500_000 {
+    if coarse_nx.saturating_mul(coarse_ny) > 500_000 {
         return Err("Quick ETA grid too large for preview".to_string());
     }
 
-    tauri::async_runtime::spawn_blocking(move || {
-        let start = std::time::Instant::now();
-        let mut grid = SwGrid::new(
-            plan.west, plan.south, plan.east, plan.north,
-            coarse_cell_deg, coarse_cell_deg,
-        );
-        grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
-        inject_source_initial_field(&mut grid, &req)?;
-
-        let dt = grid.recommended_dt_s(0.4);
-        let stepper = TimeStepper::new(dt)
-            .with_mode(crate::physics::solver::SolverMode::Linear);
-        let n_steps = ((req.t_end_s / dt).ceil() as usize).min(50_000);
-        let threshold = MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
-        let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, threshold);
-        acc.observe(&grid);
-        stepper.step(&mut grid, n_steps.min(1000));
-        acc.observe(&grid);
-        for batch in 1..((n_steps / 1000) + 1) {
-            let remaining = n_steps.saturating_sub(batch * 1000);
-            if remaining == 0 { break; }
-            stepper.step(&mut grid, remaining.min(1000));
-            acc.observe(&grid);
-        }
-
-        let [_, _, arrival, _] = acc.scientific_fields();
-        let elapsed = start.elapsed().as_millis() as u64;
-        Ok(QuickEtaPreviewResult {
-            bbox: [plan.west, plan.south, plan.east, plan.north],
-            nx: grid.nx as u32,
-            ny: grid.ny as u32,
-            arrival_s: arrival.to_vec(),
-            elapsed_wall_ms: elapsed,
-        })
-    })
-    .await
-    .map_err(|e| format!("Quick ETA task panicked: {e}"))?
+    tauri::async_runtime::spawn_blocking(move || compute_quick_eta(&req, &plan))
+        .await
+        .map_err(|e| format!("Quick ETA task panicked: {e}"))?
 }

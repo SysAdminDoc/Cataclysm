@@ -243,6 +243,18 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P2
 
+- [ ] P2 — Surface the Quick ETA preview in the UI
+  Why: the `quick_eta_preview` IPC command and typed `api.quickEtaPreview` wrapper exist and are tested, but nothing calls them yet — the coarse first-arrival map is not rendered anywhere.
+  Where: `src/components/SwePlayback.tsx` (a "Quick ETA" action), a new arrival-time preview layer in `src/render/cesium/**` / `Globe.tsx`, `src/lib/tauri.ts` (wrapper already present).
+  Acceptance: a Quick ETA action renders the coarse arrival map as a clearly-labelled non-authoritative preview distinct from validated max-field isochrones; the full nonlinear run stays the reproducible/exported product.
+  Complexity: M
+
+- [ ] P2 — Keep globe inspect responsive during heavy playback (real async pick)
+  Why: `pickEllipsoid` is a cheap analytic pick that is fine today; Cesium's only async pick (`scene.pickAsync`) resolves a *feature object*, not a ground coordinate, so it does not fit the inspect-coordinate use case. A genuine improvement needs either off-thread coordinate picking or throttling inspect during playback — not a drop-in swap. (A prior `globe.pick(ray)` swap was reverted as a non-improvement.)
+  Where: `src/render/cesium/cesium-interaction-host.ts`, `src/components/Globe.tsx`.
+  Acceptance: inspect during 60-frame playback returns a coordinate without a measurable animation stall, verified against the current `pickEllipsoid` baseline; picking accuracy unchanged.
+  Complexity: S
+
 - [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
   Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
   Evidence: Cesium June/April 2026 releases https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/ and https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (all ≤ pinned 1.143); overlay rendering in `src/render/cesium/**`, `src/components/Globe.tsx`.

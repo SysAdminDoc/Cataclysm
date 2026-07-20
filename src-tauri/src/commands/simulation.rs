@@ -11,6 +11,8 @@ mod stream;
 
 pub(crate) use dispatch::*;
 pub(crate) use model::*;
+#[cfg(test)]
+pub(crate) use run::compute_quick_eta;
 pub(crate) use stream::*;
 
 pub use model::{SimulateGridRequest, SimulateGridResponse, SimulationRunLifecycle};
