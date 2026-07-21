@@ -35,6 +35,7 @@ fn main() {
         "simulate_nuclear_hazard_render",
         "probe_direct_hazard",
         "nuclear_shelter_advisor",
+        "fallout_dose_probe",
         "asteroid_result_visuals",
         "jpl_api_request",
         "ncei_hazel_search",

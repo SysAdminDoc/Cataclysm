@@ -122,6 +122,54 @@ export interface NuclearShelterReport {
   limitations: string[];
 }
 
+export interface FalloutDoseInput {
+  yieldKt: number;
+  fissionFraction: number;
+  downwindKm: number;
+  crosswindKm: number;
+  windSpeedKmh: number;
+  selectedTimeH: number;
+}
+
+export interface FalloutCitation {
+  label: string;
+  url: string;
+}
+
+export interface FalloutDoseSample {
+  timeH: number;
+  doseRateSvH: number;
+  doseRateMinSvH: number;
+  doseRateMaxSvH: number;
+  cumulativeDoseSv: number;
+  cumulativeDoseMinSv: number;
+  cumulativeDoseMaxSv: number;
+}
+
+export interface FalloutShelterCurve {
+  shelterType: string;
+  exposureFraction: number;
+  selected: FalloutDoseSample;
+  points: FalloutDoseSample[];
+}
+
+export interface FalloutDoseReport {
+  model: string;
+  fieldClass: string;
+  downwindKm: number;
+  crosswindKm: number;
+  windSpeedKmh: number;
+  windShearMphPerKft: number;
+  arrivalTimeH: number;
+  hPlus1DoseRateSvH: number;
+  selectedTimeH: number;
+  shelterCurves: FalloutShelterCurve[];
+  citations: FalloutCitation[];
+  assumptions: string[];
+  uncertainty: string[];
+  disclaimer: string;
+}
+
 export interface AsteroidTrajectoryPoint {
   altitude: number;
   velocity: number;

@@ -24,6 +24,11 @@ pub mod constants;
 pub mod direct_hazard;
 #[cfg(not(feature = "browser-wasm"))]
 pub mod direct_hazard_probe;
+// Early-fallout screening (WSEG-10 H+1 field + Glasstone-Dolan t^-1.2 decay).
+// Desktop-only: it is a point-sampled dose report surfaced through the nuclear
+// results panel and has no place in the browser-preview physics surface.
+#[cfg(not(feature = "browser-wasm"))]
+pub mod fallout;
 pub mod asteroid;
 pub mod nuclear;
 pub mod landslide;

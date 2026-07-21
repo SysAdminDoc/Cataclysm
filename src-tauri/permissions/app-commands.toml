@@ -15,6 +15,7 @@ permissions = [
   "allow-inspect-at-point",
   "allow-probe-direct-hazard",
   "allow-nuclear-shelter-advisor",
+  "allow-fallout-dose-probe",
   "allow-asteroid-result-visuals",
   "allow-jpl-api-request",
   "allow-ncei-hazel-search",

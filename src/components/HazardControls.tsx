@@ -17,6 +17,7 @@ import {
   type TargetType,
 } from "../hazards";
 import { CraterDiagram } from "./CraterDiagram";
+import { FalloutDosePanel } from "./FalloutDosePanel";
 import { NeoSearch } from "./NeoSearch";
 import { LocationSearch } from "./LocationSearch";
 import { TrajectoryChart } from "./TrajectoryChart";
@@ -717,6 +718,13 @@ export function HazardControls({
                 {shelterReport.limitations.map((limitation) => <li key={limitation}>{formatEmbeddedLengthValues(limitation, formatNumber, unitSystem)}</li>)}
               </ul>
             </details>
+          ) : null}
+          {mode === "nuclear" ? (
+            <FalloutDosePanel
+              yieldKt={nuclear.yieldKt}
+              fissionFraction={Math.min(1, Math.max(0.01, (nuclear.fissionPct ?? 50) / 100))}
+              backendAvailable={backendAvailable}
+            />
           ) : null}
           <ul className="hazard__ring-legend">
             {result.rings.map((ring) => (

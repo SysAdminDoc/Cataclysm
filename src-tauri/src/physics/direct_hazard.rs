@@ -1631,14 +1631,16 @@ fn nuclear_timeline(effects: &NuclearEffects) -> Vec<TimelineEvent> {
     events
 }
 
-struct ShelterType {
-    name: &'static str,
+pub(super) struct ShelterType {
+    // Shared with the sibling `fallout` module, which reads the idealized
+    // shelter name and radiation exposure fraction for its dose curves.
+    pub(super) name: &'static str,
     blast_resistance_psi: f64,
     thermal_survival: f64,
-    radiation_exposure_fraction: f64,
+    pub(super) radiation_exposure_fraction: f64,
 }
 
-const SHELTER_TYPES: [ShelterType; 8] = [
+pub(super) const SHELTER_TYPES: [ShelterType; 8] = [
     ShelterType {
         name: "Open air",
         blast_resistance_psi: 0.5,

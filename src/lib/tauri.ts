@@ -24,6 +24,8 @@ import type {
   AsteroidVisualReport,
   BurstType,
   DirectHazardProbeResult,
+  FalloutDoseInput,
+  FalloutDoseReport,
   HazardResult,
   NuclearShelterReport,
   TargetType,
@@ -408,6 +410,9 @@ export const api = {
   },
   nuclearShelterAdvisor(resultId: string) {
     return invoke<NuclearShelterReport>("nuclear_shelter_advisor", { resultId });
+  },
+  falloutDoseProbe(req: FalloutDoseInput) {
+    return invoke<FalloutDoseReport>("fallout_dose_probe", { req });
   },
   asteroidResultVisuals(resultId: string) {
     return invoke<AsteroidVisualReport>("asteroid_result_visuals", { resultId });

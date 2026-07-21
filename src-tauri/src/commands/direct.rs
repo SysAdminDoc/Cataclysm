@@ -50,6 +50,16 @@ pub fn nuclear_shelter_advisor(
 }
 
 #[tauri::command]
+pub fn fallout_dose_probe(
+    req: crate::physics::fallout::FalloutDoseInput,
+) -> Result<crate::physics::fallout::FalloutDoseReport, String> {
+    crate::physics::fallout::dose_report(req).ok_or_else(|| {
+        "early-fallout screening requires finite, positive yield, fission fraction, and wind speed"
+            .to_string()
+    })
+}
+
+#[tauri::command]
 pub fn asteroid_result_visuals(
     result_id: String,
 ) -> Result<crate::physics::direct_hazard_probe::AsteroidVisualReport, String> {

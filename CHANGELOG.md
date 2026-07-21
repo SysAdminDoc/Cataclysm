@@ -27,6 +27,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   comparison layer. The bounded desktop bridge rejects redirects and arbitrary
   URLs; validated feed/details are cached on-device with an explicit stale state,
   and the UI consistently states that the catalog is not a live warning.
+- Early-fallout dose screening in Nuclear mode. The orphaned WSEG-10 /
+  Glasstone-Dolan dose model (`physics::fallout`, previously never compiled) is
+  now wired in behind the new `fallout_dose_probe` command and surfaced as a
+  `FalloutDosePanel` in the nuclear results: point-sampled downwind dose rate,
+  fallout arrival, and per-shelter dose-rate/cumulative-dose at a user-selected
+  distance, crosswind offset, wind speed, and time after burst — with model
+  citations, assumptions, uncertainty, and an educational-only disclaimer.
+  Localized across all four catalogs (en/es/ja/id). Browser preview shows the
+  desktop-only note.
 
 ## [0.14.0] — 2026-07-19
 

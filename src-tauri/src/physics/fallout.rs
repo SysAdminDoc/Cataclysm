@@ -6,7 +6,7 @@
 //! 9.150.1. The model is intentionally educational: a single constant wind and
 //! fixed shear cannot predict an actual fallout field.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::direct_hazard::SHELTER_TYPES;
 
@@ -22,7 +22,8 @@ const CURVE_TIMES_H: [f64; 22] = [
     168.0, 216.0, 240.0, 288.0, 336.0,
 ];
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FalloutDoseInput {
     pub yield_kt: f64,
     pub fission_fraction: f64,
