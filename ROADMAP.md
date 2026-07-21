@@ -157,24 +157,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
   2.5.8, 2.4.11, and 3.2.6.
   Complexity: M
 
-### P3 — distribution and larger bets
-
-- [ ] P3 — Attach an SBOM and build-provenance attestation to each release
-  Why: for a scientific tool, a CycloneDX SBOM plus SLSA-style provenance on each
-  GitHub Release strengthens the "why trust this" story and is increasingly
-  expected, and it is achievable locally with no CI (consistent with the
-  build-locally posture).
-  Evidence: SLSA/reproducible-builds guidance https://reproducible-builds.org/reports/2025-07/;
-  supply-chain toolchain https://github.com/bureado/awesome-software-supply-chain-security;
-  existing local release flow in `scripts/build-release.mjs`.
-  Touches: local SBOM generation (npm + Cargo → CycloneDX/SPDX), a provenance
-  attestation step, release-manifest wiring, release docs.
-  Acceptance: each release includes a machine-readable SBOM covering npm and
-  Cargo dependencies and a provenance attestation of the local build; the release
-  checklist and docs reference them; generation runs locally without a remote
-  builder.
-  Complexity: S
-
 ## Research-Driven Additions
 
 ### P1

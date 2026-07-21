@@ -22,6 +22,7 @@ import { RELEASE_CARGO_FEATURES } from "./release-contract.mjs";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bundleRoot = path.join(repoRoot, "src-tauri", "target", "release", "bundle");
 const manifestPath = path.join(bundleRoot, "cataclysm-build-manifest.json");
+const artifactsDir = path.join(repoRoot, "artifacts");
 
 function run(command, args, options = {}) {
   console.log(`$ ${[command, ...args].join(" ")}`);
@@ -57,6 +58,30 @@ function listFiles(root) {
 
 function sha256(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function runNodeScript(label, scriptRelPath) {
+  console.log(`\n==> ${label}`);
+  run(process.execPath, [path.join(repoRoot, "scripts", scriptRelPath)]);
+}
+
+// CycloneDX SBOMs (npm + Cargo) are the resolved-dependency evidence the SLSA
+// provenance points at. Read their digests so the build manifest records the
+// supply-chain artifacts alongside the installers.
+function supplyChainSection() {
+  const entries = [
+    { key: "sbom_npm", file: "sbom-npm.json" },
+    { key: "sbom_cargo", file: "sbom-cargo.json" },
+    { key: "provenance", file: "provenance.json" },
+  ];
+  const section = {};
+  for (const { key, file } of entries) {
+    const filePath = path.join(artifactsDir, file);
+    section[key] = existsSync(filePath)
+      ? { file: `artifacts/${file}`, sha256: sha256(filePath) }
+      : { file: `artifacts/${file}`, sha256: null };
+  }
+  return section;
 }
 
 function executablePath() {
@@ -107,6 +132,7 @@ function buildManifest(probe, installedSmoke) {
     },
     capability_probe: probe,
     installed_smoke: installedSmoke,
+    supply_chain: supplyChainSection(),
     artifacts: artifactFiles.map((file) => ({
       path: path.relative(bundleRoot, file).replaceAll("\\", "/"),
       bytes: statSync(file).size,
@@ -146,10 +172,18 @@ async function main() {
     bundleRoot,
     expectedVersion: tauriConfig.version,
   });
+
+  // Supply-chain evidence: CycloneDX SBOMs (npm + Cargo) feed the SLSA build
+  // provenance, and both ship on the GitHub Release. SBOMs are generated before
+  // the manifest so their digests are recorded in it; provenance is generated
+  // afterward because it attests the manifest's artifact subjects.
+  runNodeScript("CycloneDX SBOMs (npm + Cargo)", "generate-sbom.mjs");
   const manifest = buildManifest(probe, installedSmoke);
+  runNodeScript("SLSA build provenance", "generate-provenance.mjs");
+
   console.log(
     `GPU release ready: ${probe.gpu_status}; ${installedSmoke.packages.length} installed package journey(s); ` +
-      `${manifest.artifacts.length} artifact(s); ${manifestPath}`,
+      `${manifest.artifacts.length} artifact(s); SBOM + SLSA provenance in artifacts/; ${manifestPath}`,
   );
 }
 

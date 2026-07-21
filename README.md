@@ -331,7 +331,12 @@ Compare the SHA256 of the downloaded file to the published value:
 certutil -hashfile Cataclysm_0.14.0_x64_en-US.msi SHA256
 ```
 
-See [`docs/release/UNSIGNED_RELEASES.md`](./docs/release/UNSIGNED_RELEASES.md) for full
+Each release also ships a CycloneDX **SBOM** for the npm and Cargo dependency
+trees (`sbom-npm.json`, `sbom-cargo.json`) and an **SLSA build-provenance**
+attestation (`provenance.json`) whose subjects are the installers and whose
+resolved dependencies are the git commit and both SBOMs — all generated locally
+with no remote builder. See
+[`docs/release/UNSIGNED_RELEASES.md`](./docs/release/UNSIGNED_RELEASES.md) for full
 verification details and the maintainer release checklist.
 
 The app starts with high-detail **Esri World Imagery** and automatically falls

@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- SLSA build-provenance on every local release. `npm run tauri:build` now emits
+  an in-toto Statement (`artifacts/provenance.json`, SLSA v1 predicate) whose
+  subjects are the release installers by SHA-256 and whose resolved dependencies
+  are the git commit and the two CycloneDX SBOMs; SBOM generation is wired into
+  the release flow and the build manifest gained a `supply_chain` section
+  linking all three. Explicitly a local (non-hosted) attestation. New
+  `generate:provenance` script + `provenance-contract` tests; docs and the
+  maintainer release checklist reference them.
 - A Rust-authored asteroid aftermath contract and synchronized long-term
   timeline: crater-forming impacts expose cited equivalent-seismic and ejecta
   screening, while Chicxulub-class impacts add explicitly qualitative reentry,

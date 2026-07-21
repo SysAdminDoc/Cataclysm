@@ -19,7 +19,26 @@ checks the supported Rust feature matrix, builds with GPU support, smoke-tests
 the packaged application, and writes
 `src-tauri/target/release/bundle/cataclysm-build-manifest.json`. The manifest
 records the enabled Cargo features, runtime GPU probe, artifact paths, sizes,
-and SHA-256 digests.
+and SHA-256 digests, plus a `supply_chain` section pointing at the SBOMs and
+provenance described below.
+
+## Software bill of materials and build provenance
+
+The same local release run also emits, into `artifacts/`, machine-readable
+supply-chain evidence for the "why trust this" story — no remote builder is
+involved:
+
+- `sbom-npm.json` and `sbom-cargo.json` — CycloneDX 1.5 SBOMs covering the full
+  npm and Cargo dependency trees (`npm run generate:sbom`).
+- `provenance.json` — an [in-toto](https://in-toto.io/) Statement carrying an
+  [SLSA v1](https://slsa.dev/provenance/v1) provenance predicate
+  (`npm run generate:provenance`). Its subjects are the release installers (by
+  SHA-256), and its resolved dependencies are the git commit and the two SBOMs
+  (by SHA-256). It is explicitly a **local** build attestation
+  (`internalParameters.hosted = false`), not a hosted/hermetic SLSA L3 claim.
+
+Both generators run locally with no network access. Attach all three files to
+the GitHub Release alongside the installers and `checksums-sha256.txt`.
 
 ## Verify a downloaded artifact
 
@@ -55,11 +74,15 @@ builds, the generated build manifest, and published checksums.
    `npm run verify:product-truth`.
 2. Run `npm run tauri:build` on the target platform.
 3. Confirm `cataclysm-build-manifest.json` reports the intended Cargo features,
-   runtime GPU probe, and SHA-256 digest for every artifact.
+   runtime GPU probe, and SHA-256 digest for every artifact, and that its
+   `supply_chain` section links the SBOMs and provenance.
 4. Produce `checksums-sha256.txt` from those manifest digests.
-5. Smoke-test the packaged application on a clean machine or VM.
-6. Create the GitHub Release manually and attach the local artifacts, build
-   manifest, and checksum file.
+5. Confirm `artifacts/sbom-npm.json`, `artifacts/sbom-cargo.json`, and
+   `artifacts/provenance.json` were generated (the release build emits them; run
+   `npm run generate:sbom && npm run generate:provenance` if regenerating).
+6. Smoke-test the packaged application on a clean machine or VM.
+7. Create the GitHub Release manually and attach the local artifacts, build
+   manifest, checksum file, the two SBOMs, and the provenance attestation.
 
 Do not add platform credentials, private keys, remote release workflows, or a
 publisher-identity step to this process.
