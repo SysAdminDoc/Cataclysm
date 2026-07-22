@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Portable `.cataclysm` scenario packages for exact, data-only handoff between
+  machines. Custom scenarios can now export and preview-import versioned inputs,
+  redacted settings, solver configuration, layer/camera state, citations,
+  provenance, checkpoints, optional results, and relative local-data references.
+  The deterministic stored-ZIP codec enforces schema and migration rules,
+  per-entry SHA-256 digests, path/MIME/signature allowlists, entry and byte caps,
+  and rejects executable content or future versions before mutating app state.
 - A deterministic desktop sensitivity-envelope workflow for the SWE solver.
   Users can vary one to three inputs across their own explicitly cited bounds,
   choose a reproducible seed and 5–31 stratified samples, and inspect P05,

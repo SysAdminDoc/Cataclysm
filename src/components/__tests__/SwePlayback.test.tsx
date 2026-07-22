@@ -5,6 +5,7 @@ import { SwePlayback } from "../SwePlayback";
 import type { GridSnapshot, InitialDisplacement } from "../../types/scenario";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../../lib/geodesy";
 import { I18nProvider } from "../../lib/i18n";
+import type { PortableJson } from "../../lib/portable-scenario-package";
 
 const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
@@ -226,6 +227,75 @@ describe("SwePlayback", () => {
       expect.any(Blob),
       "cataclysm-sensitivity-envelope-seed-42.json",
     );
+  });
+
+  it("publishes and restores portable solver settings without starting a run", async () => {
+    const onPortableSettingsChange = vi.fn();
+    const onSnapshotsReady = vi.fn();
+    const onSnapshot = vi.fn();
+    const onRunQuality = vi.fn();
+    const { rerender } = render(
+      <SwePlayback
+        initial={INITIAL}
+        workspaceMode="advanced"
+        onPortableSettingsChange={onPortableSettingsChange}
+        onSnapshotsReady={onSnapshotsReady}
+        onSnapshot={onSnapshot}
+        onRunQuality={onRunQuality}
+      />,
+    );
+    await waitFor(() => expect(onPortableSettingsChange).toHaveBeenCalledWith(expect.objectContaining({
+      schema_version: 1,
+      cells_per_degree: 8,
+      boundary_mode: "sponge",
+      frame_count: 60,
+    })));
+
+    rerender(
+      <SwePlayback
+        initial={INITIAL}
+        workspaceMode="advanced"
+        onPortableSettingsChange={onPortableSettingsChange}
+        onSnapshotsReady={onSnapshotsReady}
+        onSnapshot={onSnapshot}
+        onRunQuality={onRunQuality}
+        portableSettingsImport={{
+          id: 1,
+          settings: {
+            schema_version: 1,
+            use_spatial_bathymetry: false,
+            bathymetry_asset_id: null,
+            cells_per_degree: 11,
+            resolution_mode: "advanced",
+            duration_s: 3600,
+            frame_count: 60,
+            include_lamb_wave: true,
+            boundary_mode: "radiation",
+            checkpoint_interval_s: 300,
+          },
+        }}
+        portableResultsImport={{
+          id: 1,
+          results: {
+            schema_version: 1,
+            snapshots: SNAPSHOTS,
+            max_field: null,
+            gauges: [],
+            run_quality: RUN_QUALITY,
+            isochrones: [],
+          } as unknown as PortableJson,
+        }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByLabelText("Grid resolution in cells per degree")).toHaveValue("11"));
+    expect(screen.getByLabelText("Boundary condition")).toHaveValue("radiation");
+    expect(screen.getByLabelText("Recovery checkpoint cadence")).toHaveValue("300");
+    expect(screen.getByRole("checkbox", { name: "Include atmospheric pressure wave" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Use spatially varying ocean depths" })).not.toBeChecked();
+    await waitFor(() => expect(onSnapshotsReady).toHaveBeenLastCalledWith(SNAPSHOTS));
+    expect(onSnapshot).toHaveBeenLastCalledWith(SNAPSHOTS[0]);
+    expect(onRunQuality).toHaveBeenLastCalledWith(RUN_QUALITY);
+    expect(tauriApi.simulateGridStreaming).not.toHaveBeenCalled();
   });
 
   it("threads the selected recovery checkpoint cadence into streaming", async () => {

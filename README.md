@@ -171,6 +171,14 @@ Existing tools each do one piece:
 - **Installed-app scenario links** — `cataclysm://open?scenario=…` and
   `cataclysm://open?preset=…` open the existing desktop app or start it once,
   then pass through the same bounded, fail-closed importer as browser shares.
+- **Portable scenario packages** — the Custom scenario editor exports a
+  versioned `.cataclysm` package containing the source inputs, redacted app and
+  solver settings, layers/camera, citations, provenance, optional
+  checkpoints/results, and relative references to local data. Import always
+  shows a data-only preview before creating a new copy; packages reject
+  executable content, unsafe paths, unsupported MIME/signature pairs, digest
+  mismatches, oversize archives/entries, and unknown future schemas without
+  modifying the active workspace.
 - **Deterministic global-exchange lab** — seven preserved NukeMap scenarios,
   427 target records, and 712 assigned warheads can be explored through
   Cesium-native great-circle arcs and an accessible React HUD. Phase filters,

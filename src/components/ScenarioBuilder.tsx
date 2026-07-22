@@ -35,6 +35,21 @@ import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
 import { useUnits } from "../hooks/useUnits";
 import { formatLength, formatSpeed, quantityText } from "../lib/units";
+import { downloadBlob } from "../lib/export";
+import { APP_VERSION } from "../lib/model-provenance";
+import { api, isTauri } from "../lib/tauri";
+import {
+  PORTABLE_SCENARIO_EXTENSION,
+  PORTABLE_SCENARIO_MAX_ARCHIVE_BYTES,
+  createPortableScenarioPackage,
+  inspectPortableScenarioPackage,
+  type PortableJson,
+  type PortableScenarioCitation,
+  type PortableScenarioDataReference,
+  type PortableScenarioImport,
+  type PortableScenarioSolverSettings,
+  type PortableScenarioWorkspace,
+} from "../lib/portable-scenario-package";
 
 const FEET_PER_METER = 3.28084;
 const MILES_PER_METER = 0.000621371;
@@ -50,6 +65,18 @@ type Props = {
   pickedLocation: { lat: number; lon: number } | null;
   onTogglePick: () => void;
   pickActive: boolean;
+  portableContext?: ScenarioPortableContext;
+  onImportPortableContext?: (imported: PortableScenarioImport) => void | Promise<void>;
+};
+
+export type ScenarioPortableContext = {
+  solverSettings: PortableScenarioSolverSettings;
+  workspace: PortableScenarioWorkspace;
+  citations: PortableScenarioCitation[];
+  provenance: PortableJson;
+  results?: PortableJson;
+  checkpoints?: PortableJson;
+  dataReferences?: PortableScenarioDataReference[];
 };
 
 type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide" | "meteotsunami";
@@ -119,6 +146,11 @@ const SLIDER_FIELDS = new Set([
   "dip_deg", "slope_deg", "drop_height_m", "slip_m",
   "peak_pressure_pa", "speed_m_s", "heading_deg",
 ]);
+
+function portableFileName(kind: ScenarioInput["kind"]): string {
+  const date = new Date().toISOString().slice(0, 10);
+  return `cataclysm-${kind.toLowerCase()}-${date}${PORTABLE_SCENARIO_EXTENSION}`;
+}
 
 function clamp(field: string, v: number): number {
   if (!Number.isFinite(v)) return BOUNDS[field]?.min ?? 0;
@@ -204,7 +236,7 @@ function NumField({
   );
 }
 
-export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTogglePick, pickActive }: Props) {
+export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTogglePick, pickActive, portableContext, onImportPortableContext }: Props) {
   const { t, formatNumber, languageTag } = useI18n();
   const unitSystem = useUnits();
   const [tab, setTab] = useState<TabKey>("asteroid");
@@ -275,6 +307,10 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [savedScenariosResult, setSavedScenariosResult] = useState<AsyncResult<SavedScenario[]>>({ status: "loading" });
   const savedScenarios = asyncResultValue(savedScenariosResult) ?? [];
   const [showSaved, setShowSaved] = useState(false);
+  const [portableBusy, setPortableBusy] = useState(false);
+  const [portablePreview, setPortablePreview] = useState<PortableScenarioImport | null>(null);
+  const [includePortableResults, setIncludePortableResults] = useState(false);
+  const portableInputRef = useRef<HTMLInputElement | null>(null);
   const clipTimer = useRef<number | undefined>(undefined);
   const scenarioActionVersion = useRef(0);
 
@@ -473,6 +509,110 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
         showStatus(t("builder.pasteInvalid"), "error");
       }
     }).catch(() => showStatus(t("builder.pasteFailed"), "error"));
+  }
+
+  async function exportPortableScenario() {
+    const data = currentScenarioData();
+    const payload = createScenarioPayload(data);
+    if (!payload.ok) {
+      showStatus(t("builder.packageExportBlocked", { reason: payload.reason }), "error");
+      return;
+    }
+    setPortableBusy(true);
+    try {
+      const exportedSettings = JSON.parse(await settings.exportSettings()) as PortableJson;
+      const fallbackSolver: PortableScenarioSolverSettings = {
+        schema_version: 1,
+        use_spatial_bathymetry: true,
+        bathymetry_asset_id: null,
+        cells_per_degree: 8,
+        resolution_mode: "advanced",
+        duration_s: 3600,
+        frame_count: 60,
+        include_lamb_wave: false,
+        boundary_mode: "sponge",
+        checkpoint_interval_s: 60,
+      };
+      const solverSettings = portableContext?.solverSettings ?? fallbackSolver;
+      const source = data.source.location;
+      const workspace = portableContext?.workspace ?? {
+        layers: [],
+        camera: {
+          lat: source.lat_deg,
+          lon: source.lon_deg,
+          altitude_m: 2_000_000,
+          heading_deg: 0,
+          pitch_deg: -55,
+        },
+      };
+      const checkpoints = portableContext?.checkpoints ?? (isTauri()
+        ? await api.listSolverCheckpoints().catch(() => undefined)
+        : undefined);
+      const bytes = await createPortableScenarioPackage({
+        scenario: payload.payload,
+        settings: exportedSettings,
+        solverSettings,
+        workspace,
+        citations: portableContext?.citations ?? [],
+        provenance: portableContext?.provenance ?? {
+          app_version: APP_VERSION,
+          exported_from: "scenario_builder",
+          note: "No completed run was attached to this scenario input.",
+        },
+        results: includePortableResults ? portableContext?.results : undefined,
+        checkpoints,
+        dataReferences: portableContext?.dataReferences ?? [],
+      });
+      const result = downloadBlob(new Blob([Uint8Array.from(bytes)], { type: "application/zip" }), portableFileName(data.kind));
+      if (!result.ok) throw new Error(result.message);
+      showStatus(t("builder.packageExported"), "success");
+    } catch (error) {
+      showStatus(t("builder.packageExportFailed", { error: error instanceof Error ? error.message : String(error) }), "error");
+    } finally {
+      setPortableBusy(false);
+    }
+  }
+
+  async function previewPortableScenario(file: File | undefined) {
+    if (!file) return;
+    setPortableBusy(true);
+    setPortablePreview(null);
+    try {
+      if (file.size <= 0 || file.size > PORTABLE_SCENARIO_MAX_ARCHIVE_BYTES) {
+        throw new Error(t("builder.packageSize", { size: formatNumber(PORTABLE_SCENARIO_MAX_ARCHIVE_BYTES / (1024 * 1024)) }));
+      }
+      setPortablePreview(await inspectPortableScenarioPackage(await file.arrayBuffer()));
+    } catch (error) {
+      showStatus(t("builder.packageRejected", { error: error instanceof Error ? error.message : String(error) }), "error");
+    } finally {
+      setPortableBusy(false);
+      if (portableInputRef.current) portableInputRef.current.value = "";
+    }
+  }
+
+  async function importPortableScenario() {
+    if (!portablePreview) return;
+    setPortableBusy(true);
+    try {
+      await settings.importSettings(JSON.stringify(portablePreview.settings));
+      await onImportPortableContext?.(portablePreview);
+      applyScenario(portablePreview.scenario);
+      onSimulate(portablePreview.scenario);
+      const copyName = t("builder.packageImportedName", {
+        kind: t(SOURCE_LABELS[portablePreview.scenario.kind]),
+        date: new Date().toLocaleString(languageTag),
+      });
+      await settings.saveScenario(copyName, portablePreview.scenarioPayload);
+      loadSavedScenarios();
+      setPortablePreview(null);
+      showStatus(t("builder.packageImported", {
+        migrations: formatNumber(portablePreview.packageMigrations.length + portablePreview.scenarioMigrations.length),
+      }), "success");
+    } catch (error) {
+      showStatus(t("builder.packageImportFailed", { error: error instanceof Error ? error.message : String(error) }), "error");
+    } finally {
+      setPortableBusy(false);
+    }
   }
 
   return (
@@ -701,6 +841,22 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             <UiIcon name="clipboard" size={14} />
             {t("builder.paste")}
           </button>
+          <button onClick={() => void exportPortableScenario()} type="button" disabled={portableBusy} title={t("builder.packageExportTitle")}>
+            <UiIcon name="download" size={14} />
+            {t("builder.packageExport")}
+          </button>
+          <button onClick={() => portableInputRef.current?.click()} type="button" disabled={portableBusy} title={t("builder.packageImportTitle")}>
+            <UiIcon name="folder" size={14} />
+            {t("builder.packageImport")}
+          </button>
+          <input
+            ref={portableInputRef}
+            className="scenario-actions__file"
+            type="file"
+            accept={`${PORTABLE_SCENARIO_EXTENSION},application/zip`}
+            aria-label={t("builder.packageFile")}
+            onChange={(event) => void previewPortableScenario(event.target.files?.[0])}
+          />
           {clipMsg && (
             <span
               className="scenario-actions__clip"
@@ -721,6 +877,46 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             </span>
           )}
         </div>
+        {portableContext?.results !== undefined && (
+          <label className="scenario-package__results">
+            <input
+              type="checkbox"
+              checked={includePortableResults}
+              disabled={portableBusy}
+              onChange={(event) => setIncludePortableResults(event.target.checked)}
+            />
+            <span>{t("builder.packageIncludeResults")}</span>
+          </label>
+        )}
+        {portablePreview && (
+          <section className="scenario-package__preview" aria-label={t("builder.packagePreview")}>
+            <div>
+              <strong>{t("builder.packageReady", { kind: t(SOURCE_LABELS[portablePreview.scenario.kind]) })}</strong>
+              <span>{t("builder.packageSummary", {
+                version: formatNumber(portablePreview.manifest.schema_version),
+                entries: formatNumber(portablePreview.manifest.entries.length),
+                data: formatNumber(portablePreview.dataReferences.length),
+              })}</span>
+            </div>
+            <p>{t("builder.packageSafety")}</p>
+            {(portablePreview.packageMigrations.length > 0 || portablePreview.scenarioMigrations.length > 0) && (
+              <p>{t("builder.packageMigrations", {
+                count: formatNumber(portablePreview.packageMigrations.length + portablePreview.scenarioMigrations.length),
+              })}</p>
+            )}
+            {portablePreview.warnings.length > 0 && (
+              <ul>{portablePreview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            )}
+            <div className="scenario-package__preview-actions">
+              <button type="button" className="primary" disabled={portableBusy} onClick={() => void importPortableScenario()}>
+                {t("builder.packageImportCopy")}
+              </button>
+              <button type="button" disabled={portableBusy} onClick={() => setPortablePreview(null)}>
+                {t("builder.packageCancel")}
+              </button>
+            </div>
+          </section>
+        )}
         {showSaved && savedScenariosResult.status === "loading" && !savedScenariosResult.previous && (
           <div className="empty-state empty-state--compact scenario-saved__empty" role="status">
             <span className="empty-state__icon" aria-hidden />

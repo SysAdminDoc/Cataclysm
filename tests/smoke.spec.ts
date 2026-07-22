@@ -625,6 +625,29 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("status").filter({ hasText: "Loaded scenario." })).toBeVisible();
   });
 
+  test("exports and previews a portable data-only scenario package before importing", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await page.getByRole("button", { name: /Create my own/i }).click();
+    await expect(page.getByText("Custom scenario", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Package", exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^cataclysm-asteroid-\d{4}-\d{2}-\d{2}\.cataclysm$/);
+    const packagePath = await download.path();
+    expect(packagePath).toBeTruthy();
+
+    await page.getByLabel("Portable scenario package file").setInputFiles(packagePath!);
+    const preview = page.getByRole("region", { name: "Portable package import preview" });
+    await expect(preview).toBeVisible();
+    await expect(preview).toContainText("Asteroid package is ready to import");
+    await expect(preview).toContainText("nothing is changed until you import");
+    await preview.getByRole("button", { name: "Import as a copy" }).click();
+    await expect(page.locator(".app__viewport-hud--source")).toContainText("500.0-m", { timeout: 15_000 });
+    await expect(page.locator(".app__viewport-telemetry")).toContainText("35.15° N · 82.50° W", { timeout: 15_000 });
+  });
+
   test("keeps numeric help collapsed until its disclosure button is used", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /Create my own/i }).click();

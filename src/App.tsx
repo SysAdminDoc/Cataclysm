@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import cataclysmLogoUrl from "../assets/branding/logo.svg";
 import { PresetSelector } from "./components/PresetSelector";
 import { ComparisonStories } from "./components/ComparisonStories";
-import { ScenarioBuilder } from "./components/ScenarioBuilder";
+import { ScenarioBuilder, type ScenarioPortableContext } from "./components/ScenarioBuilder";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { PointProbePanel } from "./components/PointProbePanel";
 import { FamiliarPlacePanel } from "./components/FamiliarPlacePanel";
@@ -102,7 +102,13 @@ import {
   loadScenarioLayerState,
   saveScenarioLayerState,
   type LayerState,
+  type LayerId,
 } from "./lib/layer-controller";
+import type {
+  PortableJson,
+  PortableScenarioImport,
+  PortableScenarioSolverSettings,
+} from "./lib/portable-scenario-package";
 import { SourceModelSummary } from "./components/SourceModelSummary";
 import {
   type AsteroidDetail,
@@ -479,6 +485,21 @@ export default function App() {
   const [sweRenderFrameA, setSweRenderFrameA] = useState<RenderFrameProvenance | null>(null);
   const [sweRenderFrameB, setSweRenderFrameB] = useState<RenderFrameProvenance | null>(null);
   const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
+  const [portableSolverSettings, setPortableSolverSettings] = useState<PortableScenarioSolverSettings | null>(null);
+  const [portableSettingsImport, setPortableSettingsImport] = useState<{ id: number; settings: PortableScenarioSolverSettings } | null>(null);
+  const [portableResultsImport, setPortableResultsImport] = useState<{ id: number; results: PortableJson } | null>(null);
+  const [pendingPortableImport, setPendingPortableImport] = useState<{
+    imported: PortableScenarioImport;
+    expectedLayerKey: string;
+  } | null>(null);
+  const [pendingPortableCamera, setPendingPortableCamera] = useState<{
+    lat: number;
+    lon: number;
+    altitudeM: number;
+    headingDeg: number;
+    pitchDeg: number;
+    results: PortableJson | null;
+  } | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [activeLesson, setActiveLesson] = useState<GuidedLessonDef | null>(null);
   const [activeStoryTarget, setActiveStoryTarget] = useState<GuidedStoryTarget | null>(null);
@@ -1048,10 +1069,138 @@ export default function App() {
   const layerDefaults = useMemo(() => defaultLayerState(hazardMode), [hazardMode]);
   const layerState = layerWorkspace.context === layerContext ? layerWorkspace.state : layerDefaults;
 
+  const portableScenarioContext = useMemo<ScenarioPortableContext>(() => {
+    const solverSettings = portableSolverSettings ?? {
+      schema_version: 1,
+      use_spatial_bathymetry: true,
+      bathymetry_asset_id: null,
+      cells_per_degree: 8,
+      resolution_mode: workspaceMode,
+      duration_s: 3600,
+      frame_count: 60,
+      include_lamb_wave: false,
+      boundary_mode: "sponge",
+      checkpoint_interval_s: 60,
+    };
+    const citations = [{
+      label: "Cataclysm source-input and solver contracts",
+      url: "https://github.com/SysAdminDoc/Cataclysm",
+      role: "software and schema provenance",
+    }];
+    if (activePresetA?.reference_url?.startsWith("https://")) {
+      citations.push({
+        label: activePresetA.reference,
+        url: activePresetA.reference_url,
+        role: "scenario source",
+      });
+    }
+    const dataReferences = solverSettings.bathymetry_asset_id
+      ? [{
+          id: solverSettings.bathymetry_asset_id,
+          kind: "bathymetry",
+          relative_path: `data/${solverSettings.bathymetry_asset_id.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 120) || "bathymetry"}.tif`,
+          embedded: false,
+        }]
+      : [];
+    return {
+      solverSettings,
+      workspace: {
+        layers: Object.values(layerState) as unknown as PortableJson,
+        camera: {
+          lat: cameraTelemetry.lat,
+          lon: cameraTelemetry.lon,
+          altitude_m: cameraTelemetry.altitudeM,
+          heading_deg: cameraTelemetry.headingDeg,
+        },
+      },
+      citations,
+      provenance: {
+        app_version: APP_VERSION,
+        scenario_id: slotA.activePresetId,
+        scenario_kind: activeScenarioKindA,
+        run_quality: sweRunQualityA,
+        scientific_export: sweScientificExport,
+      } as unknown as PortableJson,
+      results: sweSnapshots || sweMaxField || sweRunQualityA
+        ? {
+            schema_version: 1,
+            snapshots: sweSnapshots ?? [],
+            max_field: sweMaxField,
+            gauges: sweGaugesA,
+            run_quality: sweRunQualityA,
+            isochrones: sweIsochrones ?? [],
+          } as unknown as PortableJson
+        : undefined,
+      dataReferences,
+    };
+  }, [activePresetA, activeScenarioKindA, cameraTelemetry, layerState, portableSolverSettings, slotA.activePresetId, sweGaugesA, sweIsochrones, sweMaxField, sweRunQualityA, sweScientificExport, sweSnapshots, workspaceMode]);
+
   useEffect(() => {
     const loaded = loadScenarioLayerState(layerScenarioKey, hazardMode);
     setLayerWorkspace({ context: layerContext, state: loaded });
   }, [hazardMode, layerContext, layerScenarioKey]);
+
+  useEffect(() => {
+    if (!pendingPortableImport || hazardMode !== "tsunami" || layerScenarioKey !== pendingPortableImport.expectedLayerKey) return;
+    const importedLayers = Array.isArray(pendingPortableImport.imported.workspace.layers)
+      ? pendingPortableImport.imported.workspace.layers
+      : [];
+    const restored = { ...layerDefaults };
+    for (const raw of importedLayers) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+      const layer = raw as Record<string, PortableJson>;
+      if (typeof layer.id !== "string" || !(layer.id in restored)) continue;
+      const id = layer.id as LayerId;
+      if (typeof layer.visible !== "boolean" || typeof layer.opacity !== "number" || typeof layer.order !== "number") continue;
+      restored[id] = { id, visible: layer.visible, opacity: layer.opacity, order: layer.order };
+    }
+    setLayerWorkspace({ context: layerContext, state: restored });
+    const camera = pendingPortableImport.imported.workspace.camera;
+    if (camera && typeof camera === "object" && !Array.isArray(camera)) {
+      const record = camera as Record<string, PortableJson>;
+      if (typeof record.lat === "number" && typeof record.lon === "number" && typeof record.altitude_m === "number") {
+        setPendingPortableCamera({
+          lat: record.lat,
+          lon: record.lon,
+          altitudeM: record.altitude_m,
+          headingDeg: typeof record.heading_deg === "number" ? record.heading_deg : 0,
+          pitchDeg: typeof record.pitch_deg === "number" ? record.pitch_deg : -55,
+          results: pendingPortableImport.imported.results,
+        });
+      }
+    }
+    const importedSettings = pendingPortableImport.imported.solverSettings;
+    setWorkspaceMode(importedSettings.resolution_mode);
+    setPortableSettingsImport((current) => ({ id: (current?.id ?? 0) + 1, settings: importedSettings }));
+    setPendingPortableImport(null);
+  }, [hazardMode, layerContext, layerDefaults, layerScenarioKey, pendingPortableImport]);
+
+  useEffect(() => {
+    if (!pendingPortableCamera || !slotA.initial) return;
+    const timer = window.setTimeout(() => {
+      outcomeFocusRequestId.current += 1;
+      setOutcomeFocus({
+        request_id: `portable-package-${outcomeFocusRequestId.current}`,
+        place: {
+          label: "Portable scenario camera",
+          lat_deg: pendingPortableCamera.lat,
+          lon_deg: pendingPortableCamera.lon,
+          range_m: pendingPortableCamera.altitudeM,
+        },
+        simulation_time_s: 0,
+        heading_deg: pendingPortableCamera.headingDeg,
+        pitch_deg: pendingPortableCamera.pitchDeg,
+      });
+      if (pendingPortableCamera.results) {
+        setPortableResultsImport((current) => ({
+          id: (current?.id ?? 0) + 1,
+          results: pendingPortableCamera.results as PortableJson,
+        }));
+      }
+      setPendingPortableCamera(null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [pendingPortableCamera, slotA.initial]);
 
   useEffect(() => {
     if (layerWorkspace.context !== layerContext) return;
@@ -2804,6 +2953,9 @@ export default function App() {
             onRunQuality={setSweRunQualityA}
             onIsochrones={setSweIsochrones}
             onRenderFrame={setSweRenderFrameA}
+            onPortableSettingsChange={setPortableSolverSettings}
+            portableSettingsImport={portableSettingsImport}
+            portableResultsImport={portableResultsImport}
             playbackTimeS={timeS}
             onPlaybackTimeChange={setTimeS}
             slotLabel={compareMode ? t("app.slotA") : undefined}
@@ -2823,6 +2975,13 @@ export default function App() {
             pickedLocation={pickedLocation}
             onTogglePick={() => setPickMode((p) => !p)}
             pickActive={pickMode}
+            portableContext={portableScenarioContext}
+            onImportPortableContext={(imported) => {
+              setPendingPortableImport({
+                imported,
+                expectedLayerKey: buildLayerScenarioKey("tsunami", null, imported.scenario),
+              });
+            }}
             />
           </div>
         </div>

@@ -10,6 +10,7 @@ import {
 } from "../../lib/scenario-schema";
 import { settings } from "../../lib/settings";
 import { I18nProvider } from "../../lib/i18n";
+import { createPortableScenarioPackage } from "../../lib/portable-scenario-package";
 
 const clipboard = {
   readText: vi.fn<() => Promise<string>>(),
@@ -63,6 +64,58 @@ describe("ScenarioBuilder scenario persistence", () => {
       kind: "Meteotsunami",
       source: expect.objectContaining({ peak_pressure_pa: 300, speed_m_s: 39 }),
     }));
+  });
+
+  it("previews a verified portable package before importing it as a saved copy", async () => {
+    const bytes = await createPortableScenarioPackage({
+      scenario: { kind: "Earthquake", source: INITIAL_EARTHQUAKE },
+      settings: { _schema_version: 6, theme: "mocha" },
+      solverSettings: {
+        schema_version: 1,
+        use_spatial_bathymetry: false,
+        bathymetry_asset_id: null,
+        cells_per_degree: 9,
+        resolution_mode: "advanced",
+        duration_s: 3600,
+        frame_count: 60,
+        include_lamb_wave: false,
+        boundary_mode: "radiation",
+        checkpoint_interval_s: 300,
+      },
+      workspace: {
+        layers: [],
+        camera: { lat: 2, lon: 3, altitude_m: 500_000, heading_deg: 10, pitch_deg: -55 },
+      },
+      citations: [],
+      provenance: { app_version: "test" },
+      createdUtc: "2026-07-21T00:00:00.000Z",
+    });
+    const onSimulate = vi.fn();
+    const onImportPortableContext = vi.fn();
+    const user = setupUser();
+    render(
+      <ScenarioBuilder
+        onSimulate={onSimulate}
+        pickedLocation={null}
+        onTogglePick={() => {}}
+        pickActive={false}
+        onImportPortableContext={onImportPortableContext}
+      />,
+    );
+
+    const file = new File([Uint8Array.from(bytes)], "earthquake.cataclysm", { type: "application/zip" });
+    await user.upload(screen.getByLabelText("Portable scenario package file"), file);
+    expect(await screen.findByRole("region", { name: "Portable package import preview" })).toHaveTextContent(
+      "Earthquake package is ready to import",
+    );
+    expect(onSimulate).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Import as a copy" }));
+    await waitFor(() => expect(onSimulate).toHaveBeenCalledWith({ kind: "Earthquake", source: INITIAL_EARTHQUAKE }));
+    expect(onImportPortableContext).toHaveBeenCalledWith(expect.objectContaining({
+      solverSettings: expect.objectContaining({ cells_per_degree: 9, boundary_mode: "radiation" }),
+    }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Package imported as a copy");
   });
 
   it("copies versioned scenario payloads", async () => {

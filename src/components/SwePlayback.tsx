@@ -16,6 +16,8 @@ import PRODUCT_TRUTH from "../data/product-truth.json";
 import { useUnits } from "../hooks/useUnits";
 import { formatLength, quantityText } from "../lib/units";
 import { SensitivityEnsemblePanel } from "./SensitivityEnsemblePanel";
+import type { PortableScenarioSolverSettings } from "../lib/portable-scenario-package";
+import type { PortableJson } from "../lib/portable-scenario-package";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -44,6 +46,9 @@ type Props = {
   slotLabel?: string;
   runAndWatchNonce?: number;
   workspaceMode?: WorkspaceMode;
+  onPortableSettingsChange?: (settings: PortableScenarioSolverSettings | null) => void;
+  portableSettingsImport?: { id: number; settings: PortableScenarioSolverSettings } | null;
+  portableResultsImport?: { id: number; results: PortableJson } | null;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
@@ -169,7 +174,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
   return warning;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced" }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
@@ -216,6 +221,35 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   const mountedRef = useRef(true);
   const gaugeCounter = useRef(0);
   const handledRunAndWatchNonce = useRef(0);
+  const handledPortableSettingsImport = useRef(0);
+  const handledPortableResultsImport = useRef(0);
+
+  useEffect(() => {
+    onPortableSettingsChange?.(initial ? {
+      schema_version: 1,
+      use_spatial_bathymetry: useBathy,
+      bathymetry_asset_id: useBathy && bathymetryAssetId ? bathymetryAssetId : null,
+      cells_per_degree: cellsPerDeg,
+      resolution_mode: workspaceMode,
+      duration_s: 60 * 60,
+      frame_count: N_SNAPSHOTS,
+      include_lamb_wave: includeLambWave,
+      boundary_mode: boundaryMode,
+      checkpoint_interval_s: checkpointIntervalS,
+    } : null);
+  }, [bathymetryAssetId, boundaryMode, cellsPerDeg, checkpointIntervalS, includeLambWave, initial, onPortableSettingsChange, useBathy, workspaceMode]);
+
+  useEffect(() => {
+    if (!portableSettingsImport || portableSettingsImport.id <= handledPortableSettingsImport.current) return;
+    handledPortableSettingsImport.current = portableSettingsImport.id;
+    const imported = portableSettingsImport.settings;
+    setUseBathy(imported.use_spatial_bathymetry);
+    setBathymetryAssetId(imported.bathymetry_asset_id ?? "");
+    setCellsPerDeg(Math.max(3, Math.min(12, imported.cells_per_degree)));
+    setIncludeLambWave(imported.include_lamb_wave);
+    setBoundaryMode(imported.boundary_mode);
+    setCheckpointIntervalS(Math.max(0, Math.min(3600, imported.checkpoint_interval_s)));
+  }, [portableSettingsImport]);
 
   useEffect(() => {
     if (!initial || !isTauri()) {
@@ -351,6 +385,36 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       if (initial?.meteotsunami_forcing) setUseBathy(false);
     }
   }, [initial, onSnapshot, onSnapshotsReady, onGaugesChange, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
+
+  useEffect(() => {
+    if (!portableResultsImport || portableResultsImport.id <= handledPortableResultsImport.current) return;
+    handledPortableResultsImport.current = portableResultsImport.id;
+    const record = portableResultsImport.results as Record<string, unknown>;
+    const importedSnapshots = Array.isArray(record.snapshots) ? record.snapshots as GridSnapshot[] : [];
+    const importedMaxField = record.max_field && typeof record.max_field === "object"
+      ? record.max_field as MaxFieldProduct
+      : null;
+    const importedGauges = Array.isArray(record.gauges) ? record.gauges as Gauge[] : [];
+    const importedQuality = record.run_quality && typeof record.run_quality === "object"
+      ? record.run_quality as RunQualityRecord
+      : null;
+    const importedIsochrones = Array.isArray(record.isochrones)
+      ? record.isochrones as import("../types/scenario").Isochrone[]
+      : [];
+    setSnapshots(importedSnapshots.length > 0 ? importedSnapshots : null);
+    setActiveIdx(0);
+    setMaxField(importedMaxField);
+    setGauges(importedGauges);
+    setGaugeSeries(seriesFromBackendSamples(importedGauges, importedSnapshots));
+    setShowArrivals(importedIsochrones.length > 0);
+    setStatus(importedSnapshots.length > 0 || importedMaxField || importedQuality ? "ready" : "idle");
+    onSnapshotsReady?.(importedSnapshots.length > 0 ? importedSnapshots : null);
+    onSnapshot?.(importedSnapshots[0] ?? null);
+    onMaxField?.(importedMaxField);
+    onRunQuality?.(importedQuality);
+    onIsochrones?.(importedIsochrones.length > 0 ? importedIsochrones : null);
+    if (importedSnapshots[0]) onPlaybackTimeChange?.(importedSnapshots[0].time_s);
+  }, [onIsochrones, onMaxField, onPlaybackTimeChange, onRunQuality, onSnapshot, onSnapshotsReady, portableResultsImport]);
 
   useEffect(() => {
     onGaugesChange?.(gauges);
