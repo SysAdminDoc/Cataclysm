@@ -247,6 +247,20 @@ describe("TsunamiSourceController", () => {
     expect(instant.active.camera_flights).toBe(0);
   });
 
+  it("keeps the source visible while an explicit focus owns the camera", () => {
+    const host = new FakeSourceHost();
+    const controller = new TsunamiSourceController(host, 4);
+    controller.update(input());
+    expect(host.flights).toHaveLength(1);
+
+    const suppressed = controller.update(input({ suppress_camera_focus: true }));
+    expect(suppressed.camera_mode).toBe("none");
+    expect(suppressed.active).toEqual({ source_entities: 1, camera_flights: 0 });
+    expect(suppressed.last_update.flights_cancelled).toBe(1);
+    expect(host.cancelCalls).toBe(1);
+    expect(host.instantTargets).toHaveLength(0);
+  });
+
   it("falls back from an invalid curated camera and clears invalid source state exactly", () => {
     const host = new FakeSourceHost();
     const controller = new TsunamiSourceController(host, 4);

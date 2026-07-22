@@ -1141,7 +1141,12 @@ export default function App() {
   }, [hazardMode, layerContext, layerScenarioKey]);
 
   useEffect(() => {
-    if (!pendingPortableImport || hazardMode !== "tsunami" || layerScenarioKey !== pendingPortableImport.expectedLayerKey) return;
+    if (
+      !pendingPortableImport
+      || hazardMode !== "tsunami"
+      || layerScenarioKey !== pendingPortableImport.expectedLayerKey
+      || slotA.sourceResult.status !== "ready"
+    ) return;
     const importedLayers = Array.isArray(pendingPortableImport.imported.workspace.layers)
       ? pendingPortableImport.imported.workspace.layers
       : [];
@@ -1173,7 +1178,7 @@ export default function App() {
     setWorkspaceMode(importedSettings.resolution_mode);
     setPortableSettingsImport((current) => ({ id: (current?.id ?? 0) + 1, settings: importedSettings }));
     setPendingPortableImport(null);
-  }, [hazardMode, layerContext, layerDefaults, layerScenarioKey, pendingPortableImport]);
+  }, [hazardMode, layerContext, layerDefaults, layerScenarioKey, pendingPortableImport, slotA.sourceResult.status]);
 
   useEffect(() => {
     if (!pendingPortableCamera || !slotA.initial) return;
@@ -1190,6 +1195,7 @@ export default function App() {
         simulation_time_s: 0,
         heading_deg: pendingPortableCamera.headingDeg,
         pitch_deg: pendingPortableCamera.pitchDeg,
+        instant: true,
       });
       if (pendingPortableCamera.results) {
         setPortableResultsImport((current) => ({

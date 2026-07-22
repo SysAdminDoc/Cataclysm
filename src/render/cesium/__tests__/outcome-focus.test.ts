@@ -94,7 +94,7 @@ describe("OutcomeFocusController", () => {
     });
   });
 
-  it("uses an instant view for reduced motion and does not mutate capture poses", () => {
+  it("uses an instant view for reduced motion or explicit state restoration and does not mutate capture poses", () => {
     const host = new FakeHost();
     const controller = new OutcomeFocusController(host, 6);
     controller.update(request(), { reduced_motion: false, reference_capture: true });
@@ -109,6 +109,15 @@ describe("OutcomeFocusController", () => {
     expect(host.renders).toBe(1);
     expect(host.cancellations).toBe(1);
     expect(controller.diagnostics.mode).toBe("instant");
+
+    controller.update(request({ request_id: "portable-package", instant: true }), {
+      reduced_motion: false,
+      reference_capture: false,
+    });
+    expect(host.instantTargets).toHaveLength(2);
+    expect(host.instantTargets[1].duration_s).toBe(0);
+    expect(host.flights).toEqual([]);
+    expect(host.renders).toBe(2);
   });
 
   it("rejects invalid place/time and destroys with no pending flight", () => {

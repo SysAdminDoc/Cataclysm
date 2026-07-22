@@ -25,6 +25,8 @@ export type SourceControllerInput = Readonly<{
   source: TsunamiSourceInput | null;
   reference_capture: boolean;
   reduced_motion: boolean;
+  /** Explicit result or restored-state camera ownership suppresses source auto-focus. */
+  suppress_camera_focus?: boolean;
   layer_opacity?: number;
   layer_order?: number;
 }>;
@@ -185,11 +187,13 @@ export class TsunamiSourceController<Handle = unknown> {
       invalidInputs += 1;
     }
     const target = this.#cameraTarget(source, cameraView);
-    const mode: SourceCameraMode = input.reference_capture
-      ? "reference_capture"
-      : input.reduced_motion
-        ? "instant"
-        : "flight";
+    const mode: SourceCameraMode = input.suppress_camera_focus
+      ? "none"
+      : input.reference_capture
+        ? "reference_capture"
+        : input.reduced_motion
+          ? "instant"
+          : "flight";
     const nextCameraSignature = cameraSignature(target, mode);
     let flightsStarted = 0;
     let flightsCancelled = 0;
@@ -199,7 +203,9 @@ export class TsunamiSourceController<Handle = unknown> {
       flightsCancelled = this.#cancelFlight();
       this.#cameraSignature = nextCameraSignature;
       this.#cameraMode = mode;
-      if (mode === "reference_capture") {
+      if (mode === "none") {
+        // Another controller owns the camera; the source entity remains visible.
+      } else if (mode === "reference_capture") {
         referenceSkips = 1;
       } else if (mode === "instant") {
         this.#host.setCameraView(target);

@@ -595,9 +595,9 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     setPortableBusy(true);
     try {
       await settings.importSettings(JSON.stringify(portablePreview.settings));
-      await onImportPortableContext?.(portablePreview);
       applyScenario(portablePreview.scenario);
       onSimulate(portablePreview.scenario);
+      await onImportPortableContext?.(portablePreview);
       const copyName = t("builder.packageImportedName", {
         kind: t(SOURCE_LABELS[portablePreview.scenario.kind]),
         date: new Date().toLocaleString(languageTag),

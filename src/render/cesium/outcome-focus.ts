@@ -12,6 +12,8 @@ export type OutcomeFocusRequest = Readonly<{
   simulation_time_s: number;
   heading_deg?: number;
   pitch_deg?: number;
+  /** State restoration uses an exact camera pose instead of a time-based flight. */
+  instant?: boolean;
 }>;
 
 export type OutcomeFocusTarget = Readonly<{
@@ -61,17 +63,18 @@ function validRequest(request: OutcomeFocusRequest): boolean {
     && (request.place.range_m === undefined
       || (Number.isFinite(request.place.range_m) && request.place.range_m > 0))
     && (request.heading_deg === undefined || Number.isFinite(request.heading_deg))
-    && (request.pitch_deg === undefined || Number.isFinite(request.pitch_deg));
+    && (request.pitch_deg === undefined || Number.isFinite(request.pitch_deg))
+    && (request.instant === undefined || typeof request.instant === "boolean");
 }
 
-function targetFor(request: OutcomeFocusRequest, reducedMotion: boolean): OutcomeFocusTarget {
+function targetFor(request: OutcomeFocusRequest, instant: boolean): OutcomeFocusTarget {
   return Object.freeze({
     lat_deg: request.place.lat_deg,
     lon_deg: request.place.lon_deg,
     range_m: Math.max(20_000, request.place.range_m ?? 350_000),
     heading_rad: (request.heading_deg ?? 0) * Math.PI / 180,
     pitch_rad: (request.pitch_deg ?? -55) * Math.PI / 180,
-    duration_s: reducedMotion ? 0 : 0.9,
+    duration_s: instant ? 0 : 0.9,
     ...(request.place.label?.trim() ? { label: request.place.label.trim() } : {}),
   });
 }
@@ -138,11 +141,12 @@ export class OutcomeFocusController {
     // An explicit result selection wins that arbitration even when this
     // controller does not currently own the in-flight request.
     if (!cancelledOwnedFlight) this.#host.cancelCameraFlight();
-    const target = targetFor(request, options.reduced_motion);
+    const instant = options.reduced_motion || request.instant === true;
+    const target = targetFor(request, instant);
     this.#host.showFocus?.(target);
     this.#host.focusSimulationTime(request.simulation_time_s);
     this.#requestsApplied += 1;
-    if (options.reduced_motion) {
+    if (instant) {
       this.#mode = "instant";
       this.#host.setCameraView(target);
       this.#host.requestRender();

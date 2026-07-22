@@ -123,10 +123,11 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       reduced_motion:
         typeof window !== "undefined"
         && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+      suppress_camera_focus: outcomeFocus !== null && outcomeFocus !== undefined,
       layer_opacity: layerOpacity?.source,
       layer_order: layerOrder?.source,
     });
-  }, [formatNumber, initial, layerOpacity?.source, layerOrder?.source, tsunamiSourceControllerRef, unitSystem, viewerEpoch]);
+  }, [formatNumber, initial, layerOpacity?.source, layerOrder?.source, outcomeFocus, tsunamiSourceControllerRef, unitSystem, viewerEpoch]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
