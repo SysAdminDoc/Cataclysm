@@ -582,6 +582,20 @@ for (const variant of rustMatrix) {
     "warnings",
   ]);
 }
+if (strictRustPolicy) {
+  runCargo("Machine-readable solver convergence report", [
+    "run",
+    "--release",
+    "--manifest-path",
+    "src-tauri/Cargo.toml",
+    "--features",
+    "validation",
+    "--bin",
+    "convergence_report",
+    "--",
+    "--check",
+  ]);
+}
 
 function handleMissingRustPolicyTool(name, installCommand) {
   const message = `${name} is not installed. Install with: ${installCommand}`;

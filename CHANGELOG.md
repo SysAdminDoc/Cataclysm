@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- An automated three-level solver-convergence gate with observed order,
+  Richardson extrapolation, Grid Convergence Index, and asymptotic-range
+  evidence for arrival, peak elevation/runup, displaced volume, and energy.
+  `npm run report:convergence` emits the checked JSON report; strict release
+  verification enforces tracked approval bands and compares GPU refinement
+  behavior with the CPU reference while keeping shock/wet-dry caveats explicit.
 - SLSA build-provenance on every local release. `npm run tauri:build` now emits
   an in-toto Statement (`artifacts/provenance.json`, SLSA v1 predicate) whose
   subjects are the release installers by SHA-256 and whose resolved dependencies
@@ -44,6 +50,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   citations, assumptions, uncertainty, and an educational-only disclaimer.
   Localized across all four catalogs (en/es/ja/id). Browser preview shows the
   desktop-only note.
+
+### Fixed
+
+- Refreshed the DOMPurify override to 3.4.12 and the legacy minimatch
+  `brace-expansion` dependency to 1.1.16, clearing the newly published
+  sanitizer-bypass and expansion-denial-of-service advisories while preserving
+  deterministic third-party notices and registry-signature verification.
 
 ## [0.14.0] — 2026-07-19
 

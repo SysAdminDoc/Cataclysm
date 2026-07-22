@@ -52,6 +52,7 @@
     "verify:highlight-assets": "node scripts/capture-reference-scenes.mjs --verify --skip-build --require-spectacle",
     "verify:reference-locks": "node scripts/verify-reference-baselines.mjs",
     "verify:render-protocol": "node scripts/verify-render-protocol.mjs",
+    "report:convergence": "cargo run --release --manifest-path src-tauri/Cargo.toml --features validation --bin convergence_report -- --check",
     "benchmark:renderer": "node scripts/benchmark-renderer.mjs --enforce-hardware",
     "approve:reference": "node scripts/capture-reference-scenes.mjs --record",
     "tauri": "tauri",
@@ -97,7 +98,7 @@
     "vitest": "^4.1.9"
   },
   "overrides": {
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.12",
     "esbuild": "^0.28.1"
   }
 }

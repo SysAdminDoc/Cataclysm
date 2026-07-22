@@ -7,7 +7,7 @@ Scope: production npm dependencies and Windows x86_64 GPU Rust runtime dependenc
 Development-only and build-only packages are excluded.
 Application version: 0.14.0
 Generators: cargo-about 0.9.1; generate-license-file 4.2.1
-package-lock.json SHA-256: 70ead2d6927fbc89c4bd5f1afb2b24d3eb800932c5f6c77e1e2ca2459e973baf
+package-lock.json SHA-256: addc9c33f3090103e5a654ba26eff0c888dd940b53bc81e12f5ef62a558cafb4
 src-tauri/Cargo.lock SHA-256: 0d303ffc0b7a2d880112a2b31461a8177b88a2bda600895526006cadc64b72c2
 Production components: 42 npm; 397 Rust
 
@@ -120,12 +120,12 @@ Declared SPDX: MIT
 Source: https://github.com/tj/commander.js
 Lock integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==
 
-dompurify@3.4.11
+dompurify@3.4.12
 Declared SPDX: (MPL-2.0 OR Apache-2.0)
 Resolved SPDX: Apache-2.0
 Override text SHA-256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
 Source: https://github.com/cure53/DOMPurify
-Lock integrity: sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==
+Lock integrity: sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==
 
 draco3d@1.5.7
 Declared SPDX: Apache-2.0
@@ -2773,7 +2773,7 @@ Copyright (c) 2008-2014 Pivotal Labs
 
 -------------------------------------------------------------------------------
 
-Applies to: @cesium/wasm-splats@0.1.0-alpha.2, dompurify@3.4.11, draco3d@1.5.7, lerc@2.0.0, long@5.3.2
+Applies to: @cesium/wasm-splats@0.1.0-alpha.2, dompurify@3.4.12, draco3d@1.5.7, lerc@2.0.0, long@5.3.2
 Text SHA-256: 58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd
 
 

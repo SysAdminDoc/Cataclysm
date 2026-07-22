@@ -405,6 +405,7 @@ npm run verify             # local type/lint/test/audit/build verification gate
 npm run verify:release     # strict default/GPU/validation Rust matrix + policy gate
 npm run verify:rust-advisories # reject new, expired, stale, or path-drifted RustSec warnings
 npm run verify:render-protocol # independent binary replay and ECEF conformance gate
+npm run report:convergence # emit + check the approved three-level solver GCI report
 npm run capture:references # regenerate 12-scene 1440p/4K visual candidates + telemetry
 npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # require opener/thumbnail quality
 npm run tauri:build        # isolated installed-package gate + GPU installer manifest
@@ -436,6 +437,14 @@ RustSec vulnerabilities always fail. Warning-class transitive advisories are
 accepted only through `scripts/rust-advisory-baseline.json`, where every entry
 names its dependency path, affected target, upstream issue, owner, rationale,
 and absolute review date; the release manifest records that baseline's digest.
+
+The strict release matrix also recomputes a machine-readable smooth-wave Grid
+Convergence Index report at 10/20/40 cells per degree with coupled 8/4/2-second
+timesteps. Tracked approval bands cover arrival, peak elevation, analytical
+runup, displaced volume, and energy drift; GPU builds additionally compare
+refinement behavior with the CPU reference. This is numerical-discretization
+evidence for a smooth fixture, not a claim about shock-front, source, or
+bathymetry uncertainty.
 
 On Windows this command is intentionally restricted to a clean disposable
 profile or VM with `CATACLYSM_INSTALL_SMOKE_ISOLATED=1`, `tauri-driver`, and a

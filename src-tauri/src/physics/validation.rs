@@ -44,10 +44,16 @@
 
 #![cfg(feature = "validation")]
 
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+#[cfg(test)]
+use super::GeoPoint;
 #[cfg(test)]
 use super::asteroid::{AsteroidImpact, far_field_amplitude_m};
 #[cfg(test)]
-use super::constants::{G_EARTH, RHO_ASTEROID_STONY};
+use super::constants::RHO_ASTEROID_STONY;
+use super::constants::{G_EARTH, RHO_SEAWATER};
 #[cfg(test)]
 use super::direct_hazard::{
     AsteroidDetail, AsteroidHazardRequest, AsteroidTargetType, HazardCenter, HazardDetail,
@@ -57,12 +63,488 @@ use super::direct_hazard::{
 };
 #[cfg(test)]
 use super::landslide::lituya_bay_1958;
-#[cfg(test)]
 use super::shallow_water::synolakis_runup_m;
 #[cfg(test)]
-use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper, WET_DEPTH_EPSILON_M};
-#[cfg(test)]
-use super::GeoPoint;
+use super::solver::WET_DEPTH_EPSILON_M;
+use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
+
+const CONVERGENCE_FIXTURE_ID: &str = "smooth-eastbound-long-wave-v1";
+const CONVERGENCE_REFINEMENT_RATIO: f64 = 2.0;
+const CONVERGENCE_LEVELS_CELLS_PER_DEG: [usize; 3] = [10, 20, 40];
+const CONVERGENCE_BASE_DT_S: f64 = 8.0;
+const CONVERGENCE_T_END_S: f64 = 1_400.0;
+const CONVERGENCE_DEPTH_M: f64 = 4_000.0;
+const CONVERGENCE_SOURCE_LON_DEG: f64 = -2.0;
+const CONVERGENCE_GAUGE_LON_DEG: f64 = 0.0;
+const CONVERGENCE_SIGMA_M: f64 = 100_000.0;
+const CONVERGENCE_AMPLITUDE_M: f64 = 1.0;
+const CONVERGENCE_ARRIVAL_THRESHOLD_M: f64 = 0.2;
+const CONVERGENCE_RUNUP_DEPTH_M: f64 = 100.0;
+const CONVERGENCE_RUNUP_SLOPE_DEG: f64 = 2.884_897_716;
+const GCI_SAFETY_FACTOR: f64 = 1.25;
+
+/// One systematically refined solver result used by the convergence report.
+#[derive(Debug, Clone, Serialize)]
+pub struct ConvergenceLevel {
+    pub cells_per_degree: u32,
+    pub nx: u32,
+    pub ny: u32,
+    pub dt_s: f64,
+    pub steps: u32,
+    pub arrival_s: f64,
+    pub peak_elevation_m: f64,
+    pub runup_m: f64,
+    pub displaced_volume_m3: f64,
+    pub energy_j: f64,
+    pub final_gauge_elevation_m: f64,
+    pub mass_drift_pct: f64,
+    pub energy_drift_pct: f64,
+}
+
+/// Grid Convergence Index summary for one scalar quantity. Values are ordered
+/// coarse, medium, fine. The asymptotic check is reported rather than hidden:
+/// thresholded arrival and shock-like fronts may legitimately remain outside
+/// the asymptotic range even when their bounded GCI is acceptable.
+#[derive(Debug, Clone, Serialize)]
+pub struct ConvergenceMetric {
+    pub id: String,
+    pub unit: String,
+    pub coarse: f64,
+    pub medium: f64,
+    pub fine: f64,
+    pub observed_order: f64,
+    pub richardson_extrapolated: f64,
+    pub fine_gci_percent: f64,
+    pub asymptotic_ratio: f64,
+    pub asymptotic_range: bool,
+}
+
+/// Machine-readable convergence evidence emitted by the validation binary and
+/// re-computed by the strict Rust validation matrix.
+#[derive(Debug, Clone, Serialize)]
+pub struct ConvergenceReport {
+    pub schema_version: u32,
+    pub fixture_id: String,
+    pub solver_mode: String,
+    pub refinement_ratio: f64,
+    pub arrival_threshold_m: f64,
+    pub levels: Vec<ConvergenceLevel>,
+    pub metrics: Vec<ConvergenceMetric>,
+    pub caveats: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ConvergenceContract {
+    schema_version: u32,
+    fixture_id: String,
+    refinement_ratio: f64,
+    metrics: BTreeMap<String, MetricContract>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MetricContract {
+    observed_order_min: f64,
+    observed_order_max: f64,
+    fine_gci_percent_max: f64,
+    require_asymptotic_range: bool,
+}
+
+fn convergence_grid(cells_per_degree: usize) -> (SwGrid, f64, usize) {
+    let cell_deg = 1.0 / cells_per_degree as f64;
+    // This is the smooth one-dimensional propagation slice used by NOAA's
+    // basic convergence pattern: refine the propagation direction and dt
+    // together while keeping a fixed set of identical cross-track rows. The
+    // gauge is far from the explicit zero-flux edge rows, so this remains a
+    // one-dimensional propagation benchmark without boundary contamination.
+    let mut grid = SwGrid::new(-5.0, -1.0, 5.0, 1.0, cell_deg, 0.1);
+    grid.fill_uniform_depth(CONVERGENCE_DEPTH_M);
+    let celerity_m_s = (G_EARTH * CONVERGENCE_DEPTH_M).sqrt();
+    for j in 0..grid.ny {
+        for i in 0..grid.nx {
+            let index = i + j * grid.nx;
+            let lon_deg = grid.west_lon + (i as f64 + 0.5) * grid.dlon_deg;
+            let east_m = 6_371_008.8 * (lon_deg - CONVERGENCE_SOURCE_LON_DEG).to_radians();
+            let eta_m =
+                CONVERGENCE_AMPLITUDE_M * (-0.5 * (east_m / CONVERGENCE_SIGMA_M).powi(2)).exp();
+            grid.eta_m[index] = eta_m;
+            // Linear long-wave Riemann invariant: this makes the smooth pulse
+            // predominantly eastbound instead of splitting at t=0.
+            grid.u_ms[index] = eta_m * celerity_m_s / (CONVERGENCE_DEPTH_M + eta_m);
+        }
+    }
+    let refinement = cells_per_degree / CONVERGENCE_LEVELS_CELLS_PER_DEG[0];
+    let dt_s = CONVERGENCE_BASE_DT_S / refinement as f64;
+    let steps = (CONVERGENCE_T_END_S / dt_s).round() as usize;
+    (grid, dt_s, steps)
+}
+
+fn sample_convergence_gauge(grid: &SwGrid) -> f64 {
+    let cell_coordinate = (CONVERGENCE_GAUGE_LON_DEG - grid.west_lon) / grid.dlon_deg - 0.5;
+    let left_i = cell_coordinate.floor().clamp(0.0, (grid.nx - 2) as f64) as usize;
+    let fraction = (cell_coordinate - left_i as f64).clamp(0.0, 1.0);
+    let row_offset = (grid.ny / 2) * grid.nx;
+    let left = grid.eta_m[row_offset + left_i];
+    let right = grid.eta_m[row_offset + left_i + 1];
+    left + fraction * (right - left)
+}
+
+fn integral_metrics(grid: &SwGrid) -> (f64, f64) {
+    let mut displaced_volume_m3 = 0.0;
+    let mut energy_j = 0.0;
+    for j in 0..grid.ny {
+        let cell_area_m2 = grid.row_cell_area_m2(j);
+        for i in 0..grid.nx {
+            let index = i + j * grid.nx;
+            let eta_m = grid.eta_m[index];
+            let total_depth_m = (grid.h_m[index] + eta_m).max(0.0);
+            let speed_sq = grid.u_ms[index].powi(2) + grid.v_ms[index].powi(2);
+            displaced_volume_m3 += eta_m * cell_area_m2;
+            energy_j += RHO_SEAWATER
+                * (0.5 * G_EARTH * eta_m.powi(2) + 0.5 * total_depth_m * speed_sq)
+                * cell_area_m2;
+        }
+    }
+    (displaced_volume_m3, energy_j)
+}
+
+fn run_cpu_convergence_level(cells_per_degree: usize) -> Result<ConvergenceLevel, String> {
+    let (mut grid, dt_s, steps) = convergence_grid(cells_per_degree);
+    let baseline = super::solver::quality::QualityBaseline::capture(&grid, BoundaryMode::ZeroFlux);
+    let mut arrival_s = None;
+    let mut peak_elevation_m = sample_convergence_gauge(&grid);
+    let mut previous_eta_m = peak_elevation_m;
+    let mut previous_time_s = grid.t_s;
+    let stepper = TimeStepper::new(dt_s)
+        .with_boundary(BoundaryMode::ZeroFlux)
+        .with_mode(SolverMode::Linear);
+    let completed = stepper.step_cancellable_observed(&mut grid, steps, None, &mut |state| {
+        let eta_m = sample_convergence_gauge(state);
+        if arrival_s.is_none() && eta_m >= CONVERGENCE_ARRIVAL_THRESHOLD_M {
+            let crossing_fraction = ((CONVERGENCE_ARRIVAL_THRESHOLD_M - previous_eta_m)
+                / (eta_m - previous_eta_m).max(f64::MIN_POSITIVE))
+            .clamp(0.0, 1.0);
+            arrival_s = Some(previous_time_s + crossing_fraction * (state.t_s - previous_time_s));
+        }
+        peak_elevation_m = peak_elevation_m.max(eta_m);
+        previous_eta_m = eta_m;
+        previous_time_s = state.t_s;
+    });
+    if !completed {
+        return Err("convergence fixture was unexpectedly cancelled".into());
+    }
+    let arrival_s = arrival_s.ok_or_else(|| {
+        format!(
+            "{} cells/degree fixture never crossed the {} m arrival threshold",
+            cells_per_degree, CONVERGENCE_ARRIVAL_THRESHOLD_M
+        )
+    })?;
+    let quality = baseline.assess(&grid, dt_s);
+    if let Some(failure) = quality.failure {
+        return Err(format!(
+            "{} cells/degree fixture failed quality: {failure}",
+            cells_per_degree
+        ));
+    }
+    let (displaced_volume_m3, energy_j) = integral_metrics(&grid);
+    let runup_m = synolakis_runup_m(
+        peak_elevation_m,
+        CONVERGENCE_RUNUP_DEPTH_M,
+        CONVERGENCE_RUNUP_SLOPE_DEG,
+    );
+    Ok(ConvergenceLevel {
+        cells_per_degree: cells_per_degree as u32,
+        nx: grid.nx as u32,
+        ny: grid.ny as u32,
+        dt_s,
+        steps: steps as u32,
+        arrival_s,
+        peak_elevation_m,
+        runup_m,
+        displaced_volume_m3,
+        energy_j,
+        final_gauge_elevation_m: sample_convergence_gauge(&grid),
+        mass_drift_pct: quality.mass_drift_pct,
+        energy_drift_pct: quality.energy_drift_pct,
+    })
+}
+
+fn convergence_metric(id: &str, unit: &str, values: [f64; 3]) -> Result<ConvergenceMetric, String> {
+    let [coarse, medium, fine] = values;
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(format!("{id} convergence values must be finite"));
+    }
+    let coarse_delta = coarse - medium;
+    let fine_delta = medium - fine;
+    let scale = coarse.abs().max(medium.abs()).max(fine.abs()).max(1.0);
+    if coarse_delta.abs() <= f64::EPSILON * scale || fine_delta.abs() <= f64::EPSILON * scale {
+        return Err(format!("{id} convergence deltas collapsed to roundoff"));
+    }
+    let observed_order =
+        (coarse_delta.abs() / fine_delta.abs()).ln() / CONVERGENCE_REFINEMENT_RATIO.ln();
+    if !observed_order.is_finite() || observed_order <= 0.0 {
+        return Err(format!(
+            "{id} observed order is not positive: {observed_order}; values={values:?}"
+        ));
+    }
+    let refinement_power = CONVERGENCE_REFINEMENT_RATIO.powf(observed_order);
+    let denominator = refinement_power - 1.0;
+    let richardson_extrapolated = fine + (fine - medium) / denominator;
+    let fine_gci_percent =
+        GCI_SAFETY_FACTOR * (fine - medium).abs() / fine.abs().max(f64::MIN_POSITIVE) / denominator
+            * 100.0;
+    let medium_gci_percent = GCI_SAFETY_FACTOR * (medium - coarse).abs()
+        / medium.abs().max(f64::MIN_POSITIVE)
+        / denominator
+        * 100.0;
+    let asymptotic_ratio =
+        medium_gci_percent / (refinement_power * fine_gci_percent).max(f64::MIN_POSITIVE);
+    let monotonic = coarse_delta.signum() == fine_delta.signum();
+    let asymptotic_range = monotonic && (asymptotic_ratio - 1.0).abs() <= 0.25;
+    Ok(ConvergenceMetric {
+        id: id.into(),
+        unit: unit.into(),
+        coarse,
+        medium,
+        fine,
+        observed_order,
+        richardson_extrapolated,
+        fine_gci_percent,
+        asymptotic_ratio,
+        asymptotic_range,
+    })
+}
+
+/// Run the approved smooth-pulse convergence fixture at 10/20/40 cells per
+/// degree with 8/4/2 second timesteps and derive scalar GCI evidence.
+pub fn build_convergence_report() -> Result<ConvergenceReport, String> {
+    let levels = CONVERGENCE_LEVELS_CELLS_PER_DEG
+        .into_iter()
+        .map(run_cpu_convergence_level)
+        .collect::<Result<Vec<_>, _>>()?;
+    let values = |select: fn(&ConvergenceLevel) -> f64| {
+        [select(&levels[0]), select(&levels[1]), select(&levels[2])]
+    };
+    let metrics = vec![
+        convergence_metric("arrival_s", "s", values(|level| level.arrival_s))?,
+        convergence_metric(
+            "peak_elevation_m",
+            "m",
+            values(|level| level.peak_elevation_m),
+        )?,
+        convergence_metric("runup_m", "m", values(|level| level.runup_m))?,
+        convergence_metric(
+            "displaced_volume_m3",
+            "m3",
+            values(|level| level.displaced_volume_m3),
+        )?,
+        convergence_metric(
+            "energy_drift_abs_pct",
+            "%",
+            values(|level| level.energy_drift_pct.abs()),
+        )?,
+    ];
+    Ok(ConvergenceReport {
+        schema_version: 1,
+        fixture_id: CONVERGENCE_FIXTURE_ID.into(),
+        solver_mode: "linear_smooth_pulse".into(),
+        refinement_ratio: CONVERGENCE_REFINEMENT_RATIO,
+        arrival_threshold_m: CONVERGENCE_ARRIVAL_THRESHOLD_M,
+        levels,
+        metrics,
+        caveats: vec![
+            "GCI measures numerical refinement for this smooth long-wave fixture; it is not model, bathymetry, or source uncertainty.".into(),
+            "Thresholded arrival is quantized by both timestep and gauge-cell placement, so its asymptotic flag is reported independently from the bounded GCI.".into(),
+            "Discontinuous bores and wet/dry fronts commonly converge below first order; this smooth-fixture approval must not be applied to shocks.".into(),
+        ],
+    })
+}
+
+/// Check a freshly computed report against the tracked, machine-readable
+/// approval bands used by strict release verification.
+pub fn validate_convergence_report(
+    report: &ConvergenceReport,
+    contract_json: &str,
+) -> Result<(), String> {
+    let contract: ConvergenceContract = serde_json::from_str(contract_json)
+        .map_err(|error| format!("invalid convergence contract: {error}"))?;
+    if contract.schema_version != report.schema_version
+        || contract.fixture_id != report.fixture_id
+        || (contract.refinement_ratio - report.refinement_ratio).abs() > f64::EPSILON
+    {
+        return Err("convergence report does not match the approved fixture identity".into());
+    }
+    for metric in &report.metrics {
+        let approved = contract
+            .metrics
+            .get(&metric.id)
+            .ok_or_else(|| format!("missing approved convergence band for {}", metric.id))?;
+        if !(approved.observed_order_min..=approved.observed_order_max)
+            .contains(&metric.observed_order)
+        {
+            return Err(format!(
+                "{} observed order {:.6} is outside [{:.6}, {:.6}]",
+                metric.id,
+                metric.observed_order,
+                approved.observed_order_min,
+                approved.observed_order_max
+            ));
+        }
+        if metric.fine_gci_percent > approved.fine_gci_percent_max {
+            return Err(format!(
+                "{} fine GCI {:.6}% exceeds {:.6}%",
+                metric.id, metric.fine_gci_percent, approved.fine_gci_percent_max
+            ));
+        }
+        if approved.require_asymptotic_range && !metric.asymptotic_range {
+            return Err(format!("{} left the approved asymptotic range", metric.id));
+        }
+    }
+    if contract.metrics.len() != report.metrics.len() {
+        return Err("convergence contract contains stale or extra metrics".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn smooth_pulse_convergence_matches_approved_gci_contract() {
+    let report = build_convergence_report().expect("smooth convergence fixture should run");
+    validate_convergence_report(
+        &report,
+        include_str!("../../../src/data/solver-convergence-contract.json"),
+    )
+    .expect("convergence report should remain inside approved bands");
+    assert_eq!(report.levels.len(), 3);
+    assert_eq!(report.metrics.len(), 5);
+    assert!(report.levels.windows(2).all(|levels| {
+        levels[0].cells_per_degree * 2 == levels[1].cells_per_degree
+            && (levels[0].dt_s / levels[1].dt_s - 2.0).abs() < f64::EPSILON
+    }));
+}
+
+#[cfg(all(test, feature = "gpu"))]
+#[test]
+fn gpu_convergence_trends_match_cpu_within_declared_bands() {
+    use super::solver::gpu::GpuTimeStepper;
+
+    #[derive(Debug)]
+    struct GpuLevel {
+        arrival_s: f64,
+        peak_elevation_m: f64,
+        displaced_volume_m3: f64,
+        energy_j: f64,
+    }
+
+    let mut cpu_levels = Vec::new();
+    let mut gpu_levels = Vec::new();
+    for cells_per_degree in CONVERGENCE_LEVELS_CELLS_PER_DEG {
+        let cpu = run_cpu_convergence_level(cells_per_degree)
+            .expect("CPU convergence fixture should run");
+        let (mut grid, dt_s, steps) = convergence_grid(cells_per_degree);
+        let Some(stepper) = GpuTimeStepper::new_with_boundary_mode(
+            &grid,
+            dt_s,
+            0.0,
+            BoundaryMode::ZeroFlux,
+            false,
+            None,
+        ) else {
+            eprintln!("GPU convergence comparison skipped: no compatible adapter");
+            return;
+        };
+        // Arrival and peak comparisons observe each accepted GPU step. This
+        // test intentionally exercises the current readback path; the separate
+        // GPU-resident max-field roadmap item removes that production cost.
+        let observation_batch = 1;
+        let mut remaining = steps;
+        let mut arrival_s = None;
+        let mut peak_elevation_m = sample_convergence_gauge(&grid);
+        let mut previous_eta_m = peak_elevation_m;
+        let mut previous_time_s = grid.t_s;
+        while remaining > 0 {
+            let batch = remaining.min(observation_batch);
+            assert!(
+                stepper.step(&mut grid, batch),
+                "GPU convergence step failed"
+            );
+            remaining -= batch;
+            let eta_m = sample_convergence_gauge(&grid);
+            if arrival_s.is_none() && eta_m >= CONVERGENCE_ARRIVAL_THRESHOLD_M {
+                let crossing_fraction = ((CONVERGENCE_ARRIVAL_THRESHOLD_M - previous_eta_m)
+                    / (eta_m - previous_eta_m).max(f64::MIN_POSITIVE))
+                .clamp(0.0, 1.0);
+                arrival_s =
+                    Some(previous_time_s + crossing_fraction * (grid.t_s - previous_time_s));
+            }
+            peak_elevation_m = peak_elevation_m.max(eta_m);
+            previous_eta_m = eta_m;
+            previous_time_s = grid.t_s;
+        }
+        let (displaced_volume_m3, energy_j) = integral_metrics(&grid);
+        cpu_levels.push(cpu);
+        gpu_levels.push(GpuLevel {
+            arrival_s: arrival_s.expect("GPU pulse should cross the arrival threshold"),
+            peak_elevation_m,
+            displaced_volume_m3,
+            energy_j,
+        });
+    }
+
+    let relative_error = |actual: f64, expected: f64| {
+        (actual - expected).abs() / expected.abs().max(f64::MIN_POSITIVE)
+    };
+    for (cpu, gpu) in cpu_levels.iter().zip(&gpu_levels) {
+        assert!(
+            relative_error(gpu.arrival_s, cpu.arrival_s) <= 0.05,
+            "GPU arrival drifted beyond 5%: CPU {}, GPU {}",
+            cpu.arrival_s,
+            gpu.arrival_s
+        );
+        assert!(
+            relative_error(gpu.peak_elevation_m, cpu.peak_elevation_m) <= 0.08,
+            "GPU peak drifted beyond 8%: CPU {}, GPU {}",
+            cpu.peak_elevation_m,
+            gpu.peak_elevation_m
+        );
+        assert!(
+            relative_error(gpu.displaced_volume_m3, cpu.displaced_volume_m3) <= 0.005,
+            "GPU mass drifted beyond 0.5%"
+        );
+        assert!(
+            relative_error(gpu.energy_j, cpu.energy_j) <= 0.08,
+            "GPU energy drifted beyond 8%"
+        );
+    }
+
+    let assert_same_trend = |id: &str, cpu: [f64; 3], gpu: [f64; 3]| {
+        for index in 0..2 {
+            let cpu_delta = cpu[index + 1] - cpu[index];
+            let gpu_delta = gpu[index + 1] - gpu[index];
+            let scale = cpu[index].abs().max(cpu[index + 1].abs()).max(1.0);
+            if cpu_delta.abs() > scale * 1.0e-5 && gpu_delta.abs() > scale * 1.0e-5 {
+                assert_eq!(
+                    cpu_delta.signum(),
+                    gpu_delta.signum(),
+                    "{id} CPU/GPU refinement trends diverged at interval {index}"
+                );
+            }
+        }
+    };
+    // Thresholded arrival remains within the declared per-level band above;
+    // its sub-step refinement direction is intentionally not asserted because
+    // f32 threshold crossing can alternate around the interpolated CPU value.
+    assert_same_trend(
+        "peak elevation",
+        std::array::from_fn(|index| cpu_levels[index].peak_elevation_m),
+        std::array::from_fn(|index| gpu_levels[index].peak_elevation_m),
+    );
+    // Conserved volume differs only at the sub-percent f32 accumulation band
+    // asserted above; its tiny interval sign is not a meaningful trend.
+    assert_same_trend(
+        "energy",
+        std::array::from_fn(|index| cpu_levels[index].energy_j),
+        std::array::from_fn(|index| gpu_levels[index].energy_j),
+    );
+}
 
 /// Stoker 1957 dry-bed dam break. A 10 m reservoir is released over a flat,
 /// initially dry bed; the analytical leading edge advances at `2 sqrt(g h0)`.
@@ -104,7 +586,12 @@ fn stoker_dry_bed_front_matches_analytical_speed() {
         expected_m / 1000.0,
         err * 100.0
     );
-    assert!(grid.h_m.iter().zip(&grid.eta_m).all(|(h, eta)| h + eta >= 0.0));
+    assert!(
+        grid.h_m
+            .iter()
+            .zip(&grid.eta_m)
+            .all(|(h, eta)| h + eta >= 0.0)
+    );
 }
 
 /// NTHMP benchmark problem 1 geometry smoke: a positive pulse crosses a plane
@@ -161,8 +648,18 @@ fn nthmp_problem_1_plane_beach_wets_positively() {
         }
     });
 
-    assert!(grid.h_m.iter().zip(&grid.eta_m).all(|(h, eta)| h + eta >= 0.0));
-    assert!(grid.u_ms.iter().chain(&grid.v_ms).all(|velocity| velocity.is_finite()));
+    assert!(
+        grid.h_m
+            .iter()
+            .zip(&grid.eta_m)
+            .all(|(h, eta)| h + eta >= 0.0)
+    );
+    assert!(
+        grid.u_ms
+            .iter()
+            .chain(&grid.v_ms)
+            .all(|velocity| velocity.is_finite())
+    );
     assert!(
         shoreline_advanced,
         "shoreline never advanced; maximum eta in the last wet cell was {maximum_shore_eta_m:.6} m"
@@ -366,7 +863,10 @@ fn ward_asphaug_chicxulub_order_of_magnitude() {
 #[cfg(test)]
 fn nuclear_airburst_detail(yield_kt: f64) -> NuclearDetail {
     let request = NuclearHazardRequest {
-        center: HazardCenter { lat: 35.0, lon: 139.0 },
+        center: HazardCenter {
+            lat: 35.0,
+            lon: 139.0,
+        },
         yield_kt,
         burst_type: NuclearBurstType::Airburst,
         height_m: None,
@@ -451,7 +951,10 @@ fn asteroid_impact_detail(
     target: AsteroidTargetType,
 ) -> AsteroidDetail {
     let request = AsteroidHazardRequest {
-        center: HazardCenter { lat: 20.0, lon: 0.0 },
+        center: HazardCenter {
+            lat: 20.0,
+            lon: 0.0,
+        },
         diameter_m,
         density_kg_m3,
         velocity_km_s,
@@ -521,7 +1024,9 @@ fn impact_crater_scaling_matches_collins_melosh_marcus() {
     let mut previous_diameter = 0.0;
     for (diameter_m, density, velocity_km_s, target) in cases {
         let detail = asteroid_impact_detail(diameter_m, density, velocity_km_s, target);
-        let crater = detail.crater.expect("ground-reaching impactor forms a crater");
+        let crater = detail
+            .crater
+            .expect("ground-reaching impactor forms a crater");
         let expected = cmm_final_crater_m(
             diameter_m,
             density,
@@ -555,7 +1060,9 @@ fn impact_crater_scaling_matches_collins_melosh_marcus() {
 #[test]
 fn impact_crater_reproduces_meteor_crater_scale() {
     let detail = asteroid_impact_detail(50.0, 7_870.0, 12.8, AsteroidTargetType::SedimentaryRock);
-    let crater = detail.crater.expect("Meteor Crater impactor reaches the ground");
+    let crater = detail
+        .crater
+        .expect("Meteor Crater impactor reaches the ground");
     assert!(
         (800.0..=2_000.0).contains(&crater.final_diameter),
         "Meteor Crater analog gave {:.0} m, outside the order-consistency band [800, 2000] m",
@@ -576,7 +1083,10 @@ fn impact_overpressure_and_wind_match_collins_melosh_marcus() {
     let near = overpressure_at_scaled_distance(300.0);
     let mid = overpressure_at_scaled_distance(1_000.0);
     let far = overpressure_at_scaled_distance(5_000.0);
-    assert!(near > mid && mid > far, "overpressure must fall with distance");
+    assert!(
+        near > mid && mid > far,
+        "overpressure must fall with distance"
+    );
 
     // Peak wind at 5 psi ≈ 72 m/s (≈ 160 mph), the documented damage-ring value.
     let wind_5psi = peak_wind_velocity_m_s(34_474.0);
@@ -599,9 +1109,9 @@ fn impact_overpressure_and_wind_match_collins_melosh_marcus() {
 /// Practices (2020); Anarde et al. 2020, doi:10.1029/2020JC016347.
 #[test]
 fn moving_pressure_source_reproduces_proudman_amplification() {
-    use super::{GeoPoint, meteotsunami::MeteotsunamiSource};
     use super::constants::G_EARTH;
     use super::solver::{BoundaryMode, SolverMode, SwGrid, TimeStepper};
+    use super::{GeoPoint, meteotsunami::MeteotsunamiSource};
 
     fn peak_response(speed_m_s: f64) -> f64 {
         let depth_m = 100.0;
@@ -632,7 +1142,10 @@ fn moving_pressure_source_reproduces_proudman_amplification() {
             let midpoint_s = grid.t_s + 0.5 * dt_s;
             source.apply_pressure_gradient(&mut grid, midpoint_s, dt_s);
             stepper.step_one(&mut grid);
-            peak = grid.eta_m.iter().fold(peak, |value, eta| value.max(eta.abs()));
+            peak = grid
+                .eta_m
+                .iter()
+                .fold(peak, |value, eta| value.max(eta.abs()));
         }
         peak
     }
@@ -670,18 +1183,24 @@ fn moving_pressure_source_reproduces_proudman_amplification() {
 #[cfg(test)]
 fn nuclear_test(yield_kt: f64, burst_type: NuclearBurstType) -> HazardResult {
     simulate_nuclear_hazard(NuclearHazardRequest {
-        center: HazardCenter { lat: 35.0, lon: 139.0 },
+        center: HazardCenter {
+            lat: 35.0,
+            lon: 139.0,
+        },
         yield_kt,
         burst_type,
         height_m: None,
         fission_pct: 50.0,
         population_density: 0.0,
-    }).unwrap()
+    })
+    .unwrap()
 }
 
 #[cfg(test)]
 fn find_ring_km(result: &HazardResult, label_prefix: &str) -> f64 {
-    result.rings.iter()
+    result
+        .rings
+        .iter()
         .find(|ring| ring.label.starts_with(label_prefix))
         .map(|ring| ring.radius_m / 1000.0)
         .unwrap_or(0.0)

@@ -38,10 +38,10 @@
       "evidence": "node_modules/bitmap-sdf/README.md",
       "evidence_sha256": "59c5a6d318f115a4ad3a1a0bc47e8b8474bd6dac893c51797cfb1024f19092ac"
     },
-    "dompurify@3.4.11": {
+    "dompurify@3.4.12": {
       "declared_spdx": "(MPL-2.0 OR Apache-2.0)",
       "resolved_spdx": "Apache-2.0",
-      "package_integrity": "sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==",
+      "package_integrity": "sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==",
       "replacement": "node_modules/dompurify/LICENSE",
       "replacement_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     },
