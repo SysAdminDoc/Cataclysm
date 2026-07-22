@@ -487,6 +487,13 @@ impl StreamCheckpointWriter {
             });
     }
 
+    pub(crate) fn restore_gauge_history(
+        &mut self,
+        history: Vec<crate::physics::solver::checkpoint::CheckpointGaugeFrame>,
+    ) {
+        self.gauge_history = history;
+    }
+
     pub(crate) fn maybe_write(
         &mut self,
         grid: &SwGrid,

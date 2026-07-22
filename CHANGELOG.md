@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- A standalone `cataclysm-cli` now exposes the Rust-authoritative validation,
+  SWE run, checkpoint resume, result comparison, exact point inspection,
+  NetCDF/Zarr export, and benchmark workflows without a WebView. Its versioned
+  JSON/NDJSON contracts use explicit non-zero usage, runtime, and cancellation
+  exit codes; portable `.cataclysm` packages receive bounded ZIP, path/MIME,
+  CRC-32, schema, size, and SHA-256 validation before use. Golden tests keep
+  CLI frames aligned with the desktop solver dispatch.
 - Extended tsunami max fields are now interactive without sending raw solver
   grids through IPC. Layers can render maximum flow depth, current speed,
   specific momentum flux, drawdown, and time of maximum speed from bounded PNG

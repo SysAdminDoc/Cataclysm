@@ -739,7 +739,7 @@ fn read_probe_value(
     Ok(value.is_finite().then_some(value))
 }
 
-fn probe_cached_scientific_export(
+pub(crate) fn probe_cached_scientific_export(
     path: &Path,
     requested_lat: f64,
     requested_lon: f64,
@@ -804,18 +804,27 @@ fn probe_cached_scientific_export(
     })
 }
 
+pub(crate) fn probe_scientific_export(
+    app_data_dir: &Path,
+    export_id: &str,
+    requested_lat: f64,
+    requested_lon: f64,
+) -> Result<MaxFieldProbeResult, String> {
+    validate_export_id(export_id)?;
+    let path = export_root(app_data_dir).join(format!("{export_id}.nc"));
+    probe_cached_scientific_export(&path, requested_lat, requested_lon)
+}
+
 #[tauri::command]
 pub fn max_field_probe(
     app: AppHandle,
     req: MaxFieldProbeRequest,
 ) -> Result<MaxFieldProbeResult, String> {
-    validate_export_id(&req.export_id)?;
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("application data directory is unavailable: {error}"))?;
-    let path = export_root(&app_data_dir).join(format!("{}.nc", req.export_id));
-    probe_cached_scientific_export(&path, req.lat, req.lon)
+    probe_scientific_export(&app_data_dir, &req.export_id, req.lat, req.lon)
 }
 
 fn validate_export_destination(destination: &Path, extension: &str) -> Result<(), String> {
@@ -920,33 +929,45 @@ pub fn save_scientific_export(
     destination: String,
     export_kind: Option<String>,
 ) -> Result<u64, String> {
-    validate_export_id(&export_id)?;
-    let destination = PathBuf::from(destination);
-    let export_kind = export_kind.as_deref().unwrap_or("netcdf");
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    save_cached_scientific_export(
+        &app_data_dir,
+        &export_id,
+        &PathBuf::from(destination),
+        export_kind.as_deref().unwrap_or("netcdf"),
+    )
+}
+
+pub(crate) fn save_cached_scientific_export(
+    app_data_dir: &Path,
+    export_id: &str,
+    destination: &Path,
+    export_kind: &str,
+) -> Result<u64, String> {
+    validate_export_id(export_id)?;
     let extension = match export_kind {
         "netcdf" => "nc",
         "zarr" => "zarr",
         _ => return Err("scientific export kind must be 'netcdf' or 'zarr'".into()),
     };
-    validate_export_destination(&destination, extension)?;
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    validate_export_destination(destination, extension)?;
     if export_kind == "zarr" {
-        let source = export_root(&app_data_dir).join(format!("{export_id}.zarr"));
+        let source = export_root(app_data_dir).join(format!("{export_id}.zarr"));
         if !source.is_dir() {
             return Err("Zarr export is no longer available; rerun the solver".into());
         }
-        return copy_zarr_store(&source, &destination);
+        return copy_zarr_store(&source, destination);
     }
-    let source = export_root(&app_data_dir).join(format!("{export_id}.nc"));
+    let source = export_root(app_data_dir).join(format!("{export_id}.nc"));
     let metadata = fs::metadata(&source)
         .map_err(|_| "scientific export is no longer available; rerun the solver".to_string())?;
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > SCIENTIFIC_EXPORT_MAX_BYTES {
         return Err("scientific export cache artifact is invalid".into());
     }
-    fs::copy(&source, &destination)
+    fs::copy(&source, destination)
         .map_err(|error| format!("failed to save scientific export: {error}"))
 }
 

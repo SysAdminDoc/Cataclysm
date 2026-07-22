@@ -436,6 +436,29 @@ npm run verify:highlight-assets -- --scene orbit-global --resolution 1440p # req
 npm run tauri:build        # isolated installed-package gate + GPU installer manifest
 ```
 
+The same Rust validation, CPU solver, checkpoint, inspection, and scientific-
+export contracts are available without the WebView through `cataclysm-cli`:
+
+```bash
+cargo build --release --manifest-path src-tauri/Cargo.toml --bin cataclysm-cli
+src-tauri/target/release/cataclysm-cli validate --input scenario.json
+src-tauri/target/release/cataclysm-cli run --input scenario.json --output run.json --data-dir ./cataclysm-data
+src-tauri/target/release/cataclysm-cli inspect --result run.json --lat 38.3 --lon 142.37 --data-dir ./cataclysm-data
+src-tauri/target/release/cataclysm-cli export --result run.json --kind netcdf --destination /absolute/path/run.nc --data-dir ./cataclysm-data
+```
+
+Input is a versioned JSON envelope: `{"schema_version":1,"request":{...}}`,
+where `request` is the same `SimulateGridRequest` accepted by desktop IPC.
+`validate --package scenario.cataclysm` independently checks the bounded,
+store-only portable-package ZIP, path/MIME allowlists, CRC-32, manifest schema,
+entry sizes, and SHA-256 identities without importing it.
+`run`, `resume`, `compare`, `inspect`, `export`, and `benchmark` emit versioned
+JSON; progress and errors are NDJSON on stderr. `--cancel-file PATH` gives batch
+orchestration a portable cancellation signal and leaves a verified checkpoint;
+resume it with `resume --resume-run-id ID` and the identical input/data directory.
+Run `cataclysm-cli --help` for the complete option list. The CLI is deterministic
+and CPU-authoritative; benchmark timing values are observational by design.
+
 The browser preview loads a checked-in WebAssembly module compiled
 from the same Rust asteroid, nuclear, earthquake, landslide, attenuation,
 arrival, and Synolakis-runup code used by desktop IPC. The JavaScript-only
