@@ -256,6 +256,11 @@ for (const theme of THEMES) {
     });
 
     test("results state", async ({ page }) => {
+      // This journey runs three full axe scans over the rendered result beside
+      // two WebGL-heavy workers. Keep a bounded margin above its ~52 second
+      // contended runtime so healthy accessibility output cannot require a
+      // retry (the release gate deliberately rejects flaky tests).
+      test.setTimeout(90_000);
       await openWorkspace(page);
       await page.getByRole("button", { name: "Run & Watch" }).click();
       await expect(page.getByText("What happened?")).toBeVisible({ timeout: 20_000 });

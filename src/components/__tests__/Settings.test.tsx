@@ -21,6 +21,22 @@ describe("Settings", () => {
     expect(screen.getByText(/Desktop build only/i)).toBeInTheDocument();
   });
 
+  it("renders the config-derived network disclosure without contacting providers", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.spyOn(window, "fetch");
+    render(<Settings onClose={() => {}} />);
+
+    await user.click(await screen.findByRole("button", { name: "Data & network" }));
+    expect(screen.getByRole("heading", { name: "Data & Network trust" })).toBeInTheDocument();
+    expect(screen.getByText("No telemetry", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("No device location transmitted", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("https://earthquake.usgs.gov")).toBeInTheDocument();
+    expect(screen.getByText("https://ssd-api.jpl.nasa.gov")).toBeInTheDocument();
+    expect(screen.getByText("https://www.ngdc.noaa.gov")).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it("renders the complete settings chrome in the persisted locale", async () => {
     localStorage.setItem("tsunamisim.locale", JSON.stringify("ja"));
     render(<I18nProvider><Settings onClose={() => {}} /></I18nProvider>);

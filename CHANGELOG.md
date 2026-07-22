@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- A bundled, localized Data & Network trust panel now makes Cataclysm's complete
+  outbound data surface inspectable offline: every WebView CSP rule and bounded
+  native HTTPS bridge is listed with its purpose, trigger, and transmitted
+  request fields, alongside explicit no-telemetry, no-device-location, and
+  keychain-local credential commitments. A build/release contract derives the
+  live CSP and Earth-provider sets, discovers fixed browser and Rust client
+  origins, rejects undeclared references, and keeps backend-only USGS, NASA/JPL,
+  and NOAA/NCEI services out of WebView authority.
 - Playback-safe globe inspection now stays active while a 60-frame result is
   running. Inspect coordinates use the exact analytical ellipsoid pick but are
   frame-deferred and coalesced, while the current simulation time is read

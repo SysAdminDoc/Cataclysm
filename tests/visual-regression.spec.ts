@@ -397,6 +397,24 @@ test.describe("Visual regression — desktop", () => {
     expect(violations).toEqual([]);
   });
 
+  test("Data and network trust panel", async ({ page }) => {
+    await seedAcknowledged(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Data & network", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Data & Network trust" })).toBeVisible();
+    await expect(page.getByText("No telemetry", { exact: true })).toBeVisible();
+    await expect(page.getByText("No device location transmitted", { exact: true })).toBeVisible();
+    await hideCesiumCanvas(page);
+
+    await expect(page).toHaveScreenshot("desktop-data-network.png", {
+      maxDiffPixelRatio: 0.01,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
   test("References modal", async ({ page }) => {
     await seedAcknowledged(page);
     await page.goto("/");

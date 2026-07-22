@@ -14,6 +14,7 @@ import { getEarthAsset, getEarthProvider, getEarthStyleBinding } from "../lib/ea
 import { REPLAY_DISCLAIMER_EVENT } from "./FirstRunDisclaimer";
 import { UiIcon } from "./UiIcon";
 import { BathymetryImportPanel } from "./BathymetryImportPanel";
+import { NetworkTrustPanel } from "./NetworkTrustPanel";
 import {
   RENDERER_QUALITY_BUDGETS,
   RENDERER_QUALITY_TIERS,
@@ -23,7 +24,7 @@ import { useI18n } from "../lib/i18n";
 import { LANGUAGE_TAGS, LOCALE_OPTIONS, translate, type Locale, type MessageKey } from "../lib/i18n-core";
 
 type GpuStatus = "available" | "no-adapter" | "feature-off" | "browser-preview" | "unknown";
-type SettingsSection = "visual" | "performance" | "advanced";
+type SettingsSection = "visual" | "performance" | "network" | "advanced";
 
 type StagedSettings = {
   token: string;
@@ -271,9 +272,10 @@ export function Settings({ onClose }: Props) {
             <nav className="settings__nav" aria-label={t("settings.categories")}>
               <button type="button" aria-current={activeSection === "visual" ? "page" : undefined} onClick={() => setActiveSection("visual")}>{t("settings.visual")}</button>
               <button type="button" aria-current={activeSection === "performance" ? "page" : undefined} onClick={() => setActiveSection("performance")}>{t("settings.performance")}</button>
+              <button type="button" aria-current={activeSection === "network" ? "page" : undefined} onClick={() => setActiveSection("network")}>{t("settings.network")}</button>
               <button type="button" aria-current={activeSection === "advanced" ? "page" : undefined} onClick={() => setActiveSection("advanced")}>{t("settings.advanced")}</button>
             </nav>
-            <div className="settings__content">
+            <div className="settings__content" tabIndex={0} aria-label={t("settings.activePanel")}>
           {activeSection === "visual" && <>
           <section className="settings__section">
             <h3 className="settings__h3">{t("language.heading")}</h3>
@@ -525,6 +527,7 @@ export function Settings({ onClose }: Props) {
           </section>
           </>
           )}
+          {activeSection === "network" && <NetworkTrustPanel />}
           {activeSection === "advanced" && <>
           <BathymetryImportPanel />
           <section className="settings__section">

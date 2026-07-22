@@ -234,7 +234,7 @@
 
   .settings__nav {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     padding: 8px;
     border-right: 0;
     border-bottom: 1px solid var(--divider);
@@ -254,6 +254,11 @@
 
   .settings__content {
     padding: 16px;
+  }
+
+  .network-trust__privacy,
+  .network-trust__destinations {
+    grid-template-columns: 1fr;
   }
 
   .results,

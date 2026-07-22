@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-07-22",
+  "privacy": {
+    "telemetry_enabled": false,
+    "device_location_collected": false,
+    "device_location_transmitted": false,
+    "user_initiated_spatial_requests": true,
+    "desktop_credential_storage": "os-keychain",
+    "browser_credential_storage": "local-browser-storage",
+    "external_links_open_in_system_browser": true
+  },
+  "destinations": [
+    {
+      "id": "cesium-ion",
+      "label": "Cesium ion",
+      "authority": "webview-csp",
+      "origins": [
+        "https://*.cesium.com",
+        "https://*.ion.cesium.com"
+      ],
+      "earth_provider_ids": ["cesium-ion"],
+      "purpose": "streamed-earth-context",
+      "sends": ["visible-tile-coordinates", "optional-cesium-token"],
+      "activation": "selected-online-map"
+    },
+    {
+      "id": "openstreetmap-tiles",
+      "label": "OpenStreetMap tiles",
+      "authority": "webview-csp",
+      "origins": [
+        "https://*.openstreetmap.org",
+        "https://tile.openstreetmap.org"
+      ],
+      "earth_provider_ids": ["openstreetmap"],
+      "purpose": "streamed-earth-context",
+      "sends": ["visible-tile-coordinates"],
+      "activation": "selected-online-map"
+    },
+    {
+      "id": "openstreetmap-facilities",
+      "label": "OpenStreetMap Overpass",
+      "authority": "webview-csp",
+      "origins": ["https://overpass-api.de"],
+      "earth_provider_ids": [],
+      "purpose": "humanitarian-facilities",
+      "sends": ["selected-hazard-bounds"],
+      "activation": "enabled-facility-layer"
+    },
+    {
+      "id": "esri-world-imagery",
+      "label": "Esri World Imagery",
+      "authority": "webview-csp",
+      "origins": [
+        "https://*.arcgisonline.com",
+        "https://server.arcgisonline.com"
+      ],
+      "earth_provider_ids": ["esri"],
+      "purpose": "streamed-earth-context",
+      "sends": ["visible-tile-coordinates"],
+      "activation": "selected-online-map"
+    },
+    {
+      "id": "usgs-comcat",
+      "label": "USGS ComCat",
+      "authority": "native-https-bridge",
+      "origins": ["https://earthquake.usgs.gov"],
+      "earth_provider_ids": [],
+      "purpose": "official-earthquake-data",
+      "sends": ["public-event-identifier"],
+      "activation": "opened-data-browser"
+    },
+    {
+      "id": "nasa-jpl",
+      "label": "NASA/JPL SSD APIs",
+      "authority": "native-https-bridge",
+      "origins": ["https://ssd-api.jpl.nasa.gov"],
+      "earth_provider_ids": [],
+      "purpose": "near-earth-object-data",
+      "sends": ["object-search-terms"],
+      "activation": "opened-data-browser"
+    },
+    {
+      "id": "noaa-ncei",
+      "label": "NOAA/NCEI HazEL",
+      "authority": "native-https-bridge",
+      "origins": ["https://www.ngdc.noaa.gov"],
+      "earth_provider_ids": [],
+      "purpose": "historical-tsunami-data",
+      "sends": ["historical-search-terms"],
+      "activation": "submitted-search"
+    }
+  ]
+}

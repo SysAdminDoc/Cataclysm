@@ -322,6 +322,8 @@ const CSP_ALLOWLIST = {
 };
 
 const BACKEND_ONLY_NETWORK_ORIGINS = [
+  "https://earthquake.usgs.gov",
+  "https://ssd-api.jpl.nasa.gov",
   "https://www.ngdc.noaa.gov",
 ];
 
@@ -524,6 +526,7 @@ if (docsOnly) {
 }
 runNpm("Third-party dependency notices", ["run", "verify:notices"]);
 runNpm("Earth asset provenance and rights gate", ["run", "validate:earth-assets"]);
+runNpm("Data and network trust contract", ["run", "verify:network-trust"]);
 runNpm("Scientific input contract parity gate", ["run", "validate:source-input-contract"]);
 runNpm("Reference perceptual-quality unit gate", ["run", "test:reference-quality"]);
 runNpm("Reference recorder lifecycle gate", ["run", "test:reference-lifecycle"]);
