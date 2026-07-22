@@ -154,10 +154,11 @@ for (const theme of THEMES) {
       await openWorkspace(page);
 
       const utilityGroup = page.getByRole("group", { name: "References and preferences" });
-      await expect(utilityGroup.getByRole("button")).toHaveCount(3);
+      await expect(utilityGroup.getByRole("button")).toHaveCount(4);
       await expect(utilityGroup.getByRole("button").nth(0)).toHaveAccessibleName("Help");
-      await expect(utilityGroup.getByRole("button").nth(1)).toHaveAccessibleName("References");
-      await expect(utilityGroup.getByRole("button").nth(2)).toHaveAccessibleName("Settings");
+      await expect(utilityGroup.getByRole("button").nth(1)).toHaveAccessibleName("History");
+      await expect(utilityGroup.getByRole("button").nth(2)).toHaveAccessibleName("References");
+      await expect(utilityGroup.getByRole("button").nth(3)).toHaveAccessibleName("Settings");
 
       const help = utilityGroup.getByRole("button", { name: "Help", exact: true });
       await help.click();

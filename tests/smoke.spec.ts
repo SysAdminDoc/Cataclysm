@@ -625,8 +625,40 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("status").filter({ hasText: "Loaded scenario." })).toBeVisible();
   });
 
+  test("archives, recovers, and reopens an accepted run without recomputation", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
+    await expect(tohoku).toBeVisible({ timeout: 15_000 });
+    await tohoku.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Run archived locally." })).toBeVisible({ timeout: 30_000 });
+
+    await page.getByRole("button", { name: "History", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Run history" });
+    await expect(dialog).toBeVisible();
+    const card = dialog.locator(".run-history__records > li").filter({ hasText: "Tohoku" });
+    await expect(card).toContainText("60 frames");
+    await card.getByRole("button", { name: "Delete" }).click();
+    await expect(dialog.getByText("No accepted runs are archived yet.")).toBeVisible();
+    await dialog.getByText(/Recovery area \(1\)/).click();
+    await dialog.getByRole("button", { name: "Restore" }).click();
+    const restored = dialog.locator(".run-history__records > li").filter({ hasText: "Tohoku" });
+    await expect(restored).toBeVisible();
+    await restored.getByRole("button", { name: "Reopen" }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Results" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible();
+  });
+
   test("exports and previews a portable data-only scenario package before importing", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    // This assertion verifies the imported coordinates, not camera tween timing.
+    // Use the product's instant reduced-motion path so a loaded parallel suite
+    // cannot leave Cesium paused at the flight apex past the assertion deadline.
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     await page.getByRole("button", { name: /Create my own/i }).click();
     await expect(page.getByText("Custom scenario", { exact: true })).toBeVisible({ timeout: 15_000 });

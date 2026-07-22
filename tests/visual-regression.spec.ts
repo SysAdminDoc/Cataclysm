@@ -146,6 +146,28 @@ test.describe("Visual regression — desktop", () => {
     });
   });
 
+  test("immutable local run history", async ({ page }) => {
+    test.setTimeout(90_000);
+    await seedAcknowledged(page);
+    await page.goto("/");
+    const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
+    await expect(tohoku).toBeVisible({ timeout: 15_000 });
+    await tohoku.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Run archived locally." })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "History", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Run history" })).toBeVisible();
+    await hideCesiumCanvas(page);
+
+    await expect(page).toHaveScreenshot("desktop-run-history.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+
+    const { violations } = await axeScan(page);
+    expect(violations).toEqual([]);
+  });
+
   test("highlight story composer", async ({ page }) => {
     test.setTimeout(120_000);
     await seedAcknowledged(page);

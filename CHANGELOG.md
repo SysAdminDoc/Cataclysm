@@ -6,6 +6,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- A bounded, immutable local run archive now preserves every accepted SWE run
+  with exact inputs, solver settings, app/schema/render versions, scenario,
+  settings, and data SHA-256 identities, quality/provenance, gauge samples,
+  redacted log evidence, max fields, and replay frames. The localized History
+  workspace can search, filter, pin, compare summaries, reopen without
+  recomputation, launch a linked current-model rerun, export JSON, and restore
+  deleted runs. Configurable IndexedDB quotas require a visible LRU eviction
+  preview, while corrupt/future records are quarantined without rewriting their
+  original bytes.
 - An append-only user-data migration registry now upgrades settings, saved
   scenarios, and the forthcoming run archive through ordered schema steps.
   Settings upgrades preserve prior values while adding version-appropriate

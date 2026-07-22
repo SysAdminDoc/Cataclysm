@@ -22,6 +22,7 @@ import type {
 } from "./lib/guided-lessons";
 import { LogViewer } from "./components/LogViewer";
 import { PerformancePanel } from "./components/PerformancePanel";
+import { RunHistory } from "./components/RunHistory";
 import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
@@ -42,6 +43,13 @@ import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { copyExportText, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
+import { readDiagnosticsLog } from "./lib/diagnosticsLog";
+import {
+  RunArchiveQuotaError,
+  buildRunArchiveRecord,
+  runArchiveStore,
+  type RunArchiveRecord,
+} from "./lib/run-archive";
 import { parseHighlightStoryOptions, type HighlightStoryOptions } from "./lib/highlight-story";
 import {
   buildDirectResultEvidence,
@@ -196,7 +204,7 @@ const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "geojson" | "kml" | "help" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "geojson" | "kml" | "help" | "history" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -314,6 +322,15 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
         <circle cx="12" cy="12" r="9" />
         <path d="M9.8 9a2.4 2.4 0 1 1 3.7 2c-1 .7-1.5 1.2-1.5 2.5" />
         <path d="M12 17h.01" />
+      </svg>
+    );
+  }
+  if (name === "history") {
+    return (
+      <svg {...common}>
+        <path d="M4 5h16v14H4Z" />
+        <path d="M8 9h8M8 13h5" />
+        <path d="M7 2v3M17 2v3" />
       </svg>
     );
   }
@@ -517,6 +534,9 @@ export default function App() {
   const [tokenBannerOpen, setTokenBannerOpen] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [showPerfPanel, setShowPerfPanel] = useState(false);
+  const [showRunHistory, setShowRunHistory] = useState(false);
+  const [pendingArchiveRecord, setPendingArchiveRecord] = useState<RunArchiveRecord | null>(null);
+  const [pendingArchivedAction, setPendingArchivedAction] = useState<{ record: RunArchiveRecord; mode: "open" | "rerun" } | null>(null);
   const [libraryPreview, setLibraryPreview] = useState<LibraryPreview | null>(null);
   const [libraryPreviewPending, setLibraryPreviewPending] = useState(false);
   const [libraryPreferences, setLibraryPreferences] = useState<ScenarioLibraryPreferences>(loadScenarioLibraryPreferences);
@@ -533,6 +553,9 @@ export default function App() {
   const lastCameraUpdateAt = useRef(0);
   const outcomeFocusRequestId = useRef(0);
   const guidedStoryRuns = useRef(new Set<string>());
+  const archivedSnapshots = useRef(new WeakSet<object>());
+  const suppressNextArchive = useRef(false);
+  const nextArchiveParentRunId = useRef<string | null>(null);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -1148,6 +1171,101 @@ export default function App() {
       dataReferences,
     };
   }, [activePresetA, activeScenarioKindA, cameraTelemetry, layerState, portableSolverSettings, slotA.activePresetId, sweGaugesA, sweIsochrones, sweMaxField, sweRunQualityA, sweScientificExport, sweSnapshots, workspaceMode]);
+
+  useEffect(() => {
+    if (!pendingArchivedAction || slotA.sourceResult.status !== "ready") return;
+    const { record, mode } = pendingArchivedAction;
+    setPortableSettingsImport((current) => ({
+      id: (current?.id ?? 0) + 1,
+      settings: record.inputs.solverSettings,
+    }));
+    if (mode === "open") {
+      suppressNextArchive.current = true;
+      setPortableResultsImport((current) => ({
+        id: (current?.id ?? 0) + 1,
+        results: {
+          schema_version: 1,
+          snapshots: record.results.snapshots,
+          max_field: record.results.maxField,
+          gauges: record.results.gauges,
+          run_quality: record.results.runQuality,
+          isochrones: record.results.isochrones,
+        } as unknown as PortableJson,
+      }));
+      setInspectorTab("results");
+    } else {
+      nextArchiveParentRunId.current = record.id;
+      setSweRunAndWatchNonce((nonce) => nonce + 1);
+      setInspectorTab("setup");
+    }
+    setPendingArchivedAction(null);
+    setShowRunHistory(false);
+  }, [pendingArchivedAction, slotA.sourceResult.status]);
+
+  useEffect(() => {
+    if (!sweSnapshots?.length || !sweRunQualityA || sweRunQualityA.status === "failed") return;
+    if (inTauri && !sweMaxField) return;
+    if (archivedSnapshots.current.has(sweSnapshots)) return;
+    const scenario = activePresetA?.source ?? slotA.lastCustomScenario;
+    if (!scenario) return;
+    archivedSnapshots.current.add(sweSnapshots);
+    if (suppressNextArchive.current) {
+      suppressNextArchive.current = false;
+      return;
+    }
+    void buildRunArchiveRecord({
+      parentRunId: nextArchiveParentRunId.current,
+      label: activePresetA?.name ?? slotA.initial?.label ?? `${scenario.kind} scenario`,
+      presetId: slotA.activePresetId,
+      scenario,
+      solverSettings: portableScenarioContext.solverSettings,
+      appVersion: APP_VERSION,
+      renderProtocolVersion: sweRenderFrameA?.protocolVersion ?? null,
+      renderScenarioSha256: sweRenderFrameA?.scenarioSha256 ?? null,
+      provenance: portableScenarioContext.provenance ?? {},
+      scientificExport: sweScientificExport,
+      logTail: readDiagnosticsLog(),
+      results: {
+        snapshots: sweSnapshots,
+        maxField: sweMaxField,
+        gauges: sweGaugesA,
+        runQuality: sweRunQualityA,
+        isochrones: sweIsochrones ?? [],
+      },
+    }).then(async (record) => {
+      nextArchiveParentRunId.current = null;
+      try {
+        await runArchiveStore.add(record);
+        showToast(t("history.saved"));
+      } catch (error) {
+        if (error instanceof RunArchiveQuotaError) {
+          setPendingArchiveRecord(record);
+          showToast(error.message, "info", {
+            label: t("app.history"),
+            run: () => setShowRunHistory(true),
+          });
+        } else {
+          archivedSnapshots.current.delete(sweSnapshots);
+          console.warn("[history] failed to archive completed run", error);
+          showToast(error instanceof Error ? error.message : String(error), "error");
+        }
+      }
+    }).catch((error) => {
+      archivedSnapshots.current.delete(sweSnapshots);
+      console.warn("[history] failed to encode completed run", error);
+      showToast(error instanceof Error ? error.message : String(error), "error");
+    });
+  }, [activePresetA, inTauri, portableScenarioContext, showToast, slotA.activePresetId, slotA.initial?.label, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, t]);
+
+  const openArchivedRun = useCallback((record: RunArchiveRecord) => {
+    setPendingArchivedAction({ record, mode: "open" });
+    slotA.simulate(record.inputs.scenario);
+  }, [slotA]);
+
+  const rerunArchivedRun = useCallback((record: RunArchiveRecord) => {
+    setPendingArchivedAction({ record, mode: "rerun" });
+    slotA.simulate(record.inputs.scenario);
+  }, [slotA]);
 
   useEffect(() => {
     const loaded = loadScenarioLayerState(layerScenarioKey, hazardMode);
@@ -2546,6 +2664,9 @@ export default function App() {
             <ToolbarButton icon="help" variant="utility" onClick={() => setTourOpen(true)} title={t("app.helpTitle")}>
               {t("app.help")}
             </ToolbarButton>
+            <ToolbarButton icon="history" variant="utility" onClick={() => setShowRunHistory(true)} title={t("app.historyTitle")}>
+              {t("app.history")}
+            </ToolbarButton>
             <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title={t("app.referencesTitle")}>
               {t("app.references")}
             </ToolbarButton>
@@ -3184,6 +3305,15 @@ export default function App() {
         />
       )}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      {showRunHistory && (
+        <RunHistory
+          pendingRecord={pendingArchiveRecord}
+          onPendingResolved={() => setPendingArchiveRecord(null)}
+          onClose={() => setShowRunHistory(false)}
+          onOpen={openArchivedRun}
+          onRerun={rerunArchivedRun}
+        />
+      )}
       <LogViewer open={showLog} onClose={() => setShowLog(false)} />
       <PerformancePanel visible={showPerfPanel} />
       <LaunchExperience />

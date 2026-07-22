@@ -210,7 +210,7 @@ export function migrateSavedScenariosData(
 
 export function migrateRunArchiveData(
   raw: unknown,
-): UserDataMigrationResult<{ records: unknown }> {
+): UserDataMigrationResult<Record<string, unknown> & { records: unknown }> {
   if (Array.isArray(raw)) return migrateUserData("runArchive", 0, raw);
   const envelope = requireRecord("runArchive", raw);
   const version = envelope.schemaVersion;
@@ -222,5 +222,7 @@ export function migrateRunArchiveData(
       "the schema version is missing or invalid.",
     );
   }
-  return migrateUserData("runArchive", version as number, { records: envelope.records });
+  const data = { ...envelope };
+  delete data.schemaVersion;
+  return migrateUserData("runArchive", version as number, data as Record<string, unknown> & { records: unknown });
 }

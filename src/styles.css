@@ -12,6 +12,7 @@
 @import './styles/_inspector.css';
 @import './styles/_presets.css';
 @import './styles/_historical-browser.css';
+@import './styles/_run-history.css';
 @import './styles/_attenuation.css';
 @import './styles/_results.css';
 @import './styles/_scenario.css';
