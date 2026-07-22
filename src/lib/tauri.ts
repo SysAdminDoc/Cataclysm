@@ -439,6 +439,7 @@ export const api = {
     bathymetry_asset_id?: string | null;
     box_half_size_deg: number;
     cells_per_deg: number;
+    resolution_mode?: "simple" | "advanced";
     t_end_s: number;
     n_snapshots: number;
     include_lamb_wave?: boolean;
@@ -453,6 +454,29 @@ export const api = {
     // via cancelSimulation(runId); previously the id was generated inline and
     // discarded, leaving the registered cancel token unreachable.
     return invoke<SimulateGridResponse>("simulate_grid", { runId, req });
+  },
+  preflightSimulationResolution(req: {
+    source: GeoPoint;
+    initial_amplitude_m: number;
+    source_sigma_m: number;
+    source_geometry?: InitialSourceGeometry | null;
+    mean_depth_m: number;
+    use_real_bathymetry?: boolean;
+    bathymetry_asset_id?: string | null;
+    box_half_size_deg: number;
+    cells_per_deg: number;
+    resolution_mode?: "simple" | "advanced";
+    t_end_s: number;
+    n_snapshots: number;
+    include_lamb_wave?: boolean;
+    lamb_wave_peak_pressure_pa?: number;
+    lamb_wave_source_radius_m?: number;
+    meteotsunami_forcing?: MeteotsunamiInput | null;
+    colormap?: ColormapId;
+    gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
+    boundary_mode?: "sponge" | "radiation" | "zero_flux";
+  }): Promise<import("../types/scenario").ResolutionPreflight> {
+    return invoke("preflight_simulation_resolution", { req });
   },
   quickEtaPreview(req: {
     source: GeoPoint;
@@ -548,6 +572,7 @@ export const api = {
       bathymetry_asset_id?: string | null;
       box_half_size_deg: number;
       cells_per_deg: number;
+      resolution_mode?: "simple" | "advanced";
       t_end_s: number;
       n_snapshots: number;
       include_lamb_wave?: boolean;
@@ -568,6 +593,7 @@ export const api = {
     dt_s: number;
     nx: number;
     ny: number;
+    resolution_preflight: import("../types/scenario").ResolutionPreflight;
     bathymetry_asset_id?: string | null;
     used_gpu: boolean;
     n_snapshots: number;
@@ -603,6 +629,7 @@ export const api = {
       dt_s: number;
       nx: number;
       ny: number;
+      resolution_preflight: import("../types/scenario").ResolutionPreflight;
       bathymetry_asset_id?: string | null;
       used_gpu: boolean;
       n_snapshots: number;

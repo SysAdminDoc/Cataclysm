@@ -15,6 +15,9 @@ pub(crate) use model::*;
 pub(crate) use run::compute_quick_eta;
 pub(crate) use stream::*;
 
-pub use model::{SimulateGridRequest, SimulateGridResponse, SimulationRunLifecycle};
-pub use run::{GridGaugeHistoryFrame, SimulateGridStreamMeta, simulate_grid, quick_eta_preview};
+pub use model::{
+    ResolutionFeature, ResolutionPreflight, SimulateGridRequest, SimulateGridResponse,
+    SimulationRunLifecycle, preflight_simulation_resolution,
+};
+pub use run::{GridGaugeHistoryFrame, SimulateGridStreamMeta, quick_eta_preview, simulate_grid};
 pub use stream::simulate_grid_streaming;

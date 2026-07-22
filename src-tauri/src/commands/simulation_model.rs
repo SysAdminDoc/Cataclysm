@@ -28,6 +28,12 @@ pub struct SimulateGridRequest {
     pub box_half_size_deg: f64,
     /// Grid resolution (cells per degree). Default ~10 for fast preview.
     pub cells_per_deg: f64,
+    /// Resolution policy. `simple` lets the convergence-calibrated preflight
+    /// choose an affordable grid; `advanced` preserves `cells_per_deg` and
+    /// records whether it differs from the recommendation. Omission retains
+    /// the legacy explicit-resolution behavior without claiming an override.
+    #[serde(default)]
+    pub resolution_mode: Option<String>,
     /// Total simulated time in seconds.
     pub t_end_s: f64,
     /// Number of snapshots to return (≥ 2; includes t=0 and t_end).
@@ -148,6 +154,7 @@ pub struct SimulateGridResponse {
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
+    pub resolution_preflight: ResolutionPreflight,
     pub bathymetry_asset_id: Option<String>,
     /// F4-01 — `true` when the SWE finite-volume solver ran on the wgpu GPU
     /// path, `false` for the CPU `rayon` path. Always `false` on
@@ -193,6 +200,19 @@ pub(crate) const SWE_MAX_SNAPSHOTS: usize = 240;
 pub(crate) const SWE_MAX_GAUGES: usize = 256;
 /// Hard cap on simulated time — runaway scrubs.
 pub(crate) const SWE_MAX_T_END_S: f64 = 24.0 * 3600.0;
+/// Simple mode stays comfortably below the process-wide hard ceiling so the
+/// recommendation leaves room for the renderer and compare workflows.
+const SWE_SIMPLE_MEMORY_BUDGET_BYTES: u64 = 256 * 1024 * 1024;
+/// Conservative, measured-order runtime proxy used only for a relative
+/// preflight estimate. It is deliberately labeled as an estimate in the IPC
+/// contract and is not a deadline or performance guarantee.
+const SWE_ESTIMATED_CPU_CELL_STEPS_PER_SECOND: f64 = 20_000_000.0;
+const SWE_SIMPLE_RUNTIME_BUDGET_S: f64 = 120.0;
+const RESOLUTION_TARGET_CELLS_ACROSS_FEATURE: f64 = 16.0;
+const RESOLUTION_CANDIDATES: [f64; 19] = [
+    3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 24.0, 32.0, 40.0, 48.0, 64.0, 80.0, 100.0, 120.0,
+    140.0, 160.0, 200.0,
+];
 /// Hard cap on coastal-runup query batch size — protects against IPC flooding.
 pub(crate) const RUNUP_MAX_POINTS: usize = 2_000;
 /// Hard cap on wavefront sample count.
@@ -218,10 +238,22 @@ pub(crate) struct SimulationGridPlan {
 
 impl SimulationGridPlan {
     pub(crate) fn from_request(req: &SimulateGridRequest) -> Result<Self, String> {
+        let cells_per_deg = if req.resolution_mode.as_deref() == Some("simple") {
+            build_resolution_preflight(req)?.recommended_cells_per_deg
+        } else {
+            req.cells_per_deg
+        };
+        Self::from_request_at_resolution(req, cells_per_deg)
+    }
+
+    fn from_request_at_resolution(
+        req: &SimulateGridRequest,
+        cells_per_deg: f64,
+    ) -> Result<Self, String> {
         let lat = req.source.lat_deg.clamp(-90.0, 90.0);
         let lon = ((req.source.lon_deg + 180.0).rem_euclid(360.0)) - 180.0;
         let half = req.box_half_size_deg;
-        let cell_deg = 1.0 / req.cells_per_deg;
+        let cell_deg = 1.0 / cells_per_deg;
         let south = (lat - half).max(-90.0);
         let north = (lat + half).min(90.0);
         let west = lon - half;
@@ -250,6 +282,214 @@ impl SimulationGridPlan {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ResolutionFeature {
+    pub id: String,
+    pub size_m: f64,
+    pub cells_across: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ResolutionPreflight {
+    pub schema_version: u32,
+    pub requested_cells_per_deg: f64,
+    pub recommended_cells_per_deg: f64,
+    pub selected_cells_per_deg: f64,
+    pub simple_auto_selected: bool,
+    pub advanced_override: bool,
+    pub dx_m: f64,
+    pub dy_m: f64,
+    pub estimated_dt_s: f64,
+    pub nx: u32,
+    pub ny: u32,
+    pub estimated_steps: u64,
+    pub estimated_cell_steps: u64,
+    pub estimated_memory_bytes: u64,
+    pub estimated_runtime_s: f64,
+    pub features: Vec<ResolutionFeature>,
+    pub shortest_feature_id: String,
+    pub minimum_cells_across_feature: f64,
+    /// Numerical-discretization grade calibrated to the 8/16/32 cells-across
+    /// ranges exercised by the smooth-wave convergence fixture. This is not a
+    /// model-validity, bathymetry-quality, forecast, or operational-use grade.
+    pub numerical_grade: String,
+    pub limitations: Vec<String>,
+}
+
+fn resolution_features(req: &SimulateGridRequest) -> Vec<(&'static str, f64)> {
+    let mut features = match &req.source_geometry {
+        Some(InitialSourceGeometry::CavityRing {
+            rim_radius_m,
+            rim_width_m,
+        }) => vec![
+            ("cavity_rim_radius", *rim_radius_m),
+            ("cavity_rim_width", *rim_width_m),
+        ],
+        Some(InitialSourceGeometry::Landslide {
+            longitudinal_sigma_m,
+            transverse_sigma_m,
+            ..
+        }) => vec![
+            ("landslide_longitudinal_sigma", *longitudinal_sigma_m),
+            ("landslide_transverse_sigma", *transverse_sigma_m),
+        ],
+        Some(InitialSourceGeometry::Okada { fault }) => vec![
+            ("fault_length", fault.length_m),
+            ("fault_width", fault.width_m),
+        ],
+        None => vec![("gaussian_sigma", req.source_sigma_m.max(1_000.0))],
+    };
+    if let Some(forcing) = req.meteotsunami_forcing {
+        features.extend([
+            ("pressure_along_track_sigma", forcing.along_track_sigma_m),
+            ("pressure_cross_track_sigma", forcing.cross_track_sigma_m),
+        ]);
+    }
+    if req.include_lamb_wave {
+        features.push((
+            "lamb_wave_source_radius",
+            req.lamb_wave_source_radius_m.unwrap_or(30_000.0),
+        ));
+    }
+    features
+}
+
+fn physical_cell_spacing_m(plan: &SimulationGridPlan) -> (f64, f64, f64) {
+    let dy_m = R_EARTH_M * plan.cell_deg.to_radians();
+    let dx_m = dy_m * plan.lat.to_radians().cos().abs().max(1.0e-6);
+    let edge_lat = plan.south.abs().max(plan.north.abs()).min(89.999_9);
+    let minimum_dx_m = dy_m * edge_lat.to_radians().cos().abs().max(1.0e-6);
+    (dx_m, dy_m, minimum_dx_m)
+}
+
+fn estimate_resolution_candidate(
+    req: &SimulateGridRequest,
+    cells_per_deg: f64,
+) -> Result<(SimulationGridPlan, f64, u64, u64, f64), String> {
+    let plan = SimulationGridPlan::from_request_at_resolution(req, cells_per_deg)?;
+    let (_, dy_m, minimum_dx_m) = physical_cell_spacing_m(&plan);
+    let conservative_depth_m = if req.use_real_bathymetry {
+        11_000.0
+    } else {
+        req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M)
+    };
+    let dt_s = 0.4 * dy_m.min(minimum_dx_m)
+        / (crate::physics::constants::G_EARTH * conservative_depth_m).sqrt();
+    let estimated_steps = if req.t_end_s <= 0.0 {
+        0
+    } else {
+        (req.t_end_s / dt_s).ceil().clamp(1.0, u64::MAX as f64) as u64
+    };
+    let cell_steps = (plan.cells as u64).saturating_mul(estimated_steps);
+    let runtime_s = cell_steps as f64 / SWE_ESTIMATED_CPU_CELL_STEPS_PER_SECOND;
+    Ok((plan, dt_s, estimated_steps, cell_steps, runtime_s.max(0.01)))
+}
+
+pub(crate) fn build_resolution_preflight(
+    req: &SimulateGridRequest,
+) -> Result<ResolutionPreflight, String> {
+    validate_simulate_grid(req)?;
+    let declared_features = resolution_features(req);
+    let shortest_feature_m = declared_features
+        .iter()
+        .map(|(_, size_m)| *size_m)
+        .fold(f64::INFINITY, f64::min);
+
+    let mut best_affordable = None;
+    let mut recommended = None;
+    for candidate in RESOLUTION_CANDIDATES {
+        let Ok((plan, _, _, cell_steps, runtime_s)) = estimate_resolution_candidate(req, candidate)
+        else {
+            continue;
+        };
+        let memory = SimulationMemoryEstimate::for_plan(&plan, 0).estimated_bytes;
+        let (_, dy_m, dx_min_m) = physical_cell_spacing_m(&plan);
+        let cells_across = shortest_feature_m / dy_m.max(dx_min_m);
+        let affordable = memory <= SWE_SIMPLE_MEMORY_BUDGET_BYTES
+            && cell_steps <= SWE_MAX_CELL_STEPS
+            && runtime_s <= SWE_SIMPLE_RUNTIME_BUDGET_S;
+        if affordable {
+            best_affordable = Some(candidate);
+            if cells_across >= RESOLUTION_TARGET_CELLS_ACROSS_FEATURE {
+                recommended = Some(candidate);
+                break;
+            }
+        }
+    }
+    let recommended_cells_per_deg = recommended.or(best_affordable).ok_or_else(|| {
+        "no affordable grid fits the simulation extent and time window".to_string()
+    })?;
+    let simple_auto_selected = req.resolution_mode.as_deref() == Some("simple");
+    let selected_cells_per_deg = if simple_auto_selected {
+        recommended_cells_per_deg
+    } else {
+        req.cells_per_deg
+    };
+    let advanced_override = req.resolution_mode.as_deref() == Some("advanced")
+        && (selected_cells_per_deg - recommended_cells_per_deg).abs() > f64::EPSILON;
+    let (plan, estimated_dt_s, estimated_steps, estimated_cell_steps, estimated_runtime_s) =
+        estimate_resolution_candidate(req, selected_cells_per_deg)?;
+    let memory = SimulationMemoryEstimate::for_plan(&plan, 0).estimated_bytes;
+    let (dx_m, dy_m, _) = physical_cell_spacing_m(&plan);
+    let limiting_cell_m = dx_m.max(dy_m);
+    let features = declared_features
+        .into_iter()
+        .map(|(id, size_m)| ResolutionFeature {
+            id: id.into(),
+            size_m,
+            cells_across: size_m / limiting_cell_m,
+        })
+        .collect::<Vec<_>>();
+    let shortest = features
+        .iter()
+        .min_by(|left, right| left.cells_across.total_cmp(&right.cells_across))
+        .ok_or_else(|| "resolution preflight has no declared source feature".to_string())?;
+    let minimum_cells_across_feature = shortest.cells_across;
+    let shortest_feature_id = shortest.id.clone();
+    let numerical_grade = if minimum_cells_across_feature >= 32.0 {
+        "gci_fine_range"
+    } else if minimum_cells_across_feature >= 16.0 {
+        "gci_refined_range"
+    } else if minimum_cells_across_feature >= 8.0 {
+        "gci_baseline_range"
+    } else {
+        "under_resolved"
+    };
+    Ok(ResolutionPreflight {
+        schema_version: 1,
+        requested_cells_per_deg: req.cells_per_deg,
+        recommended_cells_per_deg,
+        selected_cells_per_deg,
+        simple_auto_selected,
+        advanced_override,
+        dx_m,
+        dy_m,
+        estimated_dt_s,
+        nx: plan.nx.min(u32::MAX as usize) as u32,
+        ny: plan.ny.min(u32::MAX as usize) as u32,
+        estimated_steps,
+        estimated_cell_steps,
+        estimated_memory_bytes: memory,
+        estimated_runtime_s,
+        features,
+        shortest_feature_id,
+        minimum_cells_across_feature,
+        numerical_grade: numerical_grade.into(),
+        limitations: vec![
+            "The grade is a numerical-resolution comparison with the smooth-wave GCI fixture, not a forecast or operational-fitness rating.".into(),
+            "Source, bathymetry, wet/dry-front, and model-form uncertainty are not included.".into(),
+            "Runtime is a conservative CPU work estimate; hardware and GPU availability change wall time.".into(),
+        ],
+    })
+}
+
+#[tauri::command]
+pub fn preflight_simulation_resolution(
+    req: SimulateGridRequest,
+) -> Result<ResolutionPreflight, String> {
+    build_resolution_preflight(&req)
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SimulationMemoryEstimate {
     pub(crate) nx: usize,
@@ -272,7 +512,9 @@ impl SimulationMemoryEstimate {
     }
 }
 
-pub(crate) fn parse_boundary_mode(req: &SimulateGridRequest) -> crate::physics::solver::BoundaryMode {
+pub(crate) fn parse_boundary_mode(
+    req: &SimulateGridRequest,
+) -> crate::physics::solver::BoundaryMode {
     match req.boundary_mode.as_deref() {
         Some("radiation") => crate::physics::solver::BoundaryMode::Radiation,
         Some("zero_flux") => crate::physics::solver::BoundaryMode::ZeroFlux,
@@ -384,6 +626,12 @@ pub(crate) fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), St
     }
     if !(req.cells_per_deg.is_finite() && req.cells_per_deg > 0.0 && req.cells_per_deg <= 200.0) {
         return Err("cells_per_deg must be in (0, 200]".into());
+    }
+    if !matches!(
+        req.resolution_mode.as_deref(),
+        None | Some("simple") | Some("advanced")
+    ) {
+        return Err("resolution_mode must be 'simple' or 'advanced' when provided".into());
     }
     if !req.t_end_s.is_finite() || req.t_end_s < 0.0 || req.t_end_s > SWE_MAX_T_END_S {
         return Err(format!("t_end_s must be in [0, {}]", SWE_MAX_T_END_S));

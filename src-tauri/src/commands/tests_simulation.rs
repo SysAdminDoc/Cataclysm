@@ -119,6 +119,66 @@ fn legacy_grid_requests_deserialize_without_source_geometry() {
 }
 
 #[test]
+fn simple_resolution_preflight_selects_an_affordable_feature_aware_grid() {
+    let mut request = source_grid_request(Some(InitialSourceGeometry::Okada {
+        fault: crate::physics::okada::OkadaFault {
+            center_lat: 45.0,
+            center_lon: 0.0,
+            depth_m: 10_000.0,
+            length_m: 120_000.0,
+            width_m: 40_000.0,
+            strike_deg: 0.0,
+            dip_deg: 20.0,
+            rake_deg: 90.0,
+            slip_m: 4.0,
+        },
+    }));
+    request.source.lat_deg = 45.0;
+    request.cells_per_deg = 3.0;
+    request.resolution_mode = Some("simple".into());
+    request.t_end_s = 3_600.0;
+
+    let report = build_resolution_preflight(&request).expect("simple preflight");
+    let plan = SimulationGridPlan::from_request(&request).expect("simple grid plan");
+    assert!(report.simple_auto_selected);
+    assert!(!report.advanced_override);
+    assert_eq!(
+        report.selected_cells_per_deg,
+        report.recommended_cells_per_deg
+    );
+    assert!(report.selected_cells_per_deg > request.cells_per_deg);
+    assert!(report.estimated_memory_bytes <= 256 * 1024 * 1024);
+    assert!(report.estimated_cell_steps <= SWE_MAX_CELL_STEPS);
+    assert_eq!(plan.nx as u32, report.nx);
+    assert_eq!(report.features.len(), 2);
+    assert_eq!(report.shortest_feature_id, "fault_width");
+    assert!(
+        report.dx_m < report.dy_m,
+        "longitude cells narrow at 45 degrees"
+    );
+    assert!(
+        report
+            .limitations
+            .iter()
+            .any(|note| note.contains("not a forecast or operational-fitness"))
+    );
+}
+
+#[test]
+fn advanced_resolution_override_is_explicit_and_preserves_requested_grid() {
+    let mut request = source_grid_request(None);
+    request.cells_per_deg = 4.0;
+    request.resolution_mode = Some("advanced".into());
+    let report = build_resolution_preflight(&request).expect("advanced preflight");
+    let plan = SimulationGridPlan::from_request(&request).expect("advanced grid plan");
+    assert!(report.advanced_override);
+    assert!(!report.simple_auto_selected);
+    assert_eq!(report.selected_cells_per_deg, 4.0);
+    assert_eq!(plan.nx, 16);
+    assert_eq!(report.numerical_grade, "under_resolved");
+}
+
+#[test]
 fn simulation_cancellation_is_owned_by_run_id() {
     let run_a = Arc::new(AtomicBool::new(false));
     let run_b = Arc::new(AtomicBool::new(false));
@@ -393,9 +453,8 @@ fn quick_eta_arrival_grows_with_distance_from_source() {
                 if t <= 0.0 {
                     continue;
                 }
-                let d = (((i as f64) - ci as f64).powi(2)
-                    + ((j as f64) - cj as f64).powi(2))
-                .sqrt();
+                let d =
+                    (((i as f64) - ci as f64).powi(2) + ((j as f64) - cj as f64).powi(2)).sqrt();
                 samples.push((d, t));
             }
         }
@@ -408,7 +467,10 @@ fn quick_eta_arrival_grows_with_distance_from_source() {
     let n = samples.len() as f64;
     let mean_d = samples.iter().map(|s| s.0).sum::<f64>() / n;
     let mean_t = samples.iter().map(|s| s.1).sum::<f64>() / n;
-    let cov = samples.iter().map(|s| (s.0 - mean_d) * (s.1 - mean_t)).sum::<f64>();
+    let cov = samples
+        .iter()
+        .map(|s| (s.0 - mean_d) * (s.1 - mean_t))
+        .sum::<f64>();
     let var_d = samples.iter().map(|s| (s.0 - mean_d).powi(2)).sum::<f64>();
     let var_t = samples.iter().map(|s| (s.1 - mean_t).powi(2)).sum::<f64>();
     let corr = cov / (var_d.sqrt() * var_t.sqrt());
@@ -437,7 +499,11 @@ fn quick_eta_marks_unreached_cells_as_none() {
         "a 30 s run must leave far cells unreached"
     );
     assert!(
-        result.arrival_s.iter().flatten().all(|&t| t.is_finite() && t >= 0.0),
+        result
+            .arrival_s
+            .iter()
+            .flatten()
+            .all(|&t| t.is_finite() && t >= 0.0),
         "reached cells must carry a finite, non-negative arrival time"
     );
 }

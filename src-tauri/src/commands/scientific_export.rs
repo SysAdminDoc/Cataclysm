@@ -31,6 +31,38 @@ pub struct ScientificZarrDescriptor {
     pub conventions: &'static str,
 }
 
+pub(crate) struct ScientificExportContext<'a> {
+    pub(super) run_id: &'a str,
+    pub(super) req: &'a SimulateGridRequest,
+    pub(super) grid: &'a SwGrid,
+    pub(super) max_field: &'a MaxFieldAccumulator,
+    pub(super) run_quality: &'a RunQualityRecord,
+    pub(super) used_gpu: bool,
+    pub(super) resolution_preflight: &'a ResolutionPreflight,
+}
+
+impl<'a> ScientificExportContext<'a> {
+    pub(crate) fn new(
+        run_id: &'a str,
+        req: &'a SimulateGridRequest,
+        grid: &'a SwGrid,
+        max_field: &'a MaxFieldAccumulator,
+        run_quality: &'a RunQualityRecord,
+        used_gpu: bool,
+        resolution_preflight: &'a ResolutionPreflight,
+    ) -> Self {
+        Self {
+            run_id,
+            req,
+            grid,
+            max_field,
+            run_quality,
+            used_gpu,
+            resolution_preflight,
+        }
+    }
+}
+
 fn export_root(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join(SCIENTIFIC_EXPORT_DIR)
 }
@@ -102,20 +134,34 @@ fn f32_field(values: &[f64]) -> Vec<f32> {
 
 fn write_scientific_netcdf(
     path: &Path,
-    run_id: &str,
-    req: &SimulateGridRequest,
-    grid: &SwGrid,
-    max_field: &MaxFieldAccumulator,
-    run_quality: &RunQualityRecord,
-    used_gpu: bool,
+    context: &ScientificExportContext<'_>,
 ) -> Result<(), String> {
+    let run_id = context.run_id;
+    let req = context.req;
+    let grid = context.grid;
+    let max_field = context.max_field;
+    let run_quality = context.run_quality;
+    let used_gpu = context.used_gpu;
+    let resolution_preflight = context.resolution_preflight;
     let cells = validate_export_shape(grid)?;
     let [peak_m, t_of_max_s, arrival_s, energy_m2s] = max_field.scientific_fields();
-    let [max_depth_m, max_speed_ms, max_momentum_flux, min_depth_m, t_of_max_speed_s] =
-        max_field.extended_scientific_fields();
+    let [
+        max_depth_m,
+        max_speed_ms,
+        max_momentum_flux,
+        min_depth_m,
+        t_of_max_speed_s,
+    ] = max_field.extended_scientific_fields();
     if [
-        peak_m, t_of_max_s, arrival_s, energy_m2s, max_depth_m, max_speed_ms, max_momentum_flux,
-        min_depth_m, t_of_max_speed_s,
+        peak_m,
+        t_of_max_s,
+        arrival_s,
+        energy_m2s,
+        max_depth_m,
+        max_speed_ms,
+        max_momentum_flux,
+        min_depth_m,
+        t_of_max_speed_s,
     ]
     .iter()
     .any(|field| field.len() != cells)
@@ -130,6 +176,13 @@ fn write_scientific_netcdf(
         .map_err(|error| format!("failed to encode scientific-export provenance: {error}"))?;
     let quality_json = serde_json::to_string(run_quality)
         .map_err(|error| format!("failed to serialize scientific-export quality: {error}"))?;
+    let resolution_json = serde_json::to_string(resolution_preflight)
+        .map_err(|error| format!("failed to serialize resolution preflight: {error}"))?;
+    let advanced_override = if resolution_preflight.advanced_override {
+        "true"
+    } else {
+        "false"
+    };
     let source = format!(
         "Cataclysm {} finite-volume shallow-water solver",
         env!("CARGO_PKG_VERSION")
@@ -181,6 +234,12 @@ fn write_scientific_netcdf(
             "mean sea level; modeled sea-surface displacement",
         ),
         ("cataclysm_quality_record", &quality_json),
+        ("cataclysm_resolution_preflight", &resolution_json),
+        (
+            "cataclysm_resolution_numerical_grade",
+            &resolution_preflight.numerical_grade,
+        ),
+        ("cataclysm_resolution_advanced_override", advanced_override),
     ] {
         data_set
             .add_global_attr_string(name, value)
@@ -454,7 +513,13 @@ fn write_scientific_netcdf(
     ] {
         let filled: Vec<f32> = values
             .iter()
-            .map(|value| if value.is_finite() { *value as f32 } else { NC_FILL_F32 })
+            .map(|value| {
+                if value.is_finite() {
+                    *value as f32
+                } else {
+                    NC_FILL_F32
+                }
+            })
             .collect();
         writer
             .write_var_f32(name, &filled)
@@ -488,13 +553,11 @@ fn prune_export_cache(root: &Path) {
 
 pub(crate) fn create_cached_scientific_export(
     app_data_dir: &Path,
-    run_id: &str,
-    req: &SimulateGridRequest,
-    grid: &SwGrid,
-    max_field: &MaxFieldAccumulator,
-    run_quality: &RunQualityRecord,
-    used_gpu: bool,
+    context: &ScientificExportContext<'_>,
 ) -> Result<ScientificExportDescriptor, String> {
+    let run_id = context.run_id;
+    let req = context.req;
+    let grid = context.grid;
     validate_export_shape(grid)?;
     let root = export_root(app_data_dir);
     fs::create_dir_all(&root)
@@ -512,15 +575,7 @@ pub(crate) fn create_cached_scientific_export(
     if temporary.exists() {
         let _ = fs::remove_file(&temporary);
     }
-    if let Err(error) = write_scientific_netcdf(
-        &temporary,
-        run_id,
-        req,
-        grid,
-        max_field,
-        run_quality,
-        used_gpu,
-    ) {
+    if let Err(error) = write_scientific_netcdf(&temporary, context) {
         let _ = fs::remove_file(&temporary);
         return Err(error);
     }
@@ -540,15 +595,7 @@ pub(crate) fn create_cached_scientific_export(
     if zarr_temporary.exists() {
         let _ = fs::remove_dir_all(&zarr_temporary);
     }
-    let (zarr, zarr_error) = match zarr::write_scientific_zarr(
-        &zarr_temporary,
-        run_id,
-        req,
-        grid,
-        max_field,
-        run_quality,
-        used_gpu,
-    ) {
+    let (zarr, zarr_error) = match zarr::write_scientific_zarr(&zarr_temporary, context) {
         Ok(stats)
             if stats.bytes > 0
                 && stats.bytes <= SCIENTIFIC_EXPORT_MAX_BYTES
@@ -781,6 +828,10 @@ mod tests {
         .unwrap()
     }
 
+    fn resolution() -> ResolutionPreflight {
+        build_resolution_preflight(&request()).expect("resolution preflight")
+    }
+
     #[test]
     fn writer_round_trips_through_pinned_reader() {
         let dir = tempdir().unwrap();
@@ -794,16 +845,19 @@ mod tests {
         grid.step_index = 1;
         let mut max_field = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
         max_field.observe(&grid);
-        write_scientific_netcdf(
-            &path,
+        let req = request();
+        let run_quality = quality();
+        let resolution_preflight = resolution();
+        let context = ScientificExportContext::new(
             "run-1",
-            &request(),
+            &req,
             &grid,
             &max_field,
-            &quality(),
+            &run_quality,
             false,
-        )
-        .unwrap();
+            &resolution_preflight,
+        );
+        write_scientific_netcdf(&path, &context).unwrap();
 
         let file = netcdf_reader::NcFile::open(&path).unwrap();
         assert_eq!(
@@ -838,6 +892,14 @@ mod tests {
                 .unwrap()
                 .contains("\"status\":\"pass\"")
         );
+        assert_eq!(
+            file.global_attribute("cataclysm_resolution_advanced_override")
+                .unwrap()
+                .value
+                .as_string()
+                .unwrap(),
+            "false"
+        );
         let dimensions = file.dimensions().unwrap();
         assert!(
             dimensions
@@ -866,8 +928,9 @@ mod tests {
         let flow_depth: ndarray::ArrayD<f32> =
             file.read_variable("maximum_total_flow_depth").unwrap();
         assert!((flow_depth[[0, 0]] - 1000.1).abs() < 1.0e-2);
-        let momentum: ndarray::ArrayD<f32> =
-            file.read_variable("maximum_specific_momentum_flux").unwrap();
+        let momentum: ndarray::ArrayD<f32> = file
+            .read_variable("maximum_specific_momentum_flux")
+            .unwrap();
         assert!((momentum[[0, 0]] - 1000.1 * 2.125).abs() < 1.0e-1);
         let drawdown: ndarray::ArrayD<f32> =
             file.read_variable("minimum_total_flow_depth").unwrap();
@@ -911,16 +974,19 @@ mod tests {
         grid.step_index = 1;
         let mut max_field = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
         max_field.observe(&grid);
-        let stats = zarr::write_scientific_zarr(
-            &path,
+        let req = request();
+        let run_quality = quality();
+        let resolution_preflight = resolution();
+        let context = ScientificExportContext::new(
             "run-1",
-            &request(),
+            &req,
             &grid,
             &max_field,
-            &quality(),
+            &run_quality,
             false,
-        )
-        .unwrap();
+            &resolution_preflight,
+        );
+        let stats = zarr::write_scientific_zarr(&path, &context).unwrap();
         assert!(stats.bytes > 0);
         assert!(stats.files >= 10);
 

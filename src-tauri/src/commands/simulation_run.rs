@@ -15,6 +15,7 @@ pub async fn simulate_grid(
         .path()
         .app_data_dir()
         .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    let resolution_preflight = build_resolution_preflight(&req)?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let memory = SimulationMemoryEstimate::for_plan(&plan, req.n_snapshots.max(2));
 
@@ -128,15 +129,16 @@ pub async fn simulate_grid(
         let (scientific_export, scientific_export_error) = if cancelled {
             (None, Some("scientific export is unavailable for a cancelled run".to_string()))
         } else {
-            match create_cached_scientific_export(
-                &app_data_dir,
+            let export_context = ScientificExportContext::new(
                 &response_run_id,
                 &req,
                 &grid,
                 &max_field_acc,
                 &run_quality,
                 used_gpu,
-            ) {
+                &resolution_preflight,
+            );
+            match create_cached_scientific_export(&app_data_dir, &export_context) {
                 Ok(descriptor) => (Some(descriptor), None),
                 Err(error) => {
                     diagnostics(&error);
@@ -158,6 +160,7 @@ pub async fn simulate_grid(
             dt_s: dt,
             nx,
             ny,
+            resolution_preflight,
             bathymetry_asset_id: req.bathymetry_asset_id.clone(),
             used_gpu,
             max_field,
@@ -184,6 +187,7 @@ pub struct SimulateGridStreamMeta {
     pub dt_s: f64,
     pub nx: u32,
     pub ny: u32,
+    pub resolution_preflight: ResolutionPreflight,
     pub bathymetry_asset_id: Option<String>,
     pub used_gpu: bool,
     pub n_snapshots: u32,
@@ -228,15 +232,18 @@ pub(crate) fn compute_quick_eta(
     let start = std::time::Instant::now();
     let coarse_cell_deg = plan.cell_deg * 2.0;
     let mut grid = SwGrid::new(
-        plan.west, plan.south, plan.east, plan.north,
-        coarse_cell_deg, coarse_cell_deg,
+        plan.west,
+        plan.south,
+        plan.east,
+        plan.north,
+        coarse_cell_deg,
+        coarse_cell_deg,
     );
     grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
     inject_source_initial_field(&mut grid, req)?;
 
     let dt = grid.recommended_dt_s(0.4);
-    let stepper =
-        TimeStepper::new(dt).with_mode(crate::physics::solver::SolverMode::Linear);
+    let stepper = TimeStepper::new(dt).with_mode(crate::physics::solver::SolverMode::Linear);
     let n_steps = ((req.t_end_s / dt).ceil() as usize).min(50_000);
     let threshold = MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, threshold);
@@ -263,9 +270,7 @@ pub(crate) fn compute_quick_eta(
 }
 
 #[tauri::command]
-pub async fn quick_eta_preview(
-    req: SimulateGridRequest,
-) -> Result<QuickEtaPreviewResult, String> {
+pub async fn quick_eta_preview(req: SimulateGridRequest) -> Result<QuickEtaPreviewResult, String> {
     validate_simulate_grid(&req)?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let coarse_cell_deg = plan.cell_deg * 2.0;

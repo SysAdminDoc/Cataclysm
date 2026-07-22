@@ -4,7 +4,7 @@ import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, RunQualityRecord, ScientificExportDescriptor } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
@@ -189,6 +189,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   // 8 cells/deg (up from 6) gives a finer wavefront and better coastline
   // capture; still well within the solver's cell/step budget for a 1-hour run.
   const [cellsPerDeg, setCellsPerDeg] = useState(8);
+  const [resolutionPreflight, setResolutionPreflight] = useState<ResolutionPreflight | null>(null);
+  const [resolutionPreflightError, setResolutionPreflightError] = useState<string | null>(null);
   const [boundaryMode, setBoundaryMode] = useState<"sponge" | "radiation">("sponge");
   const [streamProgress, setStreamProgress] = useState(0);
   const [diag, setDiag] = useState<{ dt_s: number; nx: number; ny: number; used_gpu: boolean; quality: RunQualityRecord } | null>(null);
@@ -213,6 +215,51 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   const mountedRef = useRef(true);
   const gaugeCounter = useRef(0);
   const handledRunAndWatchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!initial || !isTauri()) {
+      setResolutionPreflight(null);
+      setResolutionPreflightError(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const halfDeg = Math.min(
+        25,
+        Math.max(2, (initial.cavity_radius_m / 1000) * 0.05 + 4),
+      );
+      const sigmaM = Math.max(initial.cavity_radius_m, 5000);
+      void api.preflightSimulationResolution({
+        source: initial.center,
+        initial_amplitude_m: initial.peak_amplitude_m,
+        source_sigma_m: sigmaM,
+        source_geometry: initial.source_geometry ?? null,
+        mean_depth_m: Math.max(initial.center.depth_m ?? 4000, 50),
+        use_real_bathymetry: useBathy,
+        bathymetry_asset_id: useBathy && bathymetryAssetId ? bathymetryAssetId : null,
+        box_half_size_deg: halfDeg,
+        cells_per_deg: cellsPerDeg,
+        resolution_mode: workspaceMode === "advanced" ? "advanced" : "simple",
+        t_end_s: 60 * 60,
+        n_snapshots: N_SNAPSHOTS,
+        include_lamb_wave: includeLambWave,
+        meteotsunami_forcing: initial.meteotsunami_forcing ?? null,
+        boundary_mode: boundaryMode,
+      }).then((report) => {
+        if (cancelled) return;
+        setResolutionPreflight(report);
+        setResolutionPreflightError(null);
+      }).catch((error) => {
+        if (cancelled) return;
+        setResolutionPreflight(null);
+        setResolutionPreflightError(String(error));
+      });
+    }, 150);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [initial, useBathy, bathymetryAssetId, cellsPerDeg, workspaceMode, includeLambWave, boundaryMode]);
 
   const refreshCheckpoints = useCallback(() => {
     if (!isTauri()) return Promise.resolve();
@@ -504,6 +551,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         bathymetry_asset_id: useBathy && bathymetryAssetId ? bathymetryAssetId : null,
         box_half_size_deg: halfDeg,
         cells_per_deg: cellsPerDeg,
+        resolution_mode: workspaceMode === "advanced" ? "advanced" as const : "simple" as const,
         t_end_s: 60 * 60,
         n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
@@ -564,6 +612,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           return;
         }
         setDiag({ dt_s: meta.dt_s, nx: meta.nx, ny: meta.ny, used_gpu: meta.used_gpu, quality: meta.run_quality });
+        setResolutionPreflight(meta.resolution_preflight);
         onRunQuality?.(meta.run_quality);
         setActiveIdx(0);
         setStatus("ready");
@@ -620,7 +669,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, boundaryMode, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
+  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, workspaceMode, boundaryMode, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
@@ -777,6 +826,46 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           </select>
         </label>}
       </div>}
+      {resolutionPreflight && (
+        <div className="swe__confidence" role="note" data-resolution-grade={resolutionPreflight.numerical_grade}>
+          <strong>
+            {t("swe.resolutionPreflight")} · {t(`swe.grade.${resolutionPreflight.numerical_grade}` as MessageKey)}
+          </strong>
+          <span>
+            {t("swe.physicalSpacing", {
+              dx: formatNumber(resolutionPreflight.dx_m / 1000, { maximumFractionDigits: 2 }),
+              dy: formatNumber(resolutionPreflight.dy_m / 1000, { maximumFractionDigits: 2 }),
+            })}
+            {" · "}{t("swe.estimatedTimestep", { seconds: formatNumber(resolutionPreflight.estimated_dt_s, { maximumFractionDigits: 2 }) })}
+          </span>
+          <span>
+            {t("swe.estimatedGrid", {
+              nx: formatNumber(resolutionPreflight.nx),
+              ny: formatNumber(resolutionPreflight.ny),
+              memory: formatNumber(resolutionPreflight.estimated_memory_bytes / 1024 / 1024, { maximumFractionDigits: 1 }),
+              runtime: formatNumber(resolutionPreflight.estimated_runtime_s, { maximumFractionDigits: 1 }),
+            })}
+          </span>
+          <span>
+            {t("swe.featureResolution", {
+              feature: resolutionPreflight.shortest_feature_id.replaceAll("_", " "),
+              cells: formatNumber(resolutionPreflight.minimum_cells_across_feature, { maximumFractionDigits: 1 }),
+            })}
+          </span>
+          <span>
+            {t("swe.recommendedResolution", {
+              recommended: formatNumber(resolutionPreflight.recommended_cells_per_deg),
+              selected: formatNumber(resolutionPreflight.selected_cells_per_deg),
+            })}
+          </span>
+          {resolutionPreflight.simple_auto_selected && <strong>{t("swe.resolutionAutoSelected")}</strong>}
+          {resolutionPreflight.advanced_override && <strong>{t("swe.resolutionAdvancedOverride")}</strong>}
+          <small>{t("swe.resolutionGradeCaveat")}</small>
+        </div>
+      )}
+      {resolutionPreflightError && workspaceMode === "advanced" && (
+        <div className="panel-error" role="alert">{t("swe.resolutionPreflightUnavailable")} {resolutionPreflightError}</div>
+      )}
       {status === "running" && (
         <div className="swe__run-state" role="status" aria-live="polite">
           <span>{t("swe.streamingFrame", { current: formatNumber(streamProgress), total: formatNumber(N_SNAPSHOTS) })}</span>

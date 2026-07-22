@@ -8,6 +8,7 @@ import { I18nProvider } from "../../lib/i18n";
 
 const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
+  preflightSimulationResolution: vi.fn(),
   cancelSimulation: vi.fn(),
   listImportedBathymetry: vi.fn(),
   listSolverCheckpoints: vi.fn(),
@@ -82,10 +83,35 @@ const RUN_QUALITY = {
   failure: null,
 };
 
+const RESOLUTION_PREFLIGHT = {
+  schema_version: 1,
+  requested_cells_per_deg: 8,
+  recommended_cells_per_deg: 20,
+  selected_cells_per_deg: 8,
+  simple_auto_selected: false,
+  advanced_override: true,
+  dx_m: 13_899,
+  dy_m: 13_899,
+  estimated_dt_s: 8.9,
+  nx: 128,
+  ny: 128,
+  estimated_steps: 405,
+  estimated_cell_steps: 6_635_520,
+  estimated_memory_bytes: 2_490_368,
+  estimated_runtime_s: 0.4,
+  features: [{ id: "cavity_rim_width", size_m: 2_000, cells_across: 0.14 }],
+  shortest_feature_id: "cavity_rim_width",
+  minimum_cells_across_feature: 0.14,
+  numerical_grade: "under_resolved" as const,
+  limitations: ["not operational"],
+};
+
 describe("SwePlayback", () => {
   beforeEach(() => {
     localStorage.clear();
     tauriApi.simulateGridStreaming.mockReset();
+    tauriApi.preflightSimulationResolution.mockReset();
+    tauriApi.preflightSimulationResolution.mockResolvedValue(RESOLUTION_PREFLIGHT);
     tauriApi.cancelSimulation.mockReset();
     tauriApi.cancelSimulation.mockResolvedValue(undefined);
     tauriApi.listImportedBathymetry.mockReset();
@@ -103,6 +129,19 @@ describe("SwePlayback", () => {
     expect(screen.getByLabelText("Grid resolution in cells per degree")).toHaveAttribute(
       "title",
       "Higher resolution is more accurate but slower. Default is 8.",
+    );
+  });
+
+  it("shows physical adequacy and preserves an advanced override warning", async () => {
+    render(<SwePlayback initial={INITIAL} workspaceMode="advanced" />);
+
+    expect(await screen.findByText("Resolution preflight · under-resolved")).toBeInTheDocument();
+    expect(screen.getByText("Physical spacing: 13.9 km east–west × 13.9 km north–south · estimated timestep 8.9 s")).toBeInTheDocument();
+    expect(screen.getByText("Shortest feature: cavity rim width · 0.1 cells across")).toBeInTheDocument();
+    expect(screen.getByText("Advanced resolution override — results and scientific exports retain this warning.")).toBeInTheDocument();
+    expect(screen.getByText(/not a forecast or operational-fitness grade/)).toBeInTheDocument();
+    expect(tauriApi.preflightSimulationResolution).toHaveBeenCalledWith(
+      expect.objectContaining({ resolution_mode: "advanced", cells_per_deg: 8 }),
     );
   });
 

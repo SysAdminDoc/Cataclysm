@@ -446,6 +446,16 @@ refinement behavior with the CPU reference. This is numerical-discretization
 evidence for a smooth fixture, not a claim about shock-front, source, or
 bathymetry uncertainty.
 
+Before a desktop propagation run, Cataclysm also evaluates the scenario's
+declared Gaussian, cavity, fault, landslide, pressure, and Lamb-wave dimensions
+against latitude-correct physical cell spacing. The preflight reports estimated
+`dx`/`dy`, CFL timestep, grid size, memory, CPU work, wall time, and cells across
+every source feature. Simple and Customize modes use the affordable recommended
+grid; Advanced mode may retain a different resolution, but the override remains
+visible in the run panel and in NetCDF/Zarr provenance. Its GCI-calibrated grade
+is numerical-discretization evidence only—not a forecast or an
+operational-fitness rating.
+
 On Windows this command is intentionally restricted to a clean disposable
 profile or VM with `CATACLYSM_INSTALL_SMOKE_ISOLATED=1`, `tauri-driver`, and a
 matching `msedgedriver.exe`. It installs the emitted MSI and NSIS packages one at

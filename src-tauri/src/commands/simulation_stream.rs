@@ -16,6 +16,7 @@ pub async fn simulate_grid_streaming(
         .path()
         .app_data_dir()
         .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    let resolution_preflight = build_resolution_preflight(&req)?;
     let plan = SimulationGridPlan::from_request(&req)?;
     let memory = SimulationMemoryEstimate::for_plan(&plan, 0);
 
@@ -227,15 +228,17 @@ pub async fn simulate_grid_streaming(
                     Some("scientific export is unavailable for a cancelled run".to_string()),
                 )
             } else {
-                match create_cached_scientific_export(
-                    &app_data_dir,
+                let max_field = max_field_acc.borrow();
+                let export_context = ScientificExportContext::new(
                     &response_run_id,
                     &req,
                     &grid,
-                    &max_field_acc.borrow(),
+                    &max_field,
                     &run_quality,
                     used_gpu,
-                ) {
+                    &resolution_preflight,
+                );
+                match create_cached_scientific_export(&app_data_dir, &export_context) {
                     Ok(descriptor) => (Some(descriptor), None),
                     Err(error) => {
                         diagnostics(&error);
@@ -256,6 +259,7 @@ pub async fn simulate_grid_streaming(
                 dt_s: dt,
                 nx,
                 ny,
+                resolution_preflight,
                 bathymetry_asset_id: req.bathymetry_asset_id.clone(),
                 used_gpu,
                 n_snapshots: render_stream.frame_count().min(u32::MAX as u64) as u32,
@@ -396,8 +400,7 @@ pub(crate) struct StreamSimulationContext<'a> {
     pub(crate) max_field: &'a std::cell::RefCell<MaxFieldAccumulator>,
     pub(crate) render: Option<&'a RenderStreamContext<'a>>,
     pub(crate) quality_baseline: &'a QualityBaseline,
-    pub(crate) meteotsunami_forcing:
-        Option<&'a crate::physics::meteotsunami::MeteotsunamiSource>,
+    pub(crate) meteotsunami_forcing: Option<&'a crate::physics::meteotsunami::MeteotsunamiSource>,
     pub(crate) checkpoint: Option<&'a RefCell<StreamCheckpointWriter>>,
     pub(crate) snapshot_interval_offset: usize,
     pub(crate) boundary: crate::physics::solver::BoundaryMode,

@@ -26,6 +26,7 @@ permissions = [
   "allow-gpu-probe",
   "allow-render-protocol-capabilities",
   "allow-surface-probe",
+  "allow-preflight-simulation-resolution",
   "allow-list-solver-checkpoints",
 ]
 

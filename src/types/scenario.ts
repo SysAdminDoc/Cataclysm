@@ -232,6 +232,35 @@ export type ScientificExportDescriptor = {
   zarr_error: string | null;
 };
 
+export type ResolutionFeature = {
+  id: string;
+  size_m: number;
+  cells_across: number;
+};
+
+export type ResolutionPreflight = {
+  schema_version: number;
+  requested_cells_per_deg: number;
+  recommended_cells_per_deg: number;
+  selected_cells_per_deg: number;
+  simple_auto_selected: boolean;
+  advanced_override: boolean;
+  dx_m: number;
+  dy_m: number;
+  estimated_dt_s: number;
+  nx: number;
+  ny: number;
+  estimated_steps: number;
+  estimated_cell_steps: number;
+  estimated_memory_bytes: number;
+  estimated_runtime_s: number;
+  features: ResolutionFeature[];
+  shortest_feature_id: string;
+  minimum_cells_across_feature: number;
+  numerical_grade: "gci_fine_range" | "gci_refined_range" | "gci_baseline_range" | "under_resolved";
+  limitations: string[];
+};
+
 export type SimulateGridResponse = {
   run_id: string;
   lifecycle: "completed" | "cancelled";
@@ -241,6 +270,7 @@ export type SimulateGridResponse = {
   dt_s: number;
   nx: number;
   ny: number;
+  resolution_preflight?: ResolutionPreflight | null;
   /** F4-01 — true when the SWE leapfrog ran on the wgpu GPU path.
    *  Always false on builds compiled without `--features gpu`. */
   used_gpu?: boolean;

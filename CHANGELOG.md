@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- A source-aware resolution preflight now reports latitude-correct physical
+  `dx`/`dy`, CFL timestep, every declared source-feature width in cells,
+  grid/memory/work/runtime estimates, and a numerical grade calibrated to the
+  solver GCI fixture. Simple and Customize modes select the affordable
+  recommendation automatically; Advanced overrides remain available but are
+  visibly marked in results and preserved in NetCDF/Zarr provenance. Every
+  grade explicitly excludes operational fitness and source, bathymetry,
+  wet/dry-front, and model-form uncertainty.
 - An automated three-level solver-convergence gate with observed order,
   Richardson extrapolation, Grid Convergence Index, and asymptotic-range
   evidence for arrival, peak elevation/runup, displaced volume, and energy.

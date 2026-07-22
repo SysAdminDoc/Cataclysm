@@ -118,20 +118,34 @@ fn store_stats(path: &Path) -> Result<ZarrArtifactStats, String> {
 
 pub(super) fn write_scientific_zarr(
     path: &Path,
-    run_id: &str,
-    req: &SimulateGridRequest,
-    grid: &SwGrid,
-    max_field: &MaxFieldAccumulator,
-    run_quality: &RunQualityRecord,
-    used_gpu: bool,
+    context: &ScientificExportContext<'_>,
 ) -> Result<ZarrArtifactStats, String> {
+    let run_id = context.run_id;
+    let req = context.req;
+    let grid = context.grid;
+    let max_field = context.max_field;
+    let run_quality = context.run_quality;
+    let used_gpu = context.used_gpu;
+    let resolution_preflight = context.resolution_preflight;
     let cells = validate_export_shape(grid)?;
     let [peak_m, t_of_max_s, arrival_s, energy_m2s] = max_field.scientific_fields();
-    let [max_depth_m, max_speed_ms, max_momentum_flux, min_depth_m, t_of_max_speed_s] =
-        max_field.extended_scientific_fields();
+    let [
+        max_depth_m,
+        max_speed_ms,
+        max_momentum_flux,
+        min_depth_m,
+        t_of_max_speed_s,
+    ] = max_field.extended_scientific_fields();
     if [
-        peak_m, t_of_max_s, arrival_s, energy_m2s, max_depth_m, max_speed_ms, max_momentum_flux,
-        min_depth_m, t_of_max_speed_s,
+        peak_m,
+        t_of_max_s,
+        arrival_s,
+        energy_m2s,
+        max_depth_m,
+        max_speed_ms,
+        max_momentum_flux,
+        min_depth_m,
+        t_of_max_speed_s,
     ]
     .iter()
     .any(|field| field.len() != cells)
@@ -140,7 +154,13 @@ pub(super) fn write_scientific_zarr(
     }
     let drawdown: Vec<f32> = min_depth_m
         .iter()
-        .map(|value| if value.is_finite() { *value as f32 } else { f32::NAN })
+        .map(|value| {
+            if value.is_finite() {
+                *value as f32
+            } else {
+                f32::NAN
+            }
+        })
         .collect();
 
     let canonical_request = serde_json::to_vec(req)
@@ -150,6 +170,8 @@ pub(super) fn write_scientific_zarr(
         .map_err(|error| format!("failed to encode Zarr provenance: {error}"))?;
     let quality_json = serde_json::to_string(run_quality)
         .map_err(|error| format!("failed to serialize Zarr quality: {error}"))?;
+    let resolution_json = serde_json::to_string(resolution_preflight)
+        .map_err(|error| format!("failed to serialize Zarr resolution preflight: {error}"))?;
     let bathymetry_source = if req.use_real_bathymetry {
         if req.bathymetry_asset_id.is_some() {
             "validated user-supplied scientific raster"
@@ -206,6 +228,15 @@ pub(super) fn write_scientific_zarr(
             json!("mean sea level; modeled sea-surface displacement"),
         ),
         ("cataclysm_quality_record", json!(quality_json)),
+        ("cataclysm_resolution_preflight", json!(resolution_json)),
+        (
+            "cataclysm_resolution_numerical_grade",
+            json!(resolution_preflight.numerical_grade),
+        ),
+        (
+            "cataclysm_resolution_advanced_override",
+            json!(resolution_preflight.advanced_override),
+        ),
         (
             "crs",
             json!({

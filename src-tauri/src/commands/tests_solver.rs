@@ -12,6 +12,7 @@ fn simulate_grid_rejects_bad_lamb_wave_override() {
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: true,
@@ -35,7 +36,11 @@ fn simulate_grid_validates_moving_pressure_forcing() {
         cross_track_sigma_m: 120_000.0,
         track_length_m: 560_000.0,
         water_depth_m: 155.0,
-        location: GeoPoint { lat_deg: 47.1, lon_deg: -92.1, depth_m: 155.0 },
+        location: GeoPoint {
+            lat_deg: 47.1,
+            lon_deg: -92.1,
+            depth_m: 155.0,
+        },
     };
     let mut request = source_grid_request(None);
     request.initial_amplitude_m = source.inverted_barometer_amplitude_m();
@@ -43,7 +48,11 @@ fn simulate_grid_validates_moving_pressure_forcing() {
     request.meteotsunami_forcing = Some(source);
     assert!(validate_simulate_grid(&request).is_ok());
 
-    request.meteotsunami_forcing.as_mut().expect("source").speed_m_s = 0.0;
+    request
+        .meteotsunami_forcing
+        .as_mut()
+        .expect("source")
+        .speed_m_s = 0.0;
     assert!(validate_simulate_grid(&request).is_err());
 }
 
@@ -90,6 +99,7 @@ fn simulate_grid_rejects_unknown_colormap() {
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,
@@ -115,6 +125,7 @@ fn simulate_grid_accepts_viridis_colormap() {
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,
@@ -142,6 +153,7 @@ fn simulate_grid_rejects_sub_floor_analytical_depth() {
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,
@@ -164,6 +176,7 @@ fn simulate_grid_rejects_sub_floor_analytical_depth() {
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,
@@ -193,6 +206,7 @@ fn simulate_grid_tiles_antimeridian_crossing_box() {
         bathymetry_asset_id: None,
         box_half_size_deg: 5.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,
@@ -255,6 +269,7 @@ fn simulate_grid_rejects_bad_gauge_coordinates() {
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 1.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,

@@ -191,6 +191,31 @@
   line-height: 1.45;
 }
 
+.swe__confidence[data-resolution-grade] {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  padding: 9px 10px;
+}
+
+.swe__confidence[data-resolution-grade] > strong:first-child {
+  color: var(--text);
+  font-size: var(--type-body);
+}
+
+.swe__confidence[data-resolution-grade] > small {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.swe__confidence[data-resolution-grade="gci_fine_range"],
+.swe__confidence[data-resolution-grade="gci_refined_range"],
+.swe__confidence[data-resolution-grade="gci_baseline_range"] {
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  border-left-color: var(--success);
+  color: var(--text-muted);
+}
+
 .swe__error {
   display: flex;
   flex-direction: column;

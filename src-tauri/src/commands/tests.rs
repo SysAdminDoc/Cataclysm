@@ -20,6 +20,7 @@ fn source_grid_request(source_geometry: Option<InitialSourceGeometry>) -> Simula
         bathymetry_asset_id: None,
         box_half_size_deg: 2.0,
         cells_per_deg: 10.0,
+        resolution_mode: None,
         t_end_s: 60.0,
         n_snapshots: 2,
         include_lamb_wave: false,

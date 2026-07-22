@@ -46,11 +46,15 @@ mod waves;
 pub use direct::*;
 pub use observations::*;
 pub use scientific_export::*;
-pub use simulation::{GridGaugeHistoryFrame, SimulateGridRequest, SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle, simulate_grid, simulate_grid_streaming, quick_eta_preview};
-pub use system::*;
 use simulation::*;
-pub use waves::*;
+pub use simulation::{
+    GridGaugeHistoryFrame, ResolutionFeature, ResolutionPreflight, SimulateGridRequest,
+    SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle,
+    preflight_simulation_resolution, quick_eta_preview, simulate_grid, simulate_grid_streaming,
+};
+pub use system::*;
 use waves::haversine_m;
+pub use waves::*;
 
 #[derive(Debug)]
 struct ActiveSimulation {
@@ -240,7 +244,11 @@ pub fn run_preset(req: RunPresetRequest) -> Result<RunPresetResponse, String> {
     let wavefront = if matches!(&preset.source, PresetSource::Meteotsunami(_)) {
         // A moving atmospheric source has no instantaneous radial wavefront;
         // its physically meaningful product comes from the forced SWE run.
-        PropagationSnapshot { time_s: req.time_s, ranges_m: Vec::new(), amplitudes_m: Vec::new() }
+        PropagationSnapshot {
+            time_s: req.time_s,
+            ranges_m: Vec::new(),
+            amplitudes_m: Vec::new(),
+        }
     } else {
         sample_wavefront(
             initial.peak_amplitude_m,
@@ -268,12 +276,19 @@ pub fn sample_preset_wavefront(
         return Err("preset_id must be 1..128 characters".into());
     }
     if !time_s.is_finite() || !(0.0..=SWE_MAX_T_END_S).contains(&time_s) {
-        return Err(format!("time_s must be finite and in [0, {}]", SWE_MAX_T_END_S));
+        return Err(format!(
+            "time_s must be finite and in [0, {}]",
+            SWE_MAX_T_END_S
+        ));
     }
-    let preset = find_preset(&preset_id)
-        .ok_or_else(|| format!("unknown preset id: {}", preset_id))?;
+    let preset =
+        find_preset(&preset_id).ok_or_else(|| format!("unknown preset id: {}", preset_id))?;
     if matches!(&preset.source, PresetSource::Meteotsunami(_)) {
-        return Ok(PropagationSnapshot { time_s, ranges_m: Vec::new(), amplitudes_m: Vec::new() });
+        return Ok(PropagationSnapshot {
+            time_s,
+            ranges_m: Vec::new(),
+            amplitudes_m: Vec::new(),
+        });
     }
     let initial = preset.source.initial_displacement();
     let alpha = preset.source.far_field_decay_alpha();
