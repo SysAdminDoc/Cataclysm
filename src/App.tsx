@@ -196,7 +196,7 @@ const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "geojson" | "kml" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "geojson" | "kml" | "help" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -305,6 +305,15 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <path d="M12 2 L20 7v10l-8 5-8-5V7Z" />
         <path d="M12 12V2M12 12l8-5M12 12l-8-5" />
+      </svg>
+    );
+  }
+  if (name === "help") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.8 9a2.4 2.4 0 1 1 3.7 2c-1 .7-1.5 1.2-1.5 2.5" />
+        <path d="M12 17h.01" />
       </svg>
     );
   }
@@ -2534,6 +2543,9 @@ export default function App() {
             </div>}
           </div>
           <div className="app__command-group app__command-group--utility" role="group" aria-label={t("app.preferences")}>
+            <ToolbarButton icon="help" variant="utility" onClick={() => setTourOpen(true)} title={t("app.helpTitle")}>
+              {t("app.help")}
+            </ToolbarButton>
             <ToolbarButton icon="citations" variant="utility" onClick={() => setShowCitations(true)} title={t("app.referencesTitle")}>
               {t("app.references")}
             </ToolbarButton>

@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- WCAG 2.2 AA interaction coverage beyond forced colors: every Cesium camera
+  drag/rotate/zoom operation now has click, tap, and keyboard-operable controls,
+  camera and marker placement accept exact coordinates, and guided Help remains
+  in a stable header position across hazard workspaces. Author controls enforce
+  the 24×24 CSS-pixel target floor, focused controls reserve clearance from
+  sticky/fixed chrome, and Playwright now governs dragging alternatives, target
+  size, focus visibility, consistent help, both themes, forced colors, and
+  localized layouts.
 - An IOC-informed tsunami map-reading frame across Results and Layers. Arrival
   now leads the outcome summary and publishes the solver's deterministic P05–P95
   domain-edge sensitivity envelope when run; the coastal overlay uses explicit

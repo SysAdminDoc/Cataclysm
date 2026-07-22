@@ -102,6 +102,10 @@ import { defaultLayerState, type LayerState } from "../lib/layer-controller";
 import { useUnits } from "../hooks/useUnits";
 import { formatEmbeddedLengthValues, formatLength, formatReadoutValue, quantityText, type UnitSystem } from "../lib/units";
 import type { UsgsOfficialComparison } from "../lib/usgs-earthquakes";
+import {
+  applyCameraNavigation,
+  type CameraNavigationAction,
+} from "../render/cesium/camera-navigation";
 
 type Props = {
   domain?: "tsunami" | "asteroid" | "nuclear";
@@ -367,6 +371,79 @@ function CoordEntryForm({
   );
 }
 
+const CAMERA_ACTION_LABELS: Record<CameraNavigationAction, MessageKey> = {
+  "pan-up": "globe.camera.panUp",
+  "pan-down": "globe.camera.panDown",
+  "pan-left": "globe.camera.panLeft",
+  "pan-right": "globe.camera.panRight",
+  "rotate-left": "globe.camera.rotateLeft",
+  "rotate-right": "globe.camera.rotateRight",
+  "zoom-in": "globe.camera.zoomIn",
+  "zoom-out": "globe.camera.zoomOut",
+};
+
+function CameraNavigationControls({
+  onAction,
+  onJump,
+  announcement,
+}: {
+  onAction: (action: CameraNavigationAction) => void;
+  onJump: (lat: number, lon: number) => void;
+  announcement: string;
+}) {
+  const { t } = useI18n();
+  const actionButtons: ReadonlyArray<Readonly<{
+    action: CameraNavigationAction;
+    glyph: string;
+  }>> = [
+    { action: "pan-up", glyph: "↑" },
+    { action: "pan-left", glyph: "←" },
+    { action: "pan-right", glyph: "→" },
+    { action: "pan-down", glyph: "↓" },
+    { action: "rotate-left", glyph: "↶" },
+    { action: "rotate-right", glyph: "↷" },
+    { action: "zoom-in", glyph: "+" },
+    { action: "zoom-out", glyph: "−" },
+  ];
+
+  return (
+    <details className="app__globe-navigation">
+      <summary>{t("globe.camera.controls")}</summary>
+      <div
+        className="app__globe-navigation-actions"
+        role="group"
+        aria-label={t("globe.camera.buttonAlternatives")}
+      >
+        {actionButtons.map(({ action, glyph }) => {
+          const label = t(CAMERA_ACTION_LABELS[action]);
+          return (
+            <button
+              key={action}
+              type="button"
+              aria-label={label}
+              title={label}
+              onClick={() => onAction(action)}
+            >
+              <span aria-hidden="true">{glyph}</span>
+            </button>
+          );
+        })}
+      </div>
+      <CoordEntryForm onSubmit={onJump} label={t("globe.camera.coordinates")} />
+      <p>{t("globe.camera.help")}</p>
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-camera-navigation-announcement
+      >
+        {announcement}
+      </p>
+    </details>
+  );
+}
+
 type GlobeInteractionController = InteractionOwnershipController<
   CesiumInteractionMode,
   Cesium.ScreenSpaceEventHandler,
@@ -469,6 +546,7 @@ export function Globe({
   >(null);
   const [lastInspectCoord, setLastInspectCoord] = useState<{ lat: number; lon: number } | null>(null);
   const [lastInspectionSummary, setLastInspectionSummary] = useState<string | null>(null);
+  const [cameraNavigationAnnouncement, setCameraNavigationAnnouncement] = useState("");
   const [inspectionResult, setInspectionResult] = useState<AsyncResult<{ lat: number; lon: number; text: string }>>({ status: "idle" });
   const sweCoordinatorRef = useRef<{
     coordinator: AsyncResourceCoordinator<SweImageryResource>;
@@ -554,6 +632,38 @@ export function Globe({
     inspectMode: Boolean(inspectMode),
     pickMode: Boolean(pickMode),
   });
+
+  const handleCameraNavigation = useCallback((action: CameraNavigationAction) => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    applyCameraNavigation(viewer.camera, action);
+    viewer.scene.requestRender();
+    setCameraNavigationAnnouncement(t("globe.camera.actionComplete", {
+      action: t(CAMERA_ACTION_LABELS[action]),
+    }));
+  }, [t]);
+
+  const jumpCameraToCoordinates = useCallback((lat: number, lon: number) => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    const currentHeight = viewer.camera.positionCartographic.height;
+    const height = Number.isFinite(currentHeight)
+      ? Math.min(40_000_000, Math.max(1_000, currentHeight))
+      : 20_000_000;
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, height),
+      orientation: {
+        heading: 0,
+        pitch: -Cesium.Math.PI_OVER_TWO,
+        roll: 0,
+      },
+    });
+    viewer.scene.requestRender();
+    setCameraNavigationAnnouncement(t("globe.camera.centered", {
+      lat: lat.toFixed(2),
+      lon: lon.toFixed(2),
+    }));
+  }, [t]);
 
   // One-time viewer mount
   useEffect(() => {
@@ -1150,6 +1260,11 @@ export function Globe({
       >
         {announcedAccessibilitySummary}
       </p>
+      <CameraNavigationControls
+        onAction={handleCameraNavigation}
+        onJump={jumpCameraToCoordinates}
+        announcement={cameraNavigationAnnouncement}
+      />
       {pickMode && (
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">

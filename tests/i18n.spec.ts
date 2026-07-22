@@ -261,7 +261,7 @@ test("language switch persists across settings, simulation results, layers, and 
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("tsunamisim:tour-requested")));
   const tour = page.getByRole("dialog", { name: "Cataclysmへようこそ" });
   await expect(tour).toBeVisible();
-  await expect(tour.getByText("6ステップ中1")).toBeVisible();
+  await expect(tour.getByText("7ステップ中1")).toBeVisible();
   await expect(tour.getByRole("button", { name: "次へ" })).toBeVisible();
   const tourAccessibility = await new AxeBuilder({ page }).include(".tour-card").analyze();
   expect(tourAccessibility.violations).toEqual([]);

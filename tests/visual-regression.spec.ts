@@ -130,6 +130,22 @@ test.describe("Visual regression — desktop", () => {
     });
   });
 
+  test("non-drag camera navigation", async ({ page }) => {
+    await seedAcknowledged(page);
+    await page.goto("/");
+    const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
+    await expect(tohoku).toBeVisible({ timeout: 10_000 });
+    await tohoku.click();
+    const controls = page.locator(".app__globe-navigation").first();
+    await controls.locator("summary").click();
+    await expect(controls.getByRole("group", { name: "Non-drag camera controls" })).toBeVisible();
+    await hideCesiumCanvas(page);
+
+    await expect(page).toHaveScreenshot("desktop-camera-navigation.png", {
+      maxDiffPixelRatio: 0.01,
+    });
+  });
+
   test("highlight story composer", async ({ page }) => {
     test.setTimeout(120_000);
     await seedAcknowledged(page);

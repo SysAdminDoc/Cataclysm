@@ -26,7 +26,7 @@ describe("Tour", () => {
     const user = userEvent.setup();
     render(<I18nProvider><Tour open onClose={() => {}} /></I18nProvider>);
     expect(screen.getByRole("dialog", { name: "Cataclysmへようこそ" })).toBeInTheDocument();
-    expect(screen.getByText("6ステップ中1")).toBeInTheDocument();
+    expect(screen.getByText("7ステップ中1")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "次へ" }));
     expect(screen.getByRole("heading", { name: "1 · 歴史的イベントを選ぶ" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "戻る" })).toBeEnabled();

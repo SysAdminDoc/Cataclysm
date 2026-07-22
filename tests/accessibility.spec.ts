@@ -74,6 +74,62 @@ async function expectVisibleBoundary(page: Page, selector: string) {
   ).toBeGreaterThanOrEqual(1);
 }
 
+async function assertAuthorTargetMinimums(page: Page) {
+  const selector = [
+    "button",
+    "summary",
+    "select",
+    "textarea",
+    'input:not([type="hidden"]):not([type="range"])',
+    '[role="button"]',
+    '[role="tab"]',
+    '[role="switch"]',
+  ].join(",");
+  const failures = await page.locator(selector).evaluateAll((nodes) => nodes.flatMap((node) => {
+    const element = node as HTMLElement;
+    const style = getComputedStyle(element);
+    if (
+      style.display === "none"
+      || style.visibility === "hidden"
+      || element.closest('[inert], [aria-hidden="true"], .cesium-widget')
+    ) return [];
+    const ownRect = element.getBoundingClientRect();
+    if (ownRect.width === 0 || ownRect.height === 0) return [];
+    const input = element instanceof HTMLInputElement ? element : null;
+    const target = input && (input.type === "checkbox" || input.type === "radio")
+      ? input.closest("label")
+        ?? (input.id ? document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(input.id)}"]`) : null)
+        ?? input
+      : element;
+    const rect = target.getBoundingClientRect();
+    if (rect.width >= 24 && rect.height >= 24) return [];
+    return [`${element.tagName.toLowerCase()}#${element.id}.${element.className} ${rect.width.toFixed(1)}x${rect.height.toFixed(1)}`];
+  }));
+  expect(failures, "WCAG 2.5.8 author targets below 24×24 CSS pixels").toEqual([]);
+}
+
+async function assertFocusedControlVisible(locator: ReturnType<Page["locator"]>) {
+  await locator.focus();
+  await expect(locator).toBeFocused();
+  const hasVisiblePoint = await locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const inset = 2;
+    const points = [
+      [rect.left + rect.width / 2, rect.top + rect.height / 2],
+      [rect.left + inset, rect.top + inset],
+      [rect.right - inset, rect.top + inset],
+      [rect.left + inset, rect.bottom - inset],
+      [rect.right - inset, rect.bottom - inset],
+    ];
+    return points.some(([x, y]) => {
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false;
+      const hit = document.elementFromPoint(x, y);
+      return hit === element || (hit !== null && element.contains(hit));
+    });
+  });
+  expect(hasVisiblePoint, "WCAG 2.4.11 focused target is fully obscured").toBe(true);
+}
+
 for (const theme of THEMES) {
   test.describe(`WCAG AA desktop — ${theme}`, () => {
     test.beforeEach(async ({ page }) => {
@@ -91,6 +147,58 @@ for (const theme of THEMES) {
       await expect(sceneSummary).toContainText("Visible analytical layers:");
       await expect(sceneSummary).toContainText(/Camera centered at|Camera position is not available/);
       await expect(page.locator("[data-globe-scene-announcement]").first()).not.toBeEmpty();
+      await assertAccessiblePage(page);
+    });
+
+    test("WCAG 2.2 interaction alternatives, target size, focus visibility, and consistent help", async ({ page }) => {
+      await openWorkspace(page);
+
+      const utilityGroup = page.getByRole("group", { name: "References and preferences" });
+      await expect(utilityGroup.getByRole("button")).toHaveCount(3);
+      await expect(utilityGroup.getByRole("button").nth(0)).toHaveAccessibleName("Help");
+      await expect(utilityGroup.getByRole("button").nth(1)).toHaveAccessibleName("References");
+      await expect(utilityGroup.getByRole("button").nth(2)).toHaveAccessibleName("Settings");
+
+      const help = utilityGroup.getByRole("button", { name: "Help", exact: true });
+      await help.click();
+      await expect(page.getByRole("dialog", { name: "Welcome to Cataclysm" })).toBeVisible();
+      await page.getByRole("button", { name: "Close tour" }).click();
+
+      const cameraControls = page.locator(".app__globe-navigation").first();
+      await cameraControls.locator("summary").click();
+      const nonDragControls = cameraControls.getByRole("group", { name: "Non-drag camera controls" });
+      for (const name of [
+        "Pan view up",
+        "Pan view down",
+        "Pan view left",
+        "Pan view right",
+        "Rotate view left",
+        "Rotate view right",
+        "Zoom in",
+        "Zoom out",
+      ]) {
+        await expect(nonDragControls.getByRole("button", { name })).toBeVisible();
+      }
+      const panRight = nonDragControls.getByRole("button", { name: "Pan view right" });
+      await panRight.focus();
+      await page.keyboard.press("Enter");
+      const cameraAnnouncement = cameraControls.locator("[data-camera-navigation-announcement]");
+      await expect(cameraAnnouncement).toContainText("Camera action complete: Pan view right");
+
+      const coordinates = cameraControls.getByRole("form", { name: "Center camera by coordinates" });
+      await coordinates.getByLabel("Latitude").fill("35.68");
+      await coordinates.getByLabel("Longitude").fill("139.76");
+      await coordinates.getByRole("button", { name: "Go" }).click();
+      await expect(cameraAnnouncement).toContainText(
+        "Camera centered at 35.68 degrees latitude, 139.76 degrees longitude",
+      );
+
+      await assertAuthorTargetMinimums(page);
+      await assertFocusedControlVisible(page.getByRole("button", { name: "Performance", exact: true }));
+      await assertFocusedControlVisible(page.getByRole("button", { name: "Open visualization layers" }));
+
+      await page.getByRole("button", { name: "Nuclear", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Help", exact: true })).toBeVisible();
       await assertAccessiblePage(page);
     });
 

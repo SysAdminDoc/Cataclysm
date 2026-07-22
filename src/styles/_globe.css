@@ -328,6 +328,80 @@
   inset: 0;
 }
 
+.app__globe-navigation {
+  position: absolute;
+  z-index: 46;
+  top: 58px;
+  right: 16px;
+  width: min(286px, calc(100% - 32px));
+  border: 1px solid color-mix(in srgb, var(--divider) 82%, transparent);
+  border-radius: var(--r-md);
+  background: var(--viewport-hud);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--crust) 38%, transparent);
+  color: var(--text);
+  backdrop-filter: blur(14px) saturate(120%);
+}
+
+.app__globe-navigation > summary {
+  min-height: 34px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: var(--type-caption);
+  font-weight: 760;
+  list-style-position: inside;
+}
+
+.app__globe-navigation[open] {
+  padding-bottom: 10px;
+}
+
+.app__globe-navigation-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(34px, 1fr));
+  gap: 6px;
+  padding: 2px 10px 4px;
+}
+
+.app__globe-navigation-actions button {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--divider) 86%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--crust) 74%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.app__globe-navigation-actions button:hover {
+  background: color-mix(in srgb, var(--accent-active) 14%, var(--crust));
+  border-color: var(--accent-active);
+}
+
+.app__globe-navigation .coord-entry {
+  padding: 0 10px;
+}
+
+.app__globe-navigation .coord-entry__label {
+  flex-basis: 100%;
+}
+
+.app__globe-navigation .coord-entry__input {
+  flex: 1 1 82px;
+  width: 82px;
+}
+
+.app__globe-navigation > p:not(.sr-only) {
+  margin: 3px 10px 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+
 .app__globe-osm-attribution {
   position: absolute;
   z-index: 7;

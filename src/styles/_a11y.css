@@ -22,6 +22,55 @@
   outline: 2px solid var(--accent, #89b4fa);
 }
 
+/* WCAG 2.2 SC 2.5.8 — author-styled controls have a real 24 CSS-pixel
+   activation floor. Inline prose links and spatial controls such as range
+   inputs retain the criterion's documented exceptions. */
+:where(
+  button,
+  input:not([type="hidden"]):not([type="range"]),
+  select,
+  textarea,
+  summary,
+  [role="button"],
+  [role="tab"],
+  [role="switch"]
+) {
+  min-block-size: 24px;
+}
+
+:where(
+  button,
+  input[type="checkbox"],
+  input[type="radio"],
+  summary,
+  [role="button"],
+  [role="tab"],
+  [role="switch"]
+) {
+  min-inline-size: 24px;
+}
+
+/* WCAG 2.2 SC 2.4.11 — leave room for app chrome and sticky section
+   headings whenever the browser scrolls a newly focused control into view. */
+html,
+.app__panel,
+.inspector__body,
+.modal__body {
+  scroll-padding-block: 72px 112px;
+}
+
+:where(
+  button,
+  a[href],
+  input:not([type="hidden"]),
+  select,
+  textarea,
+  summary,
+  [tabindex]:not([tabindex="-1"])
+) {
+  scroll-margin-block: 72px;
+}
+
 /* Windows High Contrast / CSS forced-colors. Keep browser and OS color
    substitution enabled, then replace visual effects that disappear (gradients,
    translucent fills, shadows) with system-color borders and explicit shapes. */
@@ -99,6 +148,7 @@
   .app__export-panel,
   .app__viewport-hud,
   .app__viewport-layers,
+  .app__globe-navigation,
   .app__viewport-legend,
   .app__viewport-telemetry,
   .preset-card,

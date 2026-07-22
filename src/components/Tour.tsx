@@ -45,6 +45,11 @@ const STEPS: TourStep[] = [
     pos: "bottom-right",
   },
   {
+    title: "tour.navigation.title",
+    body: "tour.navigation.body",
+    pos: "top-center",
+  },
+  {
     title: "tour.coast.title",
     body: "tour.coast.body",
     pos: "top-center",
