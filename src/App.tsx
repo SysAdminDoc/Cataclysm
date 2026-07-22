@@ -447,6 +447,9 @@ export default function App() {
   const [comparisonInspectCoordinate, setComparisonInspectCoordinate] = useState<GeoPoint | null>(null);
   const [pointProbeA, setPointProbeA] = useState<PointProbeReport | null>(null);
   const [pointProbeB, setPointProbeB] = useState<PointProbeReport | null>(null);
+  const [maxFieldProbeA, setMaxFieldProbeA] = useState<import("./lib/tauri").MaxFieldProbeResult | null>(null);
+  const [maxFieldProbeLoading, setMaxFieldProbeLoading] = useState(false);
+  const [maxFieldProbeError, setMaxFieldProbeError] = useState<string | null>(null);
   const [familiarPlace, setFamiliarPlace] = useState<NukemapLocationResult | null>(null);
   const [hypotheticalApproach, setHypotheticalApproach] = useState<HypotheticalImpactDraft | null>(null);
   useEffect(() => {
@@ -1380,6 +1383,30 @@ export default function App() {
   ), [activeComparisonStory, compareMode, slotB.initial]);
   const directHazardMode: DirectHazardMode | null = hazardMode === "tsunami" ? null : hazardMode;
   const inHazardMode = directHazardMode !== null;
+  useEffect(() => {
+    let active = true;
+    setMaxFieldProbeA(null);
+    setMaxFieldProbeError(null);
+    if (!inTauri || inHazardMode || !pointProbeA || !sweScientificExport) {
+      setMaxFieldProbeLoading(false);
+      return () => { active = false; };
+    }
+    setMaxFieldProbeLoading(true);
+    void api.maxFieldProbe({
+      export_id: sweScientificExport.export_id,
+      lat: pointProbeA.lat,
+      lon: pointProbeA.lon,
+    }).then((result) => {
+      if (!active) return;
+      setMaxFieldProbeA(result);
+      setMaxFieldProbeLoading(false);
+    }).catch((error) => {
+      if (!active) return;
+      setMaxFieldProbeError(error instanceof Error ? error.message : String(error));
+      setMaxFieldProbeLoading(false);
+    });
+    return () => { active = false; };
+  }, [inHazardMode, inTauri, pointProbeA, sweScientificExport]);
   const hazardCenter = directHazardMode ? hazardCenters[directHazardMode] : null;
   const detonateNonce = directHazardMode ? detonateNonces[directHazardMode] : 0;
 
@@ -3234,6 +3261,9 @@ export default function App() {
               && pointProbeA.lon === pointProbeB.lon
               ? pointProbeB
               : null}
+            maxField={maxFieldProbeA}
+            maxFieldLoading={maxFieldProbeLoading}
+            maxFieldError={maxFieldProbeError}
           />
         )}
         {inspectorTab === "layers" && <LayerInspector

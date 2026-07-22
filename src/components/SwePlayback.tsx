@@ -52,24 +52,48 @@ type Props = {
   onSensitivityEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
 };
 
-type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
+type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy" | "max_depth" | "max_speed" | "momentum" | "drawdown" | "t_of_max_speed";
 
 const OVERLAY_OPTIONS: Array<{ id: OverlayChoice; labelKey: MessageKey; titleKey: MessageKey }> = [
   { id: "wave", labelKey: "swe.wave", titleKey: "swe.waveTitle" },
   { id: "peak", labelKey: "swe.peak", titleKey: "swe.peakTitle" },
   { id: "t_of_max", labelKey: "swe.tMax", titleKey: "swe.tMaxTitle" },
   { id: "energy", labelKey: "swe.energy", titleKey: "swe.energyTitle" },
+  { id: "max_depth", labelKey: "swe.maxDepth", titleKey: "swe.maxDepthTitle" },
+  { id: "max_speed", labelKey: "swe.maxSpeed", titleKey: "swe.maxSpeedTitle" },
+  { id: "momentum", labelKey: "swe.momentum", titleKey: "swe.momentumTitle" },
+  { id: "drawdown", labelKey: "swe.drawdown", titleKey: "swe.drawdownTitle" },
+  { id: "t_of_max_speed", labelKey: "swe.tMaxSpeed", titleKey: "swe.tMaxSpeedTitle" },
 ];
+
+type MaxFieldImageSet = Pick<MaxFieldProduct, "peak_png_b64" | "t_of_max_png_b64" | "energy_png_b64" | "max_depth_png_b64" | "max_speed_png_b64" | "max_momentum_flux_png_b64" | "max_drawdown_png_b64" | "t_of_max_speed_png_b64">;
+
+function maxFieldPng(source: MaxFieldImageSet, choice: Exclude<OverlayChoice, "wave">): string {
+  switch (choice) {
+    case "peak": return source.peak_png_b64;
+    case "t_of_max": return source.t_of_max_png_b64;
+    case "energy": return source.energy_png_b64;
+    case "max_depth": return source.max_depth_png_b64 ?? "";
+    case "max_speed": return source.max_speed_png_b64 ?? "";
+    case "momentum": return source.max_momentum_flux_png_b64 ?? "";
+    case "drawdown": return source.max_drawdown_png_b64 ?? "";
+    case "t_of_max_speed": return source.t_of_max_speed_png_b64 ?? "";
+  }
+}
+
+function overlayAvailable(product: MaxFieldProduct, choice: OverlayChoice): boolean {
+  if (choice === "wave") return true;
+  if (product.field_tiles?.length) {
+    return product.field_tiles.every((tile) => Boolean(maxFieldPng(tile, choice)));
+  }
+  return Boolean(maxFieldPng(product, choice));
+}
 
 /** Wrap a max-field PNG as a snapshot-shaped object so the existing globe
  *  imagery pipeline renders it unchanged. */
 function overlaySnapshot(product: MaxFieldProduct, choice: OverlayChoice): GridSnapshot {
-  const png =
-    choice === "peak"
-      ? product.peak_png_b64
-      : choice === "t_of_max"
-        ? product.t_of_max_png_b64
-        : product.energy_png_b64;
+  if (choice === "wave") throw new Error("wave playback is not a max-field overlay");
+  const png = maxFieldPng(product, choice);
   return {
     time_s: product.t_end_s,
     bbox: product.bbox,
@@ -84,11 +108,7 @@ function overlaySnapshot(product: MaxFieldProduct, choice: OverlayChoice): GridS
       column_offset: tile.column_offset,
       column_count: tile.column_count,
       bbox: tile.bbox,
-      eta_png_b64: choice === "peak"
-        ? tile.peak_png_b64
-        : choice === "t_of_max"
-          ? tile.t_of_max_png_b64
-          : tile.energy_png_b64,
+      eta_png_b64: maxFieldPng(tile, choice),
     })),
   };
 }
@@ -1032,7 +1052,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           {workspaceMode !== "simple" && maxField && (
             <div className="swe__overlay-row" role="group" aria-label={t("swe.resultOverlay")}>
               <span className="swe__overlay-label">{t("swe.overlay")}</span>
-              {OVERLAY_OPTIONS.map((opt) => (
+              {OVERLAY_OPTIONS.filter((opt) => overlayAvailable(maxField, opt.id)).map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
@@ -1065,7 +1085,17 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
                     ? t("swe.peakHint", { value: quantityText(formatLength(maxField.peak_abs_max_m, formatNumber, unitSystem)) })
                     : overlay === "t_of_max"
                       ? t("swe.tMaxHint")
-                      : t("swe.energyHint")}
+                      : overlay === "energy"
+                        ? t("swe.energyHint")
+                        : overlay === "max_depth"
+                          ? t("swe.maxDepthHint")
+                          : overlay === "max_speed"
+                            ? t("swe.maxSpeedHint")
+                            : overlay === "momentum"
+                              ? t("swe.momentumHint")
+                              : overlay === "drawdown"
+                                ? t("swe.drawdownHint")
+                                : t("swe.tMaxSpeedHint")}
                 </span>
               )}
             </div>

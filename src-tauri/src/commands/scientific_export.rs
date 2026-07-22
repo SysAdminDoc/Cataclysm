@@ -1,4 +1,5 @@
 use super::*;
+use netcdf_reader::{NcFile, NcSliceInfo, NcSliceInfoElem};
 use netcdf3::{DataSet, FileWriter, NC_FILL_F32, Version};
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -29,6 +30,31 @@ pub struct ScientificZarrDescriptor {
     pub files: u64,
     pub format: &'static str,
     pub conventions: &'static str,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MaxFieldProbeRequest {
+    pub export_id: String,
+    pub lat: f64,
+    pub lon: f64,
+}
+
+/// One exact cell sample from the retained CF-NetCDF max-field artifact.
+/// The query returns only scalar values; full solver arrays never cross IPC.
+#[derive(Debug, Clone, Serialize)]
+pub struct MaxFieldProbeResult {
+    pub requested_lat: f64,
+    pub requested_lon: f64,
+    pub cell_lat: f64,
+    pub cell_lon: f64,
+    pub row: u32,
+    pub column: u32,
+    pub maximum_total_flow_depth_m: f64,
+    pub maximum_current_speed_m_s: f64,
+    pub maximum_specific_momentum_flux_m3_s2: f64,
+    pub minimum_total_flow_depth_m: Option<f64>,
+    pub maximum_drawdown_m: Option<f64>,
+    pub time_of_maximum_current_speed_s: f64,
 }
 
 pub(crate) struct ScientificExportContext<'a> {
@@ -659,6 +685,139 @@ fn validate_export_id(export_id: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn nearest_coordinate_index(
+    values: &[f64],
+    requested: f64,
+    periodic_longitude: bool,
+) -> Result<usize, String> {
+    if values.len() < 2 || values.iter().any(|value| !value.is_finite()) {
+        return Err("scientific export coordinate axis is invalid".into());
+    }
+    let distance = |value: f64| {
+        if periodic_longitude {
+            ((value - requested + 180.0).rem_euclid(360.0) - 180.0).abs()
+        } else {
+            (value - requested).abs()
+        }
+    };
+    let (index, nearest_distance) = values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| (index, distance(*value)))
+        .min_by(|left, right| left.1.total_cmp(&right.1))
+        .ok_or_else(|| "scientific export coordinate axis is empty".to_string())?;
+    let cell_span = if periodic_longitude {
+        ((values[1] - values[0] + 180.0).rem_euclid(360.0) - 180.0).abs()
+    } else {
+        (values[1] - values[0]).abs()
+    };
+    if !cell_span.is_finite() || cell_span <= 0.0 || nearest_distance > cell_span * 0.5 + 1.0e-9 {
+        return Err("requested coordinate is outside the retained max-field grid".into());
+    }
+    Ok(index)
+}
+
+fn read_probe_value(
+    file: &NcFile,
+    variable: &str,
+    row: usize,
+    column: usize,
+) -> Result<Option<f64>, String> {
+    let row = u64::try_from(row).map_err(|_| "max-field row index is too large")?;
+    let column = u64::try_from(column).map_err(|_| "max-field column index is too large")?;
+    let selection = NcSliceInfo {
+        selections: vec![NcSliceInfoElem::Index(row), NcSliceInfoElem::Index(column)],
+    };
+    let values = file
+        .read_variable_slice_unpacked_masked(variable, &selection)
+        .map_err(|error| format!("failed to read max-field variable '{variable}': {error}"))?;
+    let value = values
+        .iter()
+        .copied()
+        .next()
+        .ok_or_else(|| format!("max-field variable '{variable}' returned no value"))?;
+    Ok(value.is_finite().then_some(value))
+}
+
+fn probe_cached_scientific_export(
+    path: &Path,
+    requested_lat: f64,
+    requested_lon: f64,
+) -> Result<MaxFieldProbeResult, String> {
+    if !requested_lat.is_finite()
+        || !requested_lon.is_finite()
+        || !(-90.0..=90.0).contains(&requested_lat)
+        || !(-180.0..=180.0).contains(&requested_lon)
+    {
+        return Err("max-field probe latitude/longitude are outside valid WGS 84 bounds".into());
+    }
+    let metadata = fs::metadata(path)
+        .map_err(|_| "scientific export is no longer available; rerun the solver".to_string())?;
+    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > SCIENTIFIC_EXPORT_MAX_BYTES {
+        return Err("scientific export cache artifact is invalid".into());
+    }
+    let file = NcFile::open(path)
+        .map_err(|error| format!("cached scientific export could not be decoded: {error}"))?;
+    let latitudes: Vec<f64> = file
+        .read_variable_as_f64("latitude")
+        .map_err(|error| format!("failed to read max-field latitude axis: {error}"))?
+        .iter()
+        .copied()
+        .collect();
+    let longitudes: Vec<f64> = file
+        .read_variable_as_f64("longitude")
+        .map_err(|error| format!("failed to read max-field longitude axis: {error}"))?
+        .iter()
+        .copied()
+        .collect();
+    let row = nearest_coordinate_index(&latitudes, requested_lat, false)?;
+    let column = nearest_coordinate_index(&longitudes, requested_lon, true)?;
+    let required = |variable| {
+        read_probe_value(&file, variable, row, column)?.ok_or_else(|| {
+            format!("max-field variable '{variable}' is missing at the selected cell")
+        })
+    };
+    let maximum_total_flow_depth_m = required("maximum_total_flow_depth")?;
+    let maximum_current_speed_m_s = required("maximum_current_speed")?;
+    let maximum_specific_momentum_flux_m3_s2 = required("maximum_specific_momentum_flux")?;
+    let minimum_total_flow_depth_m =
+        read_probe_value(&file, "minimum_total_flow_depth", row, column)?;
+    let sea_floor_depth_m = read_probe_value(&file, "sea_floor_depth", row, column)?;
+    let maximum_drawdown_m = minimum_total_flow_depth_m
+        .zip(sea_floor_depth_m)
+        .map(|(minimum_depth, sea_floor_depth)| (sea_floor_depth - minimum_depth).max(0.0));
+    let time_of_maximum_current_speed_s = required("time_of_maximum_current_speed")?;
+
+    Ok(MaxFieldProbeResult {
+        requested_lat,
+        requested_lon,
+        cell_lat: latitudes[row],
+        cell_lon: ((longitudes[column] + 180.0).rem_euclid(360.0)) - 180.0,
+        row: u32::try_from(row).map_err(|_| "max-field row index is too large")?,
+        column: u32::try_from(column).map_err(|_| "max-field column index is too large")?,
+        maximum_total_flow_depth_m,
+        maximum_current_speed_m_s,
+        maximum_specific_momentum_flux_m3_s2,
+        minimum_total_flow_depth_m,
+        maximum_drawdown_m,
+        time_of_maximum_current_speed_s,
+    })
+}
+
+#[tauri::command]
+pub fn max_field_probe(
+    app: AppHandle,
+    req: MaxFieldProbeRequest,
+) -> Result<MaxFieldProbeResult, String> {
+    validate_export_id(&req.export_id)?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("application data directory is unavailable: {error}"))?;
+    let path = export_root(&app_data_dir).join(format!("{}.nc", req.export_id));
+    probe_cached_scientific_export(&path, req.lat, req.lon)
+}
+
 fn validate_export_destination(destination: &Path, extension: &str) -> Result<(), String> {
     if !destination.is_absolute() {
         return Err("scientific export destination must be an absolute path".into());
@@ -954,6 +1113,30 @@ mod tests {
                 ("longitude", netcdf_reader::cf::CfAxisType::X),
                 ("time", netcdf_reader::cf::CfAxisType::T),
             ]
+        );
+
+        let probe = probe_cached_scientific_export(&path, 0.4, 171.6).unwrap();
+        assert_eq!((probe.row, probe.column), (1, 1));
+        assert_eq!((probe.cell_lat, probe.cell_lon), (0.5, 171.5));
+        assert_eq!(
+            probe.maximum_total_flow_depth_m,
+            f64::from(flow_depth[[1, 1]])
+        );
+        assert_eq!(probe.maximum_current_speed_m_s, f64::from(speed[[1, 1]]));
+        assert_eq!(
+            probe.maximum_specific_momentum_flux_m3_s2,
+            f64::from(momentum[[1, 1]])
+        );
+        assert_eq!(
+            probe.minimum_total_flow_depth_m,
+            Some(f64::from(drawdown[[1, 1]]))
+        );
+        assert!((probe.maximum_drawdown_m.unwrap() - 0.5).abs() < 1.0e-6);
+        assert_eq!(probe.time_of_maximum_current_speed_s, 12.5);
+        assert!(
+            probe_cached_scientific_export(&path, 12.0, 171.5)
+                .unwrap_err()
+                .contains("outside")
         );
     }
 

@@ -335,6 +335,58 @@ describe("SwePlayback", () => {
     );
   });
 
+  it("renders every extended max-field overlay without exposing grid arrays", async () => {
+    tauriApi.simulateGridStreaming.mockImplementation(async (_runId, _req, onSnapshot) => {
+      SNAPSHOTS.forEach(onSnapshot);
+      return {
+        dt_s: 2,
+        nx: 2,
+        ny: 2,
+        used_gpu: false,
+        n_snapshots: SNAPSHOTS.length,
+        cancelled: false,
+        run_quality: RUN_QUALITY,
+        resolution_preflight: RESOLUTION_PREFLIGHT,
+        recovered_gauge_history: [],
+        max_field: {
+          bbox: [-1, -1, 1, 1],
+          nx: 2,
+          ny: 2,
+          peak_height_field: IDEALIZED_SEA_SURFACE_HEIGHT_FIELD,
+          peak_abs_max_m: 2,
+          t_end_s: 60,
+          arrival_threshold_m: 0.01,
+          peak_png_b64: "peak-png",
+          t_of_max_png_b64: "time-png",
+          energy_png_b64: "energy-png",
+          max_depth_png_b64: "depth-png",
+          max_speed_png_b64: "speed-png",
+          max_momentum_flux_png_b64: "momentum-png",
+          max_drawdown_png_b64: "drawdown-png",
+          t_of_max_speed_png_b64: "speed-time-png",
+          isochrones: [],
+        },
+      };
+    });
+    const user = userEvent.setup();
+    const onSnapshot = vi.fn();
+    render(<SwePlayback initial={INITIAL} workspaceMode="advanced" onSnapshot={onSnapshot} />);
+
+    await user.click(screen.getByRole("button", { name: "Run simulation" }));
+    expect(await screen.findByRole("button", { name: "Flow depth" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current speed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Momentum" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Drawdown" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "T speed" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Current speed" }));
+    expect(onSnapshot).toHaveBeenLastCalledWith(expect.objectContaining({
+      eta_png_b64: "speed-png",
+      field_tiles: undefined,
+    }));
+    expect(screen.getByText(/depth-averaged current speed/)).toBeInTheDocument();
+  });
+
   it("threads a selected content-addressed bathymetry asset into the solver request", async () => {
     const assetId = `local-bathymetry-${"b".repeat(64)}`;
     tauriApi.listImportedBathymetry.mockResolvedValue([{

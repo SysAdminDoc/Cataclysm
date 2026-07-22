@@ -71,4 +71,33 @@ describe("PointProbePanel", () => {
     expect(await screen.findByText(/18\.6 mi from source/)).toBeInTheDocument();
     expect(screen.getByText(/Nominal 164 ft depth/)).toBeInTheDocument();
   });
+
+  it("shows exact retained-export max-field values without a grid payload", () => {
+    render(<PointProbePanel
+      primary={{ ...REPORT, domain: "tsunami" }}
+      maxField={{
+        requested_lat: 10,
+        requested_lon: 20,
+        cell_lat: 10.125,
+        cell_lon: 20.125,
+        row: 8,
+        column: 9,
+        maximum_total_flow_depth_m: 42.5,
+        maximum_current_speed_m_s: 3.25,
+        maximum_specific_momentum_flux_m3_s2: 448.90625,
+        minimum_total_flow_depth_m: 38,
+        maximum_drawdown_m: 2,
+        time_of_maximum_current_speed_s: 123.5,
+      }}
+    />);
+    expect(screen.getByText("Solver max-field cell")).toBeInTheDocument();
+    expect(screen.getByText(/10\.1250°.*20\.1250°/)).toBeInTheDocument();
+    expect(screen.getByText("Maximum total flow depth")).toBeInTheDocument();
+    expect(screen.getByText("Maximum current speed")).toBeInTheDocument();
+    expect(screen.getByText("Maximum specific momentum flux")).toBeInTheDocument();
+    expect(screen.getByText("Maximum drawdown")).toBeInTheDocument();
+    expect(screen.getByText("448.91 m³/s²")).toBeInTheDocument();
+    expect(screen.getByText("123.5 s")).toBeInTheDocument();
+    expect(screen.getByText(/same CF-NetCDF arrays/)).toBeInTheDocument();
+  });
 });

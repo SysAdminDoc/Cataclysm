@@ -123,6 +123,21 @@ export type RecoveredGaugeHistoryFrame = {
   gauge_samples: Array<{ id: string; eta_m: number | null }>;
 };
 
+export type MaxFieldProbeResult = {
+  requested_lat: number;
+  requested_lon: number;
+  cell_lat: number;
+  cell_lon: number;
+  row: number;
+  column: number;
+  maximum_total_flow_depth_m: number;
+  maximum_current_speed_m_s: number;
+  maximum_specific_momentum_flux_m3_s2: number;
+  minimum_total_flow_depth_m: number | null;
+  maximum_drawdown_m: number | null;
+  time_of_maximum_current_speed_s: number;
+};
+
 let simulationRunSequence = 0;
 
 type RenderReplayCompletion = Pick<RenderReplayAdapter, "complete" | "frame_count">;
@@ -698,6 +713,9 @@ export const api = {
   },
   removeSolverCheckpoint(runId: string) {
     return invoke<boolean>("remove_solver_checkpoint", { runId });
+  },
+  maxFieldProbe(req: { export_id: string; lat: number; lon: number }) {
+    return invoke<MaxFieldProbeResult>("max_field_probe", { req });
   },
   saveScientificExport(exportId: string, destination: string, exportKind: "netcdf" | "zarr" = "netcdf") {
     return invoke<number>("save_scientific_export", { exportId, destination, exportKind });

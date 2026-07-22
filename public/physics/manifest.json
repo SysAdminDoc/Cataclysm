@@ -3,6 +3,6 @@
   "abi_version": 1,
   "rust_version": "1.96.0",
   "source_sha256": "886fca17bb81dede431dfa699680cb321afaf74e8febd0a27ba8dfed000ed30c",
-  "wasm_sha256": "2e54c2ab538babe275300687c1cb8b6f090fc23a8e8dddce4474e93e0e029066",
-  "wasm_bytes": 378163
+  "wasm_sha256": "25049b04123439a259f79e08690496f797e4a3a8d75f9cb3da4da475848c55ef",
+  "wasm_bytes": 380921
 }

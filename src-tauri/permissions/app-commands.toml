@@ -28,6 +28,7 @@ permissions = [
   "allow-surface-probe",
   "allow-preflight-simulation-resolution",
   "allow-list-solver-checkpoints",
+  "allow-max-field-probe",
 ]
 
 [[set]]

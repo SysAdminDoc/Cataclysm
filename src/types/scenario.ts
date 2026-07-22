@@ -190,6 +190,11 @@ export type MaxFieldProduct = {
   peak_png_b64: string;
   t_of_max_png_b64: string;
   energy_png_b64: string;
+  max_depth_png_b64?: string;
+  max_speed_png_b64?: string;
+  max_momentum_flux_png_b64?: string;
+  max_drawdown_png_b64?: string;
+  t_of_max_speed_png_b64?: string;
   field_tiles?: Array<{
     column_offset: number;
     column_count: number;
@@ -197,6 +202,11 @@ export type MaxFieldProduct = {
     peak_png_b64: string;
     t_of_max_png_b64: string;
     energy_png_b64: string;
+    max_depth_png_b64?: string;
+    max_speed_png_b64?: string;
+    max_momentum_flux_png_b64?: string;
+    max_drawdown_png_b64?: string;
+    t_of_max_speed_png_b64?: string;
   }>;
   isochrones: Isochrone[];
 };

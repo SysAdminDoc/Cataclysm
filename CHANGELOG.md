@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Extended tsunami max fields are now interactive without sending raw solver
+  grids through IPC. Layers can render maximum flow depth, current speed,
+  specific momentum flux, drawdown, and time of maximum speed from bounded PNG
+  products; Inspect reads an exact scalar cell from the retained CF-NetCDF
+  artifact and includes the values and units in on-screen, text, and CSV probe
+  reports. The probe values are round-trip tested against the exported arrays.
 - A bundled, localized Data & Network trust panel now makes Cataclysm's complete
   outbound data surface inspectable offline: every WebView CSP rule and bounded
   native HTTPS bridge is listed with its purpose, trigger, and transmitted

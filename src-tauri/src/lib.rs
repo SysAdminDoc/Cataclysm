@@ -124,6 +124,7 @@ pub fn run() {
             cancel_simulation,
             list_solver_checkpoints,
             remove_solver_checkpoint,
+            max_field_probe,
             save_scientific_export,
         ])
         .run(tauri::generate_context!())

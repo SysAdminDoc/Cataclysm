@@ -45,16 +45,23 @@ pub struct MaxFieldProduct {
     /// Time-integrated η² (qualitative energy/directivity), sqrt-normalised.
     /// Empty for a tiled field.
     pub energy_png_b64: String,
+    /// Maximum total flow depth, linearly normalized to the run maximum.
+    pub max_depth_png_b64: String,
+    /// Maximum current speed, linearly normalized to the run maximum.
+    pub max_speed_png_b64: String,
+    /// Maximum specific momentum flux, square-root compressed for legibility.
+    pub max_momentum_flux_png_b64: String,
+    /// Maximum drawdown below mean sea level, linearly normalized.
+    pub max_drawdown_png_b64: String,
+    /// Time of maximum current speed, masked where speed was negligible.
+    pub t_of_max_speed_png_b64: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub field_tiles: Vec<MaxFieldTile>,
     /// First-arrival isochrones at regular intervals.
     pub isochrones: Vec<Isochrone>,
-    // NOTE: the extended products (max flow depth, speed, momentum flux,
-    // drawdown, time-of-max-speed) are accumulated in `MaxFieldAccumulator`
-    // but deliberately NOT serialized here. Like peak/arrival/energy, raw
-    // per-cell arrays stay off the IPC payload (rendered as PNGs or read
-    // from the accumulator for exports) to avoid multi-MB result bloat.
-    // Surfacing them is tracked in ROADMAP.
+    // NOTE: raw per-cell arrays deliberately stay off the IPC payload. The
+    // frontend receives bounded PNG visualizations, while exact point values
+    // are sampled from the retained scientific export through max_field_probe.
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -65,6 +72,11 @@ pub struct MaxFieldTile {
     pub peak_png_b64: String,
     pub t_of_max_png_b64: String,
     pub energy_png_b64: String,
+    pub max_depth_png_b64: String,
+    pub max_speed_png_b64: String,
+    pub max_momentum_flux_png_b64: String,
+    pub max_drawdown_png_b64: String,
+    pub t_of_max_speed_png_b64: String,
 }
 
 /// Running accumulator. Feed it the grid at t=0 and after every accepted
@@ -372,6 +384,26 @@ impl MaxFieldAccumulator {
         let t_end = self.last_t_s.max(1e-9);
         let peak_max = self.peak_m.iter().cloned().fold(0.0_f64, f64::max);
         let energy_max = self.energy_m2s.iter().cloned().fold(0.0_f64, f64::max);
+        let max_depth_max = self.max_depth_m.iter().cloned().fold(0.0_f64, f64::max);
+        let max_speed_max = self.max_speed_ms.iter().cloned().fold(0.0_f64, f64::max);
+        let max_momentum_flux = self
+            .max_momentum_flux_m3s2
+            .iter()
+            .cloned()
+            .fold(0.0_f64, f64::max);
+        let max_drawdown_m: Vec<f64> = grid
+            .h_m
+            .iter()
+            .zip(&self.min_depth_m)
+            .map(|(&depth, &minimum)| {
+                if minimum.is_finite() {
+                    (depth - minimum).max(0.0)
+                } else {
+                    f64::NAN
+                }
+            })
+            .collect();
+        let max_drawdown_max = max_drawdown_m.iter().cloned().fold(0.0_f64, f64::max);
 
         let colormap = grid.colormap;
         // Time-of-max only means something where a wave actually peaked;
@@ -383,6 +415,19 @@ impl MaxFieldAccumulator {
             .zip(self.peak_m.iter())
             .map(|(&t, &p)| if p >= t_mask && p > 0.0 { t } else { f64::NAN })
             .collect();
+        let speed_mask = 0.05 * max_speed_max;
+        let t_of_max_speed_rgba: Vec<f64> = self
+            .t_of_max_speed_s
+            .iter()
+            .zip(&self.max_speed_ms)
+            .map(|(&time, &speed)| {
+                if speed >= speed_mask && speed > 0.0 {
+                    time
+                } else {
+                    f64::NAN
+                }
+            })
+            .collect();
         let tile_layouts = match grid.field_tiles() {
             Ok(layouts) => layouts,
             Err(error) => {
@@ -390,7 +435,17 @@ impl MaxFieldAccumulator {
                 Vec::new()
             }
         };
-        let (peak_png, t_of_max_png, energy_png, field_tiles) = if tile_layouts.len() > 1 {
+        let (
+            peak_png,
+            t_of_max_png,
+            energy_png,
+            max_depth_png,
+            max_speed_png,
+            max_momentum_flux_png,
+            max_drawdown_png,
+            t_of_max_speed_png,
+            field_tiles,
+        ) = if tile_layouts.len() > 1 {
             let field_tiles = tile_layouts
                 .into_iter()
                 .map(|tile| MaxFieldTile {
@@ -424,12 +479,70 @@ impl MaxFieldAccumulator {
                         energy_max.max(1e-12),
                         |t| colormap_positive(colormap, t.sqrt()),
                     ),
+                    max_depth_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &self.max_depth_m,
+                        max_depth_max.max(1e-9),
+                        |t| colormap_positive(colormap, t),
+                    ),
+                    max_speed_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &self.max_speed_ms,
+                        max_speed_max.max(1e-9),
+                        |t| colormap_positive(colormap, t),
+                    ),
+                    max_momentum_flux_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &self.max_momentum_flux_m3s2,
+                        max_momentum_flux.max(1e-12),
+                        |t| colormap_positive(colormap, t.sqrt()),
+                    ),
+                    max_drawdown_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &max_drawdown_m,
+                        max_drawdown_max.max(1e-9),
+                        |t| colormap_positive(colormap, t),
+                    ),
+                    t_of_max_speed_png_b64: render_field_columns(
+                        nx,
+                        ny,
+                        tile.column_offset as usize,
+                        tile.column_count as usize,
+                        &t_of_max_speed_rgba,
+                        t_end,
+                        |t| {
+                            let (r, g, b, _) = viridis_colormap(t);
+                            (r, g, b, 210)
+                        },
+                    ),
                     column_offset: tile.column_offset,
                     column_count: tile.column_count,
                     bbox: tile.bbox,
                 })
                 .collect();
-            (String::new(), String::new(), String::new(), field_tiles)
+            (
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                field_tiles,
+            )
         } else {
             let peak_png = render_field(nx, ny, &self.peak_m, peak_max.max(1e-9), |t| {
                 colormap_positive(colormap, t)
@@ -443,7 +556,40 @@ impl MaxFieldAccumulator {
                 // source stay visible next to the near-field maximum.
                 colormap_positive(colormap, t.sqrt())
             });
-            (peak_png, t_of_max_png, energy_png, Vec::new())
+            let max_depth_png =
+                render_field(nx, ny, &self.max_depth_m, max_depth_max.max(1e-9), |t| {
+                    colormap_positive(colormap, t)
+                });
+            let max_speed_png =
+                render_field(nx, ny, &self.max_speed_ms, max_speed_max.max(1e-9), |t| {
+                    colormap_positive(colormap, t)
+                });
+            let max_momentum_flux_png = render_field(
+                nx,
+                ny,
+                &self.max_momentum_flux_m3s2,
+                max_momentum_flux.max(1e-12),
+                |t| colormap_positive(colormap, t.sqrt()),
+            );
+            let max_drawdown_png =
+                render_field(nx, ny, &max_drawdown_m, max_drawdown_max.max(1e-9), |t| {
+                    colormap_positive(colormap, t)
+                });
+            let t_of_max_speed_png = render_field(nx, ny, &t_of_max_speed_rgba, t_end, |t| {
+                let (r, g, b, _) = viridis_colormap(t);
+                (r, g, b, 210)
+            });
+            (
+                peak_png,
+                t_of_max_png,
+                energy_png,
+                max_depth_png,
+                max_speed_png,
+                max_momentum_flux_png,
+                max_drawdown_png,
+                t_of_max_speed_png,
+                Vec::new(),
+            )
         };
 
         let isochrones = extract_isochrones(grid, &self.arrival_s, t_end);
@@ -464,6 +610,11 @@ impl MaxFieldAccumulator {
             peak_png_b64: peak_png,
             t_of_max_png_b64: t_of_max_png,
             energy_png_b64: energy_png,
+            max_depth_png_b64: max_depth_png,
+            max_speed_png_b64: max_speed_png,
+            max_momentum_flux_png_b64: max_momentum_flux_png,
+            max_drawdown_png_b64: max_drawdown_png,
+            t_of_max_speed_png_b64: t_of_max_speed_png,
             field_tiles,
             isochrones,
         }
@@ -793,6 +944,11 @@ mod tests {
         assert!(!product.peak_png_b64.is_empty());
         assert!(!product.t_of_max_png_b64.is_empty());
         assert!(!product.energy_png_b64.is_empty());
+        assert!(!product.max_depth_png_b64.is_empty());
+        assert!(!product.max_speed_png_b64.is_empty());
+        assert!(!product.max_momentum_flux_png_b64.is_empty());
+        assert!(!product.max_drawdown_png_b64.is_empty());
+        assert!(!product.t_of_max_speed_png_b64.is_empty());
         assert!(
             !product.isochrones.is_empty(),
             "radial arrival must yield contours"
@@ -817,6 +973,11 @@ mod tests {
         assert!(product.peak_png_b64.is_empty());
         assert!(product.t_of_max_png_b64.is_empty());
         assert!(product.energy_png_b64.is_empty());
+        assert!(product.max_depth_png_b64.is_empty());
+        assert!(product.max_speed_png_b64.is_empty());
+        assert!(product.max_momentum_flux_png_b64.is_empty());
+        assert!(product.max_drawdown_png_b64.is_empty());
+        assert!(product.t_of_max_speed_png_b64.is_empty());
         assert_eq!(
             product
                 .field_tiles
@@ -829,6 +990,11 @@ mod tests {
             !tile.peak_png_b64.is_empty()
                 && !tile.t_of_max_png_b64.is_empty()
                 && !tile.energy_png_b64.is_empty()
+                && !tile.max_depth_png_b64.is_empty()
+                && !tile.max_speed_png_b64.is_empty()
+                && !tile.max_momentum_flux_png_b64.is_empty()
+                && !tile.max_drawdown_png_b64.is_empty()
+                && !tile.t_of_max_speed_png_b64.is_empty()
         }));
     }
 
