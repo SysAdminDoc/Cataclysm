@@ -15,6 +15,7 @@ import { notifyRunComplete } from "../lib/notify";
 import PRODUCT_TRUTH from "../data/product-truth.json";
 import { useUnits } from "../hooks/useUnits";
 import { formatLength, quantityText } from "../lib/units";
+import { SensitivityEnsemblePanel } from "./SensitivityEnsemblePanel";
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -1008,6 +1009,17 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       )}
       {workspaceMode === "advanced" && !isTauri() && (
         <div className="swe__notice">{t("swe.browserNotice")}</div>
+      )}
+
+      {workspaceMode === "advanced" && isTauri() && (
+        <SensitivityEnsemblePanel
+          initial={initial}
+          useBathymetry={useBathy}
+          bathymetryAssetId={bathymetryAssetId}
+          cellsPerDegree={cellsPerDeg}
+          includeLambWave={includeLambWave}
+          boundaryMode={boundaryMode}
+        />
       )}
 
       {workspaceMode === "advanced" && <div className="swe__gauges">

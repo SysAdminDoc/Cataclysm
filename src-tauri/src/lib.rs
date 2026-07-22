@@ -89,6 +89,7 @@ pub fn run() {
             sample_preset_wavefront,
             simulate_grid,
             simulate_grid_streaming,
+            simulate_sensitivity_ensemble,
             preflight_simulation_resolution,
             quick_eta_preview,
             inspect_at_point,

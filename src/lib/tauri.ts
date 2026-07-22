@@ -14,6 +14,8 @@ import type {
   Preset,
   PropagationSnapshot,
   RunPresetResponse,
+  SensitivityEnsembleRequest,
+  SensitivityEnsembleResponse,
   SimulateGridResponse,
 } from "../types/scenario";
 import type { HazelEventSearchRequest, HazelEventSearchResponse } from "./ncei-hazel";
@@ -454,6 +456,12 @@ export const api = {
     // via cancelSimulation(runId); previously the id was generated inline and
     // discarded, leaving the registered cancel token unreachable.
     return invoke<SimulateGridResponse>("simulate_grid", { runId, req });
+  },
+  simulateSensitivityEnsemble(
+    runId: string,
+    req: SensitivityEnsembleRequest,
+  ): Promise<SensitivityEnsembleResponse> {
+    return invoke<SensitivityEnsembleResponse>("simulate_sensitivity_ensemble", { runId, req });
   },
   preflightSimulationResolution(req: {
     source: GeoPoint;

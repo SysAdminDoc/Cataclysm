@@ -6,6 +6,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- A deterministic desktop sensitivity-envelope workflow for the SWE solver.
+  Users can vary one to three inputs across their own explicitly cited bounds,
+  choose a reproducible seed and 5–31 stratified samples, and inspect P05,
+  median, and P95 peak elevation, domain-edge arrival, and resolved nearshore
+  peak/runup. The fixed-grid batch is admitted against aggregate work and
+  memory limits, retains failed/cancelled members, and exports the request,
+  seed, citations, member distribution, and caveats as JSON. The UI and export
+  explicitly label this as an unweighted sensitivity envelope, never an
+  occurrence probability, confidence interval, forecast, or warning.
 - GPU SWE runs now keep `eta`/`u`/`v` and all nine max/intensity fields
   resident between display, checkpoint, cancellation, and completion
   boundaries. A packed WGSL accumulator observes every accepted step and

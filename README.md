@@ -111,6 +111,14 @@ Existing tools each do one piece:
   blast/thermal/prompt-radiation screen. Rust returns both estimates, their
   min/max spread, assumptions, and source links; the UI never treats the range
   as statistical confidence or protective guidance.
+- **Deterministic sensitivity envelopes** — installed builds can vary one to
+  three SWE inputs over user-declared, source-linked bounds with a replayable
+  seed and 5–31 stratified members. The fixed-grid result reports unweighted
+  P05/median/P95 peak elevation, domain-edge arrival, and resolved nearshore
+  peak/runup, preserves failed and cancelled members in JSON, and is explicitly
+  not a probability, confidence interval, forecast, warning, or evacuation
+  product. Asteroid/nuclear direct effects remain marked not applicable rather
+  than receiving synthetic percentiles.
 - **Desktop-first professional simulator workspace** — persistent scenario
   library, dominant globe viewport, Setup / Results / Layers inspector, and a
   full-width simulation transport with playback speed and solver state.

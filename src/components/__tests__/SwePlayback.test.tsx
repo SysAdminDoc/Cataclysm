@@ -8,6 +8,7 @@ import { I18nProvider } from "../../lib/i18n";
 
 const tauriApi = vi.hoisted(() => ({
   simulateGridStreaming: vi.fn(),
+  simulateSensitivityEnsemble: vi.fn(),
   preflightSimulationResolution: vi.fn(),
   cancelSimulation: vi.fn(),
   listImportedBathymetry: vi.fn(),
@@ -17,6 +18,7 @@ const tauriApi = vi.hoisted(() => ({
 const exportApi = vi.hoisted(() => ({
   exportGaugeCsv: vi.fn(),
   exportFailureLabel: vi.fn((code: string) => code),
+  downloadBlob: vi.fn(() => ({ ok: true })),
 }));
 
 vi.mock("../../lib/tauri", () => ({
@@ -110,6 +112,7 @@ describe("SwePlayback", () => {
   beforeEach(() => {
     localStorage.clear();
     tauriApi.simulateGridStreaming.mockReset();
+    tauriApi.simulateSensitivityEnsemble.mockReset();
     tauriApi.preflightSimulationResolution.mockReset();
     tauriApi.preflightSimulationResolution.mockResolvedValue(RESOLUTION_PREFLIGHT);
     tauriApi.cancelSimulation.mockReset();
@@ -122,6 +125,8 @@ describe("SwePlayback", () => {
     tauriApi.removeSolverCheckpoint.mockResolvedValue(true);
     exportApi.exportGaugeCsv.mockReset();
     exportApi.exportGaugeCsv.mockReturnValue({ ok: true });
+    exportApi.downloadBlob.mockReset();
+    exportApi.downloadBlob.mockReturnValue({ ok: true });
   });
 
   it("describes the actual default grid resolution", () => {
@@ -163,6 +168,64 @@ describe("SwePlayback", () => {
     );
     await user.type(screen.getByLabelText("観測点の緯度"), "91");
     expect(screen.getByText("緯度は-90から90の範囲で入力してください。")).toHaveAttribute("role", "alert");
+  });
+
+  it("runs and exports a deterministic sensitivity envelope with cited bounds", async () => {
+    tauriApi.simulateSensitivityEnsemble.mockResolvedValue({
+      schema_version: 1,
+      run_id: "run-test",
+      product: "sensitivity_envelope_not_probability_or_forecast",
+      seed: 42,
+      requested_sample_count: 9,
+      completed_members: 8,
+      failed_members: 1,
+      cancelled_members: 0,
+      parameters: [],
+      members: [
+        { index: 0, parameters: [{ id: "initial_amplitude", factor: 0.82 }], status: "completed", metrics: { peak_elevation_m: 1, arrival_s: 120, runup_m: null }, used_gpu: false, error: null },
+        { index: 1, parameters: [{ id: "initial_amplitude", factor: 0.87 }], status: "failed", metrics: { peak_elevation_m: null, arrival_s: null, runup_m: null }, used_gpu: false, error: "quality gate" },
+      ],
+      peak_elevation_m: { p05: 1, p50: 2, p95: 3, valid_samples: 8 },
+      arrival_s: { p05: 100, p50: 120, p95: 150, valid_samples: 8 },
+      runup_m: { p05: null, p50: null, p95: null, valid_samples: 0 },
+      direct_effects: { applicable: false, reason: "Direct effects are outside this SWE run." },
+      resolution_preflight: RESOLUTION_PREFLIGHT,
+      caveats: ["This is a sensitivity envelope, not probability or forecast."],
+    });
+    const user = userEvent.setup();
+    render(<SwePlayback initial={INITIAL} workspaceMode="advanced" />);
+
+    await user.click(screen.getByText("Sensitivity envelope"));
+    expect(screen.getByText(/not probability or forecast/i)).toBeInTheDocument();
+    expect(screen.getByText("USGS ShakeMap uncertainty")).toHaveAttribute(
+      "href",
+      "https://www.usgs.gov/publications/quantifying-and-qualifying-usgs-shakemap-uncertainty",
+    );
+    expect(screen.getByLabelText("Mean water depth")).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Run sensitivity envelope" }));
+    await waitFor(() => expect(tauriApi.simulateSensitivityEnsemble).toHaveBeenCalledWith(
+      "run-test",
+      expect.objectContaining({
+        sample_count: 9,
+        seed: 42,
+        parameters: [expect.objectContaining({
+          id: "initial_amplitude",
+          lower_factor: 0.8,
+          upper_factor: 1.2,
+          citation_url: expect.stringContaining("usgs.gov"),
+        })],
+      }),
+    ));
+    expect(await screen.findByText("8 completed · 1 failed · 0 cancelled")).toBeInTheDocument();
+    expect(screen.getByText("Resolved nearshore peak / runup proxy")).toBeInTheDocument();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+
+    await user.click(screen.getByRole("button", { name: "Export ensemble JSON" }));
+    expect(exportApi.downloadBlob).toHaveBeenCalledWith(
+      expect.any(Blob),
+      "cataclysm-sensitivity-envelope-seed-42.json",
+    );
   });
 
   it("threads the selected recovery checkpoint cadence into streaming", async () => {

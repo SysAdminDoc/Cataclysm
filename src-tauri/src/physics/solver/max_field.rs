@@ -118,6 +118,37 @@ impl MaxFieldAccumulator {
         ]
     }
 
+    pub(crate) fn sensitivity_metrics(&self, grid: &SwGrid) -> (f64, Option<f64>, Option<f64>) {
+        if grid.nx * grid.ny != self.peak_m.len() {
+            return (0.0, None, None);
+        }
+        let peak_m = self.peak_m.iter().copied().fold(0.0_f64, f64::max);
+        let mut edge_arrival_s = f64::INFINITY;
+        let mut resolved_nearshore_peak_m = None::<f64>;
+        for j in 0..grid.ny {
+            for i in 0..grid.nx {
+                let index = super::idx(i, j, grid.nx);
+                if (i == 0 || j == 0 || i + 1 == grid.nx || j + 1 == grid.ny)
+                    && self.arrival_s[index].is_finite()
+                {
+                    edge_arrival_s = edge_arrival_s.min(self.arrival_s[index]);
+                }
+                if grid.h_m[index] > 0.0 && grid.h_m[index] <= 50.0 {
+                    resolved_nearshore_peak_m = Some(
+                        resolved_nearshore_peak_m
+                            .unwrap_or(0.0)
+                            .max(self.peak_m[index]),
+                    );
+                }
+            }
+        }
+        (
+            peak_m,
+            edge_arrival_s.is_finite().then_some(edge_arrival_s),
+            resolved_nearshore_peak_m,
+        )
+    }
+
     #[cfg(feature = "gpu")]
     pub(crate) fn gpu_fields_f32(&self) -> (Vec<[f32; 4]>, Vec<[f32; 5]>) {
         let primary = self

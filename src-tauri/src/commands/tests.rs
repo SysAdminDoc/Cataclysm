@@ -35,6 +35,8 @@ fn source_grid_request(source_geometry: Option<InitialSourceGeometry>) -> Simula
 
 #[path = "tests_observations.rs"]
 mod observations;
+#[path = "tests_sensitivity_ensemble.rs"]
+mod sensitivity_ensemble;
 #[path = "tests_simulation.rs"]
 mod simulation;
 #[path = "tests_solver.rs"]

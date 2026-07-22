@@ -37,4 +37,24 @@ describe("simulateGrid run id", () => {
   it("generates unique run ids", () => {
     expect(createSimulationRunId()).not.toBe(createSimulationRunId());
   });
+
+  it("threads the ensemble run id and request into the sensitivity command", async () => {
+    const ensemble = {
+      base: req,
+      parameters: [{
+        id: "initial_amplitude" as const,
+        lower_factor: 0.8,
+        upper_factor: 1.2,
+        bound_basis: "Declared educational range",
+        citation_url: "https://www.usgs.gov/example",
+      }],
+      sample_count: 9,
+      seed: 42,
+    };
+    await api.simulateSensitivityEnsemble("ensemble-explicit", ensemble);
+    expect(invokeMock).toHaveBeenCalledWith("simulate_sensitivity_ensemble", {
+      runId: "ensemble-explicit",
+      req: ensemble,
+    });
+  });
 });

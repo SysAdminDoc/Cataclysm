@@ -261,6 +261,86 @@ export type ResolutionPreflight = {
   limitations: string[];
 };
 
+export type SimulateGridRequest = {
+  source: GeoPoint;
+  initial_amplitude_m: number;
+  source_sigma_m: number;
+  source_geometry?: InitialSourceGeometry | null;
+  mean_depth_m: number;
+  use_real_bathymetry?: boolean;
+  bathymetry_asset_id?: string | null;
+  box_half_size_deg: number;
+  cells_per_deg: number;
+  resolution_mode?: "simple" | "advanced";
+  t_end_s: number;
+  n_snapshots: number;
+  include_lamb_wave?: boolean;
+  lamb_wave_peak_pressure_pa?: number;
+  lamb_wave_source_radius_m?: number;
+  meteotsunami_forcing?: MeteotsunamiInput | null;
+  colormap?: "diverging" | "cividis" | "viridis";
+  gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
+  boundary_mode?: "sponge" | "radiation" | "zero_flux";
+};
+
+export type SensitivityParameterId = "initial_amplitude" | "source_width" | "mean_depth";
+
+export type SensitivityParameterSpec = {
+  id: SensitivityParameterId;
+  lower_factor: number;
+  upper_factor: number;
+  bound_basis: string;
+  citation_url: string;
+};
+
+export type SensitivityEnsembleRequest = {
+  base: SimulateGridRequest;
+  parameters: SensitivityParameterSpec[];
+  sample_count: number;
+  seed: number;
+};
+
+export type SensitivityMetricValues = {
+  peak_elevation_m: number | null;
+  arrival_s: number | null;
+  runup_m: number | null;
+};
+
+export type SensitivityMemberResult = {
+  index: number;
+  parameters: Array<{ id: SensitivityParameterId; factor: number }>;
+  status: "completed" | "failed" | "cancelled";
+  metrics: SensitivityMetricValues;
+  used_gpu: boolean;
+  error: string | null;
+};
+
+export type MetricPercentiles = {
+  p05: number | null;
+  p50: number | null;
+  p95: number | null;
+  valid_samples: number;
+};
+
+export type SensitivityEnsembleResponse = {
+  schema_version: number;
+  run_id: string;
+  product: "sensitivity_envelope_not_probability_or_forecast";
+  seed: number;
+  requested_sample_count: number;
+  completed_members: number;
+  failed_members: number;
+  cancelled_members: number;
+  parameters: SensitivityParameterSpec[];
+  members: SensitivityMemberResult[];
+  peak_elevation_m: MetricPercentiles;
+  arrival_s: MetricPercentiles;
+  runup_m: MetricPercentiles;
+  direct_effects: { applicable: boolean; reason: string };
+  resolution_preflight: ResolutionPreflight;
+  caveats: string[];
+};
+
 export type SimulateGridResponse = {
   run_id: string;
   lifecycle: "completed" | "cancelled";

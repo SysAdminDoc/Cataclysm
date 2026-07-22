@@ -48,9 +48,13 @@ pub use observations::*;
 pub use scientific_export::*;
 use simulation::*;
 pub use simulation::{
-    GridGaugeHistoryFrame, ResolutionFeature, ResolutionPreflight, SimulateGridRequest,
-    SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle,
+    GridGaugeHistoryFrame, MetricPercentiles, ResolutionFeature, ResolutionPreflight,
+    SensitivityDirectEffects, SensitivityEnsembleRequest, SensitivityEnsembleResponse,
+    SensitivityMemberResult, SensitivityMemberStatus, SensitivityMetricValues,
+    SensitivityParameterId, SensitivityParameterSample, SensitivityParameterSpec,
+    SimulateGridRequest, SimulateGridResponse, SimulateGridStreamMeta, SimulationRunLifecycle,
     preflight_simulation_resolution, quick_eta_preview, simulate_grid, simulate_grid_streaming,
+    simulate_sensitivity_ensemble,
 };
 pub use system::*;
 use waves::haversine_m;

@@ -38,6 +38,7 @@ permissions = [
   "allow-sample-preset-wavefront",
   "allow-simulate-grid",
   "allow-simulate-grid-streaming",
+  "allow-simulate-sensitivity-ensemble",
   "allow-quick-eta-preview",
   "allow-simulate-asteroid-hazard",
   "allow-simulate-asteroid-hazard-render",
