@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   installed-windows-release:
-    name: MSI and NSIS installed journey
+    name: Standard and offline MSI/NSIS installed journey
     runs-on: windows-latest
     timeout-minutes: 120
     env:
@@ -104,6 +104,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/checksums-sha256.txt
             src-tauri/target/release/bundle/cataclysm-build-manifest.json
           if-no-files-found: error
           retention-days: 14

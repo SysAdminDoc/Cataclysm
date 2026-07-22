@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Separately labelled Evergreen-offline Windows MSI and NSIS packages alongside
+  the existing small bootstrapper installers. The release build now emits and
+  checksum-verifies all four unsigned variants, records WebView2 install mode,
+  network requirement, servicing model, size, and digest in the build manifest,
+  rejects an offline package without the expected embedded-runtime overhead,
+  and exercises the full standard/offline matrix in the disposable installed
+  release gate. The Cargo package now pins `cataclysm` as its default binary so
+  additional release tools cannot silently replace the packaged application.
 - Portable `.cataclysm` scenario packages for exact, data-only handoff between
   machines. Custom scenarios can now export and preview-import versioned inputs,
   redacted settings, solver configuration, layer/camera state, citations,
@@ -85,6 +93,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Portable package imports now wait for the imported source to reach its ready
+  state before restoring workspace context, apply the saved camera pose exactly,
+  and suppress competing source auto-focus while that restored pose owns the
+  viewport. This removes a frame-rate-dependent camera race in loaded packages.
 - Refreshed the DOMPurify override to 3.4.12 and the legacy minimatch
   `brace-expansion` dependency to 1.1.16, clearing the newly published
   sanitizer-bypass and expansion-denial-of-service advisories while preserving

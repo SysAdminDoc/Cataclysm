@@ -15,6 +15,11 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  WINDOWS_INSTALLER_FORMATS,
+  WINDOWS_INSTALLER_VARIANTS,
+  classifyWindowsInstaller,
+} from "./windows-installer-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const defaultBundleRoot = path.join(repoRoot, "src-tauri", "target", "release", "bundle");
@@ -211,14 +216,20 @@ export function assertInstalledSmokeHost(options = {}) {
 
 export function findWindowsInstallers(bundleRoot = defaultBundleRoot) {
   const files = listFiles(bundleRoot);
-  const msi = files.filter((file) => /[\\/]msi[\\/].+\.msi$/i.test(file));
-  const nsis = files.filter((file) => /[\\/]nsis[\\/].+-setup\.exe$/i.test(file));
-  invariant(msi.length === 1, `Expected exactly one MSI installer, found ${msi.length}.`);
-  invariant(nsis.length === 1, `Expected exactly one NSIS installer, found ${nsis.length}.`);
-  return [
-    { kind: "msi", installerPath: msi[0] },
-    { kind: "nsis", installerPath: nsis[0] },
-  ];
+  const discovered = files.flatMap((file) => {
+    const relative = path.relative(bundleRoot, file).replaceAll("\\", "/");
+    const installer = classifyWindowsInstaller(relative);
+    return installer ? [{ kind: installer.format, variant: installer.variant, installerPath: file }] : [];
+  });
+  const matrix = [];
+  for (const kind of WINDOWS_INSTALLER_FORMATS) {
+    for (const variant of WINDOWS_INSTALLER_VARIANTS) {
+      const matches = discovered.filter((entry) => entry.kind === kind && entry.variant === variant);
+      invariant(matches.length === 1, `Expected exactly one ${variant} ${kind.toUpperCase()} installer, found ${matches.length}.`);
+      matrix.push(matches[0]);
+    }
+  }
+  return matrix;
 }
 
 export function sanitizeLog(value, home = os.homedir()) {
@@ -802,10 +813,11 @@ export async function runInstalledReleaseSmoke(options = {}) {
   let failure = null;
   try {
     for (const pkg of packages) {
-      const packageArtifactRoot = path.join(artifactRoot, pkg.kind);
-      const installRoot = path.join(installParent, pkg.kind);
-      const profileRoot = path.join(tempRoot, `${pkg.kind}-profile`);
-      const packageTempRoot = path.join(tempRoot, pkg.kind);
+      const packageId = `${pkg.kind}-${pkg.variant}`;
+      const packageArtifactRoot = path.join(artifactRoot, packageId);
+      const installRoot = path.join(installParent, packageId);
+      const profileRoot = path.join(tempRoot, `${packageId}-profile`);
+      const packageTempRoot = path.join(tempRoot, packageId);
       mkdirSync(packageArtifactRoot, { recursive: true });
       mkdirSync(packageTempRoot, { recursive: true });
       let installed = null;
@@ -833,6 +845,8 @@ export async function runInstalledReleaseSmoke(options = {}) {
         });
         report.packages.push({
           kind: pkg.kind,
+          variant: pkg.variant,
+          webview_install_mode: classifyWindowsInstaller(pkg.installerPath)?.webview_install_mode,
           installer: path.relative(bundleRoot, pkg.installerPath).replaceAll("\\", "/"),
           installed_version: installed.entry.DisplayVersion,
           capability_probe: probe,
@@ -843,7 +857,9 @@ export async function runInstalledReleaseSmoke(options = {}) {
         const cleanupEntry = installed?.entry ?? installerRegistryEntries()[0] ?? null;
         if (cleanupEntry) {
           uninstallPackage(pkg, installRoot, packageTempRoot, cleanupEntry);
-          const packageReport = report.packages.find((entry) => entry.kind === pkg.kind);
+          const packageReport = report.packages.find(
+            (entry) => entry.kind === pkg.kind && entry.variant === pkg.variant,
+          );
           if (packageReport) packageReport.uninstalled_cleanly = true;
         }
         if (existsSync(installRoot)) safeRemoveTree(installParent, installRoot);
@@ -858,7 +874,7 @@ export async function runInstalledReleaseSmoke(options = {}) {
     writeFileSync(path.join(artifactRoot, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   }
   if (failure) throw failure;
-  invariant(report.packages.length === 2, "Installed smoke did not complete both Windows package formats.");
+  invariant(report.packages.length === 4, "Installed smoke did not complete the standard/offline MSI and NSIS matrix.");
   invariant(report.packages.every((entry) => entry.uninstalled_cleanly), "At least one installer did not uninstall cleanly.");
   return report;
 }

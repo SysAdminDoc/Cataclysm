@@ -6,6 +6,7 @@ authors = ["SysAdminDoc"]
 license = "MIT"
 repository = "https://github.com/SysAdminDoc/Cataclysm"
 edition = "2024"
+default-run = "cataclysm"
 # Floor set by zarrs 0.23.x for the Zarr v3 scientific-export store.
 rust-version = "1.91"
 

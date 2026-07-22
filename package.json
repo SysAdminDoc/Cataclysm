@@ -44,7 +44,7 @@
     "test:browser-physics": "node scripts/build-browser-physics.mjs --check && node --test scripts/browser-physics.test.mjs",
     "test:pwa-contract": "node --test scripts/pwa-offline-contract.test.mjs",
     "test:installed-release": "node --test scripts/installed-release-smoke.test.mjs",
-    "test:release-contracts": "node --test scripts/deep-link-contract.test.mjs scripts/deps-check.test.mjs scripts/e2e-artifact-contract.test.mjs scripts/inline-style-contract.test.mjs scripts/product-truth-contract.test.mjs scripts/provenance-contract.test.mjs scripts/release-artifact-contract.test.mjs scripts/support-code-contract.test.mjs scripts/version-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",
+    "test:release-contracts": "node --test scripts/deep-link-contract.test.mjs scripts/deps-check.test.mjs scripts/e2e-artifact-contract.test.mjs scripts/inline-style-contract.test.mjs scripts/product-truth-contract.test.mjs scripts/provenance-contract.test.mjs scripts/release-artifact-contract.test.mjs scripts/support-code-contract.test.mjs scripts/version-contract.test.mjs scripts/windows-installer-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "capture:screenshots": "node scripts/capture-screenshots.mjs",
     "capture:references": "node scripts/capture-reference-scenes.mjs --record",

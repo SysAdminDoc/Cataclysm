@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   statSync,
   unlinkSync,
@@ -18,11 +19,21 @@ import {
 } from "./installed-release-smoke.mjs";
 import { selectReleaseArtifactFiles } from "./release-artifact-contract.mjs";
 import { RELEASE_CARGO_FEATURES } from "./release-contract.mjs";
+import {
+  assertWindowsInstallerMatrix,
+  classifyWindowsInstaller,
+  formatWindowsInstallerChecksums,
+  offlineInstallerName,
+  validateWindowsInstallerConfigs,
+} from "./windows-installer-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bundleRoot = path.join(repoRoot, "src-tauri", "target", "release", "bundle");
 const manifestPath = path.join(bundleRoot, "cataclysm-build-manifest.json");
 const artifactsDir = path.join(repoRoot, "artifacts");
+const tauriConfigPath = path.join(repoRoot, "src-tauri", "tauri.conf.json");
+const offlineTauriConfigPath = path.join(repoRoot, "src-tauri", "tauri.offline.conf.json");
+const installerChecksumsPath = path.join(bundleRoot, "checksums-sha256.txt");
 
 function run(command, args, options = {}) {
   console.log(`$ ${[command, ...args].join(" ")}`);
@@ -58,6 +69,53 @@ function listFiles(root) {
 
 function sha256(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function readJson(filePath) {
+  return JSON.parse(readFileSync(filePath, "utf8"));
+}
+
+function installerArtifacts() {
+  return listFiles(bundleRoot)
+    .map((file) => ({
+      file,
+      path: path.relative(bundleRoot, file).replaceAll("\\", "/"),
+      bytes: statSync(file).size,
+    }))
+    .filter((artifact) => classifyWindowsInstaller(artifact.path));
+}
+
+function labelOfflineInstallers() {
+  const generated = installerArtifacts();
+  if (generated.length !== 2 || generated.some((artifact) => classifyWindowsInstaller(artifact.path)?.variant !== "standard")) {
+    throw new Error(`Offline Tauri build must emit exactly one default-named MSI and NSIS; found ${generated.length} installer(s).`);
+  }
+  for (const artifact of generated) {
+    const destination = path.join(path.dirname(artifact.file), offlineInstallerName(artifact.file));
+    renameSync(artifact.file, destination);
+  }
+}
+
+function tauriBuild(tauriCli, configPath = null) {
+  const args = [
+    tauriCli,
+    "build",
+    "--ci",
+    "--no-sign",
+    "--features",
+    RELEASE_CARGO_FEATURES.join(","),
+  ];
+  if (configPath) args.push("--config", configPath);
+  run(process.execPath, args);
+}
+
+function writeInstallerChecksums(installers) {
+  const withDigests = installers.map((installer) => ({
+    ...installer,
+    sha256: sha256(installer.file),
+  }));
+  writeFileSync(installerChecksumsPath, formatWindowsInstallerChecksums(withDigests));
+  return withDigests;
 }
 
 function runNodeScript(label, scriptRelPath) {
@@ -107,11 +165,12 @@ function probeReleaseBinary() {
 }
 
 function buildManifest(probe, installedSmoke) {
-  const tauriConfig = JSON.parse(
-    readFileSync(path.join(repoRoot, "src-tauri", "tauri.conf.json"), "utf8"),
-  );
+  const tauriConfig = readJson(tauriConfigPath);
+  const offlineTauriConfig = readJson(offlineTauriConfigPath);
+  const webviewConfig = validateWindowsInstallerConfigs(tauriConfig, offlineTauriConfig);
   const artifactFiles = selectReleaseArtifactFiles(listFiles(bundleRoot), bundleRoot);
   if (artifactFiles.length === 0) throw new Error("Tauri produced no bundle artifacts.");
+  const windowsInstallers = assertWindowsInstallerMatrix(installerArtifacts());
 
   const rustVersion = run("rustc", ["-Vv"], { capture: true });
   const rustHost = rustVersion.match(/^host:\s+(.+)$/m)?.[1] ?? "unknown";
@@ -119,7 +178,7 @@ function buildManifest(probe, installedSmoke) {
   const advisoryBaselinePath = path.join(repoRoot, "scripts", "rust-advisory-baseline.json");
   const advisoryBaseline = JSON.parse(readFileSync(advisoryBaselinePath, "utf8"));
   const manifest = {
-    schema_version: 2,
+    schema_version: 3,
     product: tauriConfig.productName,
     version: tauriConfig.version,
     git_commit: gitCommit,
@@ -132,12 +191,34 @@ function buildManifest(probe, installedSmoke) {
     },
     capability_probe: probe,
     installed_smoke: installedSmoke,
+    windows_installers: {
+      ...webviewConfig,
+      variants: windowsInstallers.map((installer) => ({
+        path: installer.path,
+        format: installer.format,
+        variant: installer.variant,
+        webview_install_mode: installer.webview_install_mode,
+        requires_network_for_missing_runtime: installer.requires_network_for_missing_runtime,
+        runtime_servicing: installer.runtime_servicing,
+        bytes: installer.bytes,
+        sha256: sha256(installer.file),
+      })),
+    },
+    installer_checksums: {
+      path: path.relative(bundleRoot, installerChecksumsPath).replaceAll("\\", "/"),
+      sha256: sha256(installerChecksumsPath),
+    },
     supply_chain: supplyChainSection(),
-    artifacts: artifactFiles.map((file) => ({
-      path: path.relative(bundleRoot, file).replaceAll("\\", "/"),
-      bytes: statSync(file).size,
-      sha256: sha256(file),
-    })),
+    artifacts: artifactFiles.map((file) => {
+      const relativePath = path.relative(bundleRoot, file).replaceAll("\\", "/");
+      const installer = classifyWindowsInstaller(relativePath);
+      return {
+        path: relativePath,
+        bytes: statSync(file).size,
+        sha256: sha256(file),
+        ...(installer ? { windows_installer: installer } : {}),
+      };
+    }),
   };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
@@ -150,24 +231,26 @@ async function main() {
   console.log("==> Cataclysm strict release verification");
   runNpm(["run", "verify:release"]);
 
-  console.log("\n==> Clean GPU-enabled desktop package");
+  const tauriConfig = readJson(tauriConfigPath);
+  const offlineTauriConfig = readJson(offlineTauriConfigPath);
+  validateWindowsInstallerConfigs(tauriConfig, offlineTauriConfig);
+
+  console.log("\n==> Clean GPU-enabled offline Windows packages");
   rmSync(bundleRoot, { recursive: true, force: true });
   const tauriCli = path.join(repoRoot, "node_modules", "@tauri-apps", "cli", "tauri.js");
-  run(process.execPath, [
-    tauriCli,
-    "build",
-    "--ci",
-    "--features",
-    RELEASE_CARGO_FEATURES.join(","),
-  ]);
+  tauriBuild(tauriCli, offlineTauriConfigPath);
+  labelOfflineInstallers();
+
+  console.log("\n==> Small GPU-enabled standard Windows packages");
+  tauriBuild(tauriCli);
 
   mkdirSync(bundleRoot, { recursive: true });
+  const installerMatrix = assertWindowsInstallerMatrix(installerArtifacts());
+  writeInstallerChecksums(installerMatrix);
+  console.log(`Verified ${installerMatrix.length} standard/offline Windows installer variants.`);
   console.log("\n==> Packaged-binary capability smoke");
   const probe = probeReleaseBinary();
   console.log("\n==> Installed MSI/NSIS desktop journey");
-  const tauriConfig = JSON.parse(
-    readFileSync(path.join(repoRoot, "src-tauri", "tauri.conf.json"), "utf8"),
-  );
   const installedSmoke = await runInstalledReleaseSmoke({
     bundleRoot,
     expectedVersion: tauriConfig.version,

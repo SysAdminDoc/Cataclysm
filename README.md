@@ -328,11 +328,20 @@ and writes adapter plus frame-time evidence to
 
 Prebuilt Windows installers for the latest release are on the
 [Releases page](https://github.com/SysAdminDoc/Cataclysm/releases):
-an MSI package and an NSIS setup executable. The v0.14.0 Windows installers are
-locally built from this repository and intentionally unsigned, so Windows may
-show an unknown-publisher warning. macOS and Linux remain supported source-build
-targets; platform packages for those systems are produced locally on their
-respective build hosts.
+standard MSI and NSIS packages plus separately labelled `_offline` MSI and NSIS
+packages. The smaller standard installers download Microsoft's WebView2
+Evergreen bootstrapper only when the runtime is missing. The optional offline
+installers embed the WebView2 Evergreen offline installer, so they can provision
+that missing runtime without a network connection; WebView2 remains Evergreen
+and continues to receive normal Microsoft servicing after installation rather
+than becoming a bundled Fixed Version runtime. In the current v0.14.0 local
+build, the standard MSI/NSIS are about 15/12 MiB and their offline counterparts
+are about 209/208 MiB.
+
+The v0.14.0 Windows installers are locally built from this repository and
+intentionally unsigned, so Windows may show an unknown-publisher warning. macOS
+and Linux remain supported source-build targets; platform packages for those
+systems are produced locally on their respective build hosts.
 
 **Verify your download** — each release includes a `checksums-sha256.txt` file.
 Compare the SHA256 of the downloaded file to the published value:
@@ -443,11 +452,14 @@ current module and offline-cache sizes instead of relying on stale checked-in
 bundle measurements.
 
 `tauri:build` runs the strict gate, deletes stale bundles, compiles the desktop
-binary with GPU support, performs a non-visual capability smoke, and writes
-`src-tauri/target/release/bundle/cataclysm-build-manifest.json` with the enabled
-Cargo features and SHA-256 digest of every platform artifact. Systems without a
-supported adapter continue through the existing CPU fallback instead of losing
-simulation capability.
+binary with GPU support, and emits the standard and Evergreen-offline MSI/NSIS
+matrix without signing. It rejects a missing variant or an offline package that
+does not contain the expected substantial runtime payload, writes
+`checksums-sha256.txt`, performs a non-visual capability smoke, and writes
+`src-tauri/target/release/bundle/cataclysm-build-manifest.json` with installer
+mode/servicing metadata, enabled Cargo features, and the SHA-256 digest of every
+platform artifact. Systems without a supported adapter continue through the
+existing CPU fallback instead of losing simulation capability.
 
 RustSec vulnerabilities always fail. Warning-class transitive advisories are
 accepted only through `scripts/rust-advisory-baseline.json`, where every entry
@@ -474,10 +486,11 @@ operational-fitness rating.
 
 On Windows this command is intentionally restricted to a clean disposable
 profile or VM with `CATACLYSM_INSTALL_SMOKE_ISOLATED=1`, `tauri-driver`, and a
-matching `msedgedriver.exe`. It installs the emitted MSI and NSIS packages one at
-a time, verifies the installed version and GPU capability, completes the Tōhoku
-Run & Watch journey through frame 60/60, exercises text export, diagnostics, and
-an OS-keychain restart round trip, then uninstalls each package. The build fails
+matching `msedgedriver.exe`. It installs the emitted standard/offline MSI and
+NSIS packages one at a time, verifies the installed version and GPU capability,
+completes the Tōhoku Run & Watch journey through frame 60/60, exercises text
+export, diagnostics, and an OS-keychain restart round trip, then uninstalls each
+package. The build fails
 before verification if Cataclysm is already installed or running. The
 `Installed Windows release gate` workflow provisions this isolated environment;
 its optional `webview2_preview` input reverses WebView2's channel preference for

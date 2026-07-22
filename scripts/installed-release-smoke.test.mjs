@@ -54,21 +54,27 @@ test("installed smoke refuses non-isolated or occupied Windows hosts", () => {
   }), { required: true });
 });
 
-test("installer discovery requires one MSI and one NSIS package", () => {
+test("installer discovery requires the standard/offline MSI and NSIS matrix", () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "cataclysm-installer-fixture-"));
   try {
     mkdirSync(path.join(root, "msi"));
     mkdirSync(path.join(root, "nsis"));
     const msi = path.join(root, "msi", "Cataclysm_1.2.3_x64_en-US.msi");
+    const offlineMsi = path.join(root, "msi", "Cataclysm_1.2.3_x64_en-US_offline.msi");
     const nsis = path.join(root, "nsis", "Cataclysm_1.2.3_x64-setup.exe");
+    const offlineNsis = path.join(root, "nsis", "Cataclysm_1.2.3_x64_offline-setup.exe");
     writeFileSync(msi, "msi");
+    writeFileSync(offlineMsi, "offline msi");
     writeFileSync(nsis, "nsis");
+    writeFileSync(offlineNsis, "offline nsis");
     assert.deepEqual(findWindowsInstallers(root), [
-      { kind: "msi", installerPath: msi },
-      { kind: "nsis", installerPath: nsis },
+      { kind: "msi", variant: "standard", installerPath: msi },
+      { kind: "msi", variant: "offline", installerPath: offlineMsi },
+      { kind: "nsis", variant: "standard", installerPath: nsis },
+      { kind: "nsis", variant: "offline", installerPath: offlineNsis },
     ]);
     writeFileSync(path.join(root, "msi", "duplicate.msi"), "msi");
-    assert.throws(() => findWindowsInstallers(root), /exactly one MSI installer, found 2/);
+    assert.throws(() => findWindowsInstallers(root), /exactly one standard MSI installer, found 2/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
