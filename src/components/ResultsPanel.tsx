@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from "react";
-import type { InitialDisplacement, Preset } from "../types/scenario";
+import type { InitialDisplacement, MetricPercentiles, Preset } from "../types/scenario";
 import type { RunupAtPointResult } from "../lib/tauri";
 import { exportFailureLabel, exportRunupCsv, type ExportResult } from "../lib/export";
 import {
@@ -42,6 +42,7 @@ type Props = {
   scienceContent?: ReactNode;
   validationContent?: ReactNode;
   onFocusOutcome?: (place: CoastalOutcomePlace) => void;
+  arrivalSensitivity?: MetricPercentiles | null;
 };
 
 type ResultView = "outcome" | "science" | "validation";
@@ -143,6 +144,7 @@ export function ResultsPanel({
   scienceContent,
   validationContent,
   onFocusOutcome,
+  arrivalSensitivity = null,
 }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
@@ -225,6 +227,14 @@ export function ResultsPanel({
   const storyMaximum = story.maximum
     ? quantityText(formatLength(story.maximum.runup_m, formatNumber, unitSystem))
     : "—";
+  const arrivalBand = arrivalSensitivity?.p05 != null
+    && arrivalSensitivity.p95 != null
+    && arrivalSensitivity.valid_samples > 0
+    ? t("results.arrivalSensitivityBand", {
+        low: formatResultTime(arrivalSensitivity.p05, t, formatNumber),
+        high: formatResultTime(arrivalSensitivity.p95, t, formatNumber),
+      })
+    : t("results.arrivalSensitivityUnavailable");
 
   const focusOutcome = (place: CoastalOutcomePlace) => {
     setSelectedPlaceId(place.id);
@@ -294,11 +304,32 @@ export function ResultsPanel({
             <TrustDisclosure evidence={evidence} />
 
             <div className="results__key-metrics" aria-label={t("results.outcomeSummary")}>
-              {story.maximum && story.maximum.runup_m >= 0.1 ? (
+              {story.firstAffected ? (
                 <button
                   type="button"
                   className="results__metric-card"
                   data-tone="primary"
+                  aria-label={t("results.firstAffectedAria", { place: story.firstAffected.name, time: formatResultTime(story.firstAffected.arrival_time_s, t, formatNumber) })}
+                  onClick={() => focusOutcome(story.firstAffected!)}
+                >
+                  <span>{t("results.firstArrival")}</span>
+                  <strong>{formatResultTime(story.firstAffected.arrival_time_s, t, formatNumber)}</strong>
+                  <em>{story.firstAffected.name}</em>
+                  <small className="results__metric-band">{arrivalBand}</small>
+                </button>
+              ) : (
+                <div className="results__metric-card" data-tone="primary">
+                  <span>{t("results.firstArrival")}</span>
+                  <strong>{t("results.notAvailable")}</strong>
+                  <em>{t("results.runScreeningArrival")}</em>
+                  <small className="results__metric-band">{arrivalBand}</small>
+                </div>
+              )}
+              {story.maximum && story.maximum.runup_m >= 0.1 ? (
+                <button
+                  type="button"
+                  className="results__metric-card"
+                  data-tone="secondary"
                   aria-label={t("results.maximumAria", { height: storyMaximum, place: story.maximum.name })}
                   onClick={() => focusOutcome(story.maximum!)}
                 >
@@ -307,33 +338,18 @@ export function ResultsPanel({
                   <em>{t("results.atPlace", { place: story.maximum.name })}</em>
                 </button>
               ) : (
-                <div className="results__metric-card" data-tone="primary">
+                <div className="results__metric-card" data-tone="secondary">
                   <span>{t("results.peakSourceDisplacement")}</span>
                   <strong>{amp.value} <small>{amp.unit}</small></strong>
                   <em>{t("results.noCoastAbove", { threshold: screeningThreshold })}</em>
                 </div>
               )}
-              {story.firstAffected && (
-                <button
-                  type="button"
-                  className="results__metric-card"
-                  data-tone="secondary"
-                  aria-label={t("results.firstAffectedAria", { place: story.firstAffected.name, time: formatResultTime(story.firstAffected.arrival_time_s, t, formatNumber) })}
-                  onClick={() => focusOutcome(story.firstAffected!)}
-                >
-                  <span>{t("results.firstArrival")}</span>
-                  <strong>{formatResultTime(story.firstAffected.arrival_time_s, t, formatNumber)}</strong>
-                  <em>{story.firstAffected.name}</em>
-                </button>
-              )}
-              {!story.firstAffected && (
-                <div className="results__metric-card" data-tone="secondary">
-                  <span>{t("results.firstArrival")}</span>
-                  <strong>{t("results.notAvailable")}</strong>
-                  <em>{t("results.runScreeningArrival")}</em>
-                </div>
-              )}
             </div>
+
+            <aside className="results__map-literacy" aria-label={t("results.mapReadingTitle")}>
+              <strong>{t("results.notEvacuationMap")}</strong>
+              <p>{t("results.singleScenarioWarning")}</p>
+            </aside>
 
             <section className="results__places" aria-labelledby={`${panelId}-places-title`}>
               <div className="results__places-header">

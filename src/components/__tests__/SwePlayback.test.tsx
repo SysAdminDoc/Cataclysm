@@ -194,7 +194,14 @@ describe("SwePlayback", () => {
       caveats: ["This is a sensitivity envelope, not probability or forecast."],
     });
     const user = userEvent.setup();
-    render(<SwePlayback initial={INITIAL} workspaceMode="advanced" />);
+    const onSensitivityEnvelopeChange = vi.fn();
+    render(
+      <SwePlayback
+        initial={INITIAL}
+        workspaceMode="advanced"
+        onSensitivityEnvelopeChange={onSensitivityEnvelopeChange}
+      />,
+    );
 
     await user.click(screen.getByText("Sensitivity envelope"));
     expect(screen.getByText(/not probability or forecast/i)).toBeInTheDocument();
@@ -219,6 +226,9 @@ describe("SwePlayback", () => {
       }),
     ));
     expect(await screen.findByText("8 completed · 1 failed · 0 cancelled")).toBeInTheDocument();
+    expect(onSensitivityEnvelopeChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      arrival_s: { p05: 100, p50: 120, p95: 150, valid_samples: 8 },
+    }));
     expect(screen.getByText("Resolved nearshore peak / runup proxy")).toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
 

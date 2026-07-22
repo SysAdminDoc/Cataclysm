@@ -485,6 +485,7 @@ export default function App() {
   const [sweRenderFrameA, setSweRenderFrameA] = useState<RenderFrameProvenance | null>(null);
   const [sweRenderFrameB, setSweRenderFrameB] = useState<RenderFrameProvenance | null>(null);
   const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
+  const [sweSensitivityEnvelopeA, setSweSensitivityEnvelopeA] = useState<import("./types/scenario").SensitivityEnsembleResponse | null>(null);
   const [portableSolverSettings, setPortableSolverSettings] = useState<PortableScenarioSolverSettings | null>(null);
   const [portableSettingsImport, setPortableSettingsImport] = useState<{ id: number; settings: PortableScenarioSolverSettings } | null>(null);
   const [portableResultsImport, setPortableResultsImport] = useState<{ id: number; results: PortableJson } | null>(null);
@@ -621,6 +622,10 @@ export default function App() {
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
   const setSlotBActivePresetId = slotB.setActivePresetId;
+
+  useEffect(() => {
+    setSweSensitivityEnvelopeA(null);
+  }, [slotA.initial]);
 
   const handleGuidedStoryCue = useCallback((
     cue: GuidedStoryCue | null,
@@ -2959,6 +2964,7 @@ export default function App() {
             onRunQuality={setSweRunQualityA}
             onIsochrones={setSweIsochrones}
             onRenderFrame={setSweRenderFrameA}
+            onSensitivityEnvelopeChange={setSweSensitivityEnvelopeA}
             onPortableSettingsChange={setPortableSolverSettings}
             portableSettingsImport={portableSettingsImport}
             portableResultsImport={portableResultsImport}
@@ -3041,6 +3047,7 @@ export default function App() {
           sourceKind={activeScenarioKindA}
           runupResults={slotA.runupResults}
           runupResult={slotA.runupResult}
+          arrivalSensitivity={sweSensitivityEnvelopeA?.arrival_s ?? null}
           onRetryRunup={slotA.retryRunup}
           onFocusOutcome={handleOutcomeFocus}
           scienceContent={<AttenuationChart

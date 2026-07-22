@@ -587,12 +587,68 @@
 .layer-inspector__legend-mark.is-wavefront { height: 2px; background: var(--sky); }
 .layer-inspector__legend-mark.is-field { background: linear-gradient(90deg, var(--blue), var(--teal), var(--yellow), var(--red)); }
 .layer-inspector__legend-mark.is-arrival { height: 2px; background: var(--yellow); }
-.layer-inspector__legend-mark.is-runup { background: linear-gradient(90deg, var(--green), var(--yellow), var(--red)); }
+.layer-inspector__legend-mark.is-runup { background: linear-gradient(90deg, #3b82f6, #f59e0b, #dc2626); }
 .layer-inspector__legend-mark.is-facility { width: 8px; height: 8px; background: var(--green); }
 .layer-inspector__legend-mark.is-usgs { height: 2px; background: linear-gradient(90deg, #00b4d8, #f7d038, #e5383b); }
 .layer-inspector__legend-mark.is-dart { width: 8px; height: 8px; background: var(--maroon); }
 .layer-inspector__legend-mark.is-hazard { background: linear-gradient(90deg, var(--yellow), var(--peach), var(--red)); }
 .layer-inspector__legend-mark.is-fallout { background: linear-gradient(90deg, var(--green), var(--yellow)); }
+
+.layer-inspector__map-guide {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--warning) 26%, var(--divider));
+  border-left: 3px solid var(--warning-text);
+  background: color-mix(in srgb, var(--warning) 6%, transparent);
+}
+
+.layer-inspector__map-guide > strong {
+  color: var(--warning-text);
+  font-size: var(--type-micro);
+  letter-spacing: 0.55px;
+}
+
+.layer-inspector__map-guide p,
+.layer-inspector__map-guide small {
+  margin: 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+
+.layer-inspector__map-guide > a {
+  width: max-content;
+  color: var(--accent-text);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+
+.layer-inspector__screening-bands {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.layer-inspector__screening-bands span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: var(--type-micro);
+  white-space: nowrap;
+}
+
+.layer-inspector__screening-bands i {
+  width: 13px;
+  height: 9px;
+  border: 1px solid color-mix(in srgb, var(--text) 35%, transparent);
+}
+
+.layer-inspector__screening-bands i[data-band="lower"] { background: #3b82f6; }
+.layer-inspector__screening-bands i[data-band="moderate"] { background: #f59e0b; }
+.layer-inspector__screening-bands i[data-band="high"] { background: #dc2626; }
 
 .layer-inspector__usgs-body {
   display: grid;

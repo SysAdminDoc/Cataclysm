@@ -1,3 +1,5 @@
+import { runupScreeningBand } from "../../lib/hazard-map-literacy";
+
 export interface RunupOverlayInput {
   id: string;
   name: string;
@@ -125,16 +127,12 @@ interface NormalizedOverlay {
   duplicateCount: number;
 }
 
-const RUNUP_LOW = "#a6e3a1";
-const RUNUP_MODERATE = "#f9e2af";
-const RUNUP_HIGH = "#f38ba8";
-
 function compareIds(left: RunupOverlayInput, right: RunupOverlayInput): number {
   return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
 }
 
 function runupColor(runupM: number): string {
-  return runupM < 2 ? RUNUP_LOW : runupM < 10 ? RUNUP_MODERATE : RUNUP_HIGH;
+  return runupScreeningBand(runupM).colorCss;
 }
 
 function validBaseInput(input: RunupOverlayInput): boolean {

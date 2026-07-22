@@ -68,6 +68,13 @@ describe("LayerInspector trust evidence", () => {
 
     const disclosures = screen.getAllByText("Why trust this?");
     expect(disclosures).toHaveLength(8);
+    expect(screen.getByText("MODELED INUNDATION · NON-OPERATIONAL")).toBeInTheDocument();
+    expect(screen.getByText(/Unshaded areas are not confirmed safe/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Modeled coastal screening-height legend")).toHaveTextContent("0.1–<2 m");
+    expect(screen.getByRole("link", { name: "IOC-informed map-reading guidance" })).toHaveAttribute(
+      "href",
+      "https://tsunami.ioc.unesco.org/en/tsunami-ready",
+    );
     const sweRow = screen.getByText("SWE water field").closest("li");
     expect(sweRow).not.toBeNull();
     await user.click(within(sweRow!).getByText("Legend and provenance"));

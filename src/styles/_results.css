@@ -261,6 +261,34 @@ button.results__metric-card:focus-visible {
   line-height: 1.35;
 }
 
+.results__metric-card > .results__metric-band {
+  display: block;
+  margin-top: 3px;
+  color: var(--accent-text);
+  font-size: var(--type-micro);
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.results__map-literacy {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-left: 3px solid var(--warning-text);
+  background: color-mix(in srgb, var(--warning) 7%, transparent);
+}
+
+.results__map-literacy strong {
+  color: var(--warning-text);
+  font-size: var(--type-caption);
+}
+
+.results__map-literacy p {
+  margin: 4px 0 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+
 .results__places {
   margin-top: 12px;
   border: 0;

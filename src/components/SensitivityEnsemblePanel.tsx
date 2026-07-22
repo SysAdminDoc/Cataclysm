@@ -21,6 +21,7 @@ type Props = {
   cellsPerDegree: number;
   includeLambWave: boolean;
   boundaryMode: "sponge" | "radiation";
+  onEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
 };
 
 type ParameterDraft = {
@@ -107,6 +108,7 @@ function metricText(value: number | null, suffix: string, formatNumber: ReturnTy
 
 export function SensitivityEnsemblePanel(props: Props) {
   const { t, formatNumber } = useI18n();
+  const { onEnvelopeChange } = props;
   const [parameters, setParameters] = useState<ParameterDraft[]>(DEFAULT_PARAMETERS);
   const [sampleCount, setSampleCount] = useState(9);
   const [seed, setSeed] = useState(42);
@@ -127,7 +129,8 @@ export function SensitivityEnsemblePanel(props: Props) {
     setArtifact(null);
     setError(null);
     setStatus("idle");
-  }, [props.initial]);
+    onEnvelopeChange?.(null);
+  }, [props.initial, onEnvelopeChange]);
 
   const selected = parameters.filter((parameter) => parameter.selected);
   const boundsValid = selected.length > 0 && selected.every((parameter) => (
@@ -176,6 +179,7 @@ export function SensitivityEnsemblePanel(props: Props) {
         request,
         response,
       });
+      onEnvelopeChange?.(response);
       setStatus("ready");
     } catch (cause) {
       if (requestId !== requestIdRef.current) return;

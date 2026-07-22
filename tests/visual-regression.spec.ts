@@ -165,11 +165,25 @@ test.describe("Visual regression — desktop", () => {
     await expect(page.getByText("First named-coast arrival")).toBeVisible({ timeout: 10_000 });
     const pause = page.getByRole("button", { name: "Pause scenario timeline" });
     if (await pause.isVisible()) await pause.click();
+    const scenarioTime = page.getByRole("slider", { name: "Scenario timeline scrubber" });
+    await scenarioTime.fill("540");
+    await expect(scenarioTime).toHaveValue("540");
 
     await expect(page).toHaveScreenshot("desktop-results-outcome.png", {
       mask: [page.locator(CANVAS_MASK)],
       maxDiffPixelRatio: 0.01,
       timeout: 15_000,
+    });
+
+    const mapLiteracy = page.getByLabel("How to read this modeled map");
+    await expect(mapLiteracy).toBeVisible();
+    await mapLiteracy.scrollIntoViewIfNeeded();
+    await expect(page.locator("#inspector-panel")).toHaveScreenshot("desktop-results-map-literacy.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+    await page.locator("#inspector-panel").evaluate((panel) => {
+      panel.scrollTop = 0;
     });
 
     const trust = page.getByRole("tabpanel", { name: "Outcome" }).locator(".trust-disclosure").first();
@@ -185,6 +199,9 @@ test.describe("Visual regression — desktop", () => {
     });
     await trustCanvasHider.evaluate((element) => (element as HTMLElement).remove());
     await trust.locator("summary").click();
+    await page.locator("#inspector-panel").evaluate((panel) => {
+      panel.scrollTop = 0;
+    });
 
     await page.getByRole("tab", { name: "Science" }).click();
     await expect(page.getByText("Source science")).toBeVisible();
@@ -206,6 +223,15 @@ test.describe("Visual regression — desktop", () => {
     await dartObservations.scrollIntoViewIfNeeded();
     await expect(dartObservations).toBeVisible();
     await expect(page.locator("#inspector-panel")).toHaveScreenshot("desktop-results-dart.png", {
+      maxDiffPixelRatio: 0.01,
+      timeout: 15_000,
+    });
+
+    await page.getByRole("tab", { name: "Layers" }).click();
+    const mapGuide = page.getByText("MODELED INUNDATION · NON-OPERATIONAL");
+    await expect(mapGuide).toBeVisible();
+    await mapGuide.scrollIntoViewIfNeeded();
+    await expect(page.locator("#inspector-panel")).toHaveScreenshot("desktop-hazard-map-reading-guide.png", {
       maxDiffPixelRatio: 0.01,
       timeout: 15_000,
     });

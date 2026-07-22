@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- An IOC-informed tsunami map-reading frame across Results and Layers. Arrival
+  now leads the outcome summary and publishes the solver's deterministic P05–P95
+  domain-edge sensitivity envelope when run; the coastal overlay uses explicit
+  blue/amber/red screening-height bands instead of a green "safe" cue. Both
+  surfaces state that the model is non-operational, is not an evacuation map,
+  and that unshaded areas are not confirmed safe. Dedicated Playwright baselines
+  govern the result warning and legend in addition to localized unit coverage.
 - Optional WebGPU acceleration now activates only when the adapter advertises
   each feature: f16 velocity ping-pong storage keeps wet/dry topology and flux
   arithmetic at f32, subgroup integrity reduction collapses failure atomics,

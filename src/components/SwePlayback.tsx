@@ -4,7 +4,7 @@ import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor, SensitivityEnsembleResponse } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
@@ -49,6 +49,7 @@ type Props = {
   onPortableSettingsChange?: (settings: PortableScenarioSolverSettings | null) => void;
   portableSettingsImport?: { id: number; settings: PortableScenarioSolverSettings } | null;
   portableResultsImport?: { id: number; results: PortableJson } | null;
+  onSensitivityEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy";
@@ -174,7 +175,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
   return warning;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
@@ -1083,6 +1084,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           cellsPerDegree={cellsPerDeg}
           includeLambWave={includeLambWave}
           boundaryMode={boundaryMode}
+          onEnvelopeChange={onSensitivityEnvelopeChange}
         />
       )}
 

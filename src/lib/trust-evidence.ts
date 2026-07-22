@@ -283,7 +283,13 @@ export function buildLayerEvidence(
         tone: "validated",
         assumptions: ["Depth-averaged hydrostatic flow is appropriate at the represented scale.", "Wet/dry cells and CFL limits follow the recorded run-quality contract."],
         limitations: [DEFAULT_BATHYMETRY_SOURCE, "Grid resolution limits small-scale inundation and harbor effects.", EDUCATIONAL_LIMITATION],
-        citations: [{ label: "Berger et al. 2011, GeoClaw depth-averaged flow methods" }],
+        citations: [
+          { label: "Berger et al. 2011, GeoClaw depth-averaged flow methods" },
+          ...(layer === "arrival-isochrones" ? [{
+            label: "UNESCO-IOC Tsunami Ready map and preparedness guidance",
+            url: "https://tsunami.ioc.unesco.org/en/tsunami-ready",
+          }] : []),
+        ],
       };
     case "coastal-runup":
       return {
@@ -295,7 +301,17 @@ export function buildLayerEvidence(
         tone: "limited",
         assumptions: ["Each point uses its recorded offshore depth and beach slope.", "The non-breaking solitary-wave relation is used within its model gate."],
         limitations: ["First-order screening does not resolve local structures, harbor resonance, or evacuation conditions.", EDUCATIONAL_LIMITATION],
-        citations: [{ label: "Synolakis 1987, Journal of Fluid Mechanics 185:523–545" }],
+        citations: [
+          { label: "Synolakis 1987, Journal of Fluid Mechanics 185:523–545" },
+          {
+            label: "UNESCO-IOC Tsunami Ready map and preparedness guidance",
+            url: "https://tsunami.ioc.unesco.org/en/tsunami-ready",
+          },
+          {
+            label: "Water 2024 tsunami-map interpretation study",
+            url: "https://www.mdpi.com/2073-4441/16/23/3423",
+          },
+        ],
       };
     case "humanitarian-facilities":
       return {

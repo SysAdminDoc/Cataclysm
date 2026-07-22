@@ -20,6 +20,7 @@ import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
 import type { UsgsOfficialComparison } from "../lib/usgs-earthquakes";
 import { getActiveEarthSession, subscribeEarthSession } from "../lib/earth-assets";
+import { RUNUP_SCREENING_BANDS } from "../lib/hazard-map-literacy";
 
 type Props = {
   domain: "tsunami" | "asteroid" | "nuclear";
@@ -251,6 +252,28 @@ function HumanitarianFacilityDetails({
   );
 }
 
+function HazardMapReadingGuide() {
+  const { t } = useI18n();
+  return (
+    <aside className="layer-inspector__map-guide" aria-labelledby="hazard-map-reading-title">
+      <strong id="hazard-map-reading-title">{t("layers.hazardMapHeading")}</strong>
+      <p>{t("layers.hazardMapNotEvacuation")}</p>
+      <div className="layer-inspector__screening-bands" aria-label={t("layers.hazardMapLegendLabel")}>
+        {RUNUP_SCREENING_BANDS.map((band) => (
+          <span key={band.id}>
+            <i aria-hidden data-band={band.id} />
+            {t(`layers.hazardMapBand.${band.id}` as MessageKey)}
+          </span>
+        ))}
+      </div>
+      <small>{t("layers.hazardMapArrival")}</small>
+      <a href="https://tsunami.ioc.unesco.org/en/tsunami-ready" target="_blank" rel="noreferrer">
+        {t("layers.hazardMapIoc")}
+      </a>
+    </aside>
+  );
+}
+
 export function LayerInspector({
   domain,
   hasSource,
@@ -361,6 +384,7 @@ export function LayerInspector({
         </button>
       </div>
       <p className="layer-inspector__intro">{t("layers.controllerIntro")}</p>
+      {tsunamiDomain && <HazardMapReadingGuide />}
       <p className="layer-inspector__terrain" data-active={terrainDraping ? "true" : "false"}>
         <span aria-hidden />
         {terrainDraping ? t("layers.terrainDraping") : t("layers.terrainFlat")}

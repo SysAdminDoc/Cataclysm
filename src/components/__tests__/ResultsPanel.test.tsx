@@ -54,6 +54,33 @@ describe("ResultsPanel", () => {
     expect(screen.getByText("Why trust this?")).toBeInTheDocument();
   });
 
+  it("leads with arrival, exposes the deterministic sensitivity band, and rejects evacuation-map certainty", async () => {
+    const runupResults = await demoRunupAtPoints({
+      source: MOCK_INITIAL.center,
+      initial_amplitude_m: MOCK_INITIAL.peak_amplitude_m,
+      cavity_radius_m: MOCK_INITIAL.cavity_radius_m,
+      is_impact: true,
+      mean_depth_m: 4_000,
+      time_s: Number.MAX_SAFE_INTEGER,
+      points: [getCoastalPoints()[0]],
+    });
+    render(
+      <ResultsPanel
+        initial={MOCK_INITIAL}
+        timeS={900}
+        onTimeChange={() => {}}
+        runupResults={runupResults}
+        arrivalSensitivity={{ p05: 600, p50: 900, p95: 1200, valid_samples: 9 }}
+      />,
+    );
+
+    const summary = screen.getByLabelText("Outcome summary");
+    expect(summary.firstElementChild).toHaveTextContent("First named-coast arrival");
+    expect(screen.getByText("SWE edge-arrival sensitivity (P05–P95): T+10 min–T+20 min")).toBeInTheDocument();
+    expect(screen.getByText("Not an evacuation map")).toBeInTheDocument();
+    expect(screen.getByText(/Unshaded places are not confirmed safe/i)).toBeInTheDocument();
+  });
+
   it("labels the source region correctly for an earthquake (never 'Cavity radius')", async () => {
     const user = userEvent.setup();
     render(<ResultsPanel initial={EARTHQUAKE_INITIAL} timeS={900} onTimeChange={() => {}} sourceKind="Earthquake" />);

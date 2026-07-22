@@ -138,7 +138,7 @@ describe("RunupOverlayController", () => {
     expect(runupBatches[0].map((entry) => entry.id)).toEqual(["a", "z"]);
     expect(runupBatches[0][0]).toMatchObject({
       heightM: 5_000,
-      colorCss: "#a6e3a1",
+      colorCss: "#3b82f6",
       colorAlpha: 0.85,
       outlineColorCss: "#11111b",
       outlineAlpha: 0.6,
@@ -152,7 +152,7 @@ describe("RunupOverlayController", () => {
     expect(inundationBatches[0][1]).toMatchObject({
       radiusM: 50_000,
       segments: 40,
-      colorCss: "#f9e2af",
+      colorCss: "#f59e0b",
       colorAlpha: 0.25,
       outlineAlpha: 0.7,
       outlineWidth: 2,
@@ -167,6 +167,22 @@ describe("RunupOverlayController", () => {
       invalidInputCount: 1,
       duplicateInputCount: 2,
     });
+  });
+
+  it("uses discrete non-green height bands without implying a safe zone", () => {
+    const { controller, runupBatches } = harness();
+    controller.update([
+      point({ id: "lower", runup_m: 0.1 }),
+      point({ id: "moderate", runup_m: 2 }),
+      point({ id: "high", runup_m: 10 }),
+    ]);
+
+    expect(runupBatches[0].map(({ colorCss }) => colorCss)).toEqual([
+      "#dc2626",
+      "#3b82f6",
+      "#f59e0b",
+    ]);
+    expect(runupBatches[0].every(({ colorCss }) => colorCss !== "#a6e3a1")).toBe(true);
   });
 
   it("keeps label handles stable and removes only labels no longer present", () => {
