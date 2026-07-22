@@ -589,7 +589,9 @@ fn gpu_quantitative_products_are_independent_of_snapshot_count() {
 #[test]
 fn gpu_resident_max_fields_match_cpu_reference() {
     use crate::physics::constants::MANNING_N_COASTAL;
-    use crate::physics::solver::gpu::GpuTimeStepper;
+    use crate::physics::solver::gpu::{
+        GpuTimeStepper, adapter_capabilities, last_gpu_pass_timings,
+    };
 
     let mut cpu_grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.25, 0.25);
     cpu_grid.fill_uniform_depth(4_000.0);
@@ -624,6 +626,14 @@ fn gpu_resident_max_fields_match_cpu_reference() {
     )
     .expect("resident GPU run");
     assert_eq!(snapshots.len(), 2);
+    if let Some(capabilities) = adapter_capabilities()
+        && capabilities.timestamp_query
+    {
+        let timings = gpu.pass_timings().expect("resident GPU timestamp profile");
+        assert!(timings.solver_pass_ms > 0.0);
+        assert!(timings.max_field_pass_ms > 0.0);
+        assert!(last_gpu_pass_timings().is_some());
+    }
 
     let assert_fields = |label: &str, cpu: &[f64], gpu: &[f64], abs_tol: f64, rel_tol: f64| {
         for (index, (&cpu, &gpu)) in cpu.iter().zip(gpu).enumerate() {
@@ -733,4 +743,107 @@ fn gpu_resident_4m_cell_benchmark() {
         speedup >= 1.25,
         "resident GPU path speedup {speedup:.3}x is below the material 1.25x gate"
     );
+}
+
+#[cfg(feature = "gpu")]
+#[test]
+#[ignore = "fixed 4M-cell optional-feature benchmark; run explicitly on a release-capable GPU"]
+fn gpu_optional_features_4m_cell_benchmark() {
+    use crate::physics::constants::MANNING_N_COASTAL;
+    use crate::physics::solver::gpu::{GpuTimeStepper, adapter_capabilities};
+    use std::time::Instant;
+
+    const STEPS: usize = 24;
+    const CELLS: usize = 4_000_000;
+    let Some(capabilities) = adapter_capabilities() else {
+        println!("gpu_optional_features_benchmark=no-adapter");
+        return;
+    };
+    if !(capabilities.shader_f16 && capabilities.subgroups && capabilities.timestamp_query) {
+        println!("gpu_optional_features_benchmark=adapter-features-unavailable");
+        return;
+    }
+
+    let build_grid = || {
+        let mut grid = SwGrid::new(-10.0, -10.0, 10.0, 10.0, 0.01, 0.01);
+        assert_eq!(grid.nx * grid.ny, CELLS);
+        grid.fill_uniform_depth(4_000.0);
+        grid.inject_gaussian(0.0, 0.0, 1.0, 60_000.0);
+        grid
+    };
+    let dt = build_grid().recommended_dt_s(0.25);
+    let run = |optional_features: bool| {
+        let mut grid = build_grid();
+        let gpu = GpuTimeStepper::new_with_optional_features(
+            &grid,
+            dt,
+            MANNING_N_COASTAL,
+            0,
+            true,
+            optional_features,
+        )
+        .expect("benchmark adapter");
+        let mut accumulator = MaxFieldAccumulator::new(CELLS, 0.01);
+        accumulator.observe(&grid);
+        assert!(gpu.initialize_resident_max_field(&grid, &accumulator, None));
+        let start = Instant::now();
+        assert!(gpu.dispatch_resident_with_max_field(&grid, STEPS, None, None));
+        assert!(gpu.sync_resident_with_max_field(&mut grid, &mut accumulator, None));
+        (start.elapsed(), grid, accumulator, gpu.pass_timings())
+    };
+
+    let (baseline_elapsed, baseline_grid, baseline_acc, baseline_pass_timings) = run(false);
+    let (accelerated_elapsed, accelerated_grid, accelerated_acc, pass_timings) = run(true);
+    let speedup = baseline_elapsed.as_secs_f64() / accelerated_elapsed.as_secs_f64();
+    let baseline_pass_timings = baseline_pass_timings.expect("baseline timestamp-query profile");
+    let pass_timings = pass_timings.expect("accelerated timestamp-query profile");
+    let solver_pass_speedup = baseline_pass_timings.solver_pass_ms / pass_timings.solver_pass_ms;
+    let eta_error = baseline_grid
+        .eta_m
+        .iter()
+        .zip(&accelerated_grid.eta_m)
+        .map(|(baseline, accelerated)| (baseline - accelerated).abs())
+        .fold(0.0_f64, f64::max);
+    let velocity_error = baseline_grid
+        .u_ms
+        .iter()
+        .zip(&accelerated_grid.u_ms)
+        .chain(baseline_grid.v_ms.iter().zip(&accelerated_grid.v_ms))
+        .map(|(baseline, accelerated)| (baseline - accelerated).abs())
+        .fold(0.0_f64, f64::max);
+    assert!(eta_error <= 5.0e-3, "f16 eta parity error {eta_error}");
+    assert!(
+        velocity_error <= 5.0e-3,
+        "f16 velocity parity error {velocity_error}"
+    );
+    let assert_fields = |label: &str, baseline: &[f64], accelerated: &[f64]| {
+        for (index, (&baseline, &accelerated)) in baseline.iter().zip(accelerated).enumerate() {
+            if baseline.is_infinite() && accelerated.is_infinite() {
+                continue;
+            }
+            let tolerance = 5.0e-3_f64.max(5.0e-3 * baseline.abs());
+            assert!(
+                (baseline - accelerated).abs() <= tolerance,
+                "{label} cell {index}: baseline {baseline}, accelerated {accelerated}, tolerance {tolerance}"
+            );
+        }
+    };
+    assert_fields(
+        "optional feature primary max fields",
+        baseline_acc.scientific_fields()[0],
+        accelerated_acc.scientific_fields()[0],
+    );
+    let peak_vram = GpuTimeStepper::estimated_resident_peak_vram_bytes_f16(CELLS);
+    println!(
+        "gpu_optional_features_benchmark={{\"cells\":{CELLS},\"steps\":{STEPS},\"baseline_ms\":{:.3},\"accelerated_ms\":{:.3},\"end_to_end_speedup\":{speedup:.3},\"solver_pass_speedup\":{solver_pass_speedup:.3},\"eta_max_abs_error_m\":{eta_error:.6},\"velocity_max_abs_error_ms\":{velocity_error:.6},\"estimated_peak_vram_bytes\":{peak_vram},\"baseline_pass_timings\":{:?},\"accelerated_pass_timings\":{:?}}}",
+        baseline_elapsed.as_secs_f64() * 1000.0,
+        accelerated_elapsed.as_secs_f64() * 1000.0,
+        baseline_pass_timings,
+        pass_timings,
+    );
+    assert!(
+        solver_pass_speedup >= 1.10,
+        "f16 solver-pass speedup {solver_pass_speedup:.3}x is below the material 1.10x gate"
+    );
+    assert!(peak_vram <= 512 * 1024 * 1024);
 }

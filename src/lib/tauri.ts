@@ -549,6 +549,22 @@ export const api = {
     arch: string;
     gpu_status: string;
     gpu_adapter: string | null;
+    gpu_capabilities: {
+      adapter: string;
+      backend: string;
+      timestamp_query: boolean;
+      shader_f16: boolean;
+      subgroups: boolean;
+      subgroup_min_size: number;
+      subgroup_max_size: number;
+    } | null;
+    gpu_pass_timings: {
+      solver_pass_ms: number;
+      max_field_pass_ms: number;
+      sampled_steps: number;
+      f16_velocity_storage: boolean;
+      subgroup_integrity_reduction: boolean;
+    } | null;
     solver: string;
     geodesy: Record<string, unknown>;
     surface_mask: Record<string, unknown>;

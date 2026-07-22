@@ -6,6 +6,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Optional WebGPU acceleration now activates only when the adapter advertises
+  each feature: f16 velocity ping-pong storage keeps wet/dry topology and flux
+  arithmetic at f32, subgroup integrity reduction collapses failure atomics,
+  and timestamp queries publish sampled solver/max-field pass timings to the
+  diagnostics stream and support bundle. Unsupported devices retain the f32
+  fallback. On the governed 4M-cell/24-step RTX 4070 SUPER Vulkan fixture, the
+  SWE pass improved from 0.267 ms to 0.184 ms (1.45x); host-transfer-dominated
+  wall time remains reported but is not used as the GPU-pass gate. Maximum f16
+  deltas were 0.000244 m elevation and 0.000013 m/s velocity, and estimated peak VRAM fell to
+  336,065,536 bytes under the 512 MiB gate.
 - Separately labelled Evergreen-offline Windows MSI and NSIS packages alongside
   the existing small bootstrapper installers. The release build now emits and
   checksum-verifies all four unsigned variants, records WebView2 install mode,

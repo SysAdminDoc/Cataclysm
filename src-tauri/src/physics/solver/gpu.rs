@@ -23,16 +23,142 @@
 //! Structures for Cellular-Automata Tsunami Modeling on GPUs*, arXiv:
 //! 1901.06798 — reports 3.6–6.4× speedup vs. 16-core CPU on GeoClaw.
 
-use super::kernels::{SWE_FINITE_VOLUME_WGSL, SWE_MAX_FIELD_WGSL};
+use super::kernels::{
+    SWE_FINITE_VOLUME_WGSL, SWE_MAX_FIELD_WGSL, swe_finite_volume_wgsl_f16, swe_max_field_wgsl,
+};
 use super::max_field::MaxFieldAccumulator;
 use super::{DiagnosticSink, SwGrid, report_diagnostic};
-use std::cell::Cell;
+use serde::Serialize;
+use std::cell::{Cell, RefCell};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use wgpu::util::DeviceExt;
 
 const GPU_RESIDENT_MAX_CELLS_VRAM_BUDGET: u64 = 512 * 1024 * 1024;
 const GPU_PRIMARY_FLOATS_PER_CELL: u64 = 4;
 const GPU_EXTENDED_FLOATS_PER_CELL: u64 = 5;
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct GpuCapabilityProfile {
+    pub adapter: String,
+    pub backend: String,
+    pub timestamp_query: bool,
+    pub shader_f16: bool,
+    pub subgroups: bool,
+    pub subgroup_min_size: u32,
+    pub subgroup_max_size: u32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct GpuPassTimings {
+    pub solver_pass_ms: f64,
+    pub max_field_pass_ms: f64,
+    pub sampled_steps: u32,
+    pub f16_velocity_storage: bool,
+    pub subgroup_integrity_reduction: bool,
+}
+
+struct PendingTimestampSample {
+    readback: wgpu::Buffer,
+    sampled_steps: u32,
+}
+
+static LAST_GPU_PASS_TIMINGS: OnceLock<Mutex<Option<GpuPassTimings>>> = OnceLock::new();
+
+fn f32_to_f16_bits(value: f32) -> u16 {
+    let bits = value.to_bits();
+    let sign = ((bits >> 16) & 0x8000) as u16;
+    let exponent = ((bits >> 23) & 0xff) as i32;
+    let mantissa = bits & 0x7f_ffff;
+    if exponent == 0xff {
+        return sign | if mantissa == 0 { 0x7c00 } else { 0x7e00 };
+    }
+
+    let mut half_exponent = exponent - 127 + 15;
+    if half_exponent >= 31 {
+        return sign | 0x7c00;
+    }
+    if half_exponent <= 0 {
+        if half_exponent < -10 {
+            return sign;
+        }
+        let normalized = mantissa | 0x80_0000;
+        let shift = (14 - half_exponent) as u32;
+        let truncated = normalized >> shift;
+        let remainder = normalized & ((1u32 << shift) - 1);
+        let halfway = 1u32 << (shift - 1);
+        let rounded = truncated
+            + u32::from(remainder > halfway || (remainder == halfway && truncated & 1 != 0));
+        return sign | rounded as u16;
+    }
+
+    let truncated = mantissa >> 13;
+    let remainder = mantissa & 0x1fff;
+    let mut rounded =
+        truncated + u32::from(remainder > 0x1000 || (remainder == 0x1000 && truncated & 1 != 0));
+    if rounded == 0x400 {
+        rounded = 0;
+        half_exponent += 1;
+        if half_exponent >= 31 {
+            return sign | 0x7c00;
+        }
+    }
+    sign | ((half_exponent as u16) << 10) | rounded as u16
+}
+
+fn f16_bits_to_f32(bits: u16) -> f32 {
+    let sign = ((bits as u32) & 0x8000) << 16;
+    let exponent = ((bits >> 10) & 0x1f) as i32;
+    let mut mantissa = (bits & 0x03ff) as u32;
+    let result = match exponent {
+        0 if mantissa == 0 => sign,
+        0 => {
+            let mut unbiased = -14i32;
+            while mantissa & 0x0400 == 0 {
+                mantissa <<= 1;
+                unbiased -= 1;
+            }
+            mantissa &= 0x03ff;
+            sign | (((unbiased + 127) as u32) << 23) | (mantissa << 13)
+        }
+        0x1f => sign | 0x7f80_0000 | (mantissa << 13),
+        _ => sign | (((exponent - 15 + 127) as u32) << 23) | (mantissa << 13),
+    };
+    f32::from_bits(result)
+}
+
+fn capability_profile(adapter: &wgpu::Adapter) -> GpuCapabilityProfile {
+    let info = adapter.get_info();
+    let features = adapter.features();
+    GpuCapabilityProfile {
+        adapter: info.name,
+        backend: format!("{:?}", info.backend),
+        timestamp_query: features.contains(wgpu::Features::TIMESTAMP_QUERY),
+        shader_f16: features.contains(wgpu::Features::SHADER_F16),
+        subgroups: features.contains(wgpu::Features::SUBGROUP),
+        subgroup_min_size: info.subgroup_min_size,
+        subgroup_max_size: info.subgroup_max_size,
+    }
+}
+
+pub fn adapter_capabilities() -> Option<GpuCapabilityProfile> {
+    let instance = wgpu::Instance::default();
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+    }))
+    .ok()?;
+    Some(capability_profile(&adapter))
+}
+
+pub fn last_gpu_pass_timings() -> Option<GpuPassTimings> {
+    LAST_GPU_PASS_TIMINGS
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .ok()
+        .and_then(|timings| timings.clone())
+}
 
 /// Outcome of an attempted GPU adapter acquisition. Allows the
 /// caller (`simulate_grid`) to gracefully fall back to the CPU path
@@ -107,6 +233,14 @@ struct GpuMaxParams {
     _pad0: f32,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct GpuPipelineOptions {
+    sponge_width: u32,
+    boundary_mode: u32,
+    nonlinear: bool,
+    accelerators: bool,
+}
+
 /// GPU-side time stepper. Owns the wgpu device/queue, the compiled
 /// compute pipeline, and the per-step ping-pong storage buffers.
 pub struct GpuTimeStepper {
@@ -146,6 +280,12 @@ pub struct GpuTimeStepper {
     pending_final_a: Cell<bool>,
     max_field_initialized: Cell<bool>,
     arrival_threshold_m: Cell<f64>,
+    f16_velocity_storage: bool,
+    subgroup_integrity_reduction: bool,
+    timestamp_query: bool,
+    timestamp_period_ns: f32,
+    pending_timestamp_sample: RefCell<Option<PendingTimestampSample>>,
+    last_pass_timings: RefCell<Option<GpuPassTimings>>,
 }
 
 impl GpuTimeStepper {
@@ -156,6 +296,40 @@ impl GpuTimeStepper {
         (n_cells as u64)
             .saturating_mul(96)
             .saturating_add(64 * 1024)
+    }
+
+    pub fn estimated_resident_peak_vram_bytes_f16(n_cells: usize) -> u64 {
+        // f16 velocity ping-pong and velocity readbacks save 12 bytes/cell.
+        (n_cells as u64)
+            .saturating_mul(84)
+            .saturating_add(64 * 1024)
+    }
+
+    pub fn pass_timings(&self) -> Option<GpuPassTimings> {
+        self.last_pass_timings.borrow().clone()
+    }
+
+    fn velocity_buffer_bytes(&self) -> u64 {
+        let element_bytes = if self.f16_velocity_storage { 2 } else { 4 };
+        (self.n_cells * element_bytes) as u64
+    }
+
+    fn encode_velocity(&self, values: &[f32]) -> Vec<u8> {
+        if self.f16_velocity_storage {
+            let bits: Vec<u16> = values.iter().map(|value| f32_to_f16_bits(*value)).collect();
+            bytemuck::cast_slice(&bits).to_vec()
+        } else {
+            bytemuck::cast_slice(values).to_vec()
+        }
+    }
+
+    fn decode_velocity(&self, bytes: &[u8]) -> Option<Vec<f32>> {
+        if self.f16_velocity_storage {
+            let bits: &[u16] = bytemuck::try_cast_slice(bytes).ok()?;
+            Some(bits.iter().map(|bits| f16_bits_to_f32(*bits)).collect())
+        } else {
+            Some(bytemuck::try_cast_slice::<u8, f32>(bytes).ok()?.to_vec())
+        }
     }
 
     /// Build the GPU pipeline for the given grid + dt. Returns `None`
@@ -188,9 +362,12 @@ impl GpuTimeStepper {
             grid,
             dt_s,
             manning_n,
-            sponge_width,
-            boundary_mode,
-            nonlinear,
+            GpuPipelineOptions {
+                sponge_width,
+                boundary_mode,
+                nonlinear,
+                accelerators: true,
+            },
             diagnostics,
         ))
     }
@@ -207,10 +384,36 @@ impl GpuTimeStepper {
             grid,
             dt_s,
             manning_n,
-            sponge_width,
-            0, // legacy: sponge mode
-            nonlinear,
+            GpuPipelineOptions {
+                sponge_width,
+                boundary_mode: 0, // legacy: sponge mode
+                nonlinear,
+                accelerators: true,
+            },
             diagnostics,
+        ))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new_with_optional_features(
+        grid: &SwGrid,
+        dt_s: f64,
+        manning_n: f64,
+        sponge_width: u32,
+        nonlinear: bool,
+        optional_features: bool,
+    ) -> Option<Self> {
+        pollster::block_on(Self::new_async(
+            grid,
+            dt_s,
+            manning_n,
+            GpuPipelineOptions {
+                sponge_width,
+                boundary_mode: 0,
+                nonlinear,
+                accelerators: optional_features,
+            },
+            None,
         ))
     }
 
@@ -218,9 +421,7 @@ impl GpuTimeStepper {
         grid: &SwGrid,
         dt_s: f64,
         manning_n: f64,
-        sponge_width: u32,
-        boundary_mode: u32,
-        nonlinear: bool,
+        options: GpuPipelineOptions,
         diagnostics: Option<&DiagnosticSink<'_>>,
     ) -> Option<Self> {
         let instance = wgpu::Instance::default();
@@ -233,8 +434,36 @@ impl GpuTimeStepper {
             .await
             .ok()?;
 
+        let capabilities = capability_profile(&adapter);
+        let f16_velocity_storage = options.accelerators && capabilities.shader_f16;
+        let subgroup_integrity_reduction = options.accelerators && capabilities.subgroups;
+        // Timestamp queries are instrumentation rather than an accelerator;
+        // keep them enabled for baseline-vs-optional-feature comparisons.
+        let timestamp_query = capabilities.timestamp_query;
+        report_diagnostic(
+            diagnostics,
+            format!(
+                "[gpu] capabilities adapter={} backend={} timestamp-query={} shader-f16={} subgroups={} subgroup-size={}-{}; enabled timestamp-query={} f16-velocity={} subgroup-integrity={}",
+                capabilities.adapter,
+                capabilities.backend,
+                capabilities.timestamp_query,
+                capabilities.shader_f16,
+                capabilities.subgroups,
+                capabilities.subgroup_min_size,
+                capabilities.subgroup_max_size,
+                timestamp_query,
+                f16_velocity_storage,
+                subgroup_integrity_reduction,
+            ),
+        );
+
         let n_cells = grid.nx * grid.ny;
         let n_bytes = (n_cells * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+        let velocity_buffer_bytes = if f16_velocity_storage {
+            (n_cells * std::mem::size_of::<u16>()) as wgpu::BufferAddress
+        } else {
+            n_bytes
+        };
         let primary_bytes = n_bytes.saturating_mul(GPU_PRIMARY_FLOATS_PER_CELL);
         let extended_bytes = n_bytes.saturating_mul(GPU_EXTENDED_FLOATS_PER_CELL);
 
@@ -256,7 +485,11 @@ impl GpuTimeStepper {
             );
             return None;
         }
-        let resident_peak = Self::estimated_resident_peak_vram_bytes(n_cells);
+        let resident_peak = if f16_velocity_storage {
+            Self::estimated_resident_peak_vram_bytes_f16(n_cells)
+        } else {
+            Self::estimated_resident_peak_vram_bytes(n_cells)
+        };
         if resident_peak > GPU_RESIDENT_MAX_CELLS_VRAM_BUDGET {
             report_diagnostic(
                 diagnostics,
@@ -285,10 +518,20 @@ impl GpuTimeStepper {
             ..wgpu::Limits::downlevel_defaults()
         }
         .using_resolution(adapter.limits());
+        let mut required_features = wgpu::Features::empty();
+        if f16_velocity_storage {
+            required_features |= wgpu::Features::SHADER_F16;
+        }
+        if subgroup_integrity_reduction {
+            required_features |= wgpu::Features::SUBGROUP;
+        }
+        if timestamp_query {
+            required_features |= wgpu::Features::TIMESTAMP_QUERY;
+        }
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("tsunamisim-swe"),
-                required_features: wgpu::Features::empty(),
+                required_features,
                 required_limits,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
@@ -296,14 +539,30 @@ impl GpuTimeStepper {
             })
             .await
             .ok()?;
+        let pipeline_error_scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
 
+        let finite_volume_f16_source;
+        let finite_volume_source = if f16_velocity_storage {
+            finite_volume_f16_source = swe_finite_volume_wgsl_f16();
+            finite_volume_f16_source.as_str()
+        } else {
+            SWE_FINITE_VOLUME_WGSL
+        };
+        let max_field_optional_source;
+        let max_field_source = if f16_velocity_storage || subgroup_integrity_reduction {
+            max_field_optional_source =
+                swe_max_field_wgsl(f16_velocity_storage, subgroup_integrity_reduction);
+            max_field_optional_source.as_str()
+        } else {
+            SWE_MAX_FIELD_WGSL
+        };
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("swe-hydrostatic-rusanov"),
-            source: wgpu::ShaderSource::Wgsl(SWE_FINITE_VOLUME_WGSL.into()),
+            source: wgpu::ShaderSource::Wgsl(finite_volume_source.into()),
         });
         let max_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("swe-resident-max-field"),
-            source: wgpu::ShaderSource::Wgsl(SWE_MAX_FIELD_WGSL.into()),
+            source: wgpu::ShaderSource::Wgsl(max_field_source.into()),
         });
 
         let params = GpuParams {
@@ -317,9 +576,9 @@ impl GpuTimeStepper {
             wet_depth_epsilon_m: super::WET_DEPTH_EPSILON_M as f32,
             nx: grid.nx as u32,
             ny: grid.ny as u32,
-            sponge_width,
-            nonlinear: if nonlinear { 1 } else { 0 },
-            boundary_mode,
+            sponge_width: options.sponge_width,
+            nonlinear: if options.nonlinear { 1 } else { 0 },
+            boundary_mode: options.boundary_mode,
             _pad0: 0,
             _pad1: 0,
             _pad2: 0,
@@ -331,6 +590,16 @@ impl GpuTimeStepper {
         let eta_f32: Vec<f32> = grid.eta_m.iter().map(|&v| v as f32).collect();
         let u_f32: Vec<f32> = grid.u_ms.iter().map(|&v| v as f32).collect();
         let v_f32: Vec<f32> = grid.v_ms.iter().map(|&v| v as f32).collect();
+        let encode_velocity = |values: &[f32]| -> Vec<u8> {
+            if f16_velocity_storage {
+                let bits: Vec<u16> = values.iter().map(|value| f32_to_f16_bits(*value)).collect();
+                bytemuck::cast_slice(&bits).to_vec()
+            } else {
+                bytemuck::cast_slice(values).to_vec()
+            }
+        };
+        let u_upload = encode_velocity(&u_f32);
+        let v_upload = encode_velocity(&v_f32);
 
         let params_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("params"),
@@ -366,37 +635,37 @@ impl GpuTimeStepper {
         });
         let u_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("u_a"),
-            contents: bytemuck::cast_slice(&u_f32),
+            contents: &u_upload,
             usage: storage_usage,
         });
         let u_b = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("u_b"),
-            size: n_bytes,
+            size: velocity_buffer_bytes,
             usage: storage_usage,
             mapped_at_creation: false,
         });
         let v_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("v_a"),
-            contents: bytemuck::cast_slice(&v_f32),
+            contents: &v_upload,
             usage: storage_usage,
         });
         let v_b = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("v_b"),
-            size: n_bytes,
+            size: velocity_buffer_bytes,
             usage: storage_usage,
             mapped_at_creation: false,
         });
-        let mk_readback = |label: &'static str| {
+        let mk_readback = |label: &'static str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
-                size: n_bytes,
+                size,
                 usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
         };
-        let readback_eta = mk_readback("readback_eta");
-        let readback_u = mk_readback("readback_u");
-        let readback_v = mk_readback("readback_v");
+        let readback_eta = mk_readback("readback_eta", n_bytes);
+        let readback_u = mk_readback("readback_u", velocity_buffer_bytes);
+        let readback_v = mk_readback("readback_v", velocity_buffer_bytes);
         let primary_max_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("resident-primary-max-field"),
             size: primary_bytes,
@@ -490,7 +759,17 @@ impl GpuTimeStepper {
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
+        if let Some(error) = pipeline_error_scope.pop().await {
+            report_diagnostic(
+                diagnostics,
+                format!(
+                    "[gpu] optional shader/pipeline validation failed ({error}) — falling back to CPU"
+                ),
+            );
+            return None;
+        }
 
+        let timestamp_period_ns = queue.get_timestamp_period();
         Some(Self {
             device,
             queue,
@@ -522,6 +801,12 @@ impl GpuTimeStepper {
             pending_final_a: Cell::new(true),
             max_field_initialized: Cell::new(false),
             arrival_threshold_m: Cell::new(f64::NAN),
+            f16_velocity_storage,
+            subgroup_integrity_reduction,
+            timestamp_query,
+            timestamp_period_ns,
+            pending_timestamp_sample: RefCell::new(None),
+            last_pass_timings: RefCell::new(None),
         })
     }
 
@@ -563,10 +848,10 @@ impl GpuTimeStepper {
         }
         self.queue
             .write_buffer(&self.eta_a, 0, bytemuck::cast_slice(&eta));
-        self.queue
-            .write_buffer(&self.u_a, 0, bytemuck::cast_slice(&u));
-        self.queue
-            .write_buffer(&self.v_a, 0, bytemuck::cast_slice(&v));
+        let u_upload = self.encode_velocity(&u);
+        let v_upload = self.encode_velocity(&v);
+        self.queue.write_buffer(&self.u_a, 0, &u_upload);
+        self.queue.write_buffer(&self.v_a, 0, &v_upload);
         self.queue
             .write_buffer(&self.primary_max_buf, 0, bytemuck::cast_slice(&primary));
         self.queue
@@ -640,6 +925,29 @@ impl GpuTimeStepper {
         let max_groups = (self.n_cells as u32).div_ceil(256);
         let params_size = std::mem::size_of::<GpuMaxParams>() as u64;
         let mut a_is_current = self.current_a.get();
+        let timestamp_query_set = self.timestamp_query.then(|| {
+            self.device.create_query_set(&wgpu::QuerySetDescriptor {
+                label: Some("swe-pass-timestamps"),
+                ty: wgpu::QueryType::Timestamp,
+                count: 4,
+            })
+        });
+        let timestamp_resolve = self.timestamp_query.then(|| {
+            self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("swe-pass-timestamp-resolve"),
+                size: 4 * wgpu::QUERY_SIZE as u64,
+                usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            })
+        });
+        let timestamp_readback = self.timestamp_query.then(|| {
+            self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("swe-pass-timestamp-readback"),
+                size: 4 * wgpu::QUERY_SIZE as u64,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        });
         // Bound command-buffer metadata on long, low-resolution runs while
         // preserving one queue-ordered resident state and no intermediate map.
         let mut completed_steps = 0usize;
@@ -656,9 +964,16 @@ impl GpuTimeStepper {
             for step in chunk_start..chunk_end {
                 let solver_bg = if a_is_current { &bg_a_to_b } else { &bg_b_to_a };
                 {
+                    let timestamp_writes = (step == 0 && self.timestamp_query).then(|| {
+                        wgpu::ComputePassTimestampWrites {
+                            query_set: timestamp_query_set.as_ref().expect("timestamp query set"),
+                            beginning_of_pass_write_index: Some(0),
+                            end_of_pass_write_index: Some(1),
+                        }
+                    });
                     let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                         label: Some("swe-resident-step"),
-                        timestamp_writes: None,
+                        timestamp_writes,
                     });
                     pass.set_pipeline(&self.pipeline);
                     pass.set_bind_group(0, solver_bg, &[]);
@@ -674,13 +989,37 @@ impl GpuTimeStepper {
                 );
                 {
                     let max_bg = if a_is_current { &max_a } else { &max_b };
+                    let timestamp_writes = (step == 0 && self.timestamp_query).then(|| {
+                        wgpu::ComputePassTimestampWrites {
+                            query_set: timestamp_query_set.as_ref().expect("timestamp query set"),
+                            beginning_of_pass_write_index: Some(2),
+                            end_of_pass_write_index: Some(3),
+                        }
+                    });
                     let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                         label: Some("swe-resident-max-field-step"),
-                        timestamp_writes: None,
+                        timestamp_writes,
                     });
                     pass.set_pipeline(&self.max_pipeline);
                     pass.set_bind_group(0, max_bg, &[]);
                     pass.dispatch_workgroups(max_groups, 1, 1);
+                }
+                if step == 0 && self.timestamp_query {
+                    let query_set = timestamp_query_set.as_ref().expect("timestamp query set");
+                    let resolve = timestamp_resolve
+                        .as_ref()
+                        .expect("timestamp resolve buffer");
+                    let readback = timestamp_readback
+                        .as_ref()
+                        .expect("timestamp readback buffer");
+                    encoder.resolve_query_set(query_set, 0..4, resolve, 0);
+                    encoder.copy_buffer_to_buffer(
+                        resolve,
+                        0,
+                        readback,
+                        0,
+                        4 * wgpu::QUERY_SIZE as u64,
+                    );
                 }
             }
             self.queue.submit(std::iter::once(encoder.finish()));
@@ -704,6 +1043,14 @@ impl GpuTimeStepper {
         }
         self.pending_steps.set(completed_steps);
         self.pending_final_a.set(a_is_current);
+        *self.pending_timestamp_sample.borrow_mut() = if completed_steps > 0 {
+            timestamp_readback.map(|readback| PendingTimestampSample {
+                readback,
+                sampled_steps: 1,
+            })
+        } else {
+            None
+        };
         true
     }
 
@@ -719,6 +1066,7 @@ impl GpuTimeStepper {
             return false;
         }
         let n_bytes = (self.n_cells * std::mem::size_of::<f32>()) as u64;
+        let velocity_bytes = self.velocity_buffer_bytes();
         let primary_bytes = n_bytes.saturating_mul(GPU_PRIMARY_FLOATS_PER_CELL);
         let extended_bytes = n_bytes.saturating_mul(GPU_EXTENDED_FLOATS_PER_CELL);
         let primary_readback = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -755,8 +1103,8 @@ impl GpuTimeStepper {
                 label: Some("swe-resident-boundary-readback"),
             });
         encoder.copy_buffer_to_buffer(eta, 0, &self.readback_eta, 0, n_bytes);
-        encoder.copy_buffer_to_buffer(u, 0, &self.readback_u, 0, n_bytes);
-        encoder.copy_buffer_to_buffer(v, 0, &self.readback_v, 0, n_bytes);
+        encoder.copy_buffer_to_buffer(u, 0, &self.readback_u, 0, velocity_bytes);
+        encoder.copy_buffer_to_buffer(v, 0, &self.readback_v, 0, velocity_bytes);
         encoder.copy_buffer_to_buffer(
             &self.primary_max_buf,
             0,
@@ -799,6 +1147,18 @@ impl GpuTimeStepper {
                 });
             receivers.push(receiver);
         }
+        let pending_timestamp = self.pending_timestamp_sample.borrow_mut().take();
+        let timestamp_receiver = pending_timestamp.as_ref().map(|sample| {
+            let (sender, receiver) =
+                std::sync::mpsc::channel::<Result<(), wgpu::BufferAsyncError>>();
+            sample
+                .readback
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = sender.send(result);
+                });
+            receiver
+        });
         if self
             .device
             .poll(wgpu::PollType::wait_indefinitely())
@@ -829,6 +1189,10 @@ impl GpuTimeStepper {
         let primary_bytes = read_bytes(&primary_readback, &receivers[3]);
         let extended_bytes = read_bytes(&extended_readback, &receivers[4]);
         let failure_bytes = read_bytes(&failure_readback, &receivers[5]);
+        let timestamp_bytes = pending_timestamp
+            .as_ref()
+            .zip(timestamp_receiver.as_ref())
+            .and_then(|(sample, receiver)| read_bytes(&sample.readback, receiver));
         let (
             Some(eta_bytes),
             Some(u_bytes),
@@ -852,8 +1216,20 @@ impl GpuTimeStepper {
             return false;
         };
         let eta: &[f32] = bytemuck::cast_slice(&eta_bytes);
-        let u: &[f32] = bytemuck::cast_slice(&u_bytes);
-        let v: &[f32] = bytemuck::cast_slice(&v_bytes);
+        let Some(u) = self.decode_velocity(&u_bytes) else {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident u-velocity readback was invalid",
+            );
+            return false;
+        };
+        let Some(v) = self.decode_velocity(&v_bytes) else {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident v-velocity readback was invalid",
+            );
+            return false;
+        };
         let primary: &[[f32; 4]] = bytemuck::cast_slice(&primary_bytes);
         let extended: &[[f32; 5]] = bytemuck::cast_slice(&extended_bytes);
         let failure: &[u32] = bytemuck::cast_slice(&failure_bytes);
@@ -861,7 +1237,11 @@ impl GpuTimeStepper {
             || eta.len() != self.n_cells
             || u.len() != self.n_cells
             || v.len() != self.n_cells
-            || eta.iter().chain(u).chain(v).any(|value| !value.is_finite())
+            || eta
+                .iter()
+                .chain(u.iter())
+                .chain(v.iter())
+                .any(|value| !value.is_finite())
         {
             report_diagnostic(
                 diagnostics,
@@ -888,6 +1268,42 @@ impl GpuTimeStepper {
         grid.step_index = grid.step_index.saturating_add(pending_steps as u64);
         self.current_a.set(a_is_current);
         self.pending_steps.set(0);
+        if let (Some(sample), Some(bytes)) = (pending_timestamp, timestamp_bytes) {
+            let timestamps: &[u64] = bytemuck::cast_slice(&bytes);
+            if timestamps.len() == 4
+                && timestamps[1] >= timestamps[0]
+                && timestamps[3] >= timestamps[2]
+            {
+                let ns_per_tick = self.timestamp_period_ns as f64;
+                let timings = GpuPassTimings {
+                    solver_pass_ms: (timestamps[1] - timestamps[0]) as f64 * ns_per_tick
+                        / 1_000_000.0,
+                    max_field_pass_ms: (timestamps[3] - timestamps[2]) as f64 * ns_per_tick
+                        / 1_000_000.0,
+                    sampled_steps: sample.sampled_steps,
+                    f16_velocity_storage: self.f16_velocity_storage,
+                    subgroup_integrity_reduction: self.subgroup_integrity_reduction,
+                };
+                report_diagnostic(
+                    diagnostics,
+                    format!(
+                        "[gpu-profile] solver-pass={:.3} ms max-field-pass={:.3} ms sampled-steps={} f16-velocity={} subgroup-integrity={}",
+                        timings.solver_pass_ms,
+                        timings.max_field_pass_ms,
+                        timings.sampled_steps,
+                        timings.f16_velocity_storage,
+                        timings.subgroup_integrity_reduction,
+                    ),
+                );
+                *self.last_pass_timings.borrow_mut() = Some(timings.clone());
+                if let Ok(mut last) = LAST_GPU_PASS_TIMINGS
+                    .get_or_init(|| Mutex::new(None))
+                    .lock()
+                {
+                    *last = Some(timings);
+                }
+            }
+        }
         true
     }
 
@@ -953,10 +1369,10 @@ impl GpuTimeStepper {
         let v_f32: Vec<f32> = grid.v_ms.iter().map(|&v| v as f32).collect();
         self.queue
             .write_buffer(&self.eta_a, 0, bytemuck::cast_slice(&eta_f32));
-        self.queue
-            .write_buffer(&self.u_a, 0, bytemuck::cast_slice(&u_f32));
-        self.queue
-            .write_buffer(&self.v_a, 0, bytemuck::cast_slice(&v_f32));
+        let u_upload = self.encode_velocity(&u_f32);
+        let v_upload = self.encode_velocity(&v_f32);
+        self.queue.write_buffer(&self.u_a, 0, &u_upload);
+        self.queue.write_buffer(&self.v_a, 0, &v_upload);
 
         // Two bind groups for ping-pong: A→B (eta_in=A, eta_out=B) and
         // B→A (eta_in=B, eta_out=A). Alternate each step.
@@ -964,6 +1380,7 @@ impl GpuTimeStepper {
         let bg_b_to_a = self.make_bg(false);
 
         let n_bytes = (self.n_cells * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+        let velocity_bytes = self.velocity_buffer_bytes();
         let groups_x = self.nx.div_ceil(8);
         let groups_y = self.ny.div_ceil(8);
 
@@ -995,8 +1412,8 @@ impl GpuTimeStepper {
             (&self.eta_b, &self.u_b, &self.v_b)
         };
         encoder.copy_buffer_to_buffer(final_eta, 0, &self.readback_eta, 0, n_bytes);
-        encoder.copy_buffer_to_buffer(final_u, 0, &self.readback_u, 0, n_bytes);
-        encoder.copy_buffer_to_buffer(final_v, 0, &self.readback_v, 0, n_bytes);
+        encoder.copy_buffer_to_buffer(final_u, 0, &self.readback_u, 0, velocity_bytes);
+        encoder.copy_buffer_to_buffer(final_v, 0, &self.readback_v, 0, velocity_bytes);
         self.queue.submit(std::iter::once(encoder.finish()));
 
         // Map all three readback buffers in parallel.
@@ -1056,9 +1473,28 @@ impl GpuTimeStepper {
             Some(out)
         };
 
+        let read_velocity = |rx: &std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>,
+                             buf: &wgpu::Buffer|
+         -> Option<Vec<f64>> {
+            if !matches!(rx.recv(), Ok(Ok(()))) {
+                return None;
+            }
+            let view = buf.slice(..).get_mapped_range();
+            let decoded = self.decode_velocity(&view);
+            drop(view);
+            buf.unmap();
+            let decoded = decoded?;
+            let out: Vec<f64> = decoded
+                .into_iter()
+                .take(self.n_cells)
+                .map(f64::from)
+                .collect();
+            (!out.iter().any(|value| !value.is_finite())).then_some(out)
+        };
+
         let new_eta = read_field(&rx_eta, &self.readback_eta);
-        let new_u = read_field(&rx_u, &self.readback_u);
-        let new_v = read_field(&rx_v, &self.readback_v);
+        let new_u = read_velocity(&rx_u, &self.readback_u);
+        let new_v = read_velocity(&rx_v, &self.readback_v);
         match (new_eta, new_u, new_v) {
             (Some(eta), Some(u), Some(v)) => {
                 grid.eta_m = eta;
@@ -1201,6 +1637,44 @@ fn bgl_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gpu_adapter_capabilities_are_coherent() {
+        let Some(capabilities) = adapter_capabilities() else {
+            println!("gpu_capabilities=no-adapter");
+            return;
+        };
+        println!("gpu_capabilities={capabilities:?}");
+        assert!(!capabilities.adapter.trim().is_empty());
+        assert!(capabilities.subgroup_min_size > 0);
+        assert!(capabilities.subgroup_max_size >= capabilities.subgroup_min_size);
+    }
+
+    #[test]
+    fn f16_storage_codec_matches_ieee_754_vectors_and_round_trips_all_values() {
+        for (value, expected) in [
+            (0.0, 0x0000),
+            (-0.0, 0x8000),
+            (1.0, 0x3c00),
+            (-2.0, 0xc000),
+            (65_504.0, 0x7bff),
+            (f32::INFINITY, 0x7c00),
+            (f32::NEG_INFINITY, 0xfc00),
+            (6.103_515_6e-5, 0x0400),
+            (5.960_464_5e-8, 0x0001),
+        ] {
+            assert_eq!(f32_to_f16_bits(value), expected, "value {value}");
+            assert_eq!(f16_bits_to_f32(expected).to_bits(), value.to_bits());
+        }
+        for bits in 0..=u16::MAX {
+            let round_trip = f32_to_f16_bits(f16_bits_to_f32(bits));
+            if bits & 0x7c00 == 0x7c00 && bits & 0x03ff != 0 {
+                assert_eq!(round_trip, (bits & 0x8000) | 0x7e00);
+            } else {
+                assert_eq!(round_trip, bits, "f16 bits {bits:#06x}");
+            }
+        }
+    }
     use crate::physics::solver::{SolverMode, TimeStepper};
 
     #[test]

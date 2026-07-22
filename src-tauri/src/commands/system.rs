@@ -63,6 +63,8 @@ pub struct DiagnosticsBundle {
     pub arch: String,
     pub gpu_status: String,
     pub gpu_adapter: Option<String>,
+    pub gpu_capabilities: Option<serde_json::Value>,
+    pub gpu_pass_timings: Option<serde_json::Value>,
     pub solver: String,
     pub geodesy: crate::data::geodesy::GeodesyDiagnostics,
     pub surface_mask: crate::data::surface::SurfaceMaskDiagnostics,
@@ -76,17 +78,29 @@ pub struct DiagnosticsBundle {
 pub fn diagnostics_bundle() -> DiagnosticsBundle {
     let (active_solver_runs, solver_reserved_memory_bytes) = simulation_resource_status();
     #[cfg(feature = "gpu")]
-    let (gpu_status, gpu_adapter) = {
-        use crate::physics::solver::gpu::{GpuAvailability, adapter_summary, probe_adapter};
+    let (gpu_status, gpu_adapter, gpu_capabilities, gpu_pass_timings) = {
+        use crate::physics::solver::gpu::{
+            GpuAvailability, adapter_capabilities, adapter_summary, last_gpu_pass_timings,
+            probe_adapter,
+        };
         match probe_adapter() {
-            GpuAvailability::Available => ("available".to_string(), adapter_summary()),
-            GpuAvailability::NoAdapter | GpuAvailability::AdapterFailed(_) => {
-                ("no-adapter".to_string(), None)
-            }
+            GpuAvailability::Available => (
+                "available".to_string(),
+                adapter_summary(),
+                adapter_capabilities().and_then(|value| serde_json::to_value(value).ok()),
+                last_gpu_pass_timings().and_then(|value| serde_json::to_value(value).ok()),
+            ),
+            GpuAvailability::NoAdapter | GpuAvailability::AdapterFailed(_) => (
+                "no-adapter".to_string(),
+                None,
+                None,
+                last_gpu_pass_timings().and_then(|value| serde_json::to_value(value).ok()),
+            ),
         }
     };
     #[cfg(not(feature = "gpu"))]
-    let (gpu_status, gpu_adapter) = ("feature-off".to_string(), None);
+    let (gpu_status, gpu_adapter, gpu_capabilities, gpu_pass_timings) =
+        ("feature-off".to_string(), None, None, None);
 
     DiagnosticsBundle {
         app_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -99,6 +113,8 @@ pub fn diagnostics_bundle() -> DiagnosticsBundle {
         },
         gpu_status,
         gpu_adapter,
+        gpu_capabilities,
+        gpu_pass_timings,
         geodesy: crate::data::geodesy::diagnostics(),
         surface_mask: crate::data::surface::diagnostics(),
         last_run_quality: LAST_RUN_QUALITY
