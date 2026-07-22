@@ -160,6 +160,31 @@ describe("settings scenario storage", () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("dropped 3 invalid"));
     warnSpy.mockRestore();
   });
+
+  it("upgrades the legacy saved-scenario array to a versioned envelope", async () => {
+    localStorage.setItem(
+      LS_PREFIX + "saved_scenarios",
+      JSON.stringify([
+        { name: "Legacy", savedAt: "2026-06-16T00:00:00.000Z", data: { kind: "Asteroid", source: INITIAL_ASTEROID } },
+      ]),
+    );
+
+    const scenarios = await settings.getSavedScenarios();
+    expect(scenarios).toHaveLength(1);
+    const persisted = JSON.parse(localStorage.getItem(LS_PREFIX + "saved_scenarios")!);
+    expect(persisted).toMatchObject({
+      schemaVersion: 1,
+      items: [{ name: "Legacy", id: expect.any(String) }],
+    });
+  });
+
+  it("leaves a future saved-scenario envelope untouched and reports recovery", async () => {
+    const future = JSON.stringify({ schemaVersion: 99, items: [{ preserved: true }] });
+    localStorage.setItem(LS_PREFIX + "saved_scenarios", future);
+
+    await expect(settings.getSavedScenarios()).rejects.toThrow(/newer than supported.*original data was left unchanged/i);
+    expect(localStorage.getItem(LS_PREFIX + "saved_scenarios")).toBe(future);
+  });
 });
 
 describe("settings schema versioning", () => {
@@ -240,12 +265,13 @@ describe("settings schema versioning", () => {
     infoSpy.mockRestore();
   });
 
-  it("never stamps a future settings schema down to the current version", async () => {
+  it("fails closed without stamping a future settings schema down", async () => {
     localStorage.setItem(LS_PREFIX + SCHEMA_VERSION_KEY, JSON.stringify(99));
     localStorage.setItem(LS_PREFIX + "theme", JSON.stringify("latte"));
 
-    expect(await settings.getTheme()).toBe("latte");
+    await expect(settings.getTheme()).rejects.toThrow(/newer than supported.*original data was left unchanged/i);
     expect(JSON.parse(localStorage.getItem(LS_PREFIX + SCHEMA_VERSION_KEY)!)).toBe(99);
+    expect(JSON.parse(localStorage.getItem(LS_PREFIX + "theme")!)).toBe("latte");
   });
 
   it("round-trips settings through export/import", async () => {
@@ -297,7 +323,7 @@ describe("settings schema versioning", () => {
     const result = await settings.importSettings(
       JSON.stringify({ _schema_version: 1, theme: "latte", unknown_key: "value" }),
     );
-    expect(result.applied).toBe(1);
+    expect(result.applied).toBeGreaterThan(1);
     expect(result.skipped).toContain("unknown_key");
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
@@ -331,7 +357,7 @@ describe("settings schema versioning", () => {
     const result = await settings.importSettings(
       JSON.stringify({ __proto__: { polluted: true }, theme: "latte" }),
     );
-    expect(result.applied).toBe(1);
+    expect(result.applied).toBeGreaterThan(1);
     expect(Object.prototype).not.toHaveProperty("polluted");
     warnSpy.mockRestore();
   });

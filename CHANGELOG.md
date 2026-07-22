@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- An append-only user-data migration registry now upgrades settings, saved
+  scenarios, and the forthcoming run archive through ordered schema steps.
+  Settings upgrades preserve prior values while adding version-appropriate
+  defaults, legacy saved-scenario arrays are atomically rewritten as versioned
+  envelopes, and future schemas fail closed with the original data untouched
+  and a recoverable diagnostic. Golden fixtures cover every prior settings
+  schema plus legacy scenario and run-record shapes, including idempotence.
 - WCAG 2.2 AA interaction coverage beyond forced colors: every Cesium camera
   drag/rotate/zoom operation now has click, tap, and keyboard-operable controls,
   camera and marker placement accept exact coordinates, and guided Help remains

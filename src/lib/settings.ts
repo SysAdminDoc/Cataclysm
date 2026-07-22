@@ -13,6 +13,12 @@ import { parseScenarioPayload } from "./scenario-schema";
 import type { RendererQualityTier } from "../rendering/quality-profiles";
 import { isLocale, type Locale } from "./i18n-core";
 import type { UnitSystem } from "./units";
+import {
+  UserDataMigrationError,
+  currentUserDataSchemaVersion,
+  migrateSavedScenariosData,
+  migrateSettingsData,
+} from "./user-data-migrations";
 
 export type Theme = "mocha" | "latte";
 
@@ -46,7 +52,7 @@ export type Settings = {
   classroom_locked: boolean;
 };
 
-export const SETTINGS_SCHEMA_VERSION = 6;
+export const SETTINGS_SCHEMA_VERSION = currentUserDataSchemaVersion("settings");
 const SCHEMA_VERSION_KEY = "_settings_schema_version";
 
 const DEFAULTS: Settings = {
@@ -136,11 +142,13 @@ function getStore(): Promise<LazyStore | null> {
           await migrateStore(store);
           return store;
         } catch (err) {
+          if (err instanceof UserDataMigrationError) throw err;
           console.warn("[settings] tauri-plugin-store probe failed; falling back to localStorage.", err);
           return null;
         }
       })
       .catch((err) => {
+        if (err instanceof UserDataMigrationError) throw err;
         console.warn("[settings] tauri-plugin-store import failed; falling back to localStorage.", err);
         return null;
       });
@@ -149,26 +157,36 @@ function getStore(): Promise<LazyStore | null> {
 }
 
 async function migrateStore(store: LazyStore): Promise<void> {
+  const storedVersion = await store.get<unknown>(SCHEMA_VERSION_KEY);
+  if (storedVersion === SETTINGS_SCHEMA_VERSION) return;
+  const sourceVersion = storedVersion === undefined || storedVersion === null ? 1 : storedVersion;
+  const before: Record<string, unknown> = {};
+  for (const key of SETTINGS_KEY_LIST) before[key] = await store.get(key);
+  const migration = migrateSettingsData(sourceVersion as number, before);
+  const changedKeys = SETTINGS_KEY_LIST.filter((key) => (
+    !SENSITIVE_KEYS.has(key)
+    && JSON.stringify(before[key]) !== JSON.stringify(migration.data[key])
+  ));
+  const previous = new Map<string, unknown>([
+    [SCHEMA_VERSION_KEY, storedVersion],
+    ...changedKeys.map((key): [string, unknown] => [key, before[key]]),
+  ]);
   try {
-    const version = await store.get<number>(SCHEMA_VERSION_KEY);
-    if (version === SETTINGS_SCHEMA_VERSION) return;
-
-    if (version === undefined || version === null) {
-      console.info(
-        `[settings] legacy unversioned store detected; stamping schema version ${SETTINGS_SCHEMA_VERSION}`,
-      );
-    } else if (typeof version === "number" && version > SETTINGS_SCHEMA_VERSION) {
-      console.warn(
-        `[settings] store version ${version} is newer than supported ${SETTINGS_SCHEMA_VERSION}; ` +
-          "unrecognised keys will be preserved, unknown values fall back to defaults",
-      );
-      return;
-    }
-
-    await store.set(SCHEMA_VERSION_KEY, SETTINGS_SCHEMA_VERSION);
+    for (const key of changedKeys) await store.set(key, migration.data[key]);
+    await store.set(SCHEMA_VERSION_KEY, migration.schemaVersion);
     await store.save();
-  } catch (err) {
-    console.warn("[settings] schema migration failed", err);
+    if (migration.migrations.length > 0) {
+      console.info(
+        `[settings] migrated desktop settings through ${migration.migrations.length} ordered schema step(s)`,
+      );
+    }
+  } catch (error) {
+    for (const [key, value] of previous) {
+      if (value === undefined && store.delete) await store.delete(key);
+      else await store.set(key, value);
+    }
+    await store.save();
+    throw error;
   }
 }
 
@@ -176,26 +194,30 @@ function migrateLocalStorage(): void {
   if (typeof localStorage === "undefined") return;
   try {
     const versionRaw = localStorage.getItem(LS_PREFIX + SCHEMA_VERSION_KEY);
-    const version = versionRaw !== null ? JSON.parse(versionRaw) : null;
-    if (version === SETTINGS_SCHEMA_VERSION) return;
-
-    if (version === null) {
-      console.info(
-        `[settings] legacy unversioned localStorage detected; stamping schema version ${SETTINGS_SCHEMA_VERSION}`,
-      );
-    } else if (typeof version === "number" && version > SETTINGS_SCHEMA_VERSION) {
-      console.warn(
-        `[settings] localStorage version ${version} is newer than supported ${SETTINGS_SCHEMA_VERSION}; ` +
-          "unknown values fall back to defaults",
-      );
-      return;
+    const storedVersion = versionRaw !== null ? JSON.parse(versionRaw) as unknown : null;
+    if (storedVersion === SETTINGS_SCHEMA_VERSION) return;
+    const before: Record<string, unknown> = {};
+    for (const key of SETTINGS_KEY_LIST) {
+      const value = localStorage.getItem(LS_PREFIX + key);
+      if (value !== null) before[key] = JSON.parse(value) as unknown;
     }
-
-    localStorage.setItem(
-      LS_PREFIX + SCHEMA_VERSION_KEY,
-      JSON.stringify(SETTINGS_SCHEMA_VERSION),
+    const migration = migrateSettingsData(
+      (storedVersion === null ? 1 : storedVersion) as number,
+      before,
     );
-  } catch {
+    for (const key of SETTINGS_KEY_LIST) {
+      if (Object.hasOwn(migration.data, key) && !Object.hasOwn(before, key)) {
+        localStorage.setItem(LS_PREFIX + key, JSON.stringify(migration.data[key]));
+      }
+    }
+    localStorage.setItem(LS_PREFIX + SCHEMA_VERSION_KEY, JSON.stringify(migration.schemaVersion));
+    if (migration.migrations.length > 0) {
+      console.info(
+        `[settings] migrated browser settings through ${migration.migrations.length} ordered schema step(s)`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof UserDataMigrationError) throw error;
     /* quota / private mode */
   }
 }
@@ -578,6 +600,7 @@ async function applyEntriesAtomically(operation: string, entries: readonly Setti
 
 const SCENARIOS_KEY = "saved_scenarios";
 const MAX_SAVED_SCENARIOS = 20;
+const SAVED_SCENARIOS_SCHEMA_VERSION = currentUserDataSchemaVersion("savedScenarios");
 
 export type SavedScenario = {
   /** Stable identity for React keys and deletion. Generated on save; legacy
@@ -595,6 +618,11 @@ export type ScenarioRestorePoint = {
   afterId?: string;
 };
 
+type SavedScenariosEnvelope = {
+  schemaVersion: typeof SAVED_SCENARIOS_SCHEMA_VERSION;
+  items: SavedScenario[];
+};
+
 function makeScenarioId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `scenario-${crypto.randomUUID()}`;
@@ -606,8 +634,9 @@ function makeScenarioId(): string {
  * Re-validate persisted scenario records on read, mirroring the write-path
  * trust boundary in {@link saveScenario}. A tampered or corrupted record, or one
  * whose payload no longer parses, is dropped here rather than flowing
- * unvalidated into the UI. Valid records keep their original `data` so that
- * downstream schema-migration detection (legacy vs current) still works.
+ * unvalidated into the UI. Valid records keep their original payload so the
+ * scenario parser can report any compatibility steps when the user loads it;
+ * the outer saved-scenario envelope is migrated independently.
  */
 function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
   if (!Array.isArray(raw)) return [];
@@ -630,17 +659,30 @@ function sanitizeSavedScenarios(raw: unknown): SavedScenario[] {
   return clean.slice(0, MAX_SAVED_SCENARIOS);
 }
 
+function decodeSavedScenarios(raw: unknown): {
+  items: SavedScenario[];
+  migrated: boolean;
+} {
+  const migration = migrateSavedScenariosData(raw);
+  const items = sanitizeSavedScenarios(migration.data.items);
+  return { items, migrated: migration.migrations.length > 0 };
+}
+
 async function readScenarios(): Promise<SavedScenario[]> {
   const store = await getStore();
   const failures: unknown[] = [];
   let completedRead = false;
   if (store) {
     try {
-      const v = await store.get<SavedScenario[]>(SCENARIOS_KEY);
+      const v = await store.get<unknown>(SCENARIOS_KEY);
       completedRead = true;
-      if (Array.isArray(v)) return sanitizeSavedScenarios(v);
-      if (v != null) failures.push(new Error("Desktop scenario storage returned an invalid record."));
+      if (v != null) {
+        const decoded = decodeSavedScenarios(v);
+        if (decoded.migrated) await writeScenarios("Migrating saved scenarios", decoded.items);
+        return decoded.items;
+      }
     } catch (error) {
+      if (error instanceof UserDataMigrationError) throw error;
       failures.push(error);
     }
   }
@@ -649,11 +691,13 @@ async function readScenarios(): Promise<SavedScenario[]> {
       const raw = localStorage.getItem(LS_PREFIX + SCENARIOS_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return sanitizeSavedScenarios(parsed);
-        throw new Error("Local scenario storage does not contain a list.");
+        const decoded = decodeSavedScenarios(parsed);
+        if (decoded.migrated) await writeScenarios("Migrating saved scenarios", decoded.items);
+        return decoded.items;
       }
       completedRead = true;
     } catch (error) {
+      if (error instanceof UserDataMigrationError) throw error;
       failures.push(error);
     }
   }
@@ -670,22 +714,26 @@ let scenarioMutationTail: Promise<void> = Promise.resolve();
 
 async function writeScenarios(operation: string, list: SavedScenario[]): Promise<void> {
   const capped = list.slice(0, MAX_SAVED_SCENARIOS);
+  const envelope: SavedScenariosEnvelope = {
+    schemaVersion: SAVED_SCENARIOS_SCHEMA_VERSION,
+    items: capped,
+  };
   const localKey = LS_PREFIX + SCENARIOS_KEY;
   const localAvailable = typeof localStorage !== "undefined";
   let previousLocal: string | null = null;
   const store = await getStore();
-  let previousStore: SavedScenario[] | undefined;
+  let previousStore: unknown;
   try {
     if (localAvailable) previousLocal = localStorage.getItem(localKey);
-    if (store) previousStore = await store.get<SavedScenario[]>(SCENARIOS_KEY);
+    if (store) previousStore = await store.get<unknown>(SCENARIOS_KEY);
   } catch (error) {
     throw new SettingsTransactionError(operation, error, []);
   }
 
   try {
-    if (localAvailable) localStorage.setItem(localKey, JSON.stringify(capped));
+    if (localAvailable) localStorage.setItem(localKey, JSON.stringify(envelope));
     if (store) {
-      await store.set(SCENARIOS_KEY, capped);
+      await store.set(SCENARIOS_KEY, envelope);
       await store.save();
     }
   } catch (error) {
@@ -1013,13 +1061,14 @@ export const settings = {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       throw new Error("Settings file must contain a JSON object.");
     }
+    const importedVersion = raw._schema_version;
+    const migrated = migrateSettingsData(
+      importedVersion === undefined ? 1 : importedVersion as number,
+      raw,
+    ).data;
     const skipped: string[] = [];
     const pending: Array<[keyof Settings, Settings[keyof Settings]]> = [];
-    const importedVersion = raw._schema_version;
-    if (typeof importedVersion === "number" && importedVersion > SETTINGS_SCHEMA_VERSION) {
-      throw new Error(`Settings schema ${importedVersion} is newer than supported schema ${SETTINGS_SCHEMA_VERSION}.`);
-    }
-    for (const key of Object.keys(raw)) {
+    for (const key of Object.keys(migrated)) {
       if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
       if (key === "_schema_version" || key === "cesium_token") continue;
       if (!SETTINGS_KEYS.has(key)) {
@@ -1027,7 +1076,7 @@ export const settings = {
         skipped.push(key);
         continue;
       }
-      const value = raw[key];
+      const value = migrated[key];
       const normalised = normaliseSetting(key as keyof Settings, value);
       if (normalised !== undefined) {
         pending.push([key as keyof Settings, normalised]);

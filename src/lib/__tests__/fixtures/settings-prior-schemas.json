@@ -1,0 +1,22 @@
+[
+  {
+    "schemaVersion": 1,
+    "data": { "theme": "latte", "colormap": "cividis" }
+  },
+  {
+    "schemaVersion": 2,
+    "data": { "theme": "latte", "renderer_quality": "Low", "renderer_auto_quality": false }
+  },
+  {
+    "schemaVersion": 3,
+    "data": { "theme": "latte", "renderer_quality": "Low", "renderer_auto_quality": false, "launch_experience_policy": "never", "launch_experience_seen_at": "2026-07-01T00:00:00.000Z" }
+  },
+  {
+    "schemaVersion": 4,
+    "data": { "theme": "latte", "renderer_quality": "Low", "renderer_auto_quality": false, "launch_experience_policy": "never", "launch_experience_seen_at": "2026-07-01T00:00:00.000Z", "workspace_mode": "advanced" }
+  },
+  {
+    "schemaVersion": 5,
+    "data": { "theme": "latte", "renderer_quality": "Low", "renderer_auto_quality": false, "launch_experience_policy": "never", "launch_experience_seen_at": "2026-07-01T00:00:00.000Z", "workspace_mode": "advanced", "locale": "ja" }
+  }
+]

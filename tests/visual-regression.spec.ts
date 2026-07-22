@@ -275,6 +275,9 @@ test.describe("Visual regression — desktop", () => {
     await page.getByRole("button", { name: /Asteroid Scale Ladder/i }).click();
     await page.locator(".preset-card").filter({ hasText: "Tokyo asteroid impact" }).click();
     await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({
+      timeout: 20_000,
+    });
     await page.getByRole("tab", { name: "Setup" }).click();
     const diameter = page.getByRole("spinbutton", { name: "Diameter exact value" });
     await diameter.fill("12000");
