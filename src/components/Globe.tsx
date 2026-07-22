@@ -525,6 +525,8 @@ export function Globe({
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const viewerLifecycleRef = useRef<ViewerLifecycle<Cesium.Viewer> | null>(null);
   const viewerGenerationRef = useRef(0);
+  const inspectTimeRef = useRef(inspectTimeS);
+  inspectTimeRef.current = inspectTimeS;
   const inspectGenerationRef = useRef<AsyncGenerationOwner<Cesium.Viewer> | null>(null);
   const inspectionPresenterRef = useRef<CesiumInspectionPresenter | null>(null);
   const interactionControllerRef = useRef<GlobeInteractionController | null>(null);
@@ -1010,7 +1012,7 @@ export function Globe({
       : null;
     const request = directRequest ?? buildInspectionRequest(initial!, lat, lon, {
       isImpact: inspectIsImpact,
-      timeS: inspectTimeS,
+      timeS: inspectTimeRef.current,
     });
     const inspectPromise = directRequest
       ? api.probeDirectHazard(directRequest).then(directHazardProbeReport)
@@ -1044,7 +1046,7 @@ export function Globe({
         }));
         console.warn("[globe] inspect_at_point failed", error);
       });
-  }, [directHazardResultId, formatNumber, initial, inspectIsImpact, inspectTimeS, onInspectionCoordinate, onInspectionReport, t, unitSystem]);
+  }, [directHazardResultId, formatNumber, initial, inspectIsImpact, onInspectionCoordinate, onInspectionReport, t, unitSystem]);
 
   useEffect(() => {
     // A familiar-place probe must rerun when its governing source/result

@@ -1258,11 +1258,13 @@ export default function App() {
   }, [activePresetA, inTauri, portableScenarioContext, showToast, slotA.activePresetId, slotA.initial?.label, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, t]);
 
   const openArchivedRun = useCallback((record: RunArchiveRecord) => {
+    setShowRunHistory(false);
     setPendingArchivedAction({ record, mode: "open" });
     slotA.simulate(record.inputs.scenario);
   }, [slotA]);
 
   const rerunArchivedRun = useCallback((record: RunArchiveRecord) => {
+    setShowRunHistory(false);
     setPendingArchivedAction({ record, mode: "rerun" });
     slotA.simulate(record.inputs.scenario);
   }, [slotA]);
@@ -2294,7 +2296,6 @@ export default function App() {
                 setInspectMode((v) => !v);
                 if (!inspectMode) {
                   setPickMode(false);
-                  setTimelinePlaying(false);
                 }
               }}
               title={t("app.inspectTitle")}

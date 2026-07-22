@@ -397,6 +397,44 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByRole("progressbar", { name: "SWE solver progress" })).toHaveCount(0);
   });
 
+  test("keeps analytical globe inspection responsive during 60-frame playback", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    const tohoku = page.locator('.preset-card:has-text("Tohoku")').first();
+    await expect(tohoku).toBeVisible({ timeout: 15_000 });
+    await tohoku.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 30_000 });
+
+    const scrubber = page.getByRole("slider", { name: "Scenario timeline scrubber" });
+    const pause = page.getByRole("button", { name: "Pause scenario timeline" });
+    if (await pause.isVisible()) await pause.click();
+    await scrubber.fill("0");
+    await page.getByRole("button", { name: "Play scenario timeline" }).click();
+    await expect(pause).toBeVisible();
+
+    await page.getByRole("button", { name: "Inspect", exact: true }).click();
+    await expect(pause).toBeVisible();
+    const beforePickTime = Number(await scrubber.inputValue());
+    const canvas = page.locator(".cesium-widget canvas").first();
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await canvas.click({
+      position: {
+        x: Math.round((box?.width ?? 2) / 2),
+        y: Math.round((box?.height ?? 2) / 2),
+      },
+    });
+
+    await expect(page.locator("[data-globe-scene-summary]").first()).toContainText(
+      "Inspected point",
+      { timeout: 10_000 },
+    );
+    await expect.poll(async () => Number(await scrubber.inputValue())).toBeGreaterThan(beforePickTime);
+    await expect(pause).toBeVisible();
+  });
+
   test("builds a shareable highlight story from cached frames without recomputing physics", async ({ page }) => {
     await page.goto("/");
     const chicxulub = page.locator(".preset-card").filter({

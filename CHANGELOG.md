@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Playback-safe globe inspection now stays active while a 60-frame result is
+  running. Inspect coordinates use the exact analytical ellipsoid pick but are
+  frame-deferred and coalesced, while the current simulation time is read
+  without recreating Cesium interaction ownership on every playback tick.
 - A bounded, immutable local run archive now preserves every accepted SWE run
   with exact inputs, solver settings, app/schema/render versions, scenario,
   settings, and data SHA-256 identities, quality/provenance, gauge samples,
@@ -134,6 +138,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Fixed
 
+- Reopening or rerunning archived history now dismisses the History workspace
+  immediately while source rehydration completes, eliminating a load-dependent
+  modal handoff race without changing the immutable stored result.
 - Portable package imports now wait for the imported source to reach its ready
   state before restoring workspace context, apply the saved camera pose exactly,
   and suppress competing source auto-focus while that restored pose owns the

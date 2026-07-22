@@ -1,5 +1,6 @@
 import * as Cesium from "cesium";
 import type { InteractionOwnershipHost } from "./interaction-ownership-controller";
+import { FrameCoalescedCoordinatePicker } from "./coordinate-pick-scheduler";
 
 export type CesiumInteractionMode = Readonly<{
   kind: "pick" | "inspect";
@@ -23,6 +24,10 @@ export class CesiumInteractionOwnershipHost implements InteractionOwnershipHost<
   readonly #viewer: Cesium.Viewer;
   #activeHandler: Cesium.ScreenSpaceEventHandler | null = null;
   #activeListener: CesiumEscapeListener | null = null;
+  #activeInspectPicker: FrameCoalescedCoordinatePicker<
+    Cesium.Cartesian2,
+    Readonly<{ lat: number; lon: number }>
+  > | null = null;
 
   constructor(viewer: Cesium.Viewer) {
     this.#viewer = viewer;
@@ -34,17 +39,36 @@ export class CesiumInteractionOwnershipHost implements InteractionOwnershipHost<
     this.#viewer.canvas.classList.toggle("cataclysm-cesium-cursor--pick", mode.kind === "pick");
     this.#viewer.canvas.classList.toggle("cataclysm-cesium-cursor--inspect", mode.kind === "inspect");
     const handler = new Cesium.ScreenSpaceEventHandler(this.#viewer.canvas);
-    handler.setInputAction((event: { position: Cesium.Cartesian2 }) => {
-      if (this.#viewer.isDestroyed()) return;
+    const pickCoordinate = (position: Cesium.Cartesian2): Readonly<{ lat: number; lon: number }> | null => {
+      if (this.#viewer.isDestroyed()) return null;
       const cartesian = this.#viewer.scene.camera.pickEllipsoid(
-        event.position,
+        position,
         this.#viewer.scene.globe.ellipsoid,
       );
-      if (!cartesian) return;
+      if (!cartesian) return null;
       const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
       const lat = Cesium.Math.toDegrees(cartographic.latitude);
       const lon = Cesium.Math.toDegrees(cartographic.longitude);
-      if (Number.isFinite(lat) && Number.isFinite(lon)) mode.onPosition(lat, lon);
+      return Number.isFinite(lat) && Number.isFinite(lon) ? Object.freeze({ lat, lon }) : null;
+    };
+    const commitCoordinate = (coordinate: Readonly<{ lat: number; lon: number }>) => {
+      mode.onPosition(coordinate.lat, coordinate.lon);
+    };
+    if (mode.kind === "inspect") {
+      this.#activeInspectPicker = new FrameCoalescedCoordinatePicker({
+        pick: pickCoordinate,
+        commit: commitCoordinate,
+        requestFrame: window.requestAnimationFrame.bind(window),
+        cancelFrame: window.cancelAnimationFrame.bind(window),
+      });
+    }
+    handler.setInputAction((event: { position: Cesium.Cartesian2 }) => {
+      if (mode.kind === "inspect") {
+        this.#activeInspectPicker?.schedule(Cesium.Cartesian2.clone(event.position));
+        return;
+      }
+      const coordinate = pickCoordinate(event.position);
+      if (coordinate) commitCoordinate(coordinate);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     this.#activeHandler = handler;
     return handler;
@@ -53,6 +77,8 @@ export class CesiumInteractionOwnershipHost implements InteractionOwnershipHost<
   detachHandler(handler: Cesium.ScreenSpaceEventHandler): void {
     if (!handler.isDestroyed()) handler.destroy();
     if (this.#activeHandler === handler) {
+      this.#activeInspectPicker?.destroy();
+      this.#activeInspectPicker = null;
       this.#activeHandler = null;
       if (!this.#viewer.isDestroyed()) {
         this.#viewer.canvas.classList.remove(
