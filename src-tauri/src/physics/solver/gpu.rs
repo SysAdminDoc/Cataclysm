@@ -23,9 +23,16 @@
 //! Structures for Cellular-Automata Tsunami Modeling on GPUs*, arXiv:
 //! 1901.06798 — reports 3.6–6.4× speedup vs. 16-core CPU on GeoClaw.
 
-use super::kernels::SWE_FINITE_VOLUME_WGSL;
+use super::kernels::{SWE_FINITE_VOLUME_WGSL, SWE_MAX_FIELD_WGSL};
+use super::max_field::MaxFieldAccumulator;
 use super::{DiagnosticSink, SwGrid, report_diagnostic};
+use std::cell::Cell;
+use std::sync::atomic::{AtomicBool, Ordering};
 use wgpu::util::DeviceExt;
+
+const GPU_RESIDENT_MAX_CELLS_VRAM_BUDGET: u64 = 512 * 1024 * 1024;
+const GPU_PRIMARY_FLOATS_PER_CELL: u64 = 4;
+const GPU_EXTENDED_FLOATS_PER_CELL: u64 = 5;
 
 /// Outcome of an attempted GPU adapter acquisition. Allows the
 /// caller (`simulate_grid`) to gracefully fall back to the CPU path
@@ -91,6 +98,15 @@ struct GpuParams {
     _pad2: u32,
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct GpuMaxParams {
+    t_s: f32,
+    dt_s: f32,
+    arrival_threshold_m: f32,
+    _pad0: f32,
+}
+
 /// GPU-side time stepper. Owns the wgpu device/queue, the compiled
 /// compute pipeline, and the per-step ping-pong storage buffers.
 pub struct GpuTimeStepper {
@@ -98,7 +114,10 @@ pub struct GpuTimeStepper {
     queue: wgpu::Queue,
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
+    max_pipeline: wgpu::ComputePipeline,
+    max_bind_group_layout: wgpu::BindGroupLayout,
     params_buf: wgpu::Buffer,
+    max_params_buf: wgpu::Buffer,
     h_buf: wgpu::Buffer,
     /// Two ping-pong sets for η, u, v.
     eta_a: wgpu::Buffer,
@@ -112,6 +131,9 @@ pub struct GpuTimeStepper {
     readback_eta: wgpu::Buffer,
     readback_u: wgpu::Buffer,
     readback_v: wgpu::Buffer,
+    primary_max_buf: wgpu::Buffer,
+    extended_max_buf: wgpu::Buffer,
+    failure_flags_buf: wgpu::Buffer,
     nx: u32,
     ny: u32,
     n_cells: usize,
@@ -119,9 +141,23 @@ pub struct GpuTimeStepper {
     /// stepper is fixed-dt for the life of the run; `run_simulation`
     /// composes any total duration as `n_steps * dt_s`.
     dt_s: f64,
+    current_a: Cell<bool>,
+    pending_steps: Cell<usize>,
+    pending_final_a: Cell<bool>,
+    max_field_initialized: Cell<bool>,
+    arrival_threshold_m: Cell<f64>,
 }
 
 impl GpuTimeStepper {
+    pub fn estimated_resident_peak_vram_bytes(n_cells: usize) -> u64 {
+        // h + six ping-pong state fields + three state readbacks = 40 bytes;
+        // packed primary/extended max fields = 36 bytes; the largest transient
+        // max-field staging buffer is 20 bytes. Small uniforms are rounded up.
+        (n_cells as u64)
+            .saturating_mul(96)
+            .saturating_add(64 * 1024)
+    }
+
     /// Build the GPU pipeline for the given grid + dt. Returns `None`
     /// when no adapter is available — callers fall back to the CPU
     /// path.
@@ -149,7 +185,13 @@ impl GpuTimeStepper {
             super::BoundaryMode::ZeroFlux => (0, 0),
         };
         pollster::block_on(Self::new_async(
-            grid, dt_s, manning_n, sponge_width, boundary_mode, nonlinear, diagnostics,
+            grid,
+            dt_s,
+            manning_n,
+            sponge_width,
+            boundary_mode,
+            nonlinear,
+            diagnostics,
         ))
     }
 
@@ -193,6 +235,8 @@ impl GpuTimeStepper {
 
         let n_cells = grid.nx * grid.ny;
         let n_bytes = (n_cells * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+        let primary_bytes = n_bytes.saturating_mul(GPU_PRIMARY_FLOATS_PER_CELL);
+        let extended_bytes = n_bytes.saturating_mul(GPU_EXTENDED_FLOATS_PER_CELL);
 
         // VRAM pre-check: we allocate ~10 storage buffers of n_bytes each
         // (h, eta_a/b, u_a/b, v_a/b, readback_eta/u/v) plus a small params
@@ -202,12 +246,24 @@ impl GpuTimeStepper {
         // expose total VRAM). This triggers CPU fallback before an OOM panic.
         let limits = adapter.limits();
         let max_buf = limits.max_storage_buffer_binding_size;
-        if n_bytes > max_buf {
+        if n_bytes > max_buf || primary_bytes > max_buf || extended_bytes > max_buf {
             report_diagnostic(
                 diagnostics,
                 format!(
-                    "[gpu] grid requires {} bytes per buffer but adapter max is {} — falling back to CPU",
-                    n_bytes, max_buf
+                    "[gpu] resident grid buffers require up to {} bytes but adapter max is {} — falling back to CPU",
+                    extended_bytes, max_buf
+                ),
+            );
+            return None;
+        }
+        let resident_peak = Self::estimated_resident_peak_vram_bytes(n_cells);
+        if resident_peak > GPU_RESIDENT_MAX_CELLS_VRAM_BUDGET {
+            report_diagnostic(
+                diagnostics,
+                format!(
+                    "[gpu] resident solver estimate is {} MiB, above the {} MiB budget — falling back to CPU",
+                    resident_peak / (1024 * 1024),
+                    GPU_RESIDENT_MAX_CELLS_VRAM_BUDGET / (1024 * 1024)
                 ),
             );
             return None;
@@ -245,6 +301,10 @@ impl GpuTimeStepper {
             label: Some("swe-hydrostatic-rusanov"),
             source: wgpu::ShaderSource::Wgsl(SWE_FINITE_VOLUME_WGSL.into()),
         });
+        let max_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("swe-resident-max-field"),
+            source: wgpu::ShaderSource::Wgsl(SWE_MAX_FIELD_WGSL.into()),
+        });
 
         let params = GpuParams {
             dlon_rad: grid.dlon_deg.to_radians() as f32,
@@ -276,6 +336,14 @@ impl GpuTimeStepper {
             label: Some("params"),
             contents: bytemuck::bytes_of(&params),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let max_params_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("max-field-params"),
+            size: std::mem::size_of::<GpuMaxParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
         });
         let h_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("h"),
@@ -329,6 +397,25 @@ impl GpuTimeStepper {
         let readback_eta = mk_readback("readback_eta");
         let readback_u = mk_readback("readback_u");
         let readback_v = mk_readback("readback_v");
+        let primary_max_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("resident-primary-max-field"),
+            size: primary_bytes,
+            usage: storage_usage,
+            mapped_at_creation: false,
+        });
+        let extended_max_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("resident-extended-max-field"),
+            size: extended_bytes,
+            usage: storage_usage,
+            mapped_at_creation: false,
+        });
+        let failure_flags_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("resident-max-field-failure-flags"),
+            contents: bytemuck::bytes_of(&0u32),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+        });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("swe-bgl"),
@@ -367,13 +454,52 @@ impl GpuTimeStepper {
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
+        let max_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("swe-resident-max-field-bgl"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    bgl_entry(1, true),
+                    bgl_entry(2, true),
+                    bgl_entry(3, true),
+                    bgl_entry(4, true),
+                    bgl_entry(5, false),
+                    bgl_entry(6, false),
+                    bgl_entry(7, false),
+                ],
+            });
+        let max_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("swe-resident-max-field-pl"),
+            bind_group_layouts: &[Some(&max_bind_group_layout)],
+            immediate_size: 0,
+        });
+        let max_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("swe-resident-max-field-pipeline"),
+            layout: Some(&max_pipeline_layout),
+            module: &max_shader,
+            entry_point: Some("cs_max_field"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
 
         Some(Self {
             device,
             queue,
             pipeline,
             bind_group_layout,
+            max_pipeline,
+            max_bind_group_layout,
             params_buf,
+            max_params_buf,
             h_buf,
             eta_a,
             eta_b,
@@ -384,11 +510,385 @@ impl GpuTimeStepper {
             readback_eta,
             readback_u,
             readback_v,
+            primary_max_buf,
+            extended_max_buf,
+            failure_flags_buf,
             nx: grid.nx as u32,
             ny: grid.ny as u32,
             n_cells,
             dt_s,
+            current_a: Cell::new(true),
+            pending_steps: Cell::new(0),
+            pending_final_a: Cell::new(true),
+            max_field_initialized: Cell::new(false),
+            arrival_threshold_m: Cell::new(f64::NAN),
         })
+    }
+
+    /// Upload one authoritative host boundary and seed the packed resident
+    /// max-field buffers. Subsequent resident dispatches do not upload or map
+    /// the state again until [`sync_resident_with_max_field`] is called.
+    pub fn initialize_resident_max_field(
+        &self,
+        grid: &SwGrid,
+        max_field: &MaxFieldAccumulator,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
+        if grid.nx * grid.ny != self.n_cells {
+            report_diagnostic(diagnostics, "[gpu] resident max-field shape mismatch");
+            return false;
+        }
+        let (primary, extended) = max_field.gpu_fields_f32();
+        if primary.len() != self.n_cells || extended.len() != self.n_cells {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident max-field seed has an invalid shape",
+            );
+            return false;
+        }
+        let eta: Vec<f32> = grid.eta_m.iter().map(|value| *value as f32).collect();
+        let u: Vec<f32> = grid.u_ms.iter().map(|value| *value as f32).collect();
+        let v: Vec<f32> = grid.v_ms.iter().map(|value| *value as f32).collect();
+        if eta
+            .iter()
+            .chain(&u)
+            .chain(&v)
+            .any(|value| !value.is_finite())
+        {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident solver seed contains a non-finite state",
+            );
+            return false;
+        }
+        self.queue
+            .write_buffer(&self.eta_a, 0, bytemuck::cast_slice(&eta));
+        self.queue
+            .write_buffer(&self.u_a, 0, bytemuck::cast_slice(&u));
+        self.queue
+            .write_buffer(&self.v_a, 0, bytemuck::cast_slice(&v));
+        self.queue
+            .write_buffer(&self.primary_max_buf, 0, bytemuck::cast_slice(&primary));
+        self.queue
+            .write_buffer(&self.extended_max_buf, 0, bytemuck::cast_slice(&extended));
+        self.queue
+            .write_buffer(&self.failure_flags_buf, 0, bytemuck::bytes_of(&0u32));
+        self.current_a.set(true);
+        self.pending_steps.set(0);
+        self.pending_final_a.set(true);
+        self.arrival_threshold_m
+            .set(max_field.checkpoint_metadata().1);
+        self.max_field_initialized.set(true);
+        true
+    }
+
+    /// Queue a batch of solver steps plus one resident max-field dispatch per
+    /// accepted step. This method deliberately performs no host readback.
+    pub fn dispatch_resident_with_max_field(
+        &self,
+        grid: &SwGrid,
+        n_steps: usize,
+        cancel: Option<&AtomicBool>,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
+        if n_steps == 0 {
+            return true;
+        }
+        if !self.max_field_initialized.get() || self.pending_steps.get() != 0 {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident batch requested without a synchronized max-field seed",
+            );
+            return false;
+        }
+        let arrival_threshold_m = self.arrival_threshold_m.get();
+        if !arrival_threshold_m.is_finite() {
+            return false;
+        }
+        self.dispatch_resident_batch(grid, n_steps, arrival_threshold_m, cancel, diagnostics)
+    }
+
+    fn dispatch_resident_batch(
+        &self,
+        grid: &SwGrid,
+        n_steps: usize,
+        arrival_threshold_m: f64,
+        cancel: Option<&AtomicBool>,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
+        let step_params: Vec<GpuMaxParams> = (0..n_steps)
+            .map(|step| GpuMaxParams {
+                t_s: (grid.t_s + self.dt_s * (step + 1) as f64) as f32,
+                dt_s: self.dt_s as f32,
+                arrival_threshold_m: arrival_threshold_m as f32,
+                _pad0: 0.0,
+            })
+            .collect();
+        let step_params_buf = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("resident-max-field-step-params"),
+                contents: bytemuck::cast_slice(&step_params),
+                usage: wgpu::BufferUsages::COPY_SRC,
+            });
+        let bg_a_to_b = self.make_bg(true);
+        let bg_b_to_a = self.make_bg(false);
+        let max_a = self.make_max_bg(true);
+        let max_b = self.make_max_bg(false);
+        let groups_x = self.nx.div_ceil(8);
+        let groups_y = self.ny.div_ceil(8);
+        let max_groups = (self.n_cells as u32).div_ceil(256);
+        let params_size = std::mem::size_of::<GpuMaxParams>() as u64;
+        let mut a_is_current = self.current_a.get();
+        // Bound command-buffer metadata on long, low-resolution runs while
+        // preserving one queue-ordered resident state and no intermediate map.
+        let mut completed_steps = 0usize;
+        for chunk_start in (0..n_steps).step_by(512) {
+            if cancel.is_some_and(|token| token.load(Ordering::Acquire)) {
+                break;
+            }
+            let chunk_end = (chunk_start + 512).min(n_steps);
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("swe-resident-batch-encoder"),
+                });
+            for step in chunk_start..chunk_end {
+                let solver_bg = if a_is_current { &bg_a_to_b } else { &bg_b_to_a };
+                {
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("swe-resident-step"),
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&self.pipeline);
+                    pass.set_bind_group(0, solver_bg, &[]);
+                    pass.dispatch_workgroups(groups_x, groups_y, 1);
+                }
+                a_is_current = !a_is_current;
+                encoder.copy_buffer_to_buffer(
+                    &step_params_buf,
+                    step as u64 * params_size,
+                    &self.max_params_buf,
+                    0,
+                    params_size,
+                );
+                {
+                    let max_bg = if a_is_current { &max_a } else { &max_b };
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("swe-resident-max-field-step"),
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&self.max_pipeline);
+                    pass.set_bind_group(0, max_bg, &[]);
+                    pass.dispatch_workgroups(max_groups, 1, 1);
+                }
+            }
+            self.queue.submit(std::iter::once(encoder.finish()));
+            completed_steps = chunk_end;
+            if chunk_end < n_steps && cancel.is_some() {
+                if self
+                    .device
+                    .poll(wgpu::PollType::wait_indefinitely())
+                    .is_err()
+                {
+                    report_diagnostic(
+                        diagnostics,
+                        "[gpu] device poll failed at a resident cancellation boundary",
+                    );
+                    return false;
+                }
+                if cancel.is_some_and(|token| token.load(Ordering::Acquire)) {
+                    break;
+                }
+            }
+        }
+        self.pending_steps.set(completed_steps);
+        self.pending_final_a.set(a_is_current);
+        true
+    }
+
+    /// Synchronize one display/cancellation/completion boundary. State and
+    /// packed max fields are mapped together after a single device poll.
+    pub fn sync_resident_with_max_field(
+        &self,
+        grid: &mut SwGrid,
+        max_field: &mut MaxFieldAccumulator,
+        diagnostics: Option<&DiagnosticSink<'_>>,
+    ) -> bool {
+        if !self.max_field_initialized.get() {
+            return false;
+        }
+        let n_bytes = (self.n_cells * std::mem::size_of::<f32>()) as u64;
+        let primary_bytes = n_bytes.saturating_mul(GPU_PRIMARY_FLOATS_PER_CELL);
+        let extended_bytes = n_bytes.saturating_mul(GPU_EXTENDED_FLOATS_PER_CELL);
+        let primary_readback = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("resident-primary-max-field-readback"),
+            size: primary_bytes,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let extended_readback = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("resident-extended-max-field-readback"),
+            size: extended_bytes,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let failure_readback = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("resident-failure-flags-readback"),
+            size: std::mem::size_of::<u32>() as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let a_is_current = if self.pending_steps.get() == 0 {
+            self.current_a.get()
+        } else {
+            self.pending_final_a.get()
+        };
+        let (eta, u, v) = if a_is_current {
+            (&self.eta_a, &self.u_a, &self.v_a)
+        } else {
+            (&self.eta_b, &self.u_b, &self.v_b)
+        };
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("swe-resident-boundary-readback"),
+            });
+        encoder.copy_buffer_to_buffer(eta, 0, &self.readback_eta, 0, n_bytes);
+        encoder.copy_buffer_to_buffer(u, 0, &self.readback_u, 0, n_bytes);
+        encoder.copy_buffer_to_buffer(v, 0, &self.readback_v, 0, n_bytes);
+        encoder.copy_buffer_to_buffer(
+            &self.primary_max_buf,
+            0,
+            &primary_readback,
+            0,
+            primary_bytes,
+        );
+        encoder.copy_buffer_to_buffer(
+            &self.extended_max_buf,
+            0,
+            &extended_readback,
+            0,
+            extended_bytes,
+        );
+        encoder.copy_buffer_to_buffer(
+            &self.failure_flags_buf,
+            0,
+            &failure_readback,
+            0,
+            std::mem::size_of::<u32>() as u64,
+        );
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        let buffers = [
+            &self.readback_eta,
+            &self.readback_u,
+            &self.readback_v,
+            &primary_readback,
+            &extended_readback,
+            &failure_readback,
+        ];
+        let mut receivers = Vec::with_capacity(buffers.len());
+        for buffer in buffers {
+            let (sender, receiver) =
+                std::sync::mpsc::channel::<Result<(), wgpu::BufferAsyncError>>();
+            buffer
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = sender.send(result);
+                });
+            receivers.push(receiver);
+        }
+        if self
+            .device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .is_err()
+        {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] device poll failed at a resident readback boundary",
+            );
+            return false;
+        }
+        let read_bytes =
+            |buffer: &wgpu::Buffer,
+             receiver: &std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>|
+             -> Option<Vec<u8>> {
+                if !matches!(receiver.recv(), Ok(Ok(()))) {
+                    return None;
+                }
+                let view = buffer.slice(..).get_mapped_range();
+                let bytes = view.to_vec();
+                drop(view);
+                buffer.unmap();
+                Some(bytes)
+            };
+        let eta_bytes = read_bytes(&self.readback_eta, &receivers[0]);
+        let u_bytes = read_bytes(&self.readback_u, &receivers[1]);
+        let v_bytes = read_bytes(&self.readback_v, &receivers[2]);
+        let primary_bytes = read_bytes(&primary_readback, &receivers[3]);
+        let extended_bytes = read_bytes(&extended_readback, &receivers[4]);
+        let failure_bytes = read_bytes(&failure_readback, &receivers[5]);
+        let (
+            Some(eta_bytes),
+            Some(u_bytes),
+            Some(v_bytes),
+            Some(primary_bytes),
+            Some(extended_bytes),
+            Some(failure_bytes),
+        ) = (
+            eta_bytes,
+            u_bytes,
+            v_bytes,
+            primary_bytes,
+            extended_bytes,
+            failure_bytes,
+        )
+        else {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident boundary readback failed — falling back to CPU",
+            );
+            return false;
+        };
+        let eta: &[f32] = bytemuck::cast_slice(&eta_bytes);
+        let u: &[f32] = bytemuck::cast_slice(&u_bytes);
+        let v: &[f32] = bytemuck::cast_slice(&v_bytes);
+        let primary: &[[f32; 4]] = bytemuck::cast_slice(&primary_bytes);
+        let extended: &[[f32; 5]] = bytemuck::cast_slice(&extended_bytes);
+        let failure: &[u32] = bytemuck::cast_slice(&failure_bytes);
+        if failure.first().copied().unwrap_or(1) != 0
+            || eta.len() != self.n_cells
+            || u.len() != self.n_cells
+            || v.len() != self.n_cells
+            || eta.iter().chain(u).chain(v).any(|value| !value.is_finite())
+        {
+            report_diagnostic(
+                diagnostics,
+                format!(
+                    "[gpu] resident numerical-integrity flag {} rejected the batch",
+                    failure.first().copied().unwrap_or(1)
+                ),
+            );
+            return false;
+        }
+        let pending_steps = self.pending_steps.get();
+        let new_time = grid.t_s + self.dt_s * pending_steps as f64;
+        if !max_field.replace_from_gpu_fields(primary, extended, new_time) {
+            report_diagnostic(
+                diagnostics,
+                "[gpu] resident max-field readback was invalid — falling back to CPU",
+            );
+            return false;
+        }
+        grid.eta_m = eta.iter().map(|value| *value as f64).collect();
+        grid.u_ms = u.iter().map(|value| *value as f64).collect();
+        grid.v_ms = v.iter().map(|value| *value as f64).collect();
+        grid.t_s = new_time;
+        grid.step_index = grid.step_index.saturating_add(pending_steps as u64);
+        self.current_a.set(a_is_current);
+        self.pending_steps.set(0);
+        true
     }
 
     /// Advance `grid` by exactly `n_steps` of size `self.dt_s`. After
@@ -637,6 +1137,52 @@ impl GpuTimeStepper {
             ],
         })
     }
+
+    fn make_max_bg(&self, a_is_current: bool) -> wgpu::BindGroup {
+        let (eta, u, v) = if a_is_current {
+            (&self.eta_a, &self.u_a, &self.v_a)
+        } else {
+            (&self.eta_b, &self.u_b, &self.v_b)
+        };
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("swe-resident-max-field-bg"),
+            layout: &self.max_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.max_params_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.h_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: eta.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: u.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: v.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.primary_max_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.extended_max_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: self.failure_flags_buf.as_entire_binding(),
+                },
+            ],
+        })
+    }
 }
 
 fn bgl_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -662,6 +1208,30 @@ mod tests {
         // We don't assert availability — CI runners often lack a GPU.
         // The probe must at least return without panicking.
         let _ = probe_adapter();
+    }
+
+    #[test]
+    fn resident_dispatch_honors_pre_cancel_without_advancing() {
+        let mut grid = SwGrid::new(-1.0, -1.0, 1.0, 1.0, 0.25, 0.25);
+        grid.fill_uniform_depth(4_000.0);
+        grid.inject_gaussian(0.0, 0.0, 1.0, 50_000.0);
+        let initial_eta = grid.eta_m.clone();
+        let dt = grid.recommended_dt_s(0.25);
+        let Some(gpu) = GpuTimeStepper::new(&grid, dt, 0.0, 0, false) else {
+            println!("resident cancellation: no adapter — skipping");
+            return;
+        };
+        let mut max_field = MaxFieldAccumulator::new(grid.nx * grid.ny, 0.01);
+        max_field.observe(&grid);
+        assert!(gpu.initialize_resident_max_field(&grid, &max_field, None));
+        let cancel = AtomicBool::new(true);
+        assert!(gpu.dispatch_resident_with_max_field(&grid, 1_024, Some(&cancel), None,));
+        assert!(gpu.sync_resident_with_max_field(&mut grid, &mut max_field, None));
+        assert_eq!(grid.step_index, 0);
+        assert_eq!(grid.t_s, 0.0);
+        for (actual, expected) in grid.eta_m.iter().zip(initial_eta) {
+            assert!((actual - expected).abs() <= 1.0e-6);
+        }
     }
 
     /// F4-01 regression: with a flat-ocean Gaussian IC, the GPU
@@ -715,11 +1285,14 @@ mod tests {
             cross_track_sigma_m: 40_000.0,
             track_length_m: 200_000.0,
             water_depth_m: 155.0,
-            location: GeoPoint { lat_deg: 0.0, lon_deg: -0.25, depth_m: 155.0 },
+            location: GeoPoint {
+                lat_deg: 0.0,
+                lon_deg: -0.25,
+                depth_m: 155.0,
+            },
         };
         let dt = cpu_grid.recommended_dt_s(0.3);
-        let mut cpu = TimeStepper::new(dt)
-            .with_boundary(super::super::BoundaryMode::ZeroFlux);
+        let mut cpu = TimeStepper::new(dt).with_boundary(super::super::BoundaryMode::ZeroFlux);
         cpu.manning_n = 0.0;
         let gpu = match GpuTimeStepper::new(&gpu_grid, dt, 0.0, 0, true) {
             Some(gpu) => gpu,
@@ -740,7 +1313,10 @@ mod tests {
             .zip(&gpu_grid.eta_m)
             .map(|(cpu, gpu)| (cpu - gpu).abs())
             .fold(0.0_f64, f64::max);
-        assert!(eta_error < 1.0e-3, "forced GPU eta parity error was {eta_error}");
+        assert!(
+            eta_error < 1.0e-3,
+            "forced GPU eta parity error was {eta_error}"
+        );
     }
 
     /// Full-physics parity: nonlinear advection + sponge boundary +
@@ -878,7 +1454,9 @@ mod tests {
         let gpu = match GpuTimeStepper::new(&gpu_grid, dt, 0.0, 0, false) {
             Some(g) => g,
             None => {
-                println!("swe_gpu_preserves_well_balanced_variable_bathymetry: no adapter — skipping");
+                println!(
+                    "swe_gpu_preserves_well_balanced_variable_bathymetry: no adapter — skipping"
+                );
                 return;
             }
         };
@@ -917,7 +1495,9 @@ mod tests {
         let gpu = match GpuTimeStepper::new(&gpu_grid, dt, 0.0, 0, false) {
             Some(gpu) => gpu,
             None => {
-                println!("swe_gpu_dry_bed_front_matches_cpu_mask_and_fields: no adapter — skipping");
+                println!(
+                    "swe_gpu_dry_bed_front_matches_cpu_mask_and_fields: no adapter — skipping"
+                );
                 return;
             }
         };
@@ -938,7 +1518,16 @@ mod tests {
             .zip(&gpu_grid.eta_m)
             .map(|(cpu, gpu)| (cpu - gpu).abs())
             .fold(0.0_f64, f64::max);
-        assert!(eta_error < 2.0e-3, "dry-bed eta parity error was {eta_error}");
-        assert!(gpu_grid.h_m.iter().zip(&gpu_grid.eta_m).all(|(h, eta)| h + eta >= 0.0));
+        assert!(
+            eta_error < 2.0e-3,
+            "dry-bed eta parity error was {eta_error}"
+        );
+        assert!(
+            gpu_grid
+                .h_m
+                .iter()
+                .zip(&gpu_grid.eta_m)
+                .all(|(h, eta)| h + eta >= 0.0)
+        );
     }
 }

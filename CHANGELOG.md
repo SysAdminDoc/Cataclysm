@@ -6,6 +6,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- GPU SWE runs now keep `eta`/`u`/`v` and all nine max/intensity fields
+  resident between display, checkpoint, cancellation, and completion
+  boundaries. A packed WGSL accumulator observes every accepted step and
+  carries finite/depth failure flags without per-step mapping; moving-pressure
+  forcing stays CPU-authoritative rather than hiding a readback loop. The
+  governed 4M-cell/12-step release benchmark measured 965.8 ms for the former
+  loop and 161.8 ms resident (5.97x) on the validation adapter, with a
+  384,065,536-byte conservative peak-VRAM estimate under the 512 MiB gate.
 - A source-aware resolution preflight now reports latitude-correct physical
   `dx`/`dy`, CFL timestep, every declared source-feature width in cells,
   grid/memory/work/runtime estimates, and a numerical grade calibrated to the

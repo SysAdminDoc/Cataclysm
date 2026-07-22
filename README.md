@@ -531,6 +531,14 @@ transforms over Tauri raw channels. Cesium decodes and presents those packets;
 future renderers replay the same bytes without reimplementing physics. The
 legacy SWE PNG channel remains temporarily for analytical color overlays.
 
+GPU SWE propagation keeps its state and packed peak/time-of-maximum/arrival,
+eta-squared, depth, speed, momentum, and drawdown accumulators on-device between
+display or persistence boundaries. The explicit 4M-cell release benchmark
+compares this path with the former per-step upload/map loop, enforces at least a
+1.25x improvement, and caps its conservative peak-VRAM estimate at 512 MiB.
+Moving-pressure forcing deliberately remains on the CPU path until that source
+term is GPU-native.
+
 The WebView loads Cataclysm presentation only from bundled `style-src 'self'`
 stylesheets: tracked application HTML/TypeScript may not create inline style
 attributes, mutate DOM styles, or inject runtime stylesheets. CesiumJS is the

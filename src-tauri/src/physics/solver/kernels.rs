@@ -235,6 +235,91 @@ fn cs_finite_volume(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 "#;
 
+/// Per-step quantitative accumulation that runs immediately after each SWE
+/// dispatch. Primary and extended fields are packed into two storage buffers
+/// so the kernel stays under WebGPU's eight-storage-buffer portability floor.
+pub const SWE_MAX_FIELD_WGSL: &str = r#"
+struct MaxParams {
+  t_s: f32,
+  dt_s: f32,
+  arrival_threshold_m: f32,
+  _pad0: f32,
+};
+
+struct PrimaryMax {
+  peak_m: f32,
+  t_of_max_s: f32,
+  arrival_s: f32,
+  energy_m2s: f32,
+};
+
+struct ExtendedMax {
+  max_depth_m: f32,
+  max_speed_ms: f32,
+  max_momentum_flux_m3s2: f32,
+  min_depth_m: f32,
+  t_of_max_speed_s: f32,
+};
+
+@group(0) @binding(0) var<uniform> max_params: MaxParams;
+@group(0) @binding(1) var<storage, read> max_h: array<f32>;
+@group(0) @binding(2) var<storage, read> max_eta: array<f32>;
+@group(0) @binding(3) var<storage, read> max_u: array<f32>;
+@group(0) @binding(4) var<storage, read> max_v: array<f32>;
+@group(0) @binding(5) var<storage, read_write> primary_max: array<PrimaryMax>;
+@group(0) @binding(6) var<storage, read_write> extended_max: array<ExtendedMax>;
+@group(0) @binding(7) var<storage, read_write> failure_flags: array<atomic<u32>>;
+
+fn finite(value: f32) -> bool {
+  return value == value && abs(value) <= 3.402823466e38;
+}
+
+@compute @workgroup_size(256)
+fn cs_max_field(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let k = gid.x;
+  if (k >= arrayLength(&max_eta)) { return; }
+  let eta = max_eta[k];
+  let h = max_h[k];
+  let u = max_u[k];
+  let v = max_v[k];
+  if (!finite(eta) || !finite(h) || !finite(u) || !finite(v)) {
+    atomicOr(&failure_flags[0], 1u);
+    return;
+  }
+
+  let raw_depth = h + eta;
+  if (raw_depth < -0.0001) {
+    atomicOr(&failure_flags[0], 2u);
+  }
+  let depth = max(raw_depth, 0.0);
+  let amplitude = abs(eta);
+  var primary = primary_max[k];
+  if (amplitude > primary.peak_m) {
+    primary.peak_m = amplitude;
+    primary.t_of_max_s = max_params.t_s;
+  }
+  if (primary.arrival_s >= 1.0e38 && amplitude >= max_params.arrival_threshold_m) {
+    primary.arrival_s = max_params.t_s;
+  }
+  primary.energy_m2s += eta * eta * max_params.dt_s;
+  primary_max[k] = primary;
+
+  let speed = sqrt(u * u + v * v);
+  var extended = extended_max[k];
+  extended.max_depth_m = max(extended.max_depth_m, depth);
+  extended.min_depth_m = min(extended.min_depth_m, depth);
+  if (speed > extended.max_speed_ms) {
+    extended.max_speed_ms = speed;
+    extended.t_of_max_speed_s = max_params.t_s;
+  }
+  extended.max_momentum_flux_m3s2 = max(
+    extended.max_momentum_flux_m3s2,
+    depth * speed * speed,
+  );
+  extended_max[k] = extended;
+}
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -281,5 +366,14 @@ mod tests {
         assert!(SWE_FINITE_VOLUME_WGSL.contains("face_cos_lat(j + 1)"));
         assert!(SWE_FINITE_VOLUME_WGSL.contains("pressure_metric"));
         assert!(SWE_FINITE_VOLUME_WGSL.contains("tan_over_radius"));
+    }
+
+    #[test]
+    fn max_field_kernel_is_resident_and_complete() {
+        assert!(SWE_MAX_FIELD_WGSL.contains("cs_max_field"));
+        assert!(SWE_MAX_FIELD_WGSL.contains("primary.energy_m2s"));
+        assert!(SWE_MAX_FIELD_WGSL.contains("primary.arrival_s"));
+        assert!(SWE_MAX_FIELD_WGSL.contains("extended.max_momentum_flux_m3s2"));
+        assert!(SWE_MAX_FIELD_WGSL.contains("failure_flags"));
     }
 }

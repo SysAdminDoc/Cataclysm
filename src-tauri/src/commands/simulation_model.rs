@@ -180,10 +180,11 @@ pub(crate) const SWE_MAX_CELLS: usize = 4_000_000;
 /// before either grid can double the process working set.
 pub(crate) const SWE_MEMORY_BUDGET_BYTES: u64 = 512 * 1024 * 1024;
 /// Conservative peak per-cell residency across the f64 host grid,
-/// scratch/max-field arrays, f32 GPU ping-pong/readback/upload buffers, and one
-/// in-flight RGBA/PNG/base64 encoding. Source-level accounting is about 140
-/// bytes before allocator and codec overhead, so admission keeps headroom.
-pub(crate) const SWE_CORE_BYTES_PER_CELL: u64 = 152;
+/// scratch/max-field arrays, f32 GPU ping-pong/readback/upload buffers, packed
+/// resident GPU max fields, and one in-flight RGBA/PNG/base64 encoding.
+/// Source-level accounting is about 196 bytes before allocator and codec
+/// overhead, so admission keeps headroom.
+pub(crate) const SWE_CORE_BYTES_PER_CELL: u64 = 208;
 /// Retained base64 PNG size per cell for each non-streaming snapshot. Tiled
 /// snapshots no longer retain a duplicate full image; raw RGBA encoded as
 /// base64 approaches 5.34 bytes/cell before small PNG/container overhead.

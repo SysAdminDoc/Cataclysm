@@ -537,7 +537,7 @@ fn gpu_quantitative_products_are_independent_of_snapshot_count() {
             &cancel,
             None,
             &[],
-            &mut |state| acc.observe(state),
+            &mut acc,
             None,
         )?;
         let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
@@ -583,4 +583,154 @@ fn gpu_quantitative_products_are_independent_of_snapshot_count() {
     assert_same(&fields_12.2, &fields_240.2);
     assert_same(&fields_12.3, &fields_60.3);
     assert_same(&fields_12.3, &fields_240.3);
+}
+
+#[cfg(feature = "gpu")]
+#[test]
+fn gpu_resident_max_fields_match_cpu_reference() {
+    use crate::physics::constants::MANNING_N_COASTAL;
+    use crate::physics::solver::gpu::GpuTimeStepper;
+
+    let mut cpu_grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.25, 0.25);
+    cpu_grid.fill_uniform_depth(4_000.0);
+    cpu_grid.inject_gaussian(0.0, 0.0, 1.0, 60_000.0);
+    let mut gpu_grid = cpu_grid.clone();
+    let dt = cpu_grid.recommended_dt_s(0.25);
+    let mut cpu_acc = MaxFieldAccumulator::new(cpu_grid.nx * cpu_grid.ny, 0.01);
+    cpu_acc.observe(&cpu_grid);
+    let cpu = TimeStepper::new(dt).with_boundary(crate::physics::solver::BoundaryMode::ZeroFlux);
+    for _ in 0..24 {
+        cpu.step_one(&mut cpu_grid);
+        cpu_acc.observe(&cpu_grid);
+    }
+
+    let Some(gpu) = GpuTimeStepper::new(&gpu_grid, dt, MANNING_N_COASTAL, 0, true) else {
+        println!("GPU resident max-field parity: no adapter — skipping");
+        return;
+    };
+    let cancel = AtomicBool::new(false);
+    let mut gpu_acc = MaxFieldAccumulator::new(gpu_grid.nx * gpu_grid.ny, 0.01);
+    let snapshots = run_simulation_gpu(
+        &mut gpu_grid,
+        &gpu,
+        dt,
+        24.0 * dt,
+        2,
+        &cancel,
+        None,
+        &[],
+        &mut gpu_acc,
+        None,
+    )
+    .expect("resident GPU run");
+    assert_eq!(snapshots.len(), 2);
+
+    let assert_fields = |label: &str, cpu: &[f64], gpu: &[f64], abs_tol: f64, rel_tol: f64| {
+        for (index, (&cpu, &gpu)) in cpu.iter().zip(gpu).enumerate() {
+            if cpu.is_infinite() && gpu.is_infinite() {
+                continue;
+            }
+            let tolerance = abs_tol.max(rel_tol * cpu.abs());
+            assert!(
+                (cpu - gpu).abs() <= tolerance,
+                "{label} cell {index}: CPU {cpu}, GPU {gpu}, tolerance {tolerance}"
+            );
+        }
+    };
+    let cpu_primary = cpu_acc.scientific_fields();
+    let gpu_primary = gpu_acc.scientific_fields();
+    for (label, index, abs_tol, rel_tol) in [
+        ("peak", 0, 5.0e-3, 5.0e-3),
+        ("time of max", 1, dt + 1.0e-3, 0.0),
+        ("arrival", 2, dt + 1.0e-3, 0.0),
+        ("eta squared", 3, 1.0e-3, 3.0e-2),
+    ] {
+        assert_fields(
+            label,
+            cpu_primary[index],
+            gpu_primary[index],
+            abs_tol,
+            rel_tol,
+        );
+    }
+    let cpu_extended = cpu_acc.extended_scientific_fields();
+    let gpu_extended = gpu_acc.extended_scientific_fields();
+    for (index, label) in [
+        "maximum depth",
+        "maximum speed",
+        "momentum flux",
+        "minimum depth",
+        "time of maximum speed",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        assert_fields(
+            label,
+            cpu_extended[index],
+            gpu_extended[index],
+            if index == 4 { dt + 1.0e-3 } else { 5.0e-3 },
+            2.0e-2,
+        );
+    }
+}
+
+#[cfg(feature = "gpu")]
+#[test]
+#[ignore = "fixed 4M-cell hardware benchmark; run explicitly on a release-capable GPU"]
+fn gpu_resident_4m_cell_benchmark() {
+    use crate::physics::constants::MANNING_N_COASTAL;
+    use crate::physics::solver::gpu::GpuTimeStepper;
+    use std::time::Instant;
+
+    const STEPS: usize = 12;
+    const CELLS: usize = 4_000_000;
+    let peak_vram = GpuTimeStepper::estimated_resident_peak_vram_bytes(CELLS);
+    assert!(peak_vram <= 512 * 1024 * 1024);
+
+    let build_grid = || {
+        let mut grid = SwGrid::new(-10.0, -10.0, 10.0, 10.0, 0.01, 0.01);
+        assert_eq!(grid.nx * grid.ny, CELLS);
+        grid.fill_uniform_depth(4_000.0);
+        grid.inject_gaussian(0.0, 0.0, 1.0, 60_000.0);
+        grid
+    };
+    let mut legacy_grid = build_grid();
+    let dt = legacy_grid.recommended_dt_s(0.25);
+    let Some(legacy_gpu) = GpuTimeStepper::new(&legacy_grid, dt, MANNING_N_COASTAL, 0, true) else {
+        println!("GPU resident 4M-cell benchmark: no suitable adapter — skipping");
+        return;
+    };
+    let mut legacy_acc = MaxFieldAccumulator::new(CELLS, 0.01);
+    legacy_acc.observe(&legacy_grid);
+    let legacy_start = Instant::now();
+    for _ in 0..STEPS {
+        assert!(legacy_gpu.step(&mut legacy_grid, 1));
+        legacy_acc.observe(&legacy_grid);
+    }
+    let legacy_elapsed = legacy_start.elapsed();
+    drop(legacy_gpu);
+    drop(legacy_acc);
+    drop(legacy_grid);
+
+    let mut resident_grid = build_grid();
+    let resident_gpu = GpuTimeStepper::new(&resident_grid, dt, MANNING_N_COASTAL, 0, true)
+        .expect("adapter disappeared before resident benchmark");
+    let mut resident_acc = MaxFieldAccumulator::new(CELLS, 0.01);
+    resident_acc.observe(&resident_grid);
+    assert!(resident_gpu.initialize_resident_max_field(&resident_grid, &resident_acc, None));
+    let resident_start = Instant::now();
+    assert!(resident_gpu.dispatch_resident_with_max_field(&resident_grid, STEPS, None, None));
+    assert!(resident_gpu.sync_resident_with_max_field(&mut resident_grid, &mut resident_acc, None));
+    let resident_elapsed = resident_start.elapsed();
+    let speedup = legacy_elapsed.as_secs_f64() / resident_elapsed.as_secs_f64();
+    println!(
+        "gpu_resident_benchmark={{\"cells\":{CELLS},\"steps\":{STEPS},\"legacy_ms\":{:.3},\"resident_ms\":{:.3},\"speedup\":{speedup:.3},\"estimated_peak_vram_bytes\":{peak_vram}}}",
+        legacy_elapsed.as_secs_f64() * 1000.0,
+        resident_elapsed.as_secs_f64() * 1000.0,
+    );
+    assert!(
+        speedup >= 1.25,
+        "resident GPU path speedup {speedup:.3}x is below the material 1.25x gate"
+    );
 }

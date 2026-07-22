@@ -118,6 +118,95 @@ impl MaxFieldAccumulator {
         ]
     }
 
+    #[cfg(feature = "gpu")]
+    pub(crate) fn gpu_fields_f32(&self) -> (Vec<[f32; 4]>, Vec<[f32; 5]>) {
+        let primary = self
+            .peak_m
+            .iter()
+            .zip(&self.t_of_max_s)
+            .zip(&self.arrival_s)
+            .zip(&self.energy_m2s)
+            .map(|(((peak, t_of_max), arrival), energy)| {
+                [
+                    *peak as f32,
+                    *t_of_max as f32,
+                    if arrival.is_finite() {
+                        *arrival as f32
+                    } else {
+                        f32::MAX
+                    },
+                    *energy as f32,
+                ]
+            })
+            .collect();
+        let extended = self
+            .max_depth_m
+            .iter()
+            .zip(&self.max_speed_ms)
+            .zip(&self.max_momentum_flux_m3s2)
+            .zip(&self.min_depth_m)
+            .zip(&self.t_of_max_speed_s)
+            .map(
+                |((((max_depth, max_speed), momentum), min_depth), t_of_max_speed)| {
+                    [
+                        *max_depth as f32,
+                        *max_speed as f32,
+                        *momentum as f32,
+                        if min_depth.is_finite() {
+                            *min_depth as f32
+                        } else {
+                            f32::MAX
+                        },
+                        *t_of_max_speed as f32,
+                    ]
+                },
+            )
+            .collect();
+        (primary, extended)
+    }
+
+    #[cfg(feature = "gpu")]
+    pub(crate) fn replace_from_gpu_fields(
+        &mut self,
+        primary: &[[f32; 4]],
+        extended: &[[f32; 5]],
+        last_t_s: f64,
+    ) -> bool {
+        if primary.len() != self.peak_m.len()
+            || extended.len() != self.peak_m.len()
+            || !last_t_s.is_finite()
+        {
+            return false;
+        }
+        for (index, (primary, extended)) in primary.iter().zip(extended).enumerate() {
+            if primary.iter().any(|value| !value.is_finite())
+                || extended.iter().any(|value| !value.is_finite())
+            {
+                return false;
+            }
+            self.peak_m[index] = primary[0] as f64;
+            self.t_of_max_s[index] = primary[1] as f64;
+            self.arrival_s[index] = if primary[2] >= f32::MAX / 2.0 {
+                f64::INFINITY
+            } else {
+                primary[2] as f64
+            };
+            self.energy_m2s[index] = primary[3] as f64;
+            self.max_depth_m[index] = extended[0] as f64;
+            self.max_speed_ms[index] = extended[1] as f64;
+            self.max_momentum_flux_m3s2[index] = extended[2] as f64;
+            self.min_depth_m[index] = if extended[3] >= f32::MAX / 2.0 {
+                f64::INFINITY
+            } else {
+                extended[3] as f64
+            };
+            self.t_of_max_speed_s[index] = extended[4] as f64;
+        }
+        self.last_t_s = last_t_s;
+        self.observed = true;
+        true
+    }
+
     pub(super) fn checkpoint_fields(&self) -> [&[f64]; 4] {
         [
             &self.peak_m,
@@ -318,12 +407,11 @@ impl MaxFieldAccumulator {
                 let (r, g, b, _) = viridis_colormap(t);
                 (r, g, b, 210)
             });
-            let energy_png =
-                render_field(nx, ny, &self.energy_m2s, energy_max.max(1e-12), |t| {
-                    // sqrt-compress so the directivity lobes away from the
-                    // source stay visible next to the near-field maximum.
-                    colormap_positive(colormap, t.sqrt())
-                });
+            let energy_png = render_field(nx, ny, &self.energy_m2s, energy_max.max(1e-12), |t| {
+                // sqrt-compress so the directivity lobes away from the
+                // source stay visible next to the near-field maximum.
+                colormap_positive(colormap, t.sqrt())
+            });
             (peak_png, t_of_max_png, energy_png, Vec::new())
         };
 
