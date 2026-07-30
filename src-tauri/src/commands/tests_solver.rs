@@ -539,6 +539,7 @@ fn gpu_quantitative_products_are_independent_of_snapshot_count() {
             &[],
             &mut acc,
             None,
+            None,
         )?;
         let (peak, t_of_max, arrival, energy) = acc.quantitative_fields();
         Some((
@@ -622,6 +623,7 @@ fn gpu_resident_max_fields_match_cpu_reference() {
         None,
         &[],
         &mut gpu_acc,
+        None,
         None,
     )
     .expect("resident GPU run");

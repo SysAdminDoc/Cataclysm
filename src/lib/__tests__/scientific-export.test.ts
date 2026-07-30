@@ -12,7 +12,11 @@ vi.mock("../tauri", () => ({
   api: { saveScientificExport: mocks.copy },
 }));
 
-import { exportScientificNetcdf, exportScientificZarr } from "../scientific-export";
+import {
+  exportScientificNetcdf,
+  exportScientificVtk,
+  exportScientificZarr,
+} from "../scientific-export";
 
 const descriptor = {
   export_id: "a".repeat(32),
@@ -28,6 +32,15 @@ const descriptor = {
     conventions: "Zarr 3.1 + CF-1.12 metadata" as const,
   },
   zarr_error: null,
+  vtk: {
+    suggested_filename: "cataclysm-run-1.pvd",
+    bytes: 12_288,
+    files: 7,
+    frames: 5,
+    format: "VTK XML ImageData time series" as const,
+    conventions: "VTK XML 1.0 + PVD Collection" as const,
+  },
+  vtk_error: null,
 };
 
 describe("exportScientificNetcdf", () => {
@@ -105,6 +118,43 @@ describe("exportScientificZarr", () => {
       ok: false,
       code: "data",
       message: "Zarr generation failed safely.",
+    });
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+});
+
+describe("exportScientificVtk", () => {
+  beforeEach(() => {
+    mocks.desktop = true;
+    mocks.save.mockReset();
+    mocks.copy.mockReset();
+  });
+
+  it("copies the collection and companion frames to a user-selected PVD path", async () => {
+    mocks.save.mockResolvedValue("C:\\Exports\\run.pvd");
+    mocks.copy.mockResolvedValue(12_288);
+
+    await expect(exportScientificVtk(descriptor)).resolves.toEqual({
+      ok: true,
+      bytes: 12_288,
+      destination: "C:\\Exports\\run.pvd",
+    });
+    expect(mocks.save).toHaveBeenCalledWith({
+      defaultPath: "cataclysm-run-1.pvd",
+      filters: [{ name: "ParaView VTK collection", extensions: ["pvd"] }],
+    });
+    expect(mocks.copy).toHaveBeenCalledWith("a".repeat(32), "C:\\Exports\\run.pvd", "vtk");
+  });
+
+  it("fails before opening a dialog when the VTK series is unavailable", async () => {
+    await expect(exportScientificVtk({
+      ...descriptor,
+      vtk: null,
+      vtk_error: "VTK generation failed safely.",
+    })).resolves.toMatchObject({
+      ok: false,
+      code: "data",
+      message: "VTK generation failed safely.",
     });
     expect(mocks.save).not.toHaveBeenCalled();
   });

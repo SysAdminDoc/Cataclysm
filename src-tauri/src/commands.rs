@@ -31,7 +31,7 @@ use crate::physics::{
         TimeStepper,
         max_field::{MaxFieldAccumulator, MaxFieldProduct},
         quality::{QualityBaseline, RunQualityRecord},
-        run_simulation_with_gauge_samples, snapshot_step_schedule,
+        run_simulation_with_gauge_samples_and_snapshot_observer, snapshot_step_schedule,
     },
 };
 use crate::presets::{Preset, PresetSource, all_presets, find_preset};

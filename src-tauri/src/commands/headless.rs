@@ -67,7 +67,7 @@ Commands:\n\
   resume    --input scenario.json --resume-run-id ID [--output result.json] [--data-dir DIR] [--run-id ID]\n\
   compare   --left run.json --right run.json [--output result.json]\n\
   inspect   --result run.json --lat DEG --lon DEG [--data-dir DIR] [--output result.json]\n\
-  export    --result run.json --kind netcdf|zarr --destination PATH [--data-dir DIR] [--output result.json]\n\
+  export    --result run.json --kind netcdf|zarr|vtk --destination PATH [--data-dir DIR] [--output result.json]\n\
   benchmark --input scenario.json [--iterations N] [--data-dir DIR] [--output result.json]\n\n\
 Scenario files use {\"schema_version\":1,\"request\":{...}}. Final JSON is written\n\
 to stdout unless --output is supplied; progress and errors are NDJSON on stderr.\n"
@@ -703,7 +703,23 @@ fn headless_simulate(
         .identity
         .next_snapshot_interval = start_interval.min(u32::MAX as usize) as u32;
 
+    let remaining_vtk_frames = snapshot_schedule[start_interval..].len().saturating_add(1);
+    let (vtk_series, vtk_setup_error) = match VtkSeriesSpool::begin(
+        app_data_dir,
+        run_id,
+        req,
+        &grid,
+        remaining_vtk_frames,
+        quality_baseline,
+        dt,
+    ) {
+        Ok(series) => (Some(series), None),
+        Err(error) => (None, Some(error)),
+    };
     let mut snapshots = vec![grid.snapshot_with_gauge_samples(&req.gauge_points, None)];
+    if let Some(series) = vtk_series.as_ref() {
+        series.record_frame(&grid);
+    }
     if start_interval == 0 {
         checkpoint_writer.borrow_mut().record_gauges(&grid);
     }
@@ -752,6 +768,9 @@ fn headless_simulate(
             }
         }
         snapshots.push(grid.snapshot_with_gauge_samples(&req.gauge_points, None));
+        if let Some(series) = vtk_series.as_ref() {
+            series.record_frame(&grid);
+        }
         checkpoint_writer.borrow_mut().record_gauges(&grid);
         checkpoint_writer.borrow_mut().maybe_write(
             &grid,
@@ -799,7 +818,8 @@ fn headless_simulate(
             &run_quality,
             false,
             &resolution_preflight,
-        );
+        )
+        .with_vtk(vtk_series.as_ref(), vtk_setup_error.as_deref());
         match create_cached_scientific_export(app_data_dir, &context) {
             Ok(descriptor) => (Some(descriptor), None),
             Err(error) => (None, Some(error)),
@@ -1355,6 +1375,7 @@ mod tests {
             &req.gauge_points,
             MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m),
             req.meteotsunami_forcing.as_ref(),
+            None,
         );
         let cli = headless_simulate(
             root.path(),

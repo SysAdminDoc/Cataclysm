@@ -72,6 +72,9 @@ pub(crate) fn stream_simulation_cpu_from(
             ctx.cancel.store(true, Ordering::Release);
             break;
         }
+        if let Some(series) = ctx.vtk_series {
+            series.record_frame(grid);
+        }
         if let Some(checkpoint) = ctx.checkpoint {
             let max_field = ctx.max_field.borrow();
             checkpoint.borrow_mut().maybe_write(
@@ -170,6 +173,9 @@ pub(crate) fn stream_simulation_dispatch(
                 ctx.cancel.store(true, Ordering::Release);
                 break;
             }
+            if let Some(series) = ctx.vtk_series {
+                series.record_frame(grid);
+            }
             if let Some(checkpoint) = ctx.checkpoint {
                 let max_field = ctx.max_field.borrow();
                 checkpoint.borrow_mut().maybe_write(
@@ -212,6 +218,7 @@ pub(crate) fn run_simulation_dispatch(
     gauges: &[GridGaugePoint],
     max_field_threshold_m: f64,
     meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
+    vtk_series: Option<&VtkSeriesSpool>,
 ) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     use crate::physics::solver::gpu::GpuTimeStepper;
 
@@ -238,11 +245,15 @@ pub(crate) fn run_simulation_dispatch(
             gauges,
             &mut acc,
             meteotsunami_forcing,
+            vtk_series,
         ) {
             return (snaps, true, acc);
         }
         // Discard partial-GPU observations; CPU rerun observes fresh below.
         *grid = pristine;
+        if let Some(series) = vtk_series {
+            series.reset();
+        }
     }
     let stepper = TimeStepper::new(dt_s);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
@@ -256,6 +267,7 @@ pub(crate) fn run_simulation_dispatch(
         gauges,
         &mut |g| acc.observe(g),
         meteotsunami_forcing,
+        vtk_series,
     );
     (snaps, false, acc)
 }
@@ -272,6 +284,7 @@ pub(crate) fn run_simulation_dispatch(
     gauges: &[GridGaugePoint],
     max_field_threshold_m: f64,
     meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
+    vtk_series: Option<&VtkSeriesSpool>,
 ) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     let stepper = TimeStepper::new(dt_s);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
@@ -285,6 +298,7 @@ pub(crate) fn run_simulation_dispatch(
         gauges,
         &mut |g| acc.observe(g),
         meteotsunami_forcing,
+        vtk_series,
     );
     (snaps, false, acc)
 }
@@ -307,10 +321,14 @@ pub(crate) fn run_simulation_gpu(
     gauges: &[GridGaugePoint],
     max_field: &mut MaxFieldAccumulator,
     meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
+    vtk_series: Option<&VtkSeriesSpool>,
 ) -> Option<Vec<GridSnapshot>> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    if let Some(series) = vtk_series {
+        series.record_frame(grid);
+    }
     max_field.observe(grid);
     if meteotsunami_forcing.is_some()
         || !gpu.initialize_resident_max_field(grid, max_field, diagnostics)
@@ -331,6 +349,9 @@ pub(crate) fn run_simulation_gpu(
             return None;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+        if let Some(series) = vtk_series {
+            series.record_frame(grid);
+        }
     }
     Some(snaps)
 }
@@ -346,9 +367,10 @@ fn run_simulation_cpu_with_optional_forcing(
     gauges: &[GridGaugePoint],
     observe: &mut dyn FnMut(&SwGrid),
     forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
+    vtk_series: Option<&VtkSeriesSpool>,
 ) -> Vec<GridSnapshot> {
     if forcing.is_none() {
-        return run_simulation_with_gauge_samples(
+        return run_simulation_with_gauge_samples_and_snapshot_observer(
             grid,
             stepper,
             t_end_s,
@@ -357,11 +379,19 @@ fn run_simulation_cpu_with_optional_forcing(
             diagnostics,
             gauges,
             observe,
+            &mut |state| {
+                if let Some(series) = vtk_series {
+                    series.record_frame(state);
+                }
+            },
         );
     }
     let n = n_snapshots.max(2);
     let mut snapshots = Vec::with_capacity(n);
     snapshots.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+    if let Some(series) = vtk_series {
+        series.record_frame(grid);
+    }
     observe(grid);
     if !t_end_s.is_finite() || t_end_s < 0.0 {
         return snapshots;
@@ -378,6 +408,9 @@ fn run_simulation_cpu_with_optional_forcing(
             observe(grid);
         }
         snapshots.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+        if let Some(series) = vtk_series {
+            series.record_frame(grid);
+        }
     }
     snapshots
 }

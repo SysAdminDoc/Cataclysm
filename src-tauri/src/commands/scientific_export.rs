@@ -4,7 +4,10 @@ use netcdf3::{DataSet, FileWriter, NC_FILL_F32, Version};
 use sha2::{Digest, Sha256};
 use std::fs;
 
+mod vtk;
 mod zarr;
+
+pub(crate) use vtk::VtkSeriesSpool;
 
 const SCIENTIFIC_EXPORT_DIR: &str = "scientific-exports";
 const SCIENTIFIC_EXPORT_MAX_CELLS: usize = 1_000_000;
@@ -21,6 +24,8 @@ pub struct ScientificExportDescriptor {
     pub conventions: &'static str,
     pub zarr: Option<ScientificZarrDescriptor>,
     pub zarr_error: Option<String>,
+    pub vtk: Option<ScientificVtkDescriptor>,
+    pub vtk_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -28,6 +33,16 @@ pub struct ScientificZarrDescriptor {
     pub suggested_directory: String,
     pub bytes: u64,
     pub files: u64,
+    pub format: &'static str,
+    pub conventions: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ScientificVtkDescriptor {
+    pub suggested_filename: String,
+    pub bytes: u64,
+    pub files: u64,
+    pub frames: u64,
     pub format: &'static str,
     pub conventions: &'static str,
 }
@@ -65,6 +80,8 @@ pub(crate) struct ScientificExportContext<'a> {
     pub(super) run_quality: &'a RunQualityRecord,
     pub(super) used_gpu: bool,
     pub(super) resolution_preflight: &'a ResolutionPreflight,
+    pub(super) vtk_series: Option<&'a VtkSeriesSpool>,
+    pub(super) vtk_setup_error: Option<&'a str>,
 }
 
 impl<'a> ScientificExportContext<'a> {
@@ -85,7 +102,19 @@ impl<'a> ScientificExportContext<'a> {
             run_quality,
             used_gpu,
             resolution_preflight,
+            vtk_series: None,
+            vtk_setup_error: None,
         }
+    }
+
+    pub(crate) fn with_vtk(
+        mut self,
+        vtk_series: Option<&'a VtkSeriesSpool>,
+        vtk_setup_error: Option<&'a str>,
+    ) -> Self {
+        self.vtk_series = vtk_series;
+        self.vtk_setup_error = vtk_setup_error;
+        self
     }
 }
 
@@ -572,6 +601,7 @@ fn prune_export_cache(root: &Path) {
     for (_, path) in files.into_iter().skip(SCIENTIFIC_EXPORT_RETAINED_FILES) {
         if let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) {
             let _ = fs::remove_dir_all(root.join(format!("{stem}.zarr")));
+            let _ = fs::remove_dir_all(root.join(format!("{stem}.vtk-series")));
         }
         let _ = fs::remove_file(path);
     }
@@ -666,6 +696,14 @@ pub(crate) fn create_cached_scientific_export(
             (None, Some(error))
         }
     };
+    let (vtk, vtk_error) = if let Some(series) = context.vtk_series {
+        match series.finalize(&export_id, &root, context) {
+            Ok(descriptor) => (Some(descriptor), None),
+            Err(error) => (None, Some(error)),
+        }
+    } else {
+        (None, context.vtk_setup_error.map(str::to_string))
+    };
     prune_export_cache(&root);
     Ok(ScientificExportDescriptor {
         export_id,
@@ -675,6 +713,8 @@ pub(crate) fn create_cached_scientific_export(
         conventions: "CF-1.12",
         zarr,
         zarr_error,
+        vtk,
+        vtk_error,
     })
 }
 
@@ -951,7 +991,8 @@ pub(crate) fn save_cached_scientific_export(
     let extension = match export_kind {
         "netcdf" => "nc",
         "zarr" => "zarr",
-        _ => return Err("scientific export kind must be 'netcdf' or 'zarr'".into()),
+        "vtk" => "pvd",
+        _ => return Err("scientific export kind must be 'netcdf', 'zarr', or 'vtk'".into()),
     };
     validate_export_destination(destination, extension)?;
     if export_kind == "zarr" {
@@ -960,6 +1001,13 @@ pub(crate) fn save_cached_scientific_export(
             return Err("Zarr export is no longer available; rerun the solver".into());
         }
         return copy_zarr_store(&source, destination);
+    }
+    if export_kind == "vtk" {
+        let source = export_root(app_data_dir).join(format!("{export_id}.vtk-series"));
+        if !source.is_dir() {
+            return Err("VTK export is no longer available; rerun the solver".into());
+        }
+        return vtk::copy_vtk_series(&source, destination);
     }
     let source = export_root(app_data_dir).join(format!("{export_id}.nc"));
     let metadata = fs::metadata(&source)

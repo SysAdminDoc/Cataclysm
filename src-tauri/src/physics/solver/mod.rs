@@ -1395,10 +1395,39 @@ pub fn run_simulation_with_gauge_samples(
     // stay independently scheduled and carry PNG rather than raw η.
     observe: &mut dyn FnMut(&SwGrid),
 ) -> Vec<GridSnapshot> {
+    run_simulation_with_gauge_samples_and_snapshot_observer(
+        grid,
+        stepper,
+        t_end_s,
+        n_snapshots,
+        cancel,
+        diagnostics,
+        gauges,
+        observe,
+        &mut |_| {},
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_simulation_with_gauge_samples_and_snapshot_observer(
+    grid: &mut SwGrid,
+    stepper: &TimeStepper,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: Option<&AtomicBool>,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+    // Called at t=0 and after every accepted solver step.
+    observe: &mut dyn FnMut(&SwGrid),
+    // Called only at the display/export snapshot cadence. This permits
+    // disk-backed exporters without retaining another raw run in memory.
+    observe_snapshot: &mut dyn FnMut(&SwGrid),
+) -> Vec<GridSnapshot> {
     let n = n_snapshots.max(2);
     let mut snaps = Vec::with_capacity(n);
     snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
     observe(grid);
+    observe_snapshot(grid);
     if !t_end_s.is_finite() || t_end_s < 0.0 {
         return snaps;
     }
@@ -1411,6 +1440,7 @@ pub fn run_simulation_with_gauge_samples(
             break;
         }
         snaps.push(grid.snapshot_with_gauge_samples(gauges, diagnostics));
+        observe_snapshot(grid);
     }
     snaps
 }

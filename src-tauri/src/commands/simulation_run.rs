@@ -107,6 +107,21 @@ pub async fn simulate_grid(
             publish_run_quality(&admission_quality);
             return Err(format!("simulation rejected by numerical-integrity admission gate: {failure}"));
         }
+        let (vtk_series, vtk_setup_error) = match VtkSeriesSpool::begin(
+            &app_data_dir,
+            &response_run_id,
+            &req,
+            &grid,
+            req.n_snapshots,
+            quality_baseline,
+            dt,
+        ) {
+            Ok(series) => (Some(series), None),
+            Err(error) => {
+                diagnostics(&error);
+                (None, Some(error))
+            }
+        };
         let (snapshots, used_gpu, max_field_acc) = run_simulation_dispatch(
             &mut grid,
             dt,
@@ -117,6 +132,7 @@ pub async fn simulate_grid(
             &req.gauge_points,
             MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m),
             req.meteotsunami_forcing.as_ref(),
+            vtk_series.as_ref(),
         );
         let run_quality = quality_baseline.assess(&grid, dt);
         publish_run_quality(&run_quality);
@@ -137,7 +153,8 @@ pub async fn simulate_grid(
                 &run_quality,
                 used_gpu,
                 &resolution_preflight,
-            );
+            )
+            .with_vtk(vtk_series.as_ref(), vtk_setup_error.as_deref());
             match create_cached_scientific_export(&app_data_dir, &export_context) {
                 Ok(descriptor) => (Some(descriptor), None),
                 Err(error) => {

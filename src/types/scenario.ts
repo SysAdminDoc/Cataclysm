@@ -240,6 +240,15 @@ export type ScientificExportDescriptor = {
     conventions: "Zarr 3.1 + CF-1.12 metadata";
   } | null;
   zarr_error: string | null;
+  vtk: {
+    suggested_filename: string;
+    bytes: number;
+    files: number;
+    frames: number;
+    format: "VTK XML ImageData time series";
+    conventions: "VTK XML 1.0 + PVD Collection";
+  } | null;
+  vtk_error: string | null;
 };
 
 export type ResolutionFeature = {

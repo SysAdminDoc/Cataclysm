@@ -246,6 +246,13 @@ Existing tools each do one piece:
   units and metadata, final state, max-field products, and full provenance.
   The pure-Rust `zarrs` writer produces stores that open directly with Python
   `zarr.open`; existing destination directories are never overwritten.
+- **ParaView VTK time series** — scheduled SWE states stream directly to a
+  bounded, disk-backed sequence of binary `.vti` ImageData frames plus a
+  `.pvd` collection. Elevation, bathymetric and total depth, east/north
+  velocity, speed, simulation time, quality, CRS/datum, units, scenario/data
+  digests, and full JSON provenance open directly in ParaView 6.1. Saving
+  `run.pvd` also creates its required sibling `run_frames` directory; neither
+  destination is overwritten.
 - **Recoverable long solver runs** — authenticated, atomically replaced
   checkpoints preserve the full grid, tick, maximum fields, and gauge history.
   Advanced mode offers 30-second, one-minute, and five-minute wall-clock
@@ -445,6 +452,7 @@ src-tauri/target/release/cataclysm-cli validate --input scenario.json
 src-tauri/target/release/cataclysm-cli run --input scenario.json --output run.json --data-dir ./cataclysm-data
 src-tauri/target/release/cataclysm-cli inspect --result run.json --lat 38.3 --lon 142.37 --data-dir ./cataclysm-data
 src-tauri/target/release/cataclysm-cli export --result run.json --kind netcdf --destination /absolute/path/run.nc --data-dir ./cataclysm-data
+src-tauri/target/release/cataclysm-cli export --result run.json --kind vtk --destination /absolute/path/run.pvd --data-dir ./cataclysm-data
 ```
 
 Input is a versioned JSON envelope: `{"schema_version":1,"request":{...}}`,
@@ -456,6 +464,9 @@ entry sizes, and SHA-256 identities without importing it.
 JSON; progress and errors are NDJSON on stderr. `--cancel-file PATH` gives batch
 orchestration a portable cancellation signal and leaves a verified checkpoint;
 resume it with `resume --resume-run-id ID` and the identical input/data directory.
+Scientific export accepts `--kind netcdf`, `zarr`, or `vtk`; VTK destinations
+receive a sibling `<name>_frames` directory containing the `.vti` frames and
+provenance.
 Run `cataclysm-cli --help` for the complete option list. The CLI is deterministic
 and CPU-authoritative; benchmark timing values are observational by design.
 

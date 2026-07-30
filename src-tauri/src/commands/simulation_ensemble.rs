@@ -328,6 +328,7 @@ fn run_sensitivity_member(
         &[],
         MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m),
         req.meteotsunami_forcing.as_ref(),
+        None,
     );
     drop(snapshots);
     let quality = baseline.assess(&grid, dt);

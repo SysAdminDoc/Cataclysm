@@ -153,6 +153,23 @@ pub async fn simulate_grid_streaming(
                 ));
             }
 
+            let remaining_vtk_frames = snapshot_schedule[start_interval..].len().saturating_add(1);
+            let (vtk_series, vtk_setup_error) = match VtkSeriesSpool::begin(
+                &app_data_dir,
+                &response_run_id,
+                &req,
+                &grid,
+                remaining_vtk_frames,
+                quality_baseline,
+                dt,
+            ) {
+                Ok(series) => (Some(series), None),
+                Err(error) => {
+                    diagnostics(&error);
+                    (None, Some(error))
+                }
+            };
+
             // Stream the initial or restored snapshot immediately.
             let initial_snapshot =
                 grid.snapshot_with_gauge_samples(&req.gauge_points, Some(&diagnostics));
@@ -163,6 +180,9 @@ pub async fn simulate_grid_streaming(
                 checkpoint_writer.borrow_mut().record_gauges(&grid);
             }
             render_stream.send_frame(&grid)?;
+            if let Some(series) = vtk_series.as_ref() {
+                series.record_frame(&grid);
+            }
 
             let max_field_threshold_m =
                 MaxFieldAccumulator::threshold_for_amplitude(req.initial_amplitude_m);
@@ -185,6 +205,7 @@ pub async fn simulate_grid_streaming(
                 checkpoint: Some(&checkpoint_writer),
                 snapshot_interval_offset: start_interval,
                 boundary,
+                vtk_series: vtk_series.as_ref(),
             };
             let used_gpu = stream_simulation_dispatch(
                 &mut grid,
@@ -237,7 +258,8 @@ pub async fn simulate_grid_streaming(
                     &run_quality,
                     used_gpu,
                     &resolution_preflight,
-                );
+                )
+                .with_vtk(vtk_series.as_ref(), vtk_setup_error.as_deref());
                 match create_cached_scientific_export(&app_data_dir, &export_context) {
                     Ok(descriptor) => (Some(descriptor), None),
                     Err(error) => {
@@ -404,6 +426,7 @@ pub(crate) struct StreamSimulationContext<'a> {
     pub(crate) checkpoint: Option<&'a RefCell<StreamCheckpointWriter>>,
     pub(crate) snapshot_interval_offset: usize,
     pub(crate) boundary: crate::physics::solver::BoundaryMode,
+    pub(crate) vtk_series: Option<&'a VtkSeriesSpool>,
 }
 
 pub(crate) fn validate_checkpoint_interval(value: Option<u64>) -> Result<Duration, String> {

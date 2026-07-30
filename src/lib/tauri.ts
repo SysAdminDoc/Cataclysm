@@ -717,7 +717,7 @@ export const api = {
   maxFieldProbe(req: { export_id: string; lat: number; lon: number }) {
     return invoke<MaxFieldProbeResult>("max_field_probe", { req });
   },
-  saveScientificExport(exportId: string, destination: string, exportKind: "netcdf" | "zarr" = "netcdf") {
+  saveScientificExport(exportId: string, destination: string, exportKind: "netcdf" | "zarr" | "vtk" = "netcdf") {
     return invoke<number>("save_scientific_export", { exportId, destination, exportKind });
   },
 };

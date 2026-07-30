@@ -6,9 +6,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Optional ParaView-ready VTK XML time-series export for completed SWE runs.
+  Scheduled solver states stream to a bounded disk spool as binary `.vti`
+  ImageData frames and a `.pvd` collection with elevation, depth, velocity,
+  speed, time, units, quality, CRS/datum, and source/data identities. Desktop
+  and headless CLI saves publish the collection, companion frame directory,
+  and full provenance atomically; an interoperability fixture opens the series
+  with ParaView 6.1.
 - A standalone `cataclysm-cli` now exposes the Rust-authoritative validation,
   SWE run, checkpoint resume, result comparison, exact point inspection,
-  NetCDF/Zarr export, and benchmark workflows without a WebView. Its versioned
+  NetCDF/Zarr/VTK export, and benchmark workflows without a WebView. Its versioned
   JSON/NDJSON contracts use explicit non-zero usage, runtime, and cancellation
   exit codes; portable `.cataclysm` packages receive bounded ZIP, path/MIME,
   CRC-32, schema, size, and SHA-256 validation before use. Golden tests keep

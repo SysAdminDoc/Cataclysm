@@ -84,3 +84,48 @@ export async function exportScientificZarr(
     };
   }
 }
+
+export async function exportScientificVtk(
+  descriptor: ScientificExportDescriptor,
+): Promise<ExportResult<{ bytes: number; destination: string }>> {
+  if (!isTauri()) {
+    return {
+      ok: false,
+      code: "data",
+      message: "VTK XML export is available in the desktop app after a completed SWE run.",
+      retryable: false,
+    };
+  }
+  if (!descriptor.vtk) {
+    return {
+      ok: false,
+      code: "data",
+      message: descriptor.vtk_error ?? "This run does not have a VTK time series. Rerun the SWE solver.",
+      retryable: true,
+    };
+  }
+  try {
+    const destination = await save({
+      defaultPath: descriptor.vtk.suggested_filename,
+      filters: [{ name: "ParaView VTK collection", extensions: ["pvd"] }],
+    });
+    if (!destination) {
+      return {
+        ok: false,
+        code: "cancelled",
+        message: "VTK export was cancelled.",
+        retryable: true,
+      };
+    }
+    const bytes = await api.saveScientificExport(descriptor.export_id, destination, "vtk");
+    return { ok: true, bytes, destination };
+  } catch (error) {
+    console.error("[export] VTK XML export failed", error);
+    return {
+      ok: false,
+      code: "filesystem",
+      message: `VTK XML export failed: ${error instanceof Error ? error.message : String(error)}`,
+      retryable: true,
+    };
+  }
+}

@@ -67,7 +67,11 @@ import {
   type AsyncResult,
 } from "./lib/async-result";
 import { downloadTextExport } from "./lib/text-export";
-import { exportScientificNetcdf, exportScientificZarr } from "./lib/scientific-export";
+import {
+  exportScientificNetcdf,
+  exportScientificVtk,
+  exportScientificZarr,
+} from "./lib/scientific-export";
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { useHumanitarianFacilities } from "./hooks/useHumanitarianFacilities";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
@@ -204,7 +208,7 @@ const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "geojson" | "kml" | "help" | "history" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "vtk" | "geojson" | "kml" | "help" | "history" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -297,6 +301,15 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <path d="m12 2 8 4.5v11L12 22l-8-4.5v-11Z" />
         <path d="m4 6.5 8 4.5 8-4.5M12 11v11" />
+      </svg>
+    );
+  }
+  if (name === "vtk") {
+    return (
+      <svg {...common}>
+        <path d="M4 4h16v16H4Z" />
+        <path d="M4 9h16M4 14h16M9 4v16M14 4v16" />
+        <path d="m17 2 3 2-3 2" />
       </svg>
     );
   }
@@ -2614,6 +2627,28 @@ export default function App() {
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               Zarr
+            </ToolbarButton>
+            <ToolbarButton
+              icon="vtk"
+              onClick={() => {
+                if (!sweScientificExport?.vtk) return;
+                const run = async () => reportExportResult(
+                  await exportScientificVtk(sweScientificExport),
+                  t("app.export.saved", { item: t("app.export.item.vtk") }),
+                  () => void run(),
+                );
+                void run();
+              }}
+              title={t("app.export.title.vtk")}
+              disabled={inHazardMode || !inTauri || !sweScientificExport?.vtk}
+              disabledReason={inHazardMode
+                ? t("app.export.reason.vtkSwe")
+                : !inTauri
+                  ? t("app.export.reason.vtkDesktop")
+                  : sweScientificExport?.vtk_error ?? sweScientificExportError ?? t("app.export.reason.vtkRun")}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              VTK
             </ToolbarButton>
             <ToolbarButton
               icon="geojson"

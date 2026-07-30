@@ -292,7 +292,7 @@
       "license": { "identifier": "MIT", "name": "MIT License", "url": "https://opensource.org/license/mit", "attribution_text": "Cataclysm uniform-depth fallback", "notice_paths": ["LICENSE"] },
       "spatial": { "bounds": [-180, -90, 180, 90], "horizontal_crs": "EPSG:4326", "vertical_datum": "idealized depth below mean sea level" }, "temporal": { "content_timestamp": "2026-07-11", "retrieved_at": null, "observed_at": null, "status": "generated" },
       "resolution": { "kind": "constant", "value": 4000, "min": 4000, "max": 4000, "unit": "meters-depth", "tile_size_px": null, "notes": "Uniform 4 km depth used only as a deterministic fail-safe." },
-      "integrity": { "algorithm": "sha256", "digest": "0188509a8bc04ca966b91a29dc3b8f96bb56d5a18e39da5645ab7855b9467f6c", "scope": "source implementation", "target": "src-tauri/src/physics/solver/mod.rs" },
+      "integrity": { "algorithm": "sha256", "digest": "7fea5d0b302ea1a3a5ee92ea4a1db878375192ef8f29874e6e7e08f57fa75c1b", "scope": "source implementation", "target": "src-tauri/src/physics/solver/mod.rs" },
       "permission_profile_id": "mit-generated", "quality_tiers": ["Low"], "fallback_asset_id": null,
       "scientific": { "confidence": "low", "transformations": ["Constant-depth field."], "limitations": ["No real bathymetry, coastline, shelf, or shoaling structure."] }
     },
