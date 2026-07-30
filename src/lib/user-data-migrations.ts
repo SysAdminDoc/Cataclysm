@@ -25,7 +25,7 @@ export type UserDataMigrationResult<T> = Readonly<{
 const CURRENT_VERSIONS = {
   settings: 6,
   savedScenarios: 1,
-  runArchive: 1,
+  runArchive: 2,
 } as const satisfies Record<UserDataDomain, number>;
 
 export class UserDataMigrationError extends Error {
@@ -119,6 +119,53 @@ export const USER_DATA_MIGRATIONS: readonly UserDataMigration[] = Object.freeze(
     toVersion: 1,
     description: "wrap the legacy run-record list in a versioned envelope",
     migrate: (data) => ({ records: cloneJsonData(data) }),
+  },
+  {
+    domain: "runArchive",
+    fromVersion: 1,
+    toVersion: 2,
+    description: "add immutable result identity, data references, and direct-effect comparison slots",
+    migrate: (data) => {
+      const envelope = requireRecord("runArchive", data);
+      const migrateRecord = (candidate: unknown): unknown => {
+        if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return candidate;
+        const record = candidate as Record<string, unknown>;
+        if (!record.inputs || typeof record.inputs !== "object" || Array.isArray(record.inputs)
+          || !record.identity || typeof record.identity !== "object" || Array.isArray(record.identity)
+          || !record.results || typeof record.results !== "object" || Array.isArray(record.results)) {
+          return cloneJsonData(candidate);
+        }
+        const inputs = record.inputs as Record<string, unknown>;
+        const identity = record.identity as Record<string, unknown>;
+        const results = record.results as Record<string, unknown>;
+        return {
+          ...cloneJsonData(record),
+          inputs: {
+            ...cloneJsonData(inputs),
+            dataReferences: Array.isArray(inputs.dataReferences) ? cloneJsonData(inputs.dataReferences) : [],
+          },
+          identity: {
+            ...cloneJsonData(identity),
+            resultSchemaVersion: Number.isInteger(identity.resultSchemaVersion) ? identity.resultSchemaVersion : 1,
+            resultSha256: typeof identity.resultSha256 === "string" ? identity.resultSha256 : null,
+            renderScenarioSha256: typeof identity.renderScenarioSha256 === "string"
+              ? identity.renderScenarioSha256
+              : typeof identity.renderProtocolVersion === "string" && typeof identity.scenarioSha256 === "string"
+                ? identity.scenarioSha256
+                : null,
+          },
+          results: {
+            ...cloneJsonData(results),
+            directEffects: results.directEffects ?? null,
+          },
+        };
+      };
+      return {
+        ...cloneJsonData(envelope),
+        records: Array.isArray(envelope.records) ? envelope.records.map(migrateRecord) : envelope.records,
+        trash: Array.isArray(envelope.trash) ? envelope.trash.map(migrateRecord) : envelope.trash,
+      };
+    },
   },
 ]);
 

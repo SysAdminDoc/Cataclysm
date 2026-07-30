@@ -370,6 +370,213 @@ fn parse_stored_zip(bytes: &[u8]) -> Result<HashMap<String, Vec<u8>>, CliFailure
     Ok(entries)
 }
 
+fn canonical_json(value: &Value) -> Value {
+    match value {
+        Value::Array(items) => Value::Array(items.iter().map(canonical_json).collect()),
+        Value::Object(object) => {
+            let mut keys = object.keys().collect::<Vec<_>>();
+            keys.sort_unstable();
+            let mut result = serde_json::Map::new();
+            for key in keys {
+                result.insert(key.clone(), canonical_json(&object[key]));
+            }
+            Value::Object(result)
+        }
+        _ => value.clone(),
+    }
+}
+
+fn canonical_json_sha256(value: &Value) -> Result<String, CliFailure> {
+    serde_json::to_vec(&canonical_json(value))
+        .map(|bytes| crate::render_protocol::sha256_hex(&bytes))
+        .map_err(|error| {
+            CliFailure::usage(format!(
+                "portable package identity could not be canonicalized: {error}"
+            ))
+        })
+}
+
+fn portable_string<'a>(
+    record: &'a serde_json::Map<String, Value>,
+    keys: &[&str],
+) -> Option<&'a str> {
+    keys.iter()
+        .find_map(|key| record.get(*key).and_then(Value::as_str))
+        .filter(|value| !value.is_empty())
+}
+
+fn validate_identity_digest(
+    identity: &serde_json::Map<String, Value>,
+    field: &str,
+) -> Result<String, CliFailure> {
+    let value = identity.get(field).and_then(Value::as_str).unwrap_or("");
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(CliFailure::usage(format!(
+            "portable package result identity {field} is invalid"
+        )));
+    }
+    Ok(value.to_string())
+}
+
+fn validate_portable_result_identity(
+    manifest: &Value,
+    root: &serde_json::Map<String, Value>,
+    declarations: &[Value],
+    archive: &HashMap<String, Vec<u8>>,
+    scenario: &Value,
+    solver_settings: &Value,
+) -> Result<(), CliFailure> {
+    let results_path = root.get("results").and_then(Value::as_str);
+    let result_declarations = declarations
+        .iter()
+        .filter(|entry| entry.get("role").and_then(Value::as_str) == Some("results"))
+        .collect::<Vec<_>>();
+    if results_path.is_none() {
+        if manifest.get("result_identity").is_some() || !result_declarations.is_empty() {
+            return Err(CliFailure::usage(
+                "portable package result identity or entry is present without a results root",
+            ));
+        }
+        return Ok(());
+    }
+    let results_path = results_path.unwrap();
+    let result_declaration = result_declarations
+        .into_iter()
+        .find(|entry| entry.get("path").and_then(Value::as_str) == Some(results_path))
+        .ok_or_else(|| CliFailure::usage("portable package results root has no matching entry"))?;
+    let identity = manifest
+        .get("result_identity")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            CliFailure::usage("portable package schema 2 result identity is missing or invalid")
+        })?;
+    let app_version = manifest
+        .get("app_version")
+        .and_then(Value::as_str)
+        .ok_or_else(|| CliFailure::usage("portable package app version is invalid"))?;
+    if identity.get("app_version").and_then(Value::as_str) != Some(app_version)
+        || identity
+            .get("scenario_schema_version")
+            .and_then(Value::as_u64)
+            != Some(1)
+        || identity
+            .get("result_schema_version")
+            .and_then(Value::as_u64)
+            != Some(1)
+    {
+        return Err(CliFailure::usage(
+            "portable package result identity version fields do not match the package",
+        ));
+    }
+    let result_sha = validate_identity_digest(identity, "result_sha256")?;
+    if result_declaration.get("sha256").and_then(Value::as_str) != Some(result_sha.as_str())
+        || archive
+            .get(results_path)
+            .map(|bytes| crate::render_protocol::sha256_hex(bytes))
+            .as_deref()
+            != Some(result_sha.as_str())
+    {
+        return Err(CliFailure::usage(
+            "portable package result identity does not match the immutable result entry",
+        ));
+    }
+
+    let mut scenario_input = scenario.clone();
+    if let Some(object) = scenario_input.as_object_mut() {
+        object.remove("schemaVersion");
+        object.remove("version");
+    }
+    if validate_identity_digest(identity, "scenario_sha256")?
+        != canonical_json_sha256(&scenario_input)?
+        || validate_identity_digest(identity, "settings_sha256")?
+            != canonical_json_sha256(solver_settings)?
+    {
+        return Err(CliFailure::usage(
+            "portable package source or settings identity does not match verified content",
+        ));
+    }
+
+    let provenance = archive
+        .get("provenance.json")
+        .and_then(|payload| serde_json::from_slice::<Value>(payload).ok())
+        .and_then(|value| value.as_object().cloned())
+        .ok_or_else(|| CliFailure::usage("portable package provenance payload is invalid"))?;
+    let solver_version = portable_string(
+        &provenance,
+        &[
+            "solver_version",
+            "solverVersion",
+            "app_version",
+            "appVersion",
+        ],
+    )
+    .unwrap_or(app_version);
+    if identity.get("solver_version").and_then(Value::as_str) != Some(solver_version) {
+        return Err(CliFailure::usage(
+            "portable package solver identity does not match provenance",
+        ));
+    }
+    let asset_registry_version = portable_string(
+        &provenance,
+        &["asset_registry_version", "assetRegistryVersion"],
+    )
+    .map(str::to_string)
+    .unwrap_or_else(|| format!("unreported-by-{app_version}"));
+    let mut references = manifest
+        .get("data_references")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CliFailure::usage("portable package data references are invalid"))?
+        .iter()
+        .map(|reference| {
+            let record = reference
+                .as_object()
+                .ok_or_else(|| CliFailure::usage("portable package data reference is invalid"))?;
+            Ok(json!({
+                "id": record.get("id").and_then(Value::as_str).ok_or_else(|| CliFailure::usage("portable package data reference id is invalid"))?,
+                "kind": record.get("kind").and_then(Value::as_str).ok_or_else(|| CliFailure::usage("portable package data reference kind is invalid"))?,
+                "relative_path": record.get("relative_path").and_then(Value::as_str).ok_or_else(|| CliFailure::usage("portable package data reference path is invalid"))?,
+                "embedded": record.get("embedded").and_then(Value::as_bool).ok_or_else(|| CliFailure::usage("portable package data reference embedded flag is invalid"))?,
+                "sha256": record.get("sha256").cloned().unwrap_or(Value::Null),
+            }))
+        })
+        .collect::<Result<Vec<_>, CliFailure>>()?;
+    references.sort_by(|left, right| {
+        left.get("id")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .cmp(right.get("id").and_then(Value::as_str).unwrap_or(""))
+            .then_with(|| {
+                left.get("relative_path")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .cmp(
+                        right
+                            .get("relative_path")
+                            .and_then(Value::as_str)
+                            .unwrap_or(""),
+                    )
+            })
+    });
+    let data_identity = json!({
+        "schemaVersion": 1,
+        "assetRegistryVersion": asset_registry_version,
+        "bathymetryAssetId": solver_settings.get("bathymetry_asset_id").cloned().unwrap_or(Value::Null),
+        "useSpatialBathymetry": solver_settings.get("use_spatial_bathymetry").cloned().unwrap_or(Value::Null),
+        "dataReferences": references,
+    });
+    if validate_identity_digest(identity, "data_sha256")? != canonical_json_sha256(&data_identity)?
+    {
+        return Err(CliFailure::usage(
+            "portable package data identity does not match verified references",
+        ));
+    }
+    Ok(())
+}
+
 fn validate_portable_package(path: &Path) -> Result<Value, CliFailure> {
     let bytes = read_bounded(path, MAX_PACKAGE_BYTES, "portable package")?;
     let archive = parse_stored_zip(&bytes)?;
@@ -386,9 +593,13 @@ fn validate_portable_package(path: &Path) -> Result<Value, CliFailure> {
             "portable package manifest is invalid JSON: {error}"
         ))
     })?;
+    let package_schema_version = manifest
+        .get("schema_version")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| CliFailure::usage("portable package schema is invalid"))?;
     if manifest.get("format").and_then(Value::as_str)
         != Some("org.sysadmindoc.cataclysm.scenario-package")
-        || manifest.get("schema_version").and_then(Value::as_u64) != Some(1)
+        || package_schema_version > 2
     {
         return Err(CliFailure::usage(
             "portable package format or schema is unsupported",
@@ -537,13 +748,23 @@ fn validate_portable_package(path: &Path) -> Result<Value, CliFailure> {
             "portable package solver settings schema is unsupported",
         ));
     }
+    if package_schema_version == 2 {
+        validate_portable_result_identity(
+            &manifest,
+            root,
+            declarations,
+            &archive,
+            &scenario,
+            &solver_settings,
+        )?;
+    }
     Ok(json!({
         "schema_version": CLI_SCHEMA_VERSION,
         "kind": "cataclysm_package_validation",
         "tool_version": env!("CARGO_PKG_VERSION"),
         "valid": true,
         "package_sha256": crate::render_protocol::sha256_hex(&bytes),
-        "package_schema_version": 1,
+        "package_schema_version": package_schema_version,
         "app_version": manifest.get("app_version"),
         "entries": declarations.len(),
         "scenario_kind": scenario.pointer("/data/kind").or_else(|| scenario.get("kind")),

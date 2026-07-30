@@ -126,6 +126,15 @@ describe("portable scenario packages", () => {
     expect(imported.workspace).toEqual(FIXTURE.workspace);
     expect(imported.citations).toEqual(FIXTURE.citations);
     expect(imported.results).toEqual(FIXTURE.results);
+    expect(imported.resultIdentity).toMatchObject({
+      app_version: expect.any(String),
+      scenario_schema_version: 1,
+      result_schema_version: 1,
+      scenario_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      settings_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      data_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      result_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
     expect(imported.checkpoints).toEqual(FIXTURE.checkpoints);
     expect(imported.embeddedAssets[0]).toMatchObject({ path: "assets/preview.png", mime: "image/png" });
     expect(imported.embeddedAssets[0].bytes).toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
@@ -134,16 +143,25 @@ describe("portable scenario packages", () => {
 
   it("migrates schema zero as a copy and rejects future schemas before returning data", async () => {
     const current = await createPortableScenarioPackage(FIXTURE);
-    const legacy = rewriteStoredEntry(current, "manifest.json", (text) => text.replace('"schema_version": 1', '"schema_version": 0'));
+    const legacyVersion = rewriteStoredEntry(current, "manifest.json", (text) => text.replace('"schema_version": 2', '"schema_version": 0'));
+    const legacy = rewriteStoredEntry(legacyVersion, "manifest.json", (text) => text.replace('"result_identity"', '"legacy_identity"'));
     const imported = await inspectPortableScenarioPackage(legacy);
-    expect(imported.manifest.schema_version).toBe(1);
-    expect(imported.packageMigrations).toEqual([{
-      code: "package-v0-to-v1",
-      description: "migrated portable package schema 0 to schema 1 as an in-memory copy",
-    }]);
+    expect(imported.manifest.schema_version).toBe(2);
+    expect(imported.packageMigrations).toEqual([
+      {
+        code: "package-v0-to-v1",
+        description: "migrated portable package schema 0 to schema 1 as an in-memory copy",
+      },
+      {
+        code: "package-v1-to-v2",
+        description: "added a verified immutable result identity as an in-memory copy",
+      },
+    ]);
+    expect(imported.resultIdentity).toMatchObject({ result_sha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(imported.warnings).toContain("A legacy result identity was reconstructed from verified package digests.");
     expect(legacy).not.toEqual(current);
 
-    const future = rewriteStoredEntry(current, "manifest.json", (text) => text.replace('"schema_version": 1', '"schema_version": 9'));
+    const future = rewriteStoredEntry(current, "manifest.json", (text) => text.replace('"schema_version": 2', '"schema_version": 9'));
     await expect(inspectPortableScenarioPackage(future)).rejects.toThrow(/newer than supported schema/i);
   });
 
@@ -151,6 +169,10 @@ describe("portable scenario packages", () => {
     const current = await createPortableScenarioPackage(FIXTURE);
     const tampered = rewriteStoredEntry(current, "scenario.json", (text) => text.replace('"diameter_m": 500', '"diameter_m": 501'));
     await expect(inspectPortableScenarioPackage(tampered)).rejects.toThrow(/SHA-256 verification/i);
+
+    const falseIdentity = rewriteStoredEntry(current, "manifest.json", (text) =>
+      text.replace(/("scenario_sha256": ")[a-f0-9]{64}/, `$1${"f".repeat(64)}`));
+    await expect(inspectPortableScenarioPackage(falseIdentity)).rejects.toThrow(/result_identity scenario_sha256/i);
   });
 
   it("rejects traversal paths, executable assets, unsupported MIME, and oversize archives", async () => {

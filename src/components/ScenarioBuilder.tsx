@@ -75,6 +75,7 @@ export type ScenarioPortableContext = {
   citations: PortableScenarioCitation[];
   provenance: PortableJson;
   results?: PortableJson;
+  resultScenario?: ScenarioInput;
   checkpoints?: PortableJson;
   dataReferences?: PortableScenarioDataReference[];
 };
@@ -359,6 +360,15 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       : { kind: "Meteotsunami", source: meteotsunami };
   }
 
+  function portableResultsMatchCurrentScenario(): boolean {
+    if (portableContext?.results === undefined || !portableContext.resultScenario) return false;
+    const current = createScenarioPayload(currentScenarioData());
+    const resultSource = createScenarioPayload(portableContext.resultScenario);
+    return current.ok
+      && resultSource.ok
+      && JSON.stringify(current.payload) === JSON.stringify(resultSource.payload);
+  }
+
   function applyScenario(data: ScenarioInput) {
     setImportProvenance(null);
     if (data.kind === "Asteroid") {
@@ -518,6 +528,10 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       showStatus(t("builder.packageExportBlocked", { reason: payload.reason }), "error");
       return;
     }
+    if (includePortableResults && !portableResultsMatchCurrentScenario()) {
+      showStatus(t("builder.packageResultsMismatch"), "error");
+      return;
+    }
     setPortableBusy(true);
     try {
       const exportedSettings = JSON.parse(await settings.exportSettings()) as PortableJson;
@@ -614,6 +628,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       setPortableBusy(false);
     }
   }
+
+  const canIncludePortableResults = portableResultsMatchCurrentScenario();
 
   return (
     <div className="section scenario-builder">
@@ -882,10 +898,10 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             <input
               type="checkbox"
               checked={includePortableResults}
-              disabled={portableBusy}
+              disabled={portableBusy || !canIncludePortableResults}
               onChange={(event) => setIncludePortableResults(event.target.checked)}
             />
-            <span>{t("builder.packageIncludeResults")}</span>
+            <span>{t(canIncludePortableResults ? "builder.packageIncludeResults" : "builder.packageResultsMismatch")}</span>
           </label>
         )}
         {portablePreview && (

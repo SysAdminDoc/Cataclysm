@@ -6,6 +6,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Immutable historical-result normalization now preserves the original result
+  identity when older `.cataclysm` packages are opened. A localized preflight
+  lists solver, scenario/result/archive schema, render protocol, source,
+  settings, and scientific-data digest changes before an explicit current-model
+  rerun; the new result is stored as a linked child. History comparisons
+  attribute field peaks, normalized frame summaries, matched gauge RMSE/peaks,
+  and available direct-effect metrics to those versioned inputs and export a
+  versioned JSON delta report. Portable-package schema 2 embeds and verifies the
+  immutable identity, while in-memory migrations preserve schema 0/1 packages
+  and archive schema 1 records without rewriting result payloads.
 - Optional ParaView-ready VTK XML time-series export for completed SWE runs.
   Scheduled solver states stream to a bounded disk spool as binary `.vti`
   ImageData frames and a `.pvd` collection with elevation, depth, velocity,

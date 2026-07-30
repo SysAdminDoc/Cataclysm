@@ -48,10 +48,42 @@ describe("user-data migration registry", () => {
     const archiveOriginal = structuredClone(legacyRunArchive);
     const archiveResult = migrateRunArchiveData(legacyRunArchive);
     expect(archiveResult).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       data: { records: archiveOriginal },
     });
     expect(legacyRunArchive).toEqual(archiveOriginal);
+  });
+
+  it("preserves a schema-1 render digest while adding result identity slots", () => {
+    const renderDigest = "a".repeat(64);
+    const archive = {
+      schemaVersion: 1,
+      records: [{
+        inputs: { scenario: { kind: "Earthquake" }, solverSettings: {} },
+        identity: {
+          scenarioSha256: renderDigest,
+          renderProtocolVersion: "1.0",
+        },
+        results: { snapshots: [] },
+      }],
+      trash: [],
+    };
+    const original = structuredClone(archive);
+
+    const migrated = migrateRunArchiveData(archive);
+
+    expect(migrated.data.records).toEqual([
+      expect.objectContaining({
+        inputs: expect.objectContaining({ dataReferences: [] }),
+        identity: expect.objectContaining({
+          resultSchemaVersion: 1,
+          resultSha256: null,
+          renderScenarioSha256: renderDigest,
+        }),
+        results: expect.objectContaining({ directEffects: null }),
+      }),
+    ]);
+    expect(archive).toEqual(original);
   });
 
   it("keeps every registry step contiguous and described", () => {

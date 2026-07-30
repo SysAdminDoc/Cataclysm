@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ScenarioBuilder } from "../ScenarioBuilder";
+import { ScenarioBuilder, type ScenarioPortableContext } from "../ScenarioBuilder";
 import {
   INITIAL_ASTEROID,
   INITIAL_EARTHQUAKE,
@@ -45,6 +45,33 @@ function setupUserWithoutClipboard() {
     configurable: true,
   });
   return user;
+}
+
+function portableContextForResult(
+  resultScenario: ScenarioPortableContext["resultScenario"],
+): ScenarioPortableContext {
+  return {
+    solverSettings: {
+      schema_version: 1,
+      use_spatial_bathymetry: false,
+      bathymetry_asset_id: null,
+      cells_per_degree: 8,
+      resolution_mode: "advanced",
+      duration_s: 3600,
+      frame_count: 60,
+      include_lamb_wave: false,
+      boundary_mode: "sponge",
+      checkpoint_interval_s: 60,
+    },
+    workspace: {
+      layers: [],
+      camera: { lat: 0, lon: 0, altitude_m: 1_000_000, heading_deg: 0, pitch_deg: -55 },
+    },
+    citations: [],
+    provenance: { app_version: "test" },
+    results: { schema_version: 1, snapshots: [] },
+    resultScenario,
+  };
 }
 
 describe("ScenarioBuilder scenario persistence", () => {
@@ -116,6 +143,36 @@ describe("ScenarioBuilder scenario persistence", () => {
       solverSettings: expect.objectContaining({ cells_per_degree: 9, boundary_mode: "radiation" }),
     }));
     expect(await screen.findByRole("status")).toHaveTextContent("Package imported as a copy");
+  });
+
+  it("only allows a result snapshot to be attached to its exact source scenario", () => {
+    const props = {
+      onSimulate: vi.fn(),
+      pickedLocation: null,
+      onTogglePick: vi.fn(),
+      pickActive: false,
+    };
+    const { rerender } = render(
+      <ScenarioBuilder
+        {...props}
+        portableContext={portableContextForResult({ kind: "Earthquake", source: INITIAL_EARTHQUAKE })}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", {
+      name: "Run this exact scenario before attaching a result snapshot.",
+    })).toBeDisabled();
+
+    rerender(
+      <ScenarioBuilder
+        {...props}
+        portableContext={portableContextForResult({ kind: "Asteroid", source: INITIAL_ASTEROID })}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", {
+      name: "Include the current result snapshot (may make the package much larger)",
+    })).toBeEnabled();
   });
 
   it("copies versioned scenario payloads", async () => {

@@ -50,6 +50,8 @@ import {
   runArchiveStore,
   type RunArchiveRecord,
 } from "./lib/run-archive";
+import type { RunIdentitySnapshot } from "./lib/run-identity";
+import { currentUserDataSchemaVersion } from "./lib/user-data-migrations";
 import { parseHighlightStoryOptions, type HighlightStoryOptions } from "./lib/highlight-story";
 import {
   buildDirectResultEvidence,
@@ -118,9 +120,11 @@ import {
 } from "./lib/layer-controller";
 import type {
   PortableJson,
+  PortableScenarioDataReference,
   PortableScenarioImport,
   PortableScenarioSolverSettings,
 } from "./lib/portable-scenario-package";
+import { EARTH_ASSET_REGISTRY_VERSION } from "./lib/earth-assets";
 import { SourceModelSummary } from "./components/SourceModelSummary";
 import {
   type AsteroidDetail,
@@ -571,7 +575,19 @@ export default function App() {
   const guidedStoryRuns = useRef(new Set<string>());
   const archivedSnapshots = useRef(new WeakSet<object>());
   const suppressNextArchive = useRef(false);
-  const nextArchiveParentRunId = useRef<string | null>(null);
+  const nextArchiveRerun = useRef<{
+    parentRunId: string;
+    label: string;
+    presetId: string | null;
+    scenario: ScenarioInput;
+  } | null>(null);
+  const nextArchiveImport = useRef<{
+    id: string;
+    createdAt: string;
+    identity: RunIdentitySnapshot;
+    dataReferences: PortableScenarioDataReference[];
+    directEffects: PortableJson | null;
+  } | null>(null);
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -1155,6 +1171,7 @@ export default function App() {
           embedded: false,
         }]
       : [];
+    const resultScenario = activePresetA?.source ?? slotA.lastCustomScenario ?? undefined;
     return {
       solverSettings,
       workspace: {
@@ -1169,12 +1186,16 @@ export default function App() {
       citations,
       provenance: {
         app_version: APP_VERSION,
+        solver_version: APP_VERSION,
+        asset_registry_version: EARTH_ASSET_REGISTRY_VERSION,
+        render_protocol_version: sweRenderFrameA?.protocolVersion ?? null,
+        render_scenario_sha256: sweRenderFrameA?.scenarioSha256 ?? null,
         scenario_id: slotA.activePresetId,
         scenario_kind: activeScenarioKindA,
         run_quality: sweRunQualityA,
         scientific_export: sweScientificExport,
       } as unknown as PortableJson,
-      results: sweSnapshots || sweMaxField || sweRunQualityA
+      results: resultScenario && (sweSnapshots || sweMaxField || sweRunQualityA)
         ? {
             schema_version: 1,
             snapshots: sweSnapshots ?? [],
@@ -1182,11 +1203,13 @@ export default function App() {
             gauges: sweGaugesA,
             run_quality: sweRunQualityA,
             isochrones: sweIsochrones ?? [],
+            direct_effects: slotA.initial as unknown as PortableJson,
           } as unknown as PortableJson
         : undefined,
+      resultScenario,
       dataReferences,
     };
-  }, [activePresetA, activeScenarioKindA, cameraTelemetry, layerState, portableSolverSettings, slotA.activePresetId, sweGaugesA, sweIsochrones, sweMaxField, sweRunQualityA, sweScientificExport, sweSnapshots, workspaceMode]);
+  }, [activePresetA, activeScenarioKindA, cameraTelemetry, layerState, portableSolverSettings, slotA.activePresetId, slotA.initial, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, workspaceMode]);
 
   useEffect(() => {
     if (!pendingArchivedAction || slotA.sourceResult.status !== "ready") return;
@@ -1196,6 +1219,8 @@ export default function App() {
       settings: record.inputs.solverSettings,
     }));
     if (mode === "open") {
+      nextArchiveImport.current = null;
+      nextArchiveRerun.current = null;
       suppressNextArchive.current = true;
       setPortableResultsImport((current) => ({
         id: (current?.id ?? 0) + 1,
@@ -1206,11 +1231,18 @@ export default function App() {
           gauges: record.results.gauges,
           run_quality: record.results.runQuality,
           isochrones: record.results.isochrones,
+          direct_effects: record.results.directEffects,
         } as unknown as PortableJson,
       }));
       setInspectorTab("results");
     } else {
-      nextArchiveParentRunId.current = record.id;
+      nextArchiveImport.current = null;
+      nextArchiveRerun.current = {
+        parentRunId: record.id,
+        label: record.label,
+        presetId: record.presetId,
+        scenario: structuredClone(record.inputs.scenario),
+      };
       setSweRunAndWatchNonce((nonce) => nonce + 1);
       setInspectorTab("setup");
     }
@@ -1229,15 +1261,26 @@ export default function App() {
       suppressNextArchive.current = false;
       return;
     }
+    const importedArchive = nextArchiveImport.current;
+    const rerunCandidate = nextArchiveRerun.current;
+    const rerunArchive = rerunCandidate
+      && JSON.stringify(rerunCandidate.scenario) === JSON.stringify(scenario)
+      ? rerunCandidate
+      : null;
+    if (rerunCandidate && !rerunArchive) nextArchiveRerun.current = null;
     void buildRunArchiveRecord({
-      parentRunId: nextArchiveParentRunId.current,
-      label: activePresetA?.name ?? slotA.initial?.label ?? `${scenario.kind} scenario`,
-      presetId: slotA.activePresetId,
+      id: importedArchive?.id,
+      parentRunId: rerunArchive?.parentRunId ?? null,
+      createdAt: importedArchive?.createdAt,
+      label: rerunArchive?.label ?? activePresetA?.name ?? slotA.initial?.label ?? `${scenario.kind} scenario`,
+      presetId: rerunArchive?.presetId ?? slotA.activePresetId,
       scenario,
       solverSettings: portableScenarioContext.solverSettings,
+      dataReferences: importedArchive?.dataReferences ?? portableScenarioContext.dataReferences,
       appVersion: APP_VERSION,
       renderProtocolVersion: sweRenderFrameA?.protocolVersion ?? null,
       renderScenarioSha256: sweRenderFrameA?.scenarioSha256 ?? null,
+      identityOverride: importedArchive?.identity,
       provenance: portableScenarioContext.provenance ?? {},
       scientificExport: sweScientificExport,
       logTail: readDiagnosticsLog(),
@@ -1247,9 +1290,11 @@ export default function App() {
         gauges: sweGaugesA,
         runQuality: sweRunQualityA,
         isochrones: sweIsochrones ?? [],
+        directEffects: importedArchive?.directEffects ?? slotA.initial as unknown as PortableJson,
       },
     }).then(async (record) => {
-      nextArchiveParentRunId.current = null;
+      nextArchiveRerun.current = null;
+      nextArchiveImport.current = null;
       try {
         await runArchiveStore.add(record);
         showToast(t("history.saved"));
@@ -1267,11 +1312,13 @@ export default function App() {
         }
       }
     }).catch((error) => {
+      nextArchiveRerun.current = null;
+      nextArchiveImport.current = null;
       archivedSnapshots.current.delete(sweSnapshots);
       console.warn("[history] failed to encode completed run", error);
       showToast(error instanceof Error ? error.message : String(error), "error");
     });
-  }, [activePresetA, inTauri, portableScenarioContext, showToast, slotA.activePresetId, slotA.initial?.label, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, t]);
+  }, [activePresetA, inTauri, portableScenarioContext, showToast, slotA.activePresetId, slotA.initial, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, t]);
 
   const openArchivedRun = useCallback((record: RunArchiveRecord) => {
     setShowRunHistory(false);
@@ -1297,6 +1344,32 @@ export default function App() {
       || layerScenarioKey !== pendingPortableImport.expectedLayerKey
       || slotA.sourceResult.status !== "ready"
     ) return;
+    const importedResultIdentity = pendingPortableImport.imported.resultIdentity;
+    const importedResults = pendingPortableImport.imported.results;
+    if (importedResultIdentity && importedResults) {
+      const resultRecord = importedResults as Record<string, PortableJson>;
+      nextArchiveImport.current = {
+        id: `run-import-${importedResultIdentity.result_sha256.slice(0, 40)}`,
+        createdAt: pendingPortableImport.imported.manifest.created_utc,
+        identity: {
+          appVersion: importedResultIdentity.app_version,
+          solverVersion: importedResultIdentity.solver_version,
+          scenarioSchemaVersion: importedResultIdentity.scenario_schema_version,
+          resultSchemaVersion: importedResultIdentity.result_schema_version,
+          archiveSchemaVersion: currentUserDataSchemaVersion("runArchive"),
+          scenarioSha256: importedResultIdentity.scenario_sha256,
+          settingsSha256: importedResultIdentity.settings_sha256,
+          dataSha256: importedResultIdentity.data_sha256,
+          resultSha256: importedResultIdentity.result_sha256,
+          renderProtocolVersion: importedResultIdentity.render_protocol_version,
+          renderScenarioSha256: importedResultIdentity.render_scenario_sha256,
+        },
+        dataReferences: structuredClone(pendingPortableImport.imported.dataReferences),
+        directEffects: resultRecord.direct_effects ?? null,
+      };
+    } else {
+      nextArchiveImport.current = null;
+    }
     const importedLayers = Array.isArray(pendingPortableImport.imported.workspace.layers)
       ? pendingPortableImport.imported.workspace.layers
       : [];

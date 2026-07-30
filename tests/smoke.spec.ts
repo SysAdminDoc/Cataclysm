@@ -685,9 +685,44 @@ test.describe("Cataclysm browser preview", () => {
     await dialog.getByRole("button", { name: "Restore" }).click();
     const restored = dialog.locator(".run-history__records > li").filter({ hasText: "Tohoku" });
     await expect(restored).toBeVisible();
-    await restored.getByRole("button", { name: "Reopen" }).click();
+
+    await restored.getByRole("button", { name: "Rerun current model" }).click();
+    const preflight = dialog.locator(".run-history__preflight");
+    await expect(preflight).toContainText("Source input SHA-256");
+    await expect(preflight).toContainText("Solver settings SHA-256");
+    await expect(preflight).toContainText("Scientific data SHA-256");
+    await preflight.getByRole("button", { name: "Run current model and link result" }).click();
 
     await expect(dialog).toHaveCount(0);
+    await page.getByRole("button", { name: "History", exact: true }).click();
+    const rerunDialog = page.getByRole("dialog", { name: "Run history" });
+    const records = rerunDialog.locator(".run-history__records > li").filter({ hasText: "Tohoku" });
+    await expect(records).toHaveCount(2, { timeout: 30_000 });
+    await expect(records.filter({ hasText: "Normalized rerun of" })).toHaveCount(1);
+
+    await records.nth(0).getByRole("checkbox", { name: /Select for comparison/ }).click();
+    await records.nth(1).getByRole("checkbox", { name: /Select for comparison/ }).click();
+    await expect(rerunDialog.getByText(/Linked normalized rerun/)).toBeVisible();
+    await expect(rerunDialog.getByText("Versioned input attribution")).toBeVisible();
+
+    const deltaDownload = page.waitForEvent("download");
+    await rerunDialog.getByRole("button", { name: "Export attributed deltas" }).click();
+    const delta = await deltaDownload;
+    expect(delta.suggestedFilename()).toMatch(/^cataclysm-delta-.*\.json$/);
+    const deltaPath = await delta.path();
+    expect(deltaPath).toBeTruthy();
+    const deltaPayload = JSON.parse(await readFile(deltaPath!, "utf8"));
+    expect(deltaPayload).toMatchObject({
+      schemaVersion: 1,
+      report: {
+        linkedNormalizedRerun: true,
+        field: { matchedFrames: 60 },
+      },
+    });
+
+    const historical = records.filter({ hasNotText: "Normalized rerun of" });
+    await historical.getByRole("button", { name: "Reopen" }).click();
+    await expect(rerunDialog).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Results" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible();
   });

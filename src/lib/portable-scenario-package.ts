@@ -1,5 +1,6 @@
 import { APP_VERSION } from "./model-provenance";
 import {
+  SCENARIO_SCHEMA_VERSION,
   createScenarioPayload,
   parseScenarioPayload,
   type ScenarioInput,
@@ -7,9 +8,14 @@ import {
   type ScenarioPayload,
 } from "./scenario-schema";
 import { SETTINGS_SCHEMA_VERSION } from "./settings";
+import {
+  RUN_RESULT_SCHEMA_VERSION,
+  buildRunDataSha256,
+  sha256Json,
+} from "./run-identity";
 
 export const PORTABLE_SCENARIO_FORMAT = "org.sysadmindoc.cataclysm.scenario-package";
-export const PORTABLE_SCENARIO_SCHEMA_VERSION = 1;
+export const PORTABLE_SCENARIO_SCHEMA_VERSION = 2;
 export const PORTABLE_SCENARIO_EXTENSION = ".cataclysm";
 export const PORTABLE_SCENARIO_MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
 export const PORTABLE_SCENARIO_MAX_ENTRY_BYTES = 16 * 1024 * 1024;
@@ -150,13 +156,32 @@ type PortableManifest = {
   root: PortableManifestRoot;
   entries: PortableManifestEntry[];
   data_references: PortableScenarioDataReference[];
+  result_identity?: PortableResultIdentity;
   migration_history: Array<{ code: string; description: string }>;
 };
 
-export type PortablePackageMigration = {
-  code: "package-v0-to-v1";
-  description: "migrated portable package schema 0 to schema 1 as an in-memory copy";
+export type PortableResultIdentity = {
+  app_version: string;
+  solver_version: string;
+  scenario_schema_version: number;
+  result_schema_version: number;
+  scenario_sha256: string;
+  settings_sha256: string;
+  data_sha256: string;
+  result_sha256: string;
+  render_protocol_version: string | null;
+  render_scenario_sha256: string | null;
 };
+
+export type PortablePackageMigration =
+  | {
+      code: "package-v0-to-v1";
+      description: "migrated portable package schema 0 to schema 1 as an in-memory copy";
+    }
+  | {
+      code: "package-v1-to-v2";
+      description: "added a verified immutable result identity as an in-memory copy";
+    };
 
 export type PortableScenarioImport = {
   manifest: PortableManifest;
@@ -168,6 +193,7 @@ export type PortableScenarioImport = {
   citations: PortableScenarioCitation[];
   provenance: PortableJson;
   results: PortableJson | null;
+  resultIdentity: PortableResultIdentity | null;
   checkpoints: PortableJson | null;
   dataReferences: PortableScenarioDataReference[];
   embeddedAssets: Array<{ path: string; mime: string; bytes: Uint8Array }>;
@@ -325,6 +351,39 @@ function asArray(value: unknown, label: string): unknown[] {
 
 function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function validatePortableResultIdentity(value: unknown): PortableResultIdentity {
+  const record = asRecord(value, "manifest result_identity");
+  const digestFields = [
+    "scenario_sha256",
+    "settings_sha256",
+    "data_sha256",
+    "result_sha256",
+  ] as const;
+  for (const field of digestFields) {
+    if (typeof record[field] !== "string" || !/^[a-f0-9]{64}$/.test(record[field] as string)) {
+      fail(`manifest result_identity ${field} must be a SHA-256 digest`);
+    }
+  }
+  for (const field of ["scenario_schema_version", "result_schema_version"] as const) {
+    if (!Number.isInteger(record[field]) || (record[field] as number) < 1) {
+      fail(`manifest result_identity ${field} must be a positive integer`);
+    }
+  }
+  if (typeof record.app_version !== "string" || record.app_version.length === 0 || record.app_version.length > 64
+    || typeof record.solver_version !== "string" || record.solver_version.length === 0 || record.solver_version.length > 128) {
+    fail("manifest result_identity version fields are invalid");
+  }
+  for (const field of ["render_protocol_version", "render_scenario_sha256"] as const) {
+    if (record[field] !== null && typeof record[field] !== "string") {
+      fail(`manifest result_identity ${field} must be a string or null`);
+    }
+  }
+  if (typeof record.render_scenario_sha256 === "string" && !/^[a-f0-9]{64}$/.test(record.render_scenario_sha256)) {
+    fail("manifest result_identity render_scenario_sha256 must be a SHA-256 digest");
+  }
+  return cloneJson(record) as PortableResultIdentity;
 }
 
 function buildStoredZip(entries: ArchiveEntry[]): Uint8Array {
@@ -513,6 +572,21 @@ function parseManifest(raw: unknown): { manifest: PortableManifest; migrations: 
       description: "migrated portable package schema 0 to schema 1 as an in-memory copy",
     });
   }
+  if (copy.schema_version === 1) {
+    copy.schema_version = 2;
+    const history = Array.isArray(copy.migration_history) ? copy.migration_history : [];
+    copy.migration_history = [
+      ...history,
+      {
+        code: "package-v1-to-v2",
+        description: "added a verified immutable result identity as an in-memory copy",
+      },
+    ];
+    migrations.push({
+      code: "package-v1-to-v2",
+      description: "added a verified immutable result identity as an in-memory copy",
+    });
+  }
   if (typeof copy.created_utc !== "string" || !Number.isFinite(Date.parse(copy.created_utc))) {
     fail("manifest created_utc must be an ISO timestamp");
   }
@@ -565,6 +639,9 @@ function parseManifest(raw: unknown): { manifest: PortableManifest; migrations: 
       if (typeof record.code !== "string" || typeof record.description !== "string") fail(`migration history ${index} is invalid`);
       return { code: record.code, description: record.description };
     });
+  const resultIdentity = copy.result_identity === undefined
+    ? undefined
+    : validatePortableResultIdentity(copy.result_identity);
   return {
     manifest: {
       format: PORTABLE_SCENARIO_FORMAT,
@@ -574,6 +651,7 @@ function parseManifest(raw: unknown): { manifest: PortableManifest; migrations: 
       root: root as PortableManifestRoot,
       entries,
       data_references: dataReferences,
+      ...(resultIdentity ? { result_identity: resultIdentity } : {}),
       migration_history: migrationHistory,
     },
     migrations,
@@ -656,7 +734,9 @@ function validateSolverSettings(value: unknown): PortableScenarioSolverSettings 
 
 function validateResults(value: unknown): PortableJson {
   const record = asRecord(value, "results");
-  if (record.schema_version !== 1) fail("results schema_version must be 1");
+  if (record.schema_version !== RUN_RESULT_SCHEMA_VERSION) {
+    fail(`results schema_version must be ${RUN_RESULT_SCHEMA_VERSION}`);
+  }
   const snapshots = asArray(record.snapshots, "result snapshots");
   if (snapshots.length > 1000) fail("results contain too many snapshots");
   for (const [index, snapshot] of snapshots.entries()) {
@@ -680,7 +760,79 @@ function validateResults(value: unknown): PortableJson {
   }
   if (record.max_field !== null) asRecord(record.max_field, "results max_field");
   if (record.run_quality !== null) asRecord(record.run_quality, "results run_quality");
+  if (record.direct_effects !== undefined && record.direct_effects !== null) {
+    asRecord(record.direct_effects, "results direct_effects");
+    const pending: Array<{ value: unknown; depth: number }> = [{ value: record.direct_effects, depth: 0 }];
+    let nodes = 0;
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      nodes += 1;
+      if (nodes > 10_000 || current.depth > 20) {
+        fail("results direct_effects exceed the bounded structure limit");
+      }
+      if (Array.isArray(current.value)) {
+        for (const child of current.value) pending.push({ value: child, depth: current.depth + 1 });
+      } else if (current.value && typeof current.value === "object") {
+        for (const child of Object.values(current.value as Record<string, unknown>)) {
+          pending.push({ value: child, depth: current.depth + 1 });
+        }
+      } else if (
+        current.value !== null
+        && typeof current.value !== "string"
+        && typeof current.value !== "boolean"
+        && (typeof current.value !== "number" || !Number.isFinite(current.value))
+      ) {
+        fail("results direct_effects must contain JSON values only");
+      }
+    }
+  }
   return cloneJson(record) as PortableJson;
+}
+
+function optionalString(record: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return null;
+}
+
+function nestedOptionalString(record: Record<string, unknown>, parent: string, ...keys: string[]): string | null {
+  const value = record[parent];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return optionalString(value as Record<string, unknown>, ...keys);
+}
+
+async function derivePortableResultIdentity(input: {
+  appVersion: string;
+  scenario: ScenarioInput;
+  solverSettings: PortableScenarioSolverSettings;
+  dataReferences: PortableScenarioDataReference[];
+  provenance: PortableJson;
+  resultSha256: string;
+}): Promise<PortableResultIdentity> {
+  const provenance = asRecord(input.provenance, "provenance");
+  const assetRegistryVersion = optionalString(provenance, "asset_registry_version", "assetRegistryVersion")
+    ?? `unreported-by-${input.appVersion}`;
+  return {
+    app_version: input.appVersion,
+    solver_version: optionalString(provenance, "solver_version", "solverVersion", "app_version", "appVersion")
+      ?? input.appVersion,
+    scenario_schema_version: SCENARIO_SCHEMA_VERSION,
+    result_schema_version: RUN_RESULT_SCHEMA_VERSION,
+    scenario_sha256: await sha256Json(input.scenario),
+    settings_sha256: await sha256Json(input.solverSettings),
+    data_sha256: await buildRunDataSha256({
+      solverSettings: input.solverSettings,
+      dataReferences: input.dataReferences,
+      assetRegistryVersion,
+    }),
+    result_sha256: input.resultSha256,
+    render_protocol_version: optionalString(provenance, "render_protocol_version", "renderProtocolVersion")
+      ?? nestedOptionalString(provenance, "render_frame", "protocolVersion", "protocol_version"),
+    render_scenario_sha256: optionalString(provenance, "render_scenario_sha256", "renderScenarioSha256")
+      ?? nestedOptionalString(provenance, "render_frame", "scenarioSha256", "scenario_sha256"),
+  };
 }
 
 export async function createPortableScenarioPackage(input: PortableScenarioCreateInput): Promise<Uint8Array> {
@@ -739,6 +891,17 @@ export async function createPortableScenarioPackage(input: PortableScenarioCreat
       sha256: await sha256(payload.bytes),
     });
   }
+  const resultEntry = manifestEntries.find((entry) => entry.role === "results");
+  const resultIdentity = resultEntry
+    ? await derivePortableResultIdentity({
+        appVersion: APP_VERSION,
+        scenario: parsedScenario.scenario,
+        solverSettings: input.solverSettings,
+        dataReferences,
+        provenance: input.provenance,
+        resultSha256: resultEntry.sha256,
+      })
+    : undefined;
   const manifest: PortableManifest = {
     format: PORTABLE_SCENARIO_FORMAT,
     schema_version: PORTABLE_SCENARIO_SCHEMA_VERSION,
@@ -747,6 +910,7 @@ export async function createPortableScenarioPackage(input: PortableScenarioCreat
     root,
     entries: manifestEntries,
     data_references: dataReferences,
+    ...(resultIdentity ? { result_identity: resultIdentity } : {}),
     migration_history: [],
   };
   parseManifest(manifest);
@@ -805,11 +969,38 @@ export async function inspectPortableScenarioPackage(input: ArrayBuffer | Uint8A
       validateAssetMagic(entry.bytes, declaration.mime, reference.relative_path);
       return { path: reference.relative_path, mime: declaration.mime, bytes: Uint8Array.from(entry.bytes) };
     });
+  const suppliedResultIdentity = manifest.result_identity;
+  const declaredResult = manifest.root.results ? declared.get(manifest.root.results) : undefined;
+  const derivedResultIdentity = results && declaredResult
+    ? await derivePortableResultIdentity({
+        appVersion: manifest.app_version,
+        scenario: scenario.scenario,
+        solverSettings,
+        dataReferences: manifest.data_references,
+        provenance: provenance as PortableJson,
+        resultSha256: declaredResult.sha256,
+      })
+    : null;
+  if (suppliedResultIdentity && derivedResultIdentity) {
+    for (const key of Object.keys(derivedResultIdentity) as Array<keyof PortableResultIdentity>) {
+      if (suppliedResultIdentity[key] !== derivedResultIdentity[key]) {
+        fail(`manifest result_identity ${key} does not match the verified package content`);
+      }
+    }
+  }
+  if (suppliedResultIdentity && !derivedResultIdentity) {
+    fail("manifest result_identity is present without an embedded result snapshot");
+  }
+  const resultIdentity = suppliedResultIdentity ?? derivedResultIdentity;
+  if (resultIdentity) manifest.result_identity = cloneJson(resultIdentity);
   const warnings: string[] = [];
   if (manifest.app_version !== APP_VERSION) warnings.push(`Package was created by Cataclysm ${manifest.app_version}; this build is ${APP_VERSION}.`);
   const missingReferences = manifest.data_references.filter((reference) => !reference.embedded);
   if (missingReferences.length > 0) warnings.push(`${missingReferences.length} local data reference(s) must be relinked on this machine.`);
   if (results === null) warnings.push("Package does not embed a result snapshot; reopen and run to recompute results.");
+  if (results !== null && !suppliedResultIdentity) {
+    warnings.push("A legacy result identity was reconstructed from verified package digests.");
+  }
 
   return {
     manifest,
@@ -821,6 +1012,7 @@ export async function inspectPortableScenarioPackage(input: ArrayBuffer | Uint8A
     citations,
     provenance: cloneJson(provenance) as PortableJson,
     results: cloneJson(results),
+    resultIdentity: cloneJson(resultIdentity),
     checkpoints: cloneJson(checkpoints),
     dataReferences: cloneJson(manifest.data_references),
     embeddedAssets,

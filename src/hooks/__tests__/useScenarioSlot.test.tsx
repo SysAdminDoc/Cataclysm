@@ -94,6 +94,37 @@ describe("useScenarioSlot", () => {
     expect(result.current.initial?.label).toBe("Preset result");
   });
 
+  it("keeps a newer custom source authoritative over an in-flight preset", async () => {
+    const preset = deferred<RunPresetResponse>();
+    const custom = deferred<InitialDisplacement>();
+    vi.mocked(api.runPreset).mockReturnValue(preset.promise);
+    vi.mocked(api.asteroidInitialConditions).mockReturnValue(custom.promise);
+
+    const { result } = renderHook(() => useScenarioSlot(900));
+
+    act(() => {
+      result.current.setActivePresetId("tohoku");
+    });
+    await waitFor(() => expect(api.runPreset).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      result.current.simulate({ kind: "Asteroid", source: INITIAL_ASTEROID });
+    });
+    await waitFor(() => expect(api.asteroidInitialConditions).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      custom.resolve(makeInitial("Current custom result"));
+      await custom.promise;
+    });
+    expect(result.current.initial?.label).toBe("Current custom result");
+
+    await act(async () => {
+      preset.resolve(makePresetResponse("tohoku", "Stale preset result"));
+      await preset.promise;
+    });
+    expect(result.current.initial?.label).toBe("Current custom result");
+  });
+
   it("preserves the scientific source while timeline-only wavefront refreshes", async () => {
     vi.mocked(api.runPreset).mockResolvedValue(makePresetResponse("tohoku", "Preset result"));
     const { result, rerender } = renderHook(({ timeS }) => useScenarioSlot(timeS), {

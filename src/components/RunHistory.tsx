@@ -14,6 +14,13 @@ import {
   type RunArchiveSnapshot,
   type RunArchiveWritePreview,
 } from "../lib/run-archive";
+import {
+  buildNormalizedRerunPreflight,
+  compareArchivedRuns,
+  exportRunDeltaReport,
+  type NormalizedRerunPreflight,
+  type RunDifferenceCategory,
+} from "../lib/run-comparison";
 import { UiIcon } from "./UiIcon";
 
 type Props = {
@@ -31,6 +38,17 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MiB`;
 }
 
+function categoryMessage(category: RunDifferenceCategory) {
+  const keys = {
+    solver: "history.category.solver",
+    schema: "history.category.schema",
+    source: "history.category.source",
+    settings: "history.category.settings",
+    data: "history.category.data",
+  } as const;
+  return keys[category];
+}
+
 export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, onRerun }: Props) {
   const { t, languageTag, formatNumber } = useI18n();
   useEscapeKey(onClose);
@@ -45,6 +63,12 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
   const [pendingPreview, setPendingPreview] = useState<RunArchiveWritePreview | null>(null);
   const [quotaPreview, setQuotaPreview] = useState<RunArchiveWritePreview | null>(null);
   const [quotaMiB, setQuotaMiB] = useState(128);
+  const [rerunPreflight, setRerunPreflight] = useState<{
+    record: RunArchiveRecord;
+    status: "loading" | "ready" | "error";
+    report: NormalizedRerunPreflight | null;
+    error: string | null;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     setStatus("loading");
@@ -93,6 +117,9 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
   const comparison = selectedIds.length === 2
     ? selectedIds.map((id) => snapshot?.records.find((record) => record.id === id)).filter((record): record is RunArchiveRecord => Boolean(record))
     : [];
+  const comparisonReport = comparison.length === 2
+    ? compareArchivedRuns(comparison[0], comparison[1])
+    : null;
 
   async function operation(action: () => Promise<void>, success?: string) {
     try {
@@ -123,6 +150,35 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
       `cataclysm-run-${safeFilenamePart(record.label)}.json`,
     );
     if (!result.ok) setMessage(result.message);
+  }
+
+  function exportComparison() {
+    if (comparison.length !== 2) return;
+    const result = downloadBlob(
+      new Blob([exportRunDeltaReport(comparison[0], comparison[1])], { type: "application/json;charset=utf-8" }),
+      `cataclysm-delta-${safeFilenamePart(comparison[0].label)}-vs-${safeFilenamePart(comparison[1].label)}.json`,
+    );
+    if (!result.ok) setMessage(result.message);
+  }
+
+  function previewNormalizedRerun(record: RunArchiveRecord) {
+    setRerunPreflight({ record, status: "loading", report: null, error: null });
+    void buildNormalizedRerunPreflight(record)
+      .then((report) => setRerunPreflight((current) => (
+        current?.record.id === record.id
+          ? { record, status: "ready", report, error: null }
+          : current
+      )))
+      .catch((error) => setRerunPreflight((current) => (
+        current?.record.id === record.id
+          ? {
+              record,
+              status: "error",
+              report: null,
+              error: error instanceof Error ? error.message : String(error),
+            }
+          : current
+      )));
   }
 
   async function applyQuota(evictionIds: readonly string[] = []) {
@@ -185,6 +241,49 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
             </section>
           )}
 
+          {rerunPreflight && (
+            <section className="run-history__preflight" aria-labelledby="run-history-preflight-title">
+              <div>
+                <span>
+                  <strong id="run-history-preflight-title">{t("history.preflightTitle")}</strong>
+                  <small>{t("history.preflightIntro", { label: rerunPreflight.record.label })}</small>
+                </span>
+                <button type="button" onClick={() => setRerunPreflight(null)} aria-label={t("history.preflightClose")}>
+                  <UiIcon name="close" size={14} />
+                </button>
+              </div>
+              {rerunPreflight.status === "loading" && <p role="status">{t("history.preflightLoading")}</p>}
+              {rerunPreflight.status === "error" && <p role="alert">{t("history.preflightError", { error: rerunPreflight.error ?? "" })}</p>}
+              {rerunPreflight.report && (
+                <>
+                  <dl>
+                    {rerunPreflight.report.differences.map((item) => (
+                      <div key={item.id} data-changed={item.changed ? "true" : "false"}>
+                        <dt>{item.label}<small>{t(categoryMessage(item.category))}</small></dt>
+                        <dd>
+                          <span title={item.historical}>{item.historical}</span>
+                          <UiIcon name="chevronRight" size={12} />
+                          <span title={item.current}>{item.current}</span>
+                          <strong>{t(item.changed ? "history.changed" : "history.unchanged")}</strong>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p>{rerunPreflight.report.changedCategories.length > 0
+                    ? t("history.preflightChanged", { categories: rerunPreflight.report.changedCategories.map((category) => t(categoryMessage(category))).join(", ") })
+                    : t("history.preflightIdentical")}</p>
+                  <div className="run-history__pending-actions">
+                    <button type="button" onClick={() => setRerunPreflight(null)}>{t("history.cancelPending")}</button>
+                    <button type="button" onClick={() => {
+                      onRerun(rerunPreflight.record);
+                      setRerunPreflight(null);
+                    }}>{t("history.preflightConfirm")}</button>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
           <div className="run-history__summary">
             <span><strong>{snapshot?.records.length ?? 0}</strong> {t("history.localOnly")}</span>
             <span>{t("history.used", {
@@ -225,7 +324,11 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
                         : [...current.slice(-1), record.id])}
                     />
                   </label>
-                  <span><strong>{record.label}</strong><small>{dateFormatter.format(new Date(record.createdAt))} · {record.scenarioKind}</small></span>
+                  <span>
+                    <strong>{record.label}</strong>
+                    <small>{dateFormatter.format(new Date(record.createdAt))} · {record.scenarioKind}</small>
+                    {record.parentRunId && <small title={record.parentRunId}>{t("history.linkedChild", { id: record.parentRunId.slice(0, 18) })}</small>}
+                  </span>
                   <span className="run-history__quality" data-status={record.quality.status}>{record.quality.status}</span>
                 </div>
                 <dl>
@@ -235,7 +338,7 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
                 </dl>
                 <div className="run-history__actions">
                   <button type="button" onClick={() => { void runArchiveStore.touch(record.id); onOpen(record); }}>{t("history.open")}</button>
-                  <button type="button" onClick={() => onRerun(record)}>{t("history.rerun")}</button>
+                  <button type="button" onClick={() => previewNormalizedRerun(record)}>{t("history.rerun")}</button>
                   <button type="button" onClick={() => exportRecord(record)}>{t("history.export")}</button>
                   <button type="button" onClick={() => void operation(() => runArchiveStore.setPinned(record.id, !record.pinned))}>{t(record.pinned ? "history.unpin" : "history.pin")}</button>
                   <button type="button" onClick={() => void operation(() => runArchiveStore.remove(record.id), t("history.removed"))}>{t("history.delete")}</button>
@@ -246,14 +349,65 @@ export function RunHistory({ pendingRecord, onPendingResolved, onClose, onOpen, 
 
           <section className="run-history__compare" aria-labelledby="run-history-compare-title">
             <h3 id="run-history-compare-title">{t("history.compare")}</h3>
-            {comparison.length !== 2 ? <p>{t("history.comparePrompt")}</p> : (
+            {!comparisonReport || comparison.length !== 2 ? <p>{t("history.comparePrompt")}</p> : (
               <div>
                 <strong>{comparison[0].label} ↔ {comparison[1].label}</strong>
+                <p>{comparisonReport.linkedNormalizedRerun
+                  ? t("history.compareLinked")
+                  : t("history.compareIndependent")}</p>
                 <dl>
-                  <div><dt>{t("history.comparePeak")}</dt><dd>{formatNumber(comparison[1].summary.peakAbsMaxM - comparison[0].summary.peakAbsMaxM, { signDisplay: "always", maximumFractionDigits: 3 })} m</dd></div>
+                  <div><dt>{t("history.comparePeak")}</dt><dd>{formatNumber(comparisonReport.field.peakAbsMaxM.delta, { signDisplay: "always", maximumFractionDigits: 3 })} m</dd></div>
                   <div><dt>{t("history.compareFrames")}</dt><dd>{formatNumber(comparison[1].summary.frameCount - comparison[0].summary.frameCount, { signDisplay: "always" })}</dd></div>
                   <div><dt>{t("history.compareQuality")}</dt><dd>{comparison[0].quality.status} ↔ {comparison[1].quality.status}</dd></div>
+                  <div><dt>{t("history.compareField")}</dt><dd>{comparisonReport.field.meanAbsFramePeakDeltaM === null
+                    ? "—"
+                    : `${formatNumber(comparisonReport.field.meanAbsFramePeakDeltaM, { maximumFractionDigits: 4 })} m`}</dd></div>
+                  <div><dt>{t("history.compareGauges")}</dt><dd>{t("history.compareCount", { count: comparisonReport.gauges.length })}</dd></div>
+                  <div><dt>{t("history.compareDirect")}</dt><dd>{t("history.compareCount", { count: comparisonReport.directEffects.length })}</dd></div>
                 </dl>
+                <p>{comparisonReport.attributedTo.length > 0
+                  ? t("history.compareAttributed", { categories: comparisonReport.attributedTo.map((category) => t(categoryMessage(category))).join(", ") })
+                  : t("history.compareNoAttribution")}</p>
+                {comparisonReport.gauges.length > 0 && (
+                  <details>
+                    <summary>{t("history.compareGaugeDetails")}</summary>
+                    <ul>{comparisonReport.gauges.map((gauge) => (
+                      <li key={gauge.id}>
+                        <span>{gauge.name}</span>
+                        <span>{t("history.compareGaugeDelta", {
+                          delta: formatNumber(gauge.peakAbsDeltaM, { signDisplay: "always", maximumFractionDigits: 4 }),
+                          rmse: formatNumber(gauge.rmseM, { maximumFractionDigits: 4 }),
+                        })}</span>
+                      </li>
+                    ))}</ul>
+                  </details>
+                )}
+                {comparisonReport.directEffects.length > 0 && (
+                  <details>
+                    <summary>{t("history.compareDirectDetails")}</summary>
+                    <ul>{comparisonReport.directEffects.map((effect) => (
+                      <li key={effect.path}>
+                        <span>{effect.path}</span>
+                        <span>{formatNumber(effect.delta, { signDisplay: "always", maximumFractionDigits: 4 })}</span>
+                      </li>
+                    ))}</ul>
+                  </details>
+                )}
+                <details>
+                  <summary>{t("history.compareIdentityDetails")}</summary>
+                  <ul>{comparisonReport.identityDifferences.map((item) => (
+                    <li key={item.id} data-changed={item.changed ? "true" : "false"}>
+                      <span>{item.label}</span>
+                      <span>{t(item.changed ? "history.changed" : "history.unchanged")}</span>
+                    </li>
+                  ))}</ul>
+                </details>
+                <div className="run-history__actions">
+                  <button type="button" onClick={exportComparison}>
+                    <UiIcon name="download" size={13} />
+                    {t("history.compareExport")}
+                  </button>
+                </div>
               </div>
             )}
           </section>

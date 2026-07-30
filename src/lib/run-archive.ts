@@ -1,5 +1,15 @@
 import { SCENARIO_SCHEMA_VERSION, type ScenarioInput } from "./scenario-schema";
-import type { PortableJson, PortableScenarioSolverSettings } from "./portable-scenario-package";
+import type {
+  PortableJson,
+  PortableScenarioDataReference,
+  PortableScenarioSolverSettings,
+} from "./portable-scenario-package";
+import {
+  RUN_RESULT_SCHEMA_VERSION,
+  buildRunDataSha256,
+  sha256Json,
+  type RunIdentitySnapshot,
+} from "./run-identity";
 import type {
   Gauge,
   GridSnapshot,
@@ -33,6 +43,7 @@ export type ArchivedRunResults = {
   gauges: Gauge[];
   runQuality: RunQualityRecord;
   isochrones: Isochrone[];
+  directEffects: PortableJson | null;
 };
 
 export type RunArchiveRecord = {
@@ -47,17 +58,9 @@ export type RunArchiveRecord = {
   inputs: {
     scenario: ScenarioInput;
     solverSettings: PortableScenarioSolverSettings;
+    dataReferences: PortableScenarioDataReference[];
   };
-  identity: {
-    appVersion: string;
-    solverVersion: string;
-    scenarioSchemaVersion: number;
-    archiveSchemaVersion: number;
-    scenarioSha256: string;
-    settingsSha256: string;
-    dataSha256: string;
-    renderProtocolVersion: string | null;
-  };
+  identity: RunIdentitySnapshot;
   summary: {
     durationS: number;
     frameCount: number;
@@ -188,6 +191,9 @@ function validateRunRecord(raw: unknown): RunArchiveRecord {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("record is not an object");
   const record = raw as Partial<RunArchiveRecord>;
   if (typeof record.id !== "string" || !/^run-[A-Za-z0-9-]{1,120}$/.test(record.id)) throw new Error("record id is invalid");
+  if (record.parentRunId !== null && (typeof record.parentRunId !== "string" || !/^run-[A-Za-z0-9-]{1,120}$/.test(record.parentRunId))) {
+    throw new Error("parent run id is invalid");
+  }
   if (typeof record.createdAt !== "string" || !Number.isFinite(Date.parse(record.createdAt))) throw new Error("completion time is invalid");
   if (typeof record.lastAccessedAt !== "string" || !Number.isFinite(Date.parse(record.lastAccessedAt))) throw new Error("access time is invalid");
   if (typeof record.pinned !== "boolean" || typeof record.label !== "string" || record.label.length === 0 || record.label.length > 200) throw new Error("record metadata is invalid");
@@ -199,11 +205,14 @@ function validateRunRecord(raw: unknown): RunArchiveRecord {
     typeof identity.appVersion !== "string"
     || typeof identity.solverVersion !== "string"
     || !Number.isInteger(identity.scenarioSchemaVersion)
+    || (identity.resultSchemaVersion !== undefined && !Number.isInteger(identity.resultSchemaVersion))
     || !Number.isInteger(identity.archiveSchemaVersion)
     || !isSha256(identity.scenarioSha256)
     || !isSha256(identity.settingsSha256)
     || !isSha256(identity.dataSha256)
+    || (identity.resultSha256 !== undefined && identity.resultSha256 !== null && !isSha256(identity.resultSha256))
     || (identity.renderProtocolVersion !== null && typeof identity.renderProtocolVersion !== "string")
+    || (identity.renderScenarioSha256 !== undefined && identity.renderScenarioSha256 !== null && !isSha256(identity.renderScenarioSha256))
   ) throw new Error("record identity is invalid");
   const summary = record.summary;
   if (
@@ -217,7 +226,28 @@ function validateRunRecord(raw: unknown): RunArchiveRecord {
     throw new Error("only accepted runs can be archived");
   }
   if (!isFiniteNumber(record.sizeBytes) || record.sizeBytes <= 0) throw new Error("record size is invalid");
-  return structuredClone(record as RunArchiveRecord);
+  const clean = structuredClone(record as RunArchiveRecord);
+  return {
+    ...clean,
+    inputs: {
+      ...clean.inputs,
+      dataReferences: Array.isArray(clean.inputs.dataReferences)
+        ? structuredClone(clean.inputs.dataReferences)
+        : [],
+    },
+    identity: {
+      ...clean.identity,
+      resultSchemaVersion: Number.isInteger(clean.identity.resultSchemaVersion)
+        ? clean.identity.resultSchemaVersion
+        : RUN_RESULT_SCHEMA_VERSION,
+      resultSha256: clean.identity.resultSha256 ?? null,
+      renderScenarioSha256: clean.identity.renderScenarioSha256 ?? null,
+    },
+    results: {
+      ...clean.results,
+      directEffects: clean.results.directEffects ?? null,
+    },
+  };
 }
 
 type LoadedArchive = RunArchiveSnapshot & {
@@ -467,50 +497,37 @@ export function createRunArchiveStore(backend: RunArchiveBackend) {
 
 export const runArchiveStore = createRunArchiveStore(new IndexedDbRunArchiveBackend());
 
-function canonicalize(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, child]) => [key, canonicalize(child)]),
-    );
-  }
-  return value;
-}
-
-export async function sha256Json(value: unknown): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(canonicalize(value)));
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 export async function buildRunArchiveRecord(input: {
+  id?: string;
   parentRunId?: string | null;
+  createdAt?: string;
   label: string;
   presetId: string | null;
   scenario: ScenarioInput;
   solverSettings: PortableScenarioSolverSettings;
+  dataReferences?: PortableScenarioDataReference[];
   appVersion: string;
   renderProtocolVersion: string | null;
   renderScenarioSha256: string | null;
+  identityOverride?: RunIdentitySnapshot | null;
   provenance: PortableJson;
   scientificExport: ScientificExportDescriptor | null;
   logTail: LogEntry[];
   results: ArchivedRunResults;
 }): Promise<RunArchiveRecord> {
-  const createdAt = new Date().toISOString();
-  const scenarioSha256 = input.renderScenarioSha256 ?? await sha256Json(input.scenario);
+  const createdAt = input.createdAt ?? new Date().toISOString();
+  const scenarioSha256 = await sha256Json(input.scenario);
   const settingsSha256 = await sha256Json(input.solverSettings);
-  const dataSha256 = await sha256Json({
-    bathymetryAssetId: input.solverSettings.bathymetry_asset_id,
-    scientificExport: input.scientificExport,
+  const dataSha256 = await buildRunDataSha256({
+    solverSettings: input.solverSettings,
+    dataReferences: input.dataReferences,
   });
+  const resultSha256 = await sha256Json(input.results);
   const snapshots = structuredClone(input.results.snapshots);
   const maxFrameAbs = snapshots.reduce((maximum, frame) => Math.max(maximum, frame.eta_abs_max_m), 0);
   const gaugeSampleCount = snapshots.reduce((total, frame) => total + (frame.gauge_samples?.length ?? 0), 0);
   const recordWithoutSize: Omit<RunArchiveRecord, "sizeBytes"> = {
-    id: `run-${crypto.randomUUID()}`,
+    id: input.id ?? `run-${crypto.randomUUID()}`,
     parentRunId: input.parentRunId ?? null,
     createdAt,
     lastAccessedAt: createdAt,
@@ -521,16 +538,20 @@ export async function buildRunArchiveRecord(input: {
     inputs: {
       scenario: structuredClone(input.scenario),
       solverSettings: structuredClone(input.solverSettings),
+      dataReferences: structuredClone(input.dataReferences ?? []),
     },
-    identity: {
+    identity: input.identityOverride ? structuredClone(input.identityOverride) : {
       appVersion: input.appVersion,
       solverVersion: input.appVersion,
       scenarioSchemaVersion: SCENARIO_SCHEMA_VERSION,
+      resultSchemaVersion: RUN_RESULT_SCHEMA_VERSION,
       archiveSchemaVersion: currentUserDataSchemaVersion("runArchive"),
       scenarioSha256,
       settingsSha256,
       dataSha256,
+      resultSha256,
       renderProtocolVersion: input.renderProtocolVersion,
+      renderScenarioSha256: input.renderScenarioSha256,
     },
     summary: {
       durationS: snapshots.at(-1)?.time_s ?? input.solverSettings.duration_s,
@@ -553,6 +574,7 @@ export async function buildRunArchiveRecord(input: {
       gauges: structuredClone(input.results.gauges),
       runQuality: structuredClone(input.results.runQuality),
       isochrones: structuredClone(input.results.isochrones),
+      directEffects: structuredClone(input.results.directEffects),
     },
   };
   const record = { ...recordWithoutSize, sizeBytes: jsonBytes(recordWithoutSize) };
@@ -569,3 +591,4 @@ export function exportRunArchiveRecord(record: RunArchiveRecord): string {
 }
 
 export { UserDataMigrationError };
+export { sha256Json };

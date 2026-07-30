@@ -58,7 +58,7 @@ function sameInitial(a: InitialDisplacement | null, b: InitialDisplacement): boo
  * one or two scenario slots in parallel for the F7 comparison view.
  */
 export function useScenarioSlot(timeS: number): ScenarioSlot {
-  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [activePresetId, setActivePresetIdState] = useState<string | null>(null);
   const [initial, setInitial] = useState<InitialDisplacement | null>(null);
   const [sourceResult, setSourceResult] = useState<AsyncResult<InitialDisplacement>>({ status: "idle" });
   const [wavefront, setWavefront] = useState<PropagationSnapshot | null>(null);
@@ -74,6 +74,7 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
   // later one on rapid timeline scrubs.
   const runPresetReqIdRef = useRef(0);
   const simulateReqIdRef = useRef(0);
+  const desiredPresetIdRef = useRef<string | null>(null);
   const loadedPresetIdRef = useRef<string | null>(null);
   // Track whether the hook is still mounted so async resolvers don't
   // setState on an unmounted component.
@@ -85,8 +86,20 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
     };
   }, []);
   const inTauri = useMemo(isTauri, []);
+  const setActivePresetId = useCallback((id: string | null) => {
+    desiredPresetIdRef.current = id;
+    // Preset selection owns the source slot immediately, before its state
+    // update and effect commit. This prevents an in-flight custom response
+    // from winning a race against the user's newer selection.
+    simulateReqIdRef.current += 1;
+    setActivePresetIdState(id);
+  }, []);
 
   useEffect(() => {
+    // A newer custom simulation may have cleared the desired preset while a
+    // render for the previous preset was still waiting to flush its effect.
+    // Ignore that stale effect instead of invalidating the custom request.
+    if (desiredPresetIdRef.current !== activePresetId) return;
     const sourceChanged = loadedPresetIdRef.current !== activePresetId;
     loadedPresetIdRef.current = activePresetId;
     if (!activePresetId) {
@@ -102,9 +115,6 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       setRunupResult({ status: "idle" });
     }
     setLastCustomScenario(null);
-    // A preset selection supersedes any custom scenario IPC already in flight.
-    // Otherwise a slow custom response can overwrite the preset the user just picked.
-    simulateReqIdRef.current += 1;
     runPresetReqIdRef.current += 1;
     const reqId = runPresetReqIdRef.current;
     // Only show the "loading source" state when the preset actually changes.
@@ -169,7 +179,8 @@ export function useScenarioSlot(timeS: number): ScenarioSlot {
       // source after the user has moved on.
       runPresetReqIdRef.current += 1;
       setBusyPresetId(null);
-      setActivePresetId(null);
+      desiredPresetIdRef.current = null;
+      setActivePresetIdState(null);
       setLastCustomScenario(input);
       setSourceResult({ status: "loading" });
       setInitial(null);

@@ -72,6 +72,7 @@ async function record(label = "Archived asteroid"): Promise<RunArchiveRecord> {
       gauges: [],
       runQuality: QUALITY,
       isochrones: [],
+      directEffects: null,
     },
   });
 }
@@ -159,12 +160,50 @@ describe("bounded immutable run archive", () => {
   it("exports a versioned deterministic data-only record", async () => {
     const archived = await record();
     const exported = JSON.parse(exportRunArchiveRecord(archived));
-    expect(exported.schemaVersion).toBe(1);
+    expect(exported.schemaVersion).toBe(2);
     expect(exported.record.identity).toMatchObject({
       appVersion: "0.14.0-test",
       scenarioSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       settingsSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       dataSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      resultSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
+  });
+
+  it("preserves a portable package result identity instead of relabeling it as current", async () => {
+    const importedIdentity = {
+      appVersion: "0.9.0",
+      solverVersion: "swe-0.9.0",
+      scenarioSchemaVersion: 1,
+      resultSchemaVersion: 1,
+      archiveSchemaVersion: 2,
+      scenarioSha256: "1".repeat(64),
+      settingsSha256: "2".repeat(64),
+      dataSha256: "3".repeat(64),
+      resultSha256: "4".repeat(64),
+      renderProtocolVersion: "0.9",
+      renderScenarioSha256: "5".repeat(64),
+    };
+    const original = await record("Portable historical result");
+    const imported = await buildRunArchiveRecord({
+      id: `run-import-${"4".repeat(40)}`,
+      createdAt: "2024-01-01T00:00:00.000Z",
+      label: original.label,
+      presetId: original.presetId,
+      scenario: original.inputs.scenario,
+      solverSettings: original.inputs.solverSettings,
+      appVersion: "99.0.0-current",
+      renderProtocolVersion: "1.0",
+      renderScenarioSha256: "6".repeat(64),
+      identityOverride: importedIdentity,
+      provenance: original.provenance,
+      scientificExport: original.scientificExport,
+      logTail: [],
+      results: original.results,
+    });
+
+    expect(imported.createdAt).toBe("2024-01-01T00:00:00.000Z");
+    expect(imported.identity).toEqual(importedIdentity);
+    expect(imported.results).toEqual(original.results);
   });
 });

@@ -34,23 +34,27 @@ function run(id: string, label: string, status: "pass" | "warning", peak: number
     inputs: {
       scenario: { kind: "Asteroid", source: {} } as RunArchiveRecord["inputs"]["scenario"],
       solverSettings: { duration_s: 3600 } as RunArchiveRecord["inputs"]["solverSettings"],
+      dataReferences: [],
     },
     identity: {
       appVersion: "0.14.0",
       solverVersion: "0.14.0",
       scenarioSchemaVersion: 1,
+      resultSchemaVersion: 1,
       archiveSchemaVersion: 1,
       scenarioSha256: id === "run-a" ? "a".repeat(64) : "b".repeat(64),
       settingsSha256: "c".repeat(64),
       dataSha256: "d".repeat(64),
+      resultSha256: "e".repeat(64),
       renderProtocolVersion: "1.0",
+      renderScenarioSha256: null,
     },
     summary: { durationS: 3600, frameCount: id === "run-a" ? 60 : 30, grid: { nx: 100, ny: 80 }, peakAbsMaxM: peak, gaugeCount: 0, gaugeSampleCount: 0 },
     quality: { status, finite_fields: true, minimum_total_depth_m: 1, cfl_number: 0.4, cfl_margin: 0.6, accepted_steps: 10, rejected_steps: 0, mass_drift_pct: 0, energy_drift_pct: 0, sponge_width_cells: 8, warnings: status === "warning" ? ["fixture"] : [], failure: null },
     provenance: {},
     scientificExport: null,
     logTail: [],
-    results: { snapshots: [], maxField: null, gauges: [], runQuality: {} as RunArchiveRecord["results"]["runQuality"], isochrones: [] },
+    results: { snapshots: [], maxField: null, gauges: [], runQuality: {} as RunArchiveRecord["results"]["runQuality"], isochrones: [], directEffects: null },
     sizeBytes: 2048,
   };
 }
@@ -112,5 +116,24 @@ describe("RunHistory", () => {
     await user.type(quota, "64");
     await user.click(screen.getByRole("button", { name: "Apply quota" }));
     expect(archive.setQuota).toHaveBeenCalledWith(64 * 1024 * 1024, []);
+  });
+
+  it("requires an explicit identity preflight before a linked current-model rerun", async () => {
+    const user = userEvent.setup();
+    const onRerun = vi.fn();
+    render(<RunHistory pendingRecord={null} onPendingResolved={() => {}} onClose={() => {}} onOpen={() => {}} onRerun={onRerun} />);
+    await screen.findByRole("heading", { name: "Run history" });
+
+    const pinnedCard = screen.getByText("Pinned pass").closest("li")!;
+    await user.click(within(pinnedCard).getByRole("button", { name: "Rerun current model" }));
+
+    expect(await screen.findByText("Normalized rerun preflight")).toBeInTheDocument();
+    expect((await screen.findAllByText("Source")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Data").length).toBeGreaterThan(0);
+    expect(onRerun).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Run current model and link result" }));
+    expect(onRerun).toHaveBeenCalledWith(RUNS[0]);
   });
 });

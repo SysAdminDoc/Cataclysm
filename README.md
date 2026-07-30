@@ -174,11 +174,19 @@ Existing tools each do one piece:
 - **Portable scenario packages** — the Custom scenario editor exports a
   versioned `.cataclysm` package containing the source inputs, redacted app and
   solver settings, layers/camera, citations, provenance, optional
-  checkpoints/results, and relative references to local data. Import always
+  checkpoints/results, and relative references to local data. Embedded results
+  carry a verified immutable identity across app, solver, scenario/result
+  schema, source, settings, data, render, and result digests. Import always
   shows a data-only preview before creating a new copy; packages reject
   executable content, unsafe paths, unsupported MIME/signature pairs, digest
   mismatches, oversize archives/entries, and unknown future schemas without
   modifying the active workspace.
+- **Version-attributed historical reruns** — History keeps an imported or local
+  result unchanged, previews every solver, schema, source, settings, and data
+  identity difference before a current-model rerun, and saves that rerun as a
+  linked child. Comparing two archived results attributes field, gauge, and
+  available direct-effect deltas to the changed versioned inputs and exports a
+  machine-readable delta report.
 - **Deterministic global-exchange lab** — seven preserved NukeMap scenarios,
   427 target records, and 712 assigned warheads can be explored through
   Cesium-native great-circle arcs and an accessible React HUD. Phase filters,
