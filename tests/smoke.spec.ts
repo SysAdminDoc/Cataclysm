@@ -496,13 +496,75 @@ test.describe("Cataclysm browser preview", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const menu = page.getByRole("group", { name: "Export current scenario" });
-    for (const label of ["PNG", "Share", "Share story", "Video", "Text", "NetCDF", "Zarr", "VTK", "KML", "Link"]) {
+    for (const label of ["PNG", "Share", "Share story", "Real-time video", "Text", "NetCDF", "Zarr", "VTK", "KML", "Link"]) {
       await expect(menu.getByRole("button", { name: new RegExp(`^${label}(?:\\s+Requires:|$)`) })).toBeVisible();
     }
+    const webCodecsAvailable = await page.evaluate(
+      () => typeof VideoEncoder !== "undefined" && typeof VideoFrame !== "undefined",
+    );
+    await expect(menu.getByRole("button", { name: /^Deterministic MP4(?:\s+Requires:|$)/ }))
+      .toHaveCount(webCodecsAvailable ? 1 : 0);
     await expect(menu.getByRole("button", { name: /^NetCDF(?:\s|$)/ })).toHaveAttribute("aria-disabled", "true");
     await expect(menu.getByRole("button", { name: /^VTK(?:\s|$)/ })).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByRole("button", { name: "References", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  });
+
+  test("clearly labels the real-time fallback when WebCodecs is unavailable", async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "VideoEncoder", { configurable: true, value: undefined });
+      Object.defineProperty(window, "VideoFrame", { configurable: true, value: undefined });
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const menu = page.getByRole("group", { name: "Export current scenario" });
+    await expect(menu.getByRole("button", { name: /^Deterministic MP4/ })).toHaveCount(0);
+    await expect(menu.getByRole("button", { name: /^Real-time video/ })).toBeVisible();
+    await expect(menu).toContainText("record the visible timeline in real time");
+  });
+
+  test("encodes cached SWE frames deterministically and restores the replay position", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto("/");
+    const webCodecsAvailable = await page.evaluate(
+      () => typeof VideoEncoder !== "undefined" && typeof VideoFrame !== "undefined",
+    );
+    test.skip(!webCodecsAvailable, "This runtime exposes only the labelled real-time fallback.");
+
+    const chicxulub = page.locator(".preset-card").filter({
+      has: page.getByText("Chicxulub Impact", { exact: true }),
+    });
+    await chicxulub.click();
+    await page.getByRole("button", { name: "Run & Watch" }).click();
+    await expect(page.getByRole("status", { name: "Run and Watch: Understand" })).toBeVisible({ timeout: 20_000 });
+    const pause = page.getByRole("button", { name: "Pause scenario timeline" });
+    if (await pause.isVisible()) await pause.click();
+    const scrubber = page.getByRole("slider", { name: "Scenario timeline scrubber" });
+    await scrubber.fill("1200");
+    await expect(scrubber).toHaveValue("1200");
+
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const deterministic = page.getByRole("button", { name: "Deterministic MP4", exact: true });
+    await expect(deterministic).toHaveAttribute("aria-disabled", "false");
+    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
+    await deterministic.click();
+    const progress = page.getByRole("progressbar", { name: "Deterministic video encoding progress" });
+    await expect(progress).toBeVisible();
+    await expect.poll(async () => Number(await progress.getAttribute("value"))).toBeGreaterThan(0);
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(
+      /^cataclysm-chicxulub-t0min-\d{8}-\d{6}-deterministic-metric\.mp4$/,
+    );
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    const bytes = await readFile(path!);
+    expect(bytes.byteLength).toBeGreaterThan(1_000);
+    expect(bytes.subarray(4, 8).toString("ascii")).toBe("ftyp");
+    await expect(page.getByText("Saved deterministic replay MP4.")).toBeVisible();
+    await expect(progress).toHaveCount(0);
+    await expect(scrubber).toHaveValue("1200");
+    await expect(page.getByRole("button", { name: "Play scenario timeline" })).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: "SWE solver progress" })).toHaveCount(0);
   });
 
   test("direct nuclear results unlock provenance-bearing GIS exports", async ({ page }) => {

@@ -56,6 +56,34 @@
   background: color-mix(in srgb, var(--surface0) 74%, transparent);
 }
 
+.app-video-export-status {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 1000;
+  display: grid;
+  width: min(420px, 92vw);
+  gap: 7px;
+  padding: 11px 16px;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--sapphire) 40%, var(--panel-border));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--sapphire) 12%, var(--mantle));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--crust) 55%, transparent);
+}
+
+.app-video-export-status progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  accent-color: var(--accent);
+}
+
 /* Inline panel error (e.g. preset list failed to load) with a retry. */
 .panel-error {
   display: flex;

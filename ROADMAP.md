@@ -32,62 +32,13 @@ remain safe in-tree under `legacy/` while this section reaches parity.
 
 ### P1
 
-- [ ] P1 — Keep GPU max-field accumulation resident and batch solver readback
-  Why: every accepted GPU step currently reuploads host eta/u/v, dispatches one step, then submits, polls, maps, and copies three full fields so CPU max-field code can observe it, serializing the accelerated path.
-  Evidence: `src-tauri/src/commands.rs` (`stream_simulation_dispatch`, `run_simulation_gpu`); `src-tauri/src/physics/solver/gpu.rs` (`step_with_diagnostics`); `physics/solver/max_field.rs`.
-  Touches: WGSL buffers/kernel, `GpuTimeStepper`, GPU dispatcher, max-field encoding, cancellation/diagnostics, solver benchmark.
-  Acceptance: peak, time-of-maximum, arrival, and eta² accumulation update on every accepted GPU step without host readback; eta/u/v read back only at display, cancellation, or completion boundaries; CPU/GPU products stay within declared tolerance and a fixed 4M-cell benchmark records material speedup without extra VRAM beyond budget.
-  Complexity: L
-
-- [ ] P1 — Add deterministic parameter-sensitivity ensembles with percentile products
-  Why: exact single outcomes hide epistemic input uncertainty; USGS/OpenQuake practice uses ensembles and uncertainty products, which fit education when labelled sensitivity rather than occurrence probability.
-  Evidence: USGS PTHA https://www.usgs.gov/publications/probabilistic-tsunami-hazard-analysis-multiple-sources-and-global-applications; ShakeMap uncertainty https://www.usgs.gov/publications/quantifying-and-qualifying-usgs-shakemap-uncertainty; OpenQuake scenario workflow https://docs.openquake.org/oq-engine/3.22/manual/user-guide/workflows/scenario-hazard.html.
-  Touches: existing run admission/identity item, sampling/seed contract, batch orchestration, percentile fields/gauges, Results/Layers, exports.
-  Acceptance: users select 1–3 inputs and cited bounds; a preflighted local ensemble reports median and 5th/95th percentile peak, arrival, runup, and applicable direct effects; exports include distributions, seed, sample count and failed/cancelled members; UI says sensitivity envelope, not probability/forecast.
-  Complexity: L
-
 ### P2
-
-- [ ] P2 — Define portable, non-executable scenario packages
-  Why: share URLs and saved inputs do not carry solver settings, citations, local-data references, results, or migration evidence needed to reopen an exact analysis on another machine.
-  Evidence: current scenario schema/settings/export paths; ParaView portable state pattern https://docs.paraview.org/en/latest/UsersGuide/savingResults.html; Universe Sandbox sharing https://universesandbox.com/faq/.
-  Touches: versioned ZIP manifest/schema, scenario/settings/result serializers, optional embedded assets, import preview/migration, security tests.
-  Acceptance: export/import round-trips inputs, solver settings, layers/camera, citations, provenance, optional checkpoints/results, and relative data references; packages contain no executable content and enforce path, entry-count, compressed/expanded-size, MIME, schema/version, and digest limits; future versions fail without mutation and older versions migrate as copies.
-  Complexity: M
-
-- [ ] P2 — Expose the Rust-authoritative workflow through a headless CLI
-  Why: reproducible batch runs, research automation, regression generation, and independent verification currently require driving the GUI or bespoke scripts.
-  Evidence: `src-tauri/src/lib.rs`/`commands.rs`; OpenSPH GUI/CLI pattern https://github.com/pavelsevecek/OpenSPH; NOAA ComMIT https://nctr.pmel.noaa.gov/ComMIT/.
-  Touches: physics crate boundary, new binary target, scenario/package validation, run/compare/export/benchmark commands, structured progress and exit codes.
-  Acceptance: CLI commands validate, run, resume, compare, inspect, export, and benchmark using the same Rust implementations/contracts as Tauri; JSON output is versioned and deterministic; cancellation and failures use non-zero exit codes; GUI-vs-CLI golden fixtures match.
-  Complexity: L
-
-- [ ] P2 — Offer a separately labelled offline Windows installer
-  Why: Tauri defaults to downloading the WebView2 bootstrapper when the runtime is missing, so the current installer is not fully offline despite the app's classroom/offline posture.
-  Evidence: `src-tauri/tauri.conf.json` (no `webviewInstallMode`); Tauri Windows installer docs https://v2.tauri.app/distribute/windows-installer/; Microsoft Evergreen guidance https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/evergreen-vs-fixed-version.
-  Touches: local release build variants/manifests, installer naming/checksums, release docs, network-blocked VM smoke.
-  Acceptance: the normal small installer remains; an optional `offline` MSI/NSIS embeds the Evergreen offline installer, documents its size tradeoff, and installs in a network-blocked clean Windows sandbox without WebView2; runtime servicing remains Evergreen rather than Fixed Version.
-  Complexity: M
 
 ## Research-Driven Additions
 
 ### P1
 
 ### P2
-
-- [ ] P2 — Export optional ParaView-ready VTK XML time series
-  Why: planned Zarr covers chunked storage, but the scientific-visualization ecosystem expects VTK series for immediate independent field inspection.
-  Evidence: Likely — SWEpy VTU output https://github.com/joaquinmeza90/SWEpy; ParaView state/extractor workflow https://docs.paraview.org/en/latest/UsersGuide/savingResults.html.
-  Touches: streaming export adapter, shared quality/provenance preflight, export UI/CLI, interoperability fixture.
-  Acceptance: export streams regular-grid frames as `.vti` plus `.pvd` with eta, depth, u/v, speed, quality, CRS/datum, units, simulation time, and source/data digests; ParaView 6.1 opens correct timesteps/arrays; invalid runs remain blocked; export does not retain another full run in memory.
-  Complexity: M
-
-- [ ] P2 — Compare immutable historical results with normalized current-model reruns
-  Why: model/data corrections are frequent, but reopening an old analysis cannot yet show whether a changed result came from inputs, data, schema, or solver version.
-  Evidence: Likely — current run/provenance types and portable-package roadmap item; Moody's model-version change management https://www.moodys.com/web/en/us/who-we-serve/insurance/intelligent-risk-platform/risk-modeler.html.
-  Touches: run identity, portable package migration, immutable result snapshot, normalized rerun service, Compare/Science UI, delta export.
-  Acceptance: opening an older package preserves its original result; preflight lists solver, schema, source, settings, and data-digest differences; an explicit normalized rerun creates a new linked result; Compare attributes field/gauge/direct-effect deltas to versioned inputs and never mutates the historical artifact.
-  Complexity: L
 
 ## Research-Driven Additions (2026-07-14)
 
@@ -101,88 +52,11 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P2 — reliability guards and physical credibility
 
-- [ ] P2 — Exploit WebGPU subgroups/f16 and add a timestamp-query GPU profiler
-  Why: subgroups accelerate the GPU-resident max-field and flux reductions, f16
-  storage halves bandwidth on the memory-bound SWE stencil, and timestamp queries
-  enable an honest per-pass in-app GPU profiler — all on the existing wgpu path
-  without changing the CPU reference.
-  Evidence: WebGPU 128 subgroups/f16 https://developer.chrome.com/blog/new-in-webgpu-128;
-  timestamp queries https://developer.chrome.com/blog/new-in-webgpu-120;
-  wgpu features https://docs.rs/wgpu/latest/wgpu/struct.Features.html;
-  `src-tauri/src/physics/solver/gpu.rs`.
-  Touches: WGSL kernels/reductions, optional f16 storage buffers, feature
-  detection + fallback, `timestamp-query` pass wiring, diagnostics panel, solver
-  benchmark.
-  Acceptance: when the adapter advertises the features, subgroup reductions and
-  f16 storage are used with graceful fallback and CPU/GPU products within declared
-  tolerance; a fixed-size benchmark records material speedup within VRAM budget;
-  the diagnostics panel reports per-pass GPU timings from timestamp queries.
-  Complexity: M
-
-- [ ] P2 — Hazard-map-literacy design pass on overlays and framing
-  Why: tsunami-communication research shows users read single-scenario maps as
-  certainty and safe zones as guarantees, and that comparison/percentage framings
-  can mislead; leading with arrival time, adopting recognizable IOC symbology
-  (clearly labelled non-operational), and showing uncertainty bands counter
-  documented misreadings.
-  Evidence: MDPI Water 2024 https://www.mdpi.com/2073-4441/16/23/3423;
-  Springer 2025 uncertainty chapter https://link.springer.com/chapter/10.1007/978-3-031-98115-9_8;
-  IOC Tsunami Ready symbology https://tsunami.ioc.unesco.org/en/tsunami-ready;
-  current overlays in `src/render/cesium/**` and results copy.
-  Touches: overlay color/symbology tokens, arrival-time-first result summaries,
-  uncertainty-band presentation, non-operational labelling, misconception
-  callouts, visual baselines.
-  Acceptance: inundation/runup overlays use a documented, official-aligned
-  legend with an explicit "not an evacuation map" label; results lead with
-  arrival time and an uncertainty band rather than a bare single value; at least
-  one misconception (safe-zone false confidence, single-scenario certainty) is
-  actively pre-empted in copy; changes are covered by visual baselines.
-  Complexity: M
-
-- [ ] P2 — Close WCAG 2.2 AA gaps beyond forced-colors
-  Why: a globe leans on drag (pan/rotate/place) and small targets, but there is
-  no non-drag alternative, target-size floor, focus-not-obscured guarantee, or
-  consistent-help affordance; these are the highest-value untracked WCAG 2.2 AA
-  criteria for this UI.
-  Evidence: WCAG 2.2 new criteria https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/;
-  drag-to-place in `src/components/Globe.tsx`/interaction hosts; control sizes in
-  `src/styles/**`.
-  Touches: coordinate/keyboard alternatives for every drag-to-place/pan action,
-  24×24 target-size audit, sticky-header focus-obscuring fixes, a persistent Help
-  affordance, Playwright accessibility fixtures.
-  Acceptance: every dragging interaction (pan, rotate, place marker) has a
-  single-pointer/keyboard/coordinate alternative; interactive targets meet the
-  24×24 minimum or an exception; keyboard focus is never fully obscured by fixed
-  chrome; Help is reachable consistently; new axe/Playwright checks cover 2.5.7,
-  2.5.8, 2.4.11, and 3.2.6.
-  Complexity: M
-
 ## Research-Driven Additions
 
 ### P1
 
-- [ ] P1 — Automate spatial/temporal convergence and Grid Convergence Index reporting
-  Why: mass/benchmark fixtures do not quantify discretization error, so resolution changes can alter arrival, peak, or runup without an observed-order or uncertainty guard.
-  Evidence: existing solver quality/validation tests; NOAA convergence benchmark https://nctr.pmel.noaa.gov/benchmark/Basic/Basic_Convergence/index.html; NASA GCI guidance https://www.grc.nasa.gov/www/wind/valid/tutorial/spatconv.html.
-  Touches: CPU/GPU solver benchmark harness, analytical and selected NTHMP fixtures, machine-readable convergence report, strict verification.
-  Acceptance: at least three systematically refined grids/timesteps report observed order, Richardson estimate, GCI, and asymptotic-range check for arrival, peak elevation/runup, mass, and energy; CPU/GPU trends agree within declared bands; strict release verification fails on approved-fixture regression while preserving shock/discontinuity caveats.
-  Complexity: L
-
-- [ ] P1 — Add a convergence-calibrated resolution-adequacy preflight
-  Why: “cells per degree” and broad cell-count caps do not tell users whether a fault, source width, or shortest declared feature is resolved, making higher-detail results look equally trustworthy.
-  Evidence: `src/components/SwePlayback.tsx:535-548`; `src-tauri/src/commands.rs:905-1079`; depends on the convergence harness above; TOAST bathymetry-resolution disclosure https://docs.gempa.de/toast/current/base/simulations.html.
-  Touches: run admission/estimator, source geometry metadata, Simple/Advanced solver controls, result quality/provenance, exports.
-  Acceptance: preflight reports physical `dx/dy`, `dt`, cells across each source feature, estimated memory/runtime, and a convergence-calibrated adequacy grade; Simple mode selects a validated affordable grid; Advanced under-resolved overrides remain allowed but visibly marked in results and exports; no grade implies operational fitness.
-  Complexity: M
-
 ### P2
-
-- [ ] P2 — Add a bounded immutable local run archive
-  Why: scenarios and crash evidence persist, but a successful result disappears when the session closes, forcing recomputation and obscuring which model/data version produced an earlier conclusion.
-  Evidence: current settings/scenario persistence; existing checkpoint, portable-package, and normalized-rerun roadmap items; OpenQuake prior-run logs/outputs https://docs.openquake.org/oq-engine/3.19/manual/getting-started/running-calculations/web-ui.html; TOAST incident database https://docs.gempa.de/toast/current/base/import.html.
-  Touches: versioned run-record codec/store, run completion flow, History UI, quota/cleanup, reopen/compare/export integration, corruption/migration tests.
-  Acceptance: accepted runs atomically store immutable inputs, solver/schema/data digests, quality/provenance, summary/maxima/gauges, a redacted log tail, and optional fields/frames; History filters, pins, reopens without recomputation, links reruns, and supports recoverable deletion; a configurable quota uses preview-before-eviction/LRU rules; corrupt or future records are quarantined without mutating originals.
-  Complexity: L
 
 ### P3
 
@@ -199,12 +73,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 
 ### P2
 
-- [ ] P2 — Surface extended max-field products in the Inspect/Results panels
-  Why: max flow depth, speed, specific momentum flux, drawdown, and time-of-max-speed are now computed every step and written to the NetCDF/Zarr exports, but the interactive UI cannot display them — a point probe still reports only wave height/runup, not flow depth/speed/momentum flux/drawdown.
-  Where: `src/components/PointProbePanel.tsx`/`ResultsPanel.tsx`; needs an IPC path that returns the per-cell extended values at a picked coordinate without shipping the full arrays (e.g. a `max_field_probe(lat, lon)` command), plus a Layers overlay option.
-  Acceptance: a point probe reports max flow depth, speed, specific momentum flux, and drawdown at a coordinate with units; the values match the exported NetCDF/Zarr; no full-grid array is added to the result IPC payload.
-  Complexity: M
-
 - [ ] P2 — Surface the deterministic WebCodecs video export in the UI
   Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it — the export menu still only offers the real-time MediaRecorder path.
   Where: `src/lib/export.ts` (helper present), export/highlight-story UI in `src/App.tsx`/`src/components/HighlightStoryDialog.tsx`, a frame-stepping `renderFrame(i)` driver over the SWE replay.
@@ -216,12 +84,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Where: `src/components/SwePlayback.tsx` (a "Quick ETA" action), a new arrival-time preview layer in `src/render/cesium/**` / `Globe.tsx`, `src/lib/tauri.ts` (wrapper already present).
   Acceptance: a Quick ETA action renders the coarse arrival map as a clearly-labelled non-authoritative preview distinct from validated max-field isochrones; the full nonlinear run stays the reproducible/exported product.
   Complexity: M
-
-- [ ] P2 — Keep globe inspect responsive during heavy playback (real async pick)
-  Why: `pickEllipsoid` is a cheap analytic pick that is fine today; Cesium's only async pick (`scene.pickAsync`) resolves a *feature object*, not a ground coordinate, so it does not fit the inspect-coordinate use case. A genuine improvement needs either off-thread coordinate picking or throttling inspect during playback — not a drop-in swap. (A prior `globe.pick(ray)` swap was reverted as a non-improvement.)
-  Where: `src/render/cesium/cesium-interaction-host.ts`, `src/components/Globe.tsx`.
-  Acceptance: inspect during 60-frame playback returns a coordinate without a measurable animation stall, verified against the current `pickEllipsoid` baseline; picking accuracy unchanged.
-  Complexity: S
 
 - [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
   Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
@@ -288,20 +150,6 @@ below are the net-new, non-duplicate opportunities from this scan.
   Evidence: Verified extension of the existing "NCEI HazEL historical tsunami event browser" item — that item's acceptance stops at loading magnitude/epicentre. NCEI runup records https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search.
   Touches: `src/lib/` (extend the HazEL client to fetch runup records for a selected event), `src/components/CoastalRunupOverlay.tsx`/`Globe.tsx` (observed-vs-simulated comparison layer with residuals), CSP allowlist already added by the base HazEL item.
   Acceptance: for a HazEL event with runup records, an opt-in layer plots observed runup points alongside simulated runup at comparable locations with a residual summary and explicit sampling/confidence caveats; degrades gracefully offline; does not alter solver output. Do not land before the base HazEL browser item.
-  Complexity: M
-
-- [ ] P2 — Unified user-data schema-migration framework with upgrade tests
-  Why: the app carries many independently-versioned JSON contracts and per-key settings migration is ad-hoc in `settings.ts` ("migrates legacy store copies"); there is no holistic, tested upgrade path across app versions, so a future schema change to scenarios/history/settings risks silent data loss on upgrade.
-  Evidence: Verified — `src/lib/settings.ts` (~1011 lines) does per-key legacy migration; versioned contracts include `coastal_points.json` schema v2, earth-assets, source-input-contract, render-protocol; no single migration registry or cross-version upgrade test exists. Cross-ref existing portable-package/run-archive/checkpoint items (which each migrate independently).
-  Touches: a single migration registry module (ordered version→version transforms for settings, saved scenarios, and run archive), `src/lib/settings.ts` and the persistence layers that consume it, a Vitest suite loading golden fixtures from prior schema versions.
-  Acceptance: loading persisted data from each prior supported schema version migrates forward without loss, is idempotent, and is proven by golden-fixture tests; an unknown/future schema version fails closed with a clear recoverable message rather than corrupting state; migrations are append-only and documented.
-  Complexity: M
-
-- [ ] P2 — Data & Network trust panel with reachable-origin self-test
-  Why: the product's positioning is trust-first (TrustDisclosure, FirstRunDisclaimer, disclaimers) and every feature implicitly promises local-only/no-telemetry, but there is no single surface that enumerates exactly which network origins the app can reach and asserts nothing else is contacted — an on-brand, philosophy-consistent alternative to the rejected telemetry idea.
-  Evidence: Verified gap — CSP allowlist lives in `src-tauri/tauri.conf.json` and earth-provider config in `src/lib/earth-assets.ts`, but no consolidated user-facing data/privacy panel or automated origin assertion exists. Rejected-telemetry rationale in RESEARCH.md; Tauri CSP guidance https://v2.tauri.app/security/csp/.
-  Touches: a new Settings/References "Data & Network" panel (lists every allowed origin, what it's used for, and that no usage/telemetry is transmitted; states keychain-local credential handling), a test that derives the allowed-origin set from the CSP/earth-assets config and fails if code references an origin not declared there.
-  Acceptance: the panel enumerates every reachable origin with purpose and an explicit "no telemetry / no location transmitted" statement sourced from config, not hard-coded prose; a test asserts the app's declared origins match the CSP/earth-assets allowlist and flags any undeclared network reference; the panel works offline.
   Complexity: M
 
 ### P3

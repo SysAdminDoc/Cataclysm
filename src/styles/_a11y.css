@@ -155,6 +155,7 @@ html,
   .scenario-saved,
   .modal,
   .app-toast,
+  .app-video-export-status,
   .panel-error {
     background: Canvas;
     border-color: CanvasText;

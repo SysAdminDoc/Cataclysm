@@ -6,6 +6,19 @@ Return them to ROADMAP.md once the blocker is resolved.
 
 ---
 
+## Release validation
+
+- **P2** — Complete the offline-installer acceptance run in a network-blocked,
+  clean Windows guest with no pre-existing WebView2 Runtime.
+  **Blocker:** The standard and Evergreen-offline MSI/NSIS matrix, naming,
+  checksums, manifest metadata, size-overhead gate, installed-journey harness,
+  and extracted-artifact release probes are implemented. This development host
+  has no Windows Sandbox executable and its Hyper-V management API is not
+  accessible, so it cannot supply the required disposable no-WebView2 guest.
+  Return this evidence-only item when such a guest is available; install both
+  `_offline` packages with networking disabled, verify WebView2 is provisioned,
+  run the existing installed release journey, and uninstall cleanly.
+
 ## Science / validation
 
 - **P3** — Cross-validate impact scaling against the Svetsov et al. 2025 numerical data tables.

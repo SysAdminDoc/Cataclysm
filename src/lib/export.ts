@@ -707,26 +707,27 @@ export async function exportDeterministicVideo(
     return exportFailure("codec", `H.264 Baseline at ${width}x${height} is not supported by this encoder.`, false);
   }
 
-  const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
-  const target = new ArrayBufferTarget();
-  const muxer = new Muxer({
-    target,
-    video: { codec: "avc", width, height },
-    fastStart: "in-memory",
-  });
-
-  // Surface async encoder errors to the awaiting caller. Throwing inside the
-  // encoder's error callback runs on the codec thread and would never reach
-  // the try/catch below, so record it and check after each await point.
-  let encoderError: Error | null = null;
-  let encodedFrames = 0;
-  const encoder = new VideoEncoder({
-    output: (chunk, chunkMeta) => muxer.addVideoChunk(chunk, chunkMeta ?? undefined),
-    error: (e) => { encoderError = e instanceof Error ? e : new Error(String(e)); },
-  });
-  encoder.configure({ codec, width, height, bitrate: bitsPerSecond, framerate: fps });
-
+  let encoder: VideoEncoder | null = null;
   try {
+    const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
+    const target = new ArrayBufferTarget();
+    const muxer = new Muxer({
+      target,
+      video: { codec: "avc", width, height },
+      fastStart: "in-memory",
+    });
+
+    // Surface async encoder errors to the awaiting caller. Throwing inside the
+    // encoder's error callback runs on the codec thread and would never reach
+    // this catch, so record it and check after each await point.
+    let encoderError: Error | null = null;
+    let encodedFrames = 0;
+    encoder = new VideoEncoder({
+      output: (chunk, chunkMeta) => muxer.addVideoChunk(chunk, chunkMeta ?? undefined),
+      error: (e) => { encoderError = e instanceof Error ? e : new Error(String(e)); },
+    });
+    encoder.configure({ codec, width, height, bitrate: bitsPerSecond, framerate: fps });
+
     for (let i = 0; i < totalFrames; i++) {
       if (encoderError) throw encoderError;
       await opts.renderFrame(i);
@@ -764,7 +765,7 @@ export async function exportDeterministicVideo(
   } catch (error) {
     return unexpectedExportFailure("codec", "Deterministic video export", error);
   } finally {
-    try { encoder.close(); } catch { /* already closed */ }
+    try { encoder?.close(); } catch { /* already closed */ }
   }
 }
 

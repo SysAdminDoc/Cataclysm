@@ -291,6 +291,11 @@ Existing tools each do one piece:
   limits, Cesium/source attribution, evidence provenance, and a stable replay
   identity label. The local `.catstory.json` file embeds the exact cached frames;
   save, link copy, and retry never rerun the physics.
+- **Frame-accurate replay video** — WebCodecs-capable runtimes can encode every
+  cached SWE frame to a deterministic H.264/MP4 after Cesium confirms the frame
+  is painted, with visible progress and replay-state restoration. A separately
+  labelled real-time MediaRecorder export remains available as the compatibility
+  fallback.
 - **Near a place I know** — Quick Start searches 246 population-bearing cities,
   41,958 US ZIP centroids, 459 landmarks/strategic targets, or pasted
   coordinates from a packaged index without requesting live location or

@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Replay export now offers a feature-detected deterministic H.264/MP4 path in
+  the Export menu. It steps through all cached SWE frames only after Cesium
+  confirms each frame is painted, reports frame-by-frame progress, and restores
+  the prior replay position and playback state after success or failure. The
+  existing MediaRecorder path remains available as an explicitly labelled
+  real-time fallback, and retryable encoder/render failures surface a Retry
+  action without discarding the cached run.
 - Immutable historical-result normalization now preserves the original result
   identity when older `.cataclysm` packages are opened. A localized preflight
   lists solver, scenario/result/archive schema, render protocol, source,

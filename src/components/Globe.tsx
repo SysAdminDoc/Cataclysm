@@ -113,6 +113,8 @@ type Props = {
   wavefront: PropagationSnapshot | null;
   /** Live SWE solver snapshot (PNG + bbox) to paint on the globe. */
   sweSnapshot?: GridSnapshot | null;
+  /** Fires after the primary Cesium scene has committed the supplied SWE frame. */
+  onSweFrameReady?: (snapshot: GridSnapshot) => void;
   /** Coastal runup samples to render as 3D bars at coastline points. */
   runupResults?: RunupAtPointResult[];
   /** User-created SWE gauges rendered as a single primitive-backed point layer. */
@@ -468,6 +470,7 @@ export function Globe({
   initial,
   wavefront,
   sweSnapshot,
+  onSweFrameReady,
   runupResults,
   gauges,
   dartBuoys,
@@ -1164,6 +1167,7 @@ export function Globe({
     const viewer = viewerRef.current;
     const ownership = sweCoordinatorRef.current;
     if (!viewer || !ownership) return;
+    let removeFrameReadyListener: (() => void) | null = null;
 
     if (!sweLayer.visible || !sweSnapshot || (!sweSnapshot.eta_png_b64 && !sweSnapshot.field_tiles?.length)) {
       ownership.coordinator.invalidate("snapshot_cleared");
@@ -1198,6 +1202,14 @@ export function Globe({
             layer.alpha = sweLayer.opacity;
             resource.layers.push(layer);
           }
+          removeFrameReadyListener = viewer.scene.postRender.addEventListener(() => {
+            removeFrameReadyListener?.();
+            removeFrameReadyListener = null;
+            if (viewerRef.current === viewer && !viewer.isDestroyed()) {
+              onSweFrameReady?.(sweSnapshot);
+            }
+          });
+          viewer.scene.requestRender();
         },
       )
       .catch((err) => {
@@ -1205,8 +1217,11 @@ export function Globe({
         console.warn("[globe] SWE snapshot failed to load as imagery layer", err);
       });
 
-    return () => ownership.coordinator.abortPending("snapshot_changed");
-  }, [sweLayer.opacity, sweLayer.visible, sweSnapshot, viewerEpoch]);
+    return () => {
+      removeFrameReadyListener?.();
+      ownership.coordinator.abortPending("snapshot_changed");
+    };
+  }, [onSweFrameReady, sweLayer.opacity, sweLayer.visible, sweSnapshot, viewerEpoch]);
 
   useStrategicGlobeOverlays({
     viewerRef,

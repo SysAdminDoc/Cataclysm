@@ -41,7 +41,7 @@ import { dartPinsForPreset } from "./lib/dart";
 import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
-import { copyExportText, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { copyExportText, exportDeterministicVideo, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, isDeterministicVideoSupported, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import { readDiagnosticsLog } from "./lib/diagnosticsLog";
 import {
@@ -99,7 +99,7 @@ import {
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
-import type { Gauge, Preset } from "./types/scenario";
+import type { Gauge, GridSnapshot, Preset } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
 import type { HypotheticalImpactDraft } from "./types/jpl";
 import { HazardControls } from "./components/HazardControls";
@@ -521,6 +521,7 @@ export default function App() {
   const [sweGaugesB, setSweGaugesB] = useState<Gauge[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [videoExportProgress, setVideoExportProgress] = useState<{ frame: number; total: number } | null>(null);
   const [sweSnapshots, setSweSnapshots] = useState<import("./types/scenario").GridSnapshot[] | null>(null);
   const [legendColormap, setLegendColormap] = useState<ColormapId>("diverging");
   const [sweMaxField, setSweMaxField] = useState<import("./types/scenario").MaxFieldProduct | null>(null);
@@ -591,7 +592,15 @@ export default function App() {
   const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const renderedSweFrameRef = useRef<GridSnapshot | null>(null);
+  const pendingVideoFrameRef = useRef<{
+    snapshot: GridSnapshot;
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timeoutId: number;
+  } | null>(null);
   const inTauri = useMemo(isTauri, []);
+  const deterministicVideoSupported = useMemo(isDeterministicVideoSupported, []);
   // Direct asteroid/nuclear effects run on the Tauri backend (desktop) and, in
   // the browser preview, on the same Rust models compiled to WebAssembly. Both
   // paths compute real effects, so the direct-hazard backend is always present.
@@ -686,6 +695,22 @@ export default function App() {
   const slotA = useScenarioSlot(timeS);
   const slotB = useScenarioSlot(timeS);
   const setSlotBActivePresetId = slotB.setActivePresetId;
+  const handleSweFrameReady = useCallback((snapshot: GridSnapshot) => {
+    renderedSweFrameRef.current = snapshot;
+    const pending = pendingVideoFrameRef.current;
+    if (!pending || pending.snapshot !== snapshot) return;
+    window.clearTimeout(pending.timeoutId);
+    pendingVideoFrameRef.current = null;
+    pending.resolve();
+  }, []);
+
+  useEffect(() => () => {
+    const pending = pendingVideoFrameRef.current;
+    if (!pending) return;
+    window.clearTimeout(pending.timeoutId);
+    pendingVideoFrameRef.current = null;
+    pending.reject(new Error("Deterministic video export was interrupted."));
+  }, []);
 
   useEffect(() => {
     setSweSensitivityEnvelopeA(null);
@@ -1884,6 +1909,66 @@ export default function App() {
     evidenceIds: exportEvidenceIdsB(),
   });
 
+  function renderDeterministicSweFrame(snapshot: GridSnapshot): Promise<void> {
+    setTimeS(snapshot.time_s);
+    if (renderedSweFrameRef.current === snapshot) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const previous = pendingVideoFrameRef.current;
+      if (previous) {
+        window.clearTimeout(previous.timeoutId);
+        previous.reject(new Error("Deterministic video frame request was superseded."));
+      }
+      const timeoutId = window.setTimeout(() => {
+        if (pendingVideoFrameRef.current?.snapshot === snapshot) {
+          pendingVideoFrameRef.current = null;
+        }
+        reject(new Error(`Timed out while rendering replay frame at ${snapshot.time_s} seconds.`));
+      }, 10_000);
+      pendingVideoFrameRef.current = { snapshot, resolve, reject, timeoutId };
+    });
+  }
+
+  async function runDeterministicVideoExport() {
+    if (recording || !sweSnapshots || sweSnapshots.length < 2) return;
+    const frames = [...sweSnapshots];
+    const previousTimeS = timeS;
+    const resumePlayback = timelinePlaying;
+    const fps = Math.min(30, Math.max(1, Math.round(frames.length / 6)));
+    const progressStartedAt = performance.now();
+    setTimelinePlaying(false);
+    setRecording(true);
+    setVideoExportProgress({ frame: 0, total: frames.length });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const result = await exportDeterministicVideo(
+        { ...exportMetaA(), timeS: frames[0].time_s },
+        {
+          fps,
+          totalFrames: frames.length,
+          bitsPerSecond: 6_000_000,
+          renderFrame: (frameIndex) => renderDeterministicSweFrame(frames[frameIndex]),
+          onProgress: (frame, total) => setVideoExportProgress({ frame, total }),
+        },
+      );
+      const minimumProgressMs = 600;
+      const remainingProgressMs = minimumProgressMs - (performance.now() - progressStartedAt);
+      if (remainingProgressMs > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remainingProgressMs));
+      }
+      reportExportResult(
+        result,
+        t("app.export.saved", { item: t("app.export.item.deterministicVideo") }),
+        () => void runDeterministicVideoExport(),
+      );
+    } finally {
+      setTimeS(previousTimeS);
+      setTimelinePlaying(resumePlayback);
+      setVideoExportProgress(null);
+      setRecording(false);
+    }
+  }
+
   function createHighlightStorySource(): HighlightStorySource | null {
     const params = scenarioToUrlParams(slotA.activePresetId, slotA.lastCustomScenario);
     if (!hasHighlightReplay || !slotA.initial || !sweSnapshots || !params) return null;
@@ -2331,6 +2416,16 @@ export default function App() {
           </button>
         </div>
       )}
+      {videoExportProgress && (
+        <div className="app-video-export-status" role="status" aria-live="polite">
+          <span>{t("app.export.encoding", videoExportProgress)}</span>
+          <progress
+            aria-label={t("app.export.encodingProgress")}
+            value={videoExportProgress.frame}
+            max={videoExportProgress.total}
+          />
+        </div>
+      )}
       <div className="app__banner-stack">
         <CrashRecoveryNotice onInspect={() => setShowLog(true)} />
         {tokenBannerOpen && (
@@ -2578,6 +2673,20 @@ export default function App() {
             >
               {t("story.open")}
             </ToolbarButton>
+            {deterministicVideoSupported && (
+              <ToolbarButton
+                icon="video"
+                onClick={() => void runDeterministicVideoExport()}
+                title={t("app.export.title.deterministicVideo")}
+                disabled={inHazardMode || !hasHighlightReplay || recording}
+                disabledReason={recording ? t("app.export.reason.recording") : t("app.export.reason.replayFrames")}
+                onUnavailable={(reason) => showToast(reason, "info")}
+              >
+                {videoExportProgress
+                  ? t("app.export.encoding", videoExportProgress)
+                  : t("app.export.deterministicVideo")}
+              </ToolbarButton>
+            )}
             <ToolbarButton
               icon="video"
               onClick={() => {
@@ -2605,7 +2714,7 @@ export default function App() {
               disabledReason={recording ? t("app.export.reason.recording") : sourceRequiredReason}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
-              {recording ? t("app.export.recording") : t("app.export.video")}
+              {recording && !videoExportProgress ? t("app.export.recording") : t("app.export.realtimeVideo")}
             </ToolbarButton>
             </ExportGroup>
             <ExportGroup
@@ -2916,6 +3025,7 @@ export default function App() {
                 initial={inHazardMode ? null : slotA.initial}
                 wavefront={inHazardMode ? null : slotA.wavefront}
                 sweSnapshot={inHazardMode ? null : slotA.sweSnapshot}
+                onSweFrameReady={handleSweFrameReady}
                 runupResults={inHazardMode ? [] : slotA.runupResults}
                 gauges={inHazardMode ? [] : sweGaugesA}
                 dartBuoys={inHazardMode ? [] : dartPinsForPreset(slotA.activePresetId)}

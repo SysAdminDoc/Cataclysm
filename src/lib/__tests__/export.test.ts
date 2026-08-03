@@ -1,10 +1,28 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { buildDirectHazardCzml, buildDirectHazardGeoJson, buildDirectHazardKml, captureGlobePng, copyExportText, downloadBlob, downloadDataUrl, encodeSpreadsheetSafeCsvText, exportCzml, exportGaugeCsv, exportGeoJson, exportGlobeVideo, exportKml, exportRunupCsv, preflightRunQuality, suggestedFilename, type DirectHazardExportData, type ScreenshotMeta, type RunupPoint } from "../export";
+import { buildDirectHazardCzml, buildDirectHazardGeoJson, buildDirectHazardKml, captureGlobePng, copyExportText, downloadBlob, downloadDataUrl, encodeSpreadsheetSafeCsvText, exportCzml, exportDeterministicVideo, exportGaugeCsv, exportGeoJson, exportGlobeVideo, exportKml, exportRunupCsv, isDeterministicVideoSupported, preflightRunQuality, suggestedFilename, type DirectHazardExportData, type ScreenshotMeta, type RunupPoint } from "../export";
 import type { GaugeTimeSeries } from "../../types/scenario";
 import type { HazardResult } from "../../hazards/types";
 import { IDEALIZED_SEA_SURFACE_HEIGHT_FIELD } from "../geodesy";
 import { getCoastalPoints } from "../data";
 import { APP_VERSION } from "../model-provenance";
+
+vi.mock("mp4-muxer", () => ({
+  ArrayBufferTarget: class {
+    buffer = new ArrayBuffer(8);
+  },
+  Muxer: class {
+    constructor(options: unknown) {
+      void options;
+    }
+    addVideoChunk(chunk: unknown, metadata?: unknown) {
+      void chunk;
+      void metadata;
+    }
+    finalize() {
+      // The target starts with a non-empty deterministic buffer for download assertions.
+    }
+  },
+}));
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -353,6 +371,168 @@ describe("typed export failures and cleanup", () => {
     });
     expect(stopTrack).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("feature-detects deterministic video support", () => {
+    vi.stubGlobal("VideoEncoder", undefined);
+    vi.stubGlobal("VideoFrame", undefined);
+    expect(isDeterministicVideoSupported()).toBe(false);
+
+    vi.stubGlobal("VideoEncoder", class {});
+    vi.stubGlobal("VideoFrame", class {});
+    expect(isDeterministicVideoSupported()).toBe(true);
+  });
+
+  it("encodes every requested deterministic frame, reports progress, and closes frame resources", async () => {
+    const canvas = mountGlobeCanvas();
+    canvas.width = 640;
+    canvas.height = 360;
+    const closeFrame = vi.fn();
+    const closeEncoder = vi.fn();
+    class SuccessfulVideoFrame {
+      constructor(source: CanvasImageSource, init?: VideoFrameInit) {
+        void source;
+        void init;
+      }
+      close() {
+        closeFrame();
+      }
+    }
+    class SuccessfulVideoEncoder {
+      static async isConfigSupported(config: VideoEncoderConfig) {
+        return { supported: true, config };
+      }
+      encodeQueueSize = 0;
+      private readonly output: VideoEncoderInit["output"];
+      constructor(init: VideoEncoderInit) {
+        this.output = init.output;
+      }
+      configure(config: VideoEncoderConfig) {
+        void config;
+      }
+      encode(frame: VideoFrame, options?: VideoEncoderEncodeOptions) {
+        void frame;
+        void options;
+        this.output({} as EncodedVideoChunk);
+      }
+      async flush() {
+        return undefined;
+      }
+      close() {
+        closeEncoder();
+      }
+    }
+    vi.stubGlobal("VideoFrame", SuccessfulVideoFrame);
+    vi.stubGlobal("VideoEncoder", SuccessfulVideoEncoder);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    mockDownload();
+    const renderFrame = vi.fn(async (_frameIndex: number) => undefined);
+    const progress: Array<[number, number]> = [];
+
+    await expect(exportDeterministicVideo(
+      { timeS: 0 },
+      {
+        fps: 10,
+        totalFrames: 3,
+        renderFrame,
+        onProgress: (frame, total) => progress.push([frame, total]),
+      },
+    )).resolves.toMatchObject({ ok: true, ext: "mp4", size: 8 });
+    expect(renderFrame.mock.calls.map(([index]) => index)).toEqual([0, 1, 2]);
+    expect(progress).toEqual([[1, 3], [2, 3], [3, 3]]);
+    expect(closeFrame).toHaveBeenCalledTimes(3);
+    expect(closeEncoder).toHaveBeenCalledOnce();
+  });
+
+  it("returns a retryable deterministic export failure without discarding the frame source", async () => {
+    mountGlobeCanvas();
+    const closeEncoder = vi.fn();
+    class SupportedVideoEncoder {
+      static async isConfigSupported(config: VideoEncoderConfig) {
+        return { supported: true, config };
+      }
+      encodeQueueSize = 0;
+      constructor(init: VideoEncoderInit) {
+        void init;
+      }
+      configure(config: VideoEncoderConfig) {
+        void config;
+      }
+      encode(frame: VideoFrame, options?: VideoEncoderEncodeOptions) {
+        void frame;
+        void options;
+      }
+      async flush() {
+        return undefined;
+      }
+      close() {
+        closeEncoder();
+      }
+    }
+    vi.stubGlobal("VideoEncoder", SupportedVideoEncoder);
+    vi.stubGlobal("VideoFrame", class {});
+    vi.stubGlobal("requestAnimationFrame", vi.fn());
+    const frames = [{ id: "frame-0" }, { id: "frame-1" }];
+    const renderFrame = vi.fn(async (index: number) => {
+      void frames[index];
+      throw new Error("render interrupted");
+    });
+
+    await expect(exportDeterministicVideo(
+      { timeS: 0 },
+      { totalFrames: frames.length, renderFrame },
+    )).resolves.toMatchObject({
+      ok: false,
+      code: "codec",
+      retryable: true,
+      message: expect.stringContaining("render interrupted"),
+    });
+    expect(frames).toHaveLength(2);
+    expect(closeEncoder).toHaveBeenCalledOnce();
+  });
+
+  it("turns synchronous deterministic encoder configuration errors into retryable results", async () => {
+    mountGlobeCanvas();
+    const closeEncoder = vi.fn();
+    class RejectingVideoEncoder {
+      static async isConfigSupported(config: VideoEncoderConfig) {
+        return { supported: true, config };
+      }
+      encodeQueueSize = 0;
+      constructor(init: VideoEncoderInit) {
+        void init;
+      }
+      configure() {
+        throw new DOMException("hardware encoder unavailable", "NotSupportedError");
+      }
+      encode() {
+        // Configuration fails before encoding can begin.
+      }
+      async flush() {
+        return undefined;
+      }
+      close() {
+        closeEncoder();
+      }
+    }
+    vi.stubGlobal("VideoEncoder", RejectingVideoEncoder);
+    vi.stubGlobal("VideoFrame", class {});
+    const renderFrame = vi.fn(async () => undefined);
+
+    await expect(exportDeterministicVideo(
+      { timeS: 0 },
+      { totalFrames: 2, renderFrame },
+    )).resolves.toMatchObject({
+      ok: false,
+      code: "codec",
+      retryable: true,
+      message: expect.stringContaining("hardware encoder unavailable"),
+    });
+    expect(renderFrame).not.toHaveBeenCalled();
+    expect(closeEncoder).toHaveBeenCalledOnce();
   });
 });
 
