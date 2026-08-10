@@ -1,64 +1,8 @@
 # Cataclysm Roadmap
 
-Single source of truth for delivery. Blocked items live in
-[`Roadmap_Blocked.md`](./Roadmap_Blocked.md). Shipped work is summarized in
-[`CHANGELOG.md`](./CHANGELOG.md).
+Actionable work only. Historical and completed roadmap material is archived in CHANGELOG.md; blocked work is kept in Roadmap_Blocked.md.
 
----
-
-## Unification: NukeMap + AsteroidSimulator parity (2026-07-10)
-
-Cataclysm absorbed **AsteroidSimulator** and **NukeMap** (both merged in under
-`legacy/`, history preserved). v0.6.0 landed the ported **engines**; these items
-rebuild their **UIs** on the Cesium globe. The standalone NukeMap and
-AsteroidSimulator repos are already retired; their history and reference code
-remain safe in-tree under `legacy/` while this section reaches parity.
-
-### Standalone repos retired (2026-07-10)
-- **`SysAdminDoc/AsteroidSimulator` and `SysAdminDoc/NukeMap` deleted** (GitHub +
-  local) by owner direction: Cataclysm is the single primary repo. Their code and
-  full history remain in-tree under `legacy/asteroid` and `legacy/nukemap` (git
-  subtree). NukeMap's old GitHub Pages site (`sysadmindoc.github.io/NukeMap/`) is
-  offline as a result; the nuclear experience now lives in Cataclysm's Nuclear
-  mode and will ship on Cataclysm's own Pages deploy.
-- The UNI-08..14 parity backlog is complete inside Cataclysm against the
-  preserved `legacy/` reference.
-
----
-
-## Research-Driven Additions (2026-07-12)
-
-## Research-Driven Additions
-
-### P1
-
-### P2
-
-## Research-Driven Additions
-
-### P1
-
-### P2
-
-## Research-Driven Additions (2026-07-14)
-
-New items only. Verified against v0.10.4 source and a 2025-2026 external scan
-(fresh code audit; NUKEMAP Feb-2026 roadmap; 2024 PAGEOPH volcanic-tsunami
-review; Vilibić et al. 2025 meteotsunami review; Celeris-WebGPU; WebGPU 128;
-Cesium July-2026; WCAG 2.2). Items already tracked in the sections above
-(antimeridian tiled transport, run-identity/cancellation, GPU-resident
-max-field, casualty-model plurality, USGS/NEO feeds, terrain draping, units,
-recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
-
-### P2 — reliability guards and physical credibility
-
-## Research-Driven Additions
-
-### P1
-
-### P2
-
-### P3
+## Actionable Items
 
 - [ ] P3 — Export a single bounded GeoPackage for GIS handoff
   Why: GeoJSON/KML/CZML/CSV exports fragment related vector products, while GeoPackage provides one open, portable, offline container that QGIS/GDAL can inspect without adding a server.
@@ -66,12 +10,6 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
   Touches: Rust SQLite/GeoPackage writer, export IPC/UI/CLI seam, shared provenance preflight, interoperability and adversarial fixtures.
   Acceptance: one `.gpkg` opens in the QGIS/GDAL versions pinned by an interoperability fixture with source/fault geometry, gauges/runup, arrival isochrones, applicable direct-effect polygons, CRS/datum, units, quality, citations, and source/data digests; table/geometry/row/size limits fail closed; a round-trip fixture verifies geometry and metadata without retaining another full run in memory.
   Complexity: M
-
-## Research-Driven Additions (2026-07-14 — incremental external scan)
-
-New items only, from a focused net-new sweep of dependency changelogs, competitor/community signal, and standards. Everything already tracked above (units, casualty-model plurality, WSEG-10 fallout, USGS/NEO feeds, HazEL, meteotsunami, terrain draping, extinction-scale effects, humanitarian layer, "why trust this", i18n, WASM physics, NTHMP, ensembles, CLI, VTK/Zarr/GeoPackage, CITATION.cff, SBOM, WebGPU-128 subgroups/f16/timestamp-query, WCAG 2.2 forced-colors/drag/target-size, accessible globe/charts) is NOT repeated. Grounded against v0.10.4 source: video export already exists via `MediaRecorder`, airburst physics already exists in `direct_hazard.rs`, and Tauri `features = []` (no tray-icon/GTK advisory surface) — items are reframed accordingly.
-
-### P2
 
 - [ ] P2 — Surface the deterministic WebCodecs video export in the UI
   Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it — the export menu still only offers the real-time MediaRecorder path.
@@ -113,8 +51,6 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Acceptance: the app builds and all GPU tests pass on wgpu 30 with CPU/GPU products within declared tolerance; on an HDR-capable Windows display the fireball/thermal surface renders in HDR with a graceful SDR fallback; the dx12-vs-gpu-allocator regression is re-checked before enabling any new backend.
   Complexity: M
 
-### P3
-
 - [ ] P3 — Add a parameterized volcanic caldera/flank-collapse tsunami source
   Why: volcanic-collapse tsunamis (Anak Krakatau 2018, Hunga Tonga 2022) are the hottest 2024–2026 tsunami-genesis research vein and a distinct mechanism absent from the four current sources, naturally coupling a volcanic event to the tsunami module; a parameterized initial-displacement source (collapse volume/geometry → initial wave) fits the existing source→IC→SWE pattern, with the dispersive/non-hydrostatic accuracy limit documented rather than claimed.
   Evidence: PAGEOPH 2024 volcanic-tsunami review https://link.springer.com/article/10.1007/s00024-024-03515-y; NHESS 2026 https://nhess.copernicus.org/articles/26/631/2026/; existing source modules in `src-tauri/src/physics/`.
@@ -136,23 +72,12 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
   Acceptance: a user can place a simple barrier on the coast, re-run, and compare inundation with and without it; the barrier is represented as a documented bathymetry/reflectivity modification with stated simplifications; results are labelled educational.
   Complexity: L
 
-## Research-Driven Additions (2026-07-16)
-
-Grounded in `RESEARCH.md` (2026-07-16). Verified against the codebase to avoid
-duplicating implemented physics: Ward–Asphaug ocean-impact→tsunami coupling,
-`SolverMode::Linear`, and per-key settings migration already exist; the items
-below are the net-new, non-duplicate opportunities from this scan.
-
-### P2
-
 - [ ] P2 — HazEL observed-runup validation overlay (extends the historical event browser)
   Why: the planned NCEI HazEL browser loads event parameters into the scenario builder; the same API also serves 26,000+ *observed* runup points — overlaying them against simulated runup turns HazEL from a convenience loader into a per-event validation surface, the single strongest scientific-legitimacy move for the tsunami mode.
   Evidence: Verified extension of the existing "NCEI HazEL historical tsunami event browser" item — that item's acceptance stops at loading magnitude/epicentre. NCEI runup records https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search.
   Touches: `src/lib/` (extend the HazEL client to fetch runup records for a selected event), `src/components/CoastalRunupOverlay.tsx`/`Globe.tsx` (observed-vs-simulated comparison layer with residuals), CSP allowlist already added by the base HazEL item.
   Acceptance: for a HazEL event with runup records, an opt-in layer plots observed runup points alongside simulated runup at comparable locations with a residual summary and explicit sampling/confidence caveats; degrades gracefully offline; does not alter solver output. Do not land before the base HazEL browser item.
   Complexity: M
-
-### P3
 
 - [ ] P3 — OS notification and optional chime on long-run completion
   Why: solver runs (grid/streaming, ensembles) can take a while and users may look away; a completion notification is a small no-network quality-of-life win with no privacy cost.
