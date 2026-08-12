@@ -8,15 +8,30 @@ import type {
   RunupPrimitivePresentation,
 } from "../runup-overlay-controller";
 
-function viewerHarness() {
+function viewerHarness(includePrimitives = false) {
   const entities = new Cesium.EntityCollection();
   const requestRender = vi.fn();
+  const primitiveValues: unknown[] = [];
+  const primitives = {
+    add: vi.fn((primitive: unknown) => {
+      primitiveValues.push(primitive);
+      return primitive;
+    }),
+    contains: vi.fn((primitive: unknown) => primitiveValues.includes(primitive)),
+    remove: vi.fn((primitive: unknown) => {
+      const index = primitiveValues.indexOf(primitive);
+      if (index < 0) return false;
+      primitiveValues.splice(index, 1);
+      return true;
+    }),
+  };
   return {
     entities,
     requestRender,
+    primitives,
     viewer: {
       entities,
-      scene: { requestRender },
+      scene: includePrimitives ? { requestRender, primitives } : { requestRender },
       isDestroyed: () => false,
     } as unknown as Cesium.Viewer,
   };
@@ -121,5 +136,26 @@ describe("CesiumRunupOverlayHostAdapter", () => {
     host.removeRunupPrimitive(first);
     host.removeRunupPrimitive(replacement);
     expect(harness.entities.values).toHaveLength(0);
+  });
+
+  it("uses one experimental point buffer for a large gauge batch when available", () => {
+    const harness = viewerHarness(true);
+    const host = new CesiumRunupOverlayHostAdapter(harness.viewer);
+    const gauges = Array.from({ length: 500 }, (_, index) => gauge(
+      `gauge-${index}`,
+      -60 + (index % 120),
+      -170 + (index % 340),
+    ));
+
+    const group = host.createGaugePrimitive(gauges);
+    if (typeof Cesium.BufferPointCollection === "function") {
+      expect(group.buffer).toBeInstanceOf(Cesium.BufferPointCollection);
+      expect(group).toHaveLength(0);
+      expect(harness.primitives.add).toHaveBeenCalledTimes(1);
+    }
+    host.removeGaugePrimitive(group);
+    expect(harness.primitives.remove).toHaveBeenCalledTimes(
+      typeof Cesium.BufferPointCollection === "function" ? 1 : 0,
+    );
   });
 });

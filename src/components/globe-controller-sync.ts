@@ -10,7 +10,11 @@ import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
 import type { DirectEffectsController } from "../render/cesium/direct-effects";
 import type { OutcomeFocusController, OutcomeFocusRequest } from "../render/cesium/outcome-focus";
 import type { RunupOverlayController } from "../render/cesium/runup-overlay-controller";
-import type { CesiumTerrainEntityGroup } from "../render/cesium/cesium-runup-overlay-host";
+import type {
+  CesiumGaugePrimitiveGroup,
+  CesiumInundationPrimitiveGroup,
+  CesiumRunupPrimitiveGroup,
+} from "../render/cesium/cesium-runup-overlay-host";
 import type { StaticHazardController } from "../render/cesium/static-hazards";
 import type { TsunamiAnalyticalController } from "../render/cesium/tsunami-analytical";
 import type { TsunamiSourceController } from "../render/cesium/tsunami-source";
@@ -26,9 +30,9 @@ type PreviewCamera = Readonly<{
 }>;
 
 type RunupController = RunupOverlayController<
-  CesiumTerrainEntityGroup,
-  CesiumTerrainEntityGroup,
-  CesiumTerrainEntityGroup,
+  CesiumRunupPrimitiveGroup,
+  CesiumInundationPrimitiveGroup,
+  CesiumGaugePrimitiveGroup,
   Cesium.Entity
 >;
 
