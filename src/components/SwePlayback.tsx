@@ -56,6 +56,12 @@ type Props = {
   onMitigationBarrierChange?: (barrier: MitigationBarrier | null) => void;
   onRequestMitigationPick?: () => void;
   onRequestMitigationComparison?: () => void;
+  exploratorySandboxActive?: boolean;
+  exploratorySandboxPaused?: boolean;
+  exploratoryPokeAmplitudeM?: number;
+  onExploratorySandboxChange?: (active: boolean) => void;
+  onExploratorySandboxPauseChange?: (paused: boolean) => void;
+  onExploratoryPokeAmplitudeChange?: (amplitudeM: number) => void;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy" | "max_depth" | "max_speed" | "momentum" | "drawdown" | "t_of_max_speed";
@@ -235,7 +241,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
   return warning;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange, onRunFinished, mitigationBarrier, onMitigationBarrierChange, onRequestMitigationPick, onRequestMitigationComparison }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange, onRunFinished, mitigationBarrier, onMitigationBarrierChange, onRequestMitigationPick, onRequestMitigationComparison, exploratorySandboxActive = false, exploratorySandboxPaused = false, exploratoryPokeAmplitudeM = 2, onExploratorySandboxChange, onExploratorySandboxPauseChange, onExploratoryPokeAmplitudeChange }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
@@ -909,7 +915,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         <button
           className="primary"
           onClick={() => void run(false)}
-          disabled={status === "running"}
+          disabled={status === "running" || exploratorySandboxActive}
           type="button"
         >
           {status !== "running" && <UiIcon name={status === "ready" ? "refresh" : "play"} size={14} />}
@@ -928,7 +934,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         {isTauri() && status !== "running" && (
           <button
             onClick={() => void runQuickEtaPreview()}
-            disabled={quickEtaStatus === "running"}
+            disabled={quickEtaStatus === "running" || exploratorySandboxActive}
             title={t("swe.quickEtaTitle")}
             type="button"
           >
@@ -1043,6 +1049,39 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
             </p>
           </>}
         </div>}
+        <div className="swe__exploratory" data-active={exploratorySandboxActive ? "true" : "false"}>
+          <label className="swe__check">
+            <input
+              type="checkbox"
+              checked={exploratorySandboxActive}
+              disabled={status === "running" || !onExploratorySandboxChange}
+              onChange={(event) => onExploratorySandboxChange?.(event.target.checked)}
+            />
+            <span>{t("swe.exploratoryMode")}</span>
+          </label>
+          {exploratorySandboxActive && <>
+            <p className="swe__exploratory-intro">{t("swe.exploratoryIntro")}</p>
+            <label className="swe__check swe__exploratory-strength">
+              <span>{t("swe.exploratoryAmplitude")}</span>
+              <input
+                type="range"
+                min="0.25"
+                max="5"
+                step="0.25"
+                value={exploratoryPokeAmplitudeM}
+                onChange={(event) => onExploratoryPokeAmplitudeChange?.(Number(event.target.value))}
+                aria-label={t("swe.exploratoryAmplitude")}
+              />
+              <output>{formatNumber(exploratoryPokeAmplitudeM, { maximumFractionDigits: 2 })} m</output>
+            </label>
+            <div className="swe__exploratory-actions">
+              <button type="button" onClick={() => onExploratorySandboxPauseChange?.(!exploratorySandboxPaused)}>
+                {exploratorySandboxPaused ? t("swe.exploratoryResume") : t("swe.exploratoryPause")}
+              </button>
+              <button type="button" onClick={() => onExploratorySandboxChange?.(false)}>{t("swe.exploratoryExit")}</button>
+            </div>
+          </>}
+        </div>
         <label className="swe__check">
           <input
             type="checkbox"
@@ -1285,7 +1324,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         <div className="swe__notice">{t("swe.browserNotice")}</div>
       )}
 
-      {workspaceMode === "advanced" && isTauri() && (
+      {workspaceMode === "advanced" && isTauri() && !exploratorySandboxActive && (
         <SensitivityEnsemblePanel
           initial={initial}
           useBathymetry={useBathy}

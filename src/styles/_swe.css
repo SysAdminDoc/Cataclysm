@@ -630,3 +630,50 @@
   font-size: 12px;
   color: var(--overlay);
 }
+
+.swe__exploratory {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--mauve) 30%, var(--surface1));
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--mauve) 5%, var(--surface0));
+}
+
+.swe__exploratory[data-active="true"] {
+  border-color: color-mix(in srgb, var(--mauve) 70%, var(--surface1));
+  background: color-mix(in srgb, var(--mauve) 10%, var(--surface0));
+}
+
+.swe__exploratory-intro {
+  margin: 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+
+.swe__exploratory-strength {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.swe__exploratory-strength input[type="range"] {
+  accent-color: var(--mauve);
+}
+
+.swe__exploratory-strength output {
+  min-width: 48px;
+  color: var(--text);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--type-caption);
+  text-align: right;
+}
+
+.swe__exploratory-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}

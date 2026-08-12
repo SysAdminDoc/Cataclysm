@@ -138,6 +138,34 @@ describe("SwePlayback", () => {
     );
   });
 
+  it("keeps the exploratory sandbox visibly separate from validated controls", async () => {
+    const user = userEvent.setup();
+    const onSandboxChange = vi.fn();
+    const onPauseChange = vi.fn();
+    const onAmplitudeChange = vi.fn();
+    render(
+      <SwePlayback
+        initial={INITIAL}
+        workspaceMode="advanced"
+        exploratorySandboxActive
+        exploratorySandboxPaused={false}
+        exploratoryPokeAmplitudeM={2}
+        onExploratorySandboxChange={onSandboxChange}
+        onExploratorySandboxPauseChange={onPauseChange}
+        onExploratoryPokeAmplitudeChange={onAmplitudeChange}
+      />,
+    );
+
+    expect(screen.getByText("Exploratory “poke the wave” sandbox")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run simulation" })).toBeDisabled();
+    expect(screen.queryByText("Sensitivity envelope")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pause sandbox" }));
+    expect(onPauseChange).toHaveBeenCalledWith(true);
+    await user.click(screen.getByRole("button", { name: "Exit sandbox" }));
+    expect(onSandboxChange).toHaveBeenCalledWith(false);
+    expect(onAmplitudeChange).not.toHaveBeenCalled();
+  });
+
   it("shows physical adequacy and preserves an advanced override warning", async () => {
     render(<SwePlayback initial={INITIAL} workspaceMode="advanced" />);
 

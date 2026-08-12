@@ -344,6 +344,24 @@ export type RunupAtPointResult = {
   inundation_extent_m: number;
 };
 
+/** Ephemeral, non-archivable exploratory wave state. */
+export type ExploratoryWave = {
+  id: number;
+  lat_deg: number;
+  lon_deg: number;
+  radius_m: number;
+  amplitude_m: number;
+  age_s: number;
+};
+
+export type ExploratoryWaveStepResponse = {
+  schema_version: 1;
+  session_id: string;
+  time_s: number;
+  waves: ExploratoryWave[];
+  model: string;
+};
+
 export const api = {
   simulateAsteroidHazard(req: {
     center: { lat: number; lon: number };
@@ -599,6 +617,22 @@ export const api = {
   }) {
     // arrival_s carries null for cells the wave never reached within the run.
     return invoke<QuickEtaPreview>("quick_eta_preview", { req });
+  },
+  exploratoryWaveStep(req: {
+    session_id: string;
+    advance_s: number;
+    paused: boolean;
+    poke?: {
+      lat_deg: number;
+      lon_deg: number;
+      amplitude_m: number;
+      radius_m: number;
+    } | null;
+  }): Promise<ExploratoryWaveStepResponse> {
+    return invoke<ExploratoryWaveStepResponse>("exploratory_wave_step", { req });
+  },
+  clearExploratoryWave(sessionId: string): Promise<void> {
+    return invoke<void>("clear_exploratory_wave", { sessionId });
   },
   /** F4-01 — Lightweight GPU-availability probe. Returns one of:
    *  "available", "no-adapter", or "feature-off". See the Rust

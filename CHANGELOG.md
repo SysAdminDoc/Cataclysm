@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added an explicitly non-reproducible exploratory “poke the wave” sandbox.
+  The desktop playback panel can start a bounded, ephemeral linear pulse field;
+  clicking the globe injects pulses that expand while the sandbox runs and can
+  be paused, tuned, or exited. Its Cesium layer is kept separate from solver
+  output, run archives, comparisons, and scientific exports.
 - Added opt-in local desktop feedback for long solver runs. Unfocused grid,
   streaming, and sensitivity-ensemble completions or failures can show an OS
   notification and optionally play a short sonification chime; both are

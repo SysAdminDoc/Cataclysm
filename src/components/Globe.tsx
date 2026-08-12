@@ -17,7 +17,7 @@ import {
 } from "../lib/earth-assets";
 import { referenceCaptureEnabled } from "../lib/reference-capture";
 import { demoInspectAtPoint } from "../lib/demo";
-import { api, isTauri, type RunupAtPointResult } from "../lib/tauri";
+import { api, isTauri, type ExploratoryWave, type RunupAtPointResult } from "../lib/tauri";
 import type {
   DartBuoy,
   Gauge,
@@ -163,6 +163,10 @@ type Props = {
   isochrones?: import("../types/scenario").Isochrone[] | null;
   /** Coarse linear first-arrival preview; never treated as a validated field. */
   quickEtaPreview?: QuickEtaPreview | null;
+  /** Ephemeral exploratory waves; never part of authoritative/exported state. */
+  exploratorySandboxActive?: boolean;
+  exploratoryWaves?: ExploratoryWave[];
+  exploratoryTimeS?: number;
   /** Non-tsunami hazard effect rings (nuclear/asteroid), drawn as concentric
    *  ground ellipses at hazardCenter. Radii are in meters, largest-first. */
   hazardRings?: EffectRing[] | null;
@@ -504,6 +508,9 @@ export function Globe({
   primary = true,
   isochrones,
   quickEtaPreview,
+  exploratorySandboxActive = false,
+  exploratoryWaves = [],
+  exploratoryTimeS = 0,
   hazardRings,
   hazardCenter,
   hazardPolygons,
@@ -577,6 +584,7 @@ export function Globe({
     coordinator: AsyncResourceCoordinator<SweImageryResource>;
     generation: number;
   } | null>(null);
+  const exploratoryEntitiesRef = useRef<Cesium.Entity[]>([]);
   const imageryControllerRef = useRef<{
     controller: CesiumImageryController<
       GlobeStyleId,
@@ -1308,6 +1316,51 @@ export function Globe({
     return () => ownership.coordinator.abortPending("quick_eta_changed");
   }, [quickEtaPreview, viewerEpoch]);
 
+  // Exploratory rings are ordinary Cesium entities, intentionally separate
+  // from the authoritative SWE imagery layer. App disables archive/compare/
+  // export controls while this layer is active, so this non-reproducible
+  // teaching state cannot become a scientific artifact.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    for (const entity of exploratoryEntitiesRef.current) viewer.entities.remove(entity);
+    exploratoryEntitiesRef.current = [];
+    if (!exploratorySandboxActive) return;
+    for (const wave of exploratoryWaves) {
+      const position = Cesium.Cartesian3.fromDegrees(wave.lon_deg, wave.lat_deg, 5);
+      const magnitude = Math.min(1, Math.max(0.12, Math.abs(wave.amplitude_m) / 5));
+      const color = wave.amplitude_m >= 0
+        ? Cesium.Color.fromCssColorString("#67e8f9")
+        : Cesium.Color.fromCssColorString("#f0abfc");
+      exploratoryEntitiesRef.current.push(viewer.entities.add({
+        id: `cataclysm-exploratory-wave-${wave.id}`,
+        position,
+        point: {
+          pixelSize: 9,
+          color: color.withAlpha(0.9),
+          outlineColor: Cesium.Color.WHITE.withAlpha(0.8),
+          outlineWidth: 1,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        ellipse: {
+          semiMajorAxis: Math.max(2_500, wave.radius_m),
+          semiMinorAxis: Math.max(2_500, wave.radius_m),
+          height: 10,
+          material: color.withAlpha(0.06 + magnitude * 0.08),
+          outline: true,
+          outlineColor: color.withAlpha(0.55 + magnitude * 0.25),
+          outlineWidth: 2,
+        },
+      }));
+    }
+    viewer.scene.requestRender();
+    return () => {
+      if (viewer.isDestroyed()) return;
+      for (const entity of exploratoryEntitiesRef.current) viewer.entities.remove(entity);
+      exploratoryEntitiesRef.current = [];
+    };
+  }, [exploratorySandboxActive, exploratoryWaves, viewerEpoch]);
+
   useStrategicGlobeOverlays({
     viewerRef,
     viewerEpoch,
@@ -1352,6 +1405,13 @@ export function Globe({
           <small>{t("globe.quickEtaCaveat")}</small>
         </div>
       )}
+      {exploratorySandboxActive && (
+        <div className="app__globe-status app__globe-status--exploratory" data-status="preview" role="status" aria-live="polite">
+          <strong>{t("swe.exploratoryMode")}</strong>
+          <span>{t("swe.exploratoryWaveTime", { seconds: formatNumber(exploratoryTimeS, { maximumFractionDigits: 1 }) })}</span>
+          <small>{t("swe.exploratoryNotExportable")}</small>
+        </div>
+      )}
       {humanitarianLayer.visible && humanitarianFacilities.length > 0 && (
         <a
           className="app__globe-osm-attribution"
@@ -1382,7 +1442,7 @@ export function Globe({
       {pickMode && (
         <div className="app__globe-pickbanner">
           <div className="app__globe-pickbanner-row">
-            <span>{t("globe.pickInstruction")}</span>
+            <span>{exploratorySandboxActive ? t("globe.exploratoryPickInstruction") : t("globe.pickInstruction")}</span>
             <button className="app__globe-banner-cancel" onClick={onPickCancel} type="button">
               {t("globe.cancel")}
             </button>

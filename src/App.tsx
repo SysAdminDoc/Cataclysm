@@ -38,7 +38,7 @@ import { CoastalRunupOverlay } from "./components/CoastalRunupOverlay";
 import { DartOverlay } from "./components/DartOverlay";
 import { SwePlayback } from "./components/SwePlayback";
 import { AttenuationChart } from "./components/AttenuationChart";
-import { api, isTauri } from "./lib/tauri";
+import { api, isTauri, type ExploratoryWave } from "./lib/tauri";
 import { browserAsteroidHazard, browserNuclearHazard } from "./lib/browser-physics";
 import { dartPinsForPreset } from "./lib/dart";
 import { getDartBuoysForPreset } from "./lib/data";
@@ -545,6 +545,13 @@ export default function App() {
   const [mitigationBarrierA, setMitigationBarrierA] = useState<MitigationBarrier | null>(null);
   const [mitigationBarrierB, setMitigationBarrierB] = useState<MitigationBarrier | null>(null);
   const [mitigationPickSlot, setMitigationPickSlot] = useState<"a" | "b" | null>(null);
+  const [exploratorySandboxActive, setExploratorySandboxActive] = useState(false);
+  const [exploratorySandboxPaused, setExploratorySandboxPaused] = useState(false);
+  const [exploratoryPokeAmplitudeM, setExploratoryPokeAmplitudeM] = useState(2);
+  const [exploratoryWaves, setExploratoryWaves] = useState<ExploratoryWave[]>([]);
+  const [exploratoryWaveTimeS, setExploratoryWaveTimeS] = useState(0);
+  const exploratorySessionId = useRef("sandbox-start");
+  const exploratoryStepInFlight = useRef(false);
   const [sweGaugesA, setSweGaugesA] = useState<Gauge[]>([]);
   const [sweGaugesB, setSweGaugesB] = useState<Gauge[]>([]);
   const [compareMode, setCompareMode] = useState(false);
@@ -1439,6 +1446,7 @@ export default function App() {
   }, [pendingArchivedAction, slotA.sourceResult.status]);
 
   useEffect(() => {
+    if (exploratorySandboxActive) return;
     if (!sweSnapshots?.length || !sweRunQualityA || sweRunQualityA.status === "failed") return;
     if (inTauri && !sweMaxField) return;
     if (archivedSnapshots.current.has(sweSnapshots)) return;
@@ -1506,7 +1514,7 @@ export default function App() {
       console.warn("[history] failed to encode completed run", error);
       showToast(error instanceof Error ? error.message : String(error), "error");
     });
-  }, [activePresetA, inTauri, portableScenarioContext, showToast, slotA.activePresetId, slotA.initial, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, t]);
+  }, [activePresetA, exploratorySandboxActive, inTauri, portableScenarioContext, showToast, slotA.activePresetId, slotA.initial, slotA.lastCustomScenario, sweGaugesA, sweIsochrones, sweMaxField, sweRenderFrameA, sweRunQualityA, sweScientificExport, sweSnapshots, t]);
 
   const openArchivedRun = useCallback((record: RunArchiveRecord) => {
     setShowRunHistory(false);
@@ -2185,7 +2193,98 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasHighlightReplay, highlightStorySource]);
 
+  const stepExploratorySandbox = useCallback(async (
+    poke: { lat: number; lon: number } | null = null,
+    advanceS = 0.25,
+  ) => {
+    if (!exploratorySandboxActive || exploratoryStepInFlight.current) return;
+    exploratoryStepInFlight.current = true;
+    try {
+      if (inTauri) {
+        const response = await api.exploratoryWaveStep({
+          session_id: exploratorySessionId.current,
+          advance_s: advanceS,
+          paused: exploratorySandboxPaused,
+          poke: poke
+            ? {
+                lat_deg: poke.lat,
+                lon_deg: poke.lon,
+                amplitude_m: exploratoryPokeAmplitudeM,
+                radius_m: 20_000,
+              }
+            : null,
+        });
+        if (exploratorySandboxActive) {
+          setExploratoryWaves(response.waves);
+          setExploratoryWaveTimeS(response.time_s);
+        }
+      } else {
+        const deltaS = exploratorySandboxPaused ? 0 : advanceS;
+        setExploratoryWaveTimeS((current) => Math.min(180, current + deltaS));
+        setExploratoryWaves((current) => {
+          const advanced = current
+            .map((wave) => {
+              const ageS = wave.age_s + deltaS;
+              const radiusM = wave.radius_m + Math.sqrt(9.80665 * 4_000) * deltaS;
+              return {
+                ...wave,
+                age_s: ageS,
+                radius_m: radiusM,
+                amplitude_m: wave.amplitude_m * Math.exp(-deltaS / 90),
+              };
+            })
+            .filter((wave) => wave.age_s <= 120 && Math.abs(wave.amplitude_m) >= 0.01);
+          if (!poke) return advanced;
+          return [...advanced, {
+            id: Date.now(),
+            lat_deg: poke.lat,
+            lon_deg: poke.lon,
+            radius_m: 20_000,
+            amplitude_m: exploratoryPokeAmplitudeM,
+            age_s: 0,
+          }].slice(-12);
+        });
+      }
+    } catch (error) {
+      showToast(t("swe.exploratoryFailed", { error: error instanceof Error ? error.message : String(error) }), "error");
+    } finally {
+      exploratoryStepInFlight.current = false;
+    }
+  }, [exploratoryPokeAmplitudeM, exploratorySandboxActive, exploratorySandboxPaused, inTauri, showToast, t]);
+
+  useEffect(() => {
+    if (!exploratorySandboxActive || exploratorySandboxPaused) return;
+    const timer = window.setInterval(() => {
+      void stepExploratorySandbox();
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [exploratorySandboxActive, exploratorySandboxPaused, stepExploratorySandbox]);
+
+  const toggleExploratorySandbox = useCallback((active: boolean) => {
+    exploratoryStepInFlight.current = false;
+    setExploratorySandboxActive(active);
+    setExploratorySandboxPaused(false);
+    setExploratoryWaves([]);
+    setExploratoryWaveTimeS(0);
+    setMitigationPickSlot(null);
+    if (active) {
+      exploratorySessionId.current = `sandbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setCompareMode(false);
+      setExportMenuOpen(false);
+      setTimelinePlaying(false);
+      setPickMode(true);
+      setInspectorTab("results");
+    } else {
+      setPickMode(false);
+      if (inTauri) void api.clearExploratoryWave(exploratorySessionId.current).catch(() => {});
+    }
+  }, [inTauri]);
+
   async function handlePickGlobe(lat: number, lon: number, preserveFamiliarPlace = false) {
+    if (exploratorySandboxActive) {
+      void stepExploratorySandbox({ lat, lon }, 0);
+      return;
+    }
     if (mitigationPickSlot === "a") {
       setMitigationBarrierA((current) => ({
         lat_deg: lat,
@@ -2301,6 +2400,7 @@ export default function App() {
   }
 
   function selectHazardMode(mode: HazardMode) {
+    if (exploratorySandboxActive) toggleExploratorySandbox(false);
     if (mode !== "tsunami") clearHazelValidation();
     setRunJourney(null);
     setHazardMode(mode);
@@ -2547,6 +2647,7 @@ export default function App() {
   }
 
   function startComparisonStory(story: ComparisonStory, preservePresetId: string | null = null) {
+    if (exploratorySandboxActive) return;
     clearHazelValidation();
     const reverse = preservePresetId === story.rightPresetId;
     const activePresetId = reverse ? story.rightPresetId : story.leftPresetId;
@@ -2565,6 +2666,7 @@ export default function App() {
   }
 
   function startMitigationComparison() {
+    if (exploratorySandboxActive) return;
     const scenario: ScenarioInput | null = slotA.lastCustomScenario
       ?? (activePresetA
         // PresetSource and ScenarioInput intentionally share the same
@@ -2581,6 +2683,7 @@ export default function App() {
   }
 
   function toggleComparisonMode() {
+    if (exploratorySandboxActive) return;
     if (compareMode) {
       setCompareMode(false);
       return;
@@ -2736,7 +2839,7 @@ export default function App() {
               variant="mode"
               onClick={toggleComparisonMode}
               title={t("app.compareTitle")}
-              disabled={inHazardMode}
+              disabled={inHazardMode || exploratorySandboxActive}
               disabledReason={t("app.compareReason")}
               onUnavailable={(reason) => showToast(reason, "info")}
             >
@@ -2750,6 +2853,7 @@ export default function App() {
               className="app__export-trigger"
               aria-expanded={exportMenuOpen}
               aria-controls="export-actions"
+              disabled={exploratorySandboxActive}
               onClick={() => setExportMenuOpen((open) => !open)}
             >
               <ToolbarIcon name="image" />
@@ -2763,6 +2867,7 @@ export default function App() {
               autoFocus
               role="group"
               aria-label={t("app.exportCurrent")}
+              inert={exploratorySandboxActive ? true : undefined}
               onClick={(event) => {
                 if ((event.target as HTMLElement).closest("button")) {
                   window.setTimeout(() => {
@@ -3297,7 +3402,11 @@ export default function App() {
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
                 onPickCancel={() => {
-                  setPickMode(false);
+                  if (exploratorySandboxActive) {
+                    toggleExploratorySandbox(false);
+                  } else {
+                    setPickMode(false);
+                  }
                   setMitigationPickSlot(null);
                 }}
                 inspectMode={inspectMode}
@@ -3317,6 +3426,9 @@ export default function App() {
                 onAddGauge={inHazardMode ? undefined : (lat, lon) => setPendingGauge({ lat, lon })}
                 isochrones={inHazardMode ? null : sweIsochrones}
                 quickEtaPreview={inHazardMode ? null : sweQuickEtaPreview}
+                exploratorySandboxActive={!inHazardMode && exploratorySandboxActive}
+                exploratoryWaves={!inHazardMode ? exploratoryWaves : []}
+                exploratoryTimeS={exploratoryWaveTimeS}
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
@@ -3608,6 +3720,12 @@ export default function App() {
             onScientificExport={handleScientificExport}
             onRunQuality={setSweRunQualityA}
             onRunFinished={handleSolverRunFinished}
+            exploratorySandboxActive={exploratorySandboxActive}
+            exploratorySandboxPaused={exploratorySandboxPaused}
+            exploratoryPokeAmplitudeM={exploratoryPokeAmplitudeM}
+            onExploratorySandboxChange={toggleExploratorySandbox}
+            onExploratorySandboxPauseChange={setExploratorySandboxPaused}
+            onExploratoryPokeAmplitudeChange={setExploratoryPokeAmplitudeM}
             onIsochrones={setSweIsochrones}
             onQuickEtaPreview={setSweQuickEtaPreview}
             onRenderFrame={setSweRenderFrameA}

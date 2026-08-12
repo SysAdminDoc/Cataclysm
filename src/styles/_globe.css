@@ -650,6 +650,27 @@
   font-size: 10px;
 }
 
+.app__globe-status--exploratory {
+  top: 52px;
+  display: grid;
+  gap: 3px;
+  max-width: min(520px, calc(100% - 24px));
+  background: color-mix(in srgb, var(--mauve) 18%, var(--mantle));
+  border-color: var(--mauve);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.app__globe-status--exploratory strong {
+  color: var(--mauve);
+}
+
+.app__globe-status--exploratory small {
+  color: var(--subtext);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 .app__globe-status button {
   flex: none;
   min-height: 26px;
