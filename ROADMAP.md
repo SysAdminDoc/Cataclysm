@@ -11,12 +11,6 @@ Actionable work only. Historical and completed roadmap material is archived in C
   Acceptance: one `.gpkg` opens in the QGIS/GDAL versions pinned by an interoperability fixture with source/fault geometry, gauges/runup, arrival isochrones, applicable direct-effect polygons, CRS/datum, units, quality, citations, and source/data digests; table/geometry/row/size limits fail closed; a round-trip fixture verifies geometry and metadata without retaining another full run in memory.
   Complexity: M
 
-- [ ] P2 — Surface the deterministic WebCodecs video export in the UI
-  Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it — the export menu still only offers the real-time MediaRecorder path.
-  Where: `src/lib/export.ts` (helper present), export/highlight-story UI in `src/App.tsx`/`src/components/HighlightStoryDialog.tsx`, a frame-stepping `renderFrame(i)` driver over the SWE replay.
-  Acceptance: an export option encodes a replay frame-by-frame with a progress indicator; feature-detected with a MediaRecorder fallback labelled real-time; failure preserves the replay and offers retry.
-  Complexity: M
-
 - [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
   Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
   Evidence: Cesium June/April 2026 releases https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/ and https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (all ≤ pinned 1.143); overlay rendering in `src/render/cesium/**`, `src/components/Globe.tsx`.
