@@ -466,6 +466,7 @@ src-tauri/target/release/cataclysm-cli run --input scenario.json --output run.js
 src-tauri/target/release/cataclysm-cli inspect --result run.json --lat 38.3 --lon 142.37 --data-dir ./cataclysm-data
 src-tauri/target/release/cataclysm-cli export --result run.json --kind netcdf --destination /absolute/path/run.nc --data-dir ./cataclysm-data
 src-tauri/target/release/cataclysm-cli export --result run.json --kind vtk --destination /absolute/path/run.pvd --data-dir ./cataclysm-data
+src-tauri/target/release/cataclysm-cli geopackage --input geopackage-request.json --destination /absolute/path/run.gpkg
 ```
 
 Input is a versioned JSON envelope: `{"schema_version":1,"request":{...}}`,
@@ -480,6 +481,9 @@ resume it with `resume --resume-run-id ID` and the identical input/data director
 Scientific export accepts `--kind netcdf`, `zarr`, or `vtk`; VTK destinations
 receive a sibling `<name>_frames` directory containing the `.vti` frames and
 provenance.
+The `geopackage` command accepts the bounded JSON request used by the desktop
+GIS export and publishes one WGS 84 `.gpkg` with source/fault, gauge, runup,
+isochrone, applicable direct-effect, and provenance metadata tables.
 Run `cataclysm-cli --help` for the complete option list. The CLI is deterministic
 and CPU-authoritative; benchmark timing values are observational by design.
 

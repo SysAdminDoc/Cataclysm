@@ -46,6 +46,9 @@ sha2 = "0.10"
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-deep-link = "2.4.9"
+# Bundled SQLite keeps the GIS handoff portable across desktop installers and
+# the headless CLI; the writer emits the OGC GeoPackage core tables directly.
+rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
 
 [dev-dependencies]
 # Property-based tests over the physics parameter space

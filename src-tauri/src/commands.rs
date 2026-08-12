@@ -38,6 +38,7 @@ use crate::presets::{Preset, PresetSource, all_presets, find_preset};
 use tauri::{AppHandle, Emitter, Manager, ipc::Response};
 
 mod direct;
+mod geopackage;
 mod headless;
 mod observations;
 mod scientific_export;
@@ -45,6 +46,7 @@ mod simulation;
 mod system;
 mod waves;
 pub use direct::*;
+pub use geopackage::*;
 pub use headless::run_headless_cli;
 pub use observations::*;
 pub use scientific_export::*;

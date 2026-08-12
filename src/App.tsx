@@ -44,6 +44,7 @@ import { getDartBuoysForPreset } from "./lib/data";
 import { listDemoPresets } from "./lib/demo";
 import { applyTheme, loadTheme } from "./lib/theme";
 import { copyExportText, exportDeterministicVideo, exportGlobePng, exportGlobeShareCard, exportGlobeVideo, exportCzml, exportGeoJson, exportKml, exportComparisonPng, isDeterministicVideoSupported, type DirectHazardExportData, type ExportResult, type RunupPoint, type ScreenshotMeta } from "./lib/export";
+import { exportGeoPackage } from "./lib/geopackage-export";
 import { APP_VERSION, type RenderFrameProvenance } from "./lib/model-provenance";
 import { readDiagnosticsLog } from "./lib/diagnosticsLog";
 import {
@@ -216,7 +217,7 @@ const DIRECT_RENDER_FIXTURE_URLS: Record<string, string> = {
 
 const Globe = lazy(() => import("./components/Globe").then((m) => ({ default: m.Globe })));
 
-type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "vtk" | "geojson" | "kml" | "help" | "history" | "citations" | "settings";
+type ToolbarIconName = "inspect" | "compare" | "image" | "share" | "link" | "video" | "text" | "czml" | "netcdf" | "zarr" | "vtk" | "geojson" | "gpkg" | "kml" | "help" | "history" | "citations" | "settings";
 
 function ToolbarIcon({ name }: { name: ToolbarIconName }) {
   const common = {
@@ -326,6 +327,14 @@ function ToolbarIcon({ name }: { name: ToolbarIconName }) {
       <svg {...common}>
         <path d="M12 2 L22 8.5 L22 15.5 L12 22 L2 15.5 L2 8.5 Z" />
         <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+  if (name === "gpkg") {
+    return (
+      <svg {...common}>
+        <path d="M4 7 12 3l8 4v10l-8 4-8-4Z" />
+        <path d="m4 7 8 4 8-4M12 11v10M8 5l8 4" />
       </svg>
     );
   }
@@ -3021,6 +3030,51 @@ export default function App() {
               onUnavailable={(reason) => showToast(reason, "info")}
             >
               GeoJSON
+            </ToolbarButton>
+            <ToolbarButton
+              icon="gpkg"
+              onClick={() => {
+                const points: RunupPoint[] = slotA.runupResults.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  lat: r.lat,
+                  lon: r.lon,
+                  runup_m: r.runup_m,
+                  arrival_time_s: r.arrival_time_s,
+                  inundation_extent_m: r.inundation_extent_m,
+                  offshore_amplitude_m: r.offshore_amplitude_m,
+                  beach_slope_deg: r.beach_slope_deg,
+                  offshore_depth_m: r.offshore_depth_m,
+                  slope_provenance: r.slope_provenance,
+                  depth_provenance: r.depth_provenance,
+                  quantitative_confidence: r.quantitative_confidence,
+                  quantitative_label: r.quantitative_label,
+                  has_arrived: r.has_arrived,
+                }));
+                const run = async () => reportExportResult(
+                  await exportGeoPackage({
+                    meta: exportMetaA(),
+                    gauges: inHazardMode ? [] : sweGaugesA,
+                    gaugeSnapshots: inHazardMode ? [] : sweSnapshots ?? [],
+                    runupPoints: points,
+                    isochrones: inHazardMode ? null : sweMaxField?.isochrones ?? null,
+                    directHazard: directExportData,
+                  }),
+                  t("app.export.saved", { item: t("app.export.item.geopackage") }),
+                  () => void run(),
+                );
+                void run();
+              }}
+              title={t("app.export.title.geopackage")}
+              disabled={!inTauri || (inHazardMode ? !directExportData : !slotA.initial)}
+              disabledReason={!inTauri
+                ? t("app.export.reason.geopackageDesktop")
+                : inHazardMode
+                  ? directExportRequiredReason
+                  : sourceRequiredReason}
+              onUnavailable={(reason) => showToast(reason, "info")}
+            >
+              GeoPackage
             </ToolbarButton>
             <ToolbarButton
               icon="kml"

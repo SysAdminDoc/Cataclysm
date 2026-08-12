@@ -5,6 +5,7 @@
 
 pub mod commands;
 pub mod data;
+pub mod geopackage;
 pub mod jpl_api;
 pub mod native_diagnostics;
 pub mod ncei_hazel;
@@ -127,6 +128,7 @@ pub fn run() {
             remove_solver_checkpoint,
             max_field_probe,
             save_scientific_export,
+            save_geopackage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

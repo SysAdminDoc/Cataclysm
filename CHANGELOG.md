@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added a bounded desktop/CLI OGC GeoPackage handoff. It writes a portable
+  bundled-SQLite file with WGS 84 source/fault, gauge, runup, arrival-isochrone,
+  and applicable direct-effect layers plus units, quality, citations, and
+  source/data SHA-256 metadata; geometry, row, property, vertex, request, and
+  output limits fail closed and the native writer publishes atomically.
 - Added an opt-in NOAA/NCEI HazEL observed-runup comparison surface. Selected
   historical events fetch bounded, paginated runup records through the native
   bridge; valid observations render as a separate default-hidden Cesium layer

@@ -68,6 +68,7 @@ Commands:\n\
   compare   --left run.json --right run.json [--output result.json]\n\
   inspect   --result run.json --lat DEG --lon DEG [--data-dir DIR] [--output result.json]\n\
   export    --result run.json --kind netcdf|zarr|vtk --destination PATH [--data-dir DIR] [--output result.json]\n\
+  geopackage --input request.json --destination PATH [--output result.json]\n\
   benchmark --input scenario.json [--iterations N] [--data-dir DIR] [--output result.json]\n\n\
 Scenario files use {\"schema_version\":1,\"request\":{...}}. Final JSON is written\n\
 to stdout unless --output is supplied; progress and errors are NDJSON on stderr.\n"
@@ -167,6 +168,18 @@ fn read_scenario(path: &Path) -> Result<CliScenarioFile, CliFailure> {
     }
     validate_simulate_grid(&scenario.request).map_err(CliFailure::usage)?;
     Ok(scenario)
+}
+
+fn read_geopackage_request(
+    path: &Path,
+) -> Result<crate::geopackage::GeoPackageExportRequest, CliFailure> {
+    let bytes = read_bounded(
+        path,
+        crate::geopackage::MAX_REQUEST_BYTES as u64,
+        "GeoPackage request",
+    )?;
+    serde_json::from_slice(&bytes)
+        .map_err(|error| CliFailure::usage(format!("GeoPackage request JSON is invalid: {error}")))
 }
 
 fn read_u16(bytes: &[u8], offset: usize) -> Result<u16, CliFailure> {
@@ -1301,6 +1314,28 @@ fn execute(args: &ParsedArgs) -> Result<(Value, i32), CliFailure> {
                     "format": kind,
                     "destination": destination,
                     "bytes": bytes,
+                }),
+                0,
+            ))
+        }
+        "geopackage" => {
+            reject_unknown(args, &["input", "destination", "output"])?;
+            let request = read_geopackage_request(Path::new(option(args, "input")?))?;
+            let destination = PathBuf::from(option(args, "destination")?);
+            let summary = crate::geopackage::write_geopackage(&request, &destination)
+                .map_err(CliFailure::run)?;
+            Ok((
+                json!({
+                    "schema_version": CLI_SCHEMA_VERSION,
+                    "kind": "cataclysm_geopackage_export",
+                    "tool_version": env!("CARGO_PKG_VERSION"),
+                    "destination": destination,
+                    "bytes": summary.bytes,
+                    "layers": summary.layers,
+                    "features": summary.features,
+                    "vertices": summary.vertices,
+                    "source_sha256": summary.source_digest,
+                    "data_sha256": summary.data_digest,
                 }),
                 0,
             ))

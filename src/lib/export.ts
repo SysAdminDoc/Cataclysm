@@ -1154,6 +1154,7 @@ export type RunupPoint = {
   depth_provenance: CoastalMeasurementProvenance;
   quantitative_confidence: "low" | "medium" | "high";
   quantitative_label: "illustrative" | "screening_estimate" | "quantitative";
+  has_arrived?: boolean;
 };
 
 export function exportGeoJson(
