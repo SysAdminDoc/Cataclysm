@@ -101,6 +101,23 @@ test("browser WASM preserves volcanic collapse source sign and duration coupling
   assert.equal(flank.source_geometry.collapse_kind, "FlankCollapse");
 });
 
+test("browser WASM accumulates an early kinetic-impactor delta-v", async () => {
+  const call = await physicsCaller();
+  const result = call({
+    operation: "asteroid_deflection",
+    input: {
+      diameter_m: 100,
+      density_kg_m3: 3000,
+      impulse_n_s: 1e7,
+      lead_time_days: 3650,
+    },
+  });
+  assert.ok(result.delta_v_m_s > 0);
+  assert.equal(result.along_track_displacement_m, result.nominal_miss_distance_m);
+  assert.equal(result.impact_avoided, false);
+  assert.equal(result.model, "linearized_constant_delta_v");
+});
+
 test("browser WASM attenuation matches the desktop Rust screening fixture", async () => {
   const call = await physicsCaller();
   const samples = call({

@@ -91,6 +91,12 @@
         "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": 0, "applicability": "placement" }
       }
     },
+    "AsteroidDeflection": {
+      "fields": {
+        "impulse_n_s": { "type": "number", "label": "Deflection impulse", "units": "N·s", "minimum": 0, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true, "default": 1000000000, "applicability": "teaching-mode" },
+        "lead_time_days": { "type": "number", "label": "Deflection lead time", "units": "days", "minimum": 1, "maximum": 36500, "minimumInclusive": true, "maximumInclusive": true, "default": 3650, "applicability": "teaching-mode" }
+      }
+    },
     "DirectNuclear": {
       "fields": {
         "yield_kt": { "type": "number", "label": "Yield", "units": "kt TNT", "minimum": 0.001, "maximum": 100000, "minimumInclusive": true, "maximumInclusive": true, "default": 100 },

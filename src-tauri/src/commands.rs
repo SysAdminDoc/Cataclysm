@@ -17,6 +17,7 @@ use crate::physics::{
     GeoPoint, InitialDisplacement, InitialSourceGeometry,
     asteroid::AsteroidImpact,
     constants::R_EARTH_M,
+    deflection::AsteroidDeflectionRequest,
     earthquake::EarthquakeSource,
     lamb_wave::{LAMB_WAVE_SPEED_M_S, LambWaveSource, proudman_resonance_depth_m},
     landslide::LandslideSource,

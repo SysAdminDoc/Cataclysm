@@ -105,6 +105,15 @@ describe("ScenarioBuilder scenario persistence", () => {
     }));
   });
 
+  it("keeps the impact inputs unchanged when the deflection lesson is enabled", async () => {
+    const user = setupUser();
+    const onSimulate = renderBuilder();
+    await user.click(screen.getByRole("checkbox", { name: "Enable deflection lesson" }));
+    expect(screen.getByText("Linearized teaching approximation")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Simulate" }));
+    expect(onSimulate).toHaveBeenCalledWith({ kind: "Asteroid", source: INITIAL_ASTEROID });
+  });
+
   it("previews a verified portable package before importing it as a saved copy", async () => {
     const bytes = await createPortableScenarioPackage({
       scenario: { kind: "Earthquake", source: INITIAL_EARTHQUAKE },

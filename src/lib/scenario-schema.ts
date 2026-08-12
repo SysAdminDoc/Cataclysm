@@ -46,7 +46,7 @@ export type ScenarioValidationResult =
 
 export type Bound = { min?: number; max?: number; minInclusive?: boolean; maxInclusive?: boolean };
 export type ScenarioSourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | "VolcanicCollapse";
-export type ScientificSourceKind = ScenarioSourceKind | "DirectAsteroid" | "DirectNuclear";
+export type ScientificSourceKind = ScenarioSourceKind | "DirectAsteroid" | "DirectNuclear" | "AsteroidDeflection";
 type ContractField = {
   type: "number" | "enum";
   label: string;

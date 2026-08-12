@@ -3,6 +3,8 @@
 import { invoke, Channel } from "@tauri-apps/api/core";
 import type {
   AsteroidImpactInput,
+  AsteroidDeflectionEstimate,
+  AsteroidDeflectionInput,
   CoastalMeasurementProvenance,
   EarthquakeInput,
   GeoPoint,
@@ -388,6 +390,9 @@ export const api = {
   },
   asteroidInitialConditions(input: AsteroidImpactInput) {
     return invoke<InitialDisplacement>("asteroid_initial_conditions", { input });
+  },
+  asteroidDeflectionEstimate(input: AsteroidDeflectionInput) {
+    return invoke<AsteroidDeflectionEstimate>("asteroid_deflection_estimate", { input });
   },
   nuclearInitialConditions(input: NuclearBurstInput) {
     return invoke<InitialDisplacement>("nuclear_initial_conditions", { input });

@@ -16,6 +16,126 @@
   border-left: 3px solid color-mix(in srgb, var(--accent-active) 48%, var(--divider));
 }
 
+.scenario-form__deflection {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--mantle);
+}
+
+.scenario-form__deflection-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scenario-form__deflection-header p,
+.scenario-form__deflection-model p {
+  margin: 3px 0 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+
+.scenario-form__deflection-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: var(--accent-text);
+  font-size: var(--type-caption);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scenario-form__deflection-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.scenario-form__deflection-model {
+  padding-top: 8px;
+  border-top: 1px solid var(--divider);
+}
+
+.scenario-form__deflection-model a {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--accent-text);
+  font-size: var(--type-caption);
+}
+
+.scenario-form__deflection-status {
+  margin: 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.scenario-form__deflection-status[data-tone="error"] {
+  color: var(--danger);
+}
+
+.scenario-form__deflection-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+  border-left: 3px solid var(--accent-text);
+  background: color-mix(in srgb, var(--surface0) 45%, transparent);
+}
+
+.scenario-form__deflection-result[data-outcome="impact"] {
+  border-left-color: var(--warning-text);
+}
+
+.scenario-form__deflection-result[data-outcome="miss"] {
+  border-left-color: var(--success-text);
+}
+
+.scenario-form__deflection-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scenario-form__deflection-metrics span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scenario-form__deflection-metrics small,
+.scenario-form__deflection-scale small {
+  color: var(--overlay);
+  font-size: 11px;
+}
+
+.scenario-form__deflection-metrics b {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.scenario-form__deflection-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.scenario-form__deflection-scale progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent-active);
+}
+
 .scenario-form__actions {
   grid-column: span 2;
   display: grid;

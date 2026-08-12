@@ -149,6 +149,33 @@ pub fn asteroid_initial_conditions(input: AsteroidImpact) -> Result<InitialDispl
 }
 
 #[tauri::command]
+pub fn asteroid_deflection_estimate(
+    input: AsteroidDeflectionRequest,
+) -> Result<crate::physics::deflection::AsteroidDeflectionEstimate, String> {
+    crate::data::source_input_contract::validate_number(
+        "Asteroid",
+        "diameter_m",
+        input.diameter_m,
+    )?;
+    crate::data::source_input_contract::validate_number(
+        "Asteroid",
+        "density_kg_m3",
+        input.density_kg_m3,
+    )?;
+    crate::data::source_input_contract::validate_number(
+        "AsteroidDeflection",
+        "impulse_n_s",
+        input.impulse_n_s,
+    )?;
+    crate::data::source_input_contract::validate_number(
+        "AsteroidDeflection",
+        "lead_time_days",
+        input.lead_time_days,
+    )?;
+    input.estimate()
+}
+
+#[tauri::command]
 pub fn nuclear_initial_conditions(input: NuclearBurst) -> Result<InitialDisplacement, String> {
     let validate =
         |field, value| crate::data::source_input_contract::validate_number("Nuclear", field, value);

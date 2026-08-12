@@ -32,6 +32,7 @@ import type {
 } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import { GlossaryTip } from "./GlossaryTip";
+import { AsteroidDeflectionPanel } from "./AsteroidDeflectionPanel";
 import { NumericField } from "./NumericField";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
@@ -711,6 +712,7 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
               onChange={(v) => setAsteroid({ ...asteroid, velocity_m_s: v })} />
             <NumField field="angle_deg" label={t("builder.field.angle")} value={asteroid.angle_deg}
               onChange={(v) => setAsteroid({ ...asteroid, angle_deg: v })} />
+            <AsteroidDeflectionPanel asteroid={asteroid} />
           </>
         )}
         {tab === "nuclear" && (

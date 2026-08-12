@@ -77,6 +77,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             asteroid_initial_conditions,
+            asteroid_deflection_estimate,
             nuclear_initial_conditions,
             landslide_initial_conditions,
             earthquake_initial_conditions,

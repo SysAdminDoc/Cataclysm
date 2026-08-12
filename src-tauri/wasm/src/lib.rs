@@ -21,6 +21,7 @@ mod physics;
 use physics::{
     InitialDisplacement,
     asteroid::AsteroidImpact,
+    deflection::AsteroidDeflectionRequest,
     direct_hazard::{
         AsteroidHazardRequest, NuclearHazardRequest, simulate_asteroid_hazard,
         simulate_nuclear_hazard,
@@ -119,6 +120,11 @@ enum Request {
     /// `simulate_nuclear_hazard` command runs.
     NuclearHazard {
         request: NuclearHazardRequest,
+    },
+    /// Linearized kinetic-impactor teaching approximation shared with the
+    /// desktop command.
+    AsteroidDeflection {
+        input: AsteroidDeflectionRequest,
     },
 }
 
@@ -233,6 +239,10 @@ fn execute(request: Request) -> Result<Value, String> {
         }
         Request::NuclearHazard { request } => {
             let result = simulate_nuclear_hazard(request)?;
+            return serde_json::to_value(result).map_err(|error| error.to_string());
+        }
+        Request::AsteroidDeflection { input } => {
+            let result = input.estimate()?;
             return serde_json::to_value(result).map_err(|error| error.to_string());
         }
     }

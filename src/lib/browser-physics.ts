@@ -1,5 +1,7 @@
 import type {
   AsteroidImpactInput,
+  AsteroidDeflectionEstimate,
+  AsteroidDeflectionInput,
   EarthquakeInput,
   GeoPoint,
   InitialDisplacement,
@@ -182,6 +184,13 @@ export function browserAsteroidHazard(
   request: BrowserAsteroidHazardRequest,
 ): Promise<HazardResult> {
   return compute({ operation: "asteroid_hazard", request });
+}
+
+/** Rust-authoritative linearized teaching approximation for asteroid deflection. */
+export function browserAsteroidDeflection(
+  request: AsteroidDeflectionInput,
+): Promise<AsteroidDeflectionEstimate> {
+  return compute({ operation: "asteroid_deflection", input: request });
 }
 
 /**

@@ -16,6 +16,7 @@
 //! evaluated so the math is auditable without consulting the citations file.
 
 pub mod constants;
+pub mod deflection;
 // direct_hazard is self-contained (its only external dependency is
 // data::source_input_contract), so it compiles for the browser-wasm target
 // too. That lets the browser preview run the exact Rust asteroid/nuclear

@@ -75,6 +75,31 @@ export type AsteroidImpactInput = {
   location: GeoPoint;
 };
 
+/** Ephemeral teaching-mode inputs; these are not part of the saved impact scenario. */
+export type AsteroidDeflectionInput = {
+  diameter_m: number;
+  density_kg_m3: number;
+  impulse_n_s: number;
+  lead_time_days: number;
+};
+
+export type AsteroidDeflectionEstimate = {
+  asteroid_mass_kg: number;
+  impulse_n_s: number;
+  lead_time_s: number;
+  delta_v_m_s: number;
+  along_track_displacement_m: number;
+  nominal_miss_distance_m: number;
+  nominal_miss_distance_low_m: number;
+  nominal_miss_distance_high_m: number;
+  earth_radius_m: number;
+  earth_radius_fraction: number;
+  impact_margin_m: number;
+  impact_avoided: boolean;
+  uncertainty_fraction: number;
+  model: "linearized_constant_delta_v";
+};
+
 export type NuclearBurstInput = {
   yield_kt: number;
   burst_mode: "Surface" | "Shallow" | "DeepOptimal" | "Abyssal";

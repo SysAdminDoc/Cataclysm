@@ -4,13 +4,6 @@ Actionable work only. Historical and completed roadmap material is archived in C
 
 ## Actionable Items
 
-- [ ] P3 — Add an asteroid-deflection (kinetic-impactor) teaching mode
-  Why: the asteroid module presents impact as inevitable, but the NGSS-aligned agency lesson is deflection — NASA confirmed (2026) DART altered Dimorphos' heliocentric orbit; a simplified Δv × lead-time → miss-distance calculator converts doom into an engineering-design lesson, distinct from the tracked NEO-discovery surface.
-  Evidence: NASA DART orbit-change result https://www.jpl.nasa.gov/news/nasas-dart-mission-changed-orbit-of-asteroid-didymos-around-sun/; NGSS engineering-design practice; existing asteroid inputs in `ScenarioBuilder.tsx`.
-  Touches: a deflection calculator (impulse + lead time → along-track displacement/miss distance using a documented linearised approximation, explicitly not full n-body), a "deflect it" UI mode, visualization of miss vs. impact, uncertainty/limits copy.
-  Acceptance: users set an impulse and lead time and see the resulting miss distance (or reduced impact) with the linearised assumption stated; the mode is labelled a teaching approximation, never a mission prediction; the underlying impact scenario is unchanged when deflection is off.
-  Complexity: L
-
 - [ ] P3 — Add an NGSS engineering-design "mitigation" mode
   Why: classroom natural-hazard units (NGSS 4-ESS3-2, TeachEngineering "Survive That Tsunami!") are explicitly design-solution oriented, and letting a user place a barrier/sea wall and re-run makes the app curriculum-adoptable rather than a passive demo.
   Evidence: TeachEngineering tsunami design activity https://www.teachengineering.org/activities/view/cub_natdis_lesson06_activity1; NGSS 4-ESS3-2 https://thewonderofscience.com/4ess32; solver bathymetry/land-mask handling in `src-tauri/src/physics/solver/`.

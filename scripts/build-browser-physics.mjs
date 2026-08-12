@@ -25,6 +25,7 @@ const sourcePaths = [
   "src-tauri/src/physics/mod.rs",
   "src-tauri/src/physics/constants.rs",
   "src-tauri/src/physics/asteroid.rs",
+  "src-tauri/src/physics/deflection.rs",
   "src-tauri/src/physics/nuclear.rs",
   "src-tauri/src/physics/landslide.rs",
   "src-tauri/src/physics/volcanic_collapse.rs",

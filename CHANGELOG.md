@@ -6,6 +6,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added an opt-in asteroid-deflection teaching mode. A Rust/WASM linearized
+  impulse-plus-lead-time calculator shows Δv, along-track miss distance, an
+  illustrative uncertainty envelope, and a visual Earth-radius impact/miss
+  threshold. It is explicitly not an n-body mission prediction and leaves the
+  underlying impact scenario unchanged.
 - Added a parameterized volcanic caldera/flank-collapse tsunami source. The
   Rust-authoritative initial displacement model accepts collapse volume,
   footprint, duration, coupling, and water depth; cited Anak Krakatau 2018 and

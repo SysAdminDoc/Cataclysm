@@ -199,6 +199,11 @@
     grid-template-columns: 1fr;
   }
 
+  .scenario-form__deflection-fields,
+  .scenario-form__deflection-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .scenario-form__actions {
     grid-column: span 1;
   }
