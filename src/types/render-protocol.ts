@@ -69,6 +69,7 @@ export type EventKindV1 =
   | "ocean_cavity"
   | "tsunami"
   | "nuclear_cloud"
+  | "firestorm"
   | "fallout"
   | "earthquake"
   | "landslide";

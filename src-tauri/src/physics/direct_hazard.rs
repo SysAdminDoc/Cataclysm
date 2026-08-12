@@ -204,6 +204,23 @@ pub struct SecondaryEffectEvent {
     pub citations: Vec<SecondaryEffectCitation>,
 }
 
+/// A bounded fire/loft screening product. The ignition footprint is a
+/// thermal-threshold projection; the smoke height is a plume-rise proxy, not
+/// a coupled fire-atmosphere climate simulation.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirestormOverlay {
+    pub ignition_radius_m: f64,
+    pub smoke_top_height_m: f64,
+    pub ignition_onset_seconds: f64,
+    pub smoke_loft_onset_seconds: f64,
+    pub smoke_loft_duration_seconds: f64,
+    pub model: &'static str,
+    pub confidence: &'static str,
+    pub uncertainty: &'static str,
+    pub citations: Vec<SecondaryEffectCitation>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AsteroidSecondaryEffects {
@@ -215,6 +232,8 @@ pub struct AsteroidSecondaryEffects {
     pub ejecta_reference_distance_m: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ejecta_thickness_m: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub firestorm: Option<FirestormOverlay>,
     pub events: Vec<SecondaryEffectEvent>,
 }
 
@@ -773,6 +792,51 @@ fn secondary_citation(label: &'static str, url: &'static str) -> SecondaryEffect
     SecondaryEffectCitation { label, url }
 }
 
+fn firestorm_citations() -> Vec<SecondaryEffectCitation> {
+    vec![
+        secondary_citation(
+            "Glasstone & Dolan 1977 — thermal radiation and ignition thresholds",
+            "https://www.atomicarchive.com/resources/documents/effects/glasstone-dolan.html",
+        ),
+        secondary_citation(
+            "NLR-TR-2022-81470 — smoke injection height modelling",
+            "https://docs.nlr.gov/docs/fy22osti/81470.pdf",
+        ),
+    ]
+}
+
+fn smoke_loft_duration(top_height_m: f64) -> f64 {
+    // A bounded 15 m/s rise-time proxy keeps the visual indicator tied to the
+    // reported height while making no claim about a resolved plume velocity.
+    (top_height_m / 15.0).clamp(600.0, 3_600.0)
+}
+
+fn asteroid_firestorm(
+    effective_energy_j: f64,
+    thermal_third_m: f64,
+    fireball_radius_m: f64,
+    crater: Option<&AsteroidCraterDetail>,
+) -> Option<FirestormOverlay> {
+    // A crater-forming impact with a sub-kilometre thermal ignition footprint
+    // is intentionally omitted: the model cannot support a mass-fire claim at
+    // that scale. Water impacts and atmospheric-only events have no product.
+    if crater.is_none() || effective_energy_j < 1.0e17 || thermal_third_m < 1_000.0 {
+        return None;
+    }
+    let smoke_top_height_m = (fireball_radius_m * 8.0).clamp(1_000.0, 30_000.0);
+    Some(FirestormOverlay {
+        ignition_radius_m: thermal_third_m,
+        smoke_top_height_m,
+        ignition_onset_seconds: 300.0,
+        smoke_loft_onset_seconds: 600.0,
+        smoke_loft_duration_seconds: smoke_loft_duration(smoke_top_height_m),
+        model: "250 kJ/m² thermal ignition threshold + bounded plume-rise proxy",
+        confidence: "quantitative_screening",
+        uncertainty: "The footprint is an idealized exposed-fuel threshold; fuel load, moisture, cloud cover, impact angle, ejecta sorting, and atmospheric coupling are not resolved.",
+        citations: firestorm_citations(),
+    })
+}
+
 /// Build the aftermath contract for crater-forming impacts. Quantitative
 /// values remain limited to the Collins-Melosh-Marcus seismic and ejecta
 /// screening relations. Extinction-scale climate entries are deliberately
@@ -783,6 +847,8 @@ fn asteroid_secondary_effects(
     effective_energy_j: f64,
     crater: Option<&AsteroidCraterDetail>,
     seismic_magnitude: f64,
+    thermal_third_m: f64,
+    fireball_radius_m: f64,
 ) -> Option<AsteroidSecondaryEffects> {
     let crater = crater?;
     let collins = || {
@@ -816,6 +882,13 @@ fn asteroid_secondary_effects(
         )
     };
 
+    let firestorm = asteroid_firestorm(
+        effective_energy_j,
+        thermal_third_m,
+        fireball_radius_m,
+        Some(crater),
+    );
+
     let mut events = vec![SecondaryEffectEvent {
         id: "seismic-shaking",
         onset_seconds: 5.0,
@@ -829,6 +902,41 @@ fn asteroid_secondary_effects(
         uncertainty: "Energy-to-magnitude scaling is order-of-magnitude and is not a prediction of fault rupture, duration, or local Mercalli intensity.",
         citations: vec![collins(), hanks_kanamori()],
     }];
+
+    if let Some(firestorm) = &firestorm {
+        events.push(SecondaryEffectEvent {
+            id: "firestorm-ignition",
+            onset_seconds: firestorm.ignition_onset_seconds,
+            time_label: "minutes",
+            title: "Thermal firestorm ignition zone",
+            summary: format!(
+                "Exposed fuel within about {} reaches the screening ignition threshold; lofted smoke is shown as a bounded indicator.",
+                fmt_meters(firestorm.ignition_radius_m)
+            ),
+            metric_label: "Ignition radius",
+            metric_value: fmt_meters(firestorm.ignition_radius_m),
+            category: "thermal",
+            confidence: firestorm.confidence,
+            uncertainty: firestorm.uncertainty,
+            citations: firestorm.citations.clone(),
+        });
+        events.push(SecondaryEffectEvent {
+            id: "firestorm-smoke-loft",
+            onset_seconds: firestorm.smoke_loft_onset_seconds,
+            time_label: "tens of minutes",
+            title: "Smoke lofting indicator",
+            summary: format!(
+                "A screening plume-rise proxy reaches about {}; this is the near-field source term for the qualitative atmospheric-loading narrative.",
+                fmt_meters(firestorm.smoke_top_height_m)
+            ),
+            metric_label: "Smoke-top proxy",
+            metric_value: fmt_meters(firestorm.smoke_top_height_m),
+            category: "climate",
+            confidence: "qualitative_scenario",
+            uncertainty: firestorm.uncertainty,
+            citations: firestorm.citations.clone(),
+        });
+    }
 
     let mut ejecta_reference_distance_m = None;
     let mut ejecta_thickness_m = None;
@@ -940,6 +1048,7 @@ fn asteroid_secondary_effects(
         seismic_magnitude,
         ejecta_reference_distance_m,
         ejecta_thickness_m,
+        firestorm,
         events,
     })
 }
@@ -989,6 +1098,14 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
     let glass_heavy_m = blast_radius(500.0, effective_energy, entry.airburst_altitude);
     let seismic_magnitude = (0.67 * effective_energy.log10() - 5.87).max(0.0);
     let tsunami = asteroid_tsunami(&request, effective_energy);
+    let secondary_effects = asteroid_secondary_effects(
+        &request,
+        effective_energy,
+        crater.as_ref(),
+        seismic_magnitude,
+        thermal_third,
+        fireball_radius,
+    );
 
     let blast_source_note = if entry.reaches_ground {
         ""
@@ -1078,9 +1195,6 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             "Windows shatter inward; dominant injury mechanism in airbursts. Popova et al. 2013.",
         ));
     }
-    rings.retain(|item| item.radius_m > 0.5);
-    rings.sort_by(|left, right| right.radius_m.total_cmp(&left.radius_m));
-
     let mut readout_items = if entry.reaches_ground {
         vec![
             readout(
@@ -1185,12 +1299,20 @@ pub fn simulate_asteroid_hazard(request: AsteroidHazardRequest) -> Result<Hazard
             Some("500 Pa shattering threshold; Popova et al. 2013".to_string()),
         ));
     }
-    let secondary_effects = asteroid_secondary_effects(
-        &request,
-        effective_energy,
-        crater.as_ref(),
-        seismic_magnitude,
-    );
+    if let Some(firestorm) = secondary_effects
+        .as_ref()
+        .and_then(|effects| effects.firestorm.as_ref())
+    {
+        rings.push(ring(
+            "Firestorm ignition zone",
+            firestorm.ignition_radius_m,
+            "#f38ba8",
+            "firestorm",
+            "250 kJ/m² exposed-fuel ignition screening footprint; not a burned-area prediction.",
+        ));
+    }
+    rings.retain(|item| item.radius_m > 0.5);
+    rings.sort_by(|left, right| right.radius_m.total_cmp(&left.radius_m));
     let detail = AsteroidDetail {
         kinetic_energy_j: kinetic_energy,
         megatons: kinetic_energy / MT_TO_JOULES,
@@ -1319,6 +1441,8 @@ pub struct NuclearDetail {
     pub optimal_height: f64,
     pub wave_height: f64,
     pub fallout: Option<FalloutPlume>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub firestorm: Option<FirestormOverlay>,
     pub timeline: Vec<TimelineEvent>,
     pub latent_cancer: Option<LatentCancerEstimate>,
 }
@@ -1350,6 +1474,24 @@ struct NuclearEffects {
     flash_blind_day: f64,
     flash_blind_night: f64,
     firestorm_r: f64,
+}
+
+fn nuclear_firestorm(effects: &NuclearEffects) -> Option<FirestormOverlay> {
+    if effects.is_hemp || effects.is_water || effects.firestorm_r <= 0.1 {
+        return None;
+    }
+    let smoke_top_height_m = effects.cloud_top_h * 1_000.0;
+    Some(FirestormOverlay {
+        ignition_radius_m: effects.firestorm_r * 1_000.0,
+        smoke_top_height_m,
+        ignition_onset_seconds: 300.0,
+        smoke_loft_onset_seconds: 600.0,
+        smoke_loft_duration_seconds: smoke_loft_duration(smoke_top_height_m),
+        model: "250 kJ/m² thermal ignition threshold + bounded plume-rise proxy",
+        confidence: "quantitative_screening",
+        uncertainty: "The footprint scales an exposed-fuel threshold by population-density context; fuel load, moisture, cloud cover, wind, fire spread, and atmospheric coupling are not resolved.",
+        citations: firestorm_citations(),
+    })
 }
 
 fn nuclear_effects(request: &NuclearHazardRequest) -> NuclearEffects {
@@ -1589,6 +1731,14 @@ fn nuclear_timeline(effects: &NuclearEffects) -> Vec<TimelineEvent> {
                 fmt_km(effects.firestorm_r)
             ),
             "firestorm",
+        ));
+        events.push(timeline(
+            "~10 min",
+            &format!(
+                "Firestorm smoke lofting reaches the bounded cloud-top proxy at ~{:.1} km; this is a source indicator for the qualitative climate narrative, not a climate forecast.",
+                effects.cloud_top_h
+            ),
+            "climate",
         ));
     }
     if effects.is_surface {
@@ -2056,6 +2206,7 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         validate("height_m", height)?;
     }
     let effects = nuclear_effects(&request);
+    let firestorm = nuclear_firestorm(&effects);
     let mut rings = if effects.is_hemp {
         vec![ring_km(
             "HEMP screening footprint",
@@ -2133,6 +2284,15 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
             "Downwind heavy-fallout reach (idealized plume length).",
         ));
     }
+    if let Some(firestorm) = &firestorm {
+        rings.push(ring_km(
+            "Firestorm ignition zone",
+            firestorm.ignition_radius_m / 1_000.0,
+            "#f38ba8",
+            "firestorm",
+            "250 kJ/m² exposed-fuel ignition screening footprint; not a burned-area prediction.",
+        ));
+    }
     rings.retain(|item| item.radius_m > 0.5);
     rings.sort_by(|left, right| right.radius_m.total_cmp(&left.radius_m));
 
@@ -2198,6 +2358,18 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
             None,
         ));
     }
+    if let Some(firestorm) = &firestorm {
+        readout_items.push(readout(
+            "Firestorm ignition radius",
+            fmt_meters(firestorm.ignition_radius_m),
+            Some(firestorm.model.to_string()),
+        ));
+        readout_items.push(readout(
+            "Smoke loft top",
+            fmt_meters(firestorm.smoke_top_height_m),
+            Some("bounded plume-rise proxy; not a climate forecast".to_string()),
+        ));
+    }
     let timeline = nuclear_timeline(&effects);
     let detail = NuclearDetail {
         yield_kt: effects.yield_kt,
@@ -2217,6 +2389,7 @@ pub fn simulate_nuclear_hazard(request: NuclearHazardRequest) -> Result<HazardRe
         optimal_height: effects.optimal_height,
         wave_height: effects.wave_height,
         fallout: effects.fallout.clone(),
+        firestorm,
         timeline,
         latent_cancer: (request.population_density > 0.0 && !effects.is_hemp)
             .then(|| latent_cancer(&effects, request.population_density)),
@@ -2651,10 +2824,12 @@ mod tests {
                 .ejecta_thickness_m
                 .is_some_and(|value| value > 10.0)
         );
-        assert_eq!(aftermath.events.len(), 6);
+        assert_eq!(aftermath.events.len(), 8);
         for expected in [
             "seismic-shaking",
             "ejecta-blanket",
+            "firestorm-ignition",
+            "firestorm-smoke-loft",
             "thermal-reentry",
             "atmospheric-loading",
             "photosynthesis-disruption",
@@ -2713,13 +2888,9 @@ mod tests {
             .as_ref()
             .expect("regional aftermath");
         assert_eq!(default_aftermath.classification, "Regional aftermath");
-        assert_eq!(default_aftermath.events.len(), 2);
-        assert!(
-            default_aftermath
-                .events
-                .iter()
-                .all(|event| event.category != "climate")
-        );
+        assert_eq!(default_aftermath.events.len(), 4);
+        assert!(default_aftermath.events.iter().any(|event| event.id == "firestorm-ignition"));
+        assert!(default_aftermath.events.iter().any(|event| event.id == "firestorm-smoke-loft"));
         assert_relative(
             default_detail
                 .crater

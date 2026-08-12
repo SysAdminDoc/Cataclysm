@@ -28,6 +28,7 @@ function applyDescriptor(
   entity.label = undefined;
   entity.polygon = undefined;
   entity.polyline = undefined;
+  entity.cylinder = undefined;
 
   if (descriptor.kind === "hazard_ring") {
     entity.position = new Cesium.ConstantPositionProperty(
@@ -87,6 +88,19 @@ function applyDescriptor(
       backgroundPadding: new Cesium.Cartesian2(6, 4),
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: deterministicCapture ? Number.POSITIVE_INFINITY : 0,
+    });
+    return;
+  }
+
+  if (descriptor.kind === "firestorm_smoke") {
+    entity.position = new Cesium.ConstantPositionProperty(
+      position(descriptor.position.lat_deg, descriptor.position.lon_deg, descriptor.position.height_m),
+    );
+    entity.cylinder = new Cesium.CylinderGraphics({
+      length: descriptor.height_m,
+      topRadius: Math.max(50, descriptor.radius_m * 0.18),
+      bottomRadius: descriptor.radius_m,
+      material: color(descriptor.fill_css, descriptor.fill_alpha),
     });
     return;
   }

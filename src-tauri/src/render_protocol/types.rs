@@ -154,6 +154,7 @@ pub enum EventKindV1 {
     OceanCavity,
     Tsunami,
     NuclearCloud,
+    Firestorm,
     Fallout,
     Earthquake,
     Landslide,

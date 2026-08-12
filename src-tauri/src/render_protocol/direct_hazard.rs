@@ -7,7 +7,7 @@
 
 use crate::data::geodesy::{self, GeodeticPosition};
 use crate::physics::direct_hazard::{
-    AsteroidDetail, AsteroidHazardRequest, FalloutPlume, HazardDetail, HazardResult, NuclearDetail,
+    AsteroidDetail, AsteroidHazardRequest, FalloutPlume, FirestormOverlay, HazardDetail, HazardResult, NuclearDetail,
     NuclearHazardRequest, simulate_asteroid_hazard, simulate_nuclear_hazard,
 };
 
@@ -269,6 +269,23 @@ fn asteroid_events(
             ],
         ));
     }
+    if let Some(firestorm) = detail
+        .secondary_effects
+        .as_ref()
+        .and_then(|effects| effects.firestorm.as_ref())
+    {
+        let smoke_progress = normalized_tick(tick, ASTEROID_ENTRY_END_TICK, 70);
+        events.push(event(
+            "asteroid-firestorm",
+            EventKindV1::Firestorm,
+            tick,
+            ASTEROID_ENTRY_END_TICK,
+            Some(70),
+            None,
+            "scenario-origin",
+            firestorm_quantities(firestorm, firestorm.smoke_top_height_m * smoke_progress),
+        ));
+    }
     if detail.tsunami.applies {
         events.extend(asteroid_water_events(detail, sequence, tick));
     }
@@ -413,6 +430,19 @@ fn nuclear_events(detail: &NuclearDetail, result: &HazardResult, tick: u64) -> V
             vec![metres("rim_radius", detail.crater_r * 1_000.0)],
         ));
     }
+    if let Some(firestorm) = &detail.firestorm {
+        let smoke_progress = normalized_tick(tick, 4, NUCLEAR_END_TICK);
+        events.push(event(
+            "nuclear-firestorm",
+            EventKindV1::Firestorm,
+            tick,
+            4,
+            Some(NUCLEAR_END_TICK),
+            None,
+            "scenario-origin",
+            firestorm_quantities(firestorm, firestorm.smoke_top_height_m * smoke_progress),
+        ));
+    }
     if let Some(fallout) = &detail.fallout {
         events.push(fallout_event(fallout, tick));
     }
@@ -429,6 +459,17 @@ fn nuclear_events(detail: &NuclearDetail, result: &HazardResult, tick: u64) -> V
         ));
     }
     events
+}
+
+fn firestorm_quantities(firestorm: &FirestormOverlay, smoke_height_m: f64) -> Vec<ScalarQuantityV1> {
+    vec![
+        metres("ignition_radius", firestorm.ignition_radius_m),
+        metres("smoke_height", smoke_height_m),
+        metres("smoke_top_height", firestorm.smoke_top_height_m),
+        seconds("ignition_onset", firestorm.ignition_onset_seconds),
+        seconds("smoke_loft_onset", firestorm.smoke_loft_onset_seconds),
+        seconds("smoke_loft_duration", firestorm.smoke_loft_duration_seconds),
+    ]
 }
 
 fn fallout_event(fallout: &FalloutPlume, tick: u64) -> RenderEventV1 {
@@ -851,6 +892,7 @@ mod tests {
             "nuclear-fireball",
             "nuclear-blast",
             "nuclear-cloud",
+            "nuclear-firestorm",
             "nuclear-crater",
             "nuclear-fallout",
         ] {

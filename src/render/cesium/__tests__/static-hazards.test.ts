@@ -81,6 +81,30 @@ describe("StaticHazardController", () => {
     expect(fallout?.kind === "fallout_polygon" ? fallout.fill_alpha : null).toBeCloseTo(0.11);
   });
 
+  it("projects a cited firestorm smoke loft as one bounded cylinder", () => {
+    const host = new FakeHost();
+    const controller = new StaticHazardController(host, 1);
+    const diagnostics = controller.update(input({
+      rings: [],
+      fallout_polygons: [],
+      firestorm: {
+        ignition_radius_m: 4_000,
+        smoke_top_height_m: 12_000,
+        model: "thermal threshold",
+        uncertainty: "screening only",
+      },
+    }));
+    expect(host.creates).toEqual(["firestorm:smoke"]);
+    expect(diagnostics.active.firestorm_smoke).toBe(1);
+    const smoke = host.entities.get(1)?.descriptor;
+    expect(smoke).toMatchObject({
+      kind: "firestorm_smoke",
+      radius_m: 1_400,
+      height_m: 12_000,
+      position: { lat_deg: 35, lon_deg: 140, height_m: 6_000 },
+    });
+  });
+
   it("creates exact footprint/fallout descriptors and diagnostics", () => {
     const host = new FakeHost();
     const controller = new StaticHazardController(host, 12);

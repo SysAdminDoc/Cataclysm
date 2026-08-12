@@ -2,6 +2,7 @@ import { ResourceScope } from "./resources";
 import type { ResourceCounts, ResourceLease } from "./types";
 import type {
   FalloutPolygonEntityDescriptor,
+  FirestormSmokeEntityDescriptor,
   GroundZeroEntityDescriptor,
   HazardGeoPosition,
   HazardRingEntityDescriptor,
@@ -24,10 +25,18 @@ export type FalloutPolygon = Readonly<{
   points: readonly Readonly<{ lat_deg: number; lon_deg: number }>[];
 }>;
 
+export type FirestormSmoke = Readonly<{
+  ignition_radius_m: number;
+  smoke_top_height_m: number;
+  model: string;
+  uncertainty: string;
+}>;
+
 export type StaticHazardInput = Readonly<{
   center: Readonly<{ lat_deg: number; lon_deg: number }> | null;
   rings: readonly HazardFootprintRing[];
   fallout_polygons: readonly FalloutPolygon[];
+  firestorm?: FirestormSmoke | null;
   show_source?: boolean;
   source_opacity?: number;
   ring_opacity?: number;
@@ -53,6 +62,7 @@ export type StaticHazardDiagnostics = Readonly<{
     hazard_rings: number;
     ground_zero_markers: number;
     fallout_polygons: number;
+    firestorm_smoke: number;
     total_entities: number;
     outer_radius_m: number;
   }>;
@@ -136,6 +146,7 @@ export class StaticHazardController<Handle = unknown> {
     let hazardRings = 0;
     let groundZero = 0;
     let fallout = 0;
+    let firestormSmoke = 0;
     let outerRadius = 0;
     for (const { descriptor } of this.#owned.values()) {
       if (descriptor.kind === "hazard_ring") {
@@ -143,6 +154,8 @@ export class StaticHazardController<Handle = unknown> {
         outerRadius = Math.max(outerRadius, descriptor.semi_major_axis_m);
       } else if (descriptor.kind === "ground_zero") {
         groundZero += 1;
+      } else if (descriptor.kind === "firestorm_smoke") {
+        firestormSmoke += 1;
       } else {
         fallout += 1;
       }
@@ -155,6 +168,7 @@ export class StaticHazardController<Handle = unknown> {
         hazard_rings: hazardRings,
         ground_zero_markers: groundZero,
         fallout_polygons: fallout,
+        firestorm_smoke: firestormSmoke,
         total_entities: this.#owned.size,
         outer_radius_m: outerRadius,
       }),
@@ -309,6 +323,35 @@ export class StaticHazardController<Handle = unknown> {
           label: "Ground zero",
         });
         entities.push(groundZero);
+      }
+      const firestorm = input.firestorm;
+      if (firestorm) {
+        const valid = Number.isFinite(firestorm.ignition_radius_m)
+          && firestorm.ignition_radius_m > 0
+          && Number.isFinite(firestorm.smoke_top_height_m)
+          && firestorm.smoke_top_height_m > 0
+          && firestorm.model.trim().length > 0
+          && firestorm.uncertainty.trim().length > 0;
+        if (!valid) {
+          invalidInputs += 1;
+        } else {
+          const descriptor: FirestormSmokeEntityDescriptor = Object.freeze({
+            kind: "firestorm_smoke",
+            key: "firestorm:smoke",
+            name: "Firestorm smoke loft",
+            description: `${firestorm.model}. ${firestorm.uncertainty}`,
+            position: frozenPosition(
+              input.center.lat_deg,
+              input.center.lon_deg,
+              firestorm.smoke_top_height_m / 2,
+            ),
+            radius_m: Math.max(100, firestorm.ignition_radius_m * 0.35),
+            height_m: firestorm.smoke_top_height_m,
+            fill_css: "#6c4f5f",
+            fill_alpha: 0.5,
+          });
+          entities.push(descriptor);
+        }
       }
     } else if (input.rings.length > 0) {
       invalidInputs += input.rings.length;

@@ -27,6 +27,7 @@ import type {
   QuickEtaPreview,
 } from "../types/scenario";
 import type { EffectRing, GeoPoint } from "../hazards/types";
+import type { FirestormOverlay } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
 import type { FireballEvent } from "../types/jpl";
 import type { Ww3ExchangePlan } from "../lib/ww3";
@@ -166,6 +167,8 @@ type Props = {
   hazardCenter?: GeoPoint | null;
   /** Fallout plume polygons (nuclear surface bursts): closed lon/lat rings. */
   hazardPolygons?: { label: string; color: string; points: GeoPoint[] }[] | null;
+  /** Bounded firestorm smoke-loft projection; rendered only when authoritative data qualifies. */
+  hazardFirestorm?: FirestormOverlay | null;
   /** Located CNEOS atmospheric events, rendered as bounded point primitives. */
   fireballs?: FireballEvent[];
   /** Deterministic WW3 exchange plan rendered as Cesium-native target points and 3D missile arcs. */
@@ -501,6 +504,7 @@ export function Globe({
   hazardRings,
   hazardCenter,
   hazardPolygons,
+  hazardFirestorm,
   fireballs = [],
   ww3Plan,
   mirvPreview,
@@ -1151,6 +1155,7 @@ export function Globe({
       hazardRings: hazardRingLayer.visible ? hazardRings : null,
       hazardCenter,
       hazardPolygons: falloutLayer.visible ? hazardPolygons : null,
+      hazardFirestorm: directRenderFrame ? null : hazardFirestorm,
       previewCamera,
       outcomeFocus,
       impactKind,

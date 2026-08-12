@@ -240,6 +240,9 @@ export function HazardControls({
   const activeCasualties = activeCasualtyModel?.estimate ?? result?.casualties;
   const timeline = nuclearEffects?.timeline ?? [];
   const hasFallout = Boolean(nuclearEffects?.fallout);
+  const firestorm = nuclearEffects?.firestorm
+    ?? asteroidEffects?.secondaryEffects?.firestorm
+    ?? null;
   const showSetup = display !== "results";
   const showResults = display !== "setup";
   const compass = t("hazard.compass").split("|");
@@ -523,6 +526,46 @@ export function HazardControls({
       {showResults && (result ? (
         <div className="hazard__results">
           <TrustDisclosure evidence={buildDirectResultEvidence(result)} />
+          {firestorm ? (
+            <section className="hazard__aftermath hazard__firestorm" aria-labelledby="hazard-firestorm-title">
+              <header>
+                <div>
+                  <span id="hazard-firestorm-title">{t("hazard.firestorm.title")}</span>
+                  <strong>{quantityText(formatLength(firestorm.ignitionRadiusM, formatNumber, unitSystem))}</strong>
+                </div>
+                <small>{t("hazard.firestorm.screening")}</small>
+              </header>
+              <p className="hazard__aftermath-summary">{t("hazard.firestorm.body", {
+                model: firestorm.model,
+                height: quantityText(formatLength(firestorm.smokeTopHeightM, formatNumber, unitSystem)),
+              })}</p>
+              <dl>
+                <div>
+                  <dt>{t("hazard.firestorm.ignition")}</dt>
+                  <dd>{quantityText(formatLength(firestorm.ignitionRadiusM, formatNumber, unitSystem))}</dd>
+                </div>
+                <div>
+                  <dt>{t("hazard.firestorm.smoke")}</dt>
+                  <dd>{quantityText(formatLength(firestorm.smokeTopHeightM, formatNumber, unitSystem))}</dd>
+                </div>
+                <div>
+                  <dt>{t("hazard.firestorm.uncertainty")}</dt>
+                  <dd>{formatEmbeddedLengthValues(firestorm.uncertainty, formatNumber, unitSystem)}</dd>
+                </div>
+                <div>
+                  <dt>{t("hazard.firestorm.sources")}</dt>
+                  <dd>
+                    {firestorm.citations.map((citation, index) => (
+                      <span key={citation.url}>
+                        {index > 0 ? " · " : ""}
+                        <a href={citation.url} target="_blank" rel="noreferrer">{citation.label}</a>
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          ) : null}
           <div className="hazard__readout">
             {result.readout.map((r) => (
               <div className="hazard__stat" key={r.label} title={r.hint ? formatEmbeddedLengthValues(r.hint, formatNumber, unitSystem) : undefined}>

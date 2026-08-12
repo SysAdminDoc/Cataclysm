@@ -20,6 +20,7 @@ function ellipseStyle(id: string): { color: Cesium.Color; alpha: number } {
   if (id.includes("asteroid-fireball")) return { color: Cesium.Color.WHITE, alpha: 0.7 };
   if (id.includes("fireball")) return { color: Cesium.Color.WHITE, alpha: 0.72 };
   if (id.includes("fallout")) return { color: Cesium.Color.fromCssColorString("#a6e3a1"), alpha: 0.12 };
+  if (id.includes("firestorm")) return { color: Cesium.Color.fromCssColorString("#f38ba8"), alpha: 0.22 };
   if (id.includes("crater")) return { color: Cesium.Color.fromCssColorString("#fab387"), alpha: 0.16 };
   if (id.includes("cavity")) return { color: Cesium.Color.fromCssColorString("#dff1ff"), alpha: 0.24 };
   return { color: Cesium.Color.fromCssColorString("#f9e2af"), alpha: 0.2 };
@@ -30,6 +31,7 @@ function cylinderStyle(id: string): { color: Cesium.Color; alpha: number } {
     return { color: Cesium.Color.fromCssColorString("#e8f6ff"), alpha: 0.75 };
   }
   if (id.includes("cloud")) return { color: Cesium.Color.fromCssColorString("#d4c7b0"), alpha: 0.58 };
+  if (id.includes("firestorm")) return { color: Cesium.Color.fromCssColorString("#6c4f5f"), alpha: 0.5 };
   return { color: Cesium.Color.fromCssColorString("#f9e2af"), alpha: 0.72 };
 }
 

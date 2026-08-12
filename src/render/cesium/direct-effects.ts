@@ -94,6 +94,19 @@ function transformPosition(
   return transform ? localToEcef(frame, transform.translation_enu_m) : originEcef(frame);
 }
 
+function transformPositionAtHeight(
+  frame: RendererNeutralFrameView,
+  transforms: ReadonlyMap<string, TransformStateV1>,
+  transformId: string | null,
+  heightM: number,
+): EcefPoint {
+  const transform = transformId === null ? undefined : transforms.get(transformId);
+  const local = transform
+    ? [transform.translation_enu_m[0], transform.translation_enu_m[1], transform.translation_enu_m[2] + heightM] as const
+    : [0, 0, heightM] as const;
+  return localToEcef(frame, local);
+}
+
 function addEllipse(
   desired: Map<string, DesiredEffect>,
   id: string,
@@ -157,6 +170,25 @@ function projectEvent(
         addEllipse(desired, `${event.id}:${semantic}:ellipse`, center, positiveQuantity(event, semantic));
       }
       return;
+    case "firestorm": {
+      addEllipse(
+        desired,
+        `${event.id}:ignition_radius:ellipse`,
+        center,
+        positiveQuantity(event, "ignition_radius"),
+      );
+      const smokeHeightM = positiveQuantity(event, "smoke_height");
+      if (smokeHeightM !== null) {
+        desired.set(`${event.id}:smoke_height:cylinder`, {
+          kind: "cylinder",
+          state: {
+            centerEcefM: transformPositionAtHeight(frame, transforms, event.transform_id, smokeHeightM / 2),
+            heightM: smokeHeightM,
+          },
+        });
+      }
+      return;
+    }
     case "nuclear_cloud":
     case "fallout":
       // These products remain in the authoritative protocol but are rendered

@@ -182,6 +182,7 @@ describe("DirectEffectsController", () => {
       event("nuclear-blast", "blast_front", { current_radius: 200 }),
       event("nuclear-cloud", "nuclear_cloud", { cloud_top_height: 12_000 }),
       event("nuclear-crater", "crater", { rim_radius: 60 }),
+      event("nuclear-firestorm", "firestorm", { ignition_radius: 300, smoke_height: 1_000 }),
       event("nuclear-fallout", "fallout", {
         heavy_length: 1_000,
         heavy_width: 200,
@@ -190,9 +191,11 @@ describe("DirectEffectsController", () => {
       }),
     ]));
 
-    expect(controller.diagnostics()).toMatchObject({ ellipses: 2, cylinders: 0, total: 2 });
+    expect(controller.diagnostics()).toMatchObject({ ellipses: 3, cylinders: 1, total: 4 });
     expect(host.state("nuclear-cloud:cloud_top_height:cylinder")).toBeUndefined();
     expect(host.state("nuclear-fallout:heavy:ellipse")).toBeUndefined();
+    expect(host.state("nuclear-firestorm:ignition_radius:ellipse")).toMatchObject({ semiMajorM: 300 });
+    expect(host.state("nuclear-firestorm:smoke_height:cylinder")).toMatchObject({ heightM: 1_000 });
   });
 
   it("removes completed, absent, zero-sized, and wrong-domain effects", () => {

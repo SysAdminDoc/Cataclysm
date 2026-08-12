@@ -4,6 +4,7 @@ import * as Cesium from "cesium";
 import { referenceCaptureEnabled } from "../lib/reference-capture";
 import type { RunupAtPointResult } from "../lib/tauri";
 import type { EffectRing, GeoPoint } from "../hazards/types";
+import type { FirestormOverlay } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
 import type { DartBuoy, Gauge, InitialDisplacement, Isochrone, PropagationSnapshot } from "../types/scenario";
 import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
@@ -53,6 +54,7 @@ type ControllerState = Readonly<{
   hazardRings?: EffectRing[] | null;
   hazardCenter?: GeoPoint | null;
   hazardPolygons?: { label: string; color: string; points: GeoPoint[] }[] | null;
+  hazardFirestorm?: FirestormOverlay | null;
   previewCamera?: PreviewCamera | null;
   outcomeFocus?: OutcomeFocusRequest | null;
   impactKind?: "asteroid" | "nuclear" | null;
@@ -101,6 +103,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
     hazardRings,
     hazardCenter,
     hazardPolygons,
+    hazardFirestorm,
     previewCamera,
     outcomeFocus,
     impactKind,
@@ -152,6 +155,12 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         color_css: polygon.color,
         points: polygon.points.map((point) => ({ lat_deg: point.lat, lon_deg: point.lon })),
       })),
+      firestorm: hazardFirestorm ? {
+        ignition_radius_m: hazardFirestorm.ignitionRadiusM,
+        smoke_top_height_m: hazardFirestorm.smokeTopHeightM,
+        model: hazardFirestorm.model,
+        uncertainty: hazardFirestorm.uncertainty,
+      } : null,
       show_source: showDirectSource,
       source_opacity: layerOpacity?.source,
       ring_opacity: layerOpacity?.hazardRings,
@@ -177,7 +186,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
         ),
       },
     );
-  }, [hazardCenter, hazardPolygons, hazardRings, layerOpacity?.fallout, layerOpacity?.hazardRings, layerOpacity?.source, layerOrder?.fallout, layerOrder?.hazardRings, layerOrder?.source, showDirectSource, staticHazardControllerRef, viewerEpoch, viewerRef]);
+  }, [hazardCenter, hazardFirestorm, hazardPolygons, hazardRings, layerOpacity?.fallout, layerOpacity?.hazardRings, layerOpacity?.source, layerOrder?.fallout, layerOrder?.hazardRings, layerOrder?.source, showDirectSource, staticHazardControllerRef, viewerEpoch, viewerRef]);
 
   useEffect(() => {
     const viewer = viewerRef.current;

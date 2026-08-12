@@ -45,10 +45,23 @@ export type FalloutPolygonEntityDescriptor = Readonly<{
   outline_alpha: number;
 }>;
 
+export type FirestormSmokeEntityDescriptor = Readonly<{
+  kind: "firestorm_smoke";
+  key: "firestorm:smoke";
+  name: string;
+  description: string;
+  position: HazardGeoPosition;
+  radius_m: number;
+  height_m: number;
+  fill_css: string;
+  fill_alpha: number;
+}>;
+
 export type StaticHazardEntityDescriptor =
   | HazardRingEntityDescriptor
   | GroundZeroEntityDescriptor
-  | FalloutPolygonEntityDescriptor;
+  | FalloutPolygonEntityDescriptor
+  | FirestormSmokeEntityDescriptor;
 
 /** Adapter boundary implemented by the Cesium integration, and faked by unit tests. */
 export interface StaticHazardEntityHost<Handle = unknown> {

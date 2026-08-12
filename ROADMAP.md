@@ -11,13 +11,6 @@ Actionable work only. Historical and completed roadmap material is archived in C
   Acceptance: one `.gpkg` opens in the QGIS/GDAL versions pinned by an interoperability fixture with source/fault geometry, gauges/runup, arrival isochrones, applicable direct-effect polygons, CRS/datum, units, quality, citations, and source/data digests; table/geometry/row/size limits fail closed; a round-trip fixture verifies geometry and metadata without retaining another full run in memory.
   Complexity: M
 
-- [ ] P2 — Add a firestorm ignition-zone and smoke-loft overlay
-  Why: large nuclear/impact events deposit thermal energy that ignites mass fires whose lofted smoke drives the climate effect, but results stop at a static thermal ring; a distinct ignition-zone + smoke-plume overlay bridges the blast/thermal module to the tracked impact-winter timeline, and NUKEMAP's own 2026 roadmap is adding thermal+conflagration modelling.
-  Evidence: NUKEMAP roadmap (thermal/conflagration) https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/; smoke-injection-height modelling https://docs.nlr.gov/docs/fy22osti/81470.pdf; existing thermal field in `src-tauri/src/physics/direct_hazard.rs`.
-  Touches: cited ignition-threshold + smoke-lofting model in Rust, ignition-zone/smoke overlay, coupling to the extinction-scale timeline item, confidence/limits copy, tests.
-  Acceptance: qualifying nuclear/impact events show a cited fire-ignition radius and a lofted-smoke indicator feeding the long-term climate narrative; each effect cites a source and states uncertainty; small events omit inapplicable effects.
-  Complexity: M
-
 - [ ] P2 — Upgrade wgpu 29→30 and add HDR fireball/thermal surface output
   Why: wgpu 30 (2026-07-01) adds surface color-space/HDR output and `SHADER_I16`; HDR tone-mapping renders the extreme luminance of a nuclear fireball or thermal field faithfully on capable Windows displays, and i16 packing cuts solver-buffer bandwidth — but v30 carries breaking API changes against the pinned wgpu-hal 29.0.4, so the upgrade must be deliberate.
   Evidence: wgpu CHANGELOG https://github.com/gfx-rs/wgpu/blob/trunk/CHANGELOG.md; pinned 29.0.4 note in `CLAUDE.md`; GPU path in `src-tauri/src/physics/solver/gpu.rs` and the Cesium HDR presentation.

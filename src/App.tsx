@@ -133,6 +133,7 @@ import {
   type AsteroidVisualReport,
   type GeoPoint,
   type HazardResult,
+  type FirestormOverlay,
   type NuclearDetail,
   type NuclearInput,
   type NuclearShelterReport,
@@ -1827,6 +1828,13 @@ export default function App() {
     if (!eff?.fallout) return null;
     return falloutRings({ lat: hazardCenter.lat, lon: hazardCenter.lon }, eff.fallout, windFromDeg);
   }, [hazardMode, hazardCenter, hazardResult, windFromDeg]);
+  const hazardFirestorm = useMemo<FirestormOverlay | null>(() => {
+    if (!hazardResult) return null;
+    if (hazardResult.kind === "nuclear") {
+      return (hazardResult.detail as NuclearDetail).firestorm ?? null;
+    }
+    return (hazardResult.detail as AsteroidDetail).secondaryEffects?.firestorm ?? null;
+  }, [hazardResult]);
   const activeSourceLabel = activePresetA?.name ?? slotA.initial?.label ?? t("layers.noSource");
   const directWorkspaceLabel = hazardMode === "nuclear"
     ? t("app.nuclearDetonation")
@@ -3138,6 +3146,7 @@ export default function App() {
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
+                hazardFirestorm={inHazardMode ? hazardFirestorm : null}
                 fireballs={hazardMode === "asteroid" && showFireballs ? fireballFeed.events : []}
                 ww3Plan={hazardMode === "nuclear" ? ww3Session?.plan ?? null : null}
                 mirvPreview={hazardMode === "nuclear" ? mirvPreview : null}

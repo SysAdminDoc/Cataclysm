@@ -88,6 +88,23 @@ export interface FalloutPlume {
   light: FalloutZone;
 }
 
+export interface FirestormCitation {
+  label: string;
+  url: string;
+}
+
+export interface FirestormOverlay {
+  ignitionRadiusM: number;
+  smokeTopHeightM: number;
+  ignitionOnsetSeconds: number;
+  smokeLoftOnsetSeconds: number;
+  smokeLoftDurationSeconds: number;
+  model: string;
+  confidence: string;
+  uncertainty: string;
+  citations: FirestormCitation[];
+}
+
 export interface TimelineEvent {
   time: string;
   description: string;
@@ -209,6 +226,8 @@ export interface NuclearDetail {
   optimalHeight: number;
   waveHeight: number;
   fallout: FalloutPlume | null;
+  /** Optional for compatibility with pre-firestorm capture fixtures. */
+  firestorm?: FirestormOverlay | null;
   timeline: TimelineEvent[];
   latentCancer: LatentCancerEstimate | null;
 }
@@ -270,6 +289,7 @@ export interface AsteroidSecondaryEffects {
   seismicMagnitude: number;
   ejectaReferenceDistanceM?: number;
   ejectaThicknessM?: number;
+  firestorm?: FirestormOverlay | null;
   events: SecondaryEffectEvent[];
 }
 
