@@ -76,6 +76,31 @@ test("browser WASM returns the shared Rust meteotsunami source summary", async (
   assert.equal(initial.meteotsunami_forcing.track_length_m, 560000);
 });
 
+test("browser WASM preserves volcanic collapse source sign and duration coupling", async () => {
+  const call = await physicsCaller();
+  const common = {
+    volume_m3: 1e9,
+    footprint_length_m: 2000,
+    footprint_width_m: 1000,
+    collapse_duration_s: 60,
+    coupling_fraction: 0.25,
+    water_depth_m: 500,
+    location: { lat_deg: -6.1, lon_deg: 105.42, depth_m: 500 },
+  };
+  const flank = call({
+    operation: "initial",
+    input: { kind: "VolcanicCollapse", source: { ...common, kind: "FlankCollapse" } },
+  });
+  const caldera = call({
+    operation: "initial",
+    input: { kind: "VolcanicCollapse", source: { ...common, kind: "Caldera" } },
+  });
+  assert.ok(flank.peak_amplitude_m > 0);
+  assert.ok(caldera.source_geometry.signed_peak_amplitude_m < 0);
+  assert.equal(flank.source_geometry.collapse_duration_s, 60);
+  assert.equal(flank.source_geometry.collapse_kind, "FlankCollapse");
+});
+
 test("browser WASM attenuation matches the desktop Rust screening fixture", async () => {
   const call = await physicsCaller();
   const samples = call({

@@ -46,6 +46,13 @@ function formatSource(preset: Preset | null, t: Translate, formatNumber: FormatN
       model: t("source.pressureGradientModel"),
     };
   }
+  if (source.kind === "VolcanicCollapse") {
+    return {
+      type: t("source.volcanicCollapse"),
+      magnitude: `${quantityText(formatVolume(source.source.volume_m3, formatNumber, unitSystem))} · ${source.source.kind === "Caldera" ? t("source.caldera") : t("source.flankCollapse")}`,
+      model: t("source.volcanicCollapseModel"),
+    };
+  }
   return {
     type: source.source.kind === "Subaerial" ? t("source.subaerialLandslide") : t("source.submarineLandslide"),
     magnitude: t("source.volumeMillion", { value: quantityText(formatVolume(source.source.volume_m3, formatNumber, unitSystem)) }),

@@ -71,6 +71,11 @@ const SOURCE_MODELS: Record<NonNullable<ScenarioKind>, {
     assumptions: ["The pressure gradient is applied to depth-averaged momentum at every solver step.", "The source follows a straight, constant-speed finite track; wind stress and later seiche response are excluded."],
     citation: "NOAA NOS CO-OPS 079; Anarde et al. 2020, doi:10.1029/2020JC016347",
   },
+  VolcanicCollapse: {
+    model: "Finite-duration elliptical volcanic-collapse displacement",
+    assumptions: ["Caldera collapse is represented as initial subsidence; water-coupled flank collapse as initial uplift.", "Collapse duration reduces the instantaneous long-wave coupling; the depth-averaged solver does not resolve dispersive or non-hydrostatic near-field effects."],
+    citation: "Paris 2024, Pure and Applied Geophysics, doi:10.1007/s00024-024-03515-y; NHESS 26 (2026), 631–655",
+  },
 };
 
 function contextId(preset: Preset | null, initial?: InitialDisplacement | null): string {

@@ -20,7 +20,7 @@ export type TextExportData = ModelProvenanceInput & {
   initial?: InitialDisplacement | null;
   timeS: number;
   runupResults?: RunupAtPointResult[];
-  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | null;
+  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | "VolcanicCollapse" | null;
 };
 
 export function generateTextExport(data: TextExportData): string {
@@ -85,7 +85,7 @@ export function generateTextExport(data: TextExportData): string {
       lines.push(`Water depth: ${depth(i.center.depth_m)}`);
     }
     lines.push(`Peak amplitude: ${length(i.peak_amplitude_m)}`);
-    const radiusLabel = data.sourceKind === "Earthquake" || data.sourceKind === "Landslide"
+    const radiusLabel = data.sourceKind === "Earthquake" || data.sourceKind === "Landslide" || data.sourceKind === "VolcanicCollapse"
       ? "Source region radius"
       : "Cavity radius";
     lines.push(`${radiusLabel}: ${length(i.cavity_radius_m)}`);

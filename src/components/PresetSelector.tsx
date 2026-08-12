@@ -102,6 +102,10 @@ function SourceGlyph({ kind }: { kind: Preset["source"]["kind"] }) {
           <path d="M3 15c3-3 5 3 8 0s5-3 10 0" />
           <path d="m17 4 3 2-3 2" />
         </>}
+        {kind === "VolcanicCollapse" && <>
+          <path d="M4 19 8 9l4 3 4-7 4 14H4Z" />
+          <path d="M8 9 6 5M16 5l-2 3" />
+        </>}
       </svg>
     </span>
   );

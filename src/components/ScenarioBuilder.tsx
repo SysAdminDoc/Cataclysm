@@ -15,6 +15,7 @@ import {
   INITIAL_LANDSLIDE,
   INITIAL_METEOTSUNAMI,
   INITIAL_NUCLEAR,
+  INITIAL_VOLCANIC_COLLAPSE,
   parseScenarioPayload,
   SCENARIO_BOUNDS as BOUNDS,
   sourceBound,
@@ -27,6 +28,7 @@ import type {
   LandslideInput,
   MeteotsunamiInput,
   NuclearBurstInput,
+  VolcanicCollapseInput,
 } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import { GlossaryTip } from "./GlossaryTip";
@@ -80,7 +82,7 @@ export type ScenarioPortableContext = {
   dataReferences?: PortableScenarioDataReference[];
 };
 
-type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide" | "meteotsunami";
+type TabKey = "asteroid" | "nuclear" | "earthquake" | "landslide" | "meteotsunami" | "volcanic";
 type InlineStatus = {
   text: string;
   tone: "info" | "success" | "error";
@@ -93,6 +95,7 @@ const TABS: { key: TabKey; labelKey: MessageKey }[] = [
   { key: "earthquake", labelKey: "builder.tab.earthquake" },
   { key: "landslide", labelKey: "builder.tab.landslide" },
   { key: "meteotsunami", labelKey: "builder.tab.meteotsunami" },
+  { key: "volcanic", labelKey: "builder.tab.volcanicCollapse" },
 ];
 
 const TAB_DESCRIPTIONS: Record<TabKey, MessageKey> = {
@@ -101,6 +104,7 @@ const TAB_DESCRIPTIONS: Record<TabKey, MessageKey> = {
   earthquake: "builder.description.earthquake",
   landslide: "builder.description.landslide",
   meteotsunami: "builder.description.meteotsunami",
+  volcanic: "builder.description.volcanicCollapse",
 };
 
 const PARAM_HELP: Record<string, MessageKey> = {
@@ -129,6 +133,10 @@ const PARAM_HELP: Record<string, MessageKey> = {
   along_track_sigma_m: "builder.help.alongTrack",
   cross_track_sigma_m: "builder.help.crossTrack",
   track_length_m: "builder.help.trackLength",
+  footprint_length_m: "builder.help.footprintLength",
+  footprint_width_m: "builder.help.footprintWidth",
+  collapse_duration_s: "builder.help.collapseDuration",
+  coupling_fraction: "builder.help.couplingFraction",
   lat_deg: "builder.help.latitude",
   lon_deg: "builder.help.longitude",
 };
@@ -139,6 +147,7 @@ const SOURCE_LABELS: Record<ScenarioInput["kind"], MessageKey> = {
   Earthquake: "builder.tab.earthquake",
   Landslide: "builder.tab.landslide",
   Meteotsunami: "builder.tab.meteotsunami",
+  VolcanicCollapse: "builder.tab.volcanicCollapse",
 };
 
 const SLIDER_FIELDS = new Set([
@@ -246,10 +255,12 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
   const [earthquake, setEarthquake] = useState(INITIAL_EARTHQUAKE);
   const [landslide, setLandslide] = useState(INITIAL_LANDSLIDE);
   const [meteotsunami, setMeteotsunami] = useState(INITIAL_METEOTSUNAMI);
+  const [volcanic, setVolcanic] = useState(INITIAL_VOLCANIC_COLLAPSE);
   const [subductionNote, setSubductionNote] = useState<InlineStatus | null>(null);
   const [importProvenance, setImportProvenance] = useState<string | null>(null);
   const burstModes = sourceEnumValues("Nuclear", "burst_mode", true);
   const landslideKinds = sourceEnumValues("Landslide", "kind", true);
+  const volcanicKinds = sourceEnumValues("VolcanicCollapse", "kind", true);
 
   useEffect(() => {
     if (!editRequest) return;
@@ -266,7 +277,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     else if (tab === "nuclear") setNuclear((s) => ({ ...s, location: { ...s.location, ...loc } }));
     else if (tab === "earthquake") setEarthquake((s) => ({ ...s, location: { ...s.location, ...loc } }));
     else if (tab === "landslide") setLandslide((s) => ({ ...s, location: { ...s.location, ...loc } }));
-    else setMeteotsunami((s) => ({ ...s, location: { ...s.location, ...loc } }));
+    else if (tab === "meteotsunami") setMeteotsunami((s) => ({ ...s, location: { ...s.location, ...loc } }));
+    else setVolcanic((s) => ({ ...s, location: { ...s.location, ...loc } }));
   }, [pickedLocation, tab]);
 
   // Auto-fill Okada fault orientation from the nearest mapped subduction zone
@@ -357,7 +369,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
       : tab === "nuclear" ? { kind: "Nuclear", source: nuclear }
       : tab === "earthquake" ? { kind: "Earthquake", source: earthquake }
       : tab === "landslide" ? { kind: "Landslide", source: landslide }
-      : { kind: "Meteotsunami", source: meteotsunami };
+      : tab === "meteotsunami" ? { kind: "Meteotsunami", source: meteotsunami }
+      : { kind: "VolcanicCollapse", source: volcanic };
   }
 
   function portableResultsMatchCurrentScenario(): boolean {
@@ -383,9 +396,12 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     } else if (data.kind === "Landslide") {
       setTab("landslide");
       setLandslide(data.source);
-    } else {
+    } else if (data.kind === "Meteotsunami") {
       setTab("meteotsunami");
       setMeteotsunami(data.source);
+    } else {
+      setTab("volcanic");
+      setVolcanic(data.source);
     }
   }
 
@@ -475,7 +491,8 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
     else if (tab === "nuclear") onSimulate({ kind: "Nuclear", source: nuclear });
     else if (tab === "earthquake") onSimulate({ kind: "Earthquake", source: earthquake });
     else if (tab === "landslide") onSimulate({ kind: "Landslide", source: landslide });
-    else onSimulate({ kind: "Meteotsunami", source: meteotsunami });
+    else if (tab === "meteotsunami") onSimulate({ kind: "Meteotsunami", source: meteotsunami });
+    else onSimulate({ kind: "VolcanicCollapse", source: volcanic });
   }
 
   function copyScenario() {
@@ -807,22 +824,55 @@ export function ScenarioBuilder({ onSimulate, editRequest, pickedLocation, onTog
             <ProudmanResonanceIndicator speed={meteotsunami.speed_m_s} depth={meteotsunami.water_depth_m} />
           </>
         )}
+        {tab === "volcanic" && (
+          <>
+            <div className="scenario-form__import-provenance" role="note">
+              <strong>{t("builder.volcanicModelHeading")}</strong>
+              <p>{t("builder.volcanicModelBody")}</p>
+            </div>
+            <label>
+              <span>{t("builder.volcanicMechanism")}</span>
+              <select
+                value={volcanic.kind}
+                onChange={(e) =>
+                  setVolcanic({ ...volcanic, kind: e.target.value as VolcanicCollapseInput["kind"] })
+                }
+              >
+                {volcanicKinds.map((value) => (
+                  <option key={value} value={value}>
+                    {t(value === "Caldera" ? "builder.volcanic.caldera" : "builder.volcanic.flank")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <NumField field="volume_m3" label={t("builder.field.volume")} value={volcanic.volume_m3}
+              onChange={(v) => setVolcanic({ ...volcanic, volume_m3: v })} />
+            <NumField field="footprint_length_m" label={t("builder.field.footprintLength")} value={volcanic.footprint_length_m}
+              onChange={(v) => setVolcanic({ ...volcanic, footprint_length_m: v })} />
+            <NumField field="footprint_width_m" label={t("builder.field.footprintWidth")} value={volcanic.footprint_width_m}
+              onChange={(v) => setVolcanic({ ...volcanic, footprint_width_m: v })} />
+            <NumField field="collapse_duration_s" label={t("builder.field.collapseDuration")} value={volcanic.collapse_duration_s}
+              onChange={(v) => setVolcanic({ ...volcanic, collapse_duration_s: v })} />
+            <NumField field="coupling_fraction" label={t("builder.field.couplingFraction")} value={volcanic.coupling_fraction} step={0.01}
+              onChange={(v) => setVolcanic({ ...volcanic, coupling_fraction: v })} />
+          </>
+        )}
 
         <NumField field="lat_deg" label={t("builder.field.latitude")}
-          value={currentLat({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
+          value={currentLat({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami, volcanic })}
           onChange={(v) =>
-            applyLocation(v, "lat", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
+            applyLocation(v, "lat", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami, volcanic, setVolcanic })
           } />
         <NumField field="lon_deg" label={t("builder.field.longitude")}
-          value={currentLon({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
+          value={currentLon({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami, volcanic })}
           onChange={(v) =>
-            applyLocation(v, "lon", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
+            applyLocation(v, "lon", { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami, volcanic, setVolcanic })
           } />
         <NumField field="water_depth_m" label={t("builder.field.waterDepth")}
-          bounds={sourceBound(tab === "asteroid" ? "Asteroid" : tab === "nuclear" ? "Nuclear" : tab === "earthquake" ? "Earthquake" : tab === "landslide" ? "Landslide" : "Meteotsunami", "water_depth_m")}
-          value={currentDepth({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami })}
+          bounds={sourceBound(tab === "asteroid" ? "Asteroid" : tab === "nuclear" ? "Nuclear" : tab === "earthquake" ? "Earthquake" : tab === "landslide" ? "Landslide" : tab === "meteotsunami" ? "Meteotsunami" : "VolcanicCollapse", "water_depth_m")}
+          value={currentDepth({ tab, asteroid, nuclear, earthquake, landslide, meteotsunami, volcanic })}
           onChange={(v) =>
-            applyDepth(v, { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami })
+            applyDepth(v, { tab, asteroid, setAsteroid, nuclear, setNuclear, earthquake, setEarthquake, landslide, setLandslide, meteotsunami, setMeteotsunami, volcanic, setVolcanic })
           } />
 
         <div className="scenario-form__actions">
@@ -992,6 +1042,7 @@ type Bundle = {
   earthquake: EarthquakeInput;
   landslide: LandslideInput;
   meteotsunami: MeteotsunamiInput;
+  volcanic: VolcanicCollapseInput;
 };
 type SetBundle = Bundle & {
   setAsteroid: (s: AsteroidImpactInput) => void;
@@ -999,6 +1050,7 @@ type SetBundle = Bundle & {
   setEarthquake: (s: EarthquakeInput) => void;
   setLandslide: (s: LandslideInput) => void;
   setMeteotsunami: (s: MeteotsunamiInput) => void;
+  setVolcanic: (s: VolcanicCollapseInput) => void;
 };
 
 const GRAVITY_MS2 = 9.81;
@@ -1031,21 +1083,24 @@ function currentLat(b: Bundle): number {
        : b.tab === "nuclear" ? b.nuclear.location.lat_deg
        : b.tab === "earthquake" ? b.earthquake.location.lat_deg
        : b.tab === "landslide" ? b.landslide.location.lat_deg
-       : b.meteotsunami.location.lat_deg;
+       : b.tab === "meteotsunami" ? b.meteotsunami.location.lat_deg
+       : b.volcanic.location.lat_deg;
 }
 function currentLon(b: Bundle): number {
   return b.tab === "asteroid" ? b.asteroid.location.lon_deg
        : b.tab === "nuclear" ? b.nuclear.location.lon_deg
        : b.tab === "earthquake" ? b.earthquake.location.lon_deg
        : b.tab === "landslide" ? b.landslide.location.lon_deg
-       : b.meteotsunami.location.lon_deg;
+       : b.tab === "meteotsunami" ? b.meteotsunami.location.lon_deg
+       : b.volcanic.location.lon_deg;
 }
 function currentDepth(b: Bundle): number {
   return b.tab === "asteroid" ? b.asteroid.water_depth_m
        : b.tab === "nuclear" ? b.nuclear.water_depth_m
        : b.tab === "earthquake" ? b.earthquake.water_depth_m
        : b.tab === "landslide" ? b.landslide.water_depth_m
-       : b.meteotsunami.water_depth_m;
+       : b.tab === "meteotsunami" ? b.meteotsunami.water_depth_m
+       : b.volcanic.water_depth_m;
 }
 function applyLocation(v: number, axis: "lat" | "lon", b: SetBundle) {
   const key = axis === "lat" ? "lat_deg" : "lon_deg";
@@ -1053,12 +1108,14 @@ function applyLocation(v: number, axis: "lat" | "lon", b: SetBundle) {
   else if (b.tab === "nuclear") b.setNuclear({ ...b.nuclear, location: { ...b.nuclear.location, [key]: v } });
   else if (b.tab === "earthquake") b.setEarthquake({ ...b.earthquake, location: { ...b.earthquake.location, [key]: v } });
   else if (b.tab === "landslide") b.setLandslide({ ...b.landslide, location: { ...b.landslide.location, [key]: v } });
-  else b.setMeteotsunami({ ...b.meteotsunami, location: { ...b.meteotsunami.location, [key]: v } });
+  else if (b.tab === "meteotsunami") b.setMeteotsunami({ ...b.meteotsunami, location: { ...b.meteotsunami.location, [key]: v } });
+  else b.setVolcanic({ ...b.volcanic, location: { ...b.volcanic.location, [key]: v } });
 }
 function applyDepth(v: number, b: SetBundle) {
   if (b.tab === "asteroid") b.setAsteroid({ ...b.asteroid, water_depth_m: v, location: { ...b.asteroid.location, depth_m: v } });
   else if (b.tab === "nuclear") b.setNuclear({ ...b.nuclear, water_depth_m: v, location: { ...b.nuclear.location, depth_m: v } });
   else if (b.tab === "earthquake") b.setEarthquake({ ...b.earthquake, water_depth_m: v, location: { ...b.earthquake.location, depth_m: v } });
   else if (b.tab === "landslide") b.setLandslide({ ...b.landslide, water_depth_m: v, location: { ...b.landslide.location, depth_m: v } });
-  else b.setMeteotsunami({ ...b.meteotsunami, water_depth_m: v, location: { ...b.meteotsunami.location, depth_m: v } });
+  else if (b.tab === "meteotsunami") b.setMeteotsunami({ ...b.meteotsunami, water_depth_m: v, location: { ...b.meteotsunami.location, depth_m: v } });
+  else b.setVolcanic({ ...b.volcanic, water_depth_m: v, location: { ...b.volcanic.location, depth_m: v } });
 }

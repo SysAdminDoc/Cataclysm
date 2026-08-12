@@ -81,6 +81,7 @@ pub fn run() {
             landslide_initial_conditions,
             earthquake_initial_conditions,
             meteotsunami_initial_conditions,
+            volcanic_collapse_initial_conditions,
             far_field_amplitude,
             attenuation_curve,
             coastal_runup,

@@ -93,6 +93,18 @@ describe("ScenarioBuilder scenario persistence", () => {
     }));
   });
 
+  it("submits a volcanic collapse source with its near-field caveat", async () => {
+    const user = setupUser();
+    const onSimulate = renderBuilder();
+    await user.click(screen.getByRole("tab", { name: "Volcanic collapse" }));
+    expect(screen.getByText(/caldera collapse starts as subsidence/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Simulate" }));
+    expect(onSimulate).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "VolcanicCollapse",
+      source: expect.objectContaining({ kind: "FlankCollapse", volume_m3: 1_000_000_000 }),
+    }));
+  });
+
   it("previews a verified portable package before importing it as a saved copy", async () => {
     const bytes = await createPortableScenarioPackage({
       scenario: { kind: "Earthquake", source: INITIAL_EARTHQUAKE },

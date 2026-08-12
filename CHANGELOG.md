@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added a parameterized volcanic caldera/flank-collapse tsunami source. The
+  Rust-authoritative initial displacement model accepts collapse volume,
+  footprint, duration, coupling, and water depth; cited Anak Krakatau 2018 and
+  Hunga Tonga 2022 presets use the new source, with a visible near-field caveat
+  that short or steep collapse waves require non-hydrostatic physics for higher
+  accuracy.
 - Added a bounded desktop/CLI OGC GeoPackage handoff. It writes a portable
   bundled-SQLite file with WGS 84 source/fault, gauge, runup, arrival-isochrone,
   and applicable direct-effect layers plus units, quality, citations, and

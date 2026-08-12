@@ -14,7 +14,7 @@ import {
 type Props = {
   initial: InitialDisplacement | null;
   activePreset: Preset | null;
-  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | null;
+  sourceKind?: "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | "VolcanicCollapse" | null;
   timeS: number;
   result: AsyncResult<RunupAtPointResult[]>;
   onResult: Dispatch<SetStateAction<AsyncResult<RunupAtPointResult[]>>>;

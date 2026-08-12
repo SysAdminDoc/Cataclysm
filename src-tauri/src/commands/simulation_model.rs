@@ -125,6 +125,18 @@ pub(crate) fn inject_source_initial_field(
                     // the scalar source amplitude at x=±1, y=0.
                     req.initial_amplitude_m * x * (0.5 - 0.5 * (x * x + y * y)).exp()
                 }
+                InitialSourceGeometry::VolcanicCollapse {
+                    footprint_length_m,
+                    footprint_width_m,
+                    signed_peak_amplitude_m,
+                    ..
+                } => {
+                    let (east_m, north_m) =
+                        local_offset_m(req.source.lat_deg, req.source.lon_deg, lat, lon);
+                    let x = east_m / footprint_length_m;
+                    let y = north_m / footprint_width_m;
+                    signed_peak_amplitude_m * (-0.5 * (x * x + y * y)).exp()
+                }
                 InitialSourceGeometry::Okada { fault } => {
                     let (east_m, north_m) =
                         local_offset_m(fault.center_lat, fault.center_lon, lat, lon);
@@ -333,6 +345,14 @@ fn resolution_features(req: &SimulateGridRequest) -> Vec<(&'static str, f64)> {
         }) => vec![
             ("landslide_longitudinal_sigma", *longitudinal_sigma_m),
             ("landslide_transverse_sigma", *transverse_sigma_m),
+        ],
+        Some(InitialSourceGeometry::VolcanicCollapse {
+            footprint_length_m,
+            footprint_width_m,
+            ..
+        }) => vec![
+            ("volcanic_footprint_length", *footprint_length_m),
+            ("volcanic_footprint_width", *footprint_width_m),
         ],
         Some(InitialSourceGeometry::Okada { fault }) => vec![
             ("fault_length", fault.length_m),
@@ -573,6 +593,34 @@ pub(crate) fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), St
                 || *transverse_sigma_m > 1.0e7
             {
                 return Err("landslide source scales must be finite and in (0, 10 000 km]".into());
+            }
+        }
+        Some(InitialSourceGeometry::VolcanicCollapse {
+            footprint_length_m,
+            footprint_width_m,
+            collapse_duration_s,
+            signed_peak_amplitude_m,
+            ..
+        }) => {
+            if !footprint_length_m.is_finite()
+                || !footprint_width_m.is_finite()
+                || *footprint_length_m <= 0.0
+                || *footprint_width_m <= 0.0
+                || *footprint_length_m > 1.0e7
+                || *footprint_width_m > 1.0e7
+            {
+                return Err("volcanic footprint scales must be finite and in (0, 10 000 km]".into());
+            }
+            if !collapse_duration_s.is_finite()
+                || *collapse_duration_s <= 0.0
+                || *collapse_duration_s > 86_400.0
+            {
+                return Err("volcanic collapse duration must be finite and in (0, 86 400 s]".into());
+            }
+            if !signed_peak_amplitude_m.is_finite()
+                || signed_peak_amplitude_m.abs() > 1.0e5
+            {
+                return Err("volcanic signed peak amplitude must be finite and ≤ 100 km".into());
             }
         }
         Some(InitialSourceGeometry::Okada { fault }) => {

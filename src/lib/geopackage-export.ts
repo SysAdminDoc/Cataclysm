@@ -171,6 +171,26 @@ function buildSourceLayers(
         geometry: polygonGeometry(okadaFaultPolygon(geometry.fault)),
         properties: { kind: geometry.kind, fault: geometry.fault, projection: "surface projection; depth and dip retained in properties" },
       });
+    } else if (geometry?.kind === "volcanic_collapse") {
+      footprints.push({
+        id: "source-volcanic-collapse-footprint",
+        name: "Volcanic-collapse source footprint",
+        geometry: polygonGeometry(ellipsePolygon(
+          sourceCenter,
+          geometry.footprint_length_m * 2,
+          geometry.footprint_width_m * 2,
+          0,
+        )),
+        properties: {
+          kind: geometry.kind,
+          collapse_kind: geometry.collapse_kind,
+          footprint_length_m: geometry.footprint_length_m,
+          footprint_width_m: geometry.footprint_width_m,
+          collapse_duration_s: geometry.collapse_duration_s,
+          signed_peak_amplitude_m: geometry.signed_peak_amplitude_m,
+          limitation: "Hydrostatic source footprint; short near-field waves may require dispersive/non-hydrostatic physics",
+        },
+      });
     }
   } else if (directHazard) {
     source.push({

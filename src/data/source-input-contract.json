@@ -65,6 +65,19 @@
         "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": -92.1 }
       }
     },
+    "VolcanicCollapse": {
+      "fields": {
+        "kind": { "type": "enum", "label": "Type", "units": null, "values": ["Caldera", "FlankCollapse"], "default": "FlankCollapse" },
+        "volume_m3": { "type": "number", "label": "Volume", "units": "m³", "minimum": 1000000, "maximum": 100000000000, "minimumInclusive": true, "maximumInclusive": true, "default": 1000000000 },
+        "footprint_length_m": { "type": "number", "label": "Footprint length (1σ)", "units": "m", "minimum": 500, "maximum": 200000, "minimumInclusive": true, "maximumInclusive": true, "default": 2000 },
+        "footprint_width_m": { "type": "number", "label": "Footprint width (1σ)", "units": "m", "minimum": 500, "maximum": 200000, "minimumInclusive": true, "maximumInclusive": true, "default": 1000 },
+        "collapse_duration_s": { "type": "number", "label": "Collapse duration", "units": "s", "minimum": 1, "maximum": 7200, "minimumInclusive": true, "maximumInclusive": true, "default": 60 },
+        "coupling_fraction": { "type": "number", "label": "Water coupling fraction", "units": "fraction", "minimum": 0.01, "maximum": 1, "minimumInclusive": true, "maximumInclusive": true, "default": 0.25 },
+        "water_depth_m": { "type": "number", "label": "Water depth", "units": "m", "minimum": 1, "maximum": 12000, "minimumInclusive": true, "maximumInclusive": true, "default": 500 },
+        "lat_deg": { "type": "number", "label": "Latitude", "units": "°", "minimum": -90, "maximum": 90, "minimumInclusive": true, "maximumInclusive": true, "default": -6.1 },
+        "lon_deg": { "type": "number", "label": "Longitude", "units": "°", "minimum": -180, "maximum": 180, "minimumInclusive": true, "maximumInclusive": true, "default": 105.42 }
+      }
+    },
     "DirectAsteroid": {
       "fields": {
         "diameter_m": { "type": "number", "label": "Diameter", "units": "m", "minimum": 1, "maximum": 20000, "minimumInclusive": true, "maximumInclusive": true, "default": 300 },

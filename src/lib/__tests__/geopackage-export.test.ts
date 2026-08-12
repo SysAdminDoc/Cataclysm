@@ -101,4 +101,32 @@ describe("GeoPackage export request builder", () => {
     expect(request.layers[1].features).toHaveLength(2);
     expect(request.metadata.qualityStatus).toBe("not_applicable");
   });
+
+  it("exports a volcanic collapse footprint with its signed source metadata", async () => {
+    const request = await buildGeoPackageRequest({
+      meta: {
+        ...meta,
+        scenarioName: "Volcanic fixture",
+        scenarioKind: "VolcanicCollapse",
+        initial: {
+          ...meta.initial!,
+          source_geometry: {
+            kind: "volcanic_collapse",
+            collapse_kind: "Caldera",
+            footprint_length_m: 2_000,
+            footprint_width_m: 1_000,
+            collapse_duration_s: 60,
+            signed_peak_amplitude_m: -3,
+          },
+        },
+      },
+    });
+    const footprint = request.layers.find((layer) => layer.tableName === "source_footprints")?.features[0];
+    expect(footprint?.properties).toEqual(expect.objectContaining({
+      kind: "volcanic_collapse",
+      collapse_kind: "Caldera",
+      signed_peak_amplitude_m: -3,
+    }));
+    expect(footprint?.geometry.type).toBe("Polygon");
+  });
 });

@@ -22,6 +22,7 @@ use crate::physics::{
     landslide::LandslideSource,
     meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
+    volcanic_collapse::VolcanicCollapseSource,
     screening::{ScreeningPoint, screen_point},
     shallow_water::{
         PropagationSnapshot, long_wave_travel_time_s, sample_wavefront, synolakis_runup_m,

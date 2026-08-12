@@ -34,6 +34,14 @@ export type InitialSourceGeometry =
       rake_deg: number;
       slip_m: number;
     };
+  }
+  | {
+    kind: "volcanic_collapse";
+    collapse_kind: VolcanicCollapseKind;
+    footprint_length_m: number;
+    footprint_width_m: number;
+    collapse_duration_s: number;
+    signed_peak_amplitude_m: number;
   };
 
 export type InitialDisplacement = {
@@ -114,12 +122,26 @@ export type MeteotsunamiInput = {
   location: GeoPoint;
 };
 
+export type VolcanicCollapseKind = "Caldera" | "FlankCollapse";
+
+export type VolcanicCollapseInput = {
+  kind: VolcanicCollapseKind;
+  volume_m3: number;
+  footprint_length_m: number;
+  footprint_width_m: number;
+  collapse_duration_s: number;
+  coupling_fraction: number;
+  water_depth_m: number;
+  location: GeoPoint;
+};
+
 export type PresetSource =
   | { kind: "Asteroid"; source: AsteroidImpactInput }
   | { kind: "Nuclear"; source: NuclearBurstInput }
   | { kind: "Landslide"; source: LandslideInput }
   | { kind: "Earthquake"; source: EarthquakeInput }
-  | { kind: "Meteotsunami"; source: MeteotsunamiInput };
+  | { kind: "Meteotsunami"; source: MeteotsunamiInput }
+  | { kind: "VolcanicCollapse"; source: VolcanicCollapseInput };
 
 export type Preset = {
   id: string;

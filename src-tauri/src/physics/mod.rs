@@ -37,6 +37,7 @@ pub mod okada;
 #[cfg(not(feature = "browser-wasm"))]
 pub mod lamb_wave;
 pub mod meteotsunami;
+pub mod volcanic_collapse;
 pub mod screening;
 pub mod shallow_water;
 #[cfg(not(feature = "browser-wasm"))]
@@ -107,6 +108,13 @@ pub enum InitialSourceGeometry {
     },
     Okada {
         fault: okada::OkadaFault,
+    },
+    VolcanicCollapse {
+        collapse_kind: volcanic_collapse::VolcanicCollapseKind,
+        footprint_length_m: f64,
+        footprint_width_m: f64,
+        collapse_duration_s: f64,
+        signed_peak_amplitude_m: f64,
     },
 }
 

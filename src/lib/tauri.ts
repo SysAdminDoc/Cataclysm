@@ -18,6 +18,7 @@ import type {
   SensitivityEnsembleRequest,
   SensitivityEnsembleResponse,
   SimulateGridResponse,
+  VolcanicCollapseInput,
 } from "../types/scenario";
 import type {
   HazelEventSearchRequest,
@@ -399,6 +400,9 @@ export const api = {
   },
   meteotsunamiInitialConditions(input: MeteotsunamiInput) {
     return invoke<InitialDisplacement>("meteotsunami_initial_conditions", { input });
+  },
+  volcanicCollapseInitialConditions(input: VolcanicCollapseInput) {
+    return invoke<InitialDisplacement>("volcanic_collapse_initial_conditions", { input });
   },
   farFieldAmplitude(req: {
     initial_amplitude_m: number;

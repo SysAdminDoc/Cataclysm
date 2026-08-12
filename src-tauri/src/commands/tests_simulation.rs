@@ -46,6 +46,34 @@ fn landslide_geometry_injects_directional_positive_and_negative_lobes() {
 }
 
 #[test]
+fn volcanic_geometry_preserves_caldera_subsidence_and_flank_uplift() {
+    let caldera_request = source_grid_request(Some(InitialSourceGeometry::VolcanicCollapse {
+        collapse_kind: crate::physics::volcanic_collapse::VolcanicCollapseKind::Caldera,
+        footprint_length_m: 80_000.0,
+        footprint_width_m: 40_000.0,
+        collapse_duration_s: 60.0,
+        signed_peak_amplitude_m: -4.0,
+    }));
+    let flank_request = source_grid_request(Some(InitialSourceGeometry::VolcanicCollapse {
+        collapse_kind: crate::physics::volcanic_collapse::VolcanicCollapseKind::FlankCollapse,
+        footprint_length_m: 80_000.0,
+        footprint_width_m: 40_000.0,
+        collapse_duration_s: 60.0,
+        signed_peak_amplitude_m: 4.0,
+    }));
+    let mut caldera_grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.05, 0.05);
+    let mut flank_grid = SwGrid::new(-2.0, -2.0, 2.0, 2.0, 0.05, 0.05);
+    inject_source_initial_field(&mut caldera_grid, &caldera_request).expect("inject caldera field");
+    inject_source_initial_field(&mut flank_grid, &flank_request).expect("inject flank field");
+    let caldera_peak = caldera_grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let caldera_trough = caldera_grid.eta_m.iter().copied().fold(f64::INFINITY, f64::min);
+    let flank_peak = flank_grid.eta_m.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    assert!(caldera_trough < -3.0, "caldera collapse must begin as subsidence");
+    assert!(caldera_peak < 0.0, "caldera Gaussian should not create an uplift lobe");
+    assert!(flank_peak > 3.0, "flank collapse must begin as uplift");
+}
+
+#[test]
 fn okada_geometry_injects_uplift_and_subsidence_into_frame_zero() {
     let request = source_grid_request(Some(InitialSourceGeometry::Okada {
         fault: crate::physics::okada::OkadaFault {

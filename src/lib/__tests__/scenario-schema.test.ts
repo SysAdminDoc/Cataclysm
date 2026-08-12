@@ -5,6 +5,7 @@ import {
   INITIAL_LANDSLIDE,
   INITIAL_METEOTSUNAMI,
   INITIAL_NUCLEAR,
+  INITIAL_VOLCANIC_COLLAPSE,
   SCENARIO_SCHEMA_VERSION,
   parseScenarioPayload,
   scenarioFromUrl,
@@ -61,6 +62,17 @@ describe("scenario schema", () => {
     expect(restored.type).toBe("scenario");
     if (restored.type !== "scenario") return;
     expect(restored.scenario).toEqual(input);
+  });
+
+  it("round-trips volcanic collapse scenarios with signed mechanism inputs", () => {
+    const input = { kind: "VolcanicCollapse" as const, source: INITIAL_VOLCANIC_COLLAPSE };
+    const parsed = parseScenarioPayload({
+      schemaVersion: SCENARIO_SCHEMA_VERSION,
+      ...input,
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.scenario).toEqual(input);
   });
 
   it("defaults legacy earthquake fault dimensions when they are absent", () => {
@@ -163,6 +175,7 @@ describe("scenario schema", () => {
     ["Nuclear", INITIAL_NUCLEAR],
     ["Earthquake", INITIAL_EARTHQUAKE],
     ["Landslide", INITIAL_LANDSLIDE],
+    ["VolcanicCollapse", INITIAL_VOLCANIC_COLLAPSE],
   ] as const)("round-trips %s payloads canonically", (kind, source) => {
     const parsed = parseScenarioPayload(JSON.parse(JSON.stringify({
       schemaVersion: SCENARIO_SCHEMA_VERSION,

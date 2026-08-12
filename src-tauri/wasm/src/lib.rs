@@ -29,6 +29,7 @@ use physics::{
     landslide::LandslideSource,
     meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
+    volcanic_collapse::VolcanicCollapseSource,
     screening::{ScreeningPoint, attenuation_curve, screen_point},
     shallow_water::sample_wavefront,
 };
@@ -41,6 +42,7 @@ enum SourceInput {
     Earthquake { source: EarthquakeSource },
     Landslide { source: LandslideSource },
     Meteotsunami { source: MeteotsunamiSource },
+    VolcanicCollapse { source: VolcanicCollapseSource },
 }
 
 impl SourceInput {
@@ -51,6 +53,7 @@ impl SourceInput {
             Self::Earthquake { source } => source.initial_displacement(),
             Self::Landslide { source } => source.initial_displacement(),
             Self::Meteotsunami { source } => source.initial_displacement(),
+            Self::VolcanicCollapse { source } => source.initial_displacement(),
         }
     }
 }

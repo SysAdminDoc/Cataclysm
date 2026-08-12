@@ -7,6 +7,7 @@ import type {
   MeteotsunamiInput,
   NuclearBurstInput,
   PropagationSnapshot,
+  VolcanicCollapseInput,
 } from "../types/scenario";
 import type { BurstType, HazardResult, TargetType } from "../hazards";
 
@@ -50,7 +51,8 @@ export type BrowserSourceInput =
   | { kind: "Nuclear"; source: NuclearBurstInput }
   | { kind: "Earthquake"; source: EarthquakeInput }
   | { kind: "Landslide"; source: LandslideInput }
-  | { kind: "Meteotsunami"; source: MeteotsunamiInput };
+  | { kind: "Meteotsunami"; source: MeteotsunamiInput }
+  | { kind: "VolcanicCollapse"; source: VolcanicCollapseInput };
 
 export type BrowserScreeningResult = {
   range_m: number;

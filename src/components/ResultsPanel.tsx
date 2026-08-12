@@ -26,7 +26,7 @@ import { useUnits } from "../hooks/useUnits";
 
 /** The modelled tsunami source families. `null` covers presets/custom
  * scenarios whose discrete kind is not known to the caller. */
-export type SourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | null;
+export type SourceKind = "Asteroid" | "Nuclear" | "Earthquake" | "Landslide" | "Meteotsunami" | "VolcanicCollapse" | null;
 
 type Props = {
   initial: InitialDisplacement | null;
@@ -61,6 +61,8 @@ function cavityLabel(kind: SourceKind, t: Translate): { term: string; text: stri
       return { term: "cavity_radius", text: t("results.sourceRegionRadius") };
     case "Meteotsunami":
       return { term: "cavity_radius", text: t("results.pressureFootprintRadius") };
+    case "VolcanicCollapse":
+      return { term: "cavity_radius", text: t("results.collapseFootprintRadius") };
     default:
       return { term: "cavity_radius", text: t("results.cavityRadius") };
   }
@@ -103,6 +105,11 @@ function describeOutcome(
       return {
         headline: t("results.meteotsunamiHeadline"),
         detail: t("results.meteotsunamiDetail", { amplitude: ampText }),
+      };
+    case "VolcanicCollapse":
+      return {
+        headline: t("results.volcanicCollapseHeadline"),
+        detail: t("results.volcanicCollapseDetail", { amplitude: ampText }),
       };
     default:
       return {
@@ -300,6 +307,9 @@ export function ResultsPanel({
               <span className="results__outcome-note">
                 {t("results.educationalNote")}
               </span>
+              {sourceKind === "VolcanicCollapse" && (
+                <p className="results__outcome-note">{t("results.volcanicCollapseCaveat")}</p>
+              )}
             </article>
             <TrustDisclosure evidence={evidence} />
 

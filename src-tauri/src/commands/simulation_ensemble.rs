@@ -205,6 +205,13 @@ pub(crate) fn apply_parameter_sample(
             if let Some(InitialSourceGeometry::Okada { fault }) = req.source_geometry.as_mut() {
                 fault.slip_m *= factor;
             }
+            if let Some(InitialSourceGeometry::VolcanicCollapse {
+                signed_peak_amplitude_m,
+                ..
+            }) = req.source_geometry.as_mut()
+            {
+                *signed_peak_amplitude_m *= factor;
+            }
             if let Some(forcing) = req.meteotsunami_forcing.as_mut() {
                 forcing.peak_pressure_pa *= factor;
             }
@@ -230,6 +237,14 @@ pub(crate) fn apply_parameter_sample(
                 }) => {
                     *longitudinal_sigma_m *= factor;
                     *transverse_sigma_m *= factor;
+                }
+                Some(InitialSourceGeometry::VolcanicCollapse {
+                    footprint_length_m,
+                    footprint_width_m,
+                    ..
+                }) => {
+                    *footprint_length_m *= factor;
+                    *footprint_width_m *= factor;
                 }
                 Some(InitialSourceGeometry::Okada { fault }) => {
                     fault.length_m *= factor;

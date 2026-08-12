@@ -47,6 +47,8 @@ export function TimelineView({ presets, activeId, onSelect, busyId }: Props) {
         ? t("source.underwaterDetonation")
         : kind === "Meteotsunami"
           ? t("source.meteotsunami")
+          : kind === "VolcanicCollapse"
+            ? t("source.volcanicCollapse")
           : t("source.submarineLandslide");
   const entries = useMemo<TimelineEntry[]>(() => {
     const parsed: TimelineEntry[] = [];

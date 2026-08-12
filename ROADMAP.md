@@ -4,13 +4,6 @@ Actionable work only. Historical and completed roadmap material is archived in C
 
 ## Actionable Items
 
-- [ ] P3 — Add a parameterized volcanic caldera/flank-collapse tsunami source
-  Why: volcanic-collapse tsunamis (Anak Krakatau 2018, Hunga Tonga 2022) are the hottest 2024–2026 tsunami-genesis research vein and a distinct mechanism absent from the four current sources, naturally coupling a volcanic event to the tsunami module; a parameterized initial-displacement source (collapse volume/geometry → initial wave) fits the existing source→IC→SWE pattern, with the dispersive/non-hydrostatic accuracy limit documented rather than claimed.
-  Evidence: PAGEOPH 2024 volcanic-tsunami review https://link.springer.com/article/10.1007/s00024-024-03515-y; NHESS 2026 https://nhess.copernicus.org/articles/26/631/2026/; existing source modules in `src-tauri/src/physics/`.
-  Touches: new Rust collapse source (volume/geometry/duration → initial displacement), `ScenarioBuilder.tsx` fifth source type, cited presets (Anak Krakatau 2018, Hunga Tonga 2022), `docs/science/`, applicability caveat copy.
-  Acceptance: a collapse scenario produces a physically ordered initial wave from cited parameters and propagates through the existing SWE with a visible note that short/steep collapse waves need non-hydrostatic physics for near-field accuracy; presets ship with citations; CPU/GPU parity holds.
-  Complexity: L
-
 - [ ] P3 — Add an asteroid-deflection (kinetic-impactor) teaching mode
   Why: the asteroid module presents impact as inevitable, but the NGSS-aligned agency lesson is deflection — NASA confirmed (2026) DART altered Dimorphos' heliocentric orbit; a simplified Δv × lead-time → miss-distance calculator converts doom into an engineering-design lesson, distinct from the tracked NEO-discovery surface.
   Evidence: NASA DART orbit-change result https://www.jpl.nasa.gov/news/nasas-dart-mission-changed-orbit-of-asteroid-didymos-around-sun/; NGSS engineering-design practice; existing asteroid inputs in `ScenarioBuilder.tsx`.

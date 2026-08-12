@@ -9,6 +9,7 @@ use crate::physics::{
     landslide::LandslideSource,
     meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
+    volcanic_collapse::VolcanicCollapseSource,
     CameraView, GeoPoint, InitialDisplacement,
 };
 
@@ -20,6 +21,7 @@ pub enum PresetSource {
     Landslide(LandslideSource),
     Nuclear(NuclearBurst),
     Meteotsunami(MeteotsunamiSource),
+    VolcanicCollapse(VolcanicCollapseSource),
 }
 
 impl PresetSource {
@@ -30,6 +32,7 @@ impl PresetSource {
             Self::Landslide(l) => l.initial_displacement(),
             Self::Nuclear(n) => n.initial_displacement(),
             Self::Meteotsunami(m) => m.initial_displacement(),
+            Self::VolcanicCollapse(v) => v.initial_displacement(),
         }
     }
 
@@ -247,14 +250,14 @@ pub fn all_presets() -> Vec<Preset> {
             controversy_note: Some("Atmospheric Lamb-wave coupling (Carvajal 2022, Matoza 2022) is modelled as an optional IC injection — toggle 'Include atmospheric Lamb-wave forcing' in the Live SWE Solver panel."),
             // Tonga + Pacific basin.
             camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -50.0, range_m: 2_500_000.0 }),
-            source: PresetSource::Landslide(LandslideSource {
-                kind: crate::physics::landslide::LandslideKind::Submarine,
+            source: PresetSource::VolcanicCollapse(VolcanicCollapseSource {
+                kind: crate::physics::volcanic_collapse::VolcanicCollapseKind::Caldera,
                 volume_m3: 1.9e10,
-                density_kg_m3: 2200.0,
-                drop_height_m: 700.0,
-                slope_deg: 35.0,
+                footprint_length_m: 5_000.0,
+                footprint_width_m: 4_000.0,
+                collapse_duration_s: 1_800.0,
+                coupling_fraction: 0.8,
                 water_depth_m: 1_500.0,
-                water_body_width_m: 5_000.0,
                 location: GeoPoint { lat_deg: -20.55, lon_deg: -175.39, depth_m: 1_500.0 },
             }),
         },
@@ -421,14 +424,14 @@ pub fn all_presets() -> Vec<Preset> {
             controversy_note: None,
             // Same Sunda Strait framing as the 1883 preset.
             camera_view: Some(CameraView { heading_deg: 0.0, pitch_deg: -45.0, range_m: 1_000_000.0 }),
-            source: PresetSource::Landslide(LandslideSource {
-                kind: crate::physics::landslide::LandslideKind::Subaerial,
+            source: PresetSource::VolcanicCollapse(VolcanicCollapseSource {
+                kind: crate::physics::volcanic_collapse::VolcanicCollapseKind::FlankCollapse,
                 volume_m3: 2.7e8,
-                density_kg_m3: 1_550.0,
-                drop_height_m: 335.0,
-                slope_deg: 16.0,
+                footprint_length_m: 2_000.0,
+                footprint_width_m: 1_000.0,
+                collapse_duration_s: 60.0,
+                coupling_fraction: 0.75,
                 water_depth_m: 250.0,
-                water_body_width_m: 5_000.0,
                 location: GeoPoint { lat_deg: -6.102, lon_deg: 105.423, depth_m: 250.0 },
             }),
         },
@@ -581,6 +584,14 @@ mod tests {
                     assert!(m.track_length_m > 0.0, "{id}: track length");
                     assert!(m.water_depth_m >= 50.0, "{id}: water depth");
                 }
+                PresetSource::VolcanicCollapse(v) => {
+                    assert!(v.volume_m3 >= 1.0e6, "{id}: volume");
+                    assert!(v.footprint_length_m >= 100.0, "{id}: footprint length");
+                    assert!(v.footprint_width_m >= 100.0, "{id}: footprint width");
+                    assert!(v.collapse_duration_s > 0.0, "{id}: collapse duration");
+                    assert!((0.01..=1.0).contains(&v.coupling_fraction), "{id}: coupling");
+                    assert!((1.0..=12_000.0).contains(&v.water_depth_m), "{id}: water depth");
+                }
             }
             // Location domain matches check_lat_lon (lat ±90, lon ±180).
             let loc = match &p.source {
@@ -589,6 +600,7 @@ mod tests {
                 PresetSource::Earthquake(e) => e.location,
                 PresetSource::Landslide(l) => l.location,
                 PresetSource::Meteotsunami(m) => m.location,
+                PresetSource::VolcanicCollapse(v) => v.location,
             };
             assert!(loc.lat_deg.abs() <= 90.0, "{id}: lat {}", loc.lat_deg);
             assert!(loc.lon_deg.abs() <= 180.0, "{id}: lon {}", loc.lon_deg);

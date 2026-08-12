@@ -110,6 +110,8 @@ function presetScale(preset: Preset): string {
       return compact(preset.source.source.volume_m3, 1_000_000, "Mm³ slide");
     case "Meteotsunami":
       return `${preset.source.source.peak_pressure_pa.toLocaleString()} Pa forcing`;
+    case "VolcanicCollapse":
+      return `${compact(preset.source.source.volume_m3, 1_000_000, "Mm³ collapse")} · ${preset.source.source.kind === "Caldera" ? "caldera" : "flank"}`;
   }
 }
 
@@ -120,6 +122,7 @@ function presetRuntime(preset: Preset): string {
     case "Nuclear": return "60 min";
     case "Landslide": return "30 min";
     case "Meteotsunami": return "2 hr";
+    case "VolcanicCollapse": return "45 min";
   }
 }
 
@@ -130,6 +133,7 @@ function presetPromise(preset: Preset): string {
     case "Nuclear": return "Test underwater blast energy against rapid attenuation.";
     case "Landslide": return "Follow confined displacement into extreme local runup.";
     case "Meteotsunami": return "Watch moving pressure couple with coastal water.";
+    case "VolcanicCollapse": return "Compare rapid collapse coupling with a hydrostatic near-field limit.";
   }
 }
 
@@ -146,11 +150,11 @@ export function presetLibraryId(presetId: string): string {
 export function presentationForPreset(preset: Preset): ScenarioPresentation {
   const thumbnailId: ScenarioThumbnailId = preset.source.kind === "Asteroid"
     ? "earth-limb"
-    : preset.source.kind === "Earthquake" || preset.source.kind === "Landslide" || preset.source.kind === "Meteotsunami"
+    : preset.source.kind === "Earthquake" || preset.source.kind === "Landslide" || preset.source.kind === "Meteotsunami" || preset.source.kind === "VolcanicCollapse"
       ? "earth-ocean"
       : "earth-global";
   return {
-    hazard: preset.source.kind === "Earthquake" || preset.source.kind === "Landslide" || preset.source.kind === "Meteotsunami"
+    hazard: preset.source.kind === "Earthquake" || preset.source.kind === "Landslide" || preset.source.kind === "Meteotsunami" || preset.source.kind === "VolcanicCollapse"
       ? "Tsunami"
       : preset.source.kind,
     scale: presetScale(preset),
