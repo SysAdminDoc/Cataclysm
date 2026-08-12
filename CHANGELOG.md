@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added opt-in local desktop feedback for long solver runs. Unfocused grid,
+  streaming, and sensitivity-ensemble completions or failures can show an OS
+  notification and optionally play a short sonification chime; both are
+  disabled by default and classroom-locked profiles suppress them.
 - Added an opt-in NGSS mitigation teaching mode for the desktop SWE solver.
   Learners can place a bounded idealized coastal barrier by globe coordinates,
   re-run the Rust-authoritative simulation, and set up an unmodified Slot B for

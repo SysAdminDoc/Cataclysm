@@ -24,6 +24,7 @@ type Props = {
   boundaryMode: "sponge" | "radiation";
   mitigationBarrier?: MitigationBarrier | null;
   onEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
+  onRunFinished?: (outcome: "complete" | "failed") => void;
 };
 
 type ParameterDraft = {
@@ -111,7 +112,7 @@ function metricText(value: number | null, suffix: string, formatNumber: ReturnTy
 
 export function SensitivityEnsemblePanel(props: Props) {
   const { t, formatNumber } = useI18n();
-  const { onEnvelopeChange } = props;
+  const { onEnvelopeChange, onRunFinished } = props;
   const [parameters, setParameters] = useState<ParameterDraft[]>(DEFAULT_PARAMETERS);
   const [sampleCount, setSampleCount] = useState(9);
   const [seed, setSeed] = useState(42);
@@ -184,11 +185,13 @@ export function SensitivityEnsemblePanel(props: Props) {
       });
       onEnvelopeChange?.(response);
       setStatus("ready");
+      onRunFinished?.("complete");
     } catch (cause) {
       if (requestId !== requestIdRef.current) return;
       runIdRef.current = null;
       setError(cause instanceof Error ? cause.message : String(cause));
       setStatus("error");
+      onRunFinished?.("failed");
     }
   };
 

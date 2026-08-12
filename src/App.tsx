@@ -28,6 +28,7 @@ import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
 import { SonificationController, type SonificationFrame } from "./lib/sonification";
+import { isWindowUnfocused, notifyRunComplete, type SolverRunOutcome } from "./lib/notify";
 import { useI18n } from "./lib/i18n";
 import { useUnits } from "./hooks/useUnits";
 import { formatLength, formatMassDensity, formatSpeed, quantityText } from "./lib/units";
@@ -464,6 +465,8 @@ export default function App() {
     enabled: false,
     volume: 0.35,
     classroomLocked: false,
+    completionNotificationsEnabled: false,
+    completionChimeEnabled: false,
   });
   const sonificationRef = useRef(new SonificationController());
   const [showCitations, setShowCitations] = useState(false);
@@ -965,6 +968,8 @@ export default function App() {
           enabled: current.sonification_enabled,
           volume: current.sonification_volume,
           classroomLocked: current.classroom_locked,
+          completionNotificationsEnabled: current.completion_notifications_enabled,
+          completionChimeEnabled: current.completion_chime_enabled,
         });
       }).catch((error) => {
         console.warn("[settings] failed to load sonification settings", error);
@@ -977,6 +982,19 @@ export default function App() {
       window.removeEventListener("tsunamisim:settings-saved", refreshSonificationSettings);
     };
   }, []);
+  const handleSolverRunFinished = useCallback((outcome: SolverRunOutcome) => {
+    if (sonificationSettings.classroomLocked || !isWindowUnfocused()) return;
+    if (sonificationSettings.completionChimeEnabled && sonificationSettings.enabled) {
+      sonificationRef.current.playCompletionChime();
+    }
+    if (sonificationSettings.completionNotificationsEnabled) {
+      void notifyRunComplete(
+        "Cataclysm",
+        outcome === "complete" ? t("swe.runComplete") : t("swe.simulationFailed"),
+        true,
+      );
+    }
+  }, [sonificationSettings, t]);
   useEffect(() => () => sonificationRef.current.destroy(), []);
   const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
     const now = performance.now();
@@ -3589,6 +3607,7 @@ export default function App() {
             onMaxField={setSweMaxField}
             onScientificExport={handleScientificExport}
             onRunQuality={setSweRunQualityA}
+            onRunFinished={handleSolverRunFinished}
             onIsochrones={setSweIsochrones}
             onQuickEtaPreview={setSweQuickEtaPreview}
             onRenderFrame={setSweRenderFrameA}
@@ -3610,7 +3629,7 @@ export default function App() {
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
           <div hidden={!compareMode} aria-label={t("app.comparisonSolver", { slot: t("app.slotB") })}>
-            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} mitigationBarrier={mitigationBarrierB} onMitigationBarrierChange={setMitigationBarrierB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel={t("app.slotB")} workspaceMode="advanced" />
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRunFinished={handleSolverRunFinished} onRenderFrame={setSweRenderFrameB} mitigationBarrier={mitigationBarrierB} onMitigationBarrierChange={setMitigationBarrierB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel={t("app.slotB")} workspaceMode="advanced" />
           </div>
           <div hidden={compareMode || !customEditorOpen || workspaceMode === "simple"}>
             <ScenarioBuilder

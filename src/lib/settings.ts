@@ -54,6 +54,10 @@ export type Settings = {
   sonification_enabled: boolean;
   /** Master volume for the local Web Audio sonification, in [0, 1]. */
   sonification_volume: number;
+  /** Local OS notification after an unfocused solver run; disabled by default. */
+  completion_notifications_enabled: boolean;
+  /** Short local completion chime; disabled by default and classroom-gated. */
+  completion_chime_enabled: boolean;
 };
 
 export const SETTINGS_SCHEMA_VERSION = currentUserDataSchemaVersion("settings");
@@ -78,6 +82,8 @@ const DEFAULTS: Settings = {
   classroom_locked: false,
   sonification_enabled: false,
   sonification_volume: 0.35,
+  completion_notifications_enabled: false,
+  completion_chime_enabled: false,
 };
 
 const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
@@ -99,6 +105,8 @@ const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
   "classroom_locked",
   "sonification_enabled",
   "sonification_volume",
+  "completion_notifications_enabled",
+  "completion_chime_enabled",
 ];
 const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>(SETTINGS_KEY_LIST);
 const VISUAL_SETTINGS_KEYS: readonly (keyof Settings)[] = [
@@ -323,6 +331,8 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
     case "classroom_locked":
     case "renderer_auto_quality":
     case "sonification_enabled":
+    case "completion_notifications_enabled":
+    case "completion_chime_enabled":
       result = (typeof value === "boolean" ? value : undefined) as Settings[K] | undefined;
       break;
     case "sonification_volume":
@@ -954,6 +964,18 @@ export const settings = {
   async setSonificationVolume(volume: number): Promise<void> {
     return write("sonification_volume", volume);
   },
+  async getCompletionNotificationsEnabled(): Promise<boolean> {
+    return read("completion_notifications_enabled");
+  },
+  async setCompletionNotificationsEnabled(enabled: boolean): Promise<void> {
+    return write("completion_notifications_enabled", enabled);
+  },
+  async getCompletionChimeEnabled(): Promise<boolean> {
+    return read("completion_chime_enabled");
+  },
+  async setCompletionChimeEnabled(enabled: boolean): Promise<void> {
+    return write("completion_chime_enabled", enabled);
+  },
   async dismissTokenBanner(): Promise<void> {
     return write("token_banner_dismissed_at", new Date().toISOString());
   },
@@ -982,6 +1004,8 @@ export const settings = {
       classroom_locked: await read("classroom_locked"),
       sonification_enabled: await read("sonification_enabled"),
       sonification_volume: await read("sonification_volume"),
+      completion_notifications_enabled: await read("completion_notifications_enabled"),
+      completion_chime_enabled: await read("completion_chime_enabled"),
     };
   },
   /** Persist a coherent settings patch. Every affected backend is snapshotted

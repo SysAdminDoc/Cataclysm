@@ -2,6 +2,8 @@ import { isTauri } from "./tauri";
 
 let notificationModule: typeof import("@tauri-apps/plugin-notification") | null = null;
 
+export type SolverRunOutcome = "complete" | "failed";
+
 async function loadModule() {
   if (!isTauri()) return null;
   if (!notificationModule) {
@@ -10,8 +12,12 @@ async function loadModule() {
   return notificationModule;
 }
 
-export async function notifyRunComplete(title: string, body: string): Promise<void> {
-  if (typeof document === "undefined" || document.hasFocus()) return;
+export function isWindowUnfocused(): boolean {
+  return typeof document !== "undefined" && !document.hasFocus();
+}
+
+export async function notifyRunComplete(title: string, body: string, enabled = true): Promise<void> {
+  if (!enabled || !isWindowUnfocused()) return;
 
   // Completion notifications are a best-effort convenience. A missing plugin
   // bridge, denied permission, or platform notification failure must never

@@ -110,6 +110,8 @@ const SETTINGS_KEYS: readonly (keyof Settings)[] = [
   "classroom_locked",
   "sonification_enabled",
   "sonification_volume",
+  "completion_notifications_enabled",
+  "completion_chime_enabled",
 ];
 
 const DESKTOP_BASELINE: Settings = {
@@ -131,6 +133,8 @@ const DESKTOP_BASELINE: Settings = {
   classroom_locked: true,
   sonification_enabled: true,
   sonification_volume: 0.6,
+  completion_notifications_enabled: true,
+  completion_chime_enabled: true,
 };
 
 async function captureTransactionFailure(action: () => Promise<unknown>): Promise<SettingsTransactionError> {

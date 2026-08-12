@@ -29,6 +29,8 @@ const TRANSACTION_BASELINE: Settings = {
   classroom_locked: true,
   sonification_enabled: true,
   sonification_volume: 0.6,
+  completion_notifications_enabled: true,
+  completion_chime_enabled: true,
 };
 
 const APPLY_PATCH: Partial<Settings> = {

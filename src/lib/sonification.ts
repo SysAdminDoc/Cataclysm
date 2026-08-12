@@ -146,6 +146,21 @@ export class SonificationController {
     }
   }
 
+  /** Best-effort local completion accent. The caller gates this with the
+   * persisted opt-in, classroom lock, and unfocused-window policy. */
+  playCompletionChime(): void {
+    if (!this.enabled || !this.ensureAudio("tsunami")) return;
+    const context = this.context;
+    if (!context) return;
+    void context.resume().catch(() => {
+      // Autoplay policy or an unavailable device must not affect the run.
+    });
+    const start = context.currentTime + 0.02;
+    this.playArrivalPulse(260, start);
+    this.playArrivalPulse(330, start + 0.18);
+    this.playArrivalPulse(440, start + 0.36);
+  }
+
   destroy(): void {
     this.stop();
     this.oscillator?.stop();
@@ -216,4 +231,3 @@ export class SonificationController {
     }
   }
 }
-

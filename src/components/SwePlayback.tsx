@@ -11,7 +11,6 @@ import { GlossaryTip } from "./GlossaryTip";
 import { SemanticDataTable, type SemanticDataRow } from "./SemanticDataTable";
 import { useI18n } from "../lib/i18n";
 import type { MessageKey } from "../lib/i18n-core";
-import { notifyRunComplete } from "../lib/notify";
 import PRODUCT_TRUTH from "../data/product-truth.json";
 import { useUnits } from "../hooks/useUnits";
 import { formatLength, quantityText } from "../lib/units";
@@ -52,6 +51,7 @@ type Props = {
   portableSettingsImport?: { id: number; settings: PortableScenarioSolverSettings } | null;
   portableResultsImport?: { id: number; results: PortableJson } | null;
   onSensitivityEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
+  onRunFinished?: (outcome: "complete" | "failed") => void;
   mitigationBarrier?: MitigationBarrier | null;
   onMitigationBarrierChange?: (barrier: MitigationBarrier | null) => void;
   onRequestMitigationPick?: () => void;
@@ -235,7 +235,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
   return warning;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange, mitigationBarrier, onMitigationBarrierChange, onRequestMitigationPick, onRequestMitigationComparison }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange, onRunFinished, mitigationBarrier, onMitigationBarrierChange, onRequestMitigationPick, onRequestMitigationComparison }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
@@ -766,7 +766,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         onRunQuality?.(meta.run_quality);
         setActiveIdx(0);
         setStatus("ready");
-        void notifyRunComplete("Cataclysm", t("swe.runComplete"));
+        onRunFinished?.("complete");
         onSnapshotsReady?.(streamSnaps);
         setMaxField(meta.max_field ?? null);
         setRecoveredGaugeHistory(meta.recovered_gauge_history ?? []);
@@ -788,6 +788,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         onScientificExport?.(null, t("swe.netcdfDesktop"));
         setActiveIdx(0);
         setStatus("ready");
+        onRunFinished?.("complete");
         onSnapshotsReady?.(resp.snapshots);
         if (autoPlay && playbackTimeS === undefined) setIsPlaying(true);
       }
@@ -818,8 +819,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         onScientificExport?.(null, String(err));
         setStatus("error");
       }
+      onRunFinished?.("failed");
     }
-  }, [activeMitigationBarrier, initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, workspaceMode, boundaryMode, checkpointIntervalS, gauges, dartBuoys, mitigationBarrierError, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
+  }, [activeMitigationBarrier, initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, workspaceMode, boundaryMode, checkpointIntervalS, gauges, dartBuoys, mitigationBarrierError, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, onRunFinished, playbackTimeS, refreshCheckpoints, t]);
 
   const runQuickEtaPreview = useCallback(async () => {
     if (!initial || !isTauri() || quickEtaStatus === "running" || mitigationBarrierError) return;
@@ -1293,6 +1295,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           boundaryMode={boundaryMode}
           mitigationBarrier={activeMitigationBarrier}
           onEnvelopeChange={onSensitivityEnvelopeChange}
+          onRunFinished={onRunFinished}
         />
       )}
 

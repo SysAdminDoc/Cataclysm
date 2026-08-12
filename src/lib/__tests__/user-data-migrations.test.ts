@@ -54,6 +54,17 @@ describe("user-data migration registry", () => {
     expect(legacyRunArchive).toEqual(archiveOriginal);
   });
 
+  it("adds quiet completion feedback defaults to existing settings", () => {
+    const result = migrateSettingsData(7, { sonification_enabled: true });
+
+    expect(result.schemaVersion).toBe(currentUserDataSchemaVersion("settings"));
+    expect(result.data).toMatchObject({
+      sonification_enabled: true,
+      completion_notifications_enabled: false,
+      completion_chime_enabled: false,
+    });
+  });
+
   it("preserves a schema-1 render digest while adding result identity slots", () => {
     const renderDigest = "a".repeat(64);
     const archive = {

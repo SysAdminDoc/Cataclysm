@@ -38,6 +38,8 @@ type StagedSettings = {
   launchExperiencePolicy: LaunchExperiencePolicy;
   sonificationEnabled: boolean;
   sonificationVolume: number;
+  completionNotificationsEnabled: boolean;
+  completionChimeEnabled: boolean;
 };
 
 type Props = { onClose: () => void };
@@ -58,6 +60,8 @@ export function Settings({ onClose }: Props) {
   const [launchExperiencePolicy, setLaunchExperiencePolicy] = useState<LaunchExperiencePolicy>("first");
   const [sonificationEnabled, setSonificationEnabled] = useState(false);
   const [sonificationVolume, setSonificationVolume] = useState(0.35);
+  const [completionNotificationsEnabled, setCompletionNotificationsEnabled] = useState(false);
+  const [completionChimeEnabled, setCompletionChimeEnabled] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [settingsExportFailure, setSettingsExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
@@ -104,6 +108,8 @@ export function Settings({ onClose }: Props) {
         setLaunchExperiencePolicy(s.launch_experience_policy);
         setSonificationEnabled(s.sonification_enabled);
         setSonificationVolume(s.sonification_volume);
+        setCompletionNotificationsEnabled(s.completion_notifications_enabled);
+        setCompletionChimeEnabled(s.completion_chime_enabled);
         setClassroomLocked(s.classroom_locked);
         setAppliedSettings({
           token: s.cesium_token,
@@ -117,6 +123,8 @@ export function Settings({ onClose }: Props) {
           launchExperiencePolicy: s.launch_experience_policy,
           sonificationEnabled: s.sonification_enabled,
           sonificationVolume: s.sonification_volume,
+          completionNotificationsEnabled: s.completion_notifications_enabled,
+          completionChimeEnabled: s.completion_chime_enabled,
         });
       })
       .catch((err) => {
@@ -136,6 +144,8 @@ export function Settings({ onClose }: Props) {
             launchExperiencePolicy: "first",
             sonificationEnabled: false,
             sonificationVolume: 0.35,
+            completionNotificationsEnabled: false,
+            completionChimeEnabled: false,
           });
         }
       })
@@ -177,6 +187,8 @@ export function Settings({ onClose }: Props) {
         launch_experience_policy: launchExperiencePolicy,
         sonification_enabled: sonificationEnabled,
         sonification_volume: sonificationVolume,
+        completion_notifications_enabled: completionNotificationsEnabled,
+        completion_chime_enabled: completionChimeEnabled,
       };
       if (appliedSettings === null || trimmedToken !== appliedSettings.token) {
         patch.cesium_token = trimmedToken;
@@ -185,7 +197,7 @@ export function Settings({ onClose }: Props) {
       setTokenLocal(trimmedToken);
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
-      setAppliedSettings({ token: trimmedToken, theme, locale, units, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy, sonificationEnabled, sonificationVolume });
+      setAppliedSettings({ token: trimmedToken, theme, locale, units, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy, sonificationEnabled, sonificationVolume, completionNotificationsEnabled, completionChimeEnabled });
       setStatusMsg(translate(locale, "settings.applied", { time: new Date().toLocaleTimeString(LANGUAGE_TAGS[locale]) }));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
@@ -225,6 +237,8 @@ export function Settings({ onClose }: Props) {
     || launchExperiencePolicy !== appliedSettings.launchExperiencePolicy
     || sonificationEnabled !== appliedSettings.sonificationEnabled
     || sonificationVolume !== appliedSettings.sonificationVolume
+    || completionNotificationsEnabled !== appliedSettings.completionNotificationsEnabled
+    || completionChimeEnabled !== appliedSettings.completionChimeEnabled
   );
 
   function handleBackdropClick() {
@@ -566,6 +580,29 @@ export function Settings({ onClose }: Props) {
               />
               <output>{Math.round(sonificationVolume * 100)}%</output>
             </label>
+            <section className="settings__section settings__section--nested">
+              <h4 className="settings__h4">{t("settings.completionFeedback")}</h4>
+              <p className="modal__intro">{t("settings.completionFeedbackBody")}</p>
+              <label className="settings__toggle-row">
+                <input
+                  type="checkbox"
+                  checked={completionNotificationsEnabled}
+                  onChange={(event) => setCompletionNotificationsEnabled(event.target.checked)}
+                  disabled={classroomLocked}
+                />
+                <span><strong>{t("settings.completionNotifications")}</strong><small>{t("settings.completionNotificationsBody")}</small></span>
+              </label>
+              <label className="settings__toggle-row">
+                <input
+                  type="checkbox"
+                  checked={completionChimeEnabled}
+                  onChange={(event) => setCompletionChimeEnabled(event.target.checked)}
+                  disabled={classroomLocked || !sonificationEnabled}
+                />
+                <span><strong>{t("settings.completionChime")}</strong><small>{t("settings.completionChimeBody")}</small></span>
+              </label>
+              {classroomLocked && <p className="settings__description">{t("settings.completionClassroomDisabled")}</p>}
+            </section>
           </section>
           </>
           )}
@@ -681,6 +718,8 @@ export function Settings({ onClose }: Props) {
                       setLaunchExperiencePolicy(all.launch_experience_policy);
                       setSonificationEnabled(all.sonification_enabled);
                       setSonificationVolume(all.sonification_volume);
+                      setCompletionNotificationsEnabled(all.completion_notifications_enabled);
+                      setCompletionChimeEnabled(all.completion_chime_enabled);
                       setClassroomLocked(all.classroom_locked);
                       setAppliedSettings({
                         token: all.cesium_token,
@@ -694,6 +733,8 @@ export function Settings({ onClose }: Props) {
                         launchExperiencePolicy: all.launch_experience_policy,
                         sonificationEnabled: all.sonification_enabled,
                         sonificationVolume: all.sonification_volume,
+                        completionNotificationsEnabled: all.completion_notifications_enabled,
+                        completionChimeEnabled: all.completion_chime_enabled,
                       });
                       applyTheme(all.theme);
                       setSaveErr(null);
@@ -732,6 +773,8 @@ export function Settings({ onClose }: Props) {
                     setLaunchExperiencePolicy("first");
                     setSonificationEnabled(false);
                     setSonificationVolume(0.35);
+                    setCompletionNotificationsEnabled(false);
+                    setCompletionChimeEnabled(false);
                     setClassroomLocked(false);
                     setAppliedSettings({
                       token: "",
@@ -745,6 +788,8 @@ export function Settings({ onClose }: Props) {
                       launchExperiencePolicy: "first",
                       sonificationEnabled: false,
                       sonificationVolume: 0.35,
+                      completionNotificationsEnabled: false,
+                      completionChimeEnabled: false,
                     });
                     applyTheme("mocha");
                     primeCesiumToken(null);
