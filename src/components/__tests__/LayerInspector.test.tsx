@@ -67,7 +67,7 @@ describe("LayerInspector trust evidence", () => {
     );
 
     const disclosures = screen.getAllByText("Why trust this?");
-    expect(disclosures).toHaveLength(8);
+    expect(disclosures).toHaveLength(9);
     expect(screen.getByText("MODELED INUNDATION · NON-OPERATIONAL")).toBeInTheDocument();
     expect(screen.getByText(/Unshaded areas are not confirmed safe/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Modeled coastal screening-height legend")).toHaveTextContent("0.1–<2 m");
@@ -102,8 +102,8 @@ describe("LayerInspector trust evidence", () => {
       />,
     );
 
-    expect(screen.getAllByText("Needs data")).toHaveLength(8);
-    expect(screen.getAllByRole("checkbox")).toHaveLength(8);
+    expect(screen.getAllByText("Needs data")).toHaveLength(9);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(9);
     expect(screen.getByText("Run the SWE solver to create a surface field.")).toBeInTheDocument();
   });
 

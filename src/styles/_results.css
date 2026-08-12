@@ -561,6 +561,75 @@ button.results__metric-card:focus-visible {
 .results__provenance dt { color: var(--subtext0); }
 .results__provenance dd { margin: 0; overflow-wrap: anywhere; }
 
+.hazel-validation {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, #cba6f7 28%, var(--divider));
+  border-left: 3px solid #cba6f7;
+  background: color-mix(in srgb, #cba6f7 6%, transparent);
+}
+
+.hazel-validation__intro,
+.hazel-validation__status,
+.hazel-validation__sampling,
+.hazel-validation__caveat {
+  margin: 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+
+.hazel-validation__status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hazel-validation__status button {
+  flex: 0 0 auto;
+  border: 1px solid var(--surface2);
+  border-radius: 6px;
+  background: var(--surface0);
+  color: var(--text);
+  padding: 4px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.hazel-validation__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.hazel-validation__metrics > div {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--surface1) 82%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface0) 60%, transparent);
+}
+
+.hazel-validation__metrics dt {
+  color: var(--subtext0);
+  font-size: 10px;
+}
+
+.hazel-validation__metrics dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hazel-validation__sampling { color: var(--warning-text); }
+.hazel-validation__caveat { color: var(--subtext0); }
+.hazel-validation > a { color: var(--accent-text); font-size: var(--type-caption); font-weight: 650; }
+
 .results__export {
   width: 100%;
   margin-top: 8px;

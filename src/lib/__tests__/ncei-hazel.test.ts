@@ -52,6 +52,7 @@ describe("NCEI HazEL event mapping", () => {
     });
     expect(result?.provenanceNote).toContain("HazEL event 1902");
     expect(result?.provenanceNote).toContain("Fault geometry, slip, depth, and water depth remain Cataclysm defaults");
+    expect(result?.hazelEventId).toBe(1902);
     expect(eventValidityLabel(CHILE_1960.eventValidity)).toBe("Definite tsunami");
   });
 

@@ -30,6 +30,7 @@ export type EvidenceLayerId =
   | "maximum-field"
   | "arrival-isochrones"
   | "coastal-runup"
+  | "hazel-observed-runup"
   | "humanitarian-facilities"
   | "usgs-official"
   | "dart-observations"
@@ -310,6 +311,35 @@ export function buildLayerEvidence(
           {
             label: "Water 2024 tsunami-map interpretation study",
             url: "https://www.mdpi.com/2073-4441/16/23/3423",
+          },
+        ],
+      };
+    case "hazel-observed-runup":
+      return {
+        ...common,
+        title: "NOAA/NCEI HazEL observed-runup comparison",
+        sourceTitle: "NOAA/NCEI Global Historical Tsunami Database runup records",
+        model: "Nearest-point residual against the active Cataclysm coastal screening",
+        confidence: "Reference observations; coordinate and datum quality vary",
+        tone: "limited",
+        assumptions: [
+          "Observed records are plotted at the coordinates and runup heights supplied by HazEL.",
+          "Residuals pair each observed record with one arrived Cataclysm coastal point within 50 km.",
+        ],
+        limitations: [
+          "HazEL location names, coordinates, transcription, and reference levels can contain uncertainty.",
+          "A historical maximum water height is not necessarily the first or largest wave at every site.",
+          "The bounded display can sample or truncate records; this comparison is not calibration, forecasting, or an evacuation map.",
+          EDUCATIONAL_LIMITATION,
+        ],
+        citations: [
+          {
+            label: "NOAA/NCEI Global Historical Tsunami Database",
+            url: "https://www.ncei.noaa.gov/products/natural-hazards/tsunamis-earthquakes-volcanoes/tsunamis/global-historical-data",
+          },
+          {
+            label: "NOAA/NCEI HazEL tsunami event and runup browser",
+            url: "https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search",
           },
         ],
       };

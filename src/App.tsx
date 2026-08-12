@@ -9,6 +9,7 @@ import { FamiliarPlacePanel } from "./components/FamiliarPlacePanel";
 import { CitationsModal } from "./components/CitationsModal";
 import { HighlightStoryDialog, type HighlightStorySource } from "./components/HighlightStoryDialog";
 import { HistoricalTsunamiBrowser } from "./components/HistoricalTsunamiBrowser";
+import { HazelValidationPanel } from "./components/HazelValidationPanel";
 import { RecentEarthquakeBrowser } from "./components/RecentEarthquakeBrowser";
 import { Settings } from "./components/Settings";
 import { FirstRunDisclaimer } from "./components/FirstRunDisclaimer";
@@ -78,7 +79,8 @@ import {
 import { presetById, useScenarioSlot } from "./hooks/useScenarioSlot";
 import { useHumanitarianFacilities } from "./hooks/useHumanitarianFacilities";
 import { scenarioFromUrl, scenarioToUrlParams, sourceNumericDefault, sourceTextDefault, type ScenarioInput, type UrlScenarioResult } from "./lib/scenario-schema";
-import type { HistoricalScenarioImport } from "./lib/ncei-hazel";
+import type { HazelRunupSearchResponse, HistoricalScenarioImport } from "./lib/ncei-hazel";
+import { prepareHazelValidation } from "./lib/hazel-validation";
 import type { RecentEarthquakeImport, UsgsOfficialComparison } from "./lib/usgs-earthquakes";
 import { subscribeToScenarioDeepLinks } from "./lib/deep-links";
 import {
@@ -457,6 +459,9 @@ export default function App() {
   const sonificationRef = useRef(new SonificationController());
   const [showCitations, setShowCitations] = useState(false);
   const [showHistoricalBrowser, setShowHistoricalBrowser] = useState(false);
+  const [hazelEventId, setHazelEventId] = useState<number | null>(null);
+  const [hazelRunupResult, setHazelRunupResult] = useState<AsyncResult<HazelRunupSearchResponse>>({ status: "idle" });
+  const [hazelRunupRetryNonce, setHazelRunupRetryNonce] = useState(0);
   const [showRecentEarthquakes, setShowRecentEarthquakes] = useState(false);
   const [usgsComparison, setUsgsComparison] = useState<UsgsOfficialComparison | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -609,6 +614,33 @@ export default function App() {
     timeoutId: number;
   } | null>(null);
   const inTauri = useMemo(isTauri, []);
+  useEffect(() => {
+    let active = true;
+    if (hazelEventId === null) {
+      setHazelRunupResult({ status: "idle" });
+      return () => { active = false; };
+    }
+    if (!inTauri) {
+      setHazelRunupResult({ status: "error", error: "browser preview is network-isolated" });
+      return () => { active = false; };
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setHazelRunupResult({ status: "error", error: "offline" });
+      return () => { active = false; };
+    }
+    setHazelRunupResult((current) => startAsyncResult(current, false));
+    api.nceiHazelRunups({ eventId: hazelEventId })
+      .then((response) => {
+        if (!active) return;
+        setHazelRunupResult(resolveAsyncResult(response, (value) => value.items.length === 0));
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.warn("[ncei-hazel] runup lookup failed", error);
+        setHazelRunupResult((current) => rejectAsyncResult(current, error));
+      });
+    return () => { active = false; };
+  }, [hazelEventId, hazelRunupRetryNonce, inTauri]);
   const deterministicVideoSupported = useMemo(isDeterministicVideoSupported, []);
   // Direct asteroid/nuclear effects run on the Tauri backend (desktop) and, in
   // the browser preview, on the same Rust models compiled to WebAssembly. Both
@@ -1229,6 +1261,23 @@ export default function App() {
       : null;
   const activeScenarioKindA = activePresetA?.source.kind ?? slotA.lastCustomScenario?.kind ?? null;
   const activeScenarioKindB = activePresetB?.source.kind ?? slotB.lastCustomScenario?.kind ?? null;
+  const hazelRunupData = asyncResultValue(hazelRunupResult);
+  const hazelValidation = useMemo(
+    () => hazelRunupData
+      ? prepareHazelValidation(hazelRunupData, slotA.runupResults)
+      : null,
+    [hazelRunupData, slotA.runupResults],
+  );
+  const hazelObservedRunup = useMemo(
+    () => (hazelValidation?.points ?? []).map((point) => ({
+      id: point.id,
+      name: point.name,
+      lat: point.lat,
+      lon: point.lon,
+      runup_m: point.runupM,
+    })),
+    [hazelValidation],
+  );
   const layerScenarioKey = useMemo(() => {
     if (hazardMode === "tsunami") {
       return buildLayerScenarioKey("tsunami", slotA.activePresetId, slotA.lastCustomScenario ?? slotA.initial);
@@ -2208,6 +2257,7 @@ export default function App() {
   }
 
   function selectHazardMode(mode: HazardMode) {
+    if (mode !== "tsunami") clearHazelValidation();
     setRunJourney(null);
     setHazardMode(mode);
     if (mode !== "tsunami") setUsgsComparison(null);
@@ -2290,7 +2340,14 @@ export default function App() {
     setLibraryPreviewPending(true);
   }
 
+  function clearHazelValidation() {
+    setHazelEventId(null);
+    setHazelRunupResult({ status: "idle" });
+    setHazelRunupRetryNonce(0);
+  }
+
   function runPresetFromLibrary(presetId: string) {
+    clearHazelValidation();
     setUsgsComparison(null);
     const scenarioId = `preset:${presetId}`;
     const canReuseSnapshots = !referenceCaptureMode
@@ -2316,6 +2373,7 @@ export default function App() {
   }
 
   function startGuidedLesson(lesson: GuidedLessonDef) {
+    clearHazelValidation();
     setUsgsComparison(null);
     const scenarioId = `preset:${lesson.presetId}`;
     if (slotA.activePresetId !== lesson.presetId) guidedStoryRuns.current.delete(lesson.id);
@@ -2334,6 +2392,7 @@ export default function App() {
 
   function runLibraryPreview() {
     if (!libraryPreview) return;
+    clearHazelValidation();
     setLibraryPreviewPending(false);
     if (libraryPreview.kind === "preset") {
       runPresetFromLibrary(libraryPreview.presetId);
@@ -2384,6 +2443,7 @@ export default function App() {
   }
 
   function createCustomScenario() {
+    clearHazelValidation();
     setUsgsComparison(null);
     setRunJourney(null);
     changeWorkspaceMode("customize");
@@ -2400,6 +2460,9 @@ export default function App() {
   }
 
   function loadHistoricalScenario(result: HistoricalScenarioImport) {
+    setHazelEventId(result.hazelEventId);
+    setHazelRunupRetryNonce(0);
+    setHazelRunupResult({ status: "idle" });
     setUsgsComparison(null);
     setShowHistoricalBrowser(false);
     setRunJourney(null);
@@ -2413,6 +2476,7 @@ export default function App() {
   }
 
   function loadRecentEarthquake(result: RecentEarthquakeImport) {
+    clearHazelValidation();
     setShowRecentEarthquakes(false);
     setRunJourney(null);
     changeWorkspaceMode("customize");
@@ -2439,6 +2503,7 @@ export default function App() {
   }
 
   function startComparisonStory(story: ComparisonStory, preservePresetId: string | null = null) {
+    clearHazelValidation();
     const reverse = preservePresetId === story.rightPresetId;
     const activePresetId = reverse ? story.rightPresetId : story.leftPresetId;
     setRunJourney(null);
@@ -3117,6 +3182,7 @@ export default function App() {
                 sweSnapshot={inHazardMode ? null : slotA.sweSnapshot}
                 onSweFrameReady={handleSweFrameReady}
                 runupResults={inHazardMode ? [] : slotA.runupResults}
+                hazelObservedRunup={inHazardMode ? [] : hazelObservedRunup}
                 gauges={inHazardMode ? [] : sweGaugesA}
                 dartBuoys={inHazardMode ? [] : dartPinsForPreset(slotA.activePresetId)}
                 humanitarianFacilities={!inHazardMode && humanitarianFacilitiesEnabled
@@ -3529,11 +3595,23 @@ export default function App() {
             runupResults={slotA.runupResults}
             movingPressure={activeScenarioKindA === "Meteotsunami"}
           />}
-          validationContent={<DartOverlay
-            presetId={slotA.activePresetId}
-            timeS={timeS}
-            sweSnapshots={sweSnapshots}
-          />}
+          validationContent={
+            <>
+              <DartOverlay
+                presetId={slotA.activePresetId}
+                timeS={timeS}
+                sweSnapshots={sweSnapshots}
+              />
+              <HazelValidationPanel
+                eventId={hazelEventId}
+                result={hazelRunupResult}
+                summary={hazelValidation?.summary ?? null}
+                desktopAvailable={inTauri}
+                online={typeof navigator === "undefined" || navigator.onLine !== false}
+                onRetry={() => setHazelRunupRetryNonce((nonce) => nonce + 1)}
+              />
+            </>
+          }
         />}
         {inspectorTab === "results" && compareMode && (
           <div className="app__compare-rail">
@@ -3585,6 +3663,8 @@ export default function App() {
           hasMaxField={!inHazardMode && Boolean(sweMaxField)}
           arrivalCount={inHazardMode ? 0 : sweIsochrones?.length ?? 0}
           runupCount={inHazardMode ? 0 : slotA.runupResults.length}
+          hazelObservedCount={inHazardMode ? 0 : hazelValidation?.summary.validObservedCount ?? 0}
+          hazelObservedAvailable={!inHazardMode && (hazelValidation?.summary.validObservedCount ?? 0) > 0}
           dartCount={inHazardMode ? 0 : dartPinsForPreset(slotA.activePresetId).length}
           hasFallout={Boolean(hazardPolygons?.length)}
           preset={layerEvidencePresetA}

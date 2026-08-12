@@ -588,6 +588,7 @@
 .layer-inspector__legend-mark.is-field { background: linear-gradient(90deg, var(--blue), var(--teal), var(--yellow), var(--red)); }
 .layer-inspector__legend-mark.is-arrival { height: 2px; background: var(--yellow); }
 .layer-inspector__legend-mark.is-runup { background: linear-gradient(90deg, #3b82f6, #f59e0b, #dc2626); }
+.layer-inspector__legend-mark.is-hazel-observed { width: 10px; height: 10px; border-radius: 50%; background: #cba6f7; }
 .layer-inspector__legend-mark.is-facility { width: 8px; height: 8px; background: var(--green); }
 .layer-inspector__legend-mark.is-usgs { height: 2px; background: linear-gradient(90deg, #00b4d8, #f7d038, #e5383b); }
 .layer-inspector__legend-mark.is-dart { width: 8px; height: 8px; background: var(--maroon); }

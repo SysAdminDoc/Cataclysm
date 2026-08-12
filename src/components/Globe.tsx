@@ -70,7 +70,7 @@ import {
 } from "../render/cesium/cesium-interaction-host";
 import { TsunamiSourceController } from "../render/cesium/tsunami-source";
 import { CesiumTsunamiSourceHost } from "../render/cesium/cesium-tsunami-source-host";
-import { RunupOverlayController } from "../render/cesium/runup-overlay-controller";
+import { RunupOverlayController, type ObservedRunupOverlayInput } from "../render/cesium/runup-overlay-controller";
 import {
   createCesiumRunupOverlayHost,
   type CesiumGaugePrimitiveGroup,
@@ -122,6 +122,8 @@ type Props = {
   onSweFrameReady?: (snapshot: GridSnapshot) => void;
   /** Coastal runup samples to render as 3D bars at coastline points. */
   runupResults?: RunupAtPointResult[];
+  /** Opt-in NOAA/NCEI HazEL observations to render as distinct ground markers. */
+  hazelObservedRunup?: ObservedRunupOverlayInput[];
   /** User-created SWE gauges rendered as a single primitive-backed point layer. */
   gauges?: Gauge[];
   /** DART buoy pins for the active historical preset. */
@@ -481,6 +483,7 @@ export function Globe({
   sweSnapshot,
   onSweFrameReady,
   runupResults,
+  hazelObservedRunup = [],
   gauges,
   dartBuoys,
   humanitarianFacilities = [],
@@ -530,6 +533,7 @@ export function Globe({
   const sweLayer = layers["swe-field"];
   const isochroneLayer = layers["arrival-isochrones"];
   const runupLayer = layers["coastal-runup"];
+  const hazelObservedRunupLayer = layers["hazel-observed-runup"];
   const dartLayer = layers["dart-observations"];
   const humanitarianLayer = layers["humanitarian-facilities"];
   const usgsLayer = layers["usgs-official"];
@@ -1164,6 +1168,7 @@ export function Globe({
       isochrones: isochroneLayer.visible ? isochrones : null,
       dartBuoys: dartLayer.visible ? dartBuoys : [],
       runupResults: runupLayer.visible ? runupResults : [],
+      observedRunup: hazelObservedRunupLayer.visible ? hazelObservedRunup : [],
       gauges,
       showDirectSource: domain !== "tsunami" && sourceLayer.visible,
       layerOpacity: {
@@ -1171,6 +1176,7 @@ export function Globe({
         wavefront: wavefrontLayer.opacity,
         isochrones: isochroneLayer.opacity,
         runup: runupLayer.opacity,
+        observedRunup: hazelObservedRunupLayer.opacity,
         dart: dartLayer.opacity,
         hazardRings: hazardRingLayer.opacity,
         fallout: falloutLayer.opacity,

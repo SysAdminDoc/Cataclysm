@@ -4,6 +4,7 @@ export const LAYER_IDS = [
   "swe-field",
   "arrival-isochrones",
   "coastal-runup",
+  "hazel-observed-runup",
   "humanitarian-facilities",
   "usgs-official",
   "dart-observations",
@@ -55,6 +56,7 @@ const DOMAIN_ORDERS: Record<LayerDomain, readonly LayerId[]> = {
     "swe-field",
     "wavefront",
     "source",
+    "hazel-observed-runup",
   ],
   asteroid: ["hazard-rings", "source"],
   nuclear: ["fallout-plume", "hazard-rings", "source"],
@@ -94,7 +96,9 @@ export function defaultLayerState(domain: LayerDomain): LayerState {
     const order = DOMAIN_ORDERS[domain].indexOf(id);
     result[id] = Object.freeze({
       id,
-      visible: applicable.has(id) && id !== "humanitarian-facilities",
+      visible: applicable.has(id)
+        && id !== "humanitarian-facilities"
+        && id !== "hazel-observed-runup",
       opacity: id === "swe-field" ? 0.9 : 1,
       order: order < 0 ? LAYER_IDS.length : order,
     });

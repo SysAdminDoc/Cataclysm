@@ -236,9 +236,11 @@ function normalize(
   runupOpacity = 1,
   gaugeOpacity = 1,
   observedInputs: readonly ObservedRunupOverlayInput[] = [],
+  observedOpacity = runupOpacity,
 ): NormalizedOverlay {
   const boundedRunupOpacity = Number.isFinite(runupOpacity) ? Math.max(0.1, Math.min(1, runupOpacity)) : 1;
   const boundedGaugeOpacity = Number.isFinite(gaugeOpacity) ? Math.max(0.1, Math.min(1, gaugeOpacity)) : 1;
+  const boundedObservedOpacity = Number.isFinite(observedOpacity) ? Math.max(0.1, Math.min(1, observedOpacity)) : 1;
   const valid = inputs.filter(validBaseInput);
   const invalidCount = inputs.length - valid.length;
   const groups = new Map<string, RunupOverlayInput[]>();
@@ -308,9 +310,9 @@ function normalize(
       lon: input.lon,
       runupM: input.runup_m,
       colorCss: "#cba6f7",
-      colorAlpha: 0.95 * boundedRunupOpacity,
+      colorAlpha: 0.95 * boundedObservedOpacity,
       outlineColorCss: "#11111b",
-      outlineAlpha: 0.95 * boundedRunupOpacity,
+      outlineAlpha: 0.95 * boundedObservedOpacity,
       outlineWidth: 2,
       pixelSize: 12,
     });
@@ -407,9 +409,17 @@ export class RunupOverlayController<RunupPrimitive, InundationPrimitive, GaugePr
     runupOpacity = 1,
     gaugeOpacity = 1,
     observedInputs: readonly ObservedRunupOverlayInput[] | null | undefined = [],
+    observedOpacity = runupOpacity,
   ): void {
     if (this.destroyed) return;
-    const normalized = normalize(inputs ?? [], gauges ?? [], runupOpacity, gaugeOpacity, observedInputs ?? []);
+    const normalized = normalize(
+      inputs ?? [],
+      gauges ?? [],
+      runupOpacity,
+      gaugeOpacity,
+      observedInputs ?? [],
+      observedOpacity,
+    );
     this.invalidInputCount += normalized.invalidCount;
     this.duplicateInputCount += normalized.duplicateCount;
 

@@ -30,6 +30,8 @@ type Props = {
   hasMaxField: boolean;
   arrivalCount: number;
   runupCount: number;
+  hazelObservedCount?: number;
+  hazelObservedAvailable?: boolean;
   dartCount: number;
   hasFallout: boolean;
   preset?: Preset | null;
@@ -282,6 +284,8 @@ export function LayerInspector({
   hasMaxField,
   arrivalCount,
   runupCount,
+  hazelObservedCount = 0,
+  hazelObservedAvailable = false,
   dartCount,
   hasFallout,
   preset = null,
@@ -332,6 +336,14 @@ export function LayerInspector({
       id: "coastal-runup", evidenceId: "coastal-runup", label: t("layers.coastalRunup"),
       detail: runupCount > 0 ? t("layers.coastalPoints", { count: formatNumber(runupCount) }) : t("layers.fromActiveSource"),
       available: runupCount > 0, prerequisite: t("layers.prerequisiteRunup"), temporal: "timeline", legendClass: "is-runup",
+    },
+    {
+      id: "hazel-observed-runup", evidenceId: "hazel-observed-runup", label: t("layers.hazelObservedRunup"),
+      detail: hazelObservedAvailable
+        ? t("layers.hazelObservedPoints", { count: formatNumber(hazelObservedCount) })
+        : t("layers.hazelObservedWaiting"),
+      available: hazelObservedAvailable,
+      prerequisite: t("layers.prerequisiteHazelObserved"), temporal: "result", legendClass: "is-hazel-observed",
     },
     {
       id: "humanitarian-facilities", evidenceId: "humanitarian-facilities", label: t("layers.humanitarian"), detail: t("layers.humanitarianDetail"),

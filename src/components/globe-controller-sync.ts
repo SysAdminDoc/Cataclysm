@@ -73,6 +73,7 @@ type ControllerState = Readonly<{
     wavefront: number;
     isochrones: number;
     runup: number;
+    observedRunup: number;
     dart: number;
     hazardRings: number;
     fallout: number;
@@ -288,6 +289,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       layerOpacity?.runup,
       layerOpacity?.runup,
       observedRunup,
+      layerOpacity?.observedRunup,
     );
-  }, [formatNumber, gauges, layerOpacity?.runup, observedRunup, runupOverlayControllerRef, runupResults, unitSystem, viewerEpoch]);
+  }, [formatNumber, gauges, layerOpacity?.observedRunup, layerOpacity?.runup, observedRunup, runupOverlayControllerRef, runupResults, unitSystem, viewerEpoch]);
 }
