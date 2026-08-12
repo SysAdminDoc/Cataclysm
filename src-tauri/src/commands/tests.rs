@@ -27,6 +27,7 @@ fn source_grid_request(source_geometry: Option<InitialSourceGeometry>) -> Simula
         lamb_wave_peak_pressure_pa: None,
         lamb_wave_source_radius_m: None,
         meteotsunami_forcing: None,
+        mitigation_barrier: None,
         colormap: "diverging".into(),
         gauge_points: vec![],
         boundary_mode: None,

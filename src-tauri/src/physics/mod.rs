@@ -35,6 +35,7 @@ pub mod nuclear;
 pub mod landslide;
 pub mod earthquake;
 pub mod okada;
+pub mod mitigation;
 #[cfg(not(feature = "browser-wasm"))]
 pub mod lamb_wave;
 pub mod meteotsunami;

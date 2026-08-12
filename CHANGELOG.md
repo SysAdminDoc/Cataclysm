@@ -6,6 +6,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added an opt-in NGSS mitigation teaching mode for the desktop SWE solver.
+  Learners can place a bounded idealized coastal barrier by globe coordinates,
+  re-run the Rust-authoritative simulation, and set up an unmodified Slot B for
+  before/after comparison. The documented bathymetry modification reduces
+  still-water depth and lets zero-depth cells use the existing reflective
+  wet/dry solver path; results are labelled educational and disclose that
+  overtopping, scour, failure, and real-wall flow are not modeled.
 - Added an opt-in asteroid-deflection teaching mode. A Rust/WASM linearized
   impulse-plus-lead-time calculator shows Δv, along-track miss distance, an
   illustrative uncertainty envelope, and a visual Earth-radius impact/miss

@@ -4,7 +4,7 @@ import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, QuickEtaPreview, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor, SensitivityEnsembleResponse } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, MitigationBarrier, QuickEtaPreview, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor, SensitivityEnsembleResponse } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
@@ -52,6 +52,10 @@ type Props = {
   portableSettingsImport?: { id: number; settings: PortableScenarioSolverSettings } | null;
   portableResultsImport?: { id: number; results: PortableJson } | null;
   onSensitivityEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
+  mitigationBarrier?: MitigationBarrier | null;
+  onMitigationBarrierChange?: (barrier: MitigationBarrier | null) => void;
+  onRequestMitigationPick?: () => void;
+  onRequestMitigationComparison?: () => void;
 };
 
 type OverlayChoice = "wave" | "peak" | "t_of_max" | "energy" | "max_depth" | "max_speed" | "momentum" | "drawdown" | "t_of_max_speed";
@@ -134,6 +138,40 @@ const SPEED_OPTIONS = [
 ] as const;
 const BROWSER_PREVIEW_FIELD_WARNING = "Browser preview SWE fields remain illustrative; source and screening physics use Rust/WASM.";
 
+const DEFAULT_MITIGATION_BARRIER: Omit<MitigationBarrier, "lat_deg" | "lon_deg"> = {
+  length_m: 20_000,
+  width_m: 1_000,
+  height_m: 20,
+  orientation_deg: 90,
+};
+
+function defaultMitigationBarrier(initial: InitialDisplacement | null): MitigationBarrier {
+  return {
+    lat_deg: initial?.center.lat_deg ?? 0,
+    lon_deg: initial?.center.lon_deg ?? 0,
+    ...DEFAULT_MITIGATION_BARRIER,
+  };
+}
+
+function validMitigationBarrier(barrier: MitigationBarrier): boolean {
+  return Number.isFinite(barrier.lat_deg)
+    && Math.abs(barrier.lat_deg) <= 90
+    && Number.isFinite(barrier.lon_deg)
+    && Math.abs(barrier.lon_deg) <= 180
+    && Number.isFinite(barrier.length_m)
+    && barrier.length_m >= 100
+    && barrier.length_m <= 200_000
+    && Number.isFinite(barrier.width_m)
+    && barrier.width_m >= 50
+    && barrier.width_m <= 20_000
+    && Number.isFinite(barrier.height_m)
+    && barrier.height_m >= 0.1
+    && barrier.height_m <= 500
+    && Number.isFinite(barrier.orientation_deg)
+    && barrier.orientation_deg >= 0
+    && barrier.orientation_deg < 360;
+}
+
 function initialIdentity(initial: InitialDisplacement | null): string | null {
   if (!initial) return null;
   return JSON.stringify([
@@ -197,7 +235,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
   return warning;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange, mitigationBarrier, onMitigationBarrierChange, onRequestMitigationPick, onRequestMitigationComparison }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
@@ -233,6 +271,16 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   const [gaugeLatInput, setGaugeLatInput] = useState("");
   const [gaugeLonInput, setGaugeLonInput] = useState("");
   const [gaugeNameInput, setGaugeNameInput] = useState("");
+  const [localMitigationBarrier, setLocalMitigationBarrier] = useState<MitigationBarrier | null>(null);
+  const mitigationControlled = mitigationBarrier !== undefined;
+  const activeMitigationBarrier = mitigationControlled ? mitigationBarrier : localMitigationBarrier;
+  const setActiveMitigationBarrier = useCallback((next: MitigationBarrier | null) => {
+    if (!mitigationControlled) setLocalMitigationBarrier(next);
+    onMitigationBarrierChange?.(next);
+  }, [mitigationControlled, onMitigationBarrierChange]);
+  const mitigationBarrierError = activeMitigationBarrier && !validMitigationBarrier(activeMitigationBarrier)
+    ? t("swe.mitigationInvalid")
+    : null;
   const gaugeEntryId = useId();
   const gaugeLatError = gaugeCoordinateError(gaugeLatInput, t("swe.latitude"), -90, 90, t);
   const gaugeLonError = gaugeCoordinateError(gaugeLonInput, t("swe.longitude"), -180, 180, t);
@@ -261,8 +309,9 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       include_lamb_wave: includeLambWave,
       boundary_mode: boundaryMode,
       checkpoint_interval_s: checkpointIntervalS,
+      mitigation_barrier: activeMitigationBarrier,
     } : null);
-  }, [bathymetryAssetId, boundaryMode, cellsPerDeg, checkpointIntervalS, includeLambWave, initial, onPortableSettingsChange, useBathy, workspaceMode]);
+  }, [activeMitigationBarrier, bathymetryAssetId, boundaryMode, cellsPerDeg, checkpointIntervalS, includeLambWave, initial, onPortableSettingsChange, useBathy, workspaceMode]);
 
   useEffect(() => {
     if (!portableSettingsImport || portableSettingsImport.id <= handledPortableSettingsImport.current) return;
@@ -274,7 +323,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
     setIncludeLambWave(imported.include_lamb_wave);
     setBoundaryMode(imported.boundary_mode);
     setCheckpointIntervalS(Math.max(0, Math.min(3600, imported.checkpoint_interval_s)));
-  }, [portableSettingsImport]);
+    setActiveMitigationBarrier(imported.mitigation_barrier ?? null);
+  }, [portableSettingsImport, setActiveMitigationBarrier]);
 
   useEffect(() => {
     if (!initial || !isTauri()) {
@@ -304,6 +354,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
         meteotsunami_forcing: initial.meteotsunami_forcing ?? null,
+        mitigation_barrier: activeMitigationBarrier,
         boundary_mode: boundaryMode,
       }).then((report) => {
         if (cancelled) return;
@@ -319,7 +370,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [initial, useBathy, bathymetryAssetId, cellsPerDeg, workspaceMode, includeLambWave, boundaryMode]);
+  }, [activeMitigationBarrier, initial, useBathy, bathymetryAssetId, cellsPerDeg, workspaceMode, includeLambWave, boundaryMode]);
 
   const refreshCheckpoints = useCallback(() => {
     if (!isTauri()) return Promise.resolve();
@@ -590,6 +641,11 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
 
   const run = useCallback(async (autoPlay = false, resumeRunId: string | null = null) => {
     if (!initial) return;
+    if (mitigationBarrierError) {
+      setErrMsg(mitigationBarrierError);
+      setStatus("error");
+      return;
+    }
     const previousSnapshots = snapshots;
     const previousDiag = diag;
     const previousMaxField = maxField;
@@ -649,6 +705,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         n_snapshots: N_SNAPSHOTS,
         include_lamb_wave: includeLambWave,
         meteotsunami_forcing: initial.meteotsunami_forcing ?? null,
+        mitigation_barrier: activeMitigationBarrier,
         colormap,
         boundary_mode: boundaryMode,
         gauge_points: [
@@ -762,10 +819,10 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         setStatus("error");
       }
     }
-  }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, workspaceMode, boundaryMode, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
+  }, [activeMitigationBarrier, initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, workspaceMode, boundaryMode, checkpointIntervalS, gauges, dartBuoys, mitigationBarrierError, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
 
   const runQuickEtaPreview = useCallback(async () => {
-    if (!initial || !isTauri() || quickEtaStatus === "running") return;
+    if (!initial || !isTauri() || quickEtaStatus === "running" || mitigationBarrierError) return;
     setQuickEtaStatus("running");
     setQuickEtaError(null);
     const halfDeg = Math.min(
@@ -783,6 +840,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
         cells_per_deg: cellsPerDeg,
         t_end_s: 60 * 60,
         n_snapshots: N_SNAPSHOTS,
+        mitigation_barrier: activeMitigationBarrier,
         colormap: "cividis",
       });
       if (!mountedRef.current) return;
@@ -794,13 +852,22 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       setQuickEtaError(error instanceof Error ? error.message : String(error));
       onQuickEtaPreview?.(null);
     }
-  }, [cellsPerDeg, initial, onQuickEtaPreview, quickEtaStatus]);
+  }, [activeMitigationBarrier, cellsPerDeg, initial, mitigationBarrierError, onQuickEtaPreview, quickEtaStatus]);
 
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
     handledRunAndWatchNonce.current = runAndWatchNonce;
     void run(true);
   }, [initial, run, runAndWatchNonce]);
+
+  const changeMitigationField = (field: keyof MitigationBarrier, value: number) => {
+    const current = activeMitigationBarrier ?? defaultMitigationBarrier(initial);
+    setActiveMitigationBarrier({ ...current, [field]: value });
+  };
+
+  const enableMitigation = (enabled: boolean) => {
+    setActiveMitigationBarrier(enabled ? (activeMitigationBarrier ?? defaultMitigationBarrier(initial)) : null);
+  };
 
   if (!initial) return null;
 
@@ -925,6 +992,55 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           {t("swe.localRasterNote")}
         </div>}
         {bathymetryListError && <div className="panel-error" role="alert">{t("swe.bathymetryUnavailable")} {bathymetryListError}</div>}
+        {workspaceMode === "advanced" && isTauri() && <div className="swe__mitigation" data-enabled={activeMitigationBarrier ? "true" : "false"}>
+          <label className="swe__check">
+            <input
+              type="checkbox"
+              checked={Boolean(activeMitigationBarrier)}
+              onChange={(event) => enableMitigation(event.target.checked)}
+            />
+            <span>{t("swe.mitigationMode")}</span>
+          </label>
+          {activeMitigationBarrier && <>
+            <p className="swe__mitigation-intro">{t("swe.mitigationIntro")}</p>
+            <div className="swe__mitigation-fields">
+              <label>
+                <span>{t("swe.mitigationLatitude")}</span>
+                <input type="number" step="0.01" min={-90} max={90} value={Number.isFinite(activeMitigationBarrier.lat_deg) ? activeMitigationBarrier.lat_deg : ""} onChange={(event) => changeMitigationField("lat_deg", Number(event.target.value))} />
+              </label>
+              <label>
+                <span>{t("swe.mitigationLongitude")}</span>
+                <input type="number" step="0.01" min={-180} max={180} value={Number.isFinite(activeMitigationBarrier.lon_deg) ? activeMitigationBarrier.lon_deg : ""} onChange={(event) => changeMitigationField("lon_deg", Number(event.target.value))} />
+              </label>
+              <label>
+                <span>{t("swe.mitigationLength")}</span>
+                <input type="number" step="100" min={100} max={200000} value={Number.isFinite(activeMitigationBarrier.length_m) ? activeMitigationBarrier.length_m : ""} onChange={(event) => changeMitigationField("length_m", Number(event.target.value))} />
+              </label>
+              <label>
+                <span>{t("swe.mitigationWidth")}</span>
+                <input type="number" step="50" min={50} max={20000} value={Number.isFinite(activeMitigationBarrier.width_m) ? activeMitigationBarrier.width_m : ""} onChange={(event) => changeMitigationField("width_m", Number(event.target.value))} />
+              </label>
+              <label>
+                <span>{t("swe.mitigationHeight")}</span>
+                <input type="number" step="1" min={0.1} max={500} value={Number.isFinite(activeMitigationBarrier.height_m) ? activeMitigationBarrier.height_m : ""} onChange={(event) => changeMitigationField("height_m", Number(event.target.value))} />
+              </label>
+              <label>
+                <span>{t("swe.mitigationOrientation")}</span>
+                <input type="number" step="1" min={0} max={359} value={Number.isFinite(activeMitigationBarrier.orientation_deg) ? activeMitigationBarrier.orientation_deg : ""} onChange={(event) => changeMitigationField("orientation_deg", Number(event.target.value))} />
+              </label>
+            </div>
+            {mitigationBarrierError && <div className="swe__gauge-errors" role="alert">{mitigationBarrierError}</div>}
+            <div className="swe__mitigation-actions">
+              {onRequestMitigationPick && <button type="button" onClick={onRequestMitigationPick}>{t("swe.mitigationPick")}</button>}
+              {onRequestMitigationComparison && <button type="button" onClick={onRequestMitigationComparison}>{t("swe.mitigationCompare")}</button>}
+            </div>
+            <p className="swe__confidence" role="note">{t("swe.mitigationCaveat")}</p>
+            <p className="swe__mitigation-links">
+              <a href="https://www.teachengineering.org/activities/view/cub_weather_lesson05_activity1" target="_blank" rel="noreferrer">{t("swe.mitigationTeachEngineering")}</a>
+              <a href="https://www.nextgenscience.org/msets1-engineering-design" target="_blank" rel="noreferrer">{t("swe.mitigationNgss")}</a>
+            </p>
+          </>}
+        </div>}
         <label className="swe__check">
           <input
             type="checkbox"
@@ -1175,6 +1291,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
           cellsPerDegree={cellsPerDeg}
           includeLambWave={includeLambWave}
           boundaryMode={boundaryMode}
+          mitigationBarrier={activeMitigationBarrier}
           onEnvelopeChange={onSensitivityEnvelopeChange}
         />
       )}

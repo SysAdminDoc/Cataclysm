@@ -180,6 +180,58 @@
   min-width: 0;
 }
 
+.swe__mitigation {
+  display: grid;
+  gap: 7px;
+  padding: 9px 8px;
+  border-left: 3px solid var(--accent-active);
+  background: color-mix(in srgb, var(--sapphire) 7%, transparent);
+}
+
+.swe__mitigation-intro,
+.swe__mitigation-links {
+  margin: 0;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+
+.swe__mitigation-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.swe__mitigation-fields label {
+  display: grid;
+  gap: 3px;
+  color: var(--subtext);
+  font-size: var(--type-caption);
+}
+
+.swe__mitigation-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--surface1);
+  border-radius: var(--r-sm);
+  background: var(--surface0);
+  color: var(--text);
+  font-size: var(--type-caption);
+}
+
+.swe__mitigation-actions,
+.swe__mitigation-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.swe__mitigation-links a {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
 .swe__confidence {
   padding: 7px 8px;
   border-radius: var(--r-sm);

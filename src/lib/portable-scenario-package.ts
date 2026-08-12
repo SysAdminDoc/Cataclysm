@@ -13,6 +13,7 @@ import {
   buildRunDataSha256,
   sha256Json,
 } from "./run-identity";
+import type { MitigationBarrier } from "../types/scenario";
 
 export const PORTABLE_SCENARIO_FORMAT = "org.sysadmindoc.cataclysm.scenario-package";
 export const PORTABLE_SCENARIO_SCHEMA_VERSION = 2;
@@ -80,6 +81,7 @@ export type PortableScenarioSolverSettings = {
   include_lamb_wave: boolean;
   boundary_mode: "sponge" | "radiation";
   checkpoint_interval_s: number;
+  mitigation_barrier?: MitigationBarrier | null;
 };
 
 export type PortableScenarioCitation = {
@@ -729,6 +731,22 @@ function validateSolverSettings(value: unknown): PortableScenarioSolverSettings 
   if (typeof record.include_lamb_wave !== "boolean") fail("solver setting include_lamb_wave must be boolean");
   if (record.boundary_mode !== "sponge" && record.boundary_mode !== "radiation") fail("solver setting boundary_mode is invalid");
   if (![30, 60, 300].includes(record.checkpoint_interval_s as number)) fail("solver setting checkpoint_interval_s is invalid");
+  if (record.mitigation_barrier !== undefined && record.mitigation_barrier !== null) {
+    const barrier = asRecord(record.mitigation_barrier, "mitigation barrier");
+    const numericFields = ["lat_deg", "lon_deg", "length_m", "width_m", "height_m", "orientation_deg"] as const;
+    if (numericFields.some((field) => typeof barrier[field] !== "number" || !Number.isFinite(barrier[field] as number))) {
+      fail("solver setting mitigation_barrier contains non-finite geometry");
+    }
+    if (Math.abs(barrier.lat_deg as number) > 90 || Math.abs(barrier.lon_deg as number) > 180) {
+      fail("solver setting mitigation_barrier coordinates are out of range");
+    }
+    if ((barrier.length_m as number) < 100 || (barrier.length_m as number) > 200_000
+      || (barrier.width_m as number) < 50 || (barrier.width_m as number) > 20_000
+      || (barrier.height_m as number) < 0.1 || (barrier.height_m as number) > 500
+      || (barrier.orientation_deg as number) < 0 || (barrier.orientation_deg as number) >= 360) {
+      fail("solver setting mitigation_barrier geometry is out of range");
+    }
+  }
   return cloneJson(record) as PortableScenarioSolverSettings;
 }
 

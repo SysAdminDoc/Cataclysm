@@ -12,6 +12,7 @@ import type {
   InitialSourceGeometry,
   LandslideInput,
   MeteotsunamiInput,
+  MitigationBarrier,
   NuclearBurstInput,
   Preset,
   PropagationSnapshot,
@@ -542,6 +543,7 @@ export const api = {
     lamb_wave_peak_pressure_pa?: number;
     lamb_wave_source_radius_m?: number;
     meteotsunami_forcing?: MeteotsunamiInput | null;
+    mitigation_barrier?: MitigationBarrier | null;
     colormap?: ColormapId;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
     boundary_mode?: "sponge" | "radiation" | "zero_flux";
@@ -574,6 +576,7 @@ export const api = {
     lamb_wave_peak_pressure_pa?: number;
     lamb_wave_source_radius_m?: number;
     meteotsunami_forcing?: MeteotsunamiInput | null;
+    mitigation_barrier?: MitigationBarrier | null;
     colormap?: ColormapId;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
     boundary_mode?: "sponge" | "radiation" | "zero_flux";
@@ -590,6 +593,7 @@ export const api = {
     cells_per_deg: number;
     t_end_s: number;
     n_snapshots: number;
+    mitigation_barrier?: MitigationBarrier | null;
     colormap?: string;
     gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
   }) {
@@ -698,6 +702,7 @@ export const api = {
       lamb_wave_peak_pressure_pa?: number;
       lamb_wave_source_radius_m?: number;
       meteotsunami_forcing?: MeteotsunamiInput | null;
+      mitigation_barrier?: MitigationBarrier | null;
       colormap?: ColormapId;
       gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
       boundary_mode?: "sponge" | "radiation" | "zero_flux";

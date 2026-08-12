@@ -21,6 +21,7 @@ use crate::physics::{
     earthquake::EarthquakeSource,
     lamb_wave::{LAMB_WAVE_SPEED_M_S, LambWaveSource, proudman_resonance_depth_m},
     landslide::LandslideSource,
+    mitigation::MitigationBarrier,
     meteotsunami::MeteotsunamiSource,
     nuclear::NuclearBurst,
     volcanic_collapse::VolcanicCollapseSource,

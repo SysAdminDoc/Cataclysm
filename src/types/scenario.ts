@@ -147,6 +147,16 @@ export type MeteotsunamiInput = {
   location: GeoPoint;
 };
 
+/** Bounded, educational coastal barrier modification for SWE teaching mode. */
+export type MitigationBarrier = {
+  lat_deg: number;
+  lon_deg: number;
+  length_m: number;
+  width_m: number;
+  height_m: number;
+  orientation_deg: number;
+};
+
 export type VolcanicCollapseKind = "Caldera" | "FlankCollapse";
 
 export type VolcanicCollapseInput = {
@@ -344,6 +354,7 @@ export type SimulateGridRequest = {
   lamb_wave_peak_pressure_pa?: number;
   lamb_wave_source_radius_m?: number;
   meteotsunami_forcing?: MeteotsunamiInput | null;
+  mitigation_barrier?: MitigationBarrier | null;
   colormap?: "diverging" | "cividis" | "viridis";
   gauge_points?: Array<{ id: string; lat_deg: number; lon_deg: number }>;
   boundary_mode?: "sponge" | "radiation" | "zero_flux";

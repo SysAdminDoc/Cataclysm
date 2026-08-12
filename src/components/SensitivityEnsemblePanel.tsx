@@ -7,6 +7,7 @@ import { api, createSimulationRunId, isTauri } from "../lib/tauri";
 import type {
   InitialDisplacement,
   MetricPercentiles,
+  MitigationBarrier,
   SensitivityEnsembleRequest,
   SensitivityEnsembleResponse,
   SensitivityParameterId,
@@ -21,6 +22,7 @@ type Props = {
   cellsPerDegree: number;
   includeLambWave: boolean;
   boundaryMode: "sponge" | "radiation";
+  mitigationBarrier?: MitigationBarrier | null;
   onEnvelopeChange?: (response: SensitivityEnsembleResponse | null) => void;
 };
 
@@ -94,6 +96,7 @@ function makeGridRequest(
     n_snapshots: 2,
     include_lamb_wave: props.includeLambWave,
     meteotsunami_forcing: initial.meteotsunami_forcing ?? null,
+    mitigation_barrier: props.mitigationBarrier ?? null,
     colormap,
     boundary_mode: props.boundaryMode,
     gauge_points: [],

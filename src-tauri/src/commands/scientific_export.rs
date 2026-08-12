@@ -252,6 +252,11 @@ fn write_scientific_netcdf(
     } else {
         "uniform analytical depth from the scenario request"
     };
+    let mitigation_mode = if req.mitigation_barrier.is_some() {
+        "educational coastal barrier bathymetry modification"
+    } else {
+        "disabled"
+    };
 
     let mut data_set = DataSet::new();
     for (name, value) in [
@@ -272,6 +277,7 @@ fn write_scientific_netcdf(
         ("cataclysm_scenario_sha256", &scenario_sha256),
         ("cataclysm_scenario_json", &scenario_json),
         ("cataclysm_bathymetry_source", bathymetry_source),
+        ("cataclysm_mitigation_mode", mitigation_mode),
         (
             "cataclysm_solver_backend",
             if used_gpu {
@@ -304,6 +310,13 @@ fn write_scientific_netcdf(
         data_set
             .add_global_attr_string("cataclysm_bathymetry_asset_id", asset_id)
             .map_err(|error| format!("failed to add NetCDF bathymetry provenance: {error}"))?;
+    }
+    if let Some(barrier) = req.mitigation_barrier {
+        let barrier_json = serde_json::to_string(&barrier)
+            .map_err(|error| format!("failed to serialize mitigation provenance: {error}"))?;
+        data_set
+            .add_global_attr_string("cataclysm_mitigation_barrier_json", &barrier_json)
+            .map_err(|error| format!("failed to add NetCDF mitigation provenance: {error}"))?;
     }
 
     data_set

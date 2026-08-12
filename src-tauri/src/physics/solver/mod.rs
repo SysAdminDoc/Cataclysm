@@ -48,6 +48,7 @@ use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::constants::{G_EARTH, MANNING_N_COASTAL, R_EARTH_M};
+use super::mitigation::MitigationBarrier;
 use crate::data::geodesy::{GeographicFieldTile, geographic_field_tiles};
 
 #[cfg(feature = "gpu")]
@@ -266,6 +267,55 @@ impl SwGrid {
                 self.h_m[idx(i, j, self.nx)] = sample(lat, lon);
             }
         }
+    }
+
+    /// Apply the optional educational barrier after bathymetry has been
+    /// populated and before the source field is injected. The modification is
+    /// intentionally grid-native so CPU and GPU dispatch consume identical
+    /// still-water depths. The footprint is snapped to cells whose centre is
+    /// within one cell half-diagonal so a sub-cell classroom sketch still has
+    /// a visible effect at preview resolution. A covered cell is raised by
+    /// reducing its depth by the requested height; a zero-depth result is
+    /// handled as a reflective dry cell by the existing finite-volume wet/dry
+    /// reconstruction.
+    pub fn apply_mitigation_barrier(
+        &mut self,
+        barrier: &MitigationBarrier,
+    ) -> Result<usize, String> {
+        barrier.validate()?;
+        let orientation = barrier.orientation_deg.to_radians();
+        let sin_orientation = orientation.sin();
+        let cos_orientation = orientation.cos();
+        let half_length = barrier.length_m * 0.5;
+        let half_width = barrier.width_m * 0.5;
+        let latitude_cos = barrier.lat_deg.to_radians().cos();
+        let mut modified_cells = 0;
+
+        for j in 0..self.ny {
+            let lat = self.south_lat + (j as f64 + 0.5) * self.dlat_deg;
+            let north_m = (lat - barrier.lat_deg).to_radians() * R_EARTH_M;
+            let cell_radius_m = 0.5 * self.row_dx_m(j).hypot(self.dy_m());
+            for i in 0..self.nx {
+                let lon = self.west_lon + (i as f64 + 0.5) * self.dlon_deg;
+                let delta_lon = (lon - barrier.lon_deg + 540.0).rem_euclid(360.0) - 180.0;
+                let east_m = delta_lon.to_radians() * R_EARTH_M * latitude_cos;
+                let along_m = east_m * sin_orientation + north_m * cos_orientation;
+                let across_m = east_m * cos_orientation - north_m * sin_orientation;
+                let along_gap_m = (along_m.abs() - half_length).max(0.0);
+                let across_gap_m = (across_m.abs() - half_width).max(0.0);
+                if along_gap_m.hypot(across_gap_m) > cell_radius_m {
+                    continue;
+                }
+                let cell = idx(i, j, self.nx);
+                let depth = self.h_m[cell];
+                if !depth.is_finite() {
+                    return Err("mitigation barrier encountered non-finite bathymetry".into());
+                }
+                self.h_m[cell] = (depth - barrier.height_m).max(0.0);
+                modified_cells += 1;
+            }
+        }
+        Ok(modified_cells)
     }
 
     /// Latitude at a row's cell centre, in radians.
@@ -1465,6 +1515,26 @@ mod tests {
         let field = vec![1.25, -0.5, 0.75, -1.0];
         grid.inject_field(&field).expect("inject valid field");
         assert_eq!(grid.eta_m, field);
+    }
+
+    #[test]
+    fn mitigation_barrier_reduces_depth_in_its_rotated_footprint() {
+        let mut grid = SwGrid::new(-1.0, -1.0, 1.0, 1.0, 1.0, 1.0);
+        grid.fill_uniform_depth(100.0);
+        let barrier = MitigationBarrier {
+            lat_deg: 0.5,
+            lon_deg: 0.5,
+            length_m: 10_000.0,
+            width_m: 500.0,
+            height_m: 20.0,
+            orientation_deg: 90.0,
+        };
+        let changed = grid
+            .apply_mitigation_barrier(&barrier)
+            .expect("barrier should apply");
+        assert_eq!(changed, 1);
+        assert!(grid.h_m.iter().any(|depth| (*depth - 80.0).abs() < 1.0e-12));
+        assert!(grid.h_m.iter().filter(|depth| **depth == 100.0).count() == 3);
     }
 
     #[test]

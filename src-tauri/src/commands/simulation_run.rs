@@ -257,6 +257,9 @@ pub(crate) fn compute_quick_eta(
         coarse_cell_deg,
     );
     grid.fill_uniform_depth(req.mean_depth_m.max(50.0));
+    if let Some(barrier) = req.mitigation_barrier.as_ref() {
+        grid.apply_mitigation_barrier(barrier)?;
+    }
     inject_source_initial_field(&mut grid, req)?;
 
     let dt = grid.recommended_dt_s(0.4);

@@ -57,6 +57,10 @@ pub struct SimulateGridRequest {
     /// Optional time-dependent moving atmospheric-pressure disturbance.
     #[serde(default)]
     pub meteotsunami_forcing: Option<crate::physics::meteotsunami::MeteotsunamiSource>,
+    /// Optional educational coastal barrier. It modifies the populated
+    /// still-water bathymetry before the source field is injected.
+    #[serde(default)]
+    pub mitigation_barrier: Option<MitigationBarrier>,
     #[serde(default)]
     pub colormap: String,
     #[serde(default)]
@@ -371,6 +375,9 @@ fn resolution_features(req: &SimulateGridRequest) -> Vec<(&'static str, f64)> {
             "lamb_wave_source_radius",
             req.lamb_wave_source_radius_m.unwrap_or(30_000.0),
         ));
+    }
+    if let Some(barrier) = req.mitigation_barrier {
+        features.push(("mitigation_barrier_width", barrier.width_m));
     }
     features
 }
@@ -730,6 +737,9 @@ pub(crate) fn validate_simulate_grid(req: &SimulateGridRequest) -> Result<(), St
             return Err("meteotsunami_forcing contains out-of-range source parameters".into());
         }
     }
+    if let Some(barrier) = req.mitigation_barrier {
+        barrier.validate()?;
+    }
     if !(req.colormap.is_empty()
         || req.colormap == "diverging"
         || req.colormap == "cividis"
@@ -790,6 +800,9 @@ pub(crate) fn populate_grid_bathymetry(
         });
     } else {
         grid.fill_uniform_depth(req.mean_depth_m.max(SWE_MIN_MEAN_DEPTH_M));
+    }
+    if let Some(barrier) = req.mitigation_barrier.as_ref() {
+        grid.apply_mitigation_barrier(barrier)?;
     }
     Ok(())
 }

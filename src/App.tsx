@@ -103,7 +103,7 @@ import {
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
-import type { Gauge, GridSnapshot, Preset, QuickEtaPreview } from "./types/scenario";
+import type { Gauge, GridSnapshot, MitigationBarrier, Preset, QuickEtaPreview } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
 import type { HypotheticalImpactDraft } from "./types/jpl";
 import { HazardControls } from "./components/HazardControls";
@@ -539,6 +539,9 @@ export default function App() {
     nuclear: 0,
   });
   const [pendingGauge, setPendingGauge] = useState<{ lat: number; lon: number } | null>(null);
+  const [mitigationBarrierA, setMitigationBarrierA] = useState<MitigationBarrier | null>(null);
+  const [mitigationBarrierB, setMitigationBarrierB] = useState<MitigationBarrier | null>(null);
+  const [mitigationPickSlot, setMitigationPickSlot] = useState<"a" | "b" | null>(null);
   const [sweGaugesA, setSweGaugesA] = useState<Gauge[]>([]);
   const [sweGaugesB, setSweGaugesB] = useState<Gauge[]>([]);
   const [compareMode, setCompareMode] = useState(false);
@@ -1316,6 +1319,7 @@ export default function App() {
       include_lamb_wave: false,
       boundary_mode: "sponge",
       checkpoint_interval_s: 60,
+      mitigation_barrier: null,
     };
     const citations = [{
       label: "Cataclysm source-input and solver contracts",
@@ -2164,6 +2168,19 @@ export default function App() {
   }, [hasHighlightReplay, highlightStorySource]);
 
   async function handlePickGlobe(lat: number, lon: number, preserveFamiliarPlace = false) {
+    if (mitigationPickSlot === "a") {
+      setMitigationBarrierA((current) => ({
+        lat_deg: lat,
+        lon_deg: lon,
+        length_m: current?.length_m ?? 20_000,
+        width_m: current?.width_m ?? 1_000,
+        height_m: current?.height_m ?? 20,
+        orientation_deg: current?.orientation_deg ?? 90,
+      }));
+      setMitigationPickSlot(null);
+      setPickMode(false);
+      return;
+    }
     if (directHazardMode) {
       if (!preserveFamiliarPlace) {
         setFamiliarPlace(null);
@@ -2527,6 +2544,22 @@ export default function App() {
     slotB.setActivePresetId(reverse ? story.leftPresetId : story.rightPresetId);
     setCompareMode(true);
     setInspectorTab("results");
+  }
+
+  function startMitigationComparison() {
+    const scenario: ScenarioInput | null = slotA.lastCustomScenario
+      ?? (activePresetA
+        // PresetSource and ScenarioInput intentionally share the same
+        // discriminated union; TypeScript loses the kind/source correlation
+        // when it reads both properties from the union in one expression.
+        ? { kind: activePresetA.source.kind, source: activePresetA.source.source } as ScenarioInput
+        : null);
+    if (!scenario) return;
+    setTimelinePlaying(false);
+    setMitigationBarrierB(null);
+    slotB.simulate(scenario);
+    setCompareMode(true);
+    setInspectorTab("setup");
   }
 
   function toggleComparisonMode() {
@@ -3245,7 +3278,10 @@ export default function App() {
                 usgsComparison={!inHazardMode ? usgsComparison : null}
                 pickMode={pickMode}
                 onPick={handlePickGlobe}
-                onPickCancel={() => setPickMode(false)}
+                onPickCancel={() => {
+                  setPickMode(false);
+                  setMitigationPickSlot(null);
+                }}
                 inspectMode={inspectMode}
                 inspectIsImpact={activeScenarioKindA === "Asteroid"}
                 inspectTimeS={timeS}
@@ -3560,6 +3596,13 @@ export default function App() {
             onPortableSettingsChange={setPortableSolverSettings}
             portableSettingsImport={portableSettingsImport}
             portableResultsImport={portableResultsImport}
+            mitigationBarrier={mitigationBarrierA}
+            onMitigationBarrierChange={setMitigationBarrierA}
+            onRequestMitigationPick={() => {
+              setMitigationPickSlot("a");
+              setPickMode(true);
+            }}
+            onRequestMitigationComparison={startMitigationComparison}
             playbackTimeS={timeS}
             onPlaybackTimeChange={setTimeS}
             slotLabel={compareMode ? t("app.slotA") : undefined}
@@ -3567,7 +3610,7 @@ export default function App() {
             workspaceMode={referenceCaptureMode ? "advanced" : workspaceMode}
           />
           <div hidden={!compareMode} aria-label={t("app.comparisonSolver", { slot: t("app.slotB") })}>
-            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel={t("app.slotB")} />
+            <SwePlayback initial={slotB.initial} onSnapshot={slotB.setSweSnapshot} onGaugesChange={setSweGaugesB} onRunQuality={setSweRunQualityB} onRenderFrame={setSweRenderFrameB} mitigationBarrier={mitigationBarrierB} onMitigationBarrierChange={setMitigationBarrierB} playbackTimeS={timeS} onPlaybackTimeChange={setTimeS} slotLabel={t("app.slotB")} workspaceMode="advanced" />
           </div>
           <div hidden={compareMode || !customEditorOpen || workspaceMode === "simple"}>
             <ScenarioBuilder
