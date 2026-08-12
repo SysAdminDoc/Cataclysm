@@ -17,12 +17,6 @@ Actionable work only. Historical and completed roadmap material is archived in C
   Acceptance: an export option encodes a replay frame-by-frame with a progress indicator; feature-detected with a MediaRecorder fallback labelled real-time; failure preserves the replay and offers retry.
   Complexity: M
 
-- [ ] P2 — Surface the Quick ETA preview in the UI
-  Why: the `quick_eta_preview` IPC command and typed `api.quickEtaPreview` wrapper exist and are tested, but nothing calls them yet — the coarse first-arrival map is not rendered anywhere.
-  Where: `src/components/SwePlayback.tsx` (a "Quick ETA" action), a new arrival-time preview layer in `src/render/cesium/**` / `Globe.tsx`, `src/lib/tauri.ts` (wrapper already present).
-  Acceptance: a Quick ETA action renders the coarse arrival map as a clearly-labelled non-authoritative preview distinct from validated max-field isochrones; the full nonlinear run stays the reproducible/exported product.
-  Complexity: M
-
 - [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
   Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
   Evidence: Cesium June/April 2026 releases https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/ and https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (all ≤ pinned 1.143); overlay rendering in `src/render/cesium/**`, `src/components/Globe.tsx`.

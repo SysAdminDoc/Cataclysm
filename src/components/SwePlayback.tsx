@@ -4,7 +4,7 @@ import { settings } from "../lib/settings";
 import { simulateDemoGrid, sampleGaugesFromDemo } from "../lib/demo";
 import { exportFailureLabel, exportGaugeCsv, type ExportResult } from "../lib/export";
 import type { RenderFrameProvenance } from "../lib/model-provenance";
-import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor, SensitivityEnsembleResponse } from "../types/scenario";
+import type { Gauge, GaugeTimeSeries, GridSnapshot, InitialDisplacement, MaxFieldProduct, QuickEtaPreview, ResolutionPreflight, RunQualityRecord, ScientificExportDescriptor, SensitivityEnsembleResponse } from "../types/scenario";
 import { UiIcon } from "./UiIcon";
 import type { WorkspaceMode, ColormapId } from "../lib/settings";
 import { GlossaryTip } from "./GlossaryTip";
@@ -40,6 +40,8 @@ type Props = {
   /** Fires with the arrival-time contours when the "Arrivals" toggle is on
    *  (null when off or reset). App routes these to the globe layer. */
   onIsochrones?: (isochrones: import("../types/scenario").Isochrone[] | null) => void;
+  /** Publishes the optional coarse linear first-arrival preview to the globe. */
+  onQuickEtaPreview?: (preview: QuickEtaPreview | null) => void;
   onRenderFrame?: (frame: RenderFrameProvenance | null) => void;
   playbackTimeS?: number;
   onPlaybackTimeChange?: (timeS: number) => void;
@@ -195,7 +197,7 @@ function localizeSolverWarning(warning: string, t: ReturnType<typeof useI18n>["t
   return warning;
 }
 
-export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange }: Props) {
+export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesChange, pendingGauge, dartBuoys, onMaxField, onRunQuality, onScientificExport, onColormap, onIsochrones, onQuickEtaPreview, onRenderFrame, playbackTimeS, onPlaybackTimeChange, slotLabel, runAndWatchNonce = 0, workspaceMode = "advanced", onPortableSettingsChange, portableSettingsImport, portableResultsImport, onSensitivityEnvelopeChange }: Props) {
   const { t, formatNumber } = useI18n();
   const unitSystem = useUnits();
   const [status, setStatus] = useState<Status>("idle");
@@ -224,6 +226,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
   const [maxField, setMaxField] = useState<MaxFieldProduct | null>(null);
   const [overlay, setOverlay] = useState<OverlayChoice>("wave");
   const [showArrivals, setShowArrivals] = useState(false);
+  const [quickEtaStatus, setQuickEtaStatus] = useState<"idle" | "running" | "ready" | "error">("idle");
+  const [quickEtaError, setQuickEtaError] = useState<string | null>(null);
   const [gauges, setGauges] = useState<Gauge[]>([]);
   const [gaugeSeries, setGaugeSeries] = useState<GaugeTimeSeries[]>([]);
   const [gaugeLatInput, setGaugeLatInput] = useState("");
@@ -387,6 +391,8 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       setMaxField(null);
       setOverlay("wave");
       setShowArrivals(false);
+      setQuickEtaStatus("idle");
+      setQuickEtaError(null);
       setGauges([]);
       setGaugeSeries([]);
       gaugeCounter.current = 0;
@@ -398,6 +404,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       onMaxField?.(null);
       onRunQuality?.(null);
       onScientificExport?.(null, null);
+      onQuickEtaPreview?.(null);
       onRenderFrame?.(null);
       // The bundled coarse bathymetry represents inland water at a nominal
       // 50 m and cannot reproduce Lake Superior's resonant depth. Start
@@ -405,7 +412,7 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
       // still select an imported high-resolution bathymetry asset explicitly.
       if (initial?.meteotsunami_forcing) setUseBathy(false);
     }
-  }, [initial, onSnapshot, onSnapshotsReady, onGaugesChange, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
+  }, [initial, onQuickEtaPreview, onSnapshot, onSnapshotsReady, onGaugesChange, onMaxField, onRunQuality, onScientificExport, onRenderFrame]);
 
   useEffect(() => {
     if (!portableResultsImport || portableResultsImport.id <= handledPortableResultsImport.current) return;
@@ -757,6 +764,38 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
     }
   }, [initial, snapshots, diag, maxField, recoveredGaugeHistory, useBathy, bathymetryAssetId, includeLambWave, cellsPerDeg, workspaceMode, boundaryMode, checkpointIntervalS, gauges, dartBuoys, onSnapshot, onSnapshotsReady, onMaxField, onRunQuality, onScientificExport, onColormap, onRenderFrame, playbackTimeS, refreshCheckpoints, t]);
 
+  const runQuickEtaPreview = useCallback(async () => {
+    if (!initial || !isTauri() || quickEtaStatus === "running") return;
+    setQuickEtaStatus("running");
+    setQuickEtaError(null);
+    const halfDeg = Math.min(
+      25,
+      Math.max(2, (initial.cavity_radius_m / 1000) * 0.05 + 4),
+    );
+    try {
+      const preview = await api.quickEtaPreview({
+        source: initial.center,
+        initial_amplitude_m: initial.peak_amplitude_m,
+        source_sigma_m: Math.max(initial.cavity_radius_m, 5_000),
+        source_geometry: initial.source_geometry ?? null,
+        mean_depth_m: Math.max(initial.center.depth_m ?? 4_000, 50),
+        box_half_size_deg: halfDeg,
+        cells_per_deg: cellsPerDeg,
+        t_end_s: 60 * 60,
+        n_snapshots: N_SNAPSHOTS,
+        colormap: "cividis",
+      });
+      if (!mountedRef.current) return;
+      setQuickEtaStatus("ready");
+      onQuickEtaPreview?.(preview);
+    } catch (error) {
+      if (!mountedRef.current) return;
+      setQuickEtaStatus("error");
+      setQuickEtaError(error instanceof Error ? error.message : String(error));
+      onQuickEtaPreview?.(null);
+    }
+  }, [cellsPerDeg, initial, onQuickEtaPreview, quickEtaStatus]);
+
   useEffect(() => {
     if (!initial || runAndWatchNonce <= handledRunAndWatchNonce.current) return;
     handledRunAndWatchNonce.current = runAndWatchNonce;
@@ -817,7 +856,29 @@ export function SwePlayback({ initial, onSnapshot, onSnapshotsReady, onGaugesCha
             {t("swe.cancel")}
           </button>
         )}
+        {isTauri() && status !== "running" && (
+          <button
+            onClick={() => void runQuickEtaPreview()}
+            disabled={quickEtaStatus === "running"}
+            title={t("swe.quickEtaTitle")}
+            type="button"
+          >
+            <UiIcon name="info" size={14} />
+            {quickEtaStatus === "running" ? t("swe.quickEtaRunning") : t("swe.quickEta")}
+          </button>
+        )}
       </div>}
+      {quickEtaStatus === "ready" && (
+        <div className="swe__confidence" role="note">
+          <strong>{t("swe.quickEtaReady")}</strong> {t("swe.quickEtaCaveat")}
+        </div>
+      )}
+      {quickEtaStatus === "error" && quickEtaError && (
+        <div className="panel-error" role="alert">
+          <span>{t("swe.quickEtaFailed")} {quickEtaError}</span>
+          <button type="button" onClick={() => void runQuickEtaPreview()}>{t("swe.retrySimulation")}</button>
+        </div>
+      )}
       {isTauri() && status !== "running" && checkpoints[0] && (
         <div className="swe__confidence" role="note">
           <strong>{t("swe.interruptedAvailable")}</strong>

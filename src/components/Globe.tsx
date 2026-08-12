@@ -24,6 +24,7 @@ import type {
   GridSnapshot,
   InitialDisplacement,
   PropagationSnapshot,
+  QuickEtaPreview,
 } from "../types/scenario";
 import type { EffectRing, GeoPoint } from "../hazards/types";
 import type { RendererNeutralFrameView } from "../types/render-protocol";
@@ -34,6 +35,7 @@ import { AsyncGenerationOwner } from "../render/cesium/generation";
 import { DirectEffectsController } from "../render/cesium/direct-effects";
 import { CesiumDirectEffectsHost } from "../render/cesium/cesium-direct-effects-host";
 import { resolveSweImageryTiles } from "../render/cesium/swe-field-tiles";
+import { isValidQuickEtaPreview, quickEtaArrivalRange, quickEtaPreviewPng } from "../render/cesium/quick-eta-preview";
 import { CameraTelemetryController } from "../render/cesium/camera-telemetry";
 import { CesiumCameraTelemetryHost } from "../render/cesium/cesium-camera-telemetry-host";
 import {
@@ -154,6 +156,8 @@ type Props = {
   /** First-arrival time contours from a completed SWE run; rendered as
    *  labelled polylines when the playback panel's Arrivals toggle is on. */
   isochrones?: import("../types/scenario").Isochrone[] | null;
+  /** Coarse linear first-arrival preview; never treated as a validated field. */
+  quickEtaPreview?: QuickEtaPreview | null;
   /** Non-tsunami hazard effect rings (nuclear/asteroid), drawn as concentric
    *  ground ellipses at hazardCenter. Radii are in meters, largest-first. */
   hazardRings?: EffectRing[] | null;
@@ -491,6 +495,7 @@ export function Globe({
   onAddGauge,
   primary = true,
   isochrones,
+  quickEtaPreview,
   hazardRings,
   hazardCenter,
   hazardPolygons,
@@ -524,6 +529,7 @@ export function Globe({
   const usgsLayer = layers["usgs-official"];
   const hazardRingLayer = layers["hazard-rings"];
   const falloutLayer = layers["fallout-plume"];
+  const quickEtaRange = quickEtaArrivalRange(quickEtaPreview);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const viewerLifecycleRef = useRef<ViewerLifecycle<Cesium.Viewer> | null>(null);
@@ -554,6 +560,10 @@ export function Globe({
   const [cameraNavigationAnnouncement, setCameraNavigationAnnouncement] = useState("");
   const [inspectionResult, setInspectionResult] = useState<AsyncResult<{ lat: number; lon: number; text: string }>>({ status: "idle" });
   const sweCoordinatorRef = useRef<{
+    coordinator: AsyncResourceCoordinator<SweImageryResource>;
+    generation: number;
+  } | null>(null);
+  const quickEtaCoordinatorRef = useRef<{
     coordinator: AsyncResourceCoordinator<SweImageryResource>;
     generation: number;
   } | null>(null);
@@ -797,6 +807,21 @@ export function Globe({
       generation: sweCoordinator.beginViewerGeneration(),
     };
     lifecycle.ownSystem(() => sweCoordinator.destroy());
+    const quickEtaCoordinator = new AsyncResourceCoordinator<SweImageryResource>({
+      dispose: (resource) => {
+        if (!viewer.isDestroyed()) {
+          for (const layer of resource.layers) {
+            viewer.imageryLayers.remove(layer, true);
+          }
+        }
+        resource.layers.length = 0;
+      },
+    });
+    quickEtaCoordinatorRef.current = {
+      coordinator: quickEtaCoordinator,
+      generation: quickEtaCoordinator.beginViewerGeneration(),
+    };
+    lifecycle.ownSystem(() => quickEtaCoordinator.destroy());
     const inspectGeneration = new AsyncGenerationOwner<Cesium.Viewer>();
     inspectGenerationRef.current = inspectGeneration;
     lifecycle.ownSystem(() => inspectGeneration.destroy());
@@ -833,6 +858,7 @@ export function Globe({
         imageryControllerRef.current = null;
       }
       sweCoordinatorRef.current = null;
+      quickEtaCoordinatorRef.current = null;
       viewerRef.current = null;
     };
   }, [primary, rendererResetNonce]);
@@ -1223,6 +1249,52 @@ export function Globe({
     };
   }, [onSweFrameReady, sweLayer.opacity, sweLayer.visible, sweSnapshot, viewerEpoch]);
 
+  // Quick ETA preview → a separate translucent imagery layer. The arrival
+  // values are produced by Rust; this effect only turns them into a bounded
+  // visual texture and keeps it separate from the authoritative SWE field.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    const ownership = quickEtaCoordinatorRef.current;
+    if (!viewer || !ownership) return;
+    if (!quickEtaPreview || !isValidQuickEtaPreview(quickEtaPreview)) {
+      ownership.coordinator.invalidate("quick_eta_cleared");
+      return;
+    }
+    const pngUrl = quickEtaPreviewPng(quickEtaPreview);
+    if (!pngUrl) {
+      ownership.coordinator.invalidate("quick_eta_has_no_reached_cells");
+      return;
+    }
+    const [west, south, east, north] = quickEtaPreview.bbox;
+    void ownership.coordinator
+      .replace(
+        ownership.generation,
+        async () => ({
+          providers: [await Cesium.SingleTileImageryProvider.fromUrl(pngUrl, {
+            rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north),
+          })],
+          layers: [],
+        }),
+        (resource) => {
+          if (viewerRef.current !== viewer || viewer.isDestroyed()) {
+            throw new Error("Quick ETA preview viewer generation is stale.");
+          }
+          for (const provider of resource.providers) {
+            const layer = viewer.imageryLayers.addImageryProvider(provider);
+            layer.alpha = 0.58;
+            resource.layers.push(layer);
+          }
+          viewer.scene.requestRender();
+        },
+      )
+      .catch((error) => {
+        if (ownership.coordinator.diagnostics().pendingResourceCount === 0 && viewerRef.current !== viewer) return;
+        console.warn("[globe] quick ETA preview failed to load as imagery", error);
+      });
+
+    return () => ownership.coordinator.abortPending("quick_eta_changed");
+  }, [quickEtaPreview, viewerEpoch]);
+
   useStrategicGlobeOverlays({
     viewerRef,
     viewerEpoch,
@@ -1248,6 +1320,7 @@ export function Globe({
         data-imagery-status={imageryStatus}
         data-imagery-style={activeImageryStyle ?? "none"}
         data-swe-field-tiles={sweLayer.visible && sweSnapshot ? resolveSweImageryTiles(sweSnapshot).length : 0}
+        data-quick-eta-preview={quickEtaRange ? "active" : "none"}
         data-ww3-plan={ww3Plan?.id ?? "none"}
         data-ww3-strikes={ww3Plan?.strikes.length ?? 0}
         data-mirv-preview={mirvPreview?.id ?? "none"}
@@ -1255,6 +1328,17 @@ export function Globe({
         data-humanitarian-facilities={humanitarianLayer.visible ? humanitarianFacilities.length : 0}
         data-usgs-shakemap-contours={usgsLayer.visible ? usgsComparison?.shakemap?.contours.length ?? 0 : 0}
       />
+      {quickEtaRange && (
+        <div className="app__globe-status app__globe-status--quick-eta" data-status="preview" role="status" aria-live="polite">
+          <strong>{t("globe.quickEtaTitle")}</strong>
+          <span>{t("globe.quickEtaRange", {
+            start: formatNumber(quickEtaRange.minimumS / 60, { maximumFractionDigits: 0 }),
+            end: formatNumber(quickEtaRange.maximumS / 60, { maximumFractionDigits: 0 }),
+            cells: formatNumber(quickEtaRange.reachedCells),
+          })}</span>
+          <small>{t("globe.quickEtaCaveat")}</small>
+        </div>
+      )}
       {humanitarianLayer.visible && humanitarianFacilities.length > 0 && (
         <a
           className="app__globe-osm-attribution"

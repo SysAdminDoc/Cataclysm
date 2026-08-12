@@ -99,7 +99,7 @@ import {
 import { REFERENCE_CAPTURE_EVENT, type ReferenceCaptureView } from "./lib/reference-capture";
 import type { OutcomeFocusRequest } from "./render/cesium/outcome-focus";
 import type { PointProbeReport } from "./render/cesium/inspection";
-import type { Gauge, GridSnapshot, Preset } from "./types/scenario";
+import type { Gauge, GridSnapshot, Preset, QuickEtaPreview } from "./types/scenario";
 import type { NukemapLocationResult } from "./types/nukemap-data";
 import type { HypotheticalImpactDraft } from "./types/jpl";
 import { HazardControls } from "./components/HazardControls";
@@ -532,6 +532,7 @@ export default function App() {
   const [sweRenderFrameA, setSweRenderFrameA] = useState<RenderFrameProvenance | null>(null);
   const [sweRenderFrameB, setSweRenderFrameB] = useState<RenderFrameProvenance | null>(null);
   const [sweIsochrones, setSweIsochrones] = useState<import("./types/scenario").Isochrone[] | null>(null);
+  const [sweQuickEtaPreview, setSweQuickEtaPreview] = useState<QuickEtaPreview | null>(null);
   const [sweSensitivityEnvelopeA, setSweSensitivityEnvelopeA] = useState<import("./types/scenario").SensitivityEnsembleResponse | null>(null);
   const [portableSolverSettings, setPortableSolverSettings] = useState<PortableScenarioSolverSettings | null>(null);
   const [portableSettingsImport, setPortableSettingsImport] = useState<{ id: number; settings: PortableScenarioSolverSettings } | null>(null);
@@ -3052,6 +3053,7 @@ export default function App() {
                 onInspectCancel={() => setInspectMode(false)}
                 onAddGauge={inHazardMode ? undefined : (lat, lon) => setPendingGauge({ lat, lon })}
                 isochrones={inHazardMode ? null : sweIsochrones}
+                quickEtaPreview={inHazardMode ? null : sweQuickEtaPreview}
                 hazardRings={inHazardMode ? hazardResult?.rings ?? null : null}
                 hazardCenter={inHazardMode ? hazardCenter : null}
                 hazardPolygons={hazardPolygons}
@@ -3342,6 +3344,7 @@ export default function App() {
             onScientificExport={handleScientificExport}
             onRunQuality={setSweRunQualityA}
             onIsochrones={setSweIsochrones}
+            onQuickEtaPreview={setSweQuickEtaPreview}
             onRenderFrame={setSweRenderFrameA}
             onSensitivityEnvelopeChange={setSweSensitivityEnvelopeA}
             onPortableSettingsChange={setPortableSolverSettings}

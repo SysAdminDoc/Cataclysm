@@ -6,6 +6,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added a desktop-only Quick ETA action for tsunami scenarios. It requests the
+  bounded Rust coarse-linear first-arrival product, renders it as a separate
+  translucent globe layer, and labels the timing range and non-authoritative
+  status without mixing it into validated solver exports or max-field results.
 - Replay export now offers a feature-detected deterministic H.264/MP4 path in
   the Export menu. It steps through all cached SWE frames only after Cesium
   confirms each frame is painted, reports frame-by-frame progress, and restores

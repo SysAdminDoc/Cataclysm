@@ -630,6 +630,26 @@
   border-color: var(--danger);
 }
 
+.app__globe-status--quick-eta {
+  top: 52px;
+  display: grid;
+  gap: 3px;
+  max-width: min(460px, calc(100% - 24px));
+  background: color-mix(in srgb, var(--mauve) 16%, var(--mantle));
+  border-color: var(--mauve);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.app__globe-status--quick-eta strong {
+  color: var(--accent-text);
+}
+
+.app__globe-status--quick-eta small {
+  color: var(--subtext);
+  font-size: 10px;
+}
+
 .app__globe-status button {
   flex: none;
   min-height: 26px;

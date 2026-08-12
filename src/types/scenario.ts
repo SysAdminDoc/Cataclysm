@@ -302,6 +302,18 @@ export type SimulateGridRequest = {
   boundary_mode?: "sponge" | "radiation" | "zero_flux";
 };
 
+/** Coarse, linear first-arrival preview returned by the Rust quick-ETA path.
+ * Null cells were not reached during the preview window. This is deliberately
+ * separate from MaxFieldProduct so the UI cannot mistake it for a validated
+ * solver product or archive it as one. */
+export type QuickEtaPreview = {
+  bbox: [number, number, number, number];
+  nx: number;
+  ny: number;
+  arrival_s: Array<number | null>;
+  elapsed_wall_ms: number;
+};
+
 export type SensitivityParameterId = "initial_amplitude" | "source_width" | "mean_depth";
 
 export type SensitivityParameterSpec = {
