@@ -757,7 +757,7 @@ mod tests {
                 citation_url: Some("https://example.test/citation".into()),
                 citations: vec!["Fixture citation".into()],
                 evidence_ids: vec!["fixture-source".into()],
-                app_version: "0.14.0".into(),
+                app_version: "0.14.1".into(),
                 asset_registry_version: "fixture".into(),
                 bathymetry_asset_id: "fixture-bathy".into(),
                 bathymetry_source: "fixture".into(),

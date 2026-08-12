@@ -2,7 +2,7 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.14.1] — 2026-08-12
 
 ### Added
 

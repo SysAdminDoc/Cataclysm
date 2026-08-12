@@ -37,8 +37,8 @@ function run(id: string, label: string, status: "pass" | "warning", peak: number
       dataReferences: [],
     },
     identity: {
-      appVersion: "0.14.0",
-      solverVersion: "0.14.0",
+      appVersion: "0.14.1",
+      solverVersion: "0.14.1",
       scenarioSchemaVersion: 1,
       resultSchemaVersion: 1,
       archiveSchemaVersion: 1,
