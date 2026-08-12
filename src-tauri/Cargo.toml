@@ -73,7 +73,7 @@ validation = []
 gpu = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
 
 [dependencies.wgpu]
-version = "29.0"
+version = "30.0"
 optional = true
 default-features = false
 # "wgsl" alone compiles but leaves NO platform backend enabled, so
@@ -81,10 +81,12 @@ default-features = false
 # backend feature that is implemented for the target platform was
 # enabled") — the gpu feature had only ever been cargo-checked, never
 # executed, before 2026-07-09. Backend features are platform-gated
-# internally by wgpu. "dx12" is deliberately absent: wgpu-hal 29.0.x's
-# dx12 suballocator does not compile against gpu-allocator 0.28 +
-# windows-core 0.61/0.62 (upstream incompatibility, checked 2026-07-09);
-# Vulkan covers Windows GPUs via standard drivers.
+# internally by wgpu. "dx12" remains deliberately absent: the previous
+# wgpu-hal 29.0.x dx12 suballocator did not compile against gpu-allocator
+# 0.28 + windows-core 0.61/0.62 (upstream incompatibility, checked
+# 2026-07-09). wgpu 30 is compile-checked here without enabling a new
+# backend; Vulkan covers Windows GPUs via standard drivers until a dedicated
+# DX12 allocator regression check justifies changing this policy.
 features = ["wgsl", "metal", "vulkan"]
 
 [dependencies.pollster]

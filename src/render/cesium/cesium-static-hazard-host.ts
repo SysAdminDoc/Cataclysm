@@ -6,8 +6,15 @@ import type {
 } from "./static-hazard-host";
 import { terrainEllipsePositions } from "./terrain-overlay-geometry";
 
-function color(css: string, alpha = 1): Cesium.Color {
-  return Cesium.Color.fromCssColorString(css).withAlpha(alpha);
+function hdrActive(viewer: Cesium.Viewer): boolean {
+  return viewer.scene.highDynamicRangeSupported !== false && viewer.scene.highDynamicRange === true;
+}
+
+function color(css: string, alpha = 1, intensity = 1, hdr = false): Cesium.Color {
+  const base = Cesium.Color.fromCssColorString(css);
+  return hdr && intensity > 1
+    ? new Cesium.Color(base.red * intensity, base.green * intensity, base.blue * intensity, alpha)
+    : base.withAlpha(alpha);
 }
 
 function position(latDeg: number, lonDeg: number, heightM = 0): Cesium.Cartesian3 {
@@ -18,6 +25,7 @@ function applyDescriptor(
   entity: Cesium.Entity,
   descriptor: StaticHazardEntityDescriptor,
   deterministicCapture: boolean,
+  hdr: boolean,
 ): void {
   entity.name = descriptor.kind === "ground_zero" ? "Ground zero" : descriptor.name;
   entity.description = new Cesium.ConstantProperty(
@@ -37,7 +45,7 @@ function applyDescriptor(
     entity.ellipse = new Cesium.EllipseGraphics({
       semiMajorAxis: descriptor.semi_major_axis_m,
       semiMinorAxis: descriptor.semi_minor_axis_m,
-      material: color(descriptor.fill_css, descriptor.fill_alpha),
+      material: color(descriptor.fill_css, descriptor.fill_alpha, descriptor.hdr_emissive ? 3 : 1, hdr),
       outline: false,
       outlineColor: color(descriptor.outline_css, descriptor.outline_alpha),
       outlineWidth: descriptor.outline_width_px,
@@ -139,12 +147,12 @@ export class CesiumStaticHazardHost implements StaticHazardEntityHost<Cesium.Ent
 
   createEntity(key: string, descriptor: StaticHazardEntityDescriptor): Cesium.Entity {
     const entity = this.#viewer.entities.add({ id: `static-hazard:${key}` });
-    applyDescriptor(entity, descriptor, this.#deterministicCapture);
+    applyDescriptor(entity, descriptor, this.#deterministicCapture, hdrActive(this.#viewer));
     return entity;
   }
 
   updateEntity(entity: Cesium.Entity, descriptor: StaticHazardEntityDescriptor): void {
-    applyDescriptor(entity, descriptor, this.#deterministicCapture);
+    applyDescriptor(entity, descriptor, this.#deterministicCapture, hdrActive(this.#viewer));
   }
 
   removeEntity(entity: Cesium.Entity): void {

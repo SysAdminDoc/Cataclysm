@@ -18,6 +18,8 @@ export type HazardRingEntityDescriptor = Readonly<{
   outline_alpha: number;
   outline_width_px: number;
   z_order: number;
+  /** Thermal/fireball rings may use >1 linear RGB while HDR is active. */
+  hdr_emissive?: boolean;
 }>;
 
 export type GroundZeroEntityDescriptor = Readonly<{

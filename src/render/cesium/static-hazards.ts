@@ -306,6 +306,7 @@ export class StaticHazardController<Handle = unknown> {
           outline_alpha: 0.9 * ringOpacity,
           outline_width_px: 2,
           z_order: index,
+          ...(value.id?.trim().toLowerCase() === "thermal" ? { hdr_emissive: true } : {}),
         });
         entities.push(descriptor);
       });

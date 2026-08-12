@@ -41,6 +41,10 @@ export function PerformancePanel({ visible }: { visible: boolean }) {
         <dd>{formatNumber(diag.targetFrameTimeMs, { maximumFractionDigits: 1 })} ms ({formatNumber(diag.targetFps)} fps)</dd>
         <dt>{t("perf.gpu")}</dt>
         <dd data-tone={diag.gpuState === "ready" ? "normal" : "warning"}>{t(`perf.gpu.${diag.gpuState}` as MessageKey)}</dd>
+        <dt>{t("perf.hdr")}</dt>
+        <dd data-tone={diag.hdrOutput.mode === "sdr-fallback" ? "warning" : "normal"}>
+          {t(`perf.hdr.${diag.hdrOutput.mode}` as MessageKey)}
+        </dd>
         <dt>{t("perf.adapter")}</dt>
         <dd className="perf-panel__adapter">{diag.adapter.renderer}</dd>
         <dt>{t("perf.autoQuality")}</dt>

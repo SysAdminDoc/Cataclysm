@@ -44,6 +44,7 @@ pub struct GpuCapabilityProfile {
     pub backend: String,
     pub timestamp_query: bool,
     pub shader_f16: bool,
+    pub shader_i16: bool,
     pub subgroups: bool,
     pub subgroup_min_size: u32,
     pub subgroup_max_size: u32,
@@ -135,6 +136,7 @@ fn capability_profile(adapter: &wgpu::Adapter) -> GpuCapabilityProfile {
         backend: format!("{:?}", info.backend),
         timestamp_query: features.contains(wgpu::Features::TIMESTAMP_QUERY),
         shader_f16: features.contains(wgpu::Features::SHADER_F16),
+        shader_i16: features.contains(wgpu::Features::SHADER_I16),
         subgroups: features.contains(wgpu::Features::SUBGROUP),
         subgroup_min_size: info.subgroup_min_size,
         subgroup_max_size: info.subgroup_max_size,
@@ -147,6 +149,7 @@ pub fn adapter_capabilities() -> Option<GpuCapabilityProfile> {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     }))
     .ok()?;
     Some(capability_profile(&adapter))
@@ -179,6 +182,7 @@ pub fn probe_adapter() -> GpuAvailability {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     }));
     match adapter {
         Ok(_) => GpuAvailability::Available,
@@ -194,6 +198,7 @@ pub fn adapter_summary() -> Option<String> {
         power_preference: wgpu::PowerPreference::HighPerformance,
         compatible_surface: None,
         force_fallback_adapter: false,
+        apply_limit_buckets: false,
     }))
     .ok()?;
     let info = adapter.get_info();
@@ -430,6 +435,7 @@ impl GpuTimeStepper {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: None,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
             .ok()?;
@@ -443,11 +449,12 @@ impl GpuTimeStepper {
         report_diagnostic(
             diagnostics,
             format!(
-                "[gpu] capabilities adapter={} backend={} timestamp-query={} shader-f16={} subgroups={} subgroup-size={}-{}; enabled timestamp-query={} f16-velocity={} subgroup-integrity={}",
+                "[gpu] capabilities adapter={} backend={} timestamp-query={} shader-f16={} shader-i16={} subgroups={} subgroup-size={}-{}; enabled timestamp-query={} f16-velocity={} subgroup-integrity={}",
                 capabilities.adapter,
                 capabilities.backend,
                 capabilities.timestamp_query,
                 capabilities.shader_f16,
+                capabilities.shader_i16,
                 capabilities.subgroups,
                 capabilities.subgroup_min_size,
                 capabilities.subgroup_max_size,
@@ -1177,7 +1184,7 @@ impl GpuTimeStepper {
                 if !matches!(receiver.recv(), Ok(Ok(()))) {
                     return None;
                 }
-                let view = buffer.slice(..).get_mapped_range();
+                let view = buffer.slice(..).get_mapped_range().ok()?;
                 let bytes = view.to_vec();
                 drop(view);
                 buffer.unmap();
@@ -1458,7 +1465,7 @@ impl GpuTimeStepper {
                 Ok(Ok(())) => {}
                 _ => return None,
             }
-            let view = buf.slice(..).get_mapped_range();
+            let view = buf.slice(..).get_mapped_range().ok()?;
             let f32_slice: &[f32] = bytemuck::cast_slice(&view);
             let out: Vec<f64> = f32_slice
                 .iter()
@@ -1479,7 +1486,7 @@ impl GpuTimeStepper {
             if !matches!(rx.recv(), Ok(Ok(()))) {
                 return None;
             }
-            let view = buf.slice(..).get_mapped_range();
+            let view = buf.slice(..).get_mapped_range().ok()?;
             let decoded = self.decode_velocity(&view);
             drop(view);
             buf.unmap();

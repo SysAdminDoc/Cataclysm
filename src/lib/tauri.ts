@@ -570,6 +570,7 @@ export const api = {
       backend: string;
       timestamp_query: boolean;
       shader_f16: boolean;
+      shader_i16: boolean;
       subgroups: boolean;
       subgroup_min_size: number;
       subgroup_max_size: number;

@@ -13,14 +13,25 @@ function point(value: EcefPoint): Cesium.Cartesian3 {
   return new Cesium.Cartesian3(value[0], value[1], value[2]);
 }
 
-function ellipseStyle(id: string): { color: Cesium.Color; alpha: number } {
+function hdrActive(viewer: Cesium.Viewer): boolean {
+  return viewer.scene.highDynamicRangeSupported !== false && viewer.scene.highDynamicRange === true;
+}
+
+function emissiveColor(css: string, intensity: number, active: boolean): Cesium.Color {
+  const base = Cesium.Color.fromCssColorString(css);
+  return active && intensity > 1
+    ? new Cesium.Color(base.red * intensity, base.green * intensity, base.blue * intensity, 1)
+    : base;
+}
+
+function ellipseStyle(id: string, hdr: boolean): { color: Cesium.Color; alpha: number } {
   if (id.includes("wave_0_radius")) return { color: Cesium.Color.fromCssColorString("#dff1ff"), alpha: 0.24 };
   if (id.includes("wave_1_radius")) return { color: Cesium.Color.fromCssColorString("#8bc8ff"), alpha: 0.2 };
   if (id.includes("wave_2_radius")) return { color: Cesium.Color.fromCssColorString("#3aa0ff"), alpha: 0.16 };
-  if (id.includes("asteroid-fireball")) return { color: Cesium.Color.WHITE, alpha: 0.7 };
-  if (id.includes("fireball")) return { color: Cesium.Color.WHITE, alpha: 0.72 };
+  if (id.includes("asteroid-fireball")) return { color: emissiveColor("#fff3d6", 4, hdr), alpha: 0.7 };
+  if (id.includes("fireball")) return { color: emissiveColor("#fff3d6", 4, hdr), alpha: 0.72 };
   if (id.includes("fallout")) return { color: Cesium.Color.fromCssColorString("#a6e3a1"), alpha: 0.12 };
-  if (id.includes("firestorm")) return { color: Cesium.Color.fromCssColorString("#f38ba8"), alpha: 0.22 };
+  if (id.includes("firestorm")) return { color: emissiveColor("#f38ba8", 2.5, hdr), alpha: 0.22 };
   if (id.includes("crater")) return { color: Cesium.Color.fromCssColorString("#fab387"), alpha: 0.16 };
   if (id.includes("cavity")) return { color: Cesium.Color.fromCssColorString("#dff1ff"), alpha: 0.24 };
   return { color: Cesium.Color.fromCssColorString("#f9e2af"), alpha: 0.2 };
@@ -43,7 +54,7 @@ export class CesiumDirectEffectsHost implements DirectEffectsHost<Cesium.Entity>
   }
 
   createEllipse(id: string, state: DirectEllipseState): Cesium.Entity {
-    const style = ellipseStyle(id);
+    const style = ellipseStyle(id, hdrActive(this.#viewer));
     const drapeOnTerrain = !id.includes("wave_") && !id.includes("cavity");
     const center = point(state.centerEcefM);
     return this.#viewer.entities.add({
@@ -74,6 +85,9 @@ export class CesiumDirectEffectsHost implements DirectEffectsHost<Cesium.Entity>
     if (!entity.ellipse) return;
     entity.ellipse.semiMajorAxis = new Cesium.ConstantProperty(state.semiMajorM);
     entity.ellipse.semiMinorAxis = new Cesium.ConstantProperty(state.semiMinorM);
+    const style = ellipseStyle(String(entity.id ?? ""), hdrActive(this.#viewer));
+    entity.ellipse.material = new Cesium.ColorMaterialProperty(style.color.withAlpha(style.alpha));
+    entity.ellipse.outlineColor = new Cesium.ConstantProperty(style.color.withAlpha(0.9));
     if (entity.polyline) {
       entity.polyline.positions = new Cesium.ConstantProperty(
         terrainEllipsePositionsFromCartesian(point(state.centerEcefM), state.semiMajorM, state.semiMinorM),

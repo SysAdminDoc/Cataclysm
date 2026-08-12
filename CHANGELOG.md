@@ -24,6 +24,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   crater-forming impact events: bounded thermal ignition zones, cited
   smoke-loft proxies, direct replay geometry, and explicit uncertainty/
   atmospheric-loading timeline coupling.
+- Upgraded the optional native GPU solver to wgpu 30, exposed SHADER_I16
+  capability diagnostics, and made Cesium fireball/thermal overlays use HDR
+  emissive output with an explicit SDR fallback when the renderer lacks HDR
+  targets. The headless golden fixture remains CPU-authoritative so it stays
+  deterministic when the GPU feature is enabled.
 - Replay export now offers a feature-detected deterministic H.264/MP4 path in
   the Export menu. It steps through all cached SWE frames only after Cesium
   confirms each frame is painted, reports frame-by-frame progress, and restores

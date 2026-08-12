@@ -20,6 +20,13 @@ export type RendererQualityProfile = {
   atmosphereLighting: boolean;
 };
 
+export type HdrOutputDiagnostics = Readonly<{
+  requested: boolean;
+  supported: boolean;
+  active: boolean;
+  mode: "hdr" | "sdr" | "sdr-fallback";
+}>;
+
 export const RENDERER_QUALITY_PROFILES: Record<RendererQualityTier, RendererQualityProfile> = {
   Low: {
     // Reference captures stay at native drawing-buffer resolution. The live
@@ -45,6 +52,25 @@ export const RENDERER_QUALITY_PROFILES: Record<RendererQualityTier, RendererQual
   },
 };
 
+/**
+ * Cesium's HDR path is a renderer capability, not a display guarantee. Keep
+ * the request explicit and fail closed to its SDR tone-mapped path when the
+ * WebGL implementation cannot allocate the required floating-point targets.
+ */
+export function inspectHdrOutput(
+  viewer: Cesium.Viewer,
+  requested: boolean,
+): HdrOutputDiagnostics {
+  const supported = viewer.scene.highDynamicRangeSupported !== false;
+  const active = requested && supported;
+  return {
+    requested,
+    supported,
+    active,
+    mode: active ? "hdr" : requested ? "sdr-fallback" : "sdr",
+  };
+}
+
 export function applyRendererQualityProfile(
   viewer: Cesium.Viewer,
   tier: RendererQualityTier,
@@ -54,7 +80,8 @@ export function applyRendererQualityProfile(
   const exposure = exposureOverride ?? requested.exposure;
   viewer.resolutionScale = requested.resolutionScale;
   viewer.scene.msaaSamples = requested.msaaSamples;
-  viewer.scene.highDynamicRange = requested.highDynamicRange;
+  const hdrOutput = inspectHdrOutput(viewer, requested.highDynamicRange);
+  viewer.scene.highDynamicRange = hdrOutput.active;
   viewer.scene.postProcessStages.tonemapper = requested.tonemapper;
   viewer.scene.postProcessStages.exposure = exposure;
   viewer.scene.postProcessStages.fxaa.enabled = requested.fxaa;
@@ -70,6 +97,7 @@ export function applyRendererQualityProfile(
       resolutionScale: viewer.resolutionScale,
       msaaSamples: viewer.scene.msaaSamples,
       highDynamicRange: viewer.scene.highDynamicRange,
+      hdrOutput,
       tonemapper: viewer.scene.postProcessStages.tonemapper,
       exposure: viewer.scene.postProcessStages.exposure,
       fxaa: viewer.scene.postProcessStages.fxaa.enabled,

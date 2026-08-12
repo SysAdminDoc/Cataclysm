@@ -1570,7 +1570,7 @@ mod tests {
     }
 
     #[test]
-    fn headless_run_matches_the_gui_solver_dispatch_fixture() {
+    fn headless_run_matches_the_cpu_solver_dispatch_fixture() {
         let root = tempdir().unwrap();
         let req = request();
         let plan = SimulationGridPlan::from_request(&req).unwrap();
@@ -1586,7 +1586,7 @@ mod tests {
         populate_grid_bathymetry(&mut grid, &req, Some(root.path())).unwrap();
         inject_source_initial_field(&mut grid, &req).unwrap();
         let dt = grid.recommended_dt_s(0.4);
-        let (gui_snapshots, _used_gpu, _max_field) = run_simulation_dispatch(
+        let (gui_snapshots, _used_gpu, _max_field) = run_simulation_cpu_dispatch(
             &mut grid,
             dt,
             req.t_end_s,

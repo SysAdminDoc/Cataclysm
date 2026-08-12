@@ -255,6 +255,33 @@ pub(crate) fn run_simulation_dispatch(
             series.reset();
         }
     }
+    run_simulation_cpu_dispatch(
+        grid,
+        dt_s,
+        t_end_s,
+        n_snapshots,
+        cancel,
+        diagnostics,
+        gauges,
+        max_field_threshold_m,
+        meteotsunami_forcing,
+        vtk_series,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_simulation_cpu_dispatch(
+    grid: &mut SwGrid,
+    dt_s: f64,
+    t_end_s: f64,
+    n_snapshots: usize,
+    cancel: &AtomicBool,
+    diagnostics: Option<&DiagnosticSink<'_>>,
+    gauges: &[GridGaugePoint],
+    max_field_threshold_m: f64,
+    meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
+    vtk_series: Option<&VtkSeriesSpool>,
+) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
     let stepper = TimeStepper::new(dt_s);
     let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
     let snaps = run_simulation_cpu_with_optional_forcing(
@@ -286,21 +313,18 @@ pub(crate) fn run_simulation_dispatch(
     meteotsunami_forcing: Option<&crate::physics::meteotsunami::MeteotsunamiSource>,
     vtk_series: Option<&VtkSeriesSpool>,
 ) -> (Vec<GridSnapshot>, bool, MaxFieldAccumulator) {
-    let stepper = TimeStepper::new(dt_s);
-    let mut acc = MaxFieldAccumulator::new(grid.nx * grid.ny, max_field_threshold_m);
-    let snaps = run_simulation_cpu_with_optional_forcing(
+    run_simulation_cpu_dispatch(
         grid,
-        &stepper,
+        dt_s,
         t_end_s,
         n_snapshots,
         cancel,
         diagnostics,
         gauges,
-        &mut |g| acc.observe(g),
+        max_field_threshold_m,
         meteotsunami_forcing,
         vtk_series,
-    );
-    (snaps, false, acc)
+    )
 }
 
 /// GPU-side `run_simulation`: emits the same `n_snapshots` evenly-spaced

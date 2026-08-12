@@ -1,5 +1,10 @@
 import type * as Cesium from "cesium";
-import { applyRendererQualityProfile } from "../../rendering/quality-profiles";
+import {
+  applyRendererQualityProfile,
+  inspectHdrOutput,
+  RENDERER_QUALITY_PROFILES,
+  type HdrOutputDiagnostics,
+} from "../../rendering/quality-profiles";
 import {
   RendererQualityController,
   RENDERER_QUALITY_BUDGETS,
@@ -20,6 +25,7 @@ export interface CesiumQualityDiagnostics extends RendererQualityDiagnostics {
   targetFps: number;
   targetFrameTimeMs: number;
   adapter: RendererAdapterDiagnostics;
+  hdrOutput: HdrOutputDiagnostics;
 }
 
 export interface CesiumQualityRuntimeOptions {
@@ -129,6 +135,7 @@ export class CesiumQualityRuntime {
   diagnostics(): CesiumQualityDiagnostics {
     const controller = this.#controller.diagnostics();
     const budget = this.#controller.budget();
+    const requestedHdr = RENDERER_QUALITY_PROFILES[controller.activeTier].highDynamicRange;
     return {
       ...controller,
       automatic: this.#automatic,
@@ -137,6 +144,7 @@ export class CesiumQualityRuntime {
       targetFps: budget.targetFps,
       targetFrameTimeMs: budget.targetFrameTimeMs,
       adapter: { ...this.#adapter },
+      hdrOutput: inspectHdrOutput(this.#viewer, requestedHdr),
     };
   }
 
