@@ -72,6 +72,67 @@ export type NativePanicRecord = {
 
 export type BathymetrySampleSemantics = "depth_positive_down" | "elevation_positive_up";
 
+export type GeoPackageGeometry =
+  | { type: "Point"; coordinates: [number, number] }
+  | { type: "LineString"; coordinates: Array<[number, number]> }
+  | { type: "Polygon"; coordinates: Array<Array<[number, number]>> }
+  | { type: "MultiLineString"; coordinates: Array<Array<[number, number]>> };
+
+export type GeoPackageFeature = {
+  id: string;
+  name: string;
+  geometry: GeoPackageGeometry;
+  properties: Record<string, unknown>;
+};
+
+export type GeoPackageLayer = {
+  tableName: "source_geometry" | "source_footprints" | "fault_geometry" | "gauges" | "runup" | "arrival_isochrones" | "direct_effect_polygons";
+  description: string;
+  features: GeoPackageFeature[];
+};
+
+export type GeoPackageExportRequest = {
+  schemaVersion: 1;
+  title: string;
+  metadata: {
+    scenario: string;
+    scenarioType: string;
+    generatedAt: string;
+    horizontalCrs: "EPSG:4326";
+    horizontalDatum: string;
+    verticalDatum: string;
+    horizontalUnits: string;
+    verticalUnits: string;
+    displayUnitSystem: string;
+    qualityStatus: string;
+    quality: unknown;
+    solverMode: string;
+    limitation: string;
+    citationReference: string;
+    citationUrl: string | null;
+    citations: string[];
+    evidenceIds: string[];
+    appVersion: string;
+    assetRegistryVersion: string;
+    bathymetryAssetId: string;
+    bathymetrySource: string;
+    sourceDigest: string;
+    dataDigest: string;
+    provenance: unknown;
+  };
+  layers: GeoPackageLayer[];
+};
+
+export type GeoPackageExportResponse = {
+  destination: string;
+  bytes: number;
+  layers: number;
+  features: number;
+  vertices: number;
+  sourceDigest: string;
+  dataDigest: string;
+};
+
 export type BathymetryPreflight = {
   format: "geo_tiff" | "net_cdf";
   file_name: string;
@@ -729,6 +790,9 @@ export const api = {
   },
   saveScientificExport(exportId: string, destination: string, exportKind: "netcdf" | "zarr" | "vtk" = "netcdf") {
     return invoke<number>("save_scientific_export", { exportId, destination, exportKind });
+  },
+  saveGeoPackage(request: GeoPackageExportRequest, destination: string) {
+    return invoke<GeoPackageExportResponse>("save_geopackage", { request, destination });
   },
 };
 
