@@ -81,6 +81,13 @@ pub async fn ncei_hazel_search(
 }
 
 #[tauri::command]
+pub async fn ncei_hazel_runups(
+    req: crate::ncei_hazel::HazelRunupSearchRequest,
+) -> Result<crate::ncei_hazel::HazelRunupSearchResponse, String> {
+    crate::ncei_hazel::search_runups(req).await
+}
+
+#[tauri::command]
 pub async fn usgs_recent_earthquakes()
 -> Result<crate::usgs_earthquakes::UsgsRecentEarthquakesResponse, String> {
     crate::usgs_earthquakes::recent().await

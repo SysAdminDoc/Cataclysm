@@ -113,6 +113,7 @@ pub fn run() {
             asteroid_result_visuals,
             jpl_api_request,
             ncei_hazel_search,
+            ncei_hazel_runups,
             usgs_recent_earthquakes,
             usgs_earthquake_detail,
             diagnostics_bundle,

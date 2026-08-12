@@ -19,7 +19,12 @@ import type {
   SensitivityEnsembleResponse,
   SimulateGridResponse,
 } from "../types/scenario";
-import type { HazelEventSearchRequest, HazelEventSearchResponse } from "./ncei-hazel";
+import type {
+  HazelEventSearchRequest,
+  HazelEventSearchResponse,
+  HazelRunupSearchRequest,
+  HazelRunupSearchResponse,
+} from "./ncei-hazel";
 import type { UsgsEarthquakeDetail, UsgsRecentEarthquakesResponse } from "./usgs-earthquakes";
 import type { ColormapId } from "./settings";
 import type { SurfaceProbe } from "./surface";
@@ -440,6 +445,9 @@ export const api = {
   },
   nceiHazelSearch(req: HazelEventSearchRequest) {
     return invoke<HazelEventSearchResponse>("ncei_hazel_search", { req });
+  },
+  nceiHazelRunups(req: HazelRunupSearchRequest) {
+    return invoke<HazelRunupSearchResponse>("ncei_hazel_runups", { req });
   },
   usgsRecentEarthquakes() {
     return invoke<UsgsRecentEarthquakesResponse>("usgs_recent_earthquakes");

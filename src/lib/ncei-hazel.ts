@@ -33,9 +33,47 @@ export type HazelEventSearchResponse = {
   totalItems: number;
 };
 
+export type HazelRunupSearchRequest = {
+  eventId: number;
+};
+
+export type HazelRunupObservation = {
+  id: number;
+  year?: number | null;
+  month?: number | null;
+  day?: number | null;
+  tsunamiEventId?: number | null;
+  country?: string | null;
+  locationName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  runupHt?: number | null;
+  typeMeasurementId?: number | null;
+  doubtful?: string | null;
+  sourceEventValidity?: number | null;
+  sourceEqMagnitude?: number | null;
+  distFromSource?: number | null;
+  arrDay?: number | null;
+  arrHour?: number | null;
+  arrMin?: number | null;
+  travHours?: number | null;
+  travMins?: number | null;
+};
+
+export type HazelRunupSearchResponse = {
+  items: HazelRunupObservation[];
+  page: number;
+  totalPages: number;
+  itemsPerPage: number;
+  totalItems: number;
+  sampledItems: number;
+  truncated: boolean;
+};
+
 export type HistoricalScenarioImport = {
   scenario: ScenarioInput;
   provenanceNote: string;
+  hazelEventId: number;
 };
 
 export type SearchParseResult =
@@ -131,5 +169,6 @@ export function historicalEventImport(event: HazelTsunamiEvent): HistoricalScena
       },
     },
     provenanceNote: `Imported NOAA/NCEI HazEL event ${event.id}: ${date}, ${place}. HazEL supplied M_w ${magnitude.toFixed(1)} and epicentre ${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°. Fault geometry, slip, depth, and water depth remain Cataclysm defaults and must be reviewed before simulation. Historical records can contain location, datum, transcription, or classification uncertainty. Source: Global Historical Tsunami Database (doi:10.7289/V5PN93H7).`,
+    hazelEventId: event.id,
   };
 }
