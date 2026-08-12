@@ -2,6 +2,7 @@ import * as Cesium from "cesium";
 import type {
   GaugePrimitivePresentation,
   InundationPrimitivePresentation,
+  ObservedRunupPrimitivePresentation,
   RunupLabelPresentation,
   RunupOverlayHost,
   RunupPrimitivePresentation,
@@ -96,6 +97,42 @@ export class CesiumRunupOverlayHostAdapter implements CesiumRunupOverlayHost {
   removeRunupPrimitive(group: CesiumRunupPrimitiveGroup): void {
     this.releaseBuffer(group.rings);
     this.releaseEntities(group);
+  }
+
+  createObservedRunupPrimitive(
+    presentations: readonly ObservedRunupPrimitivePresentation[],
+  ): CesiumRunupPrimitiveGroup {
+    this.assertViewerAlive();
+    const entities: Cesium.Entity[] = [];
+    const groupId = this.nextGroupId("hazel-observed-runup");
+    try {
+      for (const presentation of presentations) {
+        const color = Cesium.Color.fromCssColorString(presentation.colorCss);
+        entities.push(this.viewer.entities.add({
+          id: `${groupId}:${presentation.id}`,
+          name: `${presentation.name} · observed runup ${presentation.runupM.toFixed(1)} m`,
+          position: Cesium.Cartesian3.fromDegrees(presentation.lon, presentation.lat),
+          point: {
+            pixelSize: presentation.pixelSize,
+            color: color.withAlpha(presentation.colorAlpha),
+            outlineColor: Cesium.Color.fromCssColorString(presentation.outlineColorCss).withAlpha(
+              presentation.outlineAlpha,
+            ),
+            outlineWidth: presentation.outlineWidth,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+        }));
+      }
+      return Object.assign(entities, { rings: null });
+    } catch (error) {
+      this.releaseEntities(entities);
+      throw error;
+    }
+  }
+
+  removeObservedRunupPrimitive(group: CesiumRunupPrimitiveGroup): void {
+    this.removeRunupPrimitive(group);
   }
 
   createInundationPrimitive(

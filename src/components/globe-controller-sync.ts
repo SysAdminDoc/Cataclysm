@@ -10,7 +10,10 @@ import type { DartBuoy, Gauge, InitialDisplacement, Isochrone, PropagationSnapsh
 import { commitReferenceFrame } from "../render/cesium/reference-frame-commit";
 import type { DirectEffectsController } from "../render/cesium/direct-effects";
 import type { OutcomeFocusController, OutcomeFocusRequest } from "../render/cesium/outcome-focus";
-import type { RunupOverlayController } from "../render/cesium/runup-overlay-controller";
+import type {
+  ObservedRunupOverlayInput,
+  RunupOverlayController,
+} from "../render/cesium/runup-overlay-controller";
 import type {
   CesiumGaugePrimitiveGroup,
   CesiumInundationPrimitiveGroup,
@@ -63,6 +66,7 @@ type ControllerState = Readonly<{
   isochrones?: Isochrone[] | null;
   dartBuoys?: DartBuoy[];
   runupResults?: RunupAtPointResult[];
+  observedRunup?: ObservedRunupOverlayInput[];
   gauges?: Gauge[];
   layerOpacity?: Readonly<{
     source: number;
@@ -112,6 +116,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
     isochrones,
     dartBuoys,
     runupResults,
+    observedRunup,
     gauges,
     layerOpacity,
     showDirectSource,
@@ -282,6 +287,7 @@ export function useGlobeControllerSync(refs: ControllerRefs, state: ControllerSt
       })),
       layerOpacity?.runup,
       layerOpacity?.runup,
+      observedRunup,
     );
-  }, [formatNumber, gauges, layerOpacity?.runup, runupOverlayControllerRef, runupResults, unitSystem, viewerEpoch]);
+  }, [formatNumber, gauges, layerOpacity?.runup, observedRunup, runupOverlayControllerRef, runupResults, unitSystem, viewerEpoch]);
 }

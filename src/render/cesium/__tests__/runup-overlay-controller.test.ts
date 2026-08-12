@@ -4,6 +4,7 @@ import {
   type GaugeOverlayInput,
   type GaugePrimitivePresentation,
   type InundationPrimitivePresentation,
+  type ObservedRunupPrimitivePresentation,
   type RunupLabelPresentation,
   type RunupOverlayHost,
   type RunupOverlayInput,
@@ -47,10 +48,12 @@ function gauge(overrides: Partial<GaugeOverlayInput> = {}): GaugeOverlayInput {
 function harness() {
   let nextId = 1;
   const runupPrimitives = new Set<Handle>();
+  const observedRunupPrimitives = new Set<Handle>();
   const inundationPrimitives = new Set<Handle>();
   const gaugePrimitives = new Set<Handle>();
   const labels = new Map<Handle, RunupLabelPresentation>();
   const runupBatches: RunupPrimitivePresentation[][] = [];
+  const observedRunupBatches: ObservedRunupPrimitivePresentation[][] = [];
   const inundationBatches: InundationPrimitivePresentation[][] = [];
   const gaugeBatches: GaugePrimitivePresentation[][] = [];
   let failInundation = false;
@@ -64,6 +67,15 @@ function harness() {
     },
     removeRunupPrimitive: (primitive) => {
       runupPrimitives.delete(primitive);
+    },
+    createObservedRunupPrimitive: (presentations) => {
+      const handle = { id: nextId++ };
+      observedRunupPrimitives.add(handle);
+      observedRunupBatches.push(presentations.map((presentation) => ({ ...presentation })));
+      return handle;
+    },
+    removeObservedRunupPrimitive: (primitive) => {
+      observedRunupPrimitives.delete(primitive);
     },
     createInundationPrimitive: (presentations) => {
       if (failInundation) throw new Error("inundation construction failed");
@@ -101,10 +113,12 @@ function harness() {
   return {
     controller,
     runupPrimitives,
+    observedRunupPrimitives,
     inundationPrimitives,
     gaugePrimitives,
     labels,
     runupBatches,
+    observedRunupBatches,
     inundationBatches,
     gaugeBatches,
     setFailInundation: (value: boolean) => {
@@ -117,6 +131,35 @@ function harness() {
 }
 
 describe("RunupOverlayController", () => {
+  it("keeps observed HazEL markers in a separate atomic primitive", () => {
+    const { controller, observedRunupBatches, observedRunupPrimitives } = harness();
+    controller.update([], [], 1, 1, [
+      { id: "hazel-2", name: "Zulu", lat: 2, lon: 3, runup_m: 2 },
+      { id: "hazel-1", name: "Alpha", lat: 1, lon: 2, runup_m: 1 },
+      { id: "bad", name: "", lat: 91, lon: 0, runup_m: 3 },
+    ]);
+    expect(observedRunupBatches[0].map((entry) => entry.id)).toEqual(["hazel-1", "hazel-2"]);
+    expect(observedRunupBatches[0][0]).toMatchObject({
+      colorCss: "#cba6f7",
+      runupM: 1,
+      pixelSize: 12,
+    });
+    expect(observedRunupPrimitives.size).toBe(1);
+    expect(controller.diagnostics()).toMatchObject({
+      ownedObservedRunupPrimitiveCount: 1,
+      currentObservedRunupItemCount: 2,
+      invalidInputCount: 1,
+      createdObservedRunupPrimitiveCount: 1,
+    });
+    controller.clear();
+    expect(observedRunupPrimitives.size).toBe(0);
+    expect(controller.diagnostics()).toMatchObject({
+      ownedObservedRunupPrimitiveCount: 0,
+      currentObservedRunupItemCount: 0,
+      removedObservedRunupPrimitiveCount: 1,
+    });
+  });
+
   it("applies independent opacity to runup and gauge primitives", () => {
     const { controller, runupBatches, inundationBatches, gaugeBatches } = harness();
     controller.update([point()], [gauge()], 0.5, 0.4);
