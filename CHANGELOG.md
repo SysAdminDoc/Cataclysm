@@ -6,6 +6,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ### Added
 
+- Added an opt-in NOAA/NCEI HazEL observed-runup comparison surface. Selected
+  historical events fetch bounded, paginated runup records through the native
+  bridge; valid observations render as a separate default-hidden Cesium layer
+  and compare to arrived modeled coastal points with deterministic nearest-point
+  residuals, RMSE/bias summaries, sampling disclosures, provenance citations,
+  and offline/browser-preview fallbacks. Solver output remains untouched.
 - Added a desktop-only Quick ETA action for tsunami scenarios. It requests the
   bounded Rust coarse-linear first-arrival product, renders it as a separate
   translucent globe layer, and labels the timing range and non-authoritative
