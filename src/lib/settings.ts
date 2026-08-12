@@ -50,6 +50,10 @@ export type Settings = {
    *  pin the visual configuration and hide token entry. Deliberately not a
    *  security boundary — Settings shows an explicit Unlock action. */
   classroom_locked: boolean;
+  /** Educational timeline sonification; deliberately disabled by default. */
+  sonification_enabled: boolean;
+  /** Master volume for the local Web Audio sonification, in [0, 1]. */
+  sonification_volume: number;
 };
 
 export const SETTINGS_SCHEMA_VERSION = currentUserDataSchemaVersion("settings");
@@ -72,6 +76,8 @@ const DEFAULTS: Settings = {
   lessons_completed: {},
   token_banner_dismissed_at: null,
   classroom_locked: false,
+  sonification_enabled: false,
+  sonification_volume: 0.35,
 };
 
 const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
@@ -91,6 +97,8 @@ const SETTINGS_KEY_LIST: readonly (keyof Settings)[] = [
   "lessons_completed",
   "token_banner_dismissed_at",
   "classroom_locked",
+  "sonification_enabled",
+  "sonification_volume",
 ];
 const SETTINGS_KEYS: ReadonlySet<string> = new Set<keyof Settings>(SETTINGS_KEY_LIST);
 const VISUAL_SETTINGS_KEYS: readonly (keyof Settings)[] = [
@@ -314,7 +322,13 @@ function normaliseSetting<K extends keyof Settings>(key: K, value: unknown): Set
       break;
     case "classroom_locked":
     case "renderer_auto_quality":
+    case "sonification_enabled":
       result = (typeof value === "boolean" ? value : undefined) as Settings[K] | undefined;
+      break;
+    case "sonification_volume":
+      result = (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1
+        ? value
+        : undefined) as Settings[K] | undefined;
       break;
     default:
       result = undefined;
@@ -928,6 +942,18 @@ export const settings = {
   async setClassroomLocked(locked: boolean): Promise<void> {
     return write("classroom_locked", locked);
   },
+  async getSonificationEnabled(): Promise<boolean> {
+    return read("sonification_enabled");
+  },
+  async setSonificationEnabled(enabled: boolean): Promise<void> {
+    return write("sonification_enabled", enabled);
+  },
+  async getSonificationVolume(): Promise<number> {
+    return read("sonification_volume");
+  },
+  async setSonificationVolume(volume: number): Promise<void> {
+    return write("sonification_volume", volume);
+  },
   async dismissTokenBanner(): Promise<void> {
     return write("token_banner_dismissed_at", new Date().toISOString());
   },
@@ -954,6 +980,8 @@ export const settings = {
       lessons_completed: await read("lessons_completed"),
       token_banner_dismissed_at: await read("token_banner_dismissed_at"),
       classroom_locked: await read("classroom_locked"),
+      sonification_enabled: await read("sonification_enabled"),
+      sonification_volume: await read("sonification_volume"),
     };
   },
   /** Persist a coherent settings patch. Every affected backend is snapshotted

@@ -15,6 +15,11 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   `BufferPointCollection` for batched inundation polygons, runup rings, and
   gauges. Older or partial runtimes retain the existing Entity path, and the
   overlay controller still replaces and releases each batch atomically.
+- Added opt-in local timeline sonification. While playback runs, existing SWE
+  amplitude/arrival values and direct-effect quantities drive a bounded Web
+  Audio tone with a Settings volume control; it is off by default, classroom
+  locks suppress it, and the accessible status explicitly distinguishes it
+  from operational alerting.
 - Replay export now offers a feature-detected deterministic H.264/MP4 path in
   the Export menu. It steps through all cached SWE frames only after Cesium
   confirms each frame is painted, reports frame-by-frame progress, and restores

@@ -36,6 +36,8 @@ type StagedSettings = {
   rendererQuality: RendererQualityTier;
   rendererAutoQuality: boolean;
   launchExperiencePolicy: LaunchExperiencePolicy;
+  sonificationEnabled: boolean;
+  sonificationVolume: number;
 };
 
 type Props = { onClose: () => void };
@@ -54,6 +56,8 @@ export function Settings({ onClose }: Props) {
   const [rendererQuality, setRendererQuality] = useState<RendererQualityTier>("High");
   const [rendererAutoQuality, setRendererAutoQuality] = useState(true);
   const [launchExperiencePolicy, setLaunchExperiencePolicy] = useState<LaunchExperiencePolicy>("first");
+  const [sonificationEnabled, setSonificationEnabled] = useState(false);
+  const [sonificationVolume, setSonificationVolume] = useState(0.35);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [settingsExportFailure, setSettingsExportFailure] = useState<Extract<ExportResult, { ok: false }> | null>(null);
@@ -98,6 +102,8 @@ export function Settings({ onClose }: Props) {
         setRendererQuality(s.renderer_quality);
         setRendererAutoQuality(s.renderer_auto_quality);
         setLaunchExperiencePolicy(s.launch_experience_policy);
+        setSonificationEnabled(s.sonification_enabled);
+        setSonificationVolume(s.sonification_volume);
         setClassroomLocked(s.classroom_locked);
         setAppliedSettings({
           token: s.cesium_token,
@@ -109,6 +115,8 @@ export function Settings({ onClose }: Props) {
           rendererQuality: s.renderer_quality,
           rendererAutoQuality: s.renderer_auto_quality,
           launchExperiencePolicy: s.launch_experience_policy,
+          sonificationEnabled: s.sonification_enabled,
+          sonificationVolume: s.sonification_volume,
         });
       })
       .catch((err) => {
@@ -126,6 +134,8 @@ export function Settings({ onClose }: Props) {
             rendererQuality: "High",
             rendererAutoQuality: true,
             launchExperiencePolicy: "first",
+            sonificationEnabled: false,
+            sonificationVolume: 0.35,
           });
         }
       })
@@ -165,6 +175,8 @@ export function Settings({ onClose }: Props) {
         renderer_quality: rendererQuality,
         renderer_auto_quality: rendererAutoQuality,
         launch_experience_policy: launchExperiencePolicy,
+        sonification_enabled: sonificationEnabled,
+        sonification_volume: sonificationVolume,
       };
       if (appliedSettings === null || trimmedToken !== appliedSettings.token) {
         patch.cesium_token = trimmedToken;
@@ -173,7 +185,7 @@ export function Settings({ onClose }: Props) {
       setTokenLocal(trimmedToken);
       primeCesiumToken(trimmedToken || null);
       applyTheme(theme);
-      setAppliedSettings({ token: trimmedToken, theme, locale, units, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy });
+      setAppliedSettings({ token: trimmedToken, theme, locale, units, globeStyle, colormapId, rendererQuality, rendererAutoQuality, launchExperiencePolicy, sonificationEnabled, sonificationVolume });
       setStatusMsg(translate(locale, "settings.applied", { time: new Date().toLocaleTimeString(LANGUAGE_TAGS[locale]) }));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
@@ -211,6 +223,8 @@ export function Settings({ onClose }: Props) {
     || rendererQuality !== appliedSettings.rendererQuality
     || rendererAutoQuality !== appliedSettings.rendererAutoQuality
     || launchExperiencePolicy !== appliedSettings.launchExperiencePolicy
+    || sonificationEnabled !== appliedSettings.sonificationEnabled
+    || sonificationVolume !== appliedSettings.sonificationVolume
   );
 
   function handleBackdropClick() {
@@ -261,6 +275,7 @@ export function Settings({ onClose }: Props) {
                 onClick={async () => {
                   await settings.setClassroomLocked(false);
                   setClassroomLocked(false);
+                  window.dispatchEvent(new CustomEvent("tsunamisim:settings-saved"));
                   setStatusMsg(t("settings.unlocked"));
                 }}
               >
@@ -525,6 +540,33 @@ export function Settings({ onClose }: Props) {
               )}
             </div>
           </section>
+          <section className="settings__section">
+            <h3 className="settings__h3">{t("settings.sonification")}</h3>
+            <p className="modal__intro">{t("settings.sonificationBody")}</p>
+            <label className="settings__toggle-row">
+              <input
+                type="checkbox"
+                checked={sonificationEnabled}
+                onChange={(event) => setSonificationEnabled(event.target.checked)}
+                disabled={classroomLocked}
+              />
+              <span><strong>{t("settings.sonificationEnabled")}</strong><small>{t("settings.sonificationNotAlerting")}</small></span>
+            </label>
+            <label className="settings__field">
+              <span>{t("settings.sonificationVolume")}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={sonificationVolume}
+                onChange={(event) => setSonificationVolume(Number(event.target.value))}
+                disabled={classroomLocked || !sonificationEnabled}
+                aria-label={t("settings.sonificationVolume")}
+              />
+              <output>{Math.round(sonificationVolume * 100)}%</output>
+            </label>
+          </section>
           </>
           )}
           {activeSection === "network" && <NetworkTrustPanel />}
@@ -637,6 +679,8 @@ export function Settings({ onClose }: Props) {
                       setRendererQuality(all.renderer_quality);
                       setRendererAutoQuality(all.renderer_auto_quality);
                       setLaunchExperiencePolicy(all.launch_experience_policy);
+                      setSonificationEnabled(all.sonification_enabled);
+                      setSonificationVolume(all.sonification_volume);
                       setClassroomLocked(all.classroom_locked);
                       setAppliedSettings({
                         token: all.cesium_token,
@@ -648,6 +692,8 @@ export function Settings({ onClose }: Props) {
                         rendererQuality: all.renderer_quality,
                         rendererAutoQuality: all.renderer_auto_quality,
                         launchExperiencePolicy: all.launch_experience_policy,
+                        sonificationEnabled: all.sonification_enabled,
+                        sonificationVolume: all.sonification_volume,
                       });
                       applyTheme(all.theme);
                       setSaveErr(null);
@@ -684,6 +730,8 @@ export function Settings({ onClose }: Props) {
                     setRendererQuality("High");
                     setRendererAutoQuality(true);
                     setLaunchExperiencePolicy("first");
+                    setSonificationEnabled(false);
+                    setSonificationVolume(0.35);
                     setClassroomLocked(false);
                     setAppliedSettings({
                       token: "",
@@ -695,6 +743,8 @@ export function Settings({ onClose }: Props) {
                       rendererQuality: "High",
                       rendererAutoQuality: true,
                       launchExperiencePolicy: "first",
+                      sonificationEnabled: false,
+                      sonificationVolume: 0.35,
                     });
                     applyTheme("mocha");
                     primeCesiumToken(null);

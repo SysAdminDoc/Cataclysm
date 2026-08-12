@@ -108,6 +108,8 @@ const SETTINGS_KEYS: readonly (keyof Settings)[] = [
   "lessons_completed",
   "token_banner_dismissed_at",
   "classroom_locked",
+  "sonification_enabled",
+  "sonification_volume",
 ];
 
 const DESKTOP_BASELINE: Settings = {
@@ -127,6 +129,8 @@ const DESKTOP_BASELINE: Settings = {
   lessons_completed: { baseline: "2026-07-04T00:00:00.000Z" },
   token_banner_dismissed_at: "2026-07-05T00:00:00.000Z",
   classroom_locked: true,
+  sonification_enabled: true,
+  sonification_volume: 0.6,
 };
 
 async function captureTransactionFailure(action: () => Promise<unknown>): Promise<SettingsTransactionError> {

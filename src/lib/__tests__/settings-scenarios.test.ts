@@ -27,6 +27,8 @@ const TRANSACTION_BASELINE: Settings = {
   lessons_completed: { baseline: "2026-07-04T00:00:00.000Z" },
   token_banner_dismissed_at: "2026-07-05T00:00:00.000Z",
   classroom_locked: true,
+  sonification_enabled: true,
+  sonification_volume: 0.6,
 };
 
 const APPLY_PATCH: Partial<Settings> = {

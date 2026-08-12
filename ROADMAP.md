@@ -11,13 +11,6 @@ Actionable work only. Historical and completed roadmap material is archived in C
   Acceptance: one `.gpkg` opens in the QGIS/GDAL versions pinned by an interoperability fixture with source/fault geometry, gauges/runup, arrival isochrones, applicable direct-effect polygons, CRS/datum, units, quality, citations, and source/data digests; table/geometry/row/size limits fail closed; a round-trip fixture verifies geometry and metadata without retaining another full run in memory.
   Complexity: M
 
-- [ ] P2 — Add event sonification as an engagement and non-visual accessibility channel
-  Why: the app is heavily visual with no audio; a WebAudio track (seismic rumble/P-S arrival, blast overpressure arrival, wave rumble) synchronised to the timeline is both an engagement feature no competitor offers and a genuine STEM-equity/accessibility win for blind and low-vision users, drawing on established seismic-sonification pedagogy.
-  Evidence: IRIS/Columbia earthquake sonification pedagogy https://www.earth.columbia.edu/videos/view/part-2-of-2-a-deep-dive-into-earthquake-sonification-with-python-grades-10-12; timeline/transport in `src/components/SwePlayback.tsx` and the transport bar.
-  Touches: WebAudio sonification module driven by solver/direct-effect series, transport coupling + mute/volume in Settings, reduced-motion/audio preference, accessibility copy, tests.
-  Acceptance: an opt-in audio layer maps modeled quantities (arrival, amplitude, energy) to sound synced to the scrubber; it is off by default, respects a mute/volume setting, is described in an accessible label, and never implies operational alerting.
-  Complexity: M
-
 - [ ] P2 — Add a firestorm ignition-zone and smoke-loft overlay
   Why: large nuclear/impact events deposit thermal energy that ignites mass fires whose lofted smoke drives the climate effect, but results stop at a static thermal ring; a distinct ignition-zone + smoke-plume overlay bridges the blast/thermal module to the tracked impact-winter timeline, and NUKEMAP's own 2026 roadmap is adding thermal+conflagration modelling.
   Evidence: NUKEMAP roadmap (thermal/conflagration) https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/; smoke-injection-height modelling https://docs.nlr.gov/docs/fy22osti/81470.pdf; existing thermal field in `src-tauri/src/physics/direct_hazard.rs`.

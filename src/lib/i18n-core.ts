@@ -1521,6 +1521,11 @@ const EN_MESSAGES = {
   "settings.autoPerformanceBody": "Uses rolling P95 frame time with hysteresis; never changes scientific data.",
   "settings.acceleration": "Simulation acceleration",
   "settings.accelerationIntro": "The shallow-water solver can use a compatible graphics processor in accelerated desktop builds. Hardware is checked when this panel opens.",
+  "settings.sonification": "Timeline sonification",
+  "settings.sonificationBody": "Optional local Web Audio maps modeled amplitude, energy, and arrival timing to an educational tone while the transport plays. It never indicates an operational alert.",
+  "settings.sonificationEnabled": "Enable timeline sonification",
+  "settings.sonificationNotAlerting": "Off by default; local only and not an emergency warning.",
+  "settings.sonificationVolume": "Sonification volume",
   "settings.status": "Status:",
   "settings.gpuAvailable": "Available — simulations will use the GPU.",
   "settings.gpuNoAdapter": "No usable adapter — falling back to CPU. Check Vulkan/Metal/D3D12 drivers.",
@@ -2240,6 +2245,9 @@ const EN_MESSAGES = {
   "perf.decision.performance_recovery": "performance recovery",
   "perf.decision.requested_cap": "requested quality cap",
   "perf.decision.gpu_loss": "GPU loss",
+  "sonification.status": "Sonification on",
+  "sonification.statusLabel": "Educational timeline sonification is active; this is not an operational alert.",
+  "sonification.classroomDisabled": "Sonification is disabled by classroom lock.",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -3751,6 +3759,11 @@ const ES_MESSAGES: MessageCatalog = {
   "settings.autoPerformanceBody": "Usa P95 móvil con histéresis; nunca cambia los datos científicos.",
   "settings.acceleration": "Aceleración de simulación",
   "settings.accelerationIntro": "El solver de aguas someras puede usar una GPU compatible en versiones de escritorio aceleradas. El hardware se comprueba al abrir este panel.",
+  "settings.sonification": "Sonificación de la línea temporal",
+  "settings.sonificationBody": "El Web Audio local opcional convierte la amplitud, la energía y el tiempo de llegada modelados en un tono educativo mientras se reproduce el transporte. Nunca indica una alerta operativa.",
+  "settings.sonificationEnabled": "Activar la sonificación de la línea temporal",
+  "settings.sonificationNotAlerting": "Desactivada de forma predeterminada; solo local y no es una advertencia de emergencia.",
+  "settings.sonificationVolume": "Volumen de sonificación",
   "settings.status": "Estado:",
   "settings.gpuAvailable": "Disponible: las simulaciones usarán la GPU.",
   "settings.gpuNoAdapter": "No hay adaptador utilizable; se usará CPU. Revisa los controladores Vulkan/Metal/D3D12.",
@@ -4470,6 +4483,9 @@ const ES_MESSAGES: MessageCatalog = {
   "perf.decision.performance_recovery": "recuperación de rendimiento",
   "perf.decision.requested_cap": "límite de calidad solicitado",
   "perf.decision.gpu_loss": "pérdida de GPU",
+  "sonification.status": "Sonificación activa",
+  "sonification.statusLabel": "La sonificación educativa de la línea temporal está activa; no es una alerta operativa.",
+  "sonification.classroomDisabled": "La sonificación está desactivada por el bloqueo del aula.",
 };
 
 const JA_MESSAGES: MessageCatalog = {
@@ -5978,6 +5994,11 @@ const JA_MESSAGES: MessageCatalog = {
   "settings.autoPerformanceBody": "移動P95フレーム時間とヒステリシスを使用し、科学データは変更しません。",
   "settings.acceleration": "シミュレーション高速化",
   "settings.accelerationIntro": "高速化対応デスクトップ版では浅水ソルバーが互換GPUを使用できます。このパネルを開くとハードウェアを確認します。",
+  "settings.sonification": "タイムラインの音響化",
+  "settings.sonificationBody": "オプションのローカルWeb Audioは、再生中にモデル化された振幅・エネルギー・到達時刻を教育用の音に変換します。運用上の警報を示すものではありません。",
+  "settings.sonificationEnabled": "タイムラインの音響化を有効にする",
+  "settings.sonificationNotAlerting": "デフォルトではオフ。ローカルのみで、緊急警報ではありません。",
+  "settings.sonificationVolume": "音響化の音量",
   "settings.status": "状態：",
   "settings.gpuAvailable": "利用可能：シミュレーションはGPUを使用します。",
   "settings.gpuNoAdapter": "利用できるGPUがないためCPUを使用します。Vulkan/Metal/D3D12ドライバーを確認してください。",
@@ -6697,6 +6718,9 @@ const JA_MESSAGES: MessageCatalog = {
   "perf.decision.performance_recovery": "性能回復",
   "perf.decision.requested_cap": "要求品質上限",
   "perf.decision.gpu_loss": "GPU消失",
+  "sonification.status": "音響化オン",
+  "sonification.statusLabel": "教育用タイムライン音響化が有効です。運用上の警報ではありません。",
+  "sonification.classroomDisabled": "教室ロックにより音響化は無効です。",
 };
 
 const ID_MESSAGES: MessageCatalog = {
@@ -8205,6 +8229,11 @@ const ID_MESSAGES: MessageCatalog = {
   "settings.autoPerformanceBody": "Memakai waktu bingkai P95 bergulir dengan histeresis; tidak mengubah data ilmiah.",
   "settings.acceleration": "Akselerasi simulasi",
   "settings.accelerationIntro": "Solver air dangkal dapat memakai GPU kompatibel pada build desktop terakselerasi. Perangkat keras diperiksa saat panel dibuka.",
+  "settings.sonification": "Sonifikasi linimasa",
+  "settings.sonificationBody": "Web Audio lokal opsional memetakan amplitudo, energi, dan waktu kedatangan yang dimodelkan menjadi nada edukatif saat transport diputar. Ini tidak pernah menunjukkan peringatan operasional.",
+  "settings.sonificationEnabled": "Aktifkan sonifikasi linimasa",
+  "settings.sonificationNotAlerting": "Nonaktif secara default; hanya lokal dan bukan peringatan darurat.",
+  "settings.sonificationVolume": "Volume sonifikasi",
   "settings.status": "Status:",
   "settings.gpuAvailable": "Tersedia — simulasi akan memakai GPU.",
   "settings.gpuNoAdapter": "Tidak ada adaptor yang dapat dipakai; kembali ke CPU. Periksa driver Vulkan/Metal/D3D12.",
@@ -8924,6 +8953,9 @@ const ID_MESSAGES: MessageCatalog = {
   "perf.decision.performance_recovery": "pemulihan kinerja",
   "perf.decision.requested_cap": "batas kualitas yang diminta",
   "perf.decision.gpu_loss": "kehilangan GPU",
+  "sonification.status": "Sonifikasi aktif",
+  "sonification.statusLabel": "Sonifikasi linimasa edukatif aktif; ini bukan peringatan operasional.",
+  "sonification.classroomDisabled": "Sonifikasi dinonaktifkan oleh kunci kelas.",
 };
 
 const CATALOGS: Record<Locale, MessageCatalog> = {

@@ -26,6 +26,7 @@ import { RunHistory } from "./components/RunHistory";
 import { CrashRecoveryNotice } from "./components/CrashRecoveryNotice";
 import { UiIcon } from "./components/UiIcon";
 import { settings, type WorkspaceMode, type ColormapId } from "./lib/settings";
+import { SonificationController, type SonificationFrame } from "./lib/sonification";
 import { useI18n } from "./lib/i18n";
 import { useUnits } from "./hooks/useUnits";
 import { formatLength, formatMassDensity, formatSpeed, quantityText } from "./lib/units";
@@ -447,6 +448,12 @@ export default function App() {
   const [presetsResult, setPresetsResult] = useState<AsyncResult<Preset[]>>({ status: "loading" });
   const presets = useMemo(() => asyncResultValue(presetsResult) ?? [], [presetsResult]);
   const [timeS, setTimeS] = useState<number>(15 * 60);
+  const [sonificationSettings, setSonificationSettings] = useState({
+    enabled: false,
+    volume: 0.35,
+    classroomLocked: false,
+  });
+  const sonificationRef = useRef(new SonificationController());
   const [showCitations, setShowCitations] = useState(false);
   const [showHistoricalBrowser, setShowHistoricalBrowser] = useState(false);
   const [showRecentEarthquakes, setShowRecentEarthquakes] = useState(false);
@@ -792,6 +799,58 @@ export default function App() {
     asteroidAftermath?.durationSeconds ?? sweSnapshots?.at(-1)?.time_s ?? 6 * 3600,
     1,
   );
+  const sonificationFrame = useMemo<SonificationFrame>(() => {
+    if (hazardMode !== "tsunami") {
+      const values = (directRenderFrame?.events ?? [])
+        .flatMap((event) => event.quantities.map((quantity) => quantity.value))
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const largest = values.reduce((maximum, value) => Math.max(maximum, value), 0);
+      const normalized = Math.min(1, Math.max(0, Math.log10(1 + largest) / 8));
+      const arrivalS = (directRenderFrame?.events ?? [])
+        .map((event) => event.start_tick * (directRenderFrame?.tick_duration_s ?? 0))
+        .filter((value) => Number.isFinite(value) && value >= 0)
+        .reduce<number | null>((earliest, value) => earliest === null ? value : Math.min(earliest, value), null);
+      return {
+        domain: hazardMode === "asteroid" || hazardMode === "nuclear" ? hazardMode : "tsunami",
+        timeS,
+        durationS: timelineDurationS,
+        amplitude: normalized,
+        energy: normalized * normalized,
+        arrivalS,
+        playing: timelinePlaying,
+      };
+    }
+
+    const snapshot = slotA.sweSnapshot;
+    const amplitudeM = snapshot?.eta_abs_max_m ?? 0;
+    const referenceM = Math.max(
+      Math.abs(slotA.initial?.peak_amplitude_m ?? 0),
+      sweMaxField?.peak_abs_max_m ?? 0,
+      0.1,
+    );
+    const amplitude = Math.min(1, Math.max(0, amplitudeM / referenceM));
+    const arrivalThreshold = Math.max(0.01, Math.abs(slotA.initial?.peak_amplitude_m ?? 0) * 0.02);
+    const arrivalS = sweSnapshots
+      ?.find((candidate) => candidate.eta_abs_max_m >= arrivalThreshold)
+      ?.time_s ?? null;
+    return {
+      domain: "tsunami",
+      timeS,
+      durationS: timelineDurationS,
+      amplitude,
+      energy: amplitude * amplitude,
+      arrivalS,
+      playing: timelinePlaying,
+    };
+  }, [directRenderFrame, hazardMode, slotA.initial, slotA.sweSnapshot, sweMaxField, sweSnapshots, timeS, timelineDurationS, timelinePlaying]);
+
+  useEffect(() => {
+    const controller = sonificationRef.current;
+    const active = sonificationSettings.enabled && !sonificationSettings.classroomLocked;
+    controller.setEnabled(active);
+    controller.setVolume(sonificationSettings.volume);
+    controller.sync(sonificationFrame);
+  }, [sonificationFrame, sonificationSettings]);
 
   useEffect(() => {
     const first = asteroidAftermath?.events[0];
@@ -852,6 +911,28 @@ export default function App() {
       /* keep the default legend */
     });
   }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const refreshSonificationSettings = () => {
+      settings.loadAll().then((current) => {
+        if (cancelled) return;
+        setSonificationSettings({
+          enabled: current.sonification_enabled,
+          volume: current.sonification_volume,
+          classroomLocked: current.classroom_locked,
+        });
+      }).catch((error) => {
+        console.warn("[settings] failed to load sonification settings", error);
+      });
+    };
+    refreshSonificationSettings();
+    window.addEventListener("tsunamisim:settings-saved", refreshSonificationSettings);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("tsunamisim:settings-saved", refreshSonificationSettings);
+    };
+  }, []);
+  useEffect(() => () => sonificationRef.current.destroy(), []);
   const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
     const now = performance.now();
     if (now - lastCameraUpdateAt.current < 100) return;
@@ -3613,6 +3694,22 @@ export default function App() {
         </div>
         <div className="statusbar__item statusbar__item--wide">
           {t("app.earthContract")}
+        </div>
+        <div
+          className="statusbar__item statusbar__item--wide"
+          data-sonification={sonificationSettings.enabled && !sonificationSettings.classroomLocked ? "active" : "off"}
+          aria-label={sonificationSettings.enabled && !sonificationSettings.classroomLocked
+            ? t("sonification.statusLabel")
+            : sonificationSettings.classroomLocked
+              ? t("sonification.classroomDisabled")
+              : t("settings.sonification")}
+        >
+          <UiIcon name="info" size={14} />
+          {sonificationSettings.enabled && !sonificationSettings.classroomLocked
+            ? t("sonification.status")
+            : sonificationSettings.classroomLocked
+              ? t("sonification.classroomDisabled")
+              : t("settings.sonification")}
         </div>
         <div className="statusbar__item statusbar__item--warning">
           <UiIcon name="alert" size={14} />

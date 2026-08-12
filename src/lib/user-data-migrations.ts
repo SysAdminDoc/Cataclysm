@@ -23,7 +23,7 @@ export type UserDataMigrationResult<T> = Readonly<{
 }>;
 
 const CURRENT_VERSIONS = {
-  settings: 6,
+  settings: 7,
   savedScenarios: 1,
   runArchive: 2,
 } as const satisfies Record<UserDataDomain, number>;
@@ -105,6 +105,13 @@ export const USER_DATA_MIGRATIONS: readonly UserDataMigration[] = Object.freeze(
     toVersion: 6,
     description: "add unit-system preference",
     migrate: addDefault("units", "metric"),
+  },
+  {
+    domain: "settings",
+    fromVersion: 6,
+    toVersion: 7,
+    description: "add opt-in timeline sonification settings",
+    migrate: (data) => addDefault("sonification_enabled", false)(addDefault("sonification_volume", 0.35)(data)),
   },
   {
     domain: "savedScenarios",
