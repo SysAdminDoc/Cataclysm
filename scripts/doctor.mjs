@@ -209,7 +209,7 @@ function runChecks(options = {}) {
     "Workspace path",
     risks.length === 0,
     risks.length === 0 ? cwd : risks.join(" "),
-    "Move the checkout to a local non-synced path such as C:\\Users\\--\\repos\\Cataclysm for best results.",
+    "Move the checkout to a local non-synced path such as C:\\repos\\Cataclysm for best results.",
   ));
 
   checks.push(makeCheck(
