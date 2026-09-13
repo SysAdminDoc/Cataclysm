@@ -8,8 +8,8 @@ Development-only and build-only packages are excluded.
 Application version: 0.14.2
 Generators: cargo-about 0.9.1; generate-license-file 4.2.1
 package-lock.json SHA-256: 69ca0b991dccd919a3cc6b91ebaf57db28beae6a698bac54830a5276893e475d
-src-tauri/Cargo.lock SHA-256: 32a0c21dd4891cfb30f6c2258b64e1d380c20291be6bdd66f060a4e342eb8f58
-Production components: 42 npm; 397 Rust
+src-tauri/Cargo.lock SHA-256: b916783bd5cb4d0099d441685f710d89afbd1e87571845fcde75c1c8951fa046
+Production components: 42 npm; 396 Rust
 
 
 NPM PRODUCTION INVENTORY
@@ -391,10 +391,6 @@ codespan-reporting@0.13.1
 Declared SPDX: Apache-2.0
 Source: https://github.com/brendanzab/codespan
 
-concurrent-queue@2.5.0
-Declared SPDX: Apache-2.0 OR MIT
-Source: https://github.com/smol-rs/concurrent-queue
-
 convert_case@0.10.0
 Declared SPDX: MIT
 Source: https://github.com/rutrum/convert-case
@@ -535,7 +531,7 @@ event-listener-strategy@0.5.4
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/smol-rs/event-listener-strategy
 
-event-listener@5.4.1
+event-listener@5.4.2
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/smol-rs/event-listener
 
@@ -10070,7 +10066,7 @@ limitations under the License.
 -------------------------------------------------------------------------------
 
 Apache License 2.0 (Apache-2.0)
-Applies to: arrayvec@0.7.8, async-lock@3.4.2, atomic-waker@1.1.2, base64@0.22.1, bitflags@1.3.2, bitflags@2.13.0, camino@1.2.4, cfg-if@1.0.4, concurrent-queue@2.5.0, crossbeam-channel@0.5.16, crossbeam-deque@0.8.7, crossbeam-epoch@0.9.20, crossbeam-utils@0.8.22, displaydoc@0.2.6, either@1.16.0, equivalent@1.0.2, event-listener-strategy@0.5.4, event-listener@5.4.1, fastrand@2.4.1, flate2@1.1.9, fnv@1.0.7, form_urlencoded@1.2.2, glob@0.3.3, hashbrown@0.16.1, hashbrown@0.17.1, heck@0.5.0, html5ever@0.38.0, httparse@1.10.1, hyper-rustls@0.27.9, idna_adapter@1.2.1, idna@1.1.0, indexmap@2.14.0, itertools@0.14.0, jpeg-decoder@0.3.2, lock_api@0.4.14, log@0.4.33, markup5ever@0.38.0, matrixmultiply@0.3.11, mime@0.3.17, muda@0.19.3, ndarray@0.17.2, num-bigint@0.4.8, num-complex@0.4.6, num-integer@0.1.46, num-iter@0.1.46, num-rational@0.4.2, num-traits@0.2.19, num@0.4.3, once_cell@1.21.4, parking_lot_core@0.9.12, parking_lot@0.12.5, parking@2.2.1, percent-encoding@2.3.2, png@0.17.16, pollster@0.4.0, rawpointer@0.2.1, rayon-core@1.13.0, rayon@1.12.0, regex-automata@0.4.15, regex-syntax@0.8.11, regex@1.13.0, renderdoc-sys@1.1.0, rustc-hash@1.1.0, rustls@0.23.42, scopeguard@1.2.0, serde_with_macros@3.17.0, serde_with@3.17.0, servo_arc@0.4.3, smallvec@1.15.2, socket2@0.6.4, stable_deref_trait@1.2.1, string_cache@0.9.0, tendril@0.5.1, thread_local@1.1.10, unicode-segmentation@1.13.3, unicode-width@0.2.2, unicode-xid@0.2.6, url@2.5.8, uuid@1.23.4, web_atoms@0.2.5, window-vibrancy@0.6.0, wry@0.55.1
+Applies to: arrayvec@0.7.8, async-lock@3.4.2, atomic-waker@1.1.2, base64@0.22.1, bitflags@1.3.2, bitflags@2.13.0, camino@1.2.4, cfg-if@1.0.4, crossbeam-channel@0.5.16, crossbeam-deque@0.8.7, crossbeam-epoch@0.9.20, crossbeam-utils@0.8.22, displaydoc@0.2.6, either@1.16.0, equivalent@1.0.2, event-listener-strategy@0.5.4, event-listener@5.4.2, fastrand@2.4.1, flate2@1.1.9, fnv@1.0.7, form_urlencoded@1.2.2, glob@0.3.3, hashbrown@0.16.1, hashbrown@0.17.1, heck@0.5.0, html5ever@0.38.0, httparse@1.10.1, hyper-rustls@0.27.9, idna_adapter@1.2.1, idna@1.1.0, indexmap@2.14.0, itertools@0.14.0, jpeg-decoder@0.3.2, lock_api@0.4.14, log@0.4.33, markup5ever@0.38.0, matrixmultiply@0.3.11, mime@0.3.17, muda@0.19.3, ndarray@0.17.2, num-bigint@0.4.8, num-complex@0.4.6, num-integer@0.1.46, num-iter@0.1.46, num-rational@0.4.2, num-traits@0.2.19, num@0.4.3, once_cell@1.21.4, parking_lot_core@0.9.12, parking_lot@0.12.5, parking@2.2.1, percent-encoding@2.3.2, png@0.17.16, pollster@0.4.0, rawpointer@0.2.1, rayon-core@1.13.0, rayon@1.12.0, regex-automata@0.4.15, regex-syntax@0.8.11, regex@1.13.0, renderdoc-sys@1.1.0, rustc-hash@1.1.0, rustls@0.23.42, scopeguard@1.2.0, serde_with_macros@3.17.0, serde_with@3.17.0, servo_arc@0.4.3, smallvec@1.15.2, socket2@0.6.4, stable_deref_trait@1.2.1, string_cache@0.9.0, tendril@0.5.1, thread_local@1.1.10, unicode-segmentation@1.13.3, unicode-width@0.2.2, unicode-xid@0.2.6, url@2.5.8, uuid@1.23.4, web_atoms@0.2.5, window-vibrancy@0.6.0, wry@0.55.1
 Text SHA-256: 769f80b5bcb42ed0af4e4d2fd74e1ac9bf843cb80c5a29219d1ef3544428a6bb
 
                               Apache License
