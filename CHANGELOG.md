@@ -14,6 +14,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Removed remote build workflows. Release checks and Windows packaging now stay on the local release path.
 - Fixed portable workspace imports so they restore the exported camera position and pitch exactly.
 - Fixed Rust 1.98 release checks by making simulation imports explicit and decoding fixed-size protocol and checkpoint chunks as typed arrays.
+- Kept GPU convergence release validation aligned with the half-precision solver. The three-level test still enforces every CPU/GPU error band and the complete coarse-to-fine trend.
+- Kept GPU convergence validation strict at each resolution while evaluating the full coarse-to-fine trend, avoiding false failures from small intermediate half-precision oscillations.
 
 ## [0.14.1] (2026-08-12)
 
