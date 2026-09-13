@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -8,9 +8,11 @@ import {
   assertInstalledSmokeHost,
   findWindowsInstallers,
   parseRegistryOutput,
+  retainInstallerLogs,
   runtimeErrorLines,
   sanitizeLog,
   validateNativePanicRecord,
+  WINDOWS_INSTALLER_REGISTRY_SCRIPT,
 } from "./installed-release-smoke.mjs";
 
 test("registry output accepts empty, singleton, and array payloads", () => {
@@ -22,6 +24,12 @@ test("registry output accepts empty, singleton, and array payloads", () => {
   assert.deepEqual(parseRegistryOutput('[{"DisplayName":"Cataclysm"}]'), [
     { DisplayName: "Cataclysm" },
   ]);
+});
+
+test("registry discovery includes current-user Windows Installer products", () => {
+  assert.match(WINDOWS_INSTALLER_REGISTRY_SCRIPT, /WindowsIdentity.*GetCurrent\(\).*User\.Value/);
+  assert.match(WINDOWS_INSTALLER_REGISTRY_SCRIPT, /Installer\\UserData\\\$userSid\\Products/);
+  assert.match(WINDOWS_INSTALLER_REGISTRY_SCRIPT, /InstallProperties/);
 });
 
 test("installed smoke refuses non-isolated or occupied Windows hosts", () => {
@@ -86,6 +94,27 @@ test("release logs redact machine paths and URL credentials", () => {
   assert.doesNotMatch(sanitized, /alice|secret/);
   assert.match(sanitized, /<home>/);
   assert.match(sanitized, /<credentials>/);
+});
+
+test("MSI logs survive temporary-directory cleanup in sanitized UTF-8", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cataclysm-installer-log-fixture-"));
+  const packageTempRoot = path.join(root, "temp");
+  const packageArtifactRoot = path.join(root, "artifact");
+  try {
+    mkdirSync(packageTempRoot);
+    const original = `Installation completed successfully at ${os.homedir()}\\Cataclysm\r\n`;
+    writeFileSync(
+      path.join(packageTempRoot, "msi-install.log"),
+      Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(original, "utf16le")]),
+    );
+    assert.deepEqual(retainInstallerLogs(packageTempRoot, packageArtifactRoot), ["msi-install.log"]);
+    const retained = readFileSync(path.join(packageArtifactRoot, "msi-install.log"), "utf8");
+    assert.match(retained, /Installation completed successfully/);
+    assert.doesNotMatch(retained, new RegExp(os.homedir().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
+    assert.equal(retained.includes("\u0000"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("runtime error scan is narrow to renderer and protocol failures", () => {

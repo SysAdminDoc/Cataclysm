@@ -1,7 +1,7 @@
 [package]
 name = "cataclysm"
-version = "0.14.2"
-description = "Cataclysm — scientifically grounded 3D-globe multi-hazard disaster simulator (asteroid, nuclear, earthquake, landslide, tsunami)"
+version = "0.14.3"
+description = "Cataclysm: scientifically grounded 3D-globe multi-hazard disaster simulator (asteroid, nuclear, earthquake, landslide, tsunami)"
 authors = ["SysAdminDoc"]
 license = "MIT"
 repository = "https://github.com/SysAdminDoc/Cataclysm"

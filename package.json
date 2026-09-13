@@ -1,7 +1,7 @@
 {
   "name": "cataclysm",
   "private": true,
-  "version": "0.14.2",
+  "version": "0.14.3",
   "type": "module",
   "description": "A scientifically grounded 3D-globe simulator for tsunamis, asteroid impacts, nuclear detonations, earthquakes, and landslides.",
   "license": "MIT",

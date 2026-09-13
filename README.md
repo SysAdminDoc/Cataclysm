@@ -2,7 +2,7 @@
 
 # Cataclysm
 
-[![Version](https://img.shields.io/badge/version-0.14.2-24b7d3.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.14.3-24b7d3.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-3fb950.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-5c9ded.svg)](#install-cataclysm)
 [![Stack](https://img.shields.io/badge/Tauri_2-React_19_%2B_Rust-f0a35b.svg)](#architecture)
@@ -12,7 +12,7 @@ Cataclysm is a local-first desktop simulator for planetary hazards. Recreate a d
 
 It brings tsunami propagation, asteroid impacts, nuclear detonations, earthquakes, landslides, and volcanic collapse into one inspectable workspace. Results keep their assumptions, model references, data identity, and uncertainty notes close at hand.
 
-**[Download Cataclysm v0.14.2 for Windows](https://github.com/SysAdminDoc/Cataclysm/releases/latest)**
+**[Download Cataclysm v0.14.3 for Windows](https://github.com/SysAdminDoc/Cataclysm/releases/latest)**
 
 > Cataclysm is an educational and research tool. It is not a forecast, warning, evacuation map, weapons-effects authority, or personal safety guide.
 
@@ -87,12 +87,12 @@ For real tsunami warnings, use the official NOAA National Tsunami Warning Center
 
 ### Windows
 
-The v0.14.2 Windows installers are available on [GitHub Releases](https://github.com/SysAdminDoc/Cataclysm/releases/latest). Standard MSI and NSIS packages are the smallest option. Separately labeled offline installers include the WebView2 Evergreen installer for machines that do not already have it.
+The v0.14.3 Windows installers are available on [GitHub Releases](https://github.com/SysAdminDoc/Cataclysm/releases/latest). MSI and NSIS packages install for the current Windows user without an administrator prompt. Standard packages are the smallest option. Separately labeled offline installers include the WebView2 Evergreen installer for machines that do not already have it.
 
 Releases are built locally and are currently unsigned. Windows may show an unknown-publisher warning. Each release includes SHA256 checksums, CycloneDX software bills of materials, and build provenance.
 
 ```powershell
-(Get-FileHash .\Cataclysm_0.14.2_x64_en-US.msi -Algorithm SHA256).Hash
+(Get-FileHash .\Cataclysm_0.14.3_x64_en-US.msi -Algorithm SHA256).Hash
 ```
 
 Compare that value with `checksums-sha256.txt` from the same release.

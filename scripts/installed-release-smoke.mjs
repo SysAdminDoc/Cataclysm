@@ -28,7 +28,7 @@ const EXECUTABLE_NAME = "cataclysm.exe";
 const WEBDRIVER_ELEMENT_KEY = "element-6066-11e4-a52e-4f735466cecf";
 const KEYCHAIN_SENTINEL = "cataclysm-installed-release-smoke-sentinel";
 let webdriverSessionSequence = 0;
-const REGISTRY_SCRIPT = String.raw`
+export const WINDOWS_INSTALLER_REGISTRY_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
 $roots = @(
   'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall',
@@ -48,6 +48,24 @@ foreach ($root in $roots) {
         UninstallString = [string]$entry.UninstallString
         QuietUninstallString = [string]$entry.QuietUninstallString
         RegistryPath = [string]$key.Name
+      }
+    }
+  }
+}
+$userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$msiProductsRoot = "Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Installer\UserData\$userSid\Products"
+if (Test-Path -LiteralPath $msiProductsRoot) {
+  foreach ($productKey in Get-ChildItem -LiteralPath $msiProductsRoot -ErrorAction SilentlyContinue) {
+    $installPropertiesPath = Join-Path $productKey.PSPath 'InstallProperties'
+    $entry = Get-ItemProperty -LiteralPath $installPropertiesPath -ErrorAction SilentlyContinue
+    if ($entry.DisplayName -eq 'Cataclysm') {
+      $items += [pscustomobject]@{
+        DisplayName = [string]$entry.DisplayName
+        DisplayVersion = [string]$entry.DisplayVersion
+        InstallLocation = [string]$entry.InstallLocation
+        UninstallString = [string]$entry.UninstallString
+        QuietUninstallString = [string]$entry.QuietUninstallString
+        RegistryPath = [string]$installPropertiesPath
       }
     }
   }
@@ -163,7 +181,7 @@ function installerRegistryEntries() {
     "-ExecutionPolicy",
     "Bypass",
     "-Command",
-    REGISTRY_SCRIPT,
+    WINDOWS_INSTALLER_REGISTRY_SCRIPT,
   ]);
   return parseRegistryOutput(result.stdout);
 }
@@ -240,6 +258,27 @@ export function sanitizeLog(value, home = os.homedir()) {
     .replace(/https?:\/\/[^\s/@:]+:[^\s/@]+@/gi, "https://<credentials>@")
     .replace(/(?:[A-Za-z]:\\|\\\\)[^\r\n"']+/g, "<path>");
   return sanitized;
+}
+
+function readInstallerLog(filePath) {
+  const bytes = readFileSync(filePath);
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return bytes.subarray(2).toString("utf16le");
+  }
+  return bytes.toString("utf8");
+}
+
+export function retainInstallerLogs(packageTempRoot, packageArtifactRoot) {
+  const retained = [];
+  mkdirSync(packageArtifactRoot, { recursive: true });
+  for (const name of ["msi-install.log", "msi-uninstall.log"]) {
+    const source = path.join(packageTempRoot, name);
+    if (!existsSync(source)) continue;
+    const content = sanitizeLog(readInstallerLog(source)).trimEnd();
+    writeFileSync(path.join(packageArtifactRoot, name), `${content}\n`);
+    retained.push(name);
+  }
+  return retained;
 }
 
 export function runtimeErrorLines(lines) {
@@ -847,6 +886,7 @@ export async function runInstalledReleaseSmoke(options = {}) {
           kind: pkg.kind,
           variant: pkg.variant,
           webview_install_mode: classifyWindowsInstaller(pkg.installerPath)?.webview_install_mode,
+          install_scope: classifyWindowsInstaller(pkg.installerPath)?.install_scope,
           installer: path.relative(bundleRoot, pkg.installerPath).replaceAll("\\", "/"),
           installed_version: installed.entry.DisplayVersion,
           capability_probe: probe,
@@ -854,15 +894,19 @@ export async function runInstalledReleaseSmoke(options = {}) {
           uninstalled_cleanly: false,
         });
       } finally {
-        const cleanupEntry = installed?.entry ?? installerRegistryEntries()[0] ?? null;
-        if (cleanupEntry) {
-          uninstallPackage(pkg, installRoot, packageTempRoot, cleanupEntry);
-          const packageReport = report.packages.find(
-            (entry) => entry.kind === pkg.kind && entry.variant === pkg.variant,
-          );
-          if (packageReport) packageReport.uninstalled_cleanly = true;
+        try {
+          const cleanupEntry = installed?.entry ?? installerRegistryEntries()[0] ?? null;
+          if (cleanupEntry) {
+            uninstallPackage(pkg, installRoot, packageTempRoot, cleanupEntry);
+            const packageReport = report.packages.find(
+              (entry) => entry.kind === pkg.kind && entry.variant === pkg.variant,
+            );
+            if (packageReport) packageReport.uninstalled_cleanly = true;
+          }
+        } finally {
+          retainInstallerLogs(packageTempRoot, packageArtifactRoot);
+          if (existsSync(installRoot)) safeRemoveTree(installParent, installRoot);
         }
-        if (existsSync(installRoot)) safeRemoveTree(installParent, installRoot);
       }
     }
   } catch (error) {

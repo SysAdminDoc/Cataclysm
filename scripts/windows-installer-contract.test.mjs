@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   MIN_OFFLINE_INSTALLER_OVERHEAD_BYTES,
+  WINDOWS_INSTALL_SCOPE,
+  WIX_TEMPLATE,
   assertWindowsInstallerMatrix,
   classifyWindowsInstaller,
   formatWindowsInstallerChecksums,
@@ -22,18 +24,28 @@ test("installer configs keep the small default and an Evergreen offline variant"
     standard: "downloadBootstrapper",
     offline: "offlineInstaller",
     runtime_servicing: "evergreen",
+    install_scope: "currentUser",
   });
   assert.deepEqual(validateWindowsInstallerConfigs(
-    { bundle: { windows: { webviewInstallMode: { type: "downloadBootstrapper" } } } },
+    { bundle: { windows: {
+      webviewInstallMode: { type: "downloadBootstrapper" },
+      wix: { template: WIX_TEMPLATE },
+      nsis: { installMode: WINDOWS_INSTALL_SCOPE },
+    } } },
     { bundle: { windows: { webviewInstallMode: { type: "offlineInstaller" } } } },
   ), {
     standard: "downloadBootstrapper",
     offline: "offlineInstaller",
     runtime_servicing: "evergreen",
+    install_scope: "currentUser",
   });
   assert.throws(
     () => validateWindowsInstallerConfigs(
-      { bundle: { windows: { webviewInstallMode: { type: "downloadBootstrapper" } } } },
+      { bundle: { windows: {
+        webviewInstallMode: { type: "downloadBootstrapper" },
+        wix: { template: WIX_TEMPLATE },
+        nsis: { installMode: WINDOWS_INSTALL_SCOPE },
+      } } },
       { bundle: { windows: { webviewInstallMode: { type: "fixedRuntime", path: "runtime" } } } },
     ),
     /offlineInstaller/,
@@ -44,6 +56,20 @@ test("installer configs keep the small default and an Evergreen offline variant"
   assert.match(releaseBuilder, /"--no-sign"/);
   assert.match(releaseBuilder, /tauri\.offline\.conf\.json/);
   assert.match(releaseBuilder, /assertWindowsInstallerMatrix/);
+  const wixTemplate = readFileSync(path.join(repoRoot, "src-tauri", WIX_TEMPLATE), "utf8");
+  assert.match(wixTemplate, /InstallScope="perUser"/);
+  assert.equal(
+    wixTemplate.includes('Key="Software\\\\{{manufacturer}}\\\\{{product_name}}"'),
+    true,
+  );
+  assert.equal(
+    wixTemplate.includes('Root="HKCU" Key="Software\\Classes\\\\{{protocol}}"'),
+    true,
+  );
+  assert.equal(
+    wixTemplate.includes('Root="HKLM" Key="Software\\Classes\\\\{{protocol}}"'),
+    false,
+  );
 });
 
 test("installer names and metadata distinguish standard from offline", () => {
@@ -53,6 +79,7 @@ test("installer names and metadata distinguish standard from offline", () => {
     webview_install_mode: "downloadBootstrapper",
     requires_network_for_missing_runtime: true,
     runtime_servicing: "evergreen",
+    install_scope: "currentUser",
   });
   assert.deepEqual(classifyWindowsInstaller("nsis/Cataclysm_1.2.3_x64_offline-setup.exe"), {
     format: "nsis",
@@ -60,6 +87,7 @@ test("installer names and metadata distinguish standard from offline", () => {
     webview_install_mode: "offlineInstaller",
     requires_network_for_missing_runtime: false,
     runtime_servicing: "evergreen",
+    install_scope: "currentUser",
   });
   assert.equal(offlineInstallerName("Cataclysm_1.2.3_x64_en-US.msi"), "Cataclysm_1.2.3_x64_en-US_offline.msi");
   assert.equal(offlineInstallerName("Cataclysm_1.2.3_x64-setup.exe"), "Cataclysm_1.2.3_x64_offline-setup.exe");

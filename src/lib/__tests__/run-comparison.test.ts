@@ -124,7 +124,7 @@ describe("historical result normalization", () => {
     });
     const current = await archived({
       id: "run-current",
-      appVersion: "0.14.2",
+      appVersion: "0.14.3",
       parentRunId: historical.id,
       peak: 3,
       gauge: 2,

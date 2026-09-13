@@ -200,6 +200,7 @@ function buildManifest(probe, installedSmoke) {
         webview_install_mode: installer.webview_install_mode,
         requires_network_for_missing_runtime: installer.requires_network_for_missing_runtime,
         runtime_servicing: installer.runtime_servicing,
+        install_scope: installer.install_scope,
         bytes: installer.bytes,
         sha256: sha256(installer.file),
       })),

@@ -5,6 +5,8 @@ export const WINDOWS_INSTALLER_FORMATS = Object.freeze(["msi", "nsis"]);
 export const STANDARD_WEBVIEW_INSTALL_MODE = "downloadBootstrapper";
 export const OFFLINE_WEBVIEW_INSTALL_MODE = "offlineInstaller";
 export const WEBVIEW_RUNTIME_SERVICING = "evergreen";
+export const WINDOWS_INSTALL_SCOPE = "currentUser";
+export const WIX_TEMPLATE = "windows/wix/main-per-user.wxs";
 export const MIN_OFFLINE_INSTALLER_OVERHEAD_BYTES = 80 * 1024 * 1024;
 
 export function classifyWindowsInstaller(filePath) {
@@ -25,6 +27,7 @@ export function classifyWindowsInstaller(filePath) {
       : STANDARD_WEBVIEW_INSTALL_MODE,
     requires_network_for_missing_runtime: variant !== "offline",
     runtime_servicing: WEBVIEW_RUNTIME_SERVICING,
+    install_scope: WINDOWS_INSTALL_SCOPE,
   };
 }
 
@@ -47,6 +50,14 @@ export function validateWindowsInstallerConfigs(standardConfig, offlineConfig) {
   if (offlineMode !== OFFLINE_WEBVIEW_INSTALL_MODE) {
     throw new Error(`Offline installer must use ${OFFLINE_WEBVIEW_INSTALL_MODE}; found ${offlineMode ?? "unset"}.`);
   }
+  const wixTemplate = standardConfig?.bundle?.windows?.wix?.template;
+  if (wixTemplate !== WIX_TEMPLATE) {
+    throw new Error(`MSI installer must use the reviewed per-user WiX template; found ${wixTemplate ?? "unset"}.`);
+  }
+  const nsisInstallMode = standardConfig?.bundle?.windows?.nsis?.installMode;
+  if (nsisInstallMode !== WINDOWS_INSTALL_SCOPE) {
+    throw new Error(`NSIS installer must use ${WINDOWS_INSTALL_SCOPE}; found ${nsisInstallMode ?? "unset"}.`);
+  }
   const serialized = JSON.stringify({ standardConfig, offlineConfig });
   if (/fixed(?:Version|Runtime)/i.test(serialized)) {
     throw new Error("Windows installer configs must retain Evergreen servicing and cannot bundle a fixed WebView2 runtime.");
@@ -55,6 +66,7 @@ export function validateWindowsInstallerConfigs(standardConfig, offlineConfig) {
     standard: STANDARD_WEBVIEW_INSTALL_MODE,
     offline: OFFLINE_WEBVIEW_INSTALL_MODE,
     runtime_servicing: WEBVIEW_RUNTIME_SERVICING,
+    install_scope: WINDOWS_INSTALL_SCOPE,
   };
 }
 

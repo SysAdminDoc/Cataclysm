@@ -2,6 +2,13 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] (2026-09-13)
+
+### Fixed
+
+- Changed the MSI and NSIS packages to current-user installs. Standard and offline installers no longer need an administrator prompt, and `cataclysm://` links register for the person who installed the app.
+- Extended the installed-package release gate to find per-user MSI registrations, probe the packaged GPU build, exercise the real desktop journey, and confirm clean removal for every installer.
+
 ## [0.14.2] (2026-09-13)
 
 ### Changed
