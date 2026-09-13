@@ -3,10 +3,12 @@ identifier = "scientific-queries"
 description = "Read presets, capabilities, probes, and deterministic scientific calculations without starting a long-running solver job."
 permissions = [
   "allow-asteroid-initial-conditions",
+  "allow-asteroid-deflection-estimate",
   "allow-nuclear-initial-conditions",
   "allow-landslide-initial-conditions",
   "allow-meteotsunami-initial-conditions",
   "allow-earthquake-initial-conditions",
+  "allow-volcanic-collapse-initial-conditions",
   "allow-far-field-amplitude",
   "allow-attenuation-curve",
   "allow-coastal-runup",
@@ -19,6 +21,7 @@ permissions = [
   "allow-asteroid-result-visuals",
   "allow-jpl-api-request",
   "allow-ncei-hazel-search",
+  "allow-ncei-hazel-runups",
   "allow-usgs-recent-earthquakes",
   "allow-usgs-earthquake-detail",
   "allow-lamb-wave-sample",
@@ -46,6 +49,9 @@ permissions = [
   "allow-simulate-nuclear-hazard",
   "allow-simulate-nuclear-hazard-render",
   "allow-save-scientific-export",
+  "allow-save-geopackage",
+  "allow-exploratory-wave-step",
+  "allow-clear-exploratory-wave",
 ]
 
 [[set]]

@@ -44,9 +44,8 @@ steps:
   assert.match(failures, /invalid\.yml:6: cargo --git install must use --rev/);
 });
 
-test("all live GitHub workflows satisfy the supply-chain contract", () => {
+test("repository does not ship GitHub workflows", () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const workflows = readWorkflowFiles(path.join(repoRoot, ".github", "workflows"));
-  assert.ok(Object.keys(workflows).length > 0, "expected at least one GitHub workflow");
-  assert.deepEqual(workflowSupplyChainFailures(workflows), []);
+  assert.deepEqual(workflows, {});
 });

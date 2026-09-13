@@ -1,9 +1,9 @@
 {
   "name": "cataclysm",
   "private": true,
-  "version": "0.14.1",
+  "version": "0.14.2",
   "type": "module",
-  "description": "Cataclysm — a scientifically grounded 3D-globe multi-hazard disaster simulator: asteroid impacts, nuclear detonations, earthquakes, landslides, and the tsunamis they generate.",
+  "description": "A scientifically grounded 3D-globe simulator for tsunamis, asteroid impacts, nuclear detonations, earthquakes, and landslides.",
   "license": "MIT",
   "author": "SysAdminDoc",
   "repository": {
@@ -45,7 +45,8 @@
     "test:browser-physics": "node scripts/build-browser-physics.mjs --check && node --test scripts/browser-physics.test.mjs",
     "test:pwa-contract": "node --test scripts/pwa-offline-contract.test.mjs",
     "test:installed-release": "node --test scripts/installed-release-smoke.test.mjs",
-    "test:release-contracts": "node --test scripts/deep-link-contract.test.mjs scripts/deps-check.test.mjs scripts/e2e-artifact-contract.test.mjs scripts/inline-style-contract.test.mjs scripts/network-trust-contract.test.mjs scripts/product-truth-contract.test.mjs scripts/provenance-contract.test.mjs scripts/release-artifact-contract.test.mjs scripts/support-code-contract.test.mjs scripts/version-contract.test.mjs scripts/windows-installer-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",
+    "test:marketing": "node --test scripts/marketing-assets.test.mjs",
+    "test:release-contracts": "node --test scripts/deep-link-contract.test.mjs scripts/deps-check.test.mjs scripts/e2e-artifact-contract.test.mjs scripts/inline-style-contract.test.mjs scripts/marketing-assets.test.mjs scripts/network-trust-contract.test.mjs scripts/product-truth-contract.test.mjs scripts/provenance-contract.test.mjs scripts/release-artifact-contract.test.mjs scripts/support-code-contract.test.mjs scripts/version-contract.test.mjs scripts/windows-installer-contract.test.mjs scripts/workflow-supply-chain-contract.test.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "capture:screenshots": "node scripts/capture-screenshots.mjs",
     "capture:references": "node scripts/capture-reference-scenes.mjs --record",
@@ -99,7 +100,7 @@
     "vitest": "^4.1.9"
   },
   "overrides": {
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.15",
     "esbuild": "^0.28.1"
   }
 }

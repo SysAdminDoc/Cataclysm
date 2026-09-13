@@ -61,6 +61,7 @@ describe("OutcomeFocusController", () => {
       heading_rad: 0,
       pitch_rad: -55 * Math.PI / 180,
       duration_s: 0.9,
+      camera_position: false,
     });
     expect(first).toMatchObject({
       generation: 4,
@@ -110,14 +111,16 @@ describe("OutcomeFocusController", () => {
     expect(host.cancellations).toBe(1);
     expect(controller.diagnostics.mode).toBe("instant");
 
-    controller.update(request({ request_id: "portable-package", instant: true }), {
+    controller.update(request({ request_id: "portable-package", instant: true, camera_position: true }), {
       reduced_motion: false,
       reference_capture: false,
     });
     expect(host.instantTargets).toHaveLength(2);
     expect(host.instantTargets[1].duration_s).toBe(0);
+    expect(host.instantTargets[1].camera_position).toBe(true);
     expect(host.flights).toEqual([]);
     expect(host.renders).toBe(2);
+    expect(host.shownTargets).toHaveLength(1);
   });
 
   it("rejects invalid place/time and destroys with no pending flight", () => {

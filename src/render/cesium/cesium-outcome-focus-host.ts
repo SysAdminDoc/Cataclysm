@@ -32,12 +32,23 @@ export class CesiumOutcomeFocusHost implements OutcomeFocusHost {
       };
       signal.addEventListener("abort", abort, { once: true });
       try {
-        this.#viewer.camera.flyToBoundingSphere(this.#sphere(target), {
+        const callbacks = {
           duration: target.duration_s,
-          offset: this.#offset(target),
           complete: () => finish(true),
           cancel: () => finish(false),
-        });
+        };
+        if (target.camera_position) {
+          this.#viewer.camera.flyTo({
+            ...callbacks,
+            destination: this.#cameraPosition(target),
+            orientation: this.#cameraOrientation(target),
+          });
+        } else {
+          this.#viewer.camera.flyToBoundingSphere(this.#sphere(target), {
+            ...callbacks,
+            offset: this.#offset(target),
+          });
+        }
       } catch (error) {
         signal.removeEventListener("abort", abort);
         reject(error);
@@ -48,7 +59,14 @@ export class CesiumOutcomeFocusHost implements OutcomeFocusHost {
   setCameraView(target: OutcomeFocusTarget): void {
     if (this.#viewer.isDestroyed()) return;
     this.#viewer.camera.cancelFlight();
-    this.#viewer.camera.viewBoundingSphere(this.#sphere(target), this.#offset(target));
+    if (target.camera_position) {
+      this.#viewer.camera.setView({
+        destination: this.#cameraPosition(target),
+        orientation: this.#cameraOrientation(target),
+      });
+    } else {
+      this.#viewer.camera.viewBoundingSphere(this.#sphere(target), this.#offset(target));
+    }
   }
 
   focusSimulationTime(time_s: number): void {
@@ -106,5 +124,17 @@ export class CesiumOutcomeFocusHost implements OutcomeFocusHost {
       target.pitch_rad,
       target.range_m,
     );
+  }
+
+  #cameraPosition(target: OutcomeFocusTarget): Cesium.Cartesian3 {
+    return Cesium.Cartesian3.fromDegrees(target.lon_deg, target.lat_deg, target.range_m);
+  }
+
+  #cameraOrientation(target: OutcomeFocusTarget) {
+    return {
+      heading: target.heading_rad,
+      pitch: target.pitch_rad,
+      roll: 0,
+    };
   }
 }

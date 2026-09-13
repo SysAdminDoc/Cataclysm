@@ -602,7 +602,7 @@ export default function App() {
   const [runJourney, setRunJourney] = useState<RunJourney | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple");
   const [customEditorOpen, setCustomEditorOpen] = useState(false);
-  const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0 });
+  const [cameraTelemetry, setCameraTelemetry] = useState({ lat: 0, lon: 0, altitudeM: 20_000_000, headingDeg: 0, pitchDeg: -90 });
   const [outcomeFocus, setOutcomeFocus] = useState<OutcomeFocusRequest | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [scenarioEditRequest, setScenarioEditRequest] = useState<{ id: number; scenario: ScenarioInput; provenanceNote?: string } | null>(null);
@@ -1003,7 +1003,7 @@ export default function App() {
     }
   }, [sonificationSettings, t]);
   useEffect(() => () => sonificationRef.current.destroy(), []);
-  const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => {
+  const handleCameraTelemetry = useCallback((telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number; pitchDeg: number }) => {
     const now = performance.now();
     if (now - lastCameraUpdateAt.current < 100) return;
     lastCameraUpdateAt.current = now;
@@ -1012,6 +1012,7 @@ export default function App() {
       && Math.abs(current.lon - telemetry.lon) < 0.005
       && Math.abs(current.altitudeM - telemetry.altitudeM) < 25
       && Math.abs(current.headingDeg - telemetry.headingDeg) < 0.25
+      && Math.abs(current.pitchDeg - telemetry.pitchDeg) < 0.25
         ? current
         : telemetry,
     );
@@ -1376,6 +1377,7 @@ export default function App() {
           lon: cameraTelemetry.lon,
           altitude_m: cameraTelemetry.altitudeM,
           heading_deg: cameraTelemetry.headingDeg,
+          pitch_deg: cameraTelemetry.pitchDeg,
         },
       },
       citations,
@@ -1615,6 +1617,7 @@ export default function App() {
         heading_deg: pendingPortableCamera.headingDeg,
         pitch_deg: pendingPortableCamera.pitchDeg,
         instant: true,
+        camera_position: true,
       });
       if (pendingPortableCamera.results) {
         setPortableResultsImport((current) => ({

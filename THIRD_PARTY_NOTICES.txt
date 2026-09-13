@@ -5,10 +5,10 @@ Generated deterministically from package-lock.json and src-tauri/Cargo.lock.
 Do not edit this artifact directly; run npm run generate:notices.
 Scope: production npm dependencies and Windows x86_64 GPU Rust runtime dependencies.
 Development-only and build-only packages are excluded.
-Application version: 0.14.1
+Application version: 0.14.2
 Generators: cargo-about 0.9.1; generate-license-file 4.2.1
-package-lock.json SHA-256: d3e822e7f24c04fe2815fba646637da2a9bf3600e4319dd5b91035b132100847
-src-tauri/Cargo.lock SHA-256: 3c75a591e9d04035d23d97230f0a703f789c395c257f39ca94e587b34da48920
+package-lock.json SHA-256: 69ca0b991dccd919a3cc6b91ebaf57db28beae6a698bac54830a5276893e475d
+src-tauri/Cargo.lock SHA-256: 32a0c21dd4891cfb30f6c2258b64e1d380c20291be6bdd66f060a4e342eb8f58
 Production components: 42 npm; 397 Rust
 
 
@@ -120,12 +120,12 @@ Declared SPDX: MIT
 Source: https://github.com/tj/commander.js
 Lock integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==
 
-dompurify@3.4.12
+dompurify@3.4.15
 Declared SPDX: (MPL-2.0 OR Apache-2.0)
 Resolved SPDX: Apache-2.0
 Override text SHA-256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
 Source: https://github.com/cure53/DOMPurify
-Lock integrity: sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==
+Lock integrity: sha512-EUBjM+B+lkDE41iE82DDSCfkoPGfXx8IxFxPMjNzm/Uk4xDet77rTN9wqlxlVg71kK7XGuUMv6wUxJUwwv+Xyw==
 
 draco3d@1.5.7
 Declared SPDX: Apache-2.0
@@ -307,11 +307,11 @@ base64@0.22.1
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/marshallpierce/rust-base64
 
-bit-set@0.8.0
+bit-set@0.10.0
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/contain-rs/bit-set
 
-bit-set@0.9.1
+bit-set@0.8.0
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/contain-rs/bit-set
 
@@ -371,7 +371,7 @@ cargo-platform@0.1.9
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/rust-lang/cargo
 
-cataclysm@0.14.1
+cataclysm@0.14.2
 Declared SPDX: MIT
 Source: https://github.com/SysAdminDoc/Cataclysm
 
@@ -539,6 +539,14 @@ event-listener@5.4.1
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/smol-rs/event-listener
 
+fallible-iterator@0.3.0
+Declared SPDX: MIT OR Apache-2.0
+Source: https://github.com/sfackler/rust-fallible-iterator
+
+fallible-streaming-iterator@0.1.9
+Declared SPDX: MIT OR Apache-2.0
+Source: https://github.com/sfackler/fallible-streaming-iterator
+
 fastrand@2.4.1
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/smol-rs/fastrand
@@ -554,10 +562,6 @@ Source: https://github.com/rust-lang/flate2-rs
 fnv@1.0.7
 Declared SPDX: Apache-2.0  OR  MIT
 Source: https://github.com/servo/rust-fnv
-
-foldhash@0.1.5
-Declared SPDX: Zlib
-Source: https://github.com/orlp/foldhash
 
 foldhash@0.2.0
 Declared SPDX: Zlib
@@ -631,21 +635,9 @@ gpu-allocator@0.28.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/Traverse-Research/gpu-allocator
 
-gpu-descriptor-types@0.2.0
-Declared SPDX: MIT OR Apache-2.0
-Source: https://github.com/zakarumych/gpu-descriptor
-
-gpu-descriptor@0.3.2
-Declared SPDX: MIT OR Apache-2.0
-Source: https://github.com/zakarumych/gpu-descriptor
-
 half@2.7.1
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/VoidStarKat/half-rs
-
-hashbrown@0.15.5
-Declared SPDX: MIT OR Apache-2.0
-Source: https://github.com/rust-lang/hashbrown
 
 hashbrown@0.16.1
 Declared SPDX: MIT OR Apache-2.0
@@ -666,10 +658,6 @@ Source: https://github.com/roteiro-gis/netcdf-rust
 heck@0.5.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/withoutboats/heck
-
-hexf-parse@0.2.1
-Declared SPDX: CC0-1.0
-Source: https://github.com/lifthrasiir/hexf
 
 html5ever@0.38.0
 Declared SPDX: MIT OR Apache-2.0
@@ -815,6 +803,10 @@ libm@0.2.16
 Declared SPDX: MIT
 Source: https://github.com/rust-lang/compiler-builtins
 
+libsqlite3-sys@0.38.2
+Declared SPDX: MIT
+Source: https://github.com/rusqlite/rusqlite
+
 litemap@0.8.2
 Declared SPDX: Unicode-3.0
 Source: https://github.com/unicode-org/icu4x
@@ -883,7 +875,11 @@ muda@0.19.3
 Declared SPDX: Apache-2.0 OR MIT
 Source: https://github.com/tauri-apps/muda
 
-naga@29.0.4
+naga-types@30.0.0
+Declared SPDX: MIT OR Apache-2.0
+Source: https://github.com/gfx-rs/wgpu
+
+naga@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
@@ -1126,6 +1122,10 @@ Source: https://github.com/seanmonstar/reqwest
 rfd@0.16.0
 Declared SPDX: MIT
 Source: https://github.com/PolyMeilex/rfd
+
+rusqlite@0.40.2
+Declared SPDX: MIT
+Source: https://github.com/rusqlite/rusqlite
 
 rustc-hash@1.1.0
 Declared SPDX: Apache-2.0 OR MIT
@@ -1587,27 +1587,27 @@ weezl@0.1.12
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/image-rs/weezl
 
-wgpu-core-deps-windows-linux-android@29.0.4
+wgpu-core-deps-windows-linux-android@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
-wgpu-core@29.0.4
+wgpu-core@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
-wgpu-hal@29.0.4
+wgpu-hal@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
-wgpu-naga-bridge@29.0.4
+wgpu-naga-bridge@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
-wgpu-types@29.0.4
+wgpu-types@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
-wgpu@29.0.4
+wgpu@30.0.0
 Declared SPDX: MIT OR Apache-2.0
 Source: https://github.com/gfx-rs/wgpu
 
@@ -2773,7 +2773,7 @@ Copyright (c) 2008-2014 Pivotal Labs
 
 -------------------------------------------------------------------------------
 
-Applies to: @cesium/wasm-splats@0.1.0-alpha.2, dompurify@3.4.12, draco3d@1.5.7, lerc@2.0.0, long@5.3.2
+Applies to: @cesium/wasm-splats@0.1.0-alpha.2, dompurify@3.4.15, draco3d@1.5.7, lerc@2.0.0, long@5.3.2
 Text SHA-256: 58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd
 
 
@@ -10070,7 +10070,7 @@ limitations under the License.
 -------------------------------------------------------------------------------
 
 Apache License 2.0 (Apache-2.0)
-Applies to: arrayvec@0.7.8, async-lock@3.4.2, atomic-waker@1.1.2, base64@0.22.1, bitflags@1.3.2, bitflags@2.13.0, camino@1.2.4, cfg-if@1.0.4, concurrent-queue@2.5.0, crossbeam-channel@0.5.16, crossbeam-deque@0.8.7, crossbeam-epoch@0.9.20, crossbeam-utils@0.8.22, displaydoc@0.2.6, either@1.16.0, equivalent@1.0.2, event-listener-strategy@0.5.4, event-listener@5.4.1, fastrand@2.4.1, flate2@1.1.9, fnv@1.0.7, form_urlencoded@1.2.2, glob@0.3.3, hashbrown@0.15.5, hashbrown@0.16.1, hashbrown@0.17.1, heck@0.5.0, html5ever@0.38.0, httparse@1.10.1, hyper-rustls@0.27.9, idna_adapter@1.2.1, idna@1.1.0, indexmap@2.14.0, itertools@0.14.0, jpeg-decoder@0.3.2, lock_api@0.4.14, log@0.4.33, markup5ever@0.38.0, matrixmultiply@0.3.11, mime@0.3.17, muda@0.19.3, ndarray@0.17.2, num-bigint@0.4.8, num-complex@0.4.6, num-integer@0.1.46, num-iter@0.1.46, num-rational@0.4.2, num-traits@0.2.19, num@0.4.3, once_cell@1.21.4, parking_lot_core@0.9.12, parking_lot@0.12.5, parking@2.2.1, percent-encoding@2.3.2, png@0.17.16, pollster@0.4.0, rawpointer@0.2.1, rayon-core@1.13.0, rayon@1.12.0, regex-automata@0.4.15, regex-syntax@0.8.11, regex@1.13.0, renderdoc-sys@1.1.0, rustc-hash@1.1.0, rustls@0.23.42, scopeguard@1.2.0, serde_with_macros@3.17.0, serde_with@3.17.0, servo_arc@0.4.3, smallvec@1.15.2, socket2@0.6.4, stable_deref_trait@1.2.1, string_cache@0.9.0, tendril@0.5.1, thread_local@1.1.10, unicode-segmentation@1.13.3, unicode-width@0.2.2, unicode-xid@0.2.6, url@2.5.8, uuid@1.23.4, web_atoms@0.2.5, window-vibrancy@0.6.0, wry@0.55.1
+Applies to: arrayvec@0.7.8, async-lock@3.4.2, atomic-waker@1.1.2, base64@0.22.1, bitflags@1.3.2, bitflags@2.13.0, camino@1.2.4, cfg-if@1.0.4, concurrent-queue@2.5.0, crossbeam-channel@0.5.16, crossbeam-deque@0.8.7, crossbeam-epoch@0.9.20, crossbeam-utils@0.8.22, displaydoc@0.2.6, either@1.16.0, equivalent@1.0.2, event-listener-strategy@0.5.4, event-listener@5.4.1, fastrand@2.4.1, flate2@1.1.9, fnv@1.0.7, form_urlencoded@1.2.2, glob@0.3.3, hashbrown@0.16.1, hashbrown@0.17.1, heck@0.5.0, html5ever@0.38.0, httparse@1.10.1, hyper-rustls@0.27.9, idna_adapter@1.2.1, idna@1.1.0, indexmap@2.14.0, itertools@0.14.0, jpeg-decoder@0.3.2, lock_api@0.4.14, log@0.4.33, markup5ever@0.38.0, matrixmultiply@0.3.11, mime@0.3.17, muda@0.19.3, ndarray@0.17.2, num-bigint@0.4.8, num-complex@0.4.6, num-integer@0.1.46, num-iter@0.1.46, num-rational@0.4.2, num-traits@0.2.19, num@0.4.3, once_cell@1.21.4, parking_lot_core@0.9.12, parking_lot@0.12.5, parking@2.2.1, percent-encoding@2.3.2, png@0.17.16, pollster@0.4.0, rawpointer@0.2.1, rayon-core@1.13.0, rayon@1.12.0, regex-automata@0.4.15, regex-syntax@0.8.11, regex@1.13.0, renderdoc-sys@1.1.0, rustc-hash@1.1.0, rustls@0.23.42, scopeguard@1.2.0, serde_with_macros@3.17.0, serde_with@3.17.0, servo_arc@0.4.3, smallvec@1.15.2, socket2@0.6.4, stable_deref_trait@1.2.1, string_cache@0.9.0, tendril@0.5.1, thread_local@1.1.10, unicode-segmentation@1.13.3, unicode-width@0.2.2, unicode-xid@0.2.6, url@2.5.8, uuid@1.23.4, web_atoms@0.2.5, window-vibrancy@0.6.0, wry@0.55.1
 Text SHA-256: 769f80b5bcb42ed0af4e4d2fd74e1ac9bf843cb80c5a29219d1ef3544428a6bb
 
                               Apache License
@@ -11735,7 +11735,7 @@ limitations under the License.
 -------------------------------------------------------------------------------
 
 Apache License 2.0 (Apache-2.0)
-Applies to: auto_impl@1.3.0, bit-set@0.8.0, bit-set@0.9.1, bit-vec@0.8.0, bit-vec@0.9.1, presser@0.3.1
+Applies to: auto_impl@1.3.0, bit-set@0.10.0, bit-set@0.8.0, bit-vec@0.8.0, bit-vec@0.9.1, presser@0.3.1
 Text SHA-256: c144680885b29e4719e2a51f0aab5439a1e02d980692b5aaf086cae12727f28b
 
                               Apache License
@@ -11943,7 +11943,7 @@ limitations under the License.
 -------------------------------------------------------------------------------
 
 Apache License 2.0 (Apache-2.0)
-Applies to: allocator-api2@0.2.21, anyhow@1.0.103, async-trait@0.1.89, aws-lc-sys@0.42.0, dirs-sys@0.5.0, dirs@6.0.0, document-features@0.2.12, dtoa@1.0.11, dunce@1.0.5, dyn-clone@1.0.20, erased-serde@0.4.10, fdeflate@0.3.7, geotiff-core@0.7.0, geotiff-reader@0.7.0, gpu-descriptor-types@0.2.0, gpu-descriptor@0.3.2, half@2.7.1, hdf5-core@0.8.0, hdf5-reader@0.8.0, ident_case@1.0.1, inventory@0.3.24, itoa@1.0.18, lerc-band-materialize@0.4.3, lerc-core@0.4.3, lerc-reader@0.4.3, libc@0.2.186, litrs@1.0.0, miniz_oxide@0.8.9, monostate-impl@1.0.2, monostate@1.0.2, naga@29.0.4, netcdf-core@0.8.0, netcdf-reader@0.8.0, num-conv@0.2.2, paste@1.0.15, pin-project-lite@0.2.17, portable-atomic@1.13.1, proc-macro2@1.0.106, profiling@1.0.18, quote@1.0.46, rand_chacha@0.9.0, rand@0.9.4, raw-window-handle@0.6.2, rayon_iter_concurrent_limit@0.2.0, rustc-hash@2.1.3, ryu@1.0.23, semver@1.0.28, serde_core@1.0.228, serde_derive_internals@0.29.1, serde_derive@1.0.228, serde_json@1.0.150, serde_repr@0.1.20, serde_urlencoded@0.7.1, serde-untagged@0.1.9, serde@1.0.228, siphasher@1.0.3, spirv@0.4.0+sdk-1.4.341.0, syn@2.0.118, sync_wrapper@1.0.2, tagptr@0.2.0, tauri-codegen@2.6.3, tauri-macros@2.6.3, tauri-plugin-deep-link@2.4.9, tauri-plugin-dialog@2.7.1, tauri-plugin-fs@2.5.1, tauri-plugin-notification@2.3.3, tauri-plugin-shell@2.3.5, tauri-plugin-single-instance@2.4.3, tauri-plugin-store@2.4.3, tauri-runtime-wry@2.11.4, tauri-runtime@2.11.3, tauri-utils@2.9.3, tauri-winrt-notification@0.7.3, tauri@2.11.5, thiserror-impl@1.0.69, thiserror-impl@2.0.18, thiserror@1.0.69, thiserror@2.0.18, tiff-core@0.7.0, tiff-reader@0.7.0, time-core@0.1.9, time-macros@0.2.31, time@0.3.53, typeid@1.0.3, unic-char-property@0.9.0, unic-char-range@0.9.0, unic-common@0.9.0, unic-ucd-ident@0.9.0, unic-ucd-version@0.9.0, unicode-ident@1.0.24, unsafe_cell_slice@0.2.2, wgpu-core-deps-windows-linux-android@29.0.4, wgpu-core@29.0.4, wgpu-hal@29.0.4, wgpu-naga-bridge@29.0.4, wgpu-types@29.0.4, wgpu@29.0.4, zarrs_chunk_grid@0.5.1, zarrs_chunk_key_encoding@0.2.0, zarrs_codec@0.2.1, zarrs_data_type@0.9.0, zarrs_filesystem@0.3.10, zarrs_metadata_ext@0.4.4, zarrs_metadata@0.7.5, zarrs_plugin@0.4.1, zarrs_storage@0.4.4, zarrs@0.23.13
+Applies to: allocator-api2@0.2.21, anyhow@1.0.103, async-trait@0.1.89, aws-lc-sys@0.42.0, dirs-sys@0.5.0, dirs@6.0.0, document-features@0.2.12, dtoa@1.0.11, dunce@1.0.5, dyn-clone@1.0.20, erased-serde@0.4.10, fdeflate@0.3.7, geotiff-core@0.7.0, geotiff-reader@0.7.0, half@2.7.1, hdf5-core@0.8.0, hdf5-reader@0.8.0, ident_case@1.0.1, inventory@0.3.24, itoa@1.0.18, lerc-band-materialize@0.4.3, lerc-core@0.4.3, lerc-reader@0.4.3, libc@0.2.186, litrs@1.0.0, miniz_oxide@0.8.9, monostate-impl@1.0.2, monostate@1.0.2, naga-types@30.0.0, naga@30.0.0, netcdf-core@0.8.0, netcdf-reader@0.8.0, num-conv@0.2.2, paste@1.0.15, pin-project-lite@0.2.17, portable-atomic@1.13.1, proc-macro2@1.0.106, profiling@1.0.18, quote@1.0.46, rand_chacha@0.9.0, rand@0.9.4, raw-window-handle@0.6.2, rayon_iter_concurrent_limit@0.2.0, rustc-hash@2.1.3, ryu@1.0.23, semver@1.0.28, serde_core@1.0.228, serde_derive_internals@0.29.1, serde_derive@1.0.228, serde_json@1.0.150, serde_repr@0.1.20, serde_urlencoded@0.7.1, serde-untagged@0.1.9, serde@1.0.228, siphasher@1.0.3, spirv@0.4.0+sdk-1.4.341.0, syn@2.0.118, sync_wrapper@1.0.2, tagptr@0.2.0, tauri-codegen@2.6.3, tauri-macros@2.6.3, tauri-plugin-deep-link@2.4.9, tauri-plugin-dialog@2.7.1, tauri-plugin-fs@2.5.1, tauri-plugin-notification@2.3.3, tauri-plugin-shell@2.3.5, tauri-plugin-single-instance@2.4.3, tauri-plugin-store@2.4.3, tauri-runtime-wry@2.11.4, tauri-runtime@2.11.3, tauri-utils@2.9.3, tauri-winrt-notification@0.7.3, tauri@2.11.5, thiserror-impl@1.0.69, thiserror-impl@2.0.18, thiserror@1.0.69, thiserror@2.0.18, tiff-core@0.7.0, tiff-reader@0.7.0, time-core@0.1.9, time-macros@0.2.31, time@0.3.53, typeid@1.0.3, unic-char-property@0.9.0, unic-char-range@0.9.0, unic-common@0.9.0, unic-ucd-ident@0.9.0, unic-ucd-version@0.9.0, unicode-ident@1.0.24, unsafe_cell_slice@0.2.2, wgpu-core-deps-windows-linux-android@30.0.0, wgpu-core@30.0.0, wgpu-hal@30.0.0, wgpu-naga-bridge@30.0.0, wgpu-types@30.0.0, wgpu@30.0.0, zarrs_chunk_grid@0.5.1, zarrs_chunk_key_encoding@0.2.0, zarrs_codec@0.2.1, zarrs_data_type@0.9.0, zarrs_filesystem@0.3.10, zarrs_metadata_ext@0.4.4, zarrs_metadata@0.7.5, zarrs_plugin@0.4.1, zarrs_storage@0.4.4, zarrs@0.23.13
 Text SHA-256: c274f80372d90c012937370f0e1f15087d22e308ef98b27cea5dc0d2d088366c
 
 Apache License
@@ -12231,7 +12231,7 @@ Text SHA-256: c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851
 -------------------------------------------------------------------------------
 
 Apache License 2.0 (Apache-2.0)
-Applies to: crc32fast@1.5.0, serde_spanned@1.1.1, toml_datetime@1.1.1+spec-1.1.0, toml_parser@1.1.2+spec-1.1.0, toml_writer@1.1.1+spec-1.1.0, toml@1.1.2+spec-1.1.0
+Applies to: crc32fast@1.5.0, fallible-iterator@0.3.0, fallible-streaming-iterator@0.1.9, serde_spanned@1.1.1, toml_datetime@1.1.1+spec-1.1.0, toml_parser@1.1.2+spec-1.1.0, toml_writer@1.1.1+spec-1.1.0, toml@1.1.2+spec-1.1.0
 Text SHA-256: c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851
 
                                  Apache License
@@ -12999,134 +12999,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -------------------------------------------------------------------------------
 
-Creative Commons Zero v1.0 Universal (CC0-1.0)
-Applies to: hexf-parse@0.2.1
-Text SHA-256: 6d489af6292662d9e36d34ce49423784984a5f6e41d7b58f49b01264df59fa03
-
-Creative Commons Legal Code
-
-CC0 1.0 Universal
-
-    CREATIVE COMMONS CORPORATION IS NOT A LAW FIRM AND DOES NOT PROVIDE
-    LEGAL SERVICES. DISTRIBUTION OF THIS DOCUMENT DOES NOT CREATE AN
-    ATTORNEY-CLIENT RELATIONSHIP. CREATIVE COMMONS PROVIDES THIS
-    INFORMATION ON AN "AS-IS" BASIS. CREATIVE COMMONS MAKES NO WARRANTIES
-    REGARDING THE USE OF THIS DOCUMENT OR THE INFORMATION OR WORKS
-    PROVIDED HEREUNDER, AND DISCLAIMS LIABILITY FOR DAMAGES RESULTING FROM
-    THE USE OF THIS DOCUMENT OR THE INFORMATION OR WORKS PROVIDED
-    HEREUNDER.
-
-Statement of Purpose
-
-The laws of most jurisdictions throughout the world automatically confer
-exclusive Copyright and Related Rights (defined below) upon the creator
-and subsequent owner(s) (each and all, an "owner") of an original work of
-authorship and/or a database (each, a "Work").
-
-Certain owners wish to permanently relinquish those rights to a Work for
-the purpose of contributing to a commons of creative, cultural and
-scientific works ("Commons") that the public can reliably and without fear
-of later claims of infringement build upon, modify, incorporate in other
-works, reuse and redistribute as freely as possible in any form whatsoever
-and for any purposes, including without limitation commercial purposes.
-These owners may contribute to the Commons to promote the ideal of a free
-culture and the further production of creative, cultural and scientific
-works, or to gain reputation or greater distribution for their Work in
-part through the use and efforts of others.
-
-For these and/or other purposes and motivations, and without any
-expectation of additional consideration or compensation, the person
-associating CC0 with a Work (the "Affirmer"), to the extent that he or she
-is an owner of Copyright and Related Rights in the Work, voluntarily
-elects to apply CC0 to the Work and publicly distribute the Work under its
-terms, with knowledge of his or her Copyright and Related Rights in the
-Work and the meaning and intended legal effect of CC0 on those rights.
-
-1. Copyright and Related Rights. A Work made available under CC0 may be
-protected by copyright and related or neighboring rights ("Copyright and
-Related Rights"). Copyright and Related Rights include, but are not
-limited to, the following:
-
-  i. the right to reproduce, adapt, distribute, perform, display,
-     communicate, and translate a Work;
- ii. moral rights retained by the original author(s) and/or performer(s);
-iii. publicity and privacy rights pertaining to a person's image or
-     likeness depicted in a Work;
- iv. rights protecting against unfair competition in regards to a Work,
-     subject to the limitations in paragraph 4(a), below;
-  v. rights protecting the extraction, dissemination, use and reuse of data
-     in a Work;
- vi. database rights (such as those arising under Directive 96/9/EC of the
-     European Parliament and of the Council of 11 March 1996 on the legal
-     protection of databases, and under any national implementation
-     thereof, including any amended or successor version of such
-     directive); and
-vii. other similar, equivalent or corresponding rights throughout the
-     world based on applicable law or treaty, and any national
-     implementations thereof.
-
-2. Waiver. To the greatest extent permitted by, but not in contravention
-of, applicable law, Affirmer hereby overtly, fully, permanently,
-irrevocably and unconditionally waives, abandons, and surrenders all of
-Affirmer's Copyright and Related Rights and associated claims and causes
-of action, whether now known or unknown (including existing as well as
-future claims and causes of action), in the Work (i) in all territories
-worldwide, (ii) for the maximum duration provided by applicable law or
-treaty (including future time extensions), (iii) in any current or future
-medium and for any number of copies, and (iv) for any purpose whatsoever,
-including without limitation commercial, advertising or promotional
-purposes (the "Waiver"). Affirmer makes the Waiver for the benefit of each
-member of the public at large and to the detriment of Affirmer's heirs and
-successors, fully intending that such Waiver shall not be subject to
-revocation, rescission, cancellation, termination, or any other legal or
-equitable action to disrupt the quiet enjoyment of the Work by the public
-as contemplated by Affirmer's express Statement of Purpose.
-
-3. Public License Fallback. Should any part of the Waiver for any reason
-be judged legally invalid or ineffective under applicable law, then the
-Waiver shall be preserved to the maximum extent permitted taking into
-account Affirmer's express Statement of Purpose. In addition, to the
-extent the Waiver is so judged Affirmer hereby grants to each affected
-person a royalty-free, non transferable, non sublicensable, non exclusive,
-irrevocable and unconditional license to exercise Affirmer's Copyright and
-Related Rights in the Work (i) in all territories worldwide, (ii) for the
-maximum duration provided by applicable law or treaty (including future
-time extensions), (iii) in any current or future medium and for any number
-of copies, and (iv) for any purpose whatsoever, including without
-limitation commercial, advertising or promotional purposes (the
-"License"). The License shall be deemed effective as of the date CC0 was
-applied by Affirmer to the Work. Should any part of the License for any
-reason be judged legally invalid or ineffective under applicable law, such
-partial invalidity or ineffectiveness shall not invalidate the remainder
-of the License, and in such case Affirmer hereby affirms that he or she
-will not (i) exercise any of his or her remaining Copyright and Related
-Rights in the Work or (ii) assert any associated claims and causes of
-action with respect to the Work, in either case contrary to Affirmer's
-express Statement of Purpose.
-
-4. Limitations and Disclaimers.
-
- a. No trademark or patent rights held by Affirmer are waived, abandoned,
-    surrendered, licensed or otherwise affected by this document.
- b. Affirmer offers the Work as-is and makes no representations or
-    warranties of any kind concerning the Work, express, implied,
-    statutory or otherwise, including without limitation warranties of
-    title, merchantability, fitness for a particular purpose, non
-    infringement, or the absence of latent or other defects, accuracy, or
-    the present or absence of errors, whether or not discoverable, all to
-    the greatest extent permissible under applicable law.
- c. Affirmer disclaims responsibility for clearing rights of other persons
-    that may apply to the Work or any use thereof, including without
-    limitation any person's Copyright and Related Rights in the Work.
-    Further, Affirmer disclaims responsibility for obtaining any necessary
-    consents, permissions or other rights required for any use of the
-    Work.
- d. Affirmer understands and acknowledges that Creative Commons is not a
-    party to this document and has no duty or obligation with respect to
-    this CC0 or use of the Work.
-
--------------------------------------------------------------------------------
-
 ISC License (ISC)
 Applies to: rustls-webpki@0.103.13
 Text SHA-256: 3ac27594ed56fd079c95a71f8beabc498c5b997ec31e91f4a18e59a5974adb2a
@@ -13262,7 +13134,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 
 MIT License (MIT)
-Applies to: brotli-decompressor@5.0.3, cataclysm@0.14.1, dpi@0.1.2, libm@0.2.16, webview2-com-macros@0.8.1, webview2-com-sys@0.38.2, webview2-com@0.38.2
+Applies to: brotli-decompressor@5.0.3, cataclysm@0.14.2, dpi@0.1.2, libm@0.2.16, webview2-com-macros@0.8.1, webview2-com-sys@0.38.2, webview2-com@0.38.2
 Text SHA-256: 07c7993a082dd28479b2f48dd4ab9fac71bd97aeeecaa4cd89ef863fb3867c67
 
 MIT License
@@ -13760,6 +13632,32 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+MIT License (MIT)
+Applies to: libsqlite3-sys@0.38.2, rusqlite@0.40.2
+Text SHA-256: 6061b8ea5b16d94a796c9837aadc73a8e72a11b3045c98d3a0712d2a0fef84ac
+
+Copyright (c) 2014 The rusqlite developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 -------------------------------------------------------------------------------
 
@@ -15803,7 +15701,7 @@ ICU 1.8.1 to ICU 57.1 © 1995-2016 International Business Machines Corporation a
 -------------------------------------------------------------------------------
 
 zlib License (Zlib)
-Applies to: foldhash@0.1.5, foldhash@0.2.0
+Applies to: foldhash@0.2.0
 Text SHA-256: b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744
 
 Copyright (c) 2024 Orson Peters
@@ -15827,3 +15725,4 @@ the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 
 -------------------------------------------------------------------------------
+

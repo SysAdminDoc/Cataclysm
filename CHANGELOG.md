@@ -2,7 +2,19 @@
 
 All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.1] — 2026-08-12
+## [0.14.2] (2026-09-13)
+
+### Changed
+
+- Rebuilt the GitHub landing page around a version-free marketing hero, a shorter product-led story, a direct release path, and current model boundaries.
+- Expanded the production screenshot flow to capture distinct tsunami, asteroid, nuclear, science, history, settings, dark-theme, and light-theme states from the real app.
+- Retained the established wavefront and fault identity after comparing two hero directions, then archived the source material, candidates, selection notes, and current-run evidence under `concepts/marketing/2026-09-13/`.
+- Refreshed the npm dependency lock to clear all 11 findings reported by `npm audit` at the start of the pass.
+- Repaired the native command permission manifest so every registered desktop command is granted through the intended main-window capability.
+- Removed remote build workflows. Release checks and Windows packaging now stay on the local release path.
+- Fixed portable workspace imports so they restore the exported camera position and pitch exactly.
+
+## [0.14.1] (2026-08-12)
 
 ### Added
 
@@ -141,7 +153,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   size, focus visibility, consistent help, both themes, forced colors, and
   localized layouts.
 - An IOC-informed tsunami map-reading frame across Results and Layers. Arrival
-  now leads the outcome summary and publishes the solver's deterministic P05–P95
+  now leads the outcome summary and publishes the solver's deterministic P05 to P95
   domain-edge sensitivity envelope when run; the coastal overlay uses explicit
   blue/amber/red screening-height bands instead of a green "safe" cue. Both
   surfaces state that the model is non-operational, is not an evacuation map,
@@ -174,7 +186,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   and rejects executable content or future versions before mutating app state.
 - A deterministic desktop sensitivity-envelope workflow for the SWE solver.
   Users can vary one to three inputs across their own explicitly cited bounds,
-  choose a reproducible seed and 5–31 stratified samples, and inspect P05,
+  choose a reproducible seed and 5 to 31 stratified samples, and inspect P05,
   median, and P95 peak elevation, domain-edge arrival, and resolved nearshore
   peak/runup. The fixed-grid batch is admitted against aggregate work and
   memory limits, retains failed/cancelled members, and exports the request,
@@ -237,7 +249,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   now wired in behind the new `fallout_dose_probe` command and surfaced as a
   `FalloutDosePanel` in the nuclear results: point-sampled downwind dose rate,
   fallout arrival, and per-shelter dose-rate/cumulative-dose at a user-selected
-  distance, crosswind offset, wind speed, and time after burst — with model
+  distance, crosswind offset, wind speed, and time after burst , with model
   citations, assumptions, uncertainty, and an educational-only disclaimer.
   Localized across all four catalogs (en/es/ja/id). Browser preview shows the
   desktop-only note.
@@ -256,7 +268,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   sanitizer-bypass and expansion-denial-of-service advisories while preserving
   deterministic third-party notices and registry-signature verification.
 
-## [0.14.0] — 2026-07-19
+## [0.14.0] (2026-07-19)
 
 ### Added
 
@@ -268,7 +280,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Extended max-field products are now written to the CF-NetCDF and Zarr
   scientific exports (max total flow depth, current speed, specific momentum
   flux, drawdown, and time-of-maximum-speed) with correct CF units, metadata,
-  and never-wet/never-reached fill values — round-trip tested in both formats.
+  and never-wet/never-reached fill values , round-trip tested in both formats.
 - Simple-first scenario browser: a `simplified` mode hides the discovery
   surfaces (packs, surprise, near-a-place, planetary defense, guided training)
   behind a clean scenario list plus a manual "Create my own" entry; everything
@@ -288,7 +300,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   changed `arrival_s` to serialize never-reached cells as JSON `null` (was a bare
   `f64` that serde emitted as `null` while the TS type claimed `number[]`).
 - Extended max-field products were serialized as raw per-cell `f64` arrays on the
-  IPC `MaxFieldProduct` that no consumer read — up to ~160 MB of dead payload on a
+  IPC `MaxFieldProduct` that no consumer read , up to ~160 MB of dead payload on a
   2000² grid. They are now off the IPC payload entirely (their home is the
   scientific exports, matching peak/arrival/energy).
 - Deterministic WebCodecs export: the encoder error callback threw on the codec
@@ -309,7 +321,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   analytic `pickEllipsoid` (and prone to missing near the limb). The fast
   analytic pick is restored; genuine async-pick work is tracked in ROADMAP.
 
-## [0.13.0] — 2026-07-19
+## [0.13.0] (2026-07-19)
 
 ### Added
 
@@ -319,7 +331,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   tracked in ROADMAP.)
 - Frame-accurate video encoder backend via WebCodecs: when the runtime supports
   VideoEncoder (WebView2 / Chromium), `exportDeterministicVideo` encodes globe
-  frames one at a time into an H.264/MP4 via `mp4-muxer` — decoupled from
+  frames one at a time into an H.264/MP4 via `mp4-muxer` , decoupled from
   wall-clock so it never drops frames under load, unlike the real-time
   MediaRecorder path. Feature-detected with `isDeterministicVideoSupported()`.
   (UI surfacing is tracked in ROADMAP.)
@@ -334,12 +346,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   threshold for radial sources (vs sponge's ~5% with a 10-cell rim). Two new
   validation tests confirm absorption and reflectivity comparison.
 
-## [0.12.0] — 2026-07-18
+## [0.12.0] (2026-07-18)
 
 ### Added
 
 - Asteroid airburst overpressure footprint: when an asteroid airbursts,
-  results now show explicit "Airburst — did not reach the ground" framing,
+  results now show explicit "Airburst , did not reach the ground" framing,
   airburst altitude, energy deposited in atmosphere, and blast ring labels
   annotated "(from elevated burst)".
 - Window-glass injury layer at cited 200/500 Pa breakage thresholds (Popova
@@ -354,7 +366,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   combined-effects screen, with visible disagreement ranges, assumptions,
   source links, and GIS export metadata.
 
-## [0.11.0] — 2026-07-18
+## [0.11.0] (2026-07-18)
 
 ### Added
 
@@ -731,12 +743,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   unchanged; every command file is below 600 lines and the existing Rust
   command contract remains intact.
 
-## [0.10.5] — 2026-07-17 — Professional workspace, multi-hazard validation, and release hardening
+## [0.10.5] (2026-07-17): Professional workspace, multi-hazard validation, and release hardening
 
 ### Added
 
-- The validation harness now locks the asteroid impact scaling to Collins–Melosh–Marcus
-  2005: crater Pi-scaling is checked to <1% across 50 m–2 km impactors (with a
+- The validation harness now locks the asteroid impact scaling to Collins-Melosh-Marcus
+  2005: crater Pi-scaling is checked to <1% across 50 m to 2 km impactors (with a
   Meteor Crater order-of-magnitude anchor), and the blast-overpressure fit and
   Rankine-Hugoniot peak-wind relation (≈72 m/s at 5 psi) are verified. Svetsov
   et al. 2025 is cited as corroboration; the full data-table cross-check is
@@ -765,7 +777,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   magnitude, manual override is preserved, and epicentres far from any mapped
   zone fall back to manual entry with a clear message.
 - The desktop simulator now uses a unified, legible visual system modeled from
-  a dedicated 1600×1000 design study: 13–14 px operational text, 40 px controls,
+  a dedicated 1600×1000 design study: 13 to 14 px operational text, 40 px controls,
   calmer column spacing, flat scenario and result lists, dot-based statuses,
   restrained dividers, and one clear accent treatment for selected work. Dark,
   light, direct-hazard, settings, and accessibility regressions enforce the new
@@ -855,7 +867,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   order-of-magnitude recurrence interval (Earth Impact Effects Program relation,
   Collins et al. 2005), nuclear results show a Hiroshima-scale context anchor
   (labelled non-recurring because weapon effects have no natural rate), and
-  earthquake tsunami sources show a global Gutenberg–Richter recurrence estimate.
+  earthquake tsunami sources show a global Gutenberg-Richter recurrence estimate.
   All are cited and framed as order-of-magnitude, never predictions.
 
 ### Fixed
@@ -937,7 +949,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - The surface-displacement legend now matches the active solver colormap instead
   of a fixed rainbow ramp: diverging and cividis show a signed trough↔crest key,
   viridis shows a sequential magnitude key, and the CVD-safe maps are labelled as
-  such — so a colourblind user is no longer shown a misleading legend.
+  such , so a colourblind user is no longer shown a misleading legend.
 - Settings Apply, Reset, and import now snapshot keychain, plugin-store, and
   WebView persistence before mutation and report whether rollback completed if
   any write fails. Legacy Cesium tokens are exposed only after keychain storage
@@ -948,7 +960,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   "no time overlap" case instead of labelling every error as no-overlap, and
   surfaces real failures in the diagnostics log.
 - The "loading source" badge no longer flickers on every timeline tick during
-  playback/scrubbing — it now shows only while a newly selected preset loads.
+  playback/scrubbing , it now shows only while a newly selected preset loads.
 - Guarded the direct-effect animation against a zero tick duration and the
   timeline transport against a zero-length duration, either of which could freeze
   playback on the first frame.
@@ -993,12 +1005,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   before accumulating concentric annuli, so an out-of-order ring (for example
   `thermal_1` falling inside `psi_1` for large airbursts) is no longer dropped by
   a negative area term or mis-assigned an inner zone's lethality. Headline
-  numbers change where radii were previously mis-ordered — a 100 kt surface burst
+  numbers change where radii were previously mis-ordered , a 100 kt surface burst
   at 5 000 /km² now reports 98 691 deaths / 329 644 injuries (was 112 019 /
-  387 883, which over-counted the 4.4–8.2 km thermal band at 1 psi lethality).
+  387 883, which over-counted the 4.4 to 8.2 km thermal band at 1 psi lethality).
 - Rejected sub-floor analytical-basin depths (`mean_depth_m` below 50 m) instead
-  of silently clamping them to 50 m, so the simulated depth — and therefore CFL,
-  celerity, arrival times, gauges, and exports — always matches the reported
+  of silently clamping them to 50 m, so the simulated depth , and therefore CFL,
+  celerity, arrival times, gauges, and exports , always matches the reported
   request. Real-bathymetry runs are unaffected.
 - Rejected simulation boxes that cross the ±180° antimeridian instead of emitting
   a degenerate out-of-frame Cesium rectangle (previously the box centre was
@@ -1009,7 +1021,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   omitted the `cos(lat)` term, so a consumer treating `(origin_lat, origin_lon)`
   as the corner would misregister the uplift by up to half a grid width.
 
-## [0.10.4] — 2026-07-13 — Simulation admission fix
+## [0.10.4] (2026-07-13): Simulation admission fix
 
 ### Fixed
 
@@ -1024,7 +1036,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   before queued render packets, causing an otherwise healthy run to be marked
   incomplete while frames were still draining through WebView2.
 
-## [0.10.3] — 2026-07-12 — Source-aware result stories
+## [0.10.3] (2026-07-12): Source-aware result stories
 
 ### Added
 
@@ -1059,7 +1071,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - WebGL recovery alerts now remain above viewport controls, so Reset renderer
   cannot be obscured by the floating Layers action.
 
-## [0.10.2] — 2026-07-12 — Fail-safe desktop trust boundary
+## [0.10.2] (2026-07-12): Fail-safe desktop trust boundary
 
 ### Security
 
@@ -1144,13 +1156,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   numeric input** (draft-on-blur, clamped to bounds, with units), so precise
   values can be entered instead of only dragged.
 - Nuclear results now include a **latent-cancer estimate** (BEIR VII linear
-  no-threshold, ~5.5% excess mortality per Sv) — 10- and 30-year delayed cancer
-  fatalities plus hereditary effects among survivors — shown beside the prompt
+  no-threshold, ~5.5% excess mortality per Sv) , 10- and 30-year delayed cancer
+  fatalities plus hereditary effects among survivors , shown beside the prompt
   casualty readout when a population density is set.
 - Nuclear detonations now render a **0.25 psi light-damage ring** (windows break
   over a wide area) outside the 1 psi ring, with a matching low-lethality
   glass-cut casualty band. The coefficient is extrapolated from the same
-  Glasstone–Dolan scaled-overpressure fit as the other rings.
+  Glasstone-Dolan scaled-overpressure fit as the other rings.
 
 ### Security
 
@@ -1168,14 +1180,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   ([0, 360]) and rake ([-180, 180]) in Rust, matching the frontend
   `SCENARIO_BOUNDS` table so both entry paths accept and reject the same inputs.
 
-## [0.10.1] — 2026-07-12 — Auditable coastal screening
+## [0.10.1] (2026-07-12): Auditable coastal screening
 
 - Fixed desktop coastal runup failing as a batch when deep-water reference gauges supplied a zero-slope sentinel.
 - Made Rust resolve named coast IDs against the validated bundled database, preventing clients from substituting slope, depth, or provenance records.
 - Added explicit source, method, datum, resolution/date, confidence, uncertainty, placeholder status, and stable sample/record IDs for every runup input.
 - Labelled current legacy/nominal inputs as low-confidence illustrative estimates in Results, globe inspection, CSV, GeoJSON, KML, and text exports.
 
-## [0.10.0] — 2026-07-12 — Progressive simulator workspace
+## [0.10.0] (2026-07-12): Progressive simulator workspace
 
 - Added persisted Simple, Customize, and Advanced workspace detail levels;
   Simple is the default and keeps the globe, scenario, journey, timeline, and
@@ -1191,7 +1203,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Added settings-schema migration, export/import persistence, keyboard,
   state-preservation, browser, accessibility, and desktop visual coverage.
 
-## [0.9.1] — 2026-07-12 — Guided Run & Watch
+## [0.9.1] (2026-07-12): Guided Run & Watch
 
 - Turned Run & Watch into one explicit Prepare / Calculate / Watch /
   Understand journey that opens the outcome overview and begins playback when
@@ -1233,7 +1245,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   deterministic capture controls, accessibility checks, and a visual-regression
   baseline for the opener.
 
-## [0.8.4] — 2026-07-11 — Perceptual visual-quality gate
+## [0.8.4] (2026-07-11): Perceptual visual-quality gate
 
 - Added scene-specific perceptual contracts for all 12 deterministic reference
   scenes: named subjects and phases, central target regions, scale cues,
@@ -1249,7 +1261,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Made direct-effect reference playback seek the Rust-authored frame stream by
   the requested capture phase, enabling deterministic multi-phase review.
 
-## [0.8.3] — 2026-07-11 — Usability and recovery audit
+## [0.8.3] (2026-07-11): Usability and recovery audit
 
 - Fixed solver lifecycle ownership so changing inspector tabs preserves completed
   wave results, replacing a source cancels its in-flight worker, and Compare runs
@@ -1280,7 +1292,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   verification refuse to attach Playwright to an unknown process on its preview
   port.
 
-## [0.8.2] — 2026-07-11 — Adaptive renderer quality
+## [0.8.2] (2026-07-11): Adaptive renderer quality
 
 - Added explicit Low, Medium, High, and Cinematic resolution, feature, and GPU
   memory budgets. The live Cesium renderer now applies the persisted tier,
@@ -1295,7 +1307,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   committed solver tick instead of restarting and duplicating visible frame
   times after an adapter failure.
 
-## [0.8.1] — 2026-07-11 — Deterministic renderer systems
+## [0.8.1] (2026-07-11): Deterministic renderer systems
 
 - Added renderer protocol v1 (`CATRFRM`) as the Rust-owned frame boundary for
   Cesium and future cinematic clients. Length-prefixed scenario/frame/end
@@ -1306,7 +1318,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   bad sequence/timing, and transform drift. SWE and direct asteroid/nuclear
   playback now consume the protocol; derived exports identify their exact frame.
 
-### Changed — trustworthy accelerated releases
+### Changed: trustworthy accelerated releases
 - Split the 2,031-line Cesium globe into generation-owned planet, imagery,
   camera, interaction, source, runup, analytical-overlay, static-hazard, and
   direct-effect systems. Stable handles update in place; async results fail
@@ -1381,9 +1393,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Added a dedicated two-theme WCAG AA browser suite covering 16 simulator states
   plus explicit duplicate-ID checks and keyboard tab-pattern regression tests.
 
-## [0.8.0] — 2026-07-11 — Living-Earth simulator visual system
+## [0.8.0] (2026-07-11): Living-Earth simulator visual system
 
-### Changed — professional desktop workflow
+### Changed: professional desktop workflow
 - Re-imagined the simulator from a new image-generated v2 desktop design target
   and implemented the major parity gaps without replacing the React/Cesium
   architecture: source-first setup, stronger Earth dominance, restrained
@@ -1404,7 +1416,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   feedback, user-oriented categories, simpler online-map wording, and a
   multi-hazard first-run trust notice.
 
-### Added — design and visual verification
+### Added: design and visual verification
 - Added `assets/mockups/cataclysm-professional-simulator-v2.png` as the retained
   image-generation target used for implementation comparison.
 - Made headless capture build-safe and deterministic in locale, timezone,
@@ -1419,9 +1431,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   production build, docs/security gates, Rust checks/tests, and Windows package
   generation are part of the v0.8.0 release verification.
 
-## [0.7.0] — 2026-07-11 — Professional simulator workspace
+## [0.7.0] (2026-07-11): Professional simulator workspace
 
-### Changed — desktop GUI and workflow hierarchy
+### Changed: desktop GUI and workflow hierarchy
 - Rebuilt the application shell around four persistent simulator zones: a
   filterable scenario library, dominant globe viewport, Setup / Results /
   Layers inspector, and full-width simulation transport.
@@ -1437,7 +1449,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Comparison globes now split horizontally on desktop. Solver/playback status is
   derived from application state instead of displaying a permanent ready label.
 
-### Added — visual QA and design reference
+### Added: visual QA and design reference
 - Added a generated professional-simulator design reference under
   `assets/mockups/` and implemented its restrained graphite/cyan visual system,
   dense technical typography, tabbed inspector, and transport hierarchy.
@@ -1453,7 +1465,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   regression states, lint, typecheck, production web build, Rust checks/tests,
   dependency audit gates, and Windows installer build.
 
-## [0.6.0] — 2026-07-10 — Cataclysm: unified multi-hazard simulator
+## [0.6.0] (2026-07-10): Cataclysm: unified multi-hazard simulator
 
 ### Project unification
 - **Renamed TsunamiSimulator → Cataclysm** and expanded scope from a tsunami
@@ -1464,13 +1476,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   `git subtree` under `legacy/asteroid` and `legacy/nukemap` (full history
   preserved) as the reference for the ongoing UI-parity rebuild.
 
-### Added — unified hazard engine layer (`src/hazards/`)
+### Added: unified hazard engine layer (`src/hazards/`)
 - **Common `HazardResult` contract**: any hazard resolves to globe-ready effect
   rings (meters), a structured readout, and an optional casualty estimate, so
   new hazards render without touching the Cesium layer. Engine registry in
   `src/hazards/index.ts`.
 - **Nuclear engine** (`src/hazards/nuclear/`): NukeMap's `physics.js` ported to
-  typed, pure TypeScript — `calcEffects` (fireball, 200/20/5/3/1 psi, thermal
+  typed, pure TypeScript , `calcEffects` (fireball, 200/20/5/3/1 psi, thermal
   1°/2°/3°, 500-rem/neutron/gamma radiation, EMP, crater, fallout plume, cloud
   top, base surge, water-burst wave height), Bayesian combined-mortality
   casualty model, and formatters. Curated 9-weapon preset table (Hiroshima →
@@ -1478,18 +1490,18 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - **Asteroid engine** (`src/hazards/asteroid/`): AsteroidSimulator's physics
   (energy, RK4 atmospheric entry, Holsapple cratering, thermal, airblast,
   seismic, ejecta, impact tsunami) ported in and wrapped to the unified contract.
-- **Tests**: two new hazard suites — nuclear regression against HSAJ/NWFAQ
+- **Tests**: two new hazard suites , nuclear regression against HSAJ/NWFAQ
   reference radii and casualty monotonicity; asteroid calibration (Chelyabinsk
   airburst, Chicxulub cratering, ocean-impact tsunami). Full unit suite: 135 tests.
 
-### Added — hazard-mode UI (UNI-01/02/03/04/07)
+### Added: hazard-mode UI (UNI-01/02/03/04/07)
 - **Hazard-mode switch** in the header (Tsunami / Impact / Nuclear). Tsunami keeps
   the Rust scenario path; Impact and Nuclear use the client-side `src/hazards`
   engines.
 - **Cesium ring renderer** (`Globe` `hazardRings`/`hazardCenter` props): draws
   `HazardResult` effect zones as concentric, outlined ground ellipses (largest
   first) with a ground-zero marker, and frames the outermost ring. Shared by both
-  nuclear and asteroid modes — replaces NukeMap's Leaflet `js/effects.js`.
+  nuclear and asteroid modes , replaces NukeMap's Leaflet `js/effects.js`.
 - **`HazardControls`** panel: weapon-preset picker + log-scale yield slider +
   burst-type + population-density (nuclear); diameter/velocity/angle/density/target
   (asteroid); pick-location-on-globe; live readout, casualty estimate, and ring
@@ -1504,13 +1516,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   `UNI-05/06/08..14` in `ROADMAP.md`. The standalone NukeMap and AsteroidSimulator
   apps stay live until those land and Cataclysm deploys with parity.
 
-## [0.5.0] — 2026-07-09 — Validation, corrected physics, classroom tooling
+## [0.5.0] (2026-07-09): Validation, corrected physics, classroom tooling
 
-### Changed — toolchain and supply chain (2026-07-09)
+### Changed: toolchain and supply chain (2026-07-09)
 - **`rust-version` raised 1.85 → 1.88.** The declared floor was below the real
   requirement: wgpu/naga 29 needs 1.87 and time-core 0.1.9 needs 1.88.
 - **Cargo dependency refresh.** tauri 2.11.2 → 2.11.5, wgpu 29.0.3 → 29.0.4,
-  plist pinned to 1.10.0 so quick-xml resolves to 0.41.0 — clears all three
+  plist pinned to 1.10.0 so quick-xml resolves to 0.41.0 , clears all three
   open RustSec advisories (RUSTSEC-2026-0194/0195 quick-xml DoS,
   RUSTSEC-2026-0204 crossbeam-epoch). `cargo audit` is clean again.
 - **CesiumJS 1.142 → 1.143.** Billboard crash fix plus
@@ -1519,7 +1531,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   dompurify in package-lock.json drops below 3.4.7 (CVE-2026-49978 floor), so
   a lockfile regression can't silently reopen the sanitizer bypass.
 
-### Added — model-vs-observed trust loop (2026-07-09)
+### Added: model-vs-observed trust loop (2026-07-09)
 - **DART RMSE surfaced in the buoy overlay.** Running the SWE solver on a
   preset with archived DART data (Tōhoku 2011, Indian Ocean 2004, Hunga Tonga
   2022) now samples the model field at each buoy position (hidden `dart-<id>`
@@ -1530,13 +1542,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - **`attenuation_curve` Rust IPC.** The wave-attenuation chart now renders
   decay samples computed by the backend (same amplitude branch as
   `far_field_amplitude`) instead of reimplementing the r^(-5/6) / r^(-1/2)
-  power laws in JS — closing the last physics-in-JS carve-out outside the
+  power laws in JS , closing the last physics-in-JS carve-out outside the
   browser-preview demo layer. Browser preview keeps a demo approximation.
 
-### Added — max-field products and arrival isochrones (2026-07-09)
+### Added: max-field products and arrival isochrones (2026-07-09)
 - **fgmax-style max-field products.** The solver now accumulates per-cell
   peak |η|, time-of-maximum, and a time-integrated η² energy proxy at
-  snapshot cadence (identical CPU/GPU semantics — both observe the read-back
+  snapshot cadence (identical CPU/GPU semantics , both observe the read-back
   field). A new Overlay selector in the playback panel switches the globe
   between the live wave, "Peak", "T max" (viridis), and "Energy"
   (qualitative directivity, explicitly not a calibrated PTWC product).
@@ -1546,15 +1558,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   "Arrivals" toggle, and exported as MultiLineString features in the
   GeoJSON export.
 
-### Added — property-based physics tests (2026-07-09)
+### Added: property-based physics tests (2026-07-09)
 - **proptest suites over the physics parameter space** (`physics::property_tests`):
-  Ward–Asphaug cavity monotonicity in diameter and velocity, amplitude
+  Ward-Asphaug cavity monotonicity in diameter and velocity, amplitude
   saturation at water depth, Synolakis runup positivity/monotonicity (with
   the H/d = 0.78 breaking-gate saturation), SWE closed-basin mass
   conservation (zero-flux, linear, 1% tolerance), and Okada uplift
   boundedness in the pure-thrust regime.
 
-### Fixed — Okada vertical-displacement kernel (2026-07-09)
+### Fixed: Okada vertical-displacement kernel (2026-07-09)
 - **Strike-slip u_z term corrected against Okada 1985.** Property testing
   exposed non-physical growth of |u_z| with fault length for strike-slip
   rakes (up to 7.4×slip on a 302 km rake-0° fault, even at 49 km burial).
@@ -1568,83 +1580,83 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   figures against Okada 1985 Table 2 cases 2 and 3 (strike/dip/tensile),
   plus a boundedness regression on the case that exposed the bug. The
   Tōhoku thrust band still passes; oblique-rake presets (Indian Ocean 2004,
-  rake 110°) now compute slightly different — correct — fields. The
-  property test runs the full 0–180° rake domain again.
+  rake 110°) now compute slightly different , correct , fields. The
+  property test runs the full 0 to 180° rake domain again.
 
-### Fixed — GPU solver path actually runs (2026-07-09)
+### Fixed: GPU solver path actually runs (2026-07-09)
 - **The `gpu` feature could never execute before.** Three stacked latent
   bugs, found the first time the feature was run rather than merely
   compiled: (1) wgpu was built with no platform backend, so
-  `Instance::default()` panicked at the first probe — Vulkan/Metal now
+  `Instance::default()` panicked at the first probe , Vulkan/Metal now
   enabled (dx12 excluded: wgpu-hal 29.0.x's dx12 suballocator does not
   compile against gpu-allocator 0.28 + windows-core 0.61/0.62 upstream);
   (2) the device was requested with downlevel limits (4 storage buffers)
-  while the kernel binds 7 — now requests 8 clamped to adapter limits;
+  while the kernel binds 7 , now requests 8 clamped to adapter limits;
   (3) the GPU sponge test used CFL 0.4 where the explicit scheme needs 0.3.
   The CPU/GPU parity suite now actually executes on hardware, including a
   new full-physics parity test (nonlinear advection + sponge + Manning,
   |Δη| < 5 mm after 60 steps) locking the 2026-07-01 divergence fix.
 
-### Added — teacher mode (2026-07-09)
+### Added: teacher mode (2026-07-09)
 - **Classroom profile lock.** Settings export/import now carries a
   `classroom_locked` flag: an imported teacher profile pins globe imagery,
   theme, and colormap and hides token entry, with an explicit Unlock action
   (a convenience lock, deliberately not a security boundary).
 - **Printable lesson worksheets.** Every guided lesson (all 7) now carries
   four worksheet prompts and a "Print worksheet" button that prints a clean
-  handout — title, summary, numbered questions with ruled answer space,
-  name/date line, and the educational-model disclaimer — via a dedicated
+  handout , title, summary, numbered questions with ruled answer space,
+  name/date line, and the educational-model disclaimer , via a dedicated
   print-mode stylesheet.
 
-### Added — keyboard-only e2e coverage (2026-07-09)
+### Added: keyboard-only e2e coverage (2026-07-09)
 - **Keyboard walkthrough Playwright spec.** The golden path (activate a
   preset card, run the solver, scrub the timeline with arrow keys, export
   the text report) now runs entirely without pointer events, plus a
   focus-trap check that Tab cycles stay inside the Settings dialog and
   Escape closes it. Audit note: decorative `UiIcon` SVGs were already
-  correctly `aria-hidden` with labelled host buttons — the earlier research
+  correctly `aria-hidden` with labelled host buttons , the earlier research
   claim of missing icon labels was wrong.
 
-### Changed — Cesium ion token moved to the OS keychain (2026-07-09)
+### Changed: Cesium ion token moved to the OS keychain (2026-07-09)
 - **The ion token no longer lives in settings.json.** Desktop builds store
   it in the OS keychain (Windows Credential Manager / macOS Keychain /
   Linux Secret Service) via the `keyring` crate called directly from two
-  new IPC commands — no thin community plugin wrappers, and
+  new IPC commands , no thin community plugin wrappers, and
   tauri-plugin-stronghold is deprecated for Tauri v3. Legacy plugin-store
   tokens migrate to the keychain on first read and the store copy is
   blanked; a broken secret service falls back to the store path so users
   aren't locked out. Browser preview keeps localStorage (unchanged).
 
-### Added — support diagnostics bundle (2026-07-09)
+### Added: support diagnostics bundle (2026-07-09)
 - **`diagnostics_bundle` IPC + "Copy diagnostics" in the log viewer.** One
   click copies a JSON support bundle: app version, OS/arch, GPU status and
   adapter name, solver backend, settings schema version, and the last 50
-  log entries. PII-free by construction — no paths, tokens, or settings
+  log entries. PII-free by construction , no paths, tokens, or settings
   values.
 
-### Added — new cited presets (2026-07-09)
-- **Kamchatka 2025-07-29 M_w 8.8** — USGS finite-fault parameters
-  (us6000qw60), the most DART-instrumented tsunami in history — with a
+### Added: new cited presets (2026-07-09)
+- **Kamchatka 2025-07-29 M_w 8.8** , USGS finite-fault parameters
+  (us6000qw60), the most DART-instrumented tsunami in history , with a
   bundled DART validation pack: stations 21416, 21419, 21415 from the NDBC
   historical archive, harmonically de-tided (residual RMS < 0.5 cm; the
-  0.84 m peak at 21416 matches NCTR's published 0.85 m — the second-largest
+  0.84 m peak at 21416 matches NCTR's published 0.85 m , the second-largest
   DART amplitude ever recorded). Model-vs-observed RMSE works out of the box.
 - **Sanriku (Miyako) 2026-04-20 M_w 7.4** (USGS us6000sri7) with a
   "the warning worked" guided lesson: tide-gauge detection 17 minutes
   after rupture, and why magnitude alone misleads.
-- **Lisbon 1755** — Barkan, ten Brink & Lin 2009 preferred far-field source
+- **Lisbon 1755** , Barkan, ten Brink & Lin 2009 preferred far-field source
   (Horseshoe Plain, Table 4 verbatim), with source-debate caveat.
-- **Amorgos 1956** — Okal et al. 2009 relocated normal-faulting source,
+- **Amorgos 1956** , Okal et al. 2009 relocated normal-faulting source,
   with the explicit caveat that triggered submarine landslides (not the
   fault) drove the 30 m local runup.
-- **Anak Krakatau 2018** — Grilli et al. 2019 flank-collapse parameters
+- **Anak Krakatau 2018** , Grilli et al. 2019 flank-collapse parameters
   (0.27 km³, bulk density 1550 kg/m³, caldera depth 250 m).
 - **2024 YR4 what-if** (speculative-flagged) with an "anatomy of a viral
   tsunami myth" guided lesson quoting NASA's airburst assessment; Earth
   impact is ruled out and the preset explains why even the upper bound
   is modest.
 
-### Added — educational features
+### Added: educational features
 - **Physics glossary tooltip system.** 15 domain terms (Mw, SWE, Okada,
   Synolakis, DART, CFL, runup, eta, cavity radius, attenuation, Boussinesq,
   Manning friction, leapfrog, wavefront, inundation) show inline tooltips on
@@ -1658,14 +1670,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   point is clicked, an "Add gauge" button appears in the inspect banner. Clicking
   it creates a gauge at that lat/lon.
 
-### Added — export & accessibility
+### Added: export & accessibility
 - **Comparison-mode export.** A "Compare" export button captures both globe
   canvases side-by-side in a single PNG with scenario labels and provenance.
 - **Viridis colormap.** Third colormap option (perceptually uniform sequential,
   dark-purple → teal → yellow) alongside diverging and cividis. Passes
   protanopia and deuteranopia simulation.
 
-### Fixed — Rust solver and validation
+### Fixed: Rust solver and validation
 - **CPU/GPU solver eta divergence fixed.** CPU momentum step now uses pre-step
   η for the pressure gradient, matching the GPU leapfrog kernel. Both paths
   produce identical wavefronts for the same input. Sponge test updated to use
@@ -1679,12 +1691,12 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   but could delay cancellation on ARM. All stores use `Release`, all loads use
   `Acquire`.
 
-### Changed — verification & security
+### Changed: verification & security
 - **CSP allowlist verification gate.** `scripts/verify.mjs` now parses the
   configured CSP from `tauri.conf.json` and fails if new exceptions are
   introduced without updating the documented allowlist.
 
-### Fixed — audit pass
+### Fixed: audit pass
 - **5 undefined `--subtext0` CSS token references.** SWE gauge coordinates,
   remove buttons, peak readout, and lesson step/icon text were resolving to
   black in both themes. Fixed to `--subtext`.
@@ -1707,7 +1719,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - **Settings import prototype pollution guard.** `importSettings` now skips
   `__proto__`, `constructor`, and `prototype` keys and rejects non-object JSON.
 
-### Fixed — deep audit pass 2
+### Fixed: deep audit pass 2
 - **GPU VRAM budget heuristic caused spurious CPU fallback.** The total-VRAM
   check compared 10× per-buffer size against max_storage_buffer_binding_size,
   rejecting medium grids that fit comfortably in VRAM. Removed in favor of the
@@ -1741,7 +1753,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   `indeterminate` keyframes moved from `_globe.css` to `_animations.css`
   alongside `modal-in`.
 
-### Changed — performance & maintenance
+### Changed: performance & maintenance
 - **CPU solver eliminates per-step Vec clones.** `step_one()` no longer clones
   eta_m, u_ms, v_ms (~96 MB for a 4M-cell grid) every time step. A reusable
   `SolverScratch` buffer set persists across steps and is swapped into the grid
@@ -1754,9 +1766,9 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   monolith reorganized into `src/styles/*.css` with `@import` entry point.
   Build output is functionally identical.
 
-## [0.4.4] — Deep correctness, reliability & UX hardening
+## [0.4.4]: Deep correctness, reliability & UX hardening
 
-### Changed — verification
+### Changed: verification
 - **Strict release verification now fails closed on missing Rust policy tools.**
   `npm run verify:release` requires `cargo-audit` and `cargo-deny`; normal
   developer verification still warns when optional Rust policy tools are absent.
@@ -1768,7 +1780,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   scans public docs for missing `npm run <script>` references and stale local
   Markdown links before running the heavier build/test gate.
 
-### Changed — documentation
+### Changed: documentation
 - **Public support links repaired.** README now points shipped-feature readers to
   the tracked changelog, and CONTRIBUTING no longer references a missing
   `SECURITY.md` file for vulnerability reports.
@@ -1784,7 +1796,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   `checksums-sha256.txt`. CODESIGNING.md updated with maintainer checksum
   generation steps and an expanded release checklist.
 
-### Added — guided lessons
+### Added: guided lessons
 - **Teacher-friendly guided scenario path.** Five annotated lessons
   (Chicxulub extinction, Tōhoku 2011 megathrust, Lituya Bay record runup,
   Poseidon propaganda vs physics, Hunga Tonga Lamb-wave coupling) launch from
@@ -1795,7 +1807,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   a completion timestamp in settings, and the preset rail shows completed
   lesson badges across reloads.
 
-### Added — user-placed gauges
+### Added: user-placed gauges
 - **User-placed gauges with CSV time-series export.** Users can place named
   gauges at arbitrary lat/lon coordinates in the SWE panel. Each gauge computes
   an analytical eta time series from the demo source model and displays an
@@ -1808,13 +1820,13 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   eta samples from the Rust grid, and desktop gauge sparklines/CSV exports use
   those backend samples while browser preview keeps the approximate demo sampler.
 
-### Added — dependency refresh cadence
+### Added: dependency refresh cadence
 - **`npm run deps-check` command.** Reports npm outdated packages, npm audit
   results, and cargo-audit/cargo-deny install status with a recommended
   weekly/monthly/quarterly refresh cadence. CONTRIBUTING.md documents the
   cadence and links to the command.
 
-### Added — visual regression
+### Added: visual regression
 - **Screenshot-backed visual regression tests.** 11 Playwright tests capture
   desktop (1440×900) and narrow (390×844) states for first-run disclaimer,
   active preset cockpit, SWE solver ready/running, Settings modal, Citations
@@ -1822,14 +1834,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   against committed PNG baselines with `toHaveScreenshot()`. Axe WCAG A/AA
   scans included for first-run, Settings, and narrow first-run states.
 
-### Added — settings versioning
+### Added: settings versioning
 - **Schema-versioned settings store.** Both the Tauri plugin-store and
   localStorage now carry a `_settings_schema_version` key. Legacy unversioned
   stores are migrated on first read, future/unknown versions log diagnostics
   and fall back to defaults, and `resetAll` preserves the version stamp.
   Five new tests cover migration, fallback, and round-trip scenarios.
 
-### Changed — accessibility & rendering
+### Changed: accessibility & rendering
 - **Automated WCAG A/AA regression checks.** Five axe-core Playwright tests
   now gate local verification across the first-run dialog, main cockpit,
   Settings, LogViewer, and a preset-active cockpit. Violations fail the build.
@@ -1851,14 +1863,14 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   unimplemented F6/F7/F8 shortcuts; all toggle features have visible UI
   controls.
 
-### Fixed — physics correctness
+### Fixed: physics correctness
 - **Synolakis 1987 coastal run-up corrected.** `synolakis_runup_m` multiplied
   by the offshore *amplitude* instead of the offshore *depth*, so every run-up
   / inundation figure (overlay bars, Inspect readout) under-predicted by a
   factor of `d/H`. The implementation now matches the documented
   `R = 2.831·√(cot β)·H^(5/4)/d^(1/4)` Carrier-Greenspan form, and the
-  feature-gated `synolakis_matches_carrier_greenspan_envelope` validation —
-  previously failing by up to 100 % — now passes. Added a non-gated
+  feature-gated `synolakis_matches_carrier_greenspan_envelope` validation ,
+  previously failing by up to 100 % , now passes. Added a non-gated
   closed-form regression test so the default suite guards it.
 - **Non-finite seismic magnitude eliminated.** A custom landslide with
   `drop_height_m = 0` (admitted by the IPC validator) produced zero kinetic
@@ -1870,7 +1882,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   cube-root of a negative number), and Lamb-wave envelope (zero source radius
   → `cos(NaN)` at arrival).
 
-### Fixed — reliability & safety
+### Fixed: reliability & safety
 - **Root render recovery added.** The React root is wrapped in a calm error
   boundary with retry/reload actions, and global `error` /
   `unhandledrejection` events are routed into the diagnostics log.
@@ -1899,8 +1911,8 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   contract across every command.
 - **GPU SWE path.** Fixed a missing `bytemuck` dependency that meant the `gpu`
   feature never compiled. The GPU readback no longer advances simulated time
-  over a failed/garbage field — it returns a clean failure so the dispatcher
-  falls back to the CPU — and the dispatcher only routes all-wet grids to the
+  over a failed/garbage field , it returns a clean failure so the dispatcher
+  falls back to the CPU , and the dispatcher only routes all-wet grids to the
   (linear, land-mask-free) kernel so it can't re-flood continents.
 - **SWE sponge boundary** is now applied (thinner) on small grids instead of
   silently reverting to reflective edges.
@@ -1908,7 +1920,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   the same input bounds the live `*_initial_conditions` commands enforce, and
   `find_preset` no longer rebuilds the whole registry on each lookup.
 
-### Fixed — UX & accessibility
+### Fixed: UX & accessibility
 - **SWE action label drift fixed.** Manuals and component tests now use the
   current **Run solver** button label, and stale component/e2e assertions were
   refreshed to match the polished empty, chart, diagnostics, Settings, and
@@ -1959,7 +1971,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   top at the final frame and stays usable after Cancel; the Settings Save
   button shows a saving state; the timeline tolerates a non-finite time.
 
-### Fixed — security & DX
+### Fixed: security & DX
 - **Citation and Settings external links now fail closed.** The desktop
   `shell:allow-open` capability is synced to a centralized exact-URL policy:
   citation HTTPS links must match the reviewed list, the two remaining HTTP
@@ -2003,7 +2015,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - App version string corrected to `v0.4.0` (was a stale `v0.2.1`); refreshed
   stale "planned / scaffold" docs for the now-shipped Okada and GPU kernel code.
 
-## [0.4.4] - 2026-06-28 - Secondary cockpit state polish
+## [0.4.4] (2026-06-28): Secondary cockpit state polish
 
 ### Changed
 - Refined source readouts, attenuation charts, SWE solver controls, DART
@@ -2029,7 +2041,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   entering comparison mode no longer trips the runtime recovery boundary with
   a destroyed-object error.
 
-## [0.4.3] - 2026-06-26 - Premium cockpit polish
+## [0.4.3] (2026-06-26): Premium cockpit polish
 
 ### Changed
 - Made Natural Earth II the local-first default globe style so first launch no
@@ -2049,7 +2061,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Synced package, Tauri, Cargo, README badge, manual, and visible app metadata
   to `0.4.3`.
 
-## [0.4.2] - 2026-06-19 - Premium interaction-state polish
+## [0.4.2] (2026-06-19): Premium interaction-state polish
 
 ### Changed
 - Refined the first-run notice into a clearer trust-and-limits brief with
@@ -2068,7 +2080,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Synced package, Tauri, Cargo, README badge, and visible app metadata to
   `0.4.2`.
 
-## [0.4.1] - 2026-06-16 - Premium UX polish pass
+## [0.4.1] (2026-06-16): Premium UX polish pass
 
 ### Changed
 - Refined the main cockpit with a persistent status band, cleaner header
@@ -2091,7 +2103,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   blocker while preserving Windows-safe filenames.
 - Synced package and Tauri metadata to `0.4.1`.
 
-## [0.4.0] - 2026-05-25 — Premium polish + GPU SWE + Lamb-wave coupling
+## [0.4.0] (2026-05-25): Premium polish + GPU SWE + Lamb-wave coupling
 
 ### Premium polish pass
 - **App shell layout fixed and refined**. The first-launch Cesium token
@@ -2141,7 +2153,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   responses from overwriting the custom source.
 
 ### v0.4.0 batches
-- **F4-01 — wgpu SWE dispatch loop**. Full GPU compute path landed:
+- **F4-01 , wgpu SWE dispatch loop**. Full GPU compute path landed:
   ping-pong storage buffers for η/u/v, dispatch loop with bind-group
   alternation, three readback buffers mapped in parallel, restartable
   across multiple `step` calls (host-side eta/u/v re-uploaded at the
@@ -2154,29 +2166,29 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   between GPU and CPU on a 17×17 flat-ocean Gaussian over 50 steps.
   Manning friction + nonlinear advection in the WGSL kernel
   deferred to v0.5.0.
-- **F4-02 — Nonlinear momentum advection**. `SolverMode::Nonlinear`
+- **F4-02 , Nonlinear momentum advection**. `SolverMode::Nonlinear`
   is the new default for live `simulate_grid`; computes
   `(u·∇)u` with first-order upwind differencing for stability across
   the steepening shock front. Validation harness opts into
   `SolverMode::Linear` for the Stoker dam-break case.
-- **F4-05 — Lamb-wave coupled into SWE solver IC**. New
+- **F4-05 , Lamb-wave coupled into SWE solver IC**. New
   `SwGrid::apply_lamb_wave` + `SimulateGridRequest.include_lamb_wave`
   flag wired through `SwePlayback` checkbox. Hunga Tonga 2022
   preset's `controversy_note` updated to reflect partial coupling.
-- **F4-06 — DART buoy RMSE IPC**. New `dart_buoy_rmse` command
+- **F4-06 , DART buoy RMSE IPC**. New `dart_buoy_rmse` command
   computes time-series RMSE between bundled observations and model
   samples; linear-interpolates between bracketing model samples.
-- **F4-07 — Lituya Bay validation case**. New entry in the
+- **F4-07 , Lituya Bay validation case**. New entry in the
   `physics::validation` harness runs Heller-Hager + Synolakis at
   Gilbert Inlet geometry; asserts peak runup lands in [200, 1000] m.
-- **F4-09 — Branded share-card export**. New `exportGlobeShareCard`
+- **F4-09 , Branded share-card export**. New `exportGlobeShareCard`
   composites the globe canvas with a 200-px-tall header strip
   carrying preset name, peak amplitude, Mt-TNT energy, citation
   short-ref, project URL. 1200×800 PNG suitable for social posts.
-- **I4-04 — Cesium `setView` for reduced-motion users**. Replaces
+- **I4-04 , Cesium `setView` for reduced-motion users**. Replaces
   `flyTo({ duration: 0 })` so motion-sensitive users skip the
   single-frame jitter on preset switches.
-- **I4-05 — Centralised `lib/data.ts` bundled-JSON loader**.
+- **I4-05 , Centralised `lib/data.ts` bundled-JSON loader**.
   `CoastalRunupOverlay` and `DartOverlay` now route through
   `getCoastalPoints()` / `getDartEvents()` with validation +
   caching at the boundary.
@@ -2194,7 +2206,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   defaults re-arms the banner.
 
 ### Release / supply chain (scaffolded, awaiting maintainer inputs)
-- **F-V04 + F-V07 scaffolds** — `release.yml` now emits a Tauri
+- **F-V04 + F-V07 scaffolds** , `release.yml` now emits a Tauri
   updater `latest.json` manifest conditional on
   `TAURI_SIGNING_PRIVATE_KEY` and runs Windows Authenticode +
   macOS notarisation steps conditional on the documented secret
@@ -2202,15 +2214,15 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   slots + activation runbook.
 
 ### Docs
-- **F-V03 — README screenshots + animated demo**. Added five
+- **F-V03 , README screenshots + animated demo**. Added five
   production-build screenshots under `assets/screenshots/` plus an
   animated Chicxulub playback GIF, then embedded the gallery in the
   README visual tour.
 - **Per-source science notes**. New `docs/science/{asteroid,
-  nuclear,earthquake,landslide,shallow_water,lamb_wave}.md` — each
+  nuclear,earthquake,landslide,shallow_water,lamb_wave}.md` , each
   documents the formula, paper citation, validation case, and
   known caveats. `docs/science/README.md` links them.
-- **`VALIDATION.md` refreshed** to reflect the v0.4.0 batch — adds
+- **`VALIDATION.md` refreshed** to reflect the v0.4.0 batch , adds
   rows for the Lituya Bay runup test (F4-07), `dart_buoy_rmse`
   math + edge-case tests (F4-06), and the `swe_gpu_matches_cpu`
   regression test (F4-01). The "Future benchmarks" section
@@ -2224,16 +2236,16 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   token), the OSM fallback path now surfaces a `role="status"`
   toast over the globe instead of falling back silently. Reads
   "Cesium ion imagery unavailable (invalid token or upstream error)
-  — fell back to OSM." Token-less style swaps to OSM-default
+  , fell back to OSM." Token-less style swaps to OSM-default
   remain silent (they're the documented path).
 
 ### Tests
-- **`commands::dart_buoy_rmse_skips_out_of_range_obs`** — asserts
+- **`commands::dart_buoy_rmse_skips_out_of_range_obs`** , asserts
   observations outside the model time range are skipped (not
   extrapolated) while still registering in `observed_peak_m`.
-- **`commands::dart_buoy_rmse_interpolates_between_samples`** —
+- **`commands::dart_buoy_rmse_interpolates_between_samples`** ,
   asserts the linear-interp midpoint lookup is correct.
-- **`commands::dart_buoy_rmse_rejects_out_of_range_location`** —
+- **`commands::dart_buoy_rmse_rejects_out_of_range_location`** ,
   asserts buoy lat > 90° is rejected at the boundary.
 
 ### GPU diagnostics
@@ -2321,20 +2333,20 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
   limits labels to <3 Mm camera range.
 
 ### Accessibility & trust
-- **No-FOUC theme bootstrap** in `index.html` — applies `data-theme`
+- **No-FOUC theme bootstrap** in `index.html` , applies `data-theme`
   from `localStorage` before React mounts. Returning Latte-theme users
   no longer see a Mocha→Latte flash on launch.
 - **Global `:focus-visible` ring** on every interactive element (I-V07
-  expanded) — Tab navigation now has a visible focus indicator.
-- **`:disabled` button treatment** — disabled actions read as such.
-- **`@media (prefers-reduced-motion: reduce)` overrides** (I-V06) — drop
+  expanded) , Tab navigation now has a visible focus indicator.
+- **`:disabled` button treatment** , disabled actions read as such.
+- **`@media (prefers-reduced-motion: reduce)` overrides** (I-V06) , drop
   transitions / hover lift / pulse; Cesium `flyTo` shortens to 0 s.
 - **`role="status" aria-live="polite"`** on SwePlayback error + new
   screen-reader-only announcer in CoastalRunupOverlay reporting
   "N coastal points reached" transitions (I-V07).
 - **`.sr-only` utility** for visually-hidden screen-reader content.
 - **`<noscript>` fallback** in `index.html`.
-- **External anchor hardening** — `target="_blank" rel="noopener
+- **External anchor hardening** , `target="_blank" rel="noopener
   noreferrer"` so middle-/right-click can't navigate the Tauri WebView.
 
 ### IPC + supply-chain hardening
@@ -2356,27 +2368,27 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - **`cargo audit` promoted to fail-on-vuln** (I-V03). Baseline clean
   at v0.2.1; any future Dependabot bump introducing a RUSTSEC-listed
   crate now blocks CI.
-- **GitHub Actions bumped to v5** (I-V05) — `checkout`, `setup-node`,
+- **GitHub Actions bumped to v5** (I-V05) , `checkout`, `setup-node`,
   `upload-artifact`, `download-artifact` all v5; Node 22.
 
 ### GPU solver scaffold
-- **F-V05 scaffold** — `[features] gpu` cargo flag + `wgpu` 26 +
+- **F-V05 scaffold** , `[features] gpu` cargo flag + `wgpu` 26 +
   `pollster` 0.4 optional deps + `physics::solver::gpu` module +
   `GpuAvailability` adapter probe + `GpuTimeStepper` skeleton.
   Full buffer-binding + dispatch loop deferred to v0.4.0.
 
 ### Tests
-- **New `presets::tests`** — preset ID uniqueness, non-empty metadata,
+- **New `presets::tests`** , preset ID uniqueness, non-empty metadata,
   controversy-note presence on speculative entries, finite
   initial-displacement outputs across every preset.
-- **New `commands::tests`** — validation rejects NaN/zero/out-of-range
+- **New `commands::tests`** , validation rejects NaN/zero/out-of-range
   inputs across all four source types; `run_preset` rejects unknown
   id and clamps absurd `n_samples`; `haversine_m` handles same-point
   + NaN.
-- **`physics::okada::tests`** — re-enabled the two previously
+- **`physics::okada::tests`** , re-enabled the two previously
   `#[ignore]`d tests (Tōhoku peak in [1, 30] m + strike-slip bounded
   by slip).
-- **`physics::solver::tests`** — new `land_cells_stay_dry`,
+- **`physics::solver::tests`** , new `land_cells_stay_dry`,
   `sponge_boundary_absorbs_rim`, `zero_flux_boundary_opts_out_of_sponge`.
 
 ### Cleanup
@@ -2389,10 +2401,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Fixed `clippy::manual_clamp` on the inundation-extent computation.
 
 ### Blocked / deferred from v0.3.0 (carried to v0.4.0)
-- **F-V04** Code signing — needs maintainer EV cert + Apple Developer enrollment.
-- **F-V07** `tauri-plugin-updater` — needs maintainer-generated Ed25519 keypair.
-- **I-V04** OS-keychain token — Tauri 2 keychain plugin ecosystem still emerging.
-- **F-V06** GEBCO_2026/TID-backed bathymetry — needs distribution-channel decision.
+- **F-V04** Code signing , needs maintainer EV cert + Apple Developer enrollment.
+- **F-V07** `tauri-plugin-updater` , needs maintainer-generated Ed25519 keypair.
+- **I-V04** OS-keychain token , Tauri 2 keychain plugin ecosystem still emerging.
+- **F-V06** GEBCO_2026/TID-backed bathymetry , needs distribution-channel decision.
 
 ### Planned for v0.4.0+
 See `docs/history/RESEARCH_FEATURE_PLAN_v0.4.0.md` for the full v0.4.0 forward plan:
@@ -2404,7 +2416,7 @@ plus the carried-forward Phase 3 blocked items above.
 
 ---
 
-## [0.2.1] - 2026-05-25 — Hot-fix + hardening
+## [0.2.1] (2026-05-25): Hot-fix + hardening
 
 ### Fixed
 - **CRITICAL**: pressing **Run simulation** on v0.2.0 produced a blank
@@ -2413,7 +2425,7 @@ plus the carried-forward Phase 3 blocked items above.
   provider's `ready` state never flips, so the SWE PNG layer was
   silently dropped. Switched to the async `.fromUrl(url, { rectangle })`
   factory with a cancellation guard. Also fixed an imagery-rebuild
-  effect that nuked overlay layers on globe-style swap mid-simulation —
+  effect that nuked overlay layers on globe-style swap mid-simulation ,
   the base layer is now removed surgically and `lowerToBottom`'d so
   overlays stay above it.
 
@@ -2442,7 +2454,7 @@ plus the carried-forward Phase 3 blocked items above.
 - Synchronous theme bootstrap in `index.html` reads `localStorage`
   before React mounts so the Latte (light) theme no longer flashes
   through Mocha on launch.
-- Global `:focus-visible` ring on every interactive element — Tab
+- Global `:focus-visible` ring on every interactive element , Tab
   navigation now has a visible focus indicator.
 - `:disabled` visual treatment on `button` so disabled actions read as
   such instead of looking identical to enabled ones.
@@ -2477,22 +2489,22 @@ plus the carried-forward Phase 3 blocked items above.
 
 ---
 
-## [0.2.0] - 2026-05-25 — Phase 0.2
+## [0.2.0] (2026-05-25): Phase 0.2
 
 Working SWE physics, runup overlay, DART overlay, side-by-side comparison, multi-globe selection, no-token-required default.
 
-### Added — Backend (Rust)
-- **F2 working CPU SWE solver** (`physics::solver`) — leapfrog with `rayon` row-parallel updates via `par_chunks_mut`. Continuity + linearised momentum + Manning bottom friction + zero-flux boundaries. CFL-safe `recommended_dt_s()` based on max √(gh). Snapshots are PNG-base64 with a diverging blue↔red colormap, ready for Cesium `SingleTileImageryProvider`. `run_simulation(grid, stepper, t_end, n_snapshots)` end-to-end driver.
-- **F5 leading-order Okada 1985** (`physics::okada`) — Chinnery-notation surface integral over the four fault corners. Strike-slip + dip-slip + tensile vertical components. Rake decomposition. `From<&EarthquakeSource>` adapter. The full half-space I-term correction is deferred to v0.3.0; the leading-order form over-predicts magnitudes by ~10× but has correct sign / lobe shape.
-- **F4 offline bathymetry** (`data::bathymetry`) — coarse basin-mean depth (Pacific 4280 m, Atlantic 3646 m, Indian 3741 m, Southern 3270 m, Arctic 1205 m, Mediterranean 1500 m, Caribbean 2400 m per Charette & Smith 2010) + continental-shelf taper within 5° of land. Zero for land. Wired into `simulate_grid` via the new `use_real_bathymetry` toggle.
-- **F6 runup batch command** (`commands::runup_at_points`) — Haversine + far-field decay + Synolakis 1987 closed-form. Returns `RunupAtPoint { id, name, lat, lon, range, offshore_amp, runup_m, arrival_time, has_arrived }`.
+### Added: Backend (Rust)
+- **F2 working CPU SWE solver** (`physics::solver`) , leapfrog with `rayon` row-parallel updates via `par_chunks_mut`. Continuity + linearised momentum + Manning bottom friction + zero-flux boundaries. CFL-safe `recommended_dt_s()` based on max √(gh). Snapshots are PNG-base64 with a diverging blue↔red colormap, ready for Cesium `SingleTileImageryProvider`. `run_simulation(grid, stepper, t_end, n_snapshots)` end-to-end driver.
+- **F5 leading-order Okada 1985** (`physics::okada`) , Chinnery-notation surface integral over the four fault corners. Strike-slip + dip-slip + tensile vertical components. Rake decomposition. `From<&EarthquakeSource>` adapter. The full half-space I-term correction is deferred to v0.3.0; the leading-order form over-predicts magnitudes by ~10× but has correct sign / lobe shape.
+- **F4 offline bathymetry** (`data::bathymetry`) , coarse basin-mean depth (Pacific 4280 m, Atlantic 3646 m, Indian 3741 m, Southern 3270 m, Arctic 1205 m, Mediterranean 1500 m, Caribbean 2400 m per Charette & Smith 2010) + continental-shelf taper within 5° of land. Zero for land. Wired into `simulate_grid` via the new `use_real_bathymetry` toggle.
+- **F6 runup batch command** (`commands::runup_at_points`) , Haversine + far-field decay + Synolakis 1987 closed-form. Returns `RunupAtPoint { id, name, lat, lon, range, offshore_amp, runup_m, arrival_time, has_arrived }`.
 - New Tauri command `simulate_grid` exposing the SWE solver to the frontend with bounded grid-size guard (4 M cells max).
 
-### Added — Frontend (React + TS)
-- **SwePlayback** component — runs the SWE solver, scrubs through 24 snapshots, paints each as an imagery layer over the globe. Toggle for coarse offline bathymetry.
-- **DartOverlay** component — sparkline charts of observed water-surface elevation at 6 DART buoys across Tohoku 2011 / Indian Ocean 2004 / Hunga Tonga 2022. Cursor synced to the timeline scrubber.
-- **Side-by-side comparison mode** (F7) — header `⇆ Compare` toggle splits the central column into two stacked globes with two preset selectors. Both share `timeS` but otherwise run independently. Slot tags colour-coded sapphire/pink.
-- **Multi-globe-style selector** — 5 imagery options:
+### Added: Frontend (React + TS)
+- **SwePlayback** component , runs the SWE solver, scrubs through 24 snapshots, paints each as an imagery layer over the globe. Toggle for coarse offline bathymetry.
+- **DartOverlay** component , sparkline charts of observed water-surface elevation at 6 DART buoys across Tohoku 2011 / Indian Ocean 2004 / Hunga Tonga 2022. Cursor synced to the timeline scrubber.
+- **Side-by-side comparison mode** (F7) , header `⇆ Compare` toggle splits the central column into two stacked globes with two preset selectors. Both share `timeS` but otherwise run independently. Slot tags colour-coded sapphire/pink.
+- **Multi-globe-style selector** , 5 imagery options:
   - OpenStreetMap (default, no token)
   - Esri World Imagery satellite (no token)
   - Natural Earth II (bundled with Cesium, no network)
@@ -2503,7 +2515,7 @@ Working SWE physics, runup overlay, DART overlay, side-by-side comparison, multi
 - DART buoy database (`src/data/dart_buoys.json`) covering 3 modern events.
 
 ### Changed
-- App is now **usable without any Cesium ion token** — OpenStreetMap is the default base layer.
+- App is now **usable without any Cesium ion token** , OpenStreetMap is the default base layer.
 - Settings storage hardened: every write mirrors to `localStorage` so a future `tauri-plugin-store` regression cannot silently lose user data.
 - Capability `store:default` alias expanded to explicit `allow-load/get/set/save/has/keys/entries/clear/delete/reload` permissions to fix token-not-persisting bug on some platforms.
 - CSP `connect-src` + `img-src` extended to allow `tile.openstreetmap.org` and `*.arcgisonline.com`.
@@ -2530,57 +2542,57 @@ Working SWE physics, runup overlay, DART overlay, side-by-side comparison, multi
 
 ---
 
-## [0.1.0] - 2026-05-25 — Phase 0.1
+## [0.1.0] (2026-05-25): Phase 0.1
 
 First release with a buildable installer. Globe + presets work end-to-end; physics is point-source only (real propagation lands in v0.2.0).
 
-### Added — Backend (Rust)
-- `EarthquakeSource` now carries `fault_length_m` / `fault_width_m` with Wells–Coppersmith 1994 fallback scaling. Tōhoku + Sumatra presets pre-fill with Fujii–Satake 2013 / Lay 2005 finite-fault values.
-- **Krakatoa 1883** preset (Choi 2003 / Maeno–Imamura 2011 caldera collapse), fixing the README/code drift.
+### Added: Backend (Rust)
+- `EarthquakeSource` now carries `fault_length_m` / `fault_width_m` with Wells-Coppersmith 1994 fallback scaling. Tōhoku + Sumatra presets pre-fill with Fujii-Satake 2013 / Lay 2005 finite-fault values.
+- **Krakatoa 1883** preset (Choi 2003 / Maeno-Imamura 2011 caldera collapse), fixing the README/code drift.
 - `Preset` struct carries `reference_url`, `is_speculative`, `controversy_note`.
 - `tauri-plugin-store` wired for persistent app-data settings.
 - Capabilities `shell:allow-open` tightened to an explicit citation-host allowlist (cesium.com, doi.org, agupubs, science, nature, sciencedirect, researchgate, forbes, tsunamisociety, lanl, nuclearsecrecy, NOAA, GEBCO, OpenTopography, Natural Earth, Clawpack, and the repo).
 
-### Changed — Backend
+### Changed: Backend
 - `physics::shallow_water::sample_wavefront` switched from log-spaced to front-clustered linear sampling (80% of samples on the leading edge band).
 - `commands::run_preset` derives propagation depth from the preset's source water depth when caller passes `mean_depth_m: 0`; eliminates the hardcoded 4000 m bug that broke Lituya Bay arrival times.
 
-### Removed — Backend
+### Removed: Backend
 - `_suppress_unused_mt_constant` dead-code function in `nuclear.rs`.
 - Vestigial `matches!(..)` dead-code suppressor in `commands.rs`.
 
-### Added — Frontend (React + TypeScript)
-- **Tabbed scenario builder** (Asteroid / Nuclear / Earthquake / Landslide) — all four IPC commands are now exposed in the UI with bounds-checked inputs.
-- **Click-globe-to-set-location** — Pick on Globe button toggles pick mode; the Cesium screen-space click handler reports cartographic coords, Esc cancels.
-- **Settings modal** — Cesium ion token paste field, theme toggle, store-backed persistence in `app_data_dir/settings.json`.
-- **First-run disclaimer modal** — not-for-evacuation notice shown exactly once; ack timestamp persisted.
-- **Citations modal** — full peer-reviewed reference list with click-through (rejected if outside `shell:allow-open` allowlist).
+### Added: Frontend (React + TypeScript)
+- **Tabbed scenario builder** (Asteroid / Nuclear / Earthquake / Landslide) , all four IPC commands are now exposed in the UI with bounds-checked inputs.
+- **Click-globe-to-set-location** , Pick on Globe button toggles pick mode; the Cesium screen-space click handler reports cartographic coords, Esc cancels.
+- **Settings modal** , Cesium ion token paste field, theme toggle, store-backed persistence in `app_data_dir/settings.json`.
+- **First-run disclaimer modal** , not-for-evacuation notice shown exactly once; ack timestamp persisted.
+- **Citations modal** , full peer-reviewed reference list with click-through (rejected if outside `shell:allow-open` allowlist).
 - **Catppuccin Latte light theme** alongside Mocha dark default, toggleable in Settings.
 - Speculative presets sort below historical and display a ⚠ icon + amber left-border + controversy note tooltip.
-- Globe `cylinder` entity renders the impact cavity in 3D (height = cavity_depth/2.83 per Ward–Asphaug parabola); fly-to range clamped 0.5 Mm – 8 Mm.
+- Globe `cylinder` entity renders the impact cavity in 3D (height = cavity_depth/2.83 per Ward-Asphaug parabola); fly-to range clamped 0.5 Mm to 8 Mm.
 - Globe wavefront entities updated **in-place** on time-scrub (no add/remove thrash).
 - Empty-state hint when no preset is active; loading badge while Cesium World Bathymetry tileset streams; error badge on tile-load failure; NaN guard on amplitude=0 case.
 
-### Changed — Frontend
-- App.tsx no longer duplicates Schmidt–Holsapple math in JavaScript — custom scenarios route through Tauri IPC, browser preview surfaces a console warning instead.
+### Changed: Frontend
+- App.tsx no longer duplicates Schmidt-Holsapple math in JavaScript , custom scenarios route through Tauri IPC, browser preview surfaces a console warning instead.
 - `vite.config.ts` `rollupOptions.manualChunks` splits Cesium (4.1 MB) and React (194 KB) into separate chunks. App shell minified to 26 KB.
 - `Globe.tsx` lazy-loaded via `React.lazy` + `Suspense`.
 
-### Added — Build & Release Infrastructure
+### Added: Build & Release Infrastructure
 - `assets/branding/logo.svg` master + generated `src-tauri/icons/*` (PNG, ICO, ICNS, iOS, Android variants).
-- `.github/workflows/ci.yml` — PR + push + dispatch triggers; frontend job (tsc + vite); Rust job 3-OS matrix (ubuntu/windows/macos) with cargo check + test --release + clippy -D warnings; audit job with cargo-audit.
-- `.github/workflows/release.yml` — workflow_dispatch with tag + prerelease inputs; 3-OS matrix; auto-uploads msi/exe/dmg/deb/AppImage/rpm/zip/tar.gz; macOS universal-apple-darwin target.
-- `.github/dependabot.yml` — weekly npm + cargo, monthly GH Actions, grouped tauri/cesium/react updates.
+- `.github/workflows/ci.yml` , PR + push + dispatch triggers; frontend job (tsc + vite); Rust job 3-OS matrix (ubuntu/windows/macos) with cargo check + test --release + clippy -D warnings; audit job with cargo-audit.
+- `.github/workflows/release.yml` , workflow_dispatch with tag + prerelease inputs; 3-OS matrix; auto-uploads msi/exe/dmg/deb/AppImage/rpm/zip/tar.gz; macOS universal-apple-darwin target.
+- `.github/dependabot.yml` , weekly npm + cargo, monthly GH Actions, grouped tauri/cesium/react updates.
 - `.github/ISSUE_TEMPLATE/{bug,preset-request,physics,config}.yml` + PR template.
 - `CONTRIBUTING.md` and `SECURITY.md`.
 
 ---
 
-## [0.0.1] - 2026-05-24 — Scaffold
+## [0.0.1] (2026-05-24): Scaffold
 
 Initial repo scaffold with all source-physics formulas encoded but no propagation solver yet. Details in v0.0.1 git history.
 
-## Roadmap archive — 2026-08-10 — ROADMAP.md
+## Roadmap archive , 2026-08-10 , ROADMAP.md
 
 <details>
 <summary>Original roadmap snapshot</summary>
@@ -2638,7 +2650,7 @@ Cesium July-2026; WCAG 2.2). Items already tracked in the sections above
 max-field, casualty-model plurality, USGS/NEO feeds, terrain draping, units,
 recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
-### P2 — reliability guards and physical credibility
+### P2: reliability guards and physical credibility
 
 ## Research-Driven Additions
 
@@ -2648,76 +2660,76 @@ recurrence, "why trust this", CLI, VTK, offline installer) are NOT repeated.
 
 ### P3
 
-- [ ] P3 — Export a single bounded GeoPackage for GIS handoff
+- [ ] P3 , Export a single bounded GeoPackage for GIS handoff
   Why: GeoJSON/KML/CZML/CSV exports fragment related vector products, while GeoPackage provides one open, portable, offline container that QGIS/GDAL can inspect without adding a server.
   Evidence: current export set in `src/lib/export.ts`; OGC GeoPackage 1.4 https://docs.ogc.org/is/12-128r19/12-128r19.html.
   Touches: Rust SQLite/GeoPackage writer, export IPC/UI/CLI seam, shared provenance preflight, interoperability and adversarial fixtures.
   Acceptance: one `.gpkg` opens in the QGIS/GDAL versions pinned by an interoperability fixture with source/fault geometry, gauges/runup, arrival isochrones, applicable direct-effect polygons, CRS/datum, units, quality, citations, and source/data digests; table/geometry/row/size limits fail closed; a round-trip fixture verifies geometry and metadata without retaining another full run in memory.
   Complexity: M
 
-## Research-Driven Additions (2026-07-14 — incremental external scan)
+## Research-Driven Additions (2026-07-14 , incremental external scan)
 
-New items only, from a focused net-new sweep of dependency changelogs, competitor/community signal, and standards. Everything already tracked above (units, casualty-model plurality, WSEG-10 fallout, USGS/NEO feeds, HazEL, meteotsunami, terrain draping, extinction-scale effects, humanitarian layer, "why trust this", i18n, WASM physics, NTHMP, ensembles, CLI, VTK/Zarr/GeoPackage, CITATION.cff, SBOM, WebGPU-128 subgroups/f16/timestamp-query, WCAG 2.2 forced-colors/drag/target-size, accessible globe/charts) is NOT repeated. Grounded against v0.10.4 source: video export already exists via `MediaRecorder`, airburst physics already exists in `direct_hazard.rs`, and Tauri `features = []` (no tray-icon/GTK advisory surface) — items are reframed accordingly.
+New items only, from a focused net-new sweep of dependency changelogs, competitor/community signal, and standards. Everything already tracked above (units, casualty-model plurality, WSEG-10 fallout, USGS/NEO feeds, HazEL, meteotsunami, terrain draping, extinction-scale effects, humanitarian layer, "why trust this", i18n, WASM physics, NTHMP, ensembles, CLI, VTK/Zarr/GeoPackage, CITATION.cff, SBOM, WebGPU-128 subgroups/f16/timestamp-query, WCAG 2.2 forced-colors/drag/target-size, accessible globe/charts) is NOT repeated. Grounded against v0.10.4 source: video export already exists via `MediaRecorder`, airburst physics already exists in `direct_hazard.rs`, and Tauri `features = []` (no tray-icon/GTK advisory surface) , items are reframed accordingly.
 
 ### P2
 
-- [ ] P2 — Surface the deterministic WebCodecs video export in the UI
-  Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it — the export menu still only offers the real-time MediaRecorder path.
+- [ ] P2 , Surface the deterministic WebCodecs video export in the UI
+  Why: `exportDeterministicVideo` (frame-stepped H.264/MP4 via WebCodecs + mp4-muxer) exists and is bug-fixed, but nothing calls it , the export menu still only offers the real-time MediaRecorder path.
   Where: `src/lib/export.ts` (helper present), export/highlight-story UI in `src/App.tsx`/`src/components/HighlightStoryDialog.tsx`, a frame-stepping `renderFrame(i)` driver over the SWE replay.
   Acceptance: an export option encodes a replay frame-by-frame with a progress indicator; feature-detected with a MediaRecorder fallback labelled real-time; failure preserves the replay and offers retry.
   Complexity: M
 
-- [ ] P2 — Surface the Quick ETA preview in the UI
-  Why: the `quick_eta_preview` IPC command and typed `api.quickEtaPreview` wrapper exist and are tested, but nothing calls them yet — the coarse first-arrival map is not rendered anywhere.
+- [ ] P2 , Surface the Quick ETA preview in the UI
+  Why: the `quick_eta_preview` IPC command and typed `api.quickEtaPreview` wrapper exist and are tested, but nothing calls them yet , the coarse first-arrival map is not rendered anywhere.
   Where: `src/components/SwePlayback.tsx` (a "Quick ETA" action), a new arrival-time preview layer in `src/render/cesium/**` / `Globe.tsx`, `src/lib/tauri.ts` (wrapper already present).
   Acceptance: a Quick ETA action renders the coarse arrival map as a clearly-labelled non-authoritative preview distinct from validated max-field isochrones; the full nonlinear run stays the reproducible/exported product.
   Complexity: M
 
-- [ ] P2 — Batch large hazard overlays through Cesium `Buffer*` primitive collections
-  Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140–1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) — the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
+- [ ] P2 , Batch large hazard overlays through Cesium `Buffer*` primitive collections
+  Why: inundation polygons, blast/runup rings, and gauge points render per-entity; Cesium 1.140 to 1.142 shipped experimental `BufferPolygonCollection`/`BufferPolylineCollection`/`BufferPointCollection` (single GPU buffer, per-color alpha, bounding volumes) , the correct substrate for tens of thousands of simulation cells and the lower-level backing beneath the tracked `GeoJsonPrimitive` item.
   Evidence: Cesium June/April 2026 releases https://cesium.com/blog/2026/06/01/cesium-releases-in-june-2026/ and https://cesium.com/blog/2026/04/01/cesium-releases-in-april-2026/ (all ≤ pinned 1.143); overlay rendering in `src/render/cesium/**`, `src/components/Globe.tsx`.
   Touches: overlay adapters for inundation/rings/gauges, `Globe.tsx`, Playwright visual baselines (deliberately updated).
   Acceptance: a 500+-cell hazard overlay renders through one buffer collection with no visual regression and measurably better frame time than the per-entity path; the API is feature-detected with an entity fallback while it remains experimental.
   Complexity: M
 
-- [ ] P2 — Add event sonification as an engagement and non-visual accessibility channel
+- [ ] P2 , Add event sonification as an engagement and non-visual accessibility channel
   Why: the app is heavily visual with no audio; a WebAudio track (seismic rumble/P-S arrival, blast overpressure arrival, wave rumble) synchronised to the timeline is both an engagement feature no competitor offers and a genuine STEM-equity/accessibility win for blind and low-vision users, drawing on established seismic-sonification pedagogy.
   Evidence: IRIS/Columbia earthquake sonification pedagogy https://www.earth.columbia.edu/videos/view/part-2-of-2-a-deep-dive-into-earthquake-sonification-with-python-grades-10-12; timeline/transport in `src/components/SwePlayback.tsx` and the transport bar.
   Touches: WebAudio sonification module driven by solver/direct-effect series, transport coupling + mute/volume in Settings, reduced-motion/audio preference, accessibility copy, tests.
   Acceptance: an opt-in audio layer maps modeled quantities (arrival, amplitude, energy) to sound synced to the scrubber; it is off by default, respects a mute/volume setting, is described in an accessible label, and never implies operational alerting.
   Complexity: M
 
-- [ ] P2 — Add a firestorm ignition-zone and smoke-loft overlay
+- [ ] P2 , Add a firestorm ignition-zone and smoke-loft overlay
   Why: large nuclear/impact events deposit thermal energy that ignites mass fires whose lofted smoke drives the climate effect, but results stop at a static thermal ring; a distinct ignition-zone + smoke-plume overlay bridges the blast/thermal module to the tracked impact-winter timeline, and NUKEMAP's own 2026 roadmap is adding thermal+conflagration modelling.
   Evidence: NUKEMAP roadmap (thermal/conflagration) https://blog.nuclearsecrecy.com/2026/02/10/nukemap-roadmap/; smoke-injection-height modelling https://docs.nlr.gov/docs/fy22osti/81470.pdf; existing thermal field in `src-tauri/src/physics/direct_hazard.rs`.
   Touches: cited ignition-threshold + smoke-lofting model in Rust, ignition-zone/smoke overlay, coupling to the extinction-scale timeline item, confidence/limits copy, tests.
   Acceptance: qualifying nuclear/impact events show a cited fire-ignition radius and a lofted-smoke indicator feeding the long-term climate narrative; each effect cites a source and states uncertainty; small events omit inapplicable effects.
   Complexity: M
 
-- [ ] P2 — Upgrade wgpu 29→30 and add HDR fireball/thermal surface output
-  Why: wgpu 30 (2026-07-01) adds surface color-space/HDR output and `SHADER_I16`; HDR tone-mapping renders the extreme luminance of a nuclear fireball or thermal field faithfully on capable Windows displays, and i16 packing cuts solver-buffer bandwidth — but v30 carries breaking API changes against the pinned wgpu-hal 29.0.4, so the upgrade must be deliberate.
-  Evidence: wgpu CHANGELOG https://github.com/gfx-rs/wgpu/blob/trunk/CHANGELOG.md; pinned 29.0.4 note in `CLAUDE.md`; GPU path in `src-tauri/src/physics/solver/gpu.rs` and the Cesium HDR presentation.
+- [ ] P2 , Upgrade wgpu 29→30 and add HDR fireball/thermal surface output
+  Why: wgpu 30 (2026-07-01) adds surface color-space/HDR output and `SHADER_I16`; HDR tone-mapping renders the extreme luminance of a nuclear fireball or thermal field faithfully on capable Windows displays, and i16 packing cuts solver-buffer bandwidth , but v30 carries breaking API changes against the pinned wgpu-hal 29.0.4, so the upgrade must be deliberate.
+  Evidence: wgpu CHANGELOG https://github.com/gfx-rs/wgpu/blob/trunk/CHANGELOG.md; pinned 29.0.4 note in local project notes; GPU path in `src-tauri/src/physics/solver/gpu.rs` and the Cesium HDR presentation.
   Touches: `src-tauri/Cargo.toml` wgpu/wgpu-hal/gpu-allocator bump, GPU kernel API migration (`VertexState.buffers`, `@interpolate(flat)`, `BufferBinding`), optional HDR surface config + tone-mapping, feature detection/fallback, GPU tests.
   Acceptance: the app builds and all GPU tests pass on wgpu 30 with CPU/GPU products within declared tolerance; on an HDR-capable Windows display the fireball/thermal surface renders in HDR with a graceful SDR fallback; the dx12-vs-gpu-allocator regression is re-checked before enabling any new backend.
   Complexity: M
 
 ### P3
 
-- [ ] P3 — Add a parameterized volcanic caldera/flank-collapse tsunami source
-  Why: volcanic-collapse tsunamis (Anak Krakatau 2018, Hunga Tonga 2022) are the hottest 2024–2026 tsunami-genesis research vein and a distinct mechanism absent from the four current sources, naturally coupling a volcanic event to the tsunami module; a parameterized initial-displacement source (collapse volume/geometry → initial wave) fits the existing source→IC→SWE pattern, with the dispersive/non-hydrostatic accuracy limit documented rather than claimed.
+- [ ] P3 , Add a parameterized volcanic caldera/flank-collapse tsunami source
+  Why: volcanic-collapse tsunamis (Anak Krakatau 2018, Hunga Tonga 2022) are the hottest 2024 to 2026 tsunami-genesis research vein and a distinct mechanism absent from the four current sources, naturally coupling a volcanic event to the tsunami module; a parameterized initial-displacement source (collapse volume/geometry → initial wave) fits the existing source→IC→SWE pattern, with the dispersive/non-hydrostatic accuracy limit documented rather than claimed.
   Evidence: PAGEOPH 2024 volcanic-tsunami review https://link.springer.com/article/10.1007/s00024-024-03515-y; NHESS 2026 https://nhess.copernicus.org/articles/26/631/2026/; existing source modules in `src-tauri/src/physics/`.
   Touches: new Rust collapse source (volume/geometry/duration → initial displacement), `ScenarioBuilder.tsx` fifth source type, cited presets (Anak Krakatau 2018, Hunga Tonga 2022), `docs/science/`, applicability caveat copy.
   Acceptance: a collapse scenario produces a physically ordered initial wave from cited parameters and propagates through the existing SWE with a visible note that short/steep collapse waves need non-hydrostatic physics for near-field accuracy; presets ship with citations; CPU/GPU parity holds.
   Complexity: L
 
-- [ ] P3 — Add an asteroid-deflection (kinetic-impactor) teaching mode
-  Why: the asteroid module presents impact as inevitable, but the NGSS-aligned agency lesson is deflection — NASA confirmed (2026) DART altered Dimorphos' heliocentric orbit; a simplified Δv × lead-time → miss-distance calculator converts doom into an engineering-design lesson, distinct from the tracked NEO-discovery surface.
+- [ ] P3 , Add an asteroid-deflection (kinetic-impactor) teaching mode
+  Why: the asteroid module presents impact as inevitable, but the NGSS-aligned agency lesson is deflection , NASA confirmed (2026) DART altered Dimorphos' heliocentric orbit; a simplified Δv × lead-time → miss-distance calculator converts doom into an engineering-design lesson, distinct from the tracked NEO-discovery surface.
   Evidence: NASA DART orbit-change result https://www.jpl.nasa.gov/news/nasas-dart-mission-changed-orbit-of-asteroid-didymos-around-sun/; NGSS engineering-design practice; existing asteroid inputs in `ScenarioBuilder.tsx`.
   Touches: a deflection calculator (impulse + lead time → along-track displacement/miss distance using a documented linearised approximation, explicitly not full n-body), a "deflect it" UI mode, visualization of miss vs. impact, uncertainty/limits copy.
   Acceptance: users set an impulse and lead time and see the resulting miss distance (or reduced impact) with the linearised assumption stated; the mode is labelled a teaching approximation, never a mission prediction; the underlying impact scenario is unchanged when deflection is off.
   Complexity: L
 
-- [ ] P3 — Add an NGSS engineering-design "mitigation" mode
+- [ ] P3 , Add an NGSS engineering-design "mitigation" mode
   Why: classroom natural-hazard units (NGSS 4-ESS3-2, TeachEngineering "Survive That Tsunami!") are explicitly design-solution oriented, and letting a user place a barrier/sea wall and re-run makes the app curriculum-adoptable rather than a passive demo.
   Evidence: TeachEngineering tsunami design activity https://www.teachengineering.org/activities/view/cub_natdis_lesson06_activity1; NGSS 4-ESS3-2 https://thewonderofscience.com/4ess32; solver bathymetry/land-mask handling in `src-tauri/src/physics/solver/`.
   Touches: user-placed barrier objects that raise local bathymetry / add reflective cells, re-run + before/after comparison, mitigation UI, education copy tying to the standard.
@@ -2727,32 +2739,32 @@ New items only, from a focused net-new sweep of dependency changelogs, competito
 ## Research-Driven Additions (2026-07-16)
 
 Grounded in `RESEARCH.md` (2026-07-16). Verified against the codebase to avoid
-duplicating implemented physics: Ward–Asphaug ocean-impact→tsunami coupling,
+duplicating implemented physics: Ward-Asphaug ocean-impact→tsunami coupling,
 `SolverMode::Linear`, and per-key settings migration already exist; the items
 below are the net-new, non-duplicate opportunities from this scan.
 
 ### P2
 
-- [ ] P2 — HazEL observed-runup validation overlay (extends the historical event browser)
-  Why: the planned NCEI HazEL browser loads event parameters into the scenario builder; the same API also serves 26,000+ *observed* runup points — overlaying them against simulated runup turns HazEL from a convenience loader into a per-event validation surface, the single strongest scientific-legitimacy move for the tsunami mode.
-  Evidence: Verified extension of the existing "NCEI HazEL historical tsunami event browser" item — that item's acceptance stops at loading magnitude/epicentre. NCEI runup records https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search.
+- [ ] P2 , HazEL observed-runup validation overlay (extends the historical event browser)
+  Why: the planned NCEI HazEL browser loads event parameters into the scenario builder; the same API also serves 26,000+ *observed* runup points , overlaying them against simulated runup turns HazEL from a convenience loader into a per-event validation surface, the single strongest scientific-legitimacy move for the tsunami mode.
+  Evidence: Verified extension of the existing "NCEI HazEL historical tsunami event browser" item , that item's acceptance stops at loading magnitude/epicentre. NCEI runup records https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search.
   Touches: `src/lib/` (extend the HazEL client to fetch runup records for a selected event), `src/components/CoastalRunupOverlay.tsx`/`Globe.tsx` (observed-vs-simulated comparison layer with residuals), CSP allowlist already added by the base HazEL item.
   Acceptance: for a HazEL event with runup records, an opt-in layer plots observed runup points alongside simulated runup at comparable locations with a residual summary and explicit sampling/confidence caveats; degrades gracefully offline; does not alter solver output. Do not land before the base HazEL browser item.
   Complexity: M
 
 ### P3
 
-- [ ] P3 — OS notification and optional chime on long-run completion
+- [ ] P3 , OS notification and optional chime on long-run completion
   Why: solver runs (grid/streaming, ensembles) can take a while and users may look away; a completion notification is a small no-network quality-of-life win with no privacy cost.
-  Evidence: Verified absent — no notification plugin in `package.json`/`Cargo.toml`; long runs surface only in-app via `SimulationTransport`. Tauri notification plugin (local OS notifications) https://v2.tauri.app/plugin/notification/.
+  Evidence: Verified absent , no notification plugin in `package.json`/`Cargo.toml`; long runs surface only in-app via `SimulationTransport`. Tauri notification plugin (local OS notifications) https://v2.tauri.app/plugin/notification/.
   Touches: `@tauri-apps/plugin-notification` (+ capability grant scoped to the main window), `src/components/SwePlayback.tsx`/`App.tsx` (fire on run completion/failure), a Settings toggle honoring the existing sonification/quiet preferences, `src/lib/settings.ts`.
   Acceptance: when a long run finishes or fails while the window is unfocused, an opt-in local OS notification (and optional short chime reusing the sonification path) fires; the toggle defaults consistently with existing audio/quiet settings; nothing is transmitted off-device; disabled in teacher/classroom-locked mode if it would disrupt a lesson.
   Complexity: S
 
-- [ ] P3 — Interactive "poke the wave" exploratory sandbox (non-reproducible mode)
-  Why: Celeris' entire engagement hook is letting users perturb the wave field live and watch it respond — a powerful teaching affordance Cataclysm's wgpu solver can support; scoped explicitly as an exploratory mode that never feeds the deterministic/archived pipeline so it doesn't violate the reproducibility rules.
-  Evidence: Celeris-WebGPU interactive editing https://plynett.github.io/ · https://github.com/plynett/plynett.github.io; existing GPU solver in `src-tauri/src/physics/solver/gpu.rs`. Reproducibility constraint per CLAUDE.md (max-field products must observe every accepted step) — this mode is deliberately outside that pipeline.
-  Touches: a sandbox toggle in the playback UI, an IPC path that injects a bounded surface perturbation at a picked globe point into a running/paused linear-mode solve, clear "Exploratory — not a validated or exportable run" labelling, guardrails preventing sandbox state from being archived/exported/compared.
+- [ ] P3 , Interactive "poke the wave" exploratory sandbox (non-reproducible mode)
+  Why: Celeris' entire engagement hook is letting users perturb the wave field live and watch it respond , a powerful teaching affordance Cataclysm's wgpu solver can support; scoped explicitly as an exploratory mode that never feeds the deterministic/archived pipeline so it doesn't violate the reproducibility rules.
+  Evidence: Celeris-WebGPU interactive editing https://plynett.github.io/ · https://github.com/plynett/plynett.github.io; existing GPU solver in `src-tauri/src/physics/solver/gpu.rs`. Project architecture notes require max-field products to observe every accepted step, so this mode is deliberately outside that pipeline.
+  Touches: a sandbox toggle in the playback UI, an IPC path that injects a bounded surface perturbation at a picked globe point into a running/paused linear-mode solve, clear "Exploratory , not a validated or exportable run" labelling, guardrails preventing sandbox state from being archived/exported/compared.
   Acceptance: in an explicitly-labelled exploratory mode, clicking the globe injects a bounded disturbance and the wave field visibly responds; the mode cannot produce archived, compared, or exported results and is visually distinct from validated runs; leaving the mode restores the authoritative run state; determinism of the normal pipeline is unaffected.
   Complexity: L
 ```

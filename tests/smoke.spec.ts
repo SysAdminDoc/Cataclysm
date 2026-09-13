@@ -342,15 +342,16 @@ test.describe("Cataclysm browser preview", () => {
     await expect(page.getByText("Long-term impact timeline")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("Extinction-scale screening")).toBeVisible();
     const scrubber = page.getByRole("slider", { name: "Long-term impact timeline scrubber" });
-    await expect(scrubber).toHaveAttribute("max", "5");
-    await scrubber.fill("4");
+    await expect(scrubber).toHaveAttribute("max", "7");
+    await page.getByRole("button", { name: /Select months after impact: Impact winter and productivity loss/i }).click();
+    await expect(scrubber).toHaveValue("6");
     await expect(page.getByText("Impact winter and productivity loss")).toBeVisible();
     await expect(page.getByText("Primary-productivity collapse risk")).toBeVisible();
     await expect(page.getByText(/not an extinction probability/i)).toBeVisible();
     await expect(page.getByText(/Senel et al\. 2023/)).toBeVisible();
 
     await page.getByRole("button", { name: /Select years after impact: Long climate recovery tail/i }).click();
-    await expect(scrubber).toHaveValue("5");
+    await expect(scrubber).toHaveValue("7");
     await expect(page.getByText("Months to more than a decade")).toBeVisible();
   });
 
@@ -798,6 +799,10 @@ test.describe("Cataclysm browser preview", () => {
     await page.goto("/");
     await page.getByRole("button", { name: /Create my own/i }).click();
     await expect(page.getByText("Custom scenario", { exact: true })).toBeVisible({ timeout: 15_000 });
+    const cameraCoordinates = page.locator(".app__viewport-telemetry small");
+    await expect(cameraCoordinates).toContainText("82.50° W");
+    const exportedCameraCoordinates = (await cameraCoordinates.textContent())?.trim();
+    expect(exportedCameraCoordinates).toBeTruthy();
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Package", exact: true }).click();
@@ -813,7 +818,7 @@ test.describe("Cataclysm browser preview", () => {
     await expect(preview).toContainText("nothing is changed until you import");
     await preview.getByRole("button", { name: "Import as a copy" }).click();
     await expect(page.locator(".app__viewport-hud--source")).toContainText("500.0-m", { timeout: 15_000 });
-    await expect(page.locator(".app__viewport-telemetry")).toContainText("35.15° N · 82.50° W", { timeout: 15_000 });
+    await expect(cameraCoordinates).toHaveText(exportedCameraCoordinates!, { timeout: 15_000 });
   });
 
   test("keeps numeric help collapsed until its disclosure button is used", async ({ page }) => {

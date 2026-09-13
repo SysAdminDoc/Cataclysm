@@ -3,6 +3,7 @@ export type CameraTelemetry = Readonly<{
   lon: number;
   altitudeM: number;
   headingDeg: number;
+  pitchDeg: number;
 }>;
 
 export interface CameraTelemetryHost {

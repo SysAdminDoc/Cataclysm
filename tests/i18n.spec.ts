@@ -224,11 +224,12 @@ test("language switch persists across settings, simulation results, layers, and 
   expect(attenuationAccessibility.violations).toEqual([]);
 
   await page.getByRole("tab", { name: "検証", exact: true }).click();
-  const dart = page.locator(".results__tabpanel > .section").last();
+  const dartSelector = ".results__tabpanel > .section:has(.dart__toggle)";
+  const dart = page.locator(dartSelector);
   await expect(dart).toBeVisible();
   await dart.scrollIntoViewIfNeeded();
   expect(await dart.screenshot()).toMatchSnapshot("localized-dart-ja.png");
-  const dartAccessibility = await new AxeBuilder({ page }).include(".results__tabpanel > .section:last-child").analyze();
+  const dartAccessibility = await new AxeBuilder({ page }).include(dartSelector).analyze();
   expect(dartAccessibility.violations).toEqual([]);
 
   await page.getByRole("tab", { name: "レイヤー", exact: true }).click();

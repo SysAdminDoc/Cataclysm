@@ -16,6 +16,7 @@ export class CesiumCameraTelemetryHost implements CameraTelemetryHost {
       lon: Cesium.Math.toDegrees(position.longitude),
       altitudeM: Math.max(0, position.height),
       headingDeg: Cesium.Math.toDegrees(Cesium.Math.zeroToTwoPi(this.#viewer.camera.heading)),
+      pitchDeg: Cesium.Math.toDegrees(this.#viewer.camera.pitch),
     };
   }
 

@@ -306,7 +306,7 @@ test.describe("Visual regression — desktop", () => {
     await diameter.press("Enter");
     await page.getByRole("tab", { name: "Results" }).click();
     await expect(page.getByText("Long-term impact timeline")).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("slider", { name: "Long-term impact timeline scrubber" }).fill("4");
+    await page.getByRole("button", { name: /Select months after impact: Impact winter and productivity loss/i }).click();
     await expect(page.getByText("Primary-productivity collapse risk")).toBeVisible();
     await page.locator(".app__panel--right").evaluate((panel) => {
       const aftermath = panel.querySelector<HTMLElement>(".hazard__aftermath");

@@ -9,6 +9,10 @@ const outputDir = path.join(root, "assets", "screenshots");
 const port = 4188;
 const origin = `http://127.0.0.1:${port}`;
 const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
+const args = new Set(process.argv.slice(2));
+const skipBuild = args.has("--skip-build");
+const directOnly = args.has("--direct-only");
+const onlyDomain = [...args].find((value) => value.startsWith("--only="))?.slice("--only=".length);
 
 function buildProductionPreview() {
   const command = process.platform === "win32" ? "cmd.exe" : "npm";
@@ -29,7 +33,7 @@ function buildProductionPreview() {
   }
 }
 
-buildProductionPreview();
+if (!skipBuild) buildProductionPreview();
 await mkdir(outputDir, { recursive: true });
 
 const server = spawn(process.execPath, [viteBin, "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
@@ -64,9 +68,7 @@ function seedPreview(theme = "mocha") {
   localStorage.setItem("tsunamisim.globe_style", JSON.stringify("esri-world-imagery"));
 }
 
-async function waitForStableWorkspace(page) {
-  await page.getByRole("button", { name: "Run & Watch" }).waitFor({ state: "visible" });
-  await page.getByText("What happened?", { exact: true }).waitFor({ state: "visible" });
+async function waitForStableGlobe(page) {
   await page.locator('.app__globe-status[data-status="loading"]').waitFor({ state: "detached" });
 
   const canvas = page.locator(".cesium-widget canvas");
@@ -85,6 +87,35 @@ async function waitForStableWorkspace(page) {
   throw new Error("Cesium globe did not settle before screenshot capture.");
 }
 
+async function openPage(context) {
+  const page = await context.newPage();
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await waitForStableGlobe(page);
+  return page;
+}
+
+async function runTsunami(page) {
+  await page.locator('.preset-card:has-text("Tohoku")').first().click();
+  await page.getByRole("button", { name: "Run & Watch" }).waitFor({ state: "visible" });
+  await page.getByRole("button", { name: "Run & Watch" }).click();
+  await page.getByRole("status", { name: "Run and Watch: Understand" }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByText("What happened?", { exact: true }).waitFor({ state: "visible" });
+  await waitForStableGlobe(page);
+}
+
+async function runDirectScenario(page, { domain, center }) {
+  await page.getByRole("button", { name: domain === "nuclear" ? "Nuclear" : "Impact", exact: true }).click();
+  await page.locator(".hazard").getByRole("button", { name: /pick location on globe/i }).click();
+  const coordinates = page.getByRole("form", { name: "Enter coordinates" });
+  await coordinates.getByLabel("Latitude").fill(String(center.lat));
+  await coordinates.getByLabel("Longitude").fill(String(center.lon));
+  await coordinates.getByRole("button", { name: "Go" }).click();
+  await coordinates.waitFor({ state: "detached" });
+  await page.getByRole("tab", { name: "Results" }).click();
+  await page.locator(".hazard__results").waitFor({ state: "visible", timeout: 30_000 });
+  await waitForStableGlobe(page);
+}
+
 async function capture(page, fileName) {
   await page.screenshot({
     path: path.join(outputDir, fileName),
@@ -98,7 +129,7 @@ try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
 
-  for (const theme of ["mocha", "latte"]) {
+  for (const theme of directOnly ? [] : ["mocha", "latte"]) {
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1000 },
       deviceScaleFactor: 1,
@@ -108,19 +139,54 @@ try {
       serviceWorkers: "block",
     });
     await context.addInitScript(seedPreview, theme);
-    const page = await context.newPage();
-    await page.goto(origin, { waitUntil: "networkidle" });
-    await page.locator('.preset-card:has-text("Tohoku")').click();
-    await page.getByRole("button", { name: "Run & Watch" }).click();
-    await waitForStableWorkspace(page);
+    const page = await openPage(context);
+    await runTsunami(page);
     await capture(page, theme === "mocha" ? "simulator-workspace-dark.png" : "simulator-workspace-light.png");
 
     if (theme === "mocha") {
+      await page.getByRole("tab", { name: "Science" }).click();
+      await page.getByText("Source science", { exact: true }).waitFor({ state: "visible" });
+      await capture(page, "science-evidence-dark.png");
+
+      await page.getByRole("tab", { name: "Outcome" }).click();
+      await page.getByRole("button", { name: "History", exact: true }).click();
+      await page.getByRole("dialog", { name: "Run history" }).waitFor({ state: "visible" });
+      await capture(page, "run-history-dark.png");
+      await page.getByRole("dialog", { name: "Run history" }).getByRole("button", { name: "Close" }).click();
+
       await page.getByRole("button", { name: "Settings", exact: true }).click();
       await page.getByRole("dialog").waitFor();
       await page.getByRole("button", { name: "Simulation performance", exact: true }).click();
       await capture(page, "settings-dark.png");
     }
+    await context.close();
+  }
+
+  const directScenarios = [
+    {
+      fileName: "asteroid-results-dark.png",
+      domain: "asteroid",
+      center: { lat: 35.6762, lon: 139.6503 },
+    },
+    {
+      fileName: "nuclear-results-dark.png",
+      domain: "nuclear",
+      center: { lat: 40.7128, lon: -74.006 },
+    },
+  ].filter(({ domain }) => !onlyDomain || domain === onlyDomain);
+  for (const directScenario of directScenarios) {
+    const context = await browser.newContext({
+      viewport: { width: 1600, height: 1000 },
+      deviceScaleFactor: 1,
+      locale: "en-US",
+      timezoneId: "UTC",
+      reducedMotion: "reduce",
+      serviceWorkers: "block",
+    });
+    await context.addInitScript(seedPreview, "mocha");
+    const page = await openPage(context);
+    await runDirectScenario(page, directScenario);
+    await capture(page, directScenario.fileName);
     await context.close();
   }
 } finally {

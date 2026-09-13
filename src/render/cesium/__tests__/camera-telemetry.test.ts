@@ -8,7 +8,7 @@ import {
 
 class FakeHost implements CameraTelemetryHost {
   listeners = new Set<() => void>();
-  value: CameraTelemetry = { lat: 1, lon: 2, altitudeM: 3, headingDeg: 4 };
+  value: CameraTelemetry = { lat: 1, lon: 2, altitudeM: 3, headingDeg: 4, pitchDeg: -55 };
 
   read(): CameraTelemetry { return this.value; }
   subscribe(listener: () => void): () => void {

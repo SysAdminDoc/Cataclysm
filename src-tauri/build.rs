@@ -4,10 +4,12 @@ fn main() {
     // authority instead of exposing every registered command to every webview.
     let app_manifest = tauri_build::AppManifest::new().commands(&[
         "asteroid_initial_conditions",
+        "asteroid_deflection_estimate",
         "nuclear_initial_conditions",
         "landslide_initial_conditions",
         "meteotsunami_initial_conditions",
         "earthquake_initial_conditions",
+        "volcanic_collapse_initial_conditions",
         "far_field_amplitude",
         "attenuation_curve",
         "coastal_runup",
@@ -41,6 +43,7 @@ fn main() {
         "asteroid_result_visuals",
         "jpl_api_request",
         "ncei_hazel_search",
+        "ncei_hazel_runups",
         "usgs_recent_earthquakes",
         "usgs_earthquake_detail",
         "diagnostics_bundle",
@@ -54,6 +57,9 @@ fn main() {
         "remove_solver_checkpoint",
         "max_field_probe",
         "save_scientific_export",
+        "save_geopackage",
+        "exploratory_wave_step",
+        "clear_exploratory_wave",
     ]);
 
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(app_manifest))

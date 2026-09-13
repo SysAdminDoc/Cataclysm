@@ -197,7 +197,7 @@ type Props = {
   outcomeFocus?: OutcomeFocusRequest | null;
   onOutcomeFocusTime?: (simulationTimeS: number) => void;
   /** Lightweight camera telemetry for the desktop viewport HUD. */
-  onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number }) => void;
+  onCameraTelemetry?: (telemetry: { lat: number; lon: number; altitudeM: number; headingDeg: number; pitchDeg: number }) => void;
   /** Application-owned text equivalent for the otherwise canvas-only scene. */
   accessibleSceneLabel?: string;
   simulationTimeS?: number;

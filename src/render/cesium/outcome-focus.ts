@@ -14,6 +14,8 @@ export type OutcomeFocusRequest = Readonly<{
   pitch_deg?: number;
   /** State restoration uses an exact camera pose instead of a time-based flight. */
   instant?: boolean;
+  /** Coordinates describe the camera position, not a point on the globe. */
+  camera_position?: boolean;
 }>;
 
 export type OutcomeFocusTarget = Readonly<{
@@ -23,6 +25,7 @@ export type OutcomeFocusTarget = Readonly<{
   heading_rad: number;
   pitch_rad: number;
   duration_s: number;
+  camera_position: boolean;
   label?: string;
 }>;
 
@@ -64,7 +67,8 @@ function validRequest(request: OutcomeFocusRequest): boolean {
       || (Number.isFinite(request.place.range_m) && request.place.range_m > 0))
     && (request.heading_deg === undefined || Number.isFinite(request.heading_deg))
     && (request.pitch_deg === undefined || Number.isFinite(request.pitch_deg))
-    && (request.instant === undefined || typeof request.instant === "boolean");
+    && (request.instant === undefined || typeof request.instant === "boolean")
+    && (request.camera_position === undefined || typeof request.camera_position === "boolean");
 }
 
 function targetFor(request: OutcomeFocusRequest, instant: boolean): OutcomeFocusTarget {
@@ -75,6 +79,7 @@ function targetFor(request: OutcomeFocusRequest, instant: boolean): OutcomeFocus
     heading_rad: (request.heading_deg ?? 0) * Math.PI / 180,
     pitch_rad: (request.pitch_deg ?? -55) * Math.PI / 180,
     duration_s: instant ? 0 : 0.9,
+    camera_position: request.camera_position === true,
     ...(request.place.label?.trim() ? { label: request.place.label.trim() } : {}),
   });
 }
@@ -143,7 +148,7 @@ export class OutcomeFocusController {
     if (!cancelledOwnedFlight) this.#host.cancelCameraFlight();
     const instant = options.reduced_motion || request.instant === true;
     const target = targetFor(request, instant);
-    this.#host.showFocus?.(target);
+    if (!target.camera_position) this.#host.showFocus?.(target);
     this.#host.focusSimulationTime(request.simulation_time_s);
     this.#requestsApplied += 1;
     if (instant) {

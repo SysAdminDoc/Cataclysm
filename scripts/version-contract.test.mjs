@@ -24,7 +24,7 @@ function sources(version = "1.2.3") {
       "export const APP_VERSION = PRODUCT_TRUTH.release.version;",
     readme:
       `[![Version](https://img.shields.io/badge/version-${version}-blue.svg)](./CHANGELOG.md)\n` +
-      `> **Migration status (v${version}):** Current source capabilities.\n` +
+      `**[Download Cataclysm v${version} for Windows](https://example.com)**\n` +
       `The v${version} Windows installers are unsigned.\n` +
       `Get-FileHash .\\Cataclysm_${version}_x64_en-US.msi\n` +
       `certutil -hashfile Cataclysm_${version}_x64_en-US.msi SHA256\n`,
@@ -68,12 +68,12 @@ test("version contract requires runtime provenance to derive from product truth"
   );
 });
 
-test("version contract requires both README current-source markers", () => {
+test("version contract requires the README release CTA", () => {
   const fixture = sources();
-  fixture.readme = fixture.readme.replace(/^> \*\*Migration status.*\n/m, "");
+  fixture.readme = fixture.readme.replace(/Download Cataclysm v1\.2\.3 for Windows/g, "Download Cataclysm for Windows");
   assert.throws(
     () => validateVersionContract(fixture),
-    /README\.md migration status version marker is missing/,
+    /README\.md release CTA version marker is missing/,
   );
 });
 

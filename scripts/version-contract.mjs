@@ -176,10 +176,10 @@ export function validateVersionContract(sources, options = {}) {
       sources.readme,
       new RegExp(`img\\.shields\\.io/badge/version-(${SEMVER_PATTERN})-`),
     ),
-    "README.md migration status": requireCapture(
-      "README.md migration status",
+    "README.md release CTA": requireCapture(
+      "README.md release CTA",
       sources.readme,
-      new RegExp(`\\*\\*Migration status \\(v(${SEMVER_PATTERN})\\):\\*\\*`),
+      new RegExp(`Download Cataclysm v(${SEMVER_PATTERN}) for Windows`),
     ),
     ...parseReadmeInstallerVersions(sources.readme),
     ...parseNoticeVersions(sources.thirdPartyNotices),

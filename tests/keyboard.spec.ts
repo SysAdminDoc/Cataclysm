@@ -137,7 +137,7 @@ test.describe("Keyboard-only golden path", () => {
     await expect(page.locator(".app__export-panel")).toBeVisible();
     await expect(page.locator(".app__export-panel")).toBeFocused();
     await expect(page.getByRole("region", { name: "Image" })).toContainText("Capture the current analytical view");
-    await expect(page.getByRole("region", { name: "Replay" })).toContainText("Record the visible timeline");
+    await expect(page.getByRole("region", { name: "Replay" })).toContainText("record the visible timeline in real time");
     await expect(page.getByRole("region", { name: "Share" })).toContainText("reproducible scenario link");
     await expect(page.getByRole("region", { name: "Data" })).toContainText("interoperable GIS or Cesium files");
     await expect(page.locator(".icon-button__reason").first()).toContainText("Requires:");
@@ -164,16 +164,16 @@ test.describe("Keyboard-only golden path", () => {
     const scenarioTabs = page.locator(".scenario-tabs");
     const asteroid = scenarioTabs.getByRole("tab", { name: "Asteroid" });
     const nuclear = scenarioTabs.getByRole("tab", { name: "Nuclear" });
-    const meteotsunami = scenarioTabs.getByRole("tab", { name: "Meteotsunami" });
+    const volcanicCollapse = scenarioTabs.getByRole("tab", { name: "Volcanic collapse" });
     await asteroid.focus();
     await expect(asteroid).toHaveAttribute("tabindex", "0");
     await asteroid.press("ArrowRight");
     await expect(nuclear).toBeFocused();
     await expect(nuclear).toHaveAttribute("aria-selected", "true");
     await nuclear.press("End");
-    await expect(meteotsunami).toBeFocused();
-    await expect(meteotsunami).toHaveAttribute("aria-selected", "true");
-    await meteotsunami.press("Home");
+    await expect(volcanicCollapse).toBeFocused();
+    await expect(volcanicCollapse).toHaveAttribute("aria-selected", "true");
+    await volcanicCollapse.press("Home");
     await expect(asteroid).toBeFocused();
     await expect(asteroid).toHaveAttribute("aria-selected", "true");
 
