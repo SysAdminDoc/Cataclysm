@@ -13,6 +13,7 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 - Repaired the native command permission manifest so every registered desktop command is granted through the intended main-window capability.
 - Removed remote build workflows. Release checks and Windows packaging now stay on the local release path.
 - Fixed portable workspace imports so they restore the exported camera position and pitch exactly.
+- Fixed Rust 1.98 release checks by making simulation imports explicit and decoding fixed-size protocol and checkpoint chunks as typed arrays.
 
 ## [0.14.1] (2026-08-12)
 

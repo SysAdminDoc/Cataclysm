@@ -284,8 +284,10 @@ mod tests {
                 .unwrap();
             let start = descriptor.byte_offset as usize;
             let values = decoded.payload[start..start + descriptor.byte_length as usize]
-                .chunks_exact(4)
-                .map(|bytes| f32::from_le_bytes(bytes.try_into().unwrap()))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|bytes| f32::from_le_bytes(*bytes))
                 .collect::<Vec<_>>();
             assert_eq!(values.len(), source.len());
             assert!(values.iter().zip(source).all(|(actual, expected)| {

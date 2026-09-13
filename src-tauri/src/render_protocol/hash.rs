@@ -30,7 +30,7 @@ pub fn sha256(bytes: &[u8]) -> [u8; 32] {
 
     let mut state = INITIAL;
     let mut words = [0_u32; 64];
-    for chunk in padded.chunks_exact(64) {
+    for chunk in padded.as_chunks::<64>().0 {
         for (index, word) in words.iter_mut().take(16).enumerate() {
             *word = u32::from_be_bytes(chunk[index * 4..index * 4 + 4].try_into().unwrap());
         }

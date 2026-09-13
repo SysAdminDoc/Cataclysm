@@ -379,8 +379,8 @@ fn decode_payload(header: Header, payload: &[u8]) -> Result<SolverCheckpoint, St
     for field_index in 0..FIELD_COUNT {
         let start = field_index * cells * 8;
         let mut field = Vec::with_capacity(cells);
-        for chunk in payload[start..start + cells * 8].chunks_exact(8) {
-            field.push(f64::from_le_bytes(chunk.try_into().unwrap()));
+        for chunk in payload[start..start + cells * 8].as_chunks::<8>().0 {
+            field.push(f64::from_le_bytes(*chunk));
         }
         fields.push(field);
     }

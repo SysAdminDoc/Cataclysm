@@ -451,8 +451,8 @@ fn validate_fields(fields: &[FieldDescriptorV1], payload: &[u8]) -> Result<(), S
             }
         }
         if field.data_type == FieldDataTypeV1::F32Le {
-            for encoded in chunk.chunks_exact(4) {
-                let value = f32::from_le_bytes(encoded.try_into().unwrap());
+            for encoded in chunk.as_chunks::<4>().0 {
+                let value = f32::from_le_bytes(*encoded);
                 if !value.is_finite() {
                     return Err(format!("field {} contains non-finite f32", field.id));
                 }
