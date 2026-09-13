@@ -4,6 +4,10 @@ All notable changes to Cataclysm (formerly TsunamiSimulator). Format: [Keep a Ch
 
 ## [0.14.3] (2026-09-13)
 
+### Packaging status
+
+- Published the v0.14.3 source tag. Installer candidates remain unpublished because the installed-package verification found two Windows registrations where the clean test expected one.
+
 ### Fixed
 
 - Changed the MSI and NSIS packages to current-user installs. Standard and offline installers no longer need an administrator prompt, and `cataclysm://` links register for the person who installed the app.

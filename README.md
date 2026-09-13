@@ -12,7 +12,9 @@ Cataclysm is a local-first desktop simulator for planetary hazards. Recreate a d
 
 It brings tsunami propagation, asteroid impacts, nuclear detonations, earthquakes, landslides, and volcanic collapse into one inspectable workspace. Results keep their assumptions, model references, data identity, and uncertainty notes close at hand.
 
-**[Download Cataclysm v0.14.3 for Windows](https://github.com/SysAdminDoc/Cataclysm/releases/latest)**
+**[Download the latest published Windows installers, v0.13.0](https://github.com/SysAdminDoc/Cataclysm/releases/tag/v0.13.0)**
+
+Download Cataclysm v0.14.3 for Windows by [building the tagged source](https://github.com/SysAdminDoc/Cataclysm/tree/v0.14.3). Its installer candidates are held back because the installed-package verification found two Windows registrations where the clean test expected one.
 
 > Cataclysm is an educational and research tool. It is not a forecast, warning, evacuation map, weapons-effects authority, or personal safety guide.
 
@@ -87,9 +89,11 @@ For real tsunami warnings, use the official NOAA National Tsunami Warning Center
 
 ### Windows
 
-The v0.14.3 Windows installers are available on [GitHub Releases](https://github.com/SysAdminDoc/Cataclysm/releases/latest). MSI and NSIS packages install for the current Windows user without an administrator prompt. Standard packages are the smallest option. Separately labeled offline installers include the WebView2 Evergreen installer for machines that do not already have it.
+The v0.14.3 Windows installers are not published. The full build and test suite passed. The installed-package gate stopped when it detected two registrations instead of one, so the package set remains on hold. The tagged source contains the current-user installer work and builds standard plus offline MSI and NSIS candidates.
 
-Releases are built locally and are currently unsigned. Windows may show an unknown-publisher warning. Each release includes SHA256 checksums, CycloneDX software bills of materials, and build provenance.
+The current published Windows installers are v0.13.0. Choose the MSI or NSIS package from [GitHub Releases](https://github.com/SysAdminDoc/Cataclysm/releases/tag/v0.13.0), then compare the download with `checksums-sha256.txt` from the same release.
+
+Published packages are built locally and are currently unsigned. Windows may show an unknown-publisher warning.
 
 ```powershell
 (Get-FileHash .\Cataclysm_0.14.3_x64_en-US.msi -Algorithm SHA256).Hash
