@@ -8,6 +8,16 @@
 [![Stack](https://img.shields.io/badge/Tauri_2-React_19_%2B_Rust-f0a35b.svg)](#architecture)
 [![Use](https://img.shields.io/badge/use-education_%26_research-bc8cff.svg)](#model-boundaries)
 
+<p align="center">
+  <a href="https://ko-fi.com/X8K126YVER">
+    <img height="42" src="https://storage.ko-fi.com/cdn/kofi2.png?v=3" alt="Buy me a coffee on Ko-fi" />
+  </a>
+</p>
+
+<p align="center">
+  <sub><em>If this project helps you, a coffee helps me keep working on it.</em></sub>
+</p>
+
 Cataclysm is a local-first desktop simulator for planetary hazards. Recreate a documented event or build a what-if scenario, then watch the modeled effects unfold on a 3D globe.
 
 It brings tsunami propagation, asteroid impacts, nuclear detonations, earthquakes, landslides, and volcanic collapse into one inspectable workspace. Results keep their assumptions, model references, data identity, and uncertainty notes close at hand.
